@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1
 milestone_name: milestone
 status: executing
-stopped_at: Plan 01-02 complete; advancing to Plan 01-03 (lint + test wiring)
-last_updated: "2026-05-14T01:21:14.767Z"
+stopped_at: Plan 01-03 complete; advancing to Plan 01-04 (CI + smoke)
+last_updated: "2026-05-14T01:28:37Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
-  percent: 50
+  completed_plans: 3
+  percent: 75
 ---
 
 # @cosyte/x12 — STATE
@@ -30,7 +30,7 @@ Project memory for session-to-session continuity. Updated at phase/plan boundari
 ## Current Position
 
 Phase: 01 (Project Foundation) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-05-14
 
@@ -38,7 +38,7 @@ Last activity: 2026-05-14
 - **Phase:** 1 (Project Foundation) — not started. Plans 01-PLAN-01 through 01-PLAN-04 anticipated (package scaffold / build system / lint + test / CI + smoke).
 - **Plans (milestone total):** 0 / ~36 anticipated (4+5+5+5+4+5+3+5 across Phases 1–8).
 - **Status:** Ready to execute
-- **Progress:** [█████░░░░░] 50%
+- **Progress:** [████████░░] 75%
 
 ```
 [░░░░░░░░░░░░░░░░░░░░] 0%   (0 / 8 phases shipped)
@@ -60,6 +60,7 @@ Last activity: 2026-05-14
 **Recent Trend:** N/A (no plans yet).
 | Phase 01 P01 | 2m | 2 tasks | 7 files |
 | Phase 01 P02 | 6m | 2 tasks | 4 files |
+| Phase 01 P03 | 6m | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,11 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Ten decisions recorded
 - [Phase ?]: TypeScript pinned to ^5.6.0 (resolved 5.9.3) instead of registry latest 6.0.3 to avoid strict-flag drift in v0.0.0 scaffold (plan-specified fallback)
 - [Phase 01]: Approach A (Node self-referencing) used for verify-exports.{mjs,cjs}; works on Node v24 without flags; fallback Approach B (relative ./dist/* paths) not needed
 - [Phase 01]: Dual ESM (.mjs) + CJS (.cjs) build via tsup with exports map ordered types > import > require; verified by self-reference smokes printing VERSION=0.0.0 from both module systems
+- [Phase 01]: ESLint flat config (ESM) with typescript-eslint 8.x recommended-type-checked + stylistic-type-checked, scoped to **/*.ts; jsdoc/require-example proven to fire on missing-@example public exports
+- [Phase 01]: Type-checked tseslint rule sets scoped to **/*.ts (not all files) — required to keep plain-JS config files from crashing the linter
+- [Phase 01]: .planning/ added to .prettierignore — GSD workflow markdown owns its own format conventions
+- [Phase 01]: Vitest 4.x with v8 coverage; src/index.ts excluded from coverage during the stub phase (Phase 8 introduces 90% gate)
+- [Phase 01]: Pre-existing tsconfig.json rootDir conflict surfaced by pnpm typecheck and fixed in 01-03 (rootDir removed from editor config; remains in tsconfig.build.json which tsup uses)
 
 ### Pending Todos
 
@@ -108,6 +114,6 @@ v2 deferrals tracked in `REQUIREMENTS.md` → `v2 Requirements (Deferred)` and `
 
 ## Session Continuity
 
-Last session: 2026-05-14T01:21:14.747Z
-Stopped at: Plan 01-02 complete; advancing to Plan 01-03 (lint + test wiring)
+Last session: 2026-05-14T01:28:37Z
+Stopped at: Plan 01-03 complete; advancing to Plan 01-04 (CI + smoke)
 Resume file: None
