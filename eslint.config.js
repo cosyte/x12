@@ -1,9 +1,18 @@
 // @ts-check
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import jsdoc from "eslint-plugin-jsdoc";
 import prettier from "eslint-config-prettier";
 import globals from "globals";
+
+// `import.meta.dirname` was added in Node 20.11 / 21.2 — on Node 18 it is
+// `undefined` and typescript-eslint silently falls back to `process.cwd()`,
+// which breaks `pnpm exec eslint` from any subdirectory. Compute __dirname
+// the portable way so the config is correct on every supported Node version
+// (>= 18, per package.json#engines).
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /**
  * Helper: scope a tseslint config (or array of configs) to a files glob.
@@ -36,7 +45,7 @@ export default tseslint.config(
       globals: { ...globals.node },
       parserOptions: {
         projectService: true,
-        tsconfigRootDir: import.meta.dirname,
+        tsconfigRootDir: __dirname,
       },
     },
     rules: {
