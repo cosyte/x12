@@ -33,12 +33,12 @@ North star: **A developer can parse a real-world, vendor-quirky X12 healthcare i
   2. A developer importing the package from an ESM project and another from a CJS project both resolve the correct entry through the `exports` map and receive typed intellisense with JSDoc + `@example` tags on every exported symbol.
   3. A developer inspecting `package.json` sees zero runtime `dependencies`, the MIT license, Node 18+ engines field, and dual-build artifacts declared.
   4. A developer opening a PR sees the CI matrix run install/typecheck/lint/test/build on Node 18/20/22 and gate the merge on green.
-**Plans**: ~4 plans anticipated
+**Plans**: 4 plans
 Plans:
-- [ ] 01-PLAN-01-package-scaffold.md — Scaffold package.json, tsconfig (strict + noUncheckedIndexedAccess), LICENSE, .gitignore, src/index.ts stub
-- [ ] 01-PLAN-02-build-system.md — Create tsup.config.ts for dual ESM+CJS build with .d.ts emission; verify `exports` map resolves correctly from both module systems
-- [ ] 01-PLAN-03-lint-and-test.md — ESLint flat config, Prettier, Vitest config, sanity test; wire `pnpm lint`/`pnpm typecheck`/`pnpm test` scripts
-- [ ] 01-PLAN-04-ci-and-smoke.md — `.github/workflows/ci.yml` for Node 18/20/22 matrix; end-to-end smoke of install/typecheck/lint/test/build; commit lockfile
+- [ ] 01-01-PLAN.md — Scaffold package.json (zero deps, MIT, Node 18+, pnpm), tsconfig.json + tsconfig.build.json (strict + noUncheckedIndexedAccess, ES2022), LICENSE, .gitignore, .npmrc, src/index.ts stub
+- [ ] 01-02-PLAN.md — tsup.config.ts for dual ESM+CJS build with .d.ts emission, package.json `exports` map wired with correct condition order, both-format resolution smoke (verify-exports.{mjs,cjs})
+- [ ] 01-03-PLAN.md — ESLint flat config (no-any, no-console-in-src, JSDoc @example on public exports), Prettier, Vitest + sanity test, scripts: typecheck/lint/format/test/coverage
+- [ ] 01-04-PLAN.md — .github/workflows/ci.yml Node 18/20/22 matrix gating install/typecheck/lint/format:check/test/build/verify:exports; commit pnpm-lock.yaml; README.md placeholder; clean-clone end-to-end smoke
 **UI hint**: no
 
 ### Phase 2: Envelope Parser & Tolerance
