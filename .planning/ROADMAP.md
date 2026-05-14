@@ -35,7 +35,7 @@ North star: **A developer can parse a real-world, vendor-quirky X12 healthcare i
   4. A developer opening a PR sees the CI matrix run install/typecheck/lint/test/build on Node 18/20/22 and gate the merge on green.
 **Plans**: 4 plans
 Plans:
-- [ ] 01-01-PLAN.md — Scaffold package.json (zero deps, MIT, Node 18+, pnpm), tsconfig.json + tsconfig.build.json (strict + noUncheckedIndexedAccess, ES2022), LICENSE, .gitignore, .npmrc, src/index.ts stub
+- [x] 01-01-PLAN.md — Scaffold package.json (zero deps, MIT, Node 18+, pnpm), tsconfig.json + tsconfig.build.json (strict + noUncheckedIndexedAccess, ES2022), LICENSE, .gitignore, .npmrc, src/index.ts stub
 - [ ] 01-02-PLAN.md — tsup.config.ts for dual ESM+CJS build with .d.ts emission, package.json `exports` map wired with correct condition order, both-format resolution smoke (verify-exports.{mjs,cjs})
 - [ ] 01-03-PLAN.md — ESLint flat config (no-any, no-console-in-src, JSDoc @example on public exports), Prettier, Vitest + sanity test, scripts: typecheck/lint/format/test/coverage
 - [ ] 01-04-PLAN.md — .github/workflows/ci.yml Node 18/20/22 matrix gating install/typecheck/lint/format:check/test/build/verify:exports; commit pnpm-lock.yaml; README.md placeholder; clean-clone end-to-end smoke
@@ -193,7 +193,7 @@ Within each phase, plans that touch disjoint modules may run in parallel; plans 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Project Foundation | 0/4 | Not started | - |
+| 1. Project Foundation | 1/4 | In Progress|  |
 | 2. Envelope Parser & Tolerance | 0/5 | Not started | - |
 | 3. Structural Model, Types & Loop-Spec System | 0/5 | Not started | - |
 | 4. Typed Transaction-Set Overlays (HIPAA) | 0/5 | Not started | - |

@@ -10,9 +10,9 @@ All requirements are user-facing behaviors a developer consuming `@cosyte/x12` c
 
 - [ ] **SETUP-01** — Developer can run `pnpm install && pnpm build && pnpm test` from a clean clone and all three succeed.
 - [ ] **SETUP-02** — Package publishes as dual ESM + CJS with a correct `exports` map; consumers on either module system resolve the right entry point.
-- [ ] **SETUP-03** — Package has zero runtime dependencies in `package.json` (dev deps permitted).
+- [x] **SETUP-03** — Package has zero runtime dependencies in `package.json` (dev deps permitted).
 - [ ] **SETUP-04** — TypeScript consumers get full IntelliSense (types, JSDoc, `@example` tags) on every public API surface.
-- [ ] **SETUP-05** — Repo targets Node 18+ and compiles to ES2022 with `"strict": true` and `"noUncheckedIndexedAccess": true`.
+- [x] **SETUP-05** — Repo targets Node 18+ and compiles to ES2022 with `"strict": true` and `"noUncheckedIndexedAccess": true`.
 - [ ] **SETUP-06** — `pnpm lint` and `pnpm typecheck` pass with zero warnings.
 - [ ] **SETUP-07** — CI runs on Node 18/20/22 matrix for install/typecheck/lint/test/build.
 
@@ -221,9 +221,9 @@ Every v1 REQ-ID maps to exactly one phase in `ROADMAP.md`. Coverage is enforced 
 |--------|-------|--------|
 | SETUP-01 | Phase 1 | Pending |
 | SETUP-02 | Phase 1 | Pending |
-| SETUP-03 | Phase 1 | Pending |
+| SETUP-03 | Phase 1 | Complete |
 | SETUP-04 | Phase 1 | Pending |
-| SETUP-05 | Phase 1 | Pending |
+| SETUP-05 | Phase 1 | Complete |
 | SETUP-06 | Phase 1 | Pending |
 | SETUP-07 | Phase 1 | Pending |
 | ENV-01 | Phase 2 | Pending |
