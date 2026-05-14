@@ -29,6 +29,17 @@
   },
   "packageManager": "pnpm@10.33.4",
   "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "README.md",
@@ -39,7 +50,8 @@
     "prepare": "echo 'scripts wired in plan 02/03'",
     "clean": "rm -rf dist coverage *.tsbuildinfo",
     "prebuild": "pnpm run clean",
-    "build": "tsup"
+    "build": "tsup",
+    "verify:exports": "node scripts/verify-exports.mjs && node scripts/verify-exports.cjs"
   },
   "dependencies": {},
   "devDependencies": {
