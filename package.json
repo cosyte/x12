@@ -36,8 +36,15 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "prepare": "echo 'scripts wired in plan 02/03'"
+    "prepare": "echo 'scripts wired in plan 02/03'",
+    "clean": "rm -rf dist coverage *.tsbuildinfo",
+    "prebuild": "pnpm run clean",
+    "build": "tsup"
   },
   "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/node": "20.19.41",
+    "tsup": "8.5.1",
+    "typescript": "5.9.3"
+  }
 }
