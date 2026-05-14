@@ -55,12 +55,16 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "verify:exports": "node scripts/verify-exports.mjs && node scripts/verify-exports.cjs"
   },
   "dependencies": {},
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@types/node": "20.19.41",
+    "@vitest/coverage-v8": "4.1.6",
     "eslint": "10.3.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-jsdoc": "62.9.0",
@@ -68,6 +72,7 @@
     "prettier": "3.8.3",
     "tsup": "8.5.1",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.59.3"
+    "typescript-eslint": "8.59.3",
+    "vitest": "4.1.6"
   }
 }
