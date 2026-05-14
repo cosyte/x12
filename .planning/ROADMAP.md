@@ -193,7 +193,7 @@ Within each phase, plans that touch disjoint modules may run in parallel; plans 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Project Foundation | 4/4 | Plans Complete (verification pending) |  |
+| 1. Project Foundation | 4/4 | Complete | 2026-05-13 |
 | 2. Envelope Parser & Tolerance | 0/5 | Not started | - |
 | 3. Structural Model, Types & Loop-Spec System | 0/5 | Not started | - |
 | 4. Typed Transaction-Set Overlays (HIPAA) | 0/5 | Not started | - |
@@ -202,8 +202,8 @@ Within each phase, plans that touch disjoint modules may run in parallel; plans 
 | 7. Strict Mode & TR3 Validation | 0/3 | Not started | - |
 | 8. Testing Hardening, Examples, Starter Kit & Documentation | 0/5 | Not started | - |
 
-**v1 milestone:** 0/8 phases complete.
+**v1 milestone:** 1/8 phases complete.
 
 ---
 
-*Last updated: 2026-05-14 (Phase 01 plans 4/4 complete; phase verification + first push to GitHub pending).*
+*Last updated: 2026-05-13 (Phase 01 complete: 7/7 SETUP REQ-IDs verified; CI green on Node 18/20/22 via run 25838049232).*

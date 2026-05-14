@@ -1,26 +1,32 @@
 ---
 phase: 01
 phase_name: Project Foundation
-status: human_needed
-score: "6/7 must-haves verified (SETUP-07 deferred to user's first push)"
+status: passed
+score: "7/7 must-haves verified"
 verified: 2026-05-13
 overrides_applied: 0
 re_verification:
-  previous_status: null
-  previous_score: null
-  gaps_closed: []
+  previous_status: human_needed
+  previous_score: "6/7 must-haves verified (SETUP-07 deferred to user's first push)"
+  gaps_closed:
+    - req_id: SETUP-07
+      closed_by: "User pushed to origin/main; CI run 25838049232 reported all 3 matrix legs (node 18/20/22) success after 4 Node-18-compat fixes (eslint 9, eslint-plugin-jsdoc 50, vitest 3.2.4, transitive vite ^6, transitive eslint-visitor-keys ^4)."
   gaps_remaining: []
   regressions: []
 human_verification:
-  count: 1
-  items:
-    - req_id: SETUP-07
-      test: "Push the Phase 1 commits to origin/main (or open a PR from a topic branch) and confirm the CI workflow run on Actions."
-      expected: "All three matrix legs (verify (node 18), verify (node 20), verify (node 22)) complete green; each leg executes the 7-step chain in order (install --frozen-lockfile → typecheck → lint → format:check → test → build → verify:exports)."
-      why_human: "The autonomous workflow does not push to remotes. The .github/workflows/ci.yml file is complete and locally YAML-validated; the local-equivalent of the chain exits 0; but the actual GitHub Actions runner has not been exercised. Only a real Actions run can close the SETUP-07 gate."
+  count: 0
+  items: []
 gaps:
   count: 0
   items: []
+ci_validation:
+  run_id: 25838049232
+  head_sha: 8eb302b
+  url: https://github.com/cosyte/x12/actions/runs/25838049232
+  legs:
+    - { node: "18", conclusion: success }
+    - { node: "20", conclusion: success }
+    - { node: "22", conclusion: success }
 ---
 
 # Phase 1: Project Foundation — Verification Report
@@ -28,14 +34,14 @@ gaps:
 **Phase Goal:** A developer cloning the repo can install, build, typecheck, lint, and test with a single command sequence; downstream phases never have to revisit tooling.
 
 **Verified:** 2026-05-13
-**Status:** human_needed (SETUP-07 first-push validation)
-**Re-verification:** No — initial verification
+**Status:** passed (initial: human_needed → re-verified after user push)
+**Re-verification:** Yes — SETUP-07 closed by CI run 25838049232 (commit 8eb302b)
 
 ## Executive Summary
 
-Phase 1 delivers a complete, working scaffold. Every locked decision in CLAUDE.md and PROJECT.md is honored: zero runtime dependencies, MIT license, Node 18+ engines, strict TypeScript (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), dual ESM+CJS build with type-correct `exports` map, ESLint + Prettier + Vitest wired and proven to fire on real anti-patterns, and a CI matrix workflow targeting Node 18/20/22. The inner-loop chain runs end-to-end in ~10s of wall clock against the current working tree.
+Phase 1 delivers a complete, working scaffold. Every locked decision in CLAUDE.md and PROJECT.md is honored: zero runtime dependencies, MIT license, Node 18+ engines, strict TypeScript (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), dual ESM+CJS build with type-correct `exports` map, ESLint + Prettier + Vitest wired and proven to fire on real anti-patterns, and a CI matrix workflow that passes green on Node 18/20/22 on the real GitHub Actions runner.
 
-The only outstanding work is **SETUP-07's final gate**: the CI workflow file is correct and locally validated, but it has not yet been exercised on a real GitHub Actions runner because the autonomous workflow does not push to remotes. This is a documented deferral, not a code gap — recommended disposition is `human_needed` so the orchestrator surfaces the manual validation step to the user.
+SETUP-07 closed in re-verification. The user pushed to `origin/main`; the first CI run on commit `ead6ce6` failed on the Node 18 leg because several devDeps (eslint 10, eslint-plugin-jsdoc 62, vitest 4, transitive vite 7, transitive eslint-visitor-keys 5) had silently raised their engines fields to Node 20+ between Phase 1's planning and execution. Gap closure applied 4 atomic fixes (3 direct devDep downgrades + 2 pnpm.overrides entries for transitive deps), each verified locally and re-pushed. The final CI run `25838049232` on commit `8eb302b` reported all 3 matrix legs success. The transitive devDep graph is now Node-18-clean per local audit script (zero packages with engines that exclude Node 18.20.8).
 
 ## Goal Achievement
 
@@ -46,9 +52,9 @@ The only outstanding work is **SETUP-07's final gate**: the CI workflow file is 
 | 1 | Inner-loop chain (install → build → typecheck → lint → test) exits 0 with zero warnings from a clean clone | VERIFIED | All 7 commands executed against working tree: `pnpm install --frozen-lockfile` (exit 0), `pnpm typecheck` (exit 0), `pnpm lint` (exit 0), `pnpm format:check` (exit 0, "All matched files use Prettier code style!"), `pnpm test` (exit 0, 1 passing test), `pnpm build` (exit 0, dist/index.{mjs,cjs,d.ts,d.cts} emitted), `pnpm run verify:exports` (exit 0, "ESM OK: VERSION=0.0.0" / "CJS OK: VERSION=0.0.0"). Plan 01-04's clean-clone smoke (`rm -rf node_modules dist coverage` then full chain) recorded ~10.8s wall clock. |
 | 2 | ESM and CJS consumers both resolve correctly via the `exports` map; typed IntelliSense with JSDoc + `@example` tags on every public symbol | VERIFIED | `dist/index.d.ts` and `dist/index.d.cts` both contain the `@example` JSDoc block (`grep -c '@example'` returns 1 for each). `package.json#exports."."` uses the nested-conditional shape `{ import: { types, default }, require: { types, default } }` (post-REVIEW-FIX) — CJS branch routes types to `./dist/index.d.cts` so `moduleResolution: "node16"/"nodenext"` CJS consumers get CJS-shaped types. `scripts/verify-exports.mjs` and `scripts/verify-exports.cjs` both run the import via Node self-reference and print `VERSION=0.0.0`. |
 | 3 | `package.json` has zero runtime dependencies, MIT license, Node 18+ engines, dual-build artifacts declared | VERIFIED | `dependencies: {}`, `license: "MIT"`, `engines.node: ">=18"`, `type: "module"`, `main: "./dist/index.cjs"`, `module: "./dist/index.mjs"`, `types: "./dist/index.d.ts"`, `exports` map present with both `import` and `require` conditions pointing at the right dist artifacts. 12 devDependencies (tsup, typescript, eslint, prettier, vitest, etc.) — all dev-only. |
-| 4 | CI matrix runs install/typecheck/lint/test/build on Node 18/20/22 and gates merge on green | VERIFIED LOCALLY / HUMAN NEEDED FOR FIRST-PUSH | `.github/workflows/ci.yml` declares `matrix.node: ["18", "20", "22"]`, `fail-fast: false`, `permissions: contents: read`, `concurrency` cancels superseded runs. 10 named steps in correct order: Checkout → Install pnpm (SHA-pinned `b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4`) → Setup Node → Install dependencies (`--frozen-lockfile`) → Typecheck → Lint → Format check → Test → Build → Verify dual ESM + CJS exports resolution. `python3 yaml.safe_load` parses the workflow cleanly. Triggers on `push` to `main` and `pull_request` to `main`. **First-push validation on real Actions runner is the human-needed item.** |
+| 4 | CI matrix runs install/typecheck/lint/test/build on Node 18/20/22 and gates merge on green | VERIFIED | `.github/workflows/ci.yml` declares `matrix.node: ["18", "20", "22"]`, `fail-fast: false`, `permissions: contents: read`, `concurrency` cancels superseded runs. 10 named steps in correct order: Checkout → Install pnpm (SHA-pinned `b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4`) → Setup Node → Install dependencies (`--frozen-lockfile`) → Typecheck → Lint → Format check → Test → Build → Verify dual ESM + CJS exports resolution. `python3 yaml.safe_load` parses the workflow cleanly. Triggers on `push` to `main` and `pull_request` to `main`. **CI run [25838049232](https://github.com/cosyte/x12/actions/runs/25838049232) on commit `8eb302b` reported all three matrix legs (node 18 / 20 / 22) success** after gap closure for Node-18 devDep engine drift. |
 
-**Score:** 4/4 truths verified at the codebase level. Truth 4 has a human-verification follow-up for the first-push gate.
+**Score:** 4/4 truths verified end-to-end (codebase + real CI runner).
 
 ### Required Artifacts
 
@@ -85,7 +91,7 @@ The only outstanding work is **SETUP-07's final gate**: the CI workflow file is 
 | `package.json#exports.require` | `dist/index.cjs` + `dist/index.d.cts` | resolution map | WIRED | `verify-exports.cjs` resolves and prints `VERSION=0.0.0`. CJS branch correctly routes types to `.d.cts` (fixes WR-01 Masquerading-as-ESM issue). |
 | `eslint.config.js` | `tsconfig.json` | `projectService: true`, `tsconfigRootDir: __dirname` | WIRED | `pnpm lint` exits 0 with zero errors. Portable `__dirname` works on Node 18+ (fix for WR-02). |
 | `test/sanity.test.ts` | `src/index.ts` | NodeNext `.js` specifier (`../src/index.js`) | WIRED | Test imports and asserts; passes. |
-| `.github/workflows/ci.yml` | `package.json` scripts | step `run: pnpm <script>` | WIRED LOCALLY | Each CI step invokes a `package.json` script; all those scripts exit 0 locally. Real-runner verification deferred to user's first push. |
+| `.github/workflows/ci.yml` | `package.json` scripts | step `run: pnpm <script>` | WIRED + CI VERIFIED | Each CI step invokes a `package.json` script; CI run 25838049232 reports all steps exit 0 on Node 18/20/22. |
 
 ### Data-Flow Trace (Level 4)
 
@@ -123,7 +129,7 @@ Phase 1 PLAN/SUMMARY documents the inner-loop chain itself as the validation str
 | SETUP-04 | 01-01, 01-02, 01-03 | TypeScript consumers get full IntelliSense (types, JSDoc, `@example` tags) on every public API surface | SATISFIED | `@example` JSDoc preserved into both `dist/index.d.ts` and `dist/index.d.cts`. `jsdoc/require-example` lint rule proven to fire on missing-@example fixture (exit 1 captured this verification step). |
 | SETUP-05 | 01-01 | Repo targets Node 18+ and compiles to ES2022 with `"strict": true` and `"noUncheckedIndexedAccess": true` | SATISFIED | `engines.node: ">=18"`; tsconfig.json: `target: "ES2022"`, `strict: true`, `noUncheckedIndexedAccess: true` (inherited by tsconfig.build.json). |
 | SETUP-06 | 01-03 | `pnpm lint` and `pnpm typecheck` pass with zero warnings | SATISFIED | `pnpm typecheck` exit 0; `pnpm lint` exit 0 with zero errors/warnings; `pnpm format:check` exit 0. |
-| SETUP-07 | 01-04 | CI runs on Node 18/20/22 matrix for install/typecheck/lint/test/build | WORKFLOW COMPLETE / **NEEDS HUMAN** | `.github/workflows/ci.yml` is YAML-valid with matrix `['18','20','22']`, all 7 inner-loop steps in correct order, SHA-pinned third-party action, least-privilege permissions. Local-equivalent chain exits 0. **First-push validation on real Actions runner is reserved for the user** — see human_verification section. |
+| SETUP-07 | 01-04 + gap-closure | CI runs on Node 18/20/22 matrix for install/typecheck/lint/test/build | VERIFIED | `.github/workflows/ci.yml` is YAML-valid with matrix `['18','20','22']`, all 7 inner-loop steps in correct order, SHA-pinned third-party action, least-privilege permissions. CI run [25838049232](https://github.com/cosyte/x12/actions/runs/25838049232) on commit `8eb302b` reports all 3 matrix legs success after gap closure for Node-18 devDep engine drift (4 commits: `e15c9cd`, `b5c411c`, `af7ee41`, `8eb302b`). |
 
 No requirements outside this set are claimed by any Phase 1 plan; no orphans.
 
@@ -135,45 +141,37 @@ No requirements outside this set are claimed by any Phase 1 plan; no orphans.
 
 Scanned `src/index.ts`, `test/sanity.test.ts`, `scripts/verify-exports.{mjs,cjs}`, `eslint.config.js`, `tsup.config.ts`, `vitest.config.ts`, `package.json`, `README.md` for: TBD, FIXME, XXX, HACK, PLACEHOLDER, "placeholder", "coming soon", "not yet implemented", "not available", `return null`, `return {}`, `return []`, empty arrow handlers, `console.log` smell. No matches that constitute stubs. The phase's documented intentional stubs (the `VERSION` placeholder; README minimal until Phase 8; `scripts.prepare` placeholder) are all explicitly authorized by `CONTEXT.md` decision 4 ("No source code yet — Phase 1 ships scaffolding only").
 
-### Human Verification Required
+### Human Verification — Resolved
 
-#### 1. SETUP-07 first-push CI validation
+The SETUP-07 first-push gate that originally flagged this verification as `human_needed` has been closed. The user pushed the Phase 1 commits to `origin/main`; the initial CI run on commit `ead6ce6` exposed a real defect — exactly the kind of "Node 18 incompatibility on a transitive dep" called out as a watch item in the initial report. The first leg of Node 18 failed with `ERR_PNPM_UNSUPPORTED_ENGINE` on `eslint@10.3.0` (engines: `^20.19 || ^22.13 || >=24`), then iteratively on the next-pulled transitive dep, ultimately requiring 4 surgical pins:
 
-**Test:** Push the Phase 1 commits to `origin/main` (or open a PR from a topic branch).
+| Commit | Pin | Reason |
+|--------|-----|--------|
+| `e15c9cd` | `eslint 10 → 9.39.4`, `@eslint/js 10 → 9.39.4`, `eslint-plugin-jsdoc 62 → 50.8.0` | Direct devDep majors had bumped to Node 20+ engines |
+| `b5c411c` | `vitest 4 → 3.2.4`, `@vitest/coverage-v8 4 → 3.2.4` | Direct devDep major bumped to Node 20+ engines |
+| `af7ee41` | `pnpm.overrides.vite = ^6.4.2` | Transitive vite@7.x requires Node 20.19+; pnpm.overrides pin to the latest Node-18-compat major |
+| `8eb302b` | `pnpm.overrides.eslint-visitor-keys = ^4.2.1` | typescript-eslint pulled v5.0.1 which requires Node 20.19+; API-compatible v4.2.1 supports Node 18 |
 
-**Expected:**
-1. The `CI` workflow run is triggered on the Actions tab.
-2. All three matrix legs (`verify (node 18)`, `verify (node 20)`, `verify (node 22)`) complete green.
-3. Each leg executes the 10-step chain in order: Checkout → Install pnpm → Setup Node → Install dependencies (`--frozen-lockfile`) → Typecheck → Lint → Format check → Test → Build → Verify dual ESM + CJS exports resolution.
-4. No transient-dep incompatibilities surface on the Node 18 leg (those would manifest as a single red row alongside two green rows).
-
-**Why human:** The autonomous workflow does not push to remotes. The `.github/workflows/ci.yml` file is correct (YAML-valid, all expected matrix versions and steps, SHA-pinned third-party action) and the local-equivalent chain (`pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm run verify:exports`) exits 0 in ~10.8s on the host machine — but a real GitHub Actions runner has not yet executed the workflow. Only the user's first push can close that gate.
-
-**Common first-push issues to watch for** (per Plan 01-04's hand-off notes):
-- `pnpm` version mismatch — should not happen (`packageManager: pnpm@10.33.4` is pinned and `pnpm/action-setup@v4` reads it).
-- `pnpm install --frozen-lockfile` drift — should not happen (committed lockfile matches `package.json`).
-- Node 18 incompatibility on a transitive dep — would surface as a Node-18-only red row. Fix: bump the offending devDep, refresh lockfile, re-push.
+A post-fix lockfile audit (custom script using `semver.satisfies('18.20.8', engines)`) reports **zero** packages with engines that exclude Node 18.20.8. CI run [25838049232](https://github.com/cosyte/x12/actions/runs/25838049232) on commit `8eb302b` passes all three matrix legs.
 
 ### Gaps Summary
 
-**No gaps.** Every must-have for Phase 1 is satisfied in the codebase. The single outstanding item is the SETUP-07 first-push validation, which requires a user action (pushing to GitHub) and is therefore surfaced as a `human_needed` verification item rather than a gap.
+**No gaps.** Every must-have for Phase 1 is satisfied in the codebase **and** validated on real CI infrastructure.
 
 ### Re-verification metadata
 
-Initial verification — no prior VERIFICATION.md existed for Phase 1.
+- **Previous status:** `human_needed` (SETUP-07 first-push deferral)
+- **Trigger for re-verify:** User pushed to `origin/main`; first CI run failed on Node 18; gap closure performed.
+- **Gap closure commits:** `e15c9cd`, `b5c411c`, `af7ee41`, `8eb302b` (all squash-mergeable; lockfile-only churn in commits 2-4).
+- **Final CI run:** [25838049232](https://github.com/cosyte/x12/actions/runs/25838049232) — node 18/20/22 all success.
 
 ---
 
-## Disposition Recommendation
+## Disposition
 
-**Status: `human_needed`** (option (b) from the verifier prompt).
+**Status: `passed`.**
 
-Rationale:
-- Marking `passed` would mask the SETUP-07 first-push deferral and the user would not be prompted to push the branch.
-- Marking `gaps_found` would imply remediation work, but there is no code change to make — only a manual push.
-- `human_needed` is the precise classification: technical work is complete and codebase evidence is unambiguous; the only remaining validation is one the autonomous workflow structurally cannot perform.
-
-Once the user pushes and the CI run is green on Node 18/20/22, REQUIREMENTS.md's SETUP-07 entry can be flipped from `[~]` to `[x]` and the ROADMAP Progress row marked "Complete" with the date.
+All 7 must-have REQ-IDs are verified end-to-end. Phase 1 is complete and the toolchain is proven on the real CI matrix. Downstream phases can rely on the inner-loop chain (`pnpm install && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm run verify:exports`) staying green on Node 18/20/22.
 
 ---
 
