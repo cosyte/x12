@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1
 milestone_name: milestone
 status: executing
-stopped_at: Plan 01-01 complete; advancing to Plan 01-02 (tsup dual build)
-last_updated: "2026-05-14T01:15:32.636Z"
+stopped_at: Plan 01-02 complete; advancing to Plan 01-03 (lint + test wiring)
+last_updated: "2026-05-14T01:21:14.767Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 25
+  completed_plans: 2
+  percent: 50
 ---
 
 # @cosyte/x12 — STATE
@@ -30,7 +30,7 @@ Project memory for session-to-session continuity. Updated at phase/plan boundari
 ## Current Position
 
 Phase: 01 (Project Foundation) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-05-14
 
@@ -38,7 +38,7 @@ Last activity: 2026-05-14
 - **Phase:** 1 (Project Foundation) — not started. Plans 01-PLAN-01 through 01-PLAN-04 anticipated (package scaffold / build system / lint + test / CI + smoke).
 - **Plans (milestone total):** 0 / ~36 anticipated (4+5+5+5+4+5+3+5 across Phases 1–8).
 - **Status:** Ready to execute
-- **Progress:** [███░░░░░░░] 25%
+- **Progress:** [█████░░░░░] 50%
 
 ```
 [░░░░░░░░░░░░░░░░░░░░] 0%   (0 / 8 phases shipped)
@@ -59,6 +59,7 @@ Last activity: 2026-05-14
 
 **Recent Trend:** N/A (no plans yet).
 | Phase 01 P01 | 2m | 2 tasks | 7 files |
+| Phase 01 P02 | 6m | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,9 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Ten decisions recorded
 - HIPAA code lists bundled as versioned data snapshots — `snapshotDate` is part of the package version; updates are a release event, not a runtime fetch.
 - v1 typed overlays cover HIPAA healthcare only — 12 transaction sets (270/271/276/277/278/820/834/835/837P/I/D/999/TA1); non-healthcare is v2.
 - Mirror `@cosyte/hl7` API shape deliberately and visibly — shared mental model + shared growth loop.
+- [Phase ?]: TypeScript pinned to ^5.6.0 (resolved 5.9.3) instead of registry latest 6.0.3 to avoid strict-flag drift in v0.0.0 scaffold (plan-specified fallback)
+- [Phase 01]: Approach A (Node self-referencing) used for verify-exports.{mjs,cjs}; works on Node v24 without flags; fallback Approach B (relative ./dist/* paths) not needed
+- [Phase 01]: Dual ESM (.mjs) + CJS (.cjs) build via tsup with exports map ordered types > import > require; verified by self-reference smokes printing VERSION=0.0.0 from both module systems
 
 ### Pending Todos
 
@@ -104,6 +108,6 @@ v2 deferrals tracked in `REQUIREMENTS.md` → `v2 Requirements (Deferred)` and `
 
 ## Session Continuity
 
-Last session: 2026-05-14T01:15:32.608Z
-Stopped at: Plan 01-01 complete; advancing to Plan 01-02 (tsup dual build)
+Last session: 2026-05-14T01:21:14.747Z
+Stopped at: Plan 01-02 complete; advancing to Plan 01-03 (lint + test wiring)
 Resume file: None
