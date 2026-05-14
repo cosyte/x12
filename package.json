@@ -1,0 +1,43 @@
+{
+  "name": "@cosyte/x12",
+  "version": "0.0.0",
+  "description": "Developer-focused ASC X12 EDI parser and utility library for Node.js/TypeScript.",
+  "license": "MIT",
+  "author": "Cosyte",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cosyte/x12"
+  },
+  "homepage": "https://github.com/cosyte/x12#readme",
+  "bugs": {
+    "url": "https://github.com/cosyte/x12/issues"
+  },
+  "keywords": [
+    "x12",
+    "edi",
+    "healthcare",
+    "hipaa",
+    "835",
+    "837",
+    "271",
+    "parser",
+    "typescript"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "pnpm@10.33.4",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "prepare": "echo 'scripts wired in plan 02/03'"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
