@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1
 milestone_name: milestone
 status: executing
-stopped_at: Plan 01-03 complete; advancing to Plan 01-04 (CI + smoke)
-last_updated: "2026-05-14T01:28:37Z"
+stopped_at: Phase 01 plans complete (4/4); awaiting phase verification + user push to validate SETUP-07 on real Actions runner
+last_updated: "2026-05-14T01:35:34Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 4
-  completed_plans: 3
-  percent: 75
+  completed_plans: 4
+  percent: 100
 ---
 
 # @cosyte/x12 — STATE
@@ -29,16 +29,16 @@ Project memory for session-to-session continuity. Updated at phase/plan boundari
 
 ## Current Position
 
-Phase: 01 (Project Foundation) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
+Phase: 01 (Project Foundation) — PLANS COMPLETE (awaiting phase verification)
+Plan: 4 of 4 (complete)
+Status: All Plan 01-* committed; phase verification + user push to GitHub pending
 Last activity: 2026-05-14
 
 - **Milestone:** v1
-- **Phase:** 1 (Project Foundation) — not started. Plans 01-PLAN-01 through 01-PLAN-04 anticipated (package scaffold / build system / lint + test / CI + smoke).
-- **Plans (milestone total):** 0 / ~36 anticipated (4+5+5+5+4+5+3+5 across Phases 1–8).
-- **Status:** Ready to execute
-- **Progress:** [████████░░] 75%
+- **Phase:** 1 (Project Foundation) — plans complete (4/4). Plans 01-01 (package scaffold), 01-02 (build system), 01-03 (lint + test), 01-04 (CI + smoke) all shipped and committed.
+- **Plans (milestone total):** 4 / ~36 anticipated (4+5+5+5+4+5+3+5 across Phases 1–8).
+- **Status:** Plans complete; phase verification (`/gsd-verify-work 1`) is the next gate.
+- **Progress:** [██████████] 100% (Phase 01 plans 4/4)
 
 ```
 [░░░░░░░░░░░░░░░░░░░░] 0%   (0 / 8 phases shipped)
@@ -53,14 +53,12 @@ Last activity: 2026-05-14
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
-| — | — | — | — | — |
+| 01 | 01 | 2m | 2 | 7 |
+| 01 | 02 | 6m | 2 | 4 |
+| 01 | 03 | 6m | 2 | 9 |
+| 01 | 04 | 2m | 3 | 3 |
 
-*No plans completed yet. Table populates as plans ship.*
-
-**Recent Trend:** N/A (no plans yet).
-| Phase 01 P01 | 2m | 2 tasks | 7 files |
-| Phase 01 P02 | 6m | 2 tasks | 4 files |
-| Phase 01 P03 | 6m | 2 tasks | 9 files |
+**Recent Trend:** 4 plans shipped in Phase 01 totaling ~16 min wall clock across the package scaffold → build system → lint+test → CI+smoke chain.
 
 ## Accumulated Context
 
@@ -88,6 +86,10 @@ Decisions are logged in `PROJECT.md` Key Decisions table. Ten decisions recorded
 - [Phase 01]: .planning/ added to .prettierignore — GSD workflow markdown owns its own format conventions
 - [Phase 01]: Vitest 4.x with v8 coverage; src/index.ts excluded from coverage during the stub phase (Phase 8 introduces 90% gate)
 - [Phase 01]: Pre-existing tsconfig.json rootDir conflict surfaced by pnpm typecheck and fixed in 01-03 (rootDir removed from editor config; remains in tsconfig.build.json which tsup uses)
+- [Phase 01]: GitHub Actions CI matrix on Node 18/20/22 with fail-fast: false (gating install/typecheck/lint/format:check/test/build/verify:exports). actions/checkout@v4, pnpm/action-setup@v4 (reads pnpm@10.33.4 from packageManager), actions/setup-node@v4 with cache: pnpm. permissions: contents: read at workflow scope. Concurrency cancels superseded runs.
+- [Phase 01]: pnpm-lock.yaml committed in Plan 01-04 (~2,623 lines, ~280 transitive deps). --frozen-lockfile in CI prevents drift (T-01-12 mitigation).
+- [Phase 01]: Sibling project ../hl7-parser is NOT reachable on this machine (4 plans in a row). All tooling choices fell back to documented plan conventions; sibling-parity audit is owed once the sibling is on disk.
+- [Phase 01]: Autonomous-mode disposition applied to Plan 01-04 Task 3 human-verify checkpoint — orchestrator does NOT push to remote; SETUP-07 final validation reserved for the user's first push.
 
 ### Pending Todos
 
@@ -114,6 +116,6 @@ v2 deferrals tracked in `REQUIREMENTS.md` → `v2 Requirements (Deferred)` and `
 
 ## Session Continuity
 
-Last session: 2026-05-14T01:28:37Z
-Stopped at: Plan 01-03 complete; advancing to Plan 01-04 (CI + smoke)
+Last session: 2026-05-14T01:35:34Z
+Stopped at: Phase 01 plans complete (4/4); advancing to phase verification (`/gsd-verify-work 1`). User push to origin pending to fully close the SETUP-07 gate.
 Resume file: None

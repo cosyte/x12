@@ -14,7 +14,7 @@ All requirements are user-facing behaviors a developer consuming `@cosyte/x12` c
 - [x] **SETUP-04** — TypeScript consumers get full IntelliSense (types, JSDoc, `@example` tags) on every public API surface.
 - [x] **SETUP-05** — Repo targets Node 18+ and compiles to ES2022 with `"strict": true` and `"noUncheckedIndexedAccess": true`.
 - [x] **SETUP-06** — `pnpm lint` and `pnpm typecheck` pass with zero warnings.
-- [ ] **SETUP-07** — CI runs on Node 18/20/22 matrix for install/typecheck/lint/test/build.
+- [~] **SETUP-07** — CI runs on Node 18/20/22 matrix for install/typecheck/lint/test/build. *(Workflow file `.github/workflows/ci.yml` complete and YAML-validated locally in Plan 01-04; local-equivalent clean-clone smoke exits 0 in ~10.8 s. The autonomous workflow does NOT push to remote — final SETUP-07 gate closes on the user's first push to GitHub, when the workflow actually runs on a real Actions runner across Node 18/20/22.)*
 
 ### Envelope Parsing (ENV)
 
@@ -225,7 +225,7 @@ Every v1 REQ-ID maps to exactly one phase in `ROADMAP.md`. Coverage is enforced 
 | SETUP-04 | Phase 1 | Complete |
 | SETUP-05 | Phase 1 | Complete |
 | SETUP-06 | Phase 1 | Complete (01-03) |
-| SETUP-07 | Phase 1 | Pending |
+| SETUP-07 | Phase 1 | Workflow file complete (01-04); first-push validation reserved for user |
 | ENV-01 | Phase 2 | Pending |
 | ENV-02 | Phase 2 | Pending |
 | ENV-03 | Phase 2 | Pending |
