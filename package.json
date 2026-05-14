@@ -68,7 +68,8 @@
   "dependencies": {},
   "pnpm": {
     "overrides": {
-      "vite": "^6.4.2"
+      "vite": "^6.4.2",
+      "eslint-visitor-keys": "^4.2.1"
     }
   },
   "devDependencies": {
