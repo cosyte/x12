@@ -1,0 +1,15 @@
+{
+  "extraKnownMarketplaces": {
+    "cosyte-crew": {
+      "source": {
+        "source": "github",
+        "repo": "cosyte/crew"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "healthcare-integration@cosyte-crew": true,
+    "software-engineering@cosyte-crew": true,
+    "open-source-maintenance@cosyte-crew": true
+  }
+}
