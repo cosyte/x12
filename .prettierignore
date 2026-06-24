@@ -4,8 +4,3 @@ coverage
 pnpm-lock.yaml
 *.tsbuildinfo
 .vitest-cache
-
-# GSD planning artifacts: managed by the GSD workflow agents; their markdown
-# format conventions (tables, frontmatter, long lines) are intentional and
-# should not be rewritten by Prettier.
-.planning

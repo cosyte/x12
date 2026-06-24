@@ -1,0 +1,94 @@
+name: Release
+
+# Changesets-driven release. On push to main:
+#   - if changesets are pending, opens/updates a "Version Packages" PR (bumps package.json).
+#   - when that PR merges (no changesets left), publishes to npm, then builds + attaches the docs
+#     artifacts to the GitHub release and notifies cosyte/docs to rebuild.
+#
+# NOTE: requires @cosyte/* config packages to be published and consumed via semver (not file:)
+# before this can pass — see the foundation rollout.
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # create tags + GitHub releases
+  id-token: write # npm provenance
+  pull-requests: write # changesets "Version Packages" PR
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify (typecheck, lint, test, build)
+        run: |
+          pnpm typecheck
+          pnpm lint
+          pnpm test
+          pnpm build
+
+      - name: Create release PR or publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          publish: pnpm release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Build docs artifacts
+        if: steps.changesets.outputs.published == 'true'
+        run: pnpm pack:docs
+
+      - name: Attach docs artifacts to the GitHub release
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="@cosyte/x12@${VERSION}"
+          gh release upload "$TAG" \
+            dist-artifacts/docs-content.tar.gz \
+            dist-artifacts/source.tar.gz --clobber \
+          || gh release create "$TAG" \
+            dist-artifacts/docs-content.tar.gz \
+            dist-artifacts/source.tar.gz \
+            --title "$TAG" --notes "Release $TAG. See CHANGELOG.md."
+
+      - name: Notify cosyte/docs to rebuild
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          # Must be a PAT, not GITHUB_TOKEN — events from GITHUB_TOKEN don't trigger the
+          # receiver workflow in cosyte/docs (GitHub's recursion guard).
+          GH_TOKEN: ${{ secrets.DOCS_REPO_DISPATCH_TOKEN }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          gh api repos/cosyte/docs/dispatches \
+            -f event_type=package-released \
+            -f "client_payload[package]=@cosyte/x12" \
+            -f "client_payload[version]=${VERSION}"

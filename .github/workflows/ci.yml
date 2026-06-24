@@ -6,39 +6,32 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-progress runs on new pushes to the same branch/PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   verify:
-    name: verify (node ${{ matrix.node }})
+    name: verify (node-${{ matrix.node }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node: ["18", "20", "22"]
+        node: ["22", "24"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        # SHA-pinned (supply-chain hygiene): pnpm/action-setup is a third-party
-        # action outside GitHub's trust boundary, so we pin to a full commit
-        # SHA rather than the mutable `v4` tag. Dependabot (see
-        # .github/dependabot.yml) bumps both the SHA and the trailing
-        # `# v4.x.y` comment when a new release ships.
-        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          # `version` is read from `packageManager` in package.json (pnpm@10.33.4).
-          # Do not install deps here; the setup-node step caches the pnpm store
-          # first, then we run `pnpm install --frozen-lockfile` explicitly.
-          run_install: false
+          version: 10
 
-      - name: Setup Node ${{ matrix.node }}
+      - name: Setup Node.js ${{ matrix.node }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
@@ -59,8 +52,19 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Test (with coverage)
+        run: pnpm test:coverage
+
       - name: Build
         run: pnpm build
 
       - name: Verify dual ESM + CJS exports resolution
         run: pnpm run verify:exports
+
+      - name: Verify dual-module build artifacts
+        run: |
+          test -f dist/index.mjs
+          test -f dist/index.cjs
+          test -f dist/index.d.ts
+          node -e "import('./dist/index.mjs').then(m => { if (typeof m.VERSION !== 'string') { console.error('ESM missing VERSION'); process.exit(1); } console.log('ESM OK:', m.VERSION); })"
+          node -e "const m = require('./dist/index.cjs'); if (typeof m.VERSION !== 'string') { console.error('CJS missing VERSION'); process.exit(1); } console.log('CJS OK:', m.VERSION);"

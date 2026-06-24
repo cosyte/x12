@@ -25,9 +25,9 @@
   ],
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.0.0"
   },
-  "packageManager": "pnpm@10.33.4",
+  "packageManager": "pnpm@10.0.0",
   "sideEffects": false,
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -51,19 +51,23 @@
     "LICENSE",
     "CHANGELOG.md"
   ],
+  "prettier": "@cosyte/prettier-config",
   "scripts": {
     "clean": "rm -rf dist coverage *.tsbuildinfo",
     "prebuild": "pnpm run clean",
     "build": "tsup",
+    "changeset": "changeset",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --max-warnings=0",
+    "lint:fix": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --fix",
+    "format": "prettier --write \"src/**/*.{ts,md}\" \"test/**/*.ts\" \"*.{json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,md}\" \"test/**/*.ts\" \"*.{json,md,yml,yaml}\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "verify:exports": "node scripts/verify-exports.mjs && node scripts/verify-exports.cjs"
+    "verify:exports": "node scripts/verify-exports.mjs && node scripts/verify-exports.cjs",
+    "pack:docs": "bash scripts/build-docs-artifacts.sh",
+    "release": "changeset publish"
   },
   "dependencies": {},
   "pnpm": {
@@ -73,17 +77,16 @@
     }
   },
   "devDependencies": {
-    "@eslint/js": "9.39.4",
+    "@changesets/cli": "^2.27.0",
+    "@cosyte/eslint-config": "^0.0.2",
+    "@cosyte/prettier-config": "^0.0.1",
+    "@cosyte/tsconfig": "^0.0.1",
     "@types/node": "20.19.41",
     "@vitest/coverage-v8": "3.2.4",
     "eslint": "9.39.4",
-    "eslint-config-prettier": "10.1.8",
-    "eslint-plugin-jsdoc": "50.8.0",
-    "globals": "17.6.0",
     "prettier": "3.8.3",
     "tsup": "8.5.1",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.59.3",
     "vitest": "3.2.4"
   }
 }
