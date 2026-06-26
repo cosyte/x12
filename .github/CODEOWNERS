@@ -1,0 +1,4 @@
+# Default owner for everything in this repository.
+# (Code-owner review is not yet required by ruleset — see the org maturity plan —
+#  but this records ownership and activates cleanly when a second reviewer exists.)
+* @NSchatz
