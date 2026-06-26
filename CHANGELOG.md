@@ -9,8 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Initial repo scaffolding (Phase 1): package metadata, dual ESM+CJS build via
-  `tsup`, strict TypeScript config (`strict`, `noUncheckedIndexedAccess`,
-  `exactOptionalPropertyTypes`, `verbatimModuleSyntax`), ESLint flat config with
-  type-checked rules + JSDoc/`@example` gate on public exports, Prettier,
-  Vitest, and a Node 18/20/22 CI matrix.
+- Initial repo scaffolding: package metadata, dual ESM + CJS build via `tsup`,
+  strict TypeScript, type-checked ESLint with a JSDoc/`@example` gate on public
+  exports, Prettier, and Vitest.
+
+### Changed
+
+- Migrated onto the shared cosyte engineering standard (Phase E). The toolchain
+  is now inherited from the published `@cosyte/*` config packages instead of
+  per-repo copies: `tsup.config.ts` uses `cosyteTsup`, `vitest.config.ts` uses
+  `cosyteVitest`, and `eslint.config.js` is the three-line `cosyte` wrapper.
+  Bumped to ESLint 10, Vitest 4 (+ `@vitest/coverage-v8` 4), Vite 7, and
+  `@types/node` 22; added `@arethetypeswrong/cli` with an `attw --pack .` gate
+  wired into `prepublishOnly`. CI and release are now thin callers of the
+  reusable `cosyte/.github` workflows (the shared pipeline runs the Node 22 + 24
+  matrix). The shared `@cosyte/tsconfig` base sets `verbatimModuleSyntax: false`.
+- Removed `.github/dependabot.yml`; org-wide dependency updates will be handled
+  by Renovate when it is rolled out.

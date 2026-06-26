@@ -1,9 +1,0 @@
-{
-  "extends": "@cosyte/tsconfig/library.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist"
-  },
-  "include": ["src/**/*"],
-  "exclude": ["**/*.test.ts", "**/*.spec.ts", "test/**", "node_modules", "dist"]
-}

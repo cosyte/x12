@@ -3,10 +3,10 @@
   "version": "0.0.0",
   "description": "Developer-focused ASC X12 EDI parser and utility library for Node.js/TypeScript.",
   "license": "MIT",
-  "author": "Cosyte",
+  "author": "Cosyte <hello@cosyte.com> (https://cosyte.com)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cosyte/x12"
+    "url": "git+https://github.com/cosyte/x12.git"
   },
   "homepage": "https://github.com/cosyte/x12#readme",
   "bugs": {
@@ -51,13 +51,15 @@
     "LICENSE",
     "CHANGELOG.md"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "prettier": "@cosyte/prettier-config",
   "scripts": {
-    "clean": "rm -rf dist coverage *.tsbuildinfo",
-    "prebuild": "pnpm run clean",
     "build": "tsup",
     "changeset": "changeset",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --max-warnings=0",
     "lint:fix": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --fix",
     "format": "prettier --write \"src/**/*.{ts,md}\" \"test/**/*.ts\" \"*.{json,md,yml,yaml}\"",
@@ -65,28 +67,29 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "clean": "rm -rf dist coverage *.tsbuildinfo",
     "verify:exports": "node scripts/verify-exports.mjs && node scripts/verify-exports.cjs",
     "pack:docs": "bash scripts/build-docs-artifacts.sh",
-    "release": "changeset publish"
-  },
-  "dependencies": {},
-  "pnpm": {
-    "overrides": {
-      "vite": "^6.4.2",
-      "eslint-visitor-keys": "^4.2.1"
-    }
+    "attw": "attw --pack .",
+    "release": "changeset publish",
+    "prepublishOnly": "pnpm clean && pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm attw"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.0",
-    "@cosyte/eslint-config": "^0.0.2",
-    "@cosyte/prettier-config": "^0.0.1",
-    "@cosyte/tsconfig": "^0.0.1",
-    "@types/node": "20.19.41",
-    "@vitest/coverage-v8": "3.2.4",
-    "eslint": "9.39.4",
+    "@arethetypeswrong/cli": "0.18.4",
+    "@changesets/cli": "2.31.0",
+    "@cosyte/eslint-config": "^0.0.3",
+    "@cosyte/prettier-config": "^0.0.2",
+    "@cosyte/tsconfig": "^0.0.2",
+    "@cosyte/tsup-config": "^0.0.1",
+    "@cosyte/vitest-config": "^0.0.1",
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "4.1.4",
+    "eslint": "10.5.0",
     "prettier": "3.8.3",
     "tsup": "8.5.1",
     "typescript": "5.9.3",
-    "vitest": "3.2.4"
-  }
+    "vite": "7.3.6",
+    "vitest": "4.1.4"
+  },
+  "dependencies": {}
 }

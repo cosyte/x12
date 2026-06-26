@@ -2,13 +2,17 @@
 
 ## Project
 
-**`@cosyte/x12`** — a developer-focused ASC X12 EDI parser + utility library for Node.js/TypeScript, published under the Cosyte brand. Open-source (MIT). The payer-side sibling of [`@cosyte/hl7`](../hl7-parser) — API shape, profile system, and lenient-parser philosophy are deliberately mirrored.
+**`@cosyte/x12`** — a developer-focused ASC X12 EDI parser + utility library for Node.js/TypeScript, published under the Cosyte brand. Open-source (MIT). The payer-side sibling of [`@cosyte/hl7`](../hl7) — API shape, profile system, and lenient-parser philosophy are deliberately mirrored.
 
 **North star:** A developer can parse a real-world, vendor-quirky X12 healthcare interchange and pull useful fields out of it in one line — without having read the X12 standard or any TR3 implementation guide.
 
 ## Status
 
-- **Phase 1 of 8 complete.**
+- **Early scaffold.** Only the `src/index.ts` `VERSION` sentinel + a sanity test exist; the parser,
+  envelope, transaction, and helper modules in the v1 scope below are not built yet.
+- On the shared cosyte engineering standard (migrated Phase E) — toolchain inherited from the
+  published `@cosyte/*` config packages, CI/release are thin callers of `cosyte/.github`.
+- Pre-alpha `0.0.x`, not published to npm.
 
 ## v1 Scope Snapshot
 
@@ -26,14 +30,23 @@ HIPAA healthcare transaction sets at version **005010** (with errata hooks for `
 
 Non-healthcare (850/856/810/204), EDIFACT, AS2/SFTP transport, and pre-005010 are out of v1 scope.
 
-## Tech Stack (locked)
+## Tech Stack (the shared `@cosyte/*` standard)
 
-- **Language:** TypeScript (strict, `noUncheckedIndexedAccess`)
-- **Target:** ES2022, dual ESM + CJS via `tsup`
-- **Node:** 22+
-- **Package manager:** pnpm
-- **Testing:** Vitest
-- **Linting:** ESLint + Prettier
+x12 mirrors `@cosyte/hl7` (the reference parser) and inherits the canonical toolchain by depending on
+the published `@cosyte/*` config packages, not by copying files. The source of truth is the meta-repo's
+`documentation/conventions.md` — this is a summary.
+
+- **Language:** TypeScript (strict, full rigor set incl. `noUncheckedIndexedAccess`) via
+  `@cosyte/tsconfig`. **Target ES2023**. The shared base sets `verbatimModuleSyntax: false`.
+- **Build:** dual ESM + CJS + `.d.ts` via `tsup` (`@cosyte/tsup-config`); `attw` is a publish gate
+  (per-condition types: `.d.ts` for `import`, `.d.cts` for `require`).
+- **Node:** **>= 22** (CI matrix 22 + 24, via the reusable pipeline).
+- **Package manager:** `pnpm@10`.
+- **Lint/format:** **ESLint 10** + unified `typescript-eslint` (type-checked) via
+  `@cosyte/eslint-config`; Prettier via `@cosyte/prettier-config`. Lint at `--max-warnings=0`.
+- **Testing:** **Vitest 4** + v8 coverage (`@cosyte/vitest-config`), per-directory >= 90 gates
+  (armed globally now; per-dir gates get listed in `vitest.config.ts` once parser code lands).
+- **CI/CD:** thin callers of the reusable `cosyte/.github` workflows.
 - **Runtime deps:** **Zero.** Node stdlib only.
 - **License:** MIT
 
@@ -53,7 +66,7 @@ Non-healthcare (850/856/810/204), EDIFACT, AS2/SFTP transport, and pre-005010 ar
 
 ## Sibling Project
 
-**`@cosyte/hl7`** lives at `../hl7-parser` and ships a matching API shape for HL7 v2. When in doubt on an API decision, check how `@cosyte/hl7` solved it — symmetry is a feature, not an accident.
+**`@cosyte/hl7`** lives at `../hl7` and ships a matching API shape for HL7 v2. When in doubt on an API decision, check how `@cosyte/hl7` solved it — symmetry is a feature, not an accident.
 
 ## Standing disciplines (every change)
 
