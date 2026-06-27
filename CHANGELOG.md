@@ -44,22 +44,19 @@ scale)` renders canonically with zero-padded fractions; the canonical
   - **Balance invariants (per TR3 X221A1 §1.10.2 — "Balancing the 835").**
     Three checks run after the walk and emit
     `X12_835_REMIT_BALANCE_MISMATCH` on mismatch — the model is **NEVER
-    silently rebalanced**:
-    1. Line: `SVC-02 === SVC-03 + Σ(line CAS)` per Loop 2110.
-    2. Claim: `CLP-03 === CLP-04 + Σ(all CAS in claim, claim AND line
+    silently rebalanced**: 1. Line: `SVC-02 === SVC-03 + Σ(line CAS)` per Loop 2110. 2. Claim: `CLP-03 === CLP-04 + Σ(all CAS in claim, claim AND line
 level)` — the X12 spec balance. CLP-05 (patient responsibility)
-       is informational, NOT part of the balance equation. The
-       implementation matches the TR3 §1.10.2 text directly; an earlier
-       roadmap sketch (`operations/roadmaps/x12.md` §4) used a slightly
-       different decomposition — `src/transactions/remit/balance.ts`
-       documents the divergence so the contract stays consistent.
-    3. Top-of-remit: `BPR-02 === Σ(CLP-04) - Σ(PLB amounts)`. PLB
-       amounts are stored with the **raw EDI sign** (positive = take-back
-       from provider; negative = credit to provider), so the equation
-       _subtracts_ PLB to balance.
-       Warning messages echo only the invariant label and `X12Decimal`
-       decimal text — never patient identifiers, member ids, or account
-       numbers (H-PHI invariant).
+    is informational, NOT part of the balance equation. The
+    implementation matches the TR3 §1.10.2 text directly; an earlier
+    roadmap sketch (`operations/roadmaps/x12.md` §4) used a slightly
+    different decomposition — `src/transactions/remit/balance.ts`
+    documents the divergence so the contract stays consistent. 3. Top-of-remit: `BPR-02 === Σ(CLP-04) - Σ(PLB amounts)`. PLB
+    amounts are stored with the **raw EDI sign** (positive = take-back
+    from provider; negative = credit to provider), so the equation
+    _subtracts_ PLB to balance.
+    Warning messages echo only the invariant label and `X12Decimal`
+    decimal text — never patient identifiers, member ids, or account
+    numbers (H-PHI invariant).
   - **CAS triple flattening.** A single CAS segment can carry up to 6
     `(reason, amount, quantity)` triples under one `CAS-01` group code;
     the walker flattens them into individual `X12RemitAdjustment`
@@ -76,19 +73,15 @@ level)` — the X12 spec balance. CLP-05 (patient responsibility)
     `lookupRarc(code)` / `lookupClpStatus(code)` return `{ code,
 description }` for known codes, `undefined` otherwise; unknown
     codes preserve the verbatim value on the parsed adjustment AND
-    emit `X12_UNKNOWN_CARC` / `X12_UNKNOWN_RARC`.
-    - `CARC` (Claim Adjustment Reason Codes) — ~30 most commonly
-      observed codes (WPC, snapshotDate 2026-06-27).
-    - `RARC` (Remittance Advice Remark Codes) — ~15 most commonly
-      observed codes covering both `M`- and `N`-prefix conventions
-      (WPC, snapshotDate 2026-06-27).
-    - `CLP_STATUS` (CLP-02 Claim Status Code, X12 Code Source 65) —
-      10 dispositions (1 Processed as Primary, 4 Denied, 22 Reversal,
-      …). X12-internal list, stable.
-    - `CLAIM_ADJUSTMENT_GROUP_CODES` — the spec-fixed 4 values
-      (`CO` / `PR` / `OA` / `PI`) as a frozen literal-union map,
-      not a snapshot (this list never grows). `isClaimAdjustmentGroupCode`
-      narrows inbound strings.
+    emit `X12_UNKNOWN_CARC` / `X12_UNKNOWN_RARC`. - `CARC` (Claim Adjustment Reason Codes) — ~30 most commonly
+    observed codes (WPC, snapshotDate 2026-06-27). - `RARC` (Remittance Advice Remark Codes) — ~15 most commonly
+    observed codes covering both `M`- and `N`-prefix conventions
+    (WPC, snapshotDate 2026-06-27). - `CLP_STATUS` (CLP-02 Claim Status Code, X12 Code Source 65) —
+    10 dispositions (1 Processed as Primary, 4 Denied, 22 Reversal,
+    …). X12-internal list, stable. - `CLAIM_ADJUSTMENT_GROUP_CODES` — the spec-fixed 4 values
+    (`CO` / `PR` / `OA` / `PI`) as a frozen literal-union map,
+    not a snapshot (this list never grows). `isClaimAdjustmentGroupCode`
+    narrows inbound strings.
   - **Public-surface additions** to the warning / fatal stability
     snapshot: `X12_835_REMIT_BALANCE_MISMATCH`,
     `X12_UNKNOWN_CARC`, `X12_UNKNOWN_RARC` (10 → 13 Tier-2 codes;
