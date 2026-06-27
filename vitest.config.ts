@@ -17,6 +17,7 @@ export default cosyteVitest({
   test: {
     globals: false,
     environment: "node",
+    setupFiles: ["test/setup.fast-check.ts"],
     include: ["test/**/*.test.ts", "src/**/*.test.ts"],
     exclude: ["node_modules", "dist", "coverage", "test/fixtures/**"],
     testTimeout: 10_000,
