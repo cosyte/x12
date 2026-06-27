@@ -327,3 +327,138 @@ export function getAllSegmentValues(
 const noop = (_w: X12ParseWarning): void => {
   /* intentionally empty */
 };
+
+// ---------------------------------------------------------------------------
+// Element-read ergonomic helpers — shared by every transaction walker.
+// Wrap getSegmentValue() with the conventional 1-indexed numeric APIs that
+// match how TR3s read (NM1-03, CLM-02, HI-01-2, etc.). Hoisted here so a
+// new walker doesn't have to re-derive them. `X12Decimal` flavors live with
+// the decimal type — see `X12Decimal.elDec` / `elDecZero` below.
+// ---------------------------------------------------------------------------
+
+import { X12Decimal } from "../decimal.js";
+
+/**
+ * Read element N (1-indexed) from a decoded segment as a string. Returns
+ * `""` when the element is absent or empty — convenient when downstream
+ * code wants to fold "absent" and "empty" into one branch. For
+ * "absent / empty → `undefined`" use {@link elementOptional}.
+ *
+ * @example
+ * ```ts
+ * import { decodeSegment, elementValue } from "@cosyte/x12";
+ * declare const seg: ReturnType<typeof decodeSegment>;
+ * declare const delim: import("./types.js").Delimiters;
+ * elementValue(seg, 3, delim); // verbatim text of element 3, or "".
+ * ```
+ */
+export function elementValue(seg: X12Segment, n: number, delimiters: Delimiters): string {
+  return getSegmentValue(seg, String(n).padStart(2, "0"), delimiters) ?? "";
+}
+
+/**
+ * Read element N (1-indexed) as `string | undefined`. Empty strings
+ * collapse to `undefined` — the conventional "absent" sentinel for
+ * optional element slots.
+ *
+ * @example
+ * ```ts
+ * import { elementOptional } from "@cosyte/x12";
+ * // returns undefined when NM1-04 is "" or missing
+ * ```
+ */
+export function elementOptional(
+  seg: X12Segment,
+  n: number,
+  delimiters: Delimiters,
+): string | undefined {
+  const v = getSegmentValue(seg, String(n).padStart(2, "0"), delimiters);
+  return v === undefined || v === "" ? undefined : v;
+}
+
+/**
+ * Read component P (1-indexed) of element N (1-indexed) as a string, or
+ * `undefined` when absent / empty. The common shape for X12 composite
+ * elements (`HI-01-2`, `CLM-05-1`, `SVC-01-2`, etc.).
+ *
+ * @example
+ * ```ts
+ * import { componentOptional } from "@cosyte/x12";
+ * componentOptional(seg, 1, 2, delim); // HI-01-2 (the actual code)
+ * ```
+ */
+export function componentOptional(
+  seg: X12Segment,
+  n: number,
+  p: number,
+  delimiters: Delimiters,
+): string | undefined {
+  const v = getSegmentValue(seg, `${String(n).padStart(2, "0")}-${String(p)}`, delimiters);
+  return v === undefined || v === "" ? undefined : v;
+}
+
+/**
+ * Read element N (1-indexed) as an {@link X12Decimal}, or `undefined`
+ * when absent / empty / malformed. The walker discipline for every
+ * monetary or quantity field — NEVER `parseFloat`.
+ *
+ * @example
+ * ```ts
+ * import { elementDecimal } from "@cosyte/x12";
+ * elementDecimal(seg, 2, delim)?.toString(); // BPR-02 verbatim decimal
+ * ```
+ */
+export function elementDecimal(
+  seg: X12Segment,
+  n: number,
+  delimiters: Delimiters,
+): X12Decimal | undefined {
+  const raw = elementOptional(seg, n, delimiters);
+  if (raw === undefined) return undefined;
+  return X12Decimal.fromString(raw);
+}
+
+/**
+ * Read element N (1-indexed) as an {@link X12Decimal}, defaulting to
+ * `X12Decimal.ZERO` when absent. Convenient for fields the walker treats
+ * as "missing means zero" (charge totals, etc.).
+ *
+ * @example
+ * ```ts
+ * import { elementDecimalOrZero } from "@cosyte/x12";
+ * elementDecimalOrZero(seg, 2, delim).toString();
+ * ```
+ */
+export function elementDecimalOrZero(
+  seg: X12Segment,
+  n: number,
+  delimiters: Delimiters,
+): X12Decimal {
+  return elementDecimal(seg, n, delimiters) ?? X12Decimal.ZERO;
+}
+
+/**
+ * Collect non-empty element values across the 1-indexed inclusive range
+ * `[start, end]`. Returns a new array preserving order, omitting empty /
+ * missing slots. Common for sweeping N3 address-line composites, MIA /
+ * MOA remark code slots, etc.
+ *
+ * @example
+ * ```ts
+ * import { collectElementValues } from "@cosyte/x12";
+ * collectElementValues(n3Segment, 1, 2, delim); // ["123 Main St", "Apt 4"]
+ * ```
+ */
+export function collectElementValues(
+  seg: X12Segment,
+  start: number,
+  end: number,
+  delimiters: Delimiters,
+): string[] {
+  const out: string[] = [];
+  for (let i = start; i <= end; i += 1) {
+    const v = elementOptional(seg, i, delimiters);
+    if (v !== undefined) out.push(v);
+  }
+  return out;
+}

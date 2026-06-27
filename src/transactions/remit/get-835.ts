@@ -16,7 +16,15 @@ import { X12Decimal } from "../../decimal.js";
 import { lookupCarc } from "../../code-lists/carc.js";
 import { lookupClpStatus } from "../../code-lists/clp-status.js";
 import { lookupRarc } from "../../code-lists/rarc.js";
-import { getSegmentValue, type X12Segment } from "../../parser/segment.js";
+import {
+  collectElementValues,
+  componentOptional,
+  elementDecimal,
+  elementDecimalOrZero,
+  elementOptional,
+  elementValue,
+  type X12Segment,
+} from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
 import { unknownCarc, unknownRarc, type X12ParseWarning } from "../../parser/warnings.js";
 import { checkClaimBalance, checkRemitTotalBalance, checkServiceLineBalance } from "./balance.js";
@@ -127,7 +135,7 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
         flushClaim();
         currentNm1Provider = undefined;
         currentNm1Person = undefined;
-        const qualifier = el(seg, 1, delimiters);
+        const qualifier = elementValue(seg, 1, delimiters);
         const partyAcc: X12RemitParty = decodeN1(seg, delimiters);
         if (qualifier === "PR") {
           payer = partyAcc;
@@ -142,7 +150,7 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
       }
       case "N3": {
         if (currentClaim !== undefined || currentServiceLine !== undefined) break;
-        const lines = collectElements(seg, 1, 2, delimiters);
+        const lines = collectElementValues(seg, 1, 2, delimiters);
         if (lastParty === "payer" && payer !== undefined) {
           payer = withAddress(payer, withLines(payer.address ?? EMPTY_ADDRESS, lines));
         } else if (lastParty === "payee" && payee !== undefined) {
@@ -201,7 +209,7 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
       }
       case "NM1": {
         if (currentClaim === undefined) break;
-        const qualifier = el(seg, 1, delimiters);
+        const qualifier = elementValue(seg, 1, delimiters);
         const decoded = decodeNm1(seg, delimiters);
         switch (qualifier) {
           case "QC": {
@@ -396,77 +404,40 @@ interface NM1ProviderAccumulator {
 }
 
 // ---------------------------------------------------------------------------
-// Segment decoders.
+// Segment decoders. Element reads use the shared `elementValue` /
+// `elementOptional` / `componentOptional` / `elementDecimal[OrZero]` /
+// `collectElementValues` helpers from `parser/segment.ts`.
 // ---------------------------------------------------------------------------
-
-/** Read element n (1-indexed); return "" if missing. @internal */
-function el(seg: X12Segment, n: number, delimiters: Delimiters): string {
-  return getSegmentValue(seg, String(n).padStart(2, "0"), delimiters) ?? "";
-}
-/** Read element n (1-indexed); return undefined if missing or empty. @internal */
-function elOpt(seg: X12Segment, n: number, delimiters: Delimiters): string | undefined {
-  const v = getSegmentValue(seg, String(n).padStart(2, "0"), delimiters);
-  return v === undefined || v === "" ? undefined : v;
-}
-/** Read composite component p of element n (both 1-indexed). @internal */
-function elComp(seg: X12Segment, n: number, p: number, delimiters: Delimiters): string | undefined {
-  const v = getSegmentValue(seg, `${String(n).padStart(2, "0")}-${String(p)}`, delimiters);
-  return v === undefined || v === "" ? undefined : v;
-}
-/** Read element n as X12Decimal; undefined if missing/empty/malformed. @internal */
-function elDec(seg: X12Segment, n: number, delimiters: Delimiters): X12Decimal | undefined {
-  const raw = elOpt(seg, n, delimiters);
-  if (raw === undefined) return undefined;
-  return X12Decimal.fromString(raw);
-}
-/** Read element n as X12Decimal, defaulting to ZERO when absent/malformed. @internal */
-function elDecZero(seg: X12Segment, n: number, delimiters: Delimiters): X12Decimal {
-  return elDec(seg, n, delimiters) ?? X12Decimal.ZERO;
-}
-/** Collect non-empty elements between start..end inclusive (1-indexed). @internal */
-function collectElements(
-  seg: X12Segment,
-  start: number,
-  end: number,
-  delimiters: Delimiters,
-): string[] {
-  const out: string[] = [];
-  for (let i = start; i <= end; i += 1) {
-    const v = elOpt(seg, i, delimiters);
-    if (v !== undefined) out.push(v);
-  }
-  return out;
-}
 
 /** @internal */
 function decodeBpr(seg: X12Segment, delimiters: Delimiters): X12RemitPaymentHeader {
   return Object.freeze({
-    transactionHandlingCode: el(seg, 1, delimiters),
-    totalActualPayment: elDecZero(seg, 2, delimiters),
-    creditDebitFlag: el(seg, 3, delimiters),
-    method: el(seg, 4, delimiters),
-    paymentFormatCode: elOpt(seg, 5, delimiters),
-    paymentDate: el(seg, 16, delimiters),
+    transactionHandlingCode: elementValue(seg, 1, delimiters),
+    totalActualPayment: elementDecimalOrZero(seg, 2, delimiters),
+    creditDebitFlag: elementValue(seg, 3, delimiters),
+    method: elementValue(seg, 4, delimiters),
+    paymentFormatCode: elementOptional(seg, 5, delimiters),
+    paymentDate: elementValue(seg, 16, delimiters),
   });
 }
 
 /** @internal */
 function decodeTrn(seg: X12Segment, delimiters: Delimiters): X12RemitTrace {
   return Object.freeze({
-    traceTypeCode: el(seg, 1, delimiters),
-    referenceId: el(seg, 2, delimiters),
-    originatingCompanyId: elOpt(seg, 3, delimiters),
-    originatingCompanySupplementalCode: elOpt(seg, 4, delimiters),
+    traceTypeCode: elementValue(seg, 1, delimiters),
+    referenceId: elementValue(seg, 2, delimiters),
+    originatingCompanyId: elementOptional(seg, 3, delimiters),
+    originatingCompanySupplementalCode: elementOptional(seg, 4, delimiters),
   });
 }
 
 /** @internal */
 function decodeN1(seg: X12Segment, delimiters: Delimiters): X12RemitParty {
   return Object.freeze({
-    entityIdentifierCode: el(seg, 1, delimiters),
-    name: el(seg, 2, delimiters),
-    idQualifier: elOpt(seg, 3, delimiters),
-    idCode: elOpt(seg, 4, delimiters),
+    entityIdentifierCode: elementValue(seg, 1, delimiters),
+    name: elementValue(seg, 2, delimiters),
+    idQualifier: elementOptional(seg, 3, delimiters),
+    idCode: elementOptional(seg, 4, delimiters),
     address: undefined,
     additionalIdentifiers: Object.freeze([]),
     contacts: Object.freeze([]),
@@ -477,19 +448,19 @@ function decodeN1(seg: X12Segment, delimiters: Delimiters): X12RemitParty {
 function decodeN4(seg: X12Segment, delimiters: Delimiters): X12RemitAddress {
   return Object.freeze({
     lines: Object.freeze([]),
-    city: elOpt(seg, 1, delimiters),
-    state: elOpt(seg, 2, delimiters),
-    postalCode: elOpt(seg, 3, delimiters),
-    countryCode: elOpt(seg, 4, delimiters),
+    city: elementOptional(seg, 1, delimiters),
+    state: elementOptional(seg, 2, delimiters),
+    postalCode: elementOptional(seg, 3, delimiters),
+    countryCode: elementOptional(seg, 4, delimiters),
   });
 }
 
 /** @internal */
 function decodeRef(seg: X12Segment, delimiters: Delimiters): X12RemitReference {
   return Object.freeze({
-    qualifier: el(seg, 1, delimiters),
-    value: el(seg, 2, delimiters),
-    description: elOpt(seg, 3, delimiters),
+    qualifier: elementValue(seg, 1, delimiters),
+    value: elementValue(seg, 2, delimiters),
+    description: elementOptional(seg, 3, delimiters),
   });
 }
 
@@ -501,23 +472,23 @@ function decodePer(seg: X12Segment, delimiters: Delimiters): X12RemitContact {
     [5, 6],
     [7, 8],
   ] as const) {
-    const q = elOpt(seg, qIdx, delimiters);
-    const v = elOpt(seg, vIdx, delimiters);
+    const q = elementOptional(seg, qIdx, delimiters);
+    const v = elementOptional(seg, vIdx, delimiters);
     if (q !== undefined && v !== undefined) comms.push(Object.freeze({ qualifier: q, value: v }));
   }
   return Object.freeze({
-    contactFunctionCode: el(seg, 1, delimiters),
-    name: elOpt(seg, 2, delimiters),
+    contactFunctionCode: elementValue(seg, 1, delimiters),
+    name: elementOptional(seg, 2, delimiters),
     communications: Object.freeze(comms),
   });
 }
 
 /** @internal */
 function decodeAmt(seg: X12Segment, delimiters: Delimiters): X12RemitAmount | undefined {
-  const amount = elDec(seg, 2, delimiters);
+  const amount = elementDecimal(seg, 2, delimiters);
   if (amount === undefined) return undefined;
   return Object.freeze({
-    qualifier: el(seg, 1, delimiters),
+    qualifier: elementValue(seg, 1, delimiters),
     amount,
   });
 }
@@ -529,8 +500,8 @@ function decodeLq(
   warnings: X12ParseWarning[],
   position: X12Position,
 ): X12RemitRemark | undefined {
-  const system = el(seg, 1, delimiters);
-  const code = el(seg, 2, delimiters);
+  const system = elementValue(seg, 1, delimiters);
+  const code = elementValue(seg, 2, delimiters);
   if (code === "") return undefined;
   let description: string | undefined;
   if (system === "HE") {
@@ -546,7 +517,7 @@ function collectMiaRemarks(seg: X12Segment, delimiters: Delimiters): readonly st
   // MIA-05, MIA-20: remark codes (per TR3 X221A1).
   const out: string[] = [];
   for (const idx of [5, 20]) {
-    const v = elOpt(seg, idx, delimiters);
+    const v = elementOptional(seg, idx, delimiters);
     if (v !== undefined) out.push(v);
   }
   return out;
@@ -557,7 +528,7 @@ function collectMoaRemarks(seg: X12Segment, delimiters: Delimiters): readonly st
   // MOA-03 through MOA-07: remark codes.
   const out: string[] = [];
   for (let idx = 3; idx <= 7; idx += 1) {
-    const v = elOpt(seg, idx, delimiters);
+    const v = elementOptional(seg, idx, delimiters);
     if (v !== undefined) out.push(v);
   }
   return out;
@@ -576,13 +547,13 @@ function decodeCasAdjustments(
   warnings: X12ParseWarning[],
   position: X12Position,
 ): readonly X12RemitAdjustment[] {
-  const groupCode = el(seg, 1, delimiters);
+  const groupCode = elementValue(seg, 1, delimiters);
   const out: X12RemitAdjustment[] = [];
   for (let triple = 0; triple < 6; triple += 1) {
     const base = 2 + triple * 3;
-    const reasonCode = elOpt(seg, base, delimiters);
-    const amount = elDec(seg, base + 1, delimiters);
-    const quantity = elDec(seg, base + 2, delimiters);
+    const reasonCode = elementOptional(seg, base, delimiters);
+    const amount = elementDecimal(seg, base + 1, delimiters);
+    const quantity = elementDecimal(seg, base + 2, delimiters);
     if (reasonCode === undefined && amount === undefined) continue;
     const code = reasonCode ?? "";
     const entry = code === "" ? undefined : lookupCarc(code);
@@ -605,14 +576,14 @@ function decodeNm1(
   seg: X12Segment,
   delimiters: Delimiters,
 ): { person: X12RemitPerson; provider: X12RemitProvider } {
-  const entityIdentifierCode = el(seg, 1, delimiters);
-  const entityTypeQualifier = el(seg, 2, delimiters);
-  const lastOrOrg = elOpt(seg, 3, delimiters);
-  const firstName = elOpt(seg, 4, delimiters);
-  const middleName = elOpt(seg, 5, delimiters);
-  const suffix = elOpt(seg, 7, delimiters);
-  const idQualifier = elOpt(seg, 8, delimiters);
-  const idCode = elOpt(seg, 9, delimiters);
+  const entityIdentifierCode = elementValue(seg, 1, delimiters);
+  const entityTypeQualifier = elementValue(seg, 2, delimiters);
+  const lastOrOrg = elementOptional(seg, 3, delimiters);
+  const firstName = elementOptional(seg, 4, delimiters);
+  const middleName = elementOptional(seg, 5, delimiters);
+  const suffix = elementOptional(seg, 7, delimiters);
+  const idQualifier = elementOptional(seg, 8, delimiters);
+  const idCode = elementOptional(seg, 9, delimiters);
   void entityTypeQualifier;
   return {
     person: Object.freeze({
@@ -639,20 +610,21 @@ function decodeNm1(
  * verbatim status code is always preserved. @internal
  */
 function openClaim(seg: X12Segment, delimiters: Delimiters): ClaimAccumulator {
-  const claimStatusCode = el(seg, 2, delimiters);
+  const claimStatusCode = elementValue(seg, 2, delimiters);
   const claimStatusDescription = lookupClpStatus(claimStatusCode)?.description;
-  const facilityTypeCode = elComp(seg, 8, 1, delimiters) ?? elOpt(seg, 8, delimiters);
-  const claimFrequencyCode = elComp(seg, 8, 3, delimiters);
+  const facilityTypeCode =
+    componentOptional(seg, 8, 1, delimiters) ?? elementOptional(seg, 8, delimiters);
+  const claimFrequencyCode = componentOptional(seg, 8, 3, delimiters);
   return {
     clpSegmentIndex: 0, // populated in the future when we surface positions
-    patientControlNumber: el(seg, 1, delimiters),
+    patientControlNumber: elementValue(seg, 1, delimiters),
     claimStatusCode,
     claimStatusDescription,
-    totalChargeAmount: elDecZero(seg, 3, delimiters),
-    totalPaymentAmount: elDecZero(seg, 4, delimiters),
-    patientResponsibilityAmount: elDecZero(seg, 5, delimiters),
-    claimFilingIndicatorCode: elOpt(seg, 6, delimiters),
-    payerClaimControlNumber: elOpt(seg, 7, delimiters),
+    totalChargeAmount: elementDecimalOrZero(seg, 3, delimiters),
+    totalPaymentAmount: elementDecimalOrZero(seg, 4, delimiters),
+    patientResponsibilityAmount: elementDecimalOrZero(seg, 5, delimiters),
+    claimFilingIndicatorCode: elementOptional(seg, 6, delimiters),
+    payerClaimControlNumber: elementOptional(seg, 7, delimiters),
     facilityTypeCode,
     claimFrequencyCode,
     patient: undefined,
@@ -672,23 +644,23 @@ function openClaim(seg: X12Segment, delimiters: Delimiters): ClaimAccumulator {
 
 /** Open a fresh Loop 2110 accumulator from an SVC segment. @internal */
 function openServiceLine(seg: X12Segment, delimiters: Delimiters): ServiceLineAccumulator {
-  const productServiceIdQualifier = elComp(seg, 1, 1, delimiters) ?? "";
-  const productServiceId = elComp(seg, 1, 2, delimiters) ?? "";
+  const productServiceIdQualifier = componentOptional(seg, 1, 1, delimiters) ?? "";
+  const productServiceId = componentOptional(seg, 1, 2, delimiters) ?? "";
   const modifiers: string[] = [];
   for (let comp = 3; comp <= 6; comp += 1) {
-    const m = elComp(seg, 1, comp, delimiters);
+    const m = componentOptional(seg, 1, comp, delimiters);
     if (m !== undefined) modifiers.push(m);
   }
-  const revenueCode = elOpt(seg, 5, delimiters);
-  const paidUnitsOfService = elDec(seg, 7, delimiters);
-  const originalServiceIdQualifier = elComp(seg, 6, 1, delimiters);
-  const originalServiceId = elComp(seg, 6, 2, delimiters);
+  const revenueCode = elementOptional(seg, 5, delimiters);
+  const paidUnitsOfService = elementDecimal(seg, 7, delimiters);
+  const originalServiceIdQualifier = componentOptional(seg, 6, 1, delimiters);
+  const originalServiceId = componentOptional(seg, 6, 2, delimiters);
   return {
     productServiceIdQualifier,
     productServiceId,
     modifiers,
-    chargeAmount: elDecZero(seg, 2, delimiters),
-    paymentAmount: elDecZero(seg, 3, delimiters),
+    chargeAmount: elementDecimalOrZero(seg, 2, delimiters),
+    paymentAmount: elementDecimalOrZero(seg, 3, delimiters),
     revenueCode,
     paidUnitsOfService,
     originalServiceId,
@@ -707,8 +679,8 @@ function openServiceLine(seg: X12Segment, delimiters: Delimiters): ServiceLineAc
  * Statement From, `233` = Statement To. @internal
  */
 function attachClaimDtm(claim: ClaimAccumulator, seg: X12Segment, delimiters: Delimiters): void {
-  const qualifier = el(seg, 1, delimiters);
-  const date = elOpt(seg, 2, delimiters);
+  const qualifier = elementValue(seg, 1, delimiters);
+  const date = elementOptional(seg, 2, delimiters);
   if (date === undefined) return;
   if (qualifier === "232") claim.servicePeriodStart = date;
   else if (qualifier === "233") claim.servicePeriodEnd = date;
@@ -723,9 +695,9 @@ function attachServiceLineDtm(
   seg: X12Segment,
   delimiters: Delimiters,
 ): void {
-  const qualifier = el(seg, 1, delimiters);
-  const formatQualifier = el(seg, 3, delimiters);
-  const date = elOpt(seg, 2, delimiters) ?? elOpt(seg, 4, delimiters);
+  const qualifier = elementValue(seg, 1, delimiters);
+  const formatQualifier = elementValue(seg, 3, delimiters);
+  const date = elementOptional(seg, 2, delimiters) ?? elementOptional(seg, 4, delimiters);
   if (date === undefined) return;
   void formatQualifier;
   if (qualifier === "472" || qualifier === "150") line.serviceDateStart = date;
@@ -740,14 +712,14 @@ function attachServiceLineDtm(
  * across two components. @internal
  */
 function decodePlb(seg: X12Segment, delimiters: Delimiters): readonly X12RemitProviderAdjustment[] {
-  const providerId = el(seg, 1, delimiters);
-  const fiscalPeriodDate = el(seg, 2, delimiters);
+  const providerId = elementValue(seg, 1, delimiters);
+  const fiscalPeriodDate = elementValue(seg, 2, delimiters);
   const out: X12RemitProviderAdjustment[] = [];
   for (let pair = 0; pair < 6; pair += 1) {
     const composite = 3 + pair * 2;
-    const amount = elDec(seg, composite + 1, delimiters);
-    const reasonCode = elComp(seg, composite, 1, delimiters);
-    const subCode = elComp(seg, composite, 2, delimiters);
+    const amount = elementDecimal(seg, composite + 1, delimiters);
+    const reasonCode = componentOptional(seg, composite, 1, delimiters);
+    const subCode = componentOptional(seg, composite, 2, delimiters);
     if (amount === undefined && reasonCode === undefined) continue;
     out.push(
       Object.freeze({

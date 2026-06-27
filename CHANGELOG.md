@@ -9,6 +9,202 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 5 — 837 Healthcare Claim — TR3s `005010X222A2` (Professional),
+  `005010X223A3` (Institutional), `005010X224A2` (Dental).** The
+  claim-creation surface — the volume side of HIPAA EDI traffic.
+  `get837Claims(delimiters, tx, opts?)` walks a parsed 837 transaction
+  set into the typed `X12_837Submission` model: variant detection (from
+  ST-03 implementation-convention reference, falling back to SVx
+  segment id, then to `"unknown"` with `X12_837_UNKNOWN_VARIANT`),
+  submitter (Loop 1000A NM1\*41) + receiver (Loop 1000B NM1\*40), the
+  full HL hierarchy (Loops 2000A / 2000B / 2000C), every claim header
+  (Loop 2300 — CLM with patient account number, total charge,
+  composite POS / facility-code-qualifier / claim-frequency-code,
+  signature / assignment / benefits / release-of-information
+  indicators), and every service line typed by variant (`SV1` →
+  professional, `SV2` → institutional, `SV3` → dental).
+  - **HL parent-pointer integrity.** The 837 family's safety primitive
+    is the HL hierarchy (`HL-01` own id, `HL-02` parent id, `HL-03`
+    level code: `20` Information Source / `22` Subscriber / `23`
+    Dependent). An off-by-one in `HL-02` is THE #1 837 bug — the
+    walker validates that every non-top-level HL's `HL-02` references
+    an earlier-emitted `HL-01` AND that the parent's level matches the
+    TR3-required parent for this level (`22` → parent `20`; `23` →
+    parent `22`). Violations emit `X12_HL_PARENT_MISMATCH` or
+    `X12_HL_PARENT_LEVEL_INVALID` — the parser NEVER silently
+    re-numbers. The verbatim declared parent id stays on the
+    `X12HierarchicalLevel` entry.
+  - **HI qualifier → code-system provenance.** `HI` carries
+    diagnoses, principal procedures, external cause of injury,
+    condition codes, occurrence codes, value codes, and DRG / PR
+    groupings under one segment id — with the qualifier (first
+    component) governing the code system. The new
+    `src/code-lists/hi-qualifiers.ts` ships a frozen `HI_QUALIFIERS`
+    registry covering the qualifiers cited across the three TR3s
+    (ICD-10-CM diagnoses: `ABK` principal / `ABF` other / `ABJ`
+    admitting / `ABN` reason-for-visit / `APR` external-cause;
+    legacy ICD-9-CM: `BK` / `BF` / `BJ` / `BN` / `BR`; ICD-10-PCS
+    procedures: `BBQ` principal / `BBR` other; legacy ICD-9-PCS:
+    `BQ` / `BBA`; DRG: `DR`; NUBC institutional code sets:
+    `BG` condition / `BH` occurrence / `BI` occurrence-span / `BE`
+    value / `PR` patient-reason). Each `X12ClaimHiCode` carries the
+    verbatim qualifier AND the resolved {@link X12HiCodeSystem} +
+    {@link X12HiCategory}; unknown qualifiers emit
+    `X12_UNKNOWN_HI_QUALIFIER`, preserve the verbatim
+    qualifier + code, and resolve to `codeSystem: "unknown"`. Helpers
+    `resolveHiQualifier` / `isDiagnosisQualifier` /
+    `isProcedureQualifier` ship in the public surface so consumers
+    never re-derive the mapping.
+  - **Money + identity discipline.** All monetary fields decode as
+    `X12Decimal` (CLM-02 total charge, SV1-02 / SV2-03 / SV3-02 line
+    charge, AMT amounts, SVD-02 adjudicated amount, CTP-04 drug
+    quantity, line SV2-06 service-line rate, SV2-07 non-covered
+    charge). All identifiers (NPI on `NM1*..*..*XX*<NPI>`, member id
+    on `NM1*IL*..*MI*<MEMBER>`, claim id on CLM-01, patient/subscriber
+    relationship code on PAT/SBR) are surfaced verbatim on the model;
+    warnings NEVER echo their values (H-PHI invariant inherited from
+    `@cosyte/hl7`). All dates carry their format qualifier (`D8`
+    single-date `CCYYMMDD`, `RD8` date-range, `DT` for `DTP-435`/`096`
+    admission/discharge timestamps) so a consumer can branch without
+    re-parsing the literal.
+  - **Variant-specific service-line types.** The
+    {@link X12_837ServiceLine} discriminated union holds three shapes:
+    - `X12_837ServiceLineProfessional` — `procedureQualifier` /
+      `procedureCode` / `modifiers` from SV1-01 composite; 1-4
+      `diagnosisPointers` from SV1-07; emergency / EPSDT / family-
+      planning indicators; optional `drug` (Loop 2410 LIN + CTP NDC +
+      UCUM unit).
+    - `X12_837ServiceLineInstitutional` — `revenueCode` (NUBC 4-digit
+      from SV2-01); optional procedure / modifiers from SV2-02
+      composite; `serviceLineRate` (SV2-06); `nonCoveredCharge`
+      (SV2-07).
+    - `X12_837ServiceLineDental` — ADA CDT `procedureCode` from
+      SV3-01; `oralCavityArea` composite from SV3-04; per-line
+      `toothInformation` from `TOO*JP` (Universal Tooth Numbering)
+      with surface codes from TOO-03's composite components;
+      `prosthesisCrownInlayCode` (SV3-05).
+  - **Loop 2430 Line Adjudication (COB).** SVD + CAS + DTP land on
+    `serviceLine.adjudications` as `X12LineAdjudication[]`. Each
+    adjudication ships the other-payer id (SVD-01), amount paid as
+    `X12Decimal` (SVD-02), the other payer's procedure code, paid
+    units, and any CAS adjustments — re-using `X12RemitAdjustment` /
+    `lookupCarc` from the 835 helper since CAS semantics are
+    identical.
+  - **Loop 2320 Other Subscriber (COB).** Captured at the surface
+    level: SBR-01 payer-responsibility code (`P` / `S` / `T`),
+    individual relationship, claim filing indicator, and the
+    other-subscriber + other-payer NM1 entities. Detailed CAS / OI /
+    MOA breakdown inside Loop 2320 is deferred to Phase 9 (companion-
+    guide tolerance) — verbatim segments remain on `tx.segments`.
+  - **Eleven dogfooded `LoopSpec` artifacts** ship through the public
+    `defineLoopSpec()` API — the dogfooding gate locked in Phase 2.
+    `CLAIM_837_LOOP_1000A` / `_1000B` (submitter / receiver),
+    `CLAIM_837_LOOP_2010AA` (billing provider name), `_2010BA`
+    (subscriber name), `_2010BB` (payer name), `_2010CA` (patient
+    name), `CLAIM_837P_LOOP_2410` (drug identification), `_LOOP_2430`
+    (line adjudication), plus variant-specific
+    `CLAIM_837{P,I,D}_LOOP_2000A` / `_2300` / `_2400` trees.
+  - **Bundled HI qualifier registry under
+    `src/code-lists/hi-qualifiers.ts`** alongside the existing CARC /
+    RARC / CLP_STATUS / CAGC snapshots — formally part of the
+    code-list family, not a transaction-local table.
+  - **Two new exported constants for safety + ergonomics:**
+    `HL_LEVEL_CODES` (`INFORMATION_SOURCE` `"20"` / `INFORMATION_RECEIVER`
+    `"21"` / `SUBSCRIBER` `"22"` / `DEPENDENT` `"23"`) and
+    `NM1_QUALIFIERS` (`SUBMITTER` `"41"` / `RECEIVER` `"40"` /
+    `BILLING_PROVIDER` `"85"` / `PAY_TO_ADDRESS` `"87"` /
+    `PAY_TO_PLAN` `"PE"` / `SUBSCRIBER` `"IL"` / `PAYER` `"PR"` /
+    `PATIENT` `"QC"`) — so the walker (and any consumer Phase 8
+    builder) never has to magic-string the safety-critical
+    discriminators.
+  - **Six new shared element-read helpers in `parser/segment.ts`** —
+    `elementValue` / `elementOptional` / `componentOptional` /
+    `elementDecimal` / `elementDecimalOrZero` / `collectElementValues`
+    — extracted out of the 835 and 837 walkers (both walkers had
+    byte-identical copies). New transaction walkers (Phase 6+ 270/271,
+    277, 834) inherit them. Public surface — exported via
+    `@cosyte/x12`.
+  - **Public-surface additions** to the warning stability snapshot:
+    `X12_HL_PARENT_MISMATCH`, `X12_HL_PARENT_LEVEL_INVALID`,
+    `X12_UNKNOWN_HI_QUALIFIER`, `X12_MISSING_REQUIRED_LOOP`,
+    `X12_837_UNKNOWN_VARIANT` (13 → 18 Tier-2 codes; additions-only
+    — fatal registry stays at 4). All new warning factories
+    (`hlParentMismatch` / `hlParentLevelInvalid` /
+    `unknownHiQualifier` / `missingRequiredLoop` /
+    `unknown837Variant`) shape-validate echoed values through
+    dedicated regex patterns (`/^[0-9]{1,4}$/u` for HL ids,
+    `/^[0-9]{2}$/u` for level codes, `/^[A-Z][A-Z0-9]{1,2}$/u` for HI
+    qualifiers, `/^[0-9A-Z]{3,6}$/u` for loop ids,
+    `/^[0-9A-Z]{3,16}$/u` for ICR) and substitute `(non-spec)` for
+    hostile inputs — the H-PHI invariant from `@cosyte/hl7`.
+  - **PHI discipline.** Warnings NEVER echo field VALUES; the
+    `missingRequiredLoop` rationale strings are hard-coded literals
+    (no element interpolation). Patient names / member IDs / NPIs /
+    claim numbers are surfaced verbatim on the typed model only — the
+    documented consumer-redaction boundary (mirrors hl7 + the 835
+    helper). The `X12ClaimNote` JSDoc explicitly flags NTE-02 as
+    PHI-bearing (provider-supplied free text). Every Phase 5 fixture
+    is synthetic (test names `TEST PATIENT` / `SUB LAST` / `PATIENT
+CHILD`; sequential member IDs `MEMBER001`–`MEMBER011` etc.; NPI-
+    shaped sequential numbers; obvious test addresses) and matches
+    the established 835 fixture conventions.
+  - **Known limitations after this phase** (deliberate v1 scope; none
+    silent — verbatim segments remain on `tx.segments` for raw
+    access):
+    - Loop 2320/2330 Other Subscriber / Other Payer captured at the
+      surface level only — detailed CAS / OI / MOA inside Loop 2320
+      deferred to Phase 9 (companion-guide profile system).
+    - Loop 2420 service-line provider names captured verbatim on
+      `serviceLine.providers`; per-provider PRV + address not yet
+      typed at the line level.
+    - CN1 contract information preserved verbatim on `tx.segments`,
+      not typed onto the model.
+    - Companion-guide enforcement (e.g. Availity's required `REF*EA`
+      at the billing provider) deferred to Phase 9 (profile system).
+    - 837 **builder** (`build837P` / `I` / `D`) deferred to Phase 8.
+  - **Fixtures (10 synthetic).** Three Tier-1 canonical files (one per
+    variant). Six Tier-2 quirk fixtures covering HL-orphan (parent id
+    missing), unknown HI qualifier, patient HL (Loop 2000C with
+    patient ≠ subscriber), institutional pay-to-plan (NM1\*PE),
+    unknown variant (ST-03 outside snapshot), empty optionals (NTE /
+    AMT / DTP with missing fields, 2320 SBR with empty payer-
+    responsibility code), and one comprehensive fixture exercising
+    every walker branch (pay-to-address, submitter PER + N3/N4/REF,
+    subscriber DMG + REF + PER, 2310 rendering + referring providers,
+    2320 other-subscriber + other-payer, 2410 LIN + CTP drug, 2430
+    SVD + CAS + DTP adjudication).
+  - **Tests.** 56 new tests across 4 new files: unit tests for the
+    three Tier-1 variants + HL parent integrity + HI qualifier
+    resolution; HI qualifier table unit tests (registry shape,
+    diagnosis / procedure classification disjointness); HL hierarchy
+    property tests (verbatim preservation, never-throw on every
+    fixture); 837 byte-flip fuzz target (300 runs per fixture × 6
+    claim fixtures = 1800 mutated inputs, never throws outside the
+    four Tier-3 envelope fatals); comprehensive coverage tests
+    exercising every walker branch on the comprehensive fixture +
+    edge cases. **325 tests total** (up from 269).
+  - **Coverage.** Verify gate green: typecheck + lint + format +
+    coverage (96.91% stmts / 90.61% branches / 97.67% funcs / 98.49%
+    lines globally; per-dir ≥90 on `parser/` + `loops/` +
+    `transactions/` + `code-lists/`) + build + attw + verify:exports.
+  - **`phi-scan` SKIP** — unchanged from Phase 4. The runtime H-PHI
+    invariant is necessary but not sufficient; static fixture
+    scanning is tracked as the `X12-PHI-SCAN` backlog follow-up.
+
+### Changed
+
+- **`parser/segment.ts` gains 6 element-read helpers** as Public API:
+  `elementValue` / `elementOptional` / `componentOptional` /
+  `elementDecimal` / `elementDecimalOrZero` / `collectElementValues`.
+  Re-used by the 835 helper (`get835`) and the new 837 helper
+  (`get837Claims`) — both walkers previously defined byte-identical
+  copies of these inline. Additive; no breaking change.
+
+- **`src/code-lists/` gains `hi-qualifiers.ts`** with `HI_QUALIFIERS`
+  / `resolveHiQualifier` / `isDiagnosisQualifier` /
+  `isProcedureQualifier` and the `X12HiCategory` / `X12HiCodeSystem`
+  / `X12HiQualifier` types. Re-exported from `@cosyte/x12` root.
+
 - **Phase 4 — 835 Healthcare Claim Payment/Advice (ERA) — TR3
   `005010X221A1`.** The cash-posting surface — money, the consultant ask.
   `get835(delimiters, tx)` walks a parsed 835 transaction set into the

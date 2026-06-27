@@ -49,6 +49,11 @@ export const WARNING_CODES = {
   X12_835_REMIT_BALANCE_MISMATCH: "X12_835_REMIT_BALANCE_MISMATCH",
   X12_UNKNOWN_CARC: "X12_UNKNOWN_CARC",
   X12_UNKNOWN_RARC: "X12_UNKNOWN_RARC",
+  X12_HL_PARENT_MISMATCH: "X12_HL_PARENT_MISMATCH",
+  X12_HL_PARENT_LEVEL_INVALID: "X12_HL_PARENT_LEVEL_INVALID",
+  X12_UNKNOWN_HI_QUALIFIER: "X12_UNKNOWN_HI_QUALIFIER",
+  X12_MISSING_REQUIRED_LOOP: "X12_MISSING_REQUIRED_LOOP",
+  X12_837_UNKNOWN_VARIANT: "X12_837_UNKNOWN_VARIANT",
 } as const;
 
 /**
@@ -462,6 +467,204 @@ export function unknownRarc(position: X12Position, code: string): X12ParseWarnin
   return {
     code: WARNING_CODES.X12_UNKNOWN_RARC,
     message: `Unknown RARC "${safe}" — code is outside the bundled snapshot; verbatim value preserved, description unavailable.`,
+    position,
+  };
+}
+
+/**
+ * HL identifier shape per the 837 TR3s — a sequential integer string,
+ * typically 1-4 digits. Used to guard `X12_HL_PARENT_MISMATCH` / `X12_HL_
+ * PARENT_LEVEL_INVALID` so the parser never echoes arbitrary bytes from
+ * hostile input — only a numeric token (compact + spec-shaped) or the
+ * literal `(non-spec)`. @internal
+ */
+const HL_ID_SHAPE_RE = /^[0-9]{1,4}$/u;
+
+/**
+ * HL level code shape per X12 0736 — a 2-digit numeric code (`20`, `22`,
+ * `23`, etc.). Same H-PHI guard. @internal
+ */
+const HL_LEVEL_CODE_SHAPE_RE = /^[0-9]{2}$/u;
+
+/**
+ * HI qualifier shape per X12 1270 — uppercase letter + 1-2 alphanumerics
+ * (`ABK`, `BBR`, `DR`). Same H-PHI guard. @internal
+ */
+const HI_QUALIFIER_SHAPE_RE = /^[A-Z][A-Z0-9]{1,2}$/u;
+
+/**
+ * Build an `X12_HL_PARENT_MISMATCH` warning. Emitted by the 837 helper
+ * when an HL segment's HL-02 (parent id) does not match any earlier-
+ * emitted HL-01 in the same transaction. The walker NEVER silently
+ * re-numbers the hierarchy — the safety primitive of the 837 is HL
+ * parent-pointer integrity. The reported ids are shape-validated against
+ * the HL-id grammar before echoing.
+ *
+ * @example
+ * ```ts
+ * import { hlParentMismatch } from "@cosyte/x12";
+ * const w = hlParentMismatch(
+ *   { segmentIndex: 14, interchangeIndex: 0, groupIndex: 0, transactionIndex: 0 },
+ *   "3",
+ *   "9",
+ * );
+ * ```
+ */
+export function hlParentMismatch(
+  position: X12Position,
+  hlId: string,
+  declaredParentId: string,
+): X12ParseWarning {
+  const safeHl = HL_ID_SHAPE_RE.test(hlId) ? hlId : "(non-spec)";
+  const safeParent = HL_ID_SHAPE_RE.test(declaredParentId) ? declaredParentId : "(non-spec)";
+  return {
+    code: WARNING_CODES.X12_HL_PARENT_MISMATCH,
+    message: `HL "${safeHl}" declares parent "${safeParent}" but no earlier HL with that id was emitted — parser preserves the declared pointer verbatim and NEVER silently re-numbers.`,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_HL_PARENT_LEVEL_INVALID` warning. Emitted when an HL's
+ * level code (HL-03) is inconsistent with its declared parent's level
+ * code per the 837 TR3 (e.g. a `22` Subscriber claiming a `22`
+ * Subscriber as its parent — the parent must be `20` Information
+ * Source). The verbatim level codes are shape-validated before echoing.
+ *
+ * @example
+ * ```ts
+ * import { hlParentLevelInvalid } from "@cosyte/x12";
+ * const w = hlParentLevelInvalid(
+ *   { segmentIndex: 14, interchangeIndex: 0, groupIndex: 0, transactionIndex: 0 },
+ *   "3",
+ *   "23",
+ *   "2",
+ *   "22",
+ *   "20",
+ * );
+ * ```
+ */
+export function hlParentLevelInvalid(
+  position: X12Position,
+  hlId: string,
+  hlLevel: string,
+  parentHlId: string,
+  parentLevel: string,
+  expectedParentLevel: string,
+): X12ParseWarning {
+  const safeHl = HL_ID_SHAPE_RE.test(hlId) ? hlId : "(non-spec)";
+  const safeLevel = HL_LEVEL_CODE_SHAPE_RE.test(hlLevel) ? hlLevel : "(non-spec)";
+  const safeParent = HL_ID_SHAPE_RE.test(parentHlId) ? parentHlId : "(non-spec)";
+  const safeParentLevel = HL_LEVEL_CODE_SHAPE_RE.test(parentLevel) ? parentLevel : "(non-spec)";
+  const safeExpected = HL_LEVEL_CODE_SHAPE_RE.test(expectedParentLevel)
+    ? expectedParentLevel
+    : "(non-spec)";
+  return {
+    code: WARNING_CODES.X12_HL_PARENT_LEVEL_INVALID,
+    message: `HL "${safeHl}" (level "${safeLevel}") declares parent "${safeParent}" with level "${safeParentLevel}" but TR3 requires parent level "${safeExpected}".`,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_UNKNOWN_HI_QUALIFIER` warning. Emitted by the 837 helper
+ * when an HI composite's qualifier (first component) is outside the
+ * bundled snapshot at {@link "../code-lists/hi-qualifiers.js".
+ * HI_QUALIFIERS}. The verbatim code is preserved on the parsed
+ * diagnosis/procedure with `codeSystem: "unknown"` so consumers can
+ * still react. Qualifier is shape-validated before echoing — the H-PHI
+ * invariant.
+ *
+ * @example
+ * ```ts
+ * import { unknownHiQualifier } from "@cosyte/x12";
+ * const w = unknownHiQualifier(
+ *   { segmentIndex: 25, interchangeIndex: 0, groupIndex: 0, transactionIndex: 0 },
+ *   "ZZZ",
+ * );
+ * ```
+ */
+export function unknownHiQualifier(position: X12Position, qualifier: string): X12ParseWarning {
+  const safe = HI_QUALIFIER_SHAPE_RE.test(qualifier) ? qualifier : "(non-spec)";
+  return {
+    code: WARNING_CODES.X12_UNKNOWN_HI_QUALIFIER,
+    message: `Unknown HI qualifier "${safe}" — qualifier is outside the bundled HI_QUALIFIERS snapshot; verbatim qualifier + code preserved, codeSystem resolves to "unknown".`,
+    position,
+  };
+}
+
+/**
+ * Loop id shape — alphanumeric, 3-6 chars (`"2000A"`, `"2300"`, `"2010BB"`).
+ * @internal
+ */
+const LOOP_ID_SHAPE_RE = /^[0-9A-Z]{3,6}$/u;
+
+/**
+ * Build an `X12_MISSING_REQUIRED_LOOP` warning. Emitted when a TR3-required
+ * loop is structurally absent (e.g. no Loop 2010BB Payer Name inside a
+ * Subscriber HL). The parser does not enforce situational rules — only
+ * loops marked `usage: "required"` in the loop spec fire this warning.
+ * The loop id is shape-validated before echoing.
+ *
+ * @example
+ * ```ts
+ * import { missingRequiredLoop } from "@cosyte/x12";
+ * const w = missingRequiredLoop(
+ *   { segmentIndex: 12, interchangeIndex: 0, groupIndex: 0, transactionIndex: 0 },
+ *   "2010BB",
+ *   "Loop 2010BB Payer Name required when Loop 2000B (Subscriber HL) is present",
+ * );
+ * ```
+ */
+export function missingRequiredLoop(
+  position: X12Position,
+  loopId: string,
+  rationale: string,
+): X12ParseWarning {
+  const safe = LOOP_ID_SHAPE_RE.test(loopId) ? loopId : "(non-spec)";
+  return {
+    code: WARNING_CODES.X12_MISSING_REQUIRED_LOOP,
+    message: `Missing required loop "${safe}": ${rationale}`,
+    position,
+  };
+}
+
+/**
+ * Implementation-convention reference shape per the 837 TR3s —
+ * `005010X` + 3 alphanumerics (`005010X222A2`). @internal
+ */
+const ICR_SHAPE_RE = /^[0-9A-Z]{3,16}$/u;
+
+/**
+ * Build an `X12_837_UNKNOWN_VARIANT` warning. Emitted when the 837 helper
+ * cannot resolve the variant from ST-03's implementation-convention
+ * reference AND no SVx service-line segment is present to fall back on.
+ * The parsed submission still ships with `variant: "unknown"`; the walker
+ * does its best on shared structure (envelope, HL, claim header) and
+ * skips variant-specific service-line decoding. The implementation-
+ * convention reference is shape-validated before echoing.
+ *
+ * @example
+ * ```ts
+ * import { unknown837Variant } from "@cosyte/x12";
+ * const w = unknown837Variant(
+ *   { segmentIndex: 1, interchangeIndex: 0, groupIndex: 0, transactionIndex: 0 },
+ *   "005010X999",
+ * );
+ * ```
+ */
+export function unknown837Variant(
+  position: X12Position,
+  implementationConventionReference: string | undefined,
+): X12ParseWarning {
+  const safe =
+    implementationConventionReference !== undefined &&
+    ICR_SHAPE_RE.test(implementationConventionReference)
+      ? implementationConventionReference
+      : "(non-spec)";
+  return {
+    code: WARNING_CODES.X12_837_UNKNOWN_VARIANT,
+    message: `837 variant could not be resolved — ST-03 implementation convention reference "${safe}" is not one of "005010X222A2" / "X223A3" / "X224A2"; no SVx service-line segment was seen to fall back on.`,
     position,
   };
 }
