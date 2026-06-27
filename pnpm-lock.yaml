@@ -20,6 +20,9 @@ importers:
       '@cosyte/prettier-config':
         specifier: ^0.0.2
         version: 0.0.2
+      '@cosyte/test-utils':
+        specifier: ^0.0.1
+        version: 0.0.1(fast-check@3.23.2)
       '@cosyte/tsconfig':
         specifier: ^0.0.2
         version: 0.0.2
@@ -38,6 +41,9 @@ importers:
       eslint:
         specifier: 10.5.0
         version: 10.5.0
+      fast-check:
+        specifier: 3.23.2
+        version: 3.23.2
       prettier:
         specifier: 3.8.3
         version: 3.8.3
@@ -163,6 +169,12 @@ packages:
 
   '@cosyte/prettier-config@0.0.2':
     resolution: {integrity: sha512-nmplXQKNq5DZ+Su/tCUF6m9UJ9MOArhw5NG0X9yqi6B5zvxmVXtKMAX1N2bKkqpKhZqyQOR9ALGYVpTx022R/g==}
+
+  '@cosyte/test-utils@0.0.1':
+    resolution: {integrity: sha512-WnRVpWb6mucn8lFbTGA19rH4sjUrvOWdQBUb4YNrywXRi26cfZIcoHyb4x2TxmIoNGPW6EqtSfpUp6nQcYvRgA==}
+    engines: {node: '>=22.0.0'}
+    peerDependencies:
+      fast-check: ^3.0.0
 
   '@cosyte/tsconfig@0.0.2':
     resolution: {integrity: sha512-+V3F04HIlvQskPMz/YuGr40IT89mZ/T/2S5fe5PAxIE3MER3v4fMBdh0/IYRtqqwGEX5g3DNDj61x68Xr8f/9Q==}
@@ -978,6 +990,10 @@ packages:
   extendable-error@0.1.7:
     resolution: {integrity: sha512-UOiS2in6/Q0FK0R0q6UY9vYpQ21mr/Qn1KOnte7vsACuNJf514WvCCUHSRCPcgjPT2bAhNIJdlE6bVap1GKmeg==}
 
+  fast-check@3.23.2:
+    resolution: {integrity: sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A==}
+    engines: {node: '>=8.0.0'}
+
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
 
@@ -1468,6 +1484,9 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
+
+  pure-rand@6.1.0:
+    resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
 
   quansync@0.2.11:
     resolution: {integrity: sha512-AifT7QEbW9Nri4tAwR5M/uzpBuqfZf+zwaEM/QkzEjj7NBuFD2rBuy0K3dE+8wltbezDV7JMA0WfnCPYRSYbXA==}
@@ -2025,6 +2044,10 @@ snapshots:
       - supports-color
 
   '@cosyte/prettier-config@0.0.2': {}
+
+  '@cosyte/test-utils@0.0.1(fast-check@3.23.2)':
+    dependencies:
+      fast-check: 3.23.2
 
   '@cosyte/tsconfig@0.0.2': {}
 
@@ -2767,6 +2790,10 @@ snapshots:
 
   extendable-error@0.1.7: {}
 
+  fast-check@3.23.2:
+    dependencies:
+      pure-rand: 6.1.0
+
   fast-deep-equal@3.1.3: {}
 
   fast-glob@3.3.3:
@@ -3179,6 +3206,8 @@ snapshots:
   prettier@3.8.3: {}
 
   punycode@2.3.1: {}
+
+  pure-rand@6.1.0: {}
 
   quansync@0.2.11: {}
 
