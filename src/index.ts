@@ -30,15 +30,20 @@ export {
   controlNumberMismatch,
   danglingReleaseChar,
   groupCountMismatch,
+  hlParentLevelInvalid,
+  hlParentMismatch,
   missingGe,
   missingIea,
+  missingRequiredLoop,
   missingSe,
   pre005010,
   remitBalanceMismatch,
   trailingGarbage,
   transactionCountMismatch,
   unexpectedSegment,
+  unknown837Variant,
   unknownCarc,
+  unknownHiQualifier,
   unknownRarc,
 } from "./parser/warnings.js";
 export type { X12ParseWarning, X12WarningCode } from "./parser/warnings.js";
@@ -59,7 +64,17 @@ export type {
 
 // Phase 2 — segment / element / composite / repetition decode surface.
 export { escapeRelease, RELEASE_CHAR, unescapeRelease } from "./parser/release.js";
-export { decodeSegment, getAllSegmentValues, getSegmentValue } from "./parser/segment.js";
+export {
+  collectElementValues,
+  componentOptional,
+  decodeSegment,
+  elementDecimal,
+  elementDecimalOrZero,
+  elementOptional,
+  elementValue,
+  getAllSegmentValues,
+  getSegmentValue,
+} from "./parser/segment.js";
 export type { X12Segment } from "./parser/segment.js";
 
 // Phase 2 — loop-spec authoring surface (dogfooded by built-in transaction
@@ -75,14 +90,21 @@ export {
   CLAIM_ADJUSTMENT_GROUP_CODES,
   CLP_STATUS,
   RARC,
+  HI_QUALIFIERS,
   isClaimAdjustmentGroupCode,
+  isDiagnosisQualifier,
+  isProcedureQualifier,
   lookupCarc,
   lookupClpStatus,
   lookupRarc,
+  resolveHiQualifier,
   type ClaimAdjustmentGroupCode,
   type CodeListEntry,
   type CodeListMeta,
   type CodeListSnapshot,
+  type X12HiCategory,
+  type X12HiCodeSystem,
+  type X12HiQualifier,
 } from "./code-lists/index.js";
 
 // Phase 4 — 835 Healthcare Claim Payment/Advice (ERA) surface (TR3 005010X221A1).
@@ -112,6 +134,52 @@ export {
   type X12RemitTrace,
   type X12Remittance,
 } from "./transactions/remit/index.js";
+
+// Phase 5 — 837 Healthcare Claim surface (TR3s 005010X222A2 / X223A3 / X224A2).
+export {
+  CLAIM_837D_LOOP_2000A,
+  CLAIM_837D_LOOP_2300,
+  CLAIM_837D_LOOP_2400,
+  CLAIM_837I_LOOP_2000A,
+  CLAIM_837I_LOOP_2300,
+  CLAIM_837I_LOOP_2400,
+  CLAIM_837P_LOOP_2000A,
+  CLAIM_837P_LOOP_2300,
+  CLAIM_837P_LOOP_2400,
+  CLAIM_837P_LOOP_2410,
+  CLAIM_837_LOOP_1000A,
+  CLAIM_837_LOOP_1000B,
+  CLAIM_837_LOOP_2010AA,
+  CLAIM_837_LOOP_2010BA,
+  CLAIM_837_LOOP_2010BB,
+  CLAIM_837_LOOP_2010CA,
+  CLAIM_837_LOOP_2430,
+  HL_LEVEL_CODES,
+  NM1_QUALIFIERS,
+  get837Claims,
+  type X12Claim,
+  type X12Claim837Variant,
+  type X12ClaimAddress,
+  type X12ClaimAmount,
+  type X12ClaimContact,
+  type X12ClaimDate,
+  type X12ClaimEntity,
+  type X12ClaimHiCode,
+  type X12ClaimMember,
+  type X12ClaimNote,
+  type X12ClaimReference,
+  type X12HierarchicalLevel,
+  type X12LineAdjudication,
+  type X12LineDrug,
+  type X12OtherSubscriber,
+  type X12SubscriberInfo,
+  type X12ToothInformation,
+  type X12_837ServiceLine,
+  type X12_837ServiceLineDental,
+  type X12_837ServiceLineInstitutional,
+  type X12_837ServiceLineProfessional,
+  type X12_837Submission,
+} from "./transactions/claim/index.js";
 
 // Phase 3 — acknowledgments surface: parse / build 999 (005010X231A1) and
 // envelope-level TA1 as pure functions. See `src/transactions/ack/index.ts`

@@ -8,6 +8,48 @@
 
 ## Status
 
+- **Phase 5 — 837 Healthcare Claim (Professional / Institutional / Dental)
+  shipped (2026-06-27).** `get837Claims(delimiters, tx, opts?)` walks a
+  parsed 837 transaction set into the typed `X12_837Submission` model
+  across the three sibling TR3s (`005010X222A2` / `X223A3` / `X224A2`).
+  Variant detection from ST-03 implementation-convention reference, with
+  SVx-segment-id fallback and `X12_837_UNKNOWN_VARIANT` when neither
+  resolves. HL hierarchy validated for parent-pointer integrity (`HL-02`
+  must reference an earlier `HL-01`; level must match the TR3-required
+  parent: `22` → `20`, `23` → `22`) — violations emit
+  `X12_HL_PARENT_MISMATCH` / `X12_HL_PARENT_LEVEL_INVALID` and the
+  walker NEVER silently re-numbers. HI qualifier → code-system
+  provenance via the new `src/code-lists/hi-qualifiers.ts` registry
+  (ICD-10-CM principal `ABK` / other `ABF` / admitting `ABJ`;
+  ICD-10-PCS `BBQ` / `BBR`; legacy ICD-9 / NUBC / DRG covered); unknown
+  qualifiers emit `X12_UNKNOWN_HI_QUALIFIER`, verbatim qualifier + code
+  preserved with `codeSystem: "unknown"`. Variant-specific service-line
+  union (`X12_837ServiceLineProfessional` SV1 / `…Institutional` SV2 /
+  `…Dental` SV3) with diagnosis pointers (P), revenue code + procedure
+  (I), and TOO tooth / surface (D). Loop 2410 LIN + CTP drug
+  identification (837P). Loop 2430 SVD + CAS + DTP line adjudication
+  (COB), re-using `X12RemitAdjustment` + `lookupCarc` from the 835.
+  Loop 2320 other-subscriber + other-payer captured at the surface
+  level (detailed CAS / OI / MOA inside 2320 deferred to Phase 9). All
+  monetary fields decode as `X12Decimal`. 11 dogfooded `LoopSpec`
+  artifacts shipped through `defineLoopSpec()`. Five new warning codes
+  (`X12_HL_PARENT_MISMATCH`, `X12_HL_PARENT_LEVEL_INVALID`,
+  `X12_UNKNOWN_HI_QUALIFIER`, `X12_MISSING_REQUIRED_LOOP`,
+  `X12_837_UNKNOWN_VARIANT`) all shape-validate echoed values (H-PHI
+  invariant); the `missingRequiredLoop` rationale strings are
+  hard-coded literals. Two new exported constants for safety +
+  ergonomics: `HL_LEVEL_CODES` and `NM1_QUALIFIERS`. Six new shared
+  element-read helpers in `parser/segment.ts` (`elementValue` /
+  `elementOptional` / `componentOptional` / `elementDecimal` /
+  `elementDecimalOrZero` / `collectElementValues`) hoisted out of both
+  walkers. 10 synthetic fixtures (3 Tier-1 canonical per variant + 6
+  Tier-2 quirk + 1 comprehensive). Property tests: HL parent-pointer
+  verbatim preservation + never-throw + byte-flip fuzz (300 runs ×
+  6 fixtures). Verify gate green: typecheck + lint + format + coverage
+  (96.91% stmts / 90.61% branches / 97.67% funcs / 98.49% lines;
+  per-dir ≥90) + build + attw + verify:exports. 325 tests total.
+  **Phase 6 — `get271Eligibility`/`get277Status`/`get277CADisposition`
+  (eligibility + claim status) is the next safety-critical phase.**
 - **Phase 4 — 835 Healthcare Claim Payment/Advice (ERA) shipped (2026-06-27).**
   `get835(delimiters, tx)` walks a parsed 835 transaction set into the
   typed `X12Remittance` model: BPR payment header, TRN trace numbers,
@@ -70,9 +112,14 @@
 - On the shared cosyte engineering standard (migrated Phase E) — toolchain inherited from the
   published `@cosyte/*` config packages, CI/release are thin callers of `cosyte/.github`. Per-directory
   ≥90 coverage gate armed on `src/parser/`.
-- Pre-alpha `0.0.x`, not published to npm. Next: **Phase 5** — `get837Claims()` across the three
-  837 variants (P / I / D) with the HL hierarchy as the safety primitive, ICD-10-CM / ICD-10-PCS
-  qualifier-driven code-system provenance on `HI`, and `X12Decimal` everywhere money lives.
+- Pre-alpha `0.0.x`, not published to npm. Next: **Phase 6** —
+  `get271Eligibility()` (`005010X279A1`) + `get277Status()` (`005010X212`) +
+  `get277CADisposition()` (`005010X214`) for eligibility + claim-status.
+  271 MUST echo the requesting 270's TRN verbatim (safety-critical
+  reassociation path); 277CA is the high-volume clearinghouse
+  acknowledgment, not the same TR3 as 277-as-status. Bundled service-type
+  + CSCC / CSC code-list snapshots land alongside the existing CARC /
+  RARC / CLP_STATUS / HI_QUALIFIERS family.
 
 ## v1 Scope Snapshot
 

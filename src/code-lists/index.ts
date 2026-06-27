@@ -18,3 +18,12 @@ export {
 } from "./cagc.js";
 export { RARC, lookupRarc } from "./rarc.js";
 export type { CodeListEntry, CodeListMeta, CodeListSnapshot } from "./meta.js";
+export {
+  HI_QUALIFIERS,
+  isDiagnosisQualifier,
+  isProcedureQualifier,
+  resolveHiQualifier,
+  type X12HiCategory,
+  type X12HiCodeSystem,
+  type X12HiQualifier,
+} from "./hi-qualifiers.js";
