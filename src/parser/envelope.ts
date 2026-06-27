@@ -21,6 +21,7 @@ import type {
   GsSegment,
   IeaSegment,
   IsaSegment,
+  Ta1Segment,
   X12FunctionalGroup,
   X12TransactionSet,
 } from "./types.js";
@@ -160,6 +161,7 @@ export function decodeEnvelope(
   isa: IsaSegment;
   groups: readonly X12FunctionalGroup[];
   iea: IeaSegment | undefined;
+  ta1Segments: readonly Ta1Segment[];
   trailingBytes: string | undefined;
   warnings: readonly X12ParseWarning[];
 } {
@@ -189,6 +191,7 @@ export function decodeEnvelope(
   // the post-ISA stream + 1 (segIdx=0 is ISA itself); used for warning
   // positional context.
   const groups: X12FunctionalGroup[] = [];
+  const ta1Segments: Ta1Segment[] = [];
   let iea: IeaSegment | undefined;
   let trailingBytes: string | undefined;
 
@@ -303,6 +306,34 @@ export function decodeEnvelope(
     const name = el(elements, 0);
 
     switch (name) {
+      case "TA1": {
+        // TA1 is an envelope-level Interchange Acknowledgment. Per the ASC
+        // X12 standard it appears between ISA and the first GS, or between
+        // groups, or alone in an ISA..IEA with no GS at all (TA1-only
+        // interchange). At envelope level it is structurally expected — no
+        // unexpected-segment warning. Inside an open transaction the
+        // default branch surfaces it as a body segment (see below). The
+        // raw + elements pair mirrors ISA / GS / GE / IEA so consumers can
+        // narrow uniformly across every typed envelope segment.
+        if (currentGroup === undefined) {
+          ta1Segments.push({ raw: segmentText, elements });
+          break;
+        }
+        // TA1 inside an open group is non-spec — fall through to the
+        // unexpected-segment path so the structural break is flagged.
+        warnings.push(
+          unexpectedSegment(
+            {
+              segmentIndex: segIdx,
+              interchangeIndex: 0,
+              groupIndex: groups.length,
+            },
+            "TA1",
+            "TA1 segment is envelope-level — appeared inside an open functional group",
+          ),
+        );
+        break;
+      }
       case "GS": {
         // Opening a new group while one is still open → close the old
         // (will warn MISSING_GE; the still-open tx, if any, closes with
@@ -476,6 +507,7 @@ export function decodeEnvelope(
           isa,
           groups: Object.freeze(groups.slice()),
           iea,
+          ta1Segments: Object.freeze(ta1Segments.slice()),
           trailingBytes,
           warnings: Object.freeze(warnings.slice()),
         };
@@ -524,6 +556,7 @@ export function decodeEnvelope(
     isa,
     groups: Object.freeze(groups.slice()),
     iea,
+    ta1Segments: Object.freeze(ta1Segments.slice()),
     trailingBytes,
     warnings: Object.freeze(warnings.slice()),
   };

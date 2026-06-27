@@ -8,6 +8,22 @@
 
 ## Status
 
+- **Phase 3 acknowledgments shipped (2026-06-27).** Pure-function 999 + TA1
+  parse + build. `parse999(raw)` decodes AK1 → AK2 → (IK3 [→ CTX] (IK4 [→
+  CTX])\*)\* → IK5 → AK9 (lenient-accepts legacy `AK3`/`AK4`/`AK5`,
+  normalizes onto X231A1). `build999(spec)` assembles a spec-clean
+  X12Interchange around the 999; REFUSES `Accept` against a non-empty
+  error list (`X12_ACK_ACCEPT_WITH_ERRORS`) and inconsistent AK9 counts
+  (`X12_ACK_COUNT_MISMATCH`). Envelope walker captures TA1 verbatim onto
+  `X12Interchange.ta1Segments`; `parseTA1(ix)` returns typed `X12AckTA1`;
+  `buildTA1(spec)` emits a `Ta1Segment` and REFUSES `A` + non-`000` note
+  (`X12_TA1_ACCEPT_WITH_NOTE`). Code-list registries shipped:
+  `X12_ACK_DISPOSITION_CODES` (715), `IK3_SYNTAX_ERROR_CODES` (716),
+  `IK4_SYNTAX_ERROR_CODES` (723), `TA1_ACK_CODES` (I13), `TA1_NOTE_CODES`
+  (I18). Acks are structurally PHI-free by design; `IK4-04`
+  (`copyOfBadDataElement`) is documented as a caller-supplied surface
+  callers SHOULD omit when bytes are PHI — the library NEVER
+  auto-populates it.
 - **Phase 2 syntactic core shipped (2026-06-27).** Every body segment in a transaction is decoded
   into an immutable `X12Segment` (id + 1-indexed elements; raw text preserved on
   `X12TransactionSet.rawSegments`). The `?`-release-character escape is honored losslessly
@@ -21,8 +37,8 @@
 - On the shared cosyte engineering standard (migrated Phase E) — toolchain inherited from the
   published `@cosyte/*` config packages, CI/release are thin callers of `cosyte/.github`. Per-directory
   ≥90 coverage gate armed on `src/parser/`.
-- Pre-alpha `0.0.x`, not published to npm. Next: **Phase 3** — `parse999` / `build999` / `parseTA1` /
-  `buildTA1` (pure functions, no I/O — the cosyte parser archetype's ACK boundary).
+- Pre-alpha `0.0.x`, not published to npm. Next: **Phase 4** — `get835()` for the ERA / remittance
+  surface (string-backed `X12Decimal` for money, balance invariants, bundled CARC/RARC snapshot).
 
 ## v1 Scope Snapshot
 

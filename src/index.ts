@@ -46,6 +46,7 @@ export type {
   IeaSegment,
   IsaSegment,
   OnWarningCallback,
+  Ta1Segment,
   X12FunctionalGroup,
   X12Interchange,
   X12ParseOptions,
@@ -63,3 +64,47 @@ export type { X12Segment } from "./parser/segment.js";
 export { defineLoopSpec, LoopSpecDefinitionError } from "./loops/define.js";
 export type { DefineLoopSpecInput } from "./loops/define.js";
 export type { LoopMax, LoopSegmentSpec, LoopSpec, LoopUsage } from "./loops/types.js";
+
+// Phase 3 — acknowledgments surface: parse / build 999 (005010X231A1) and
+// envelope-level TA1 as pure functions. See `src/transactions/ack/index.ts`
+// for the full barrel.
+export {
+  ACK_BUILD_ERROR_CODES,
+  AckBuildError,
+  IK3_SYNTAX_ERROR_CODES,
+  IK4_SYNTAX_ERROR_CODES,
+  TA1_ACK_CODES,
+  TA1_NOTE_CODES,
+  X12_ACK_DISPOSITION_CODES,
+  build999,
+  buildTA1,
+  isAcceptDisposition,
+  parse999,
+  parseTA1,
+  type AckBuildErrorCode,
+  type Build999ElementErrorSpec,
+  type Build999EnvelopeSpec,
+  type Build999FunctionalGroupSpec,
+  type Build999SegmentErrorSpec,
+  type Build999Spec,
+  type Build999TransactionResponseSpec,
+  type BuildTA1Options,
+  type BuildTA1Spec,
+  type Ik304Code,
+  type Ik403Code,
+  type Ta1AckCode,
+  type Ta1NoteCode,
+  type X12Ack999,
+  type X12Ack999Ak1,
+  type X12Ack999Ak2,
+  type X12Ack999Ak9,
+  type X12Ack999ElementNote,
+  type X12Ack999Ik3,
+  type X12Ack999Ik4,
+  type X12Ack999Ik4Position,
+  type X12Ack999Ik5,
+  type X12Ack999SegmentNote,
+  type X12Ack999TransactionResponse,
+  type X12AckDispositionCode,
+  type X12AckTA1,
+} from "./transactions/ack/index.js";
