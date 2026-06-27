@@ -9,6 +9,139 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 4 — 835 Healthcare Claim Payment/Advice (ERA) — TR3
+  `005010X221A1`.** The cash-posting surface — money, the consultant ask.
+  `get835(delimiters, tx)` walks a parsed 835 transaction set into the
+  typed `X12Remittance` model: payment header (BPR), trace numbers (TRN),
+  payer / payee parties (Loops 1000A / 1000B with address / contact /
+  additional identifiers), every claim payment (Loop 2100 — CLP plus
+  patient / subscriber / service-provider NM1s, statement-period DTMs,
+  CAS adjustments at both claim and service-line scope, MIA / MOA / LQ
+  remarks, REF / AMT supplemental amounts), every service line (Loop
+  2110 — SVC with HCPCS / CPT / NDC / revenue-code / modifier
+  destructuring, service-date DTMs, line-level CAS / REF / AMT / LQ),
+  and provider-level adjustments (PLB with multi-pair flattening). The
+  loop hierarchy ships as three frozen `LoopSpec` artifacts
+  (`REMIT_835_LOOP_2000`, `REMIT_835_LOOP_2100`, `REMIT_835_LOOP_2110`)
+  authored through the public `defineLoopSpec()` API — the **dogfooding
+  gate** locked in Phase 2. Two payer-side loop specs (1000A / 1000B)
+  also ship as introspection artifacts.
+  - **Money discipline.** All monetary fields decode as the new
+    `X12Decimal` (`src/decimal.ts`): a string-backed decimal type with
+    `BigInt`-exact arithmetic. **NEVER `parseFloat`** — float
+    representation silently destroys cents at scale; on an 835 a dropped
+    decimal is the wrong dollar amount in someone's cash post.
+    `X12Decimal` preserves the inbound lexical form for byte-exact
+    round-trip (`X12Decimal.fromString("0050.00").toString()` →
+    `"0050.00"`), exposes mathematical equality across scales
+    (`"0.00".equals("0")` → true), and ships `add` / `subtract` /
+    `compareTo` / `abs` / `negate` / `signum` / `isZero` plus a lossy
+    `toNumber()` whose JSDoc warns about precision loss. `fromBigInt(value,
+scale)` renders canonically with zero-padded fractions; the canonical
+    `X12Decimal.ZERO` is the additive identity. Empty inbound element →
+    `undefined` (not zero) — "not supplied" and "zero dollars" are
+    spec-distinct.
+  - **Balance invariants (per TR3 X221A1 §1.10.2 — "Balancing the 835").**
+    Three checks run after the walk and emit
+    `X12_835_REMIT_BALANCE_MISMATCH` on mismatch — the model is **NEVER
+    silently rebalanced**:
+    1. Line: `SVC-02 === SVC-03 + Σ(line CAS)` per Loop 2110.
+    2. Claim: `CLP-03 === CLP-04 + Σ(all CAS in claim, claim AND line
+level)` — the X12 spec balance. CLP-05 (patient responsibility)
+       is informational, NOT part of the balance equation. The
+       implementation matches the TR3 §1.10.2 text directly; an earlier
+       roadmap sketch (`operations/roadmaps/x12.md` §4) used a slightly
+       different decomposition — `src/transactions/remit/balance.ts`
+       documents the divergence so the contract stays consistent.
+    3. Top-of-remit: `BPR-02 === Σ(CLP-04) - Σ(PLB amounts)`. PLB
+       amounts are stored with the **raw EDI sign** (positive = take-back
+       from provider; negative = credit to provider), so the equation
+       _subtracts_ PLB to balance.
+       Warning messages echo only the invariant label and `X12Decimal`
+       decimal text — never patient identifiers, member ids, or account
+       numbers (H-PHI invariant).
+  - **CAS triple flattening.** A single CAS segment can carry up to 6
+    `(reason, amount, quantity)` triples under one `CAS-01` group code;
+    the walker flattens them into individual `X12RemitAdjustment`
+    entries. Different group codes (CO / PR / OA / PI) require separate
+    CAS segments — they cannot mix inside one — and the decoder honors
+    that contract.
+  - **Bundled WPC + X12-internal code-list snapshots** (initial
+    subsets, pre-launch). Versioned data artifacts at
+    `src/code-lists/`; the Phase 10 `pnpm refresh:code-lists` script
+    will regen the full lists from canonical sources for the first real
+    publish. Each snapshot ships `meta.id` / `meta.snapshotDate` /
+    `meta.publishedDate` / `meta.source` so consumers can decide
+    whether a stale description matters. Helpers `lookupCarc(code)` /
+    `lookupRarc(code)` / `lookupClpStatus(code)` return `{ code,
+description }` for known codes, `undefined` otherwise; unknown
+    codes preserve the verbatim value on the parsed adjustment AND
+    emit `X12_UNKNOWN_CARC` / `X12_UNKNOWN_RARC`.
+    - `CARC` (Claim Adjustment Reason Codes) — ~30 most commonly
+      observed codes (WPC, snapshotDate 2026-06-27).
+    - `RARC` (Remittance Advice Remark Codes) — ~15 most commonly
+      observed codes covering both `M`- and `N`-prefix conventions
+      (WPC, snapshotDate 2026-06-27).
+    - `CLP_STATUS` (CLP-02 Claim Status Code, X12 Code Source 65) —
+      10 dispositions (1 Processed as Primary, 4 Denied, 22 Reversal,
+      …). X12-internal list, stable.
+    - `CLAIM_ADJUSTMENT_GROUP_CODES` — the spec-fixed 4 values
+      (`CO` / `PR` / `OA` / `PI`) as a frozen literal-union map,
+      not a snapshot (this list never grows). `isClaimAdjustmentGroupCode`
+      narrows inbound strings.
+  - **Public-surface additions** to the warning / fatal stability
+    snapshot: `X12_835_REMIT_BALANCE_MISMATCH`,
+    `X12_UNKNOWN_CARC`, `X12_UNKNOWN_RARC` (10 → 13 Tier-2 codes;
+    additions-only — fatal registry stays at 4). New warning factories
+    `remitBalanceMismatch` / `unknownCarc` / `unknownRarc` carry the
+    shape-validated echo discipline (CARC / RARC echoes pass
+    `/^[A-Z0-9]{1,5}$/u` or collapse to `(non-spec)`).
+  - **PHI discipline (H-PHI invariant holds suite-wide).** Warning
+    messages never echo field VALUES — only positional context, the
+    invariant label, the shape-validated CARC / RARC code, or numeric
+    X12Decimal text. Patient names, member ids, NPIs, payer claim
+    control numbers, and account numbers are held verbatim on the
+    parsed model (consumer-redaction boundary, mirroring hl7's H-PHI
+    posture) but never routed through warnings or errors. Every fixture
+    is synthetic (Greek-letter patient names, `MEMBER-*` member ids,
+    repetitive-digit NPIs); `phi-redaction-review` passed at commit time.
+  - **Six fixtures under `test/fixtures/remit/`.** Five Tier-1
+    synthetic spec-clean (`835-medicare-canonical.edi`,
+    `835-multi-claim.edi`, `835-with-plb.edi`,
+    `835-carc-rarc-mix.edi`, `835-imbalance.edi`) and one Tier-2
+    de-identified-quirk shape (`835-availity-quirk.edi` — REF*2U + REF*F8
+    placements). The imbalance fixture is deliberately off-by-$10 to
+    prove the balance warning fires and the model preserves the
+    verbatim amounts.
+  - **Property tests.** `decimal.property.test.ts` locks lexical
+    round-trip + additive identity + commutativity + subtraction-by-
+    addition + negation involution + sign-consistency invariants (over
+    500 runs each). `remit-835-balance.property.test.ts` synthesizes
+    balanced and deliberately-imbalanced single-line claims and asserts
+    the balance warning fires iff out of balance (100 + 50 runs).
+    `remit-835-fuzz.property.test.ts` byte-flips every committed
+    fixture 300 times per fixture and asserts `get835` never throws
+    outside the 4 Tier-3 fatals — the byte-level fuzz target the
+    roadmap calls for.
+  - **Coverage gates expanded** to per-directory ≥90 on `parser/`,
+    `loops/`, `transactions/`, `code-lists/`. Phase 4 lands the gate
+    at **97.7% statements / 91.97% branches / 99.24% functions /
+    99.38% lines** globally.
+  - **Spec traceability:** TR3 `005010X221A1` for the 835 itself; X12
+    Code Source 65 for CLP-02; WPC public-domain lists for CARC / RARC;
+    X12 Data Element 1033 for the Claim Adjustment Group Code.
+  - **Known limitations after Phase 4:** no 835 _building_ yet (that's
+    Phase 8 — round-trip + spec-clean serializer + builder); the
+    bundled CARC / RARC are an **initial subset** (`pnpm
+refresh:code-lists` arrives in Phase 10); no per-payer profile
+    yet (Phase 9); CPT / ICD-10 / NDC descriptions are deliberately
+    NOT bundled (license-gated — see `operations/roadmaps/x12.md` §5);
+    `X12Decimal` does not yet expose multiply / divide (no balance
+    invariant needs them in v1). `phi-scan` script not yet wired for
+    x12 — the H-PHI property tests provide runtime coverage; an
+    explicit pre-commit phi-scan ships in a future slice (tracked in
+    `operations/prompts/x12-phi-scan.md`).
+
 - **Phase 3 — 999 + TA1 acknowledgments (TR3 005010X231A1).** Two
   pure-function ack surfaces ship side-by-side; neither auto-sends, opens
   a socket, or touches the filesystem. The cosyte ack archetype: the
