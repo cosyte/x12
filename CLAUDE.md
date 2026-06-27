@@ -8,11 +8,15 @@
 
 ## Status
 
-- **Early scaffold.** Only the `src/index.ts` `VERSION` sentinel + a sanity test exist; the parser,
-  envelope, transaction, and helper modules in the v1 scope below are not built yet.
+- **Phase 1 envelope decoder shipped (2026-06-27).** `parseX12()` decodes ISA / GS / GE / IEA, detects
+  all four delimiters from fixed ISA byte positions, surfaces 8 stable warning codes + 4 Tier-3 fatal
+  codes, and round-trips the ISA byte-exact. Transaction-set bodies inside ST..SE are kept opaque at
+  this phase — Phase 2 adds segment / element / composite / repetition decode on top.
 - On the shared cosyte engineering standard (migrated Phase E) — toolchain inherited from the
-  published `@cosyte/*` config packages, CI/release are thin callers of `cosyte/.github`.
-- Pre-alpha `0.0.x`, not published to npm.
+  published `@cosyte/*` config packages, CI/release are thin callers of `cosyte/.github`. Per-directory
+  ≥90 coverage gate armed on `src/parser/`.
+- Pre-alpha `0.0.x`, not published to npm. Next: **Phase 2** — segment / element / composite /
+  repetition decode + `defineLoopSpec()` (see `operations/roadmaps/x12.md` in the umbrella).
 
 ## v1 Scope Snapshot
 

@@ -3,15 +3,16 @@ import { cosyteVitest } from "@cosyte/vitest-config";
 /**
  * Vitest config for @cosyte/x12 from the shared @cosyte/vitest-config standard.
  *
- * x12 is still an early scaffold: the only source file is the `src/index.ts` VERSION sentinel, which
- * the shared config already excludes from coverage as a barrel/index. So there are no source dirs to
- * gate yet and `coverageDirs` is omitted; `test:coverage` is green because the global >= 90 gate has
- * no measured files. The global gate stays armed, so it bites the moment real parser code lands.
- *
- * TODO(x12): when parser code arrives, list its source subdirs in `coverageDirs`
- * (e.g. `["parser", "envelope", "transactions", "helpers"]`) to turn on the real per-directory gates.
+ * Phase 1 (envelope decoder) ships under `src/parser/`. The per-directory gate
+ * is armed now so any future module added to `parser/` must keep ≥90 per-dir
+ * coverage. Future phases will add their own subdirs as they land:
+ *   - Phase 2: `model/`, `helpers/` for segment/composite decode + dot-path traversal
+ *   - Phase 3+: `transactions/` for the per-TR3 extractors
+ *   - Phase 8: `serialize/`, `builder/` for the emit half
+ *   - Phase 9: `profiles/` for clearinghouse / payer companion-guide quirks
  */
 export default cosyteVitest({
+  coverageDirs: ["parser"],
   test: {
     globals: false,
     environment: "node",
