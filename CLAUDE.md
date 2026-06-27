@@ -8,15 +8,21 @@
 
 ## Status
 
+- **Phase 2 syntactic core shipped (2026-06-27).** Every body segment in a transaction is decoded
+  into an immutable `X12Segment` (id + 1-indexed elements; raw text preserved on
+  `X12TransactionSet.rawSegments`). The `?`-release-character escape is honored losslessly
+  (`?~`→`~`, `?*`→`*`, `??`→`?`); dot-path traversal (`getSegmentValue(seg, "03-1")`) walks
+  elements, composites (`-N` 1-indexed), and repetitions (`[N]` 0-indexed). Public
+  `defineLoopSpec()` API ships — Phases 3+ author their built-in TR3 loops through it. Warning
+  registry expanded 8 → 10 (`X12_DANGLING_RELEASE_CHAR`, `X12_UNEXPECTED_SEGMENT`).
 - **Phase 1 envelope decoder shipped (2026-06-27).** `parseX12()` decodes ISA / GS / GE / IEA, detects
-  all four delimiters from fixed ISA byte positions, surfaces 8 stable warning codes + 4 Tier-3 fatal
-  codes, and round-trips the ISA byte-exact. Transaction-set bodies inside ST..SE are kept opaque at
-  this phase — Phase 2 adds segment / element / composite / repetition decode on top.
+  all four delimiters from fixed ISA byte positions, surfaces stable warning codes + 4 Tier-3 fatal
+  codes, and round-trips the ISA byte-exact.
 - On the shared cosyte engineering standard (migrated Phase E) — toolchain inherited from the
   published `@cosyte/*` config packages, CI/release are thin callers of `cosyte/.github`. Per-directory
   ≥90 coverage gate armed on `src/parser/`.
-- Pre-alpha `0.0.x`, not published to npm. Next: **Phase 2** — segment / element / composite /
-  repetition decode + `defineLoopSpec()` (see `operations/roadmaps/x12.md` in the umbrella).
+- Pre-alpha `0.0.x`, not published to npm. Next: **Phase 3** — `parse999` / `build999` / `parseTA1` /
+  `buildTA1` (pure functions, no I/O — the cosyte parser archetype's ACK boundary).
 
 ## v1 Scope Snapshot
 

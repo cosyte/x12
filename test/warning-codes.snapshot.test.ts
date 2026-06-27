@@ -30,6 +30,7 @@ describe("public API: WARNING_CODES surface is stable", () => {
     expect(sortedWarningCodes()).toMatchInlineSnapshot(`
       [
         "X12_CONTROL_NUMBER_MISMATCH",
+        "X12_DANGLING_RELEASE_CHAR",
         "X12_GROUP_COUNT_MISMATCH",
         "X12_MISSING_GE",
         "X12_MISSING_IEA",
@@ -37,6 +38,7 @@ describe("public API: WARNING_CODES surface is stable", () => {
         "X12_PRE_005010",
         "X12_TRAILING_GARBAGE",
         "X12_TRANSACTION_COUNT_MISMATCH",
+        "X12_UNEXPECTED_SEGMENT",
       ]
     `);
   });
@@ -45,8 +47,8 @@ describe("public API: WARNING_CODES surface is stable", () => {
     for (const [k, v] of Object.entries(WARNING_CODES)) expect(k).toBe(v);
   });
 
-  it("there are exactly 8 Tier-2 warning codes at Phase 1", () => {
-    expect(Object.keys(WARNING_CODES)).toHaveLength(8);
+  it("Phase 2 expanded the registry from 8 to 10 Tier-2 warning codes (additions-only)", () => {
+    expect(Object.keys(WARNING_CODES)).toHaveLength(10);
   });
 });
 

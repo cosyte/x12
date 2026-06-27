@@ -9,6 +9,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 2 — syntactic core: segment / element / composite / repetition
+  decode + warning registry + `defineLoopSpec`.** Every body segment inside
+  a transaction is now decoded into an immutable `X12Segment` carrying its
+  id, raw text, and 1-indexed element array. The verbatim source survives
+  on `X12TransactionSet.rawSegments` so a byte-exact round-trip is still
+  achievable independently of any downstream consumer's reads.
+  - **`?`-release-character escape** (`?~` → literal `~`, `?*` → literal
+    `*`, `?:` → literal `:`, `?^` → literal `^`, `??` → literal `?`)
+    implemented in `unescapeRelease` / `escapeRelease` / `splitWithRelease`
+    (zero-dep, single-pass). Pair has a lossless round-trip property:
+    `unescapeRelease(escapeRelease(v, d), d) === v` for any value `v` and
+    any 4-distinct-delimiter set `d` (500 fast-check runs). An unpaired
+    trailing `?` is preserved verbatim AND warned as
+    `X12_DANGLING_RELEASE_CHAR`; a `?` followed by a non-delimiter is
+    preserved verbatim with no warning (Postel's Law).
+  - **Dot-path traversal** — `getSegmentValue(seg, "03-1")` resolves
+    composite sub-element 1 of element 3 (both 1-indexed, matching TR3);
+    `"03[2]"` resolves the 3rd repetition (0-indexed); `"03[2]-1"` combines
+    them. Returns `undefined` for out-of-range paths, throws `TypeError`
+    only on malformed path strings (consumer bug). `getAllSegmentValues`
+    returns every repetition (or every Nth component) as `readonly string[]`.
+  - **Public `defineLoopSpec()` API** for TR3 loop authoring, ships with
+    structural validation + a typed `LoopSpecDefinitionError`. Phase 3+
+    transaction extractors author their built-in 999 / TA1 / 835 / 837
+    loops through the SAME public API consumers use for payer-specific
+    loops — the dogfooding gate locked in `documentation/repos/x12.md`.
+  - **Warning registry expanded 8 → 10** (additions-only):
+    `X12_DANGLING_RELEASE_CHAR` (unpaired `?` at element/segment end;
+    bytes are preserved on the parent element) and
+    `X12_UNEXPECTED_SEGMENT` (a `GE` with no open `GS`, `SE` with no open
+    `ST`, body segment outside any `ST..SE` — cases the Phase 1 walker
+    dropped silently). The PUBLIC `WARNING_CODES` snapshot test is the
+    breaking-change tripwire — renaming a code is breaking, additions
+    are not.
+  - **PHI discipline (mirrors hl7's H-PHI invariant):**
+    `X12_UNEXPECTED_SEGMENT` SHAPE-VALIDATES the echoed segment id
+    against `/^[A-Z][A-Z0-9]{1,2}$/u` and substitutes the literal
+    `(non-spec)` for anything else, so hostile input that puts PHI in
+    the first slot of a malformed "segment" never has those bytes
+    echoed into a warning message. The bytes themselves are preserved
+    on the parent container so consumers that want to inspect them can.
+  - **Tier-1 fixture** (`syntactic-core-body.edi`) exercises every Phase 2
+    surface end-to-end: composites (`HI*ABK:J45.50`), repetitions
+    (`EQ*30^35^88`), `?`-release-character escape (`REF*EA*ID?*WITH?*STAR`),
+    and straight-element segments (BHT, NM1). Real-world synthetic — no
+    PHI. Parses with zero warnings.
+  - **Properties:** release-escape round-trip (any value, any delimiters),
+    escapeRelease output is fully decodable as `?<reserved>` pairs +
+    non-reserved bytes (500 runs each), and a streaming-decode invariant
+    (parser output is independent of input chunking — locks the v2
+    streaming surface as a non-breaking future addition).
+  - **`X12TransactionSet.segments` shape changed** from
+    `readonly string[]` to `readonly X12Segment[]`; the raw form moves to
+    `X12TransactionSet.rawSegments`. **Pre-alpha `0.0.x` consumers should
+    migrate.** Library-internal change; no impact on `ix.warnings`,
+    `ix.delimiters`, or the envelope-level accessors.
+
 - **Phase 1 — envelope decoder.** `parseX12()` decodes the ISA / GS / GE / IEA
   interchange envelope from a raw `string` or `Buffer`, detecting all four
   delimiters (`element` byte 4, `repetition` ISA-11, `component` ISA-16,

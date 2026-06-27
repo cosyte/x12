@@ -252,7 +252,14 @@ describe("parseX12 — malformed-segment tolerance (Postel's-Law parse)", () => 
     const raw = buildInterchange({ transactionBody: ["BHT*0019*00*REF*20250101*1200*CH"] });
     const ix = parseX12(raw);
     expect(ix.warnings).toHaveLength(0);
-    expect(ix.groups[0]?.transactions[0]?.segments).toContain("BHT*0019*00*REF*20250101*1200*CH");
+    expect(ix.groups[0]?.transactions[0]?.rawSegments).toContain(
+      "BHT*0019*00*REF*20250101*1200*CH",
+    );
+    // The decoded segment surface preserves the segment id + 1-indexed elements.
+    const decoded = ix.groups[0]?.transactions[0]?.segments[1];
+    expect(decoded?.id).toBe("BHT");
+    expect(decoded?.elements[1]).toBe("0019");
+    expect(decoded?.elements[4]).toBe("20250101");
   });
 
   it("survives a second GS opening before the first GE — closes both tx and group", () => {
@@ -297,17 +304,31 @@ describe("parseX12 — malformed-segment tolerance (Postel's-Law parse)", () => 
     expect(ix.groups[0]?.transactions[0]?.se).toBeUndefined();
   });
 
-  it("ignores body segments that appear outside any transaction", () => {
+  it("flags body segments that appear outside any transaction as UNEXPECTED_SEGMENT", () => {
     const raw = buildInterchange();
     // Insert a body segment between GE and IEA — there's no open
-    // transaction, so it must be silently dropped without throwing.
+    // transaction, so Phase 2 surfaces it as `X12_UNEXPECTED_SEGMENT`
+    // (Phase 1 silently dropped it) and continues lenient-never-throw.
     const tampered = raw.replace("GE*1*1~", "GE*1*1~ZZZ*STRAY*BYTES~");
     const ix = parseX12(tampered);
-    // Phase 1 doesn't warn for stray segments (Phase 2 will); just
-    // confirm no throw and no surprising warnings beyond the expected
-    // trailing-garbage suppression that DOESN'T fire here (stray
-    // segment IS between IEA and GE, not after IEA).
     expect(ix.iea?.elements[0]).toBe("IEA");
+    const unexpected = ix.warnings.filter((w) => w.code === WARNING_CODES.X12_UNEXPECTED_SEGMENT);
+    expect(unexpected).toHaveLength(1);
+    expect(unexpected[0]?.message).toContain("ZZZ");
+  });
+
+  it("never echoes a non-spec-shape segment id in UNEXPECTED_SEGMENT messages (PHI safety)", () => {
+    const raw = buildInterchange();
+    // Hostile input: the "segment" outside any transaction has a name
+    // that could carry PHI (a long alphanumeric blob). Phase 2's
+    // unexpected-segment warning MUST NOT echo it — `(non-spec)` is
+    // substituted to keep the H-PHI invariant intact.
+    const tampered = raw.replace("GE*1*1~", "GE*1*1~JOHNDOEMRN98765*STRAY*BYTES~");
+    const ix = parseX12(tampered);
+    const unexpected = ix.warnings.filter((w) => w.code === WARNING_CODES.X12_UNEXPECTED_SEGMENT);
+    expect(unexpected).toHaveLength(1);
+    expect(unexpected[0]?.message).toContain("(non-spec)");
+    expect(unexpected[0]?.message).not.toContain("JOHNDOEMRN98765");
   });
 });
 

@@ -14,6 +14,7 @@
  */
 
 import { ISA_MIN_LENGTH } from "./delimiters.js";
+import { decodeSegment, type X12Segment } from "./segment.js";
 import type {
   Delimiters,
   GeSegment,
@@ -32,6 +33,7 @@ import {
   pre005010,
   trailingGarbage,
   transactionCountMismatch,
+  unexpectedSegment,
 } from "./warnings.js";
 import type { X12ParseWarning } from "./warnings.js";
 
@@ -162,6 +164,16 @@ export function decodeEnvelope(
   warnings: readonly X12ParseWarning[];
 } {
   const warnings: X12ParseWarning[] = [];
+  /**
+   * Single chokepoint that collects every warning emitted from any sub-
+   * pass (envelope walker + per-segment decode). Defined once here so the
+   * three `decodeSegment` call sites (ST / SE / body) share one function
+   * identity — the alternative (inline arrows per call site) inflates
+   * function count for the coverage gate without changing behavior.
+   */
+  const collectWarning = (w: X12ParseWarning): void => {
+    warnings.push(w);
+  };
   const isa = decodeIsa(raw, delimiters);
 
   // Pre-005010 detection — ISA-12 != "00501" (Tier-2 warning, never refused).
@@ -182,7 +194,8 @@ export function decodeEnvelope(
 
   type OpenTx = {
     st: { raw: string; elements: readonly string[] };
-    segments: string[];
+    segments: X12Segment[];
+    rawSegments: string[];
     startSegIdx: number;
   };
   type OpenGroup = {
@@ -219,6 +232,7 @@ export function decodeEnvelope(
       st: tx.st,
       se,
       segments: Object.freeze(tx.segments.slice()),
+      rawSegments: Object.freeze(tx.rawSegments.slice()),
     });
   };
 
@@ -309,9 +323,16 @@ export function decodeEnvelope(
       }
       case "GE": {
         if (currentGroup === undefined) {
-          // Stray GE outside any open group — no Phase 1 code covers
-          // this exact case; we drop it silently (Phase 2 may add
-          // `X12_UNEXPECTED_SEGMENT`). Preserving lenient-never-throw.
+          // Stray GE outside any open group — preserve lenient-never-
+          // throw, but surface as `X12_UNEXPECTED_SEGMENT` so consumers
+          // can flag the structural break.
+          warnings.push(
+            unexpectedSegment(
+              { segmentIndex: segIdx, interchangeIndex: 0 },
+              "GE",
+              "no open functional group",
+            ),
+          );
           break;
         }
         if (currentTx !== undefined) {
@@ -325,7 +346,14 @@ export function decodeEnvelope(
       case "ST": {
         if (currentGroup === undefined) {
           // ST outside any group is structurally wrong; preserve
-          // lenient and ignore (a future code can flag it).
+          // lenient and surface as `X12_UNEXPECTED_SEGMENT`.
+          warnings.push(
+            unexpectedSegment(
+              { segmentIndex: segIdx, interchangeIndex: 0 },
+              "ST",
+              "no open functional group (missing GS)",
+            ),
+          );
           break;
         }
         // Opening a new ST while one is still open → close the old
@@ -333,17 +361,41 @@ export function decodeEnvelope(
         if (currentTx !== undefined) {
           finalizeTx(currentTx, currentGroup, undefined);
         }
+        const stDecoded = decodeSegment(segmentText, delimiters, collectWarning, {
+          segmentIndex: segIdx,
+          interchangeIndex: 0,
+          groupIndex: groups.length,
+          transactionIndex: currentGroup.transactions.length,
+        });
         currentTx = {
           st: { raw: segmentText, elements },
-          segments: [segmentText],
+          segments: [stDecoded],
+          rawSegments: [segmentText],
           startSegIdx: segIdx,
         };
         break;
       }
       case "SE": {
-        // SE outside any open tx is structurally wrong; drop lenient.
-        if (currentTx === undefined || currentGroup === undefined) break;
-        currentTx.segments.push(segmentText);
+        // SE outside any open tx is structurally wrong; preserve lenient
+        // and surface as `X12_UNEXPECTED_SEGMENT`.
+        if (currentTx === undefined || currentGroup === undefined) {
+          warnings.push(
+            unexpectedSegment(
+              { segmentIndex: segIdx, interchangeIndex: 0 },
+              "SE",
+              "no open transaction set",
+            ),
+          );
+          break;
+        }
+        const seDecoded = decodeSegment(segmentText, delimiters, collectWarning, {
+          segmentIndex: segIdx,
+          interchangeIndex: 0,
+          groupIndex: groups.length,
+          transactionIndex: currentGroup.transactions.length,
+        });
+        currentTx.segments.push(seDecoded);
+        currentTx.rawSegments.push(segmentText);
         const se = { raw: segmentText, elements };
         // ST-02 ↔ SE-02 control-number reconciliation.
         const stControl = el(currentTx.st.elements, 2);
@@ -429,13 +481,30 @@ export function decodeEnvelope(
         };
       }
       default: {
-        // Body segment of an open transaction → preserve verbatim.
-        if (currentTx !== undefined) {
-          currentTx.segments.push(segmentText);
+        // Body segment of an open transaction → decode and append.
+        if (currentTx !== undefined && currentGroup !== undefined) {
+          const decoded = decodeSegment(segmentText, delimiters, collectWarning, {
+            segmentIndex: segIdx,
+            interchangeIndex: 0,
+            groupIndex: groups.length,
+            transactionIndex: currentGroup.transactions.length,
+          });
+          currentTx.segments.push(decoded);
+          currentTx.rawSegments.push(segmentText);
+        } else if (name.length > 0) {
+          // Outside any transaction, a body segment is structurally
+          // unexpected. The empty-name guard skips the synthetic empty
+          // "segment" the splitter produces after a trailing terminator
+          // (e.g. an interchange that ends `...IEA*1*1~\r\n` — the
+          // post-terminator newline-only chunk is not a real segment).
+          warnings.push(
+            unexpectedSegment(
+              { segmentIndex: segIdx, interchangeIndex: 0 },
+              name,
+              "body segment outside any open transaction set",
+            ),
+          );
         }
-        // Outside any transaction, body segments are ignored at Phase 1
-        // (Phase 2 will surface them via UNKNOWN_SEGMENT once the loop
-        // grammar lands).
         break;
       }
     }
