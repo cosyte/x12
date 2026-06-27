@@ -34,9 +34,12 @@ export {
   missingIea,
   missingSe,
   pre005010,
+  remitBalanceMismatch,
   trailingGarbage,
   transactionCountMismatch,
   unexpectedSegment,
+  unknownCarc,
+  unknownRarc,
 } from "./parser/warnings.js";
 export type { X12ParseWarning, X12WarningCode } from "./parser/warnings.js";
 export type {
@@ -64,6 +67,51 @@ export type { X12Segment } from "./parser/segment.js";
 export { defineLoopSpec, LoopSpecDefinitionError } from "./loops/define.js";
 export type { DefineLoopSpecInput } from "./loops/define.js";
 export type { LoopMax, LoopSegmentSpec, LoopSpec, LoopUsage } from "./loops/types.js";
+
+// Phase 4 — money + bundled code-list snapshots used by 835.
+export { X12Decimal } from "./decimal.js";
+export {
+  CARC,
+  CLAIM_ADJUSTMENT_GROUP_CODES,
+  CLP_STATUS,
+  RARC,
+  isClaimAdjustmentGroupCode,
+  lookupCarc,
+  lookupClpStatus,
+  lookupRarc,
+  type ClaimAdjustmentGroupCode,
+  type CodeListEntry,
+  type CodeListMeta,
+  type CodeListSnapshot,
+} from "./code-lists/index.js";
+
+// Phase 4 — 835 Healthcare Claim Payment/Advice (ERA) surface (TR3 005010X221A1).
+export {
+  REMIT_835_LOOP_1000A,
+  REMIT_835_LOOP_1000B,
+  REMIT_835_LOOP_2000,
+  REMIT_835_LOOP_2100,
+  REMIT_835_LOOP_2110,
+  checkClaimBalance,
+  checkRemitTotalBalance,
+  checkServiceLineBalance,
+  get835,
+  type X12RemitAddress,
+  type X12RemitAdjustment,
+  type X12RemitAmount,
+  type X12RemitClaim,
+  type X12RemitContact,
+  type X12RemitParty,
+  type X12RemitPaymentHeader,
+  type X12RemitPerson,
+  type X12RemitProvider,
+  type X12RemitProviderAdjustment,
+  type X12RemitReference,
+  type X12RemitRemark,
+  type X12RemitServiceLine,
+  type X12RemitTrace,
+  type X12Remittance,
+} from "./transactions/remit/index.js";
 
 // Phase 3 — acknowledgments surface: parse / build 999 (005010X231A1) and
 // envelope-level TA1 as pure functions. See `src/transactions/ack/index.ts`

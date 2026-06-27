@@ -46,6 +46,9 @@ export const WARNING_CODES = {
   X12_MISSING_SE: "X12_MISSING_SE",
   X12_DANGLING_RELEASE_CHAR: "X12_DANGLING_RELEASE_CHAR",
   X12_UNEXPECTED_SEGMENT: "X12_UNEXPECTED_SEGMENT",
+  X12_835_REMIT_BALANCE_MISMATCH: "X12_835_REMIT_BALANCE_MISMATCH",
+  X12_UNKNOWN_CARC: "X12_UNKNOWN_CARC",
+  X12_UNKNOWN_RARC: "X12_UNKNOWN_RARC",
 } as const;
 
 /**
@@ -358,6 +361,107 @@ export function unexpectedSegment(
   return {
     code: WARNING_CODES.X12_UNEXPECTED_SEGMENT,
     message: `Unexpected "${safeId}" segment — ${context}; segment is preserved on the prior open container if any.`,
+    position,
+  };
+}
+
+/**
+ * X12 CARC / RARC code shape: 1-5 leading-alphanumeric chars. Used to
+ * guard `X12_UNKNOWN_CARC` / `X12_UNKNOWN_RARC` so we never echo
+ * arbitrary bytes from a hostile inbound element value — the H-PHI
+ * invariant. CARC codes are short integer strings (`"1"`..`"999"`); RARC
+ * codes are short letter + digit codes (`"M1"`, `"N4"`, `"MA130"`). A
+ * value that does not match collapses to `(non-spec)` in the message.
+ * @internal
+ */
+const CODE_LIST_VALUE_SHAPE_RE = /^[A-Z0-9]{1,5}$/u;
+
+/**
+ * Build an `X12_835_REMIT_BALANCE_MISMATCH` warning. Emitted by the 835
+ * helper when a balance invariant fails — typically `CLP-04 + CLP-05 +
+ * Σ(claim-level CAS amounts) !== CLP-03`, or `Σ(SVC paid) + Σ(line CAS)
+ * !== CLP-04`, or `Σ(claim CLP-04) + Σ(PLB adjustments) !== BPR-02`.
+ *
+ * The message carries the invariant label, the spec'd value, the
+ * computed value, and the side-by-side diff — all numeric strings (the
+ * outputs of {@link "../decimal.js".X12Decimal} `toString()`). It NEVER
+ * echoes patient identifiers, member ids, names, account numbers, or any
+ * other PHI-shaped value — mirrors the H-PHI invariant from `@cosyte/hl7`.
+ * The parser ALWAYS surfaces this and NEVER silently rebalances.
+ *
+ * @example
+ * ```ts
+ * import { remitBalanceMismatch } from "@cosyte/x12";
+ * const w = remitBalanceMismatch(
+ *   { segmentIndex: 12, interchangeIndex: 0, groupIndex: 0, transactionIndex: 0 },
+ *   "CLP-04 + CLP-05 + ΣCAS == CLP-03",
+ *   "500.00",
+ *   "499.99",
+ *   "0.01",
+ * );
+ * ```
+ */
+export function remitBalanceMismatch(
+  position: X12Position,
+  invariant: string,
+  spec: string,
+  computed: string,
+  delta: string,
+): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
+    message: `835 balance invariant violated [${invariant}]: spec="${spec}", computed="${computed}", delta="${delta}".`,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_UNKNOWN_CARC` warning. Emitted when a CAS adjustment
+ * carries a CARC code outside the bundled snapshot (see
+ * {@link "../code-lists/carc.js".CARC}). The verbatim code is still
+ * preserved on the parsed adjustment — only the description is missing.
+ * The code value is shape-validated against `[A-Z0-9]{1,5}` before
+ * echoing in the message; a hostile non-conformant value collapses to
+ * the literal `(non-spec)` so the parser never echoes arbitrary bytes
+ * (H-PHI invariant).
+ *
+ * @example
+ * ```ts
+ * import { unknownCarc } from "@cosyte/x12";
+ * const w = unknownCarc(
+ *   { segmentIndex: 14, interchangeIndex: 0, groupIndex: 0, transactionIndex: 0 },
+ *   "9999",
+ * );
+ * ```
+ */
+export function unknownCarc(position: X12Position, code: string): X12ParseWarning {
+  const safe = CODE_LIST_VALUE_SHAPE_RE.test(code) ? code : "(non-spec)";
+  return {
+    code: WARNING_CODES.X12_UNKNOWN_CARC,
+    message: `Unknown CARC "${safe}" — code is outside the bundled snapshot; verbatim value preserved, description unavailable.`,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_UNKNOWN_RARC` warning. Companion to {@link unknownCarc}
+ * for RARC codes on `MIA` / `MOA` / `LQ` / `NTE`. Same shape-validation
+ * + verbatim-preserve posture.
+ *
+ * @example
+ * ```ts
+ * import { unknownRarc } from "@cosyte/x12";
+ * const w = unknownRarc(
+ *   { segmentIndex: 16, interchangeIndex: 0, groupIndex: 0, transactionIndex: 0 },
+ *   "ZZZZZ",
+ * );
+ * ```
+ */
+export function unknownRarc(position: X12Position, code: string): X12ParseWarning {
+  const safe = CODE_LIST_VALUE_SHAPE_RE.test(code) ? code : "(non-spec)";
+  return {
+    code: WARNING_CODES.X12_UNKNOWN_RARC,
+    message: `Unknown RARC "${safe}" — code is outside the bundled snapshot; verbatim value preserved, description unavailable.`,
     position,
   };
 }

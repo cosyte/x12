@@ -8,6 +8,39 @@
 
 ## Status
 
+- **Phase 4 — 835 Healthcare Claim Payment/Advice (ERA) shipped (2026-06-27).**
+  `get835(delimiters, tx)` walks a parsed 835 transaction set into the
+  typed `X12Remittance` model: BPR payment header, TRN trace numbers,
+  Loop 1000A / 1000B payer + payee parties, Loop 2100 claims (with
+  patient / subscriber / service-provider NM1s, CAS adjustments,
+  MIA / MOA / LQ remarks, REF / AMT supplemental amounts), Loop 2110
+  service lines (with HCPCS / CPT / NDC / revenue-code destructuring,
+  line-level CAS / REF / AMT / LQ), and PLB provider-level adjustments.
+  All monetary fields decode as the new `X12Decimal` — string-backed,
+  `BigInt`-exact arithmetic, **NEVER `parseFloat`**. Three balance
+  invariants run after the walk per TR3 X221A1 §1.10.2 (line, claim,
+  top-of-remit) and emit `X12_835_REMIT_BALANCE_MISMATCH` on mismatch
+  — the model is NEVER silently rebalanced; PLB amounts carry the raw
+  EDI sign (positive = take-back, so the top equation is
+  `BPR-02 == Σ(CLP-04) - Σ(PLB)`). Bundled WPC + X12-internal code-
+  list snapshots ship as versioned data artifacts (`CARC` ~30 codes,
+  `RARC` ~15 codes, `CLP_STATUS` 10 codes, `CLAIM_ADJUSTMENT_GROUP_CODES`
+  as a frozen 4-value literal union); unknown codes preserve the
+  verbatim value and emit `X12_UNKNOWN_CARC` / `X12_UNKNOWN_RARC`.
+  Three built-in `LoopSpec` artifacts (Loop 2000 / 2100 / 2110) ship
+  through the public `defineLoopSpec()` API — the dogfooding gate.
+  Warning registry expanded 10 → 13 (additions-only); shape-validated
+  CARC / RARC echoes mirror the H-PHI invariant from `@cosyte/hl7`.
+  Six fixtures (5 Tier-1 synthetic spec-clean + 1 Tier-2 Availity-
+  quirk de-identified). Property tests: `X12Decimal` algebra invariants
+  (round-trip / additive identity / commutativity / subtraction-by-
+  addition / negation involution); balance-invariant property
+  (balanced ⇒ no warning; imbalanced ⇒ warning + verbatim preservation);
+  byte-level 835 fuzz target across every fixture (300 runs each).
+  Verify gate green: typecheck + lint + format + coverage (97.7%
+  stmts / 91.97% branches / 99.24% funcs / 99.38% lines, per-dir
+  ≥90 on `parser/` / `loops/` / `transactions/` / `code-lists/`) +
+  build + attw + verify:exports. 269 tests total.
 - **Phase 3 acknowledgments shipped (2026-06-27).** Pure-function 999 + TA1
   parse + build. `parse999(raw)` decodes AK1 → AK2 → (IK3 [→ CTX] (IK4 [→
   CTX])\*)\* → IK5 → AK9 (lenient-accepts legacy `AK3`/`AK4`/`AK5`,
@@ -37,8 +70,9 @@
 - On the shared cosyte engineering standard (migrated Phase E) — toolchain inherited from the
   published `@cosyte/*` config packages, CI/release are thin callers of `cosyte/.github`. Per-directory
   ≥90 coverage gate armed on `src/parser/`.
-- Pre-alpha `0.0.x`, not published to npm. Next: **Phase 4** — `get835()` for the ERA / remittance
-  surface (string-backed `X12Decimal` for money, balance invariants, bundled CARC/RARC snapshot).
+- Pre-alpha `0.0.x`, not published to npm. Next: **Phase 5** — `get837Claims()` across the three
+  837 variants (P / I / D) with the HL hierarchy as the safety primitive, ICD-10-CM / ICD-10-PCS
+  qualifier-driven code-system provenance on `HI`, and `X12Decimal` everywhere money lives.
 
 ## v1 Scope Snapshot
 
