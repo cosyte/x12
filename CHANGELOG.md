@@ -65,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     interpolate only control numbers, disposition codes, and count
     integers; no PHI-shape paths. The `phi-redaction-review` crew gate
     passed at commit time; locked `999 — PHI safety` and `TA1 — PHI
-    safety` test blocks assert no SSN / ISO-date / long-digit-run
+safety` test blocks assert no SSN / ISO-date / long-digit-run
     shapes appear in built output.
   - **Three Tier-1 999 fixtures** (`999-accept.edi`,
     `999-accept-with-errors.edi`,
