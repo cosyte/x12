@@ -28,6 +28,7 @@ export type { X12FatalCode } from "./parser/errors.js";
 export {
   WARNING_CODES,
   controlNumberMismatch,
+  danglingReleaseChar,
   groupCountMismatch,
   missingGe,
   missingIea,
@@ -35,6 +36,7 @@ export {
   pre005010,
   trailingGarbage,
   transactionCountMismatch,
+  unexpectedSegment,
 } from "./parser/warnings.js";
 export type { X12ParseWarning, X12WarningCode } from "./parser/warnings.js";
 export type {
@@ -50,3 +52,14 @@ export type {
   X12Position,
   X12TransactionSet,
 } from "./parser/types.js";
+
+// Phase 2 — segment / element / composite / repetition decode surface.
+export { escapeRelease, RELEASE_CHAR, unescapeRelease } from "./parser/release.js";
+export { decodeSegment, getAllSegmentValues, getSegmentValue } from "./parser/segment.js";
+export type { X12Segment } from "./parser/segment.js";
+
+// Phase 2 — loop-spec authoring surface (dogfooded by built-in transaction
+// specs in Phases 3+).
+export { defineLoopSpec, LoopSpecDefinitionError } from "./loops/define.js";
+export type { DefineLoopSpecInput } from "./loops/define.js";
+export type { LoopMax, LoopSegmentSpec, LoopSpec, LoopUsage } from "./loops/types.js";

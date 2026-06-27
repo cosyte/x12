@@ -23,10 +23,16 @@ It covers the HIPAA **005010** healthcare transaction sets:
 
 ## Status — pre-alpha `0.0.x`
 
-Phase 1 (2026-06-27) ships the **envelope decoder**: `parseX12()` decodes ISA / GS / GE / IEA,
+Phase 1 (2026-06-27) shipped the **envelope decoder**: `parseX12()` decodes ISA / GS / GE / IEA,
 detects all four delimiters from fixed ISA byte positions, and round-trips the ISA byte-exact.
-Transaction-set bodies inside ST..SE are kept **opaque** at this phase (raw segment strings,
-terminator stripped). Per-transaction helpers (`get835`, `get837Claims`, ...) arrive in later phases.
+
+Phase 2 (2026-06-27) adds the **syntactic core**: every body segment is decoded into an immutable
+`X12Segment` (id + 1-indexed elements), the `?`-release-character escape is honored losslessly,
+and a dot-path resolver (`getSegmentValue(seg, "03-1")`) walks elements, composites (`-N`), and
+repetitions (`[N]`, 0-indexed). The public `defineLoopSpec()` API ships for TR3 loop authoring —
+Phase 3+ transaction extractors are authored through the same public API consumers use.
+
+Per-transaction helpers (`get835`, `get837Claims`, ...) arrive in later phases.
 
 The package is not yet published to npm.
 
@@ -49,7 +55,7 @@ ix.delimiters.element; // detected from ISA byte 4
 ix.delimiters.component; // ISA-16 (rarely `:` outside Medicare)
 ix.delimiters.segment; // post-ISA-16
 ix.groups[0]?.gs.elements[1]; // GS-01 — functional ID code ("HC" for claims)
-ix.groups[0]?.transactions; // ST..SE — bodies opaque at Phase 1
+ix.groups[0]?.transactions; // ST..SE — bodies decoded at Phase 2
 
 for (const w of ix.warnings) {
   if (w.code === WARNING_CODES.X12_PRE_005010) {
@@ -64,9 +70,48 @@ code and positional context, not failures. Four unrecoverable Tier-3 errors thro
 `{ strict: true }` to escalate every tolerated deviation into a thrown error carrying the warning
 code.
 
+## Read inside a transaction (Phase 2)
+
+```ts
+import { getSegmentValue, parseX12 } from "@cosyte/x12";
+
+const ix = parseX12(raw);
+const tx = ix.groups[0]?.transactions[0];
+
+// Every body segment is decoded — id + 1-indexed elements (raw text).
+const hi = tx?.segments.find((s) => s.id === "HI");
+hi?.elements[1]; // "ABK:J45.50" (verbatim composite text)
+
+// Dot-path resolves composites and repetitions:
+getSegmentValue(hi!, "01-1", ix.delimiters); // "ABK"   — diagnosis qualifier
+getSegmentValue(hi!, "01-2", ix.delimiters); // "J45.50" — code
+getSegmentValue(hi!, "02-1", ix.delimiters); // "ABF"   — second composite
+
+// Repetitions are 0-indexed:
+const eq = tx?.segments.find((s) => s.id === "EQ");
+getSegmentValue(eq!, "01[0]", ix.delimiters); // first repetition
+getSegmentValue(eq!, "01[2]", ix.delimiters); // third repetition
+```
+
+Define a TR3 loop spec the same way the built-in transaction extractors do (dogfooding):
+
+```ts
+import { defineLoopSpec } from "@cosyte/x12";
+
+const Loop2300 = defineLoopSpec({
+  id: "2300",
+  description: "837 Claim Information",
+  trigger: "CLM",
+  segments: [
+    { id: "CLM", usage: "required", max: 1 },
+    { id: "DTP", usage: "situational", max: ">1" },
+    { id: "HI", usage: "situational", max: ">1" },
+  ],
+});
+```
+
 ## Coming in later phases
 
-- **Phase 2** — segment / element / composite / repetition decode; `defineLoopSpec()`.
 - **Phase 3** — `parse999` / `build999` / `parseTA1` / `buildTA1` (pure functions, never auto-sent,
   never open sockets).
 - **Phase 4** — `get835` (cash posting — the #1 consultant ask).

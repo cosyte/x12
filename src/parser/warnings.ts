@@ -44,6 +44,8 @@ export const WARNING_CODES = {
   X12_MISSING_IEA: "X12_MISSING_IEA",
   X12_MISSING_GE: "X12_MISSING_GE",
   X12_MISSING_SE: "X12_MISSING_SE",
+  X12_DANGLING_RELEASE_CHAR: "X12_DANGLING_RELEASE_CHAR",
+  X12_UNEXPECTED_SEGMENT: "X12_UNEXPECTED_SEGMENT",
 } as const;
 
 /**
@@ -284,6 +286,78 @@ export function missingSe(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_MISSING_SE,
     message: "Transaction set has no SE trailer — transaction is truncated.",
+    position,
+  };
+}
+
+/**
+ * Build an `X12_DANGLING_RELEASE_CHAR` warning. Emitted when a release
+ * character (`?` per ASC X12 convention; see
+ * {@link "./release.js".RELEASE_CHAR}) appears at the end of a segment or
+ * element with no following byte to escape — the bytes are preserved
+ * verbatim so round-trip stays byte-exact, but the structural truncation
+ * is flagged so consumers can decide how to react.
+ *
+ * @example
+ * ```ts
+ * import { danglingReleaseChar } from "@cosyte/x12";
+ * const w = danglingReleaseChar({ segmentIndex: 7, interchangeIndex: 0 });
+ * ```
+ */
+export function danglingReleaseChar(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_DANGLING_RELEASE_CHAR,
+    message:
+      "Release character (`?`) appears at end of element/segment with no following byte to escape — preserved verbatim.",
+    position,
+  };
+}
+
+/**
+ * X12 segment-id shape per ASC X12 .5: 2-3 chars, leading uppercase
+ * letter, remaining uppercase letter / digit. Used to decide whether a
+ * caller-supplied "segment id" is the spec name (safe to echo in a
+ * warning message) or arbitrary bytes from a hostile input (must not be
+ * echoed — H-PHI invariant). @internal
+ */
+const SEGMENT_ID_SHAPE_RE = /^[A-Z][A-Z0-9]{1,2}$/u;
+
+/**
+ * Build an `X12_UNEXPECTED_SEGMENT` warning. Emitted when a structurally
+ * meaningful envelope segment (`GE`, `SE`, body segments) appears outside
+ * its expected parent — e.g. a `GE` with no open `GS`, an `SE` with no open
+ * `ST`, or any body segment before the first `ST`. The parser preserves
+ * lenient-never-throw and continues; the warning carries the segment id (if
+ * it matches the X12 segment-id grammar — otherwise the literal
+ * `(non-spec)` is substituted to avoid echoing arbitrary bytes / PHI) and
+ * its global segment index so a consumer can locate the deviation.
+ *
+ * Message NEVER echoes element values — only a SHAPE-VALIDATED 2-or-3-
+ * letter segment id (the spec name, not user data) and the structural
+ * context, mirroring the H-PHI invariant locked for `@cosyte/hl7`. A
+ * hostile input that puts PHI in the first slot of a malformed "segment"
+ * still has its bytes preserved on the parent container — they are simply
+ * not echoed in the diagnostic message.
+ *
+ * @example
+ * ```ts
+ * import { unexpectedSegment } from "@cosyte/x12";
+ * const w = unexpectedSegment(
+ *   { segmentIndex: 12, interchangeIndex: 0 },
+ *   "GE",
+ *   "no open functional group",
+ * );
+ * ```
+ */
+export function unexpectedSegment(
+  position: X12Position,
+  segmentId: string,
+  context: string,
+): X12ParseWarning {
+  const safeId = SEGMENT_ID_SHAPE_RE.test(segmentId) ? segmentId : "(non-spec)";
+  return {
+    code: WARNING_CODES.X12_UNEXPECTED_SEGMENT,
+    message: `Unexpected "${safeId}" segment — ${context}; segment is preserved on the prior open container if any.`,
     position,
   };
 }

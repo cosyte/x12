@@ -9,6 +9,7 @@
 // Forward reference to the warning shape owned by `./warnings.ts`. Declared
 // with `import type` so it contributes zero runtime cost and `./warnings.ts`
 // remains the single source of truth for `X12ParseWarning`.
+import type { X12Segment } from "./segment.js";
 import type { X12ParseWarning } from "./warnings.js";
 
 /**
@@ -190,27 +191,31 @@ export interface GeSegment {
 }
 
 /**
- * A single ST..SE transaction set inside a functional group. Phase 1 keeps
- * the body **opaque** — `segments` carries the raw segment strings between
- * ST and SE (inclusive of both), one entry per segment, with the segment
- * terminator stripped. Phase 2 adds element/composite decode on top.
+ * A single ST..SE transaction set inside a functional group. Phase 2
+ * decodes every body segment via {@link "./segment.js".decodeSegment} so
+ * `segments` carries typed {@link X12Segment} entries (ST through SE,
+ * inclusive). `rawSegments` mirrors the same list as the verbatim raw
+ * segment strings (terminator stripped) so a byte-exact round-trip survives
+ * any downstream consumer that needs to re-emit the source.
  *
- * `elements` on the ST and SE segments themselves IS decoded so envelope
- * invariants can be checked at Phase 1 (ST-02 ↔ SE-02 control-number
+ * `elements` on the ST and SE segments themselves IS decoded at envelope
+ * time so envelope invariants can be checked (ST-02 ↔ SE-02 control-number
  * reconciliation, SE-01 segment count).
  *
  * @example
  * ```ts
  * import type { X12TransactionSet } from "@cosyte/x12";
  * declare const tx: X12TransactionSet;
- * tx.st.elements[1]; // ST-01 — transaction set ID (e.g. "835")
- * tx.st.elements[2]; // ST-02 — transaction control number
+ * tx.st.elements[1];             // ST-01 — transaction set ID (e.g. "835")
+ * tx.segments[1]?.id;            // first body segment id
+ * tx.rawSegments[1];             // first body segment raw text
  * ```
  */
 export interface X12TransactionSet {
   readonly st: { readonly raw: string; readonly elements: readonly string[] };
   readonly se: { readonly raw: string; readonly elements: readonly string[] } | undefined;
-  readonly segments: readonly string[];
+  readonly segments: readonly X12Segment[];
+  readonly rawSegments: readonly string[];
 }
 
 /**

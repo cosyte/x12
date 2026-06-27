@@ -66,4 +66,29 @@ describe("Tier-1 envelope fixtures — Phase 1 acceptance corpus", () => {
     expect(ix.warnings).toHaveLength(0);
     expect(ix.isa.raw).toBe(raw.slice(0, 106));
   });
+
+  it("syntactic-core-body.edi — Phase 2 body with composites, repetitions, `?`-escape", () => {
+    // The Phase 2 acceptance fixture. Hand-authored 837P-shaped body that
+    // exercises every Phase 2 surface: composites (HI*ABK:J45.50),
+    // repetitions (EQ*30^35^88), `?`-release-character escape
+    // (REF*EA*ID?*WITH?*STAR — `?*` is literal `*`), and unchanged
+    // straight-element segments (BHT, NM1). Real-world synthetic — no PHI.
+    const raw = loadFixture("syntactic-core-body.edi");
+    const ix = parseX12(raw);
+    expect(ix.warnings).toHaveLength(0);
+    const tx = ix.groups[0]?.transactions[0];
+    expect(tx?.segments.map((s) => s.id)).toEqual(["ST", "BHT", "NM1", "HI", "REF", "EQ", "SE"]);
+    // Composite read.
+    const hi = tx?.segments[3];
+    expect(hi?.id).toBe("HI");
+    expect(hi?.elements[1]).toBe("ABK:J45.50");
+    // Repetition read.
+    const eq = tx?.segments[5];
+    expect(eq?.id).toBe("EQ");
+    expect(eq?.elements[1]).toBe("30^35^88");
+    // ?-escape: element-3 contains the literal `*` bytes verbatim.
+    const ref = tx?.segments[4];
+    expect(ref?.id).toBe("REF");
+    expect(ref?.elements[2]).toBe("ID?*WITH?*STAR");
+  });
 });
