@@ -119,6 +119,7 @@ export function parseX12(raw: string | Buffer, options: X12ParseOptions = {}): X
     iea: decoded.iea,
     delimiters,
     groups: decoded.groups,
+    ta1Segments: decoded.ta1Segments,
     warnings: decoded.warnings,
     ...(decoded.trailingBytes !== undefined ? { trailingBytes: decoded.trailingBytes } : {}),
   };

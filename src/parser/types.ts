@@ -191,6 +191,38 @@ export interface GeSegment {
 }
 
 /**
+ * A decoded envelope-level TA1 Interchange Acknowledgment segment. TA1 is
+ * NOT a transaction set — per the ASC X12 standard it lives at the envelope
+ * level, between ISA and the first GS, or alone inside an ISA..IEA with no
+ * GS at all (a TA1-only interchange). One interchange may carry multiple
+ * TA1 segments, each acknowledging a prior inbound interchange.
+ *
+ * `elements[0]` = `"TA1"`; `elements[1]` = TA1-01 (echoes the prior
+ * interchange's ISA-13 control number); `elements[2]` = TA1-02 (interchange
+ * date YYMMDD, echoes ISA-09); `elements[3]` = TA1-03 (interchange time
+ * HHMM, echoes ISA-10); `elements[4]` = TA1-04 (Interchange Acknowledgment
+ * Code, code list I13: `A` accepted, `E` accepted with errors, `R`
+ * rejected); `elements[5]` = TA1-05 (Interchange Note Code, code list I18,
+ * `000`–`028+`).
+ *
+ * The Phase 3 envelope walker captures TA1 segments here verbatim; the
+ * typed-ack model is built on top by `parseTA1`. TA1 contains only
+ * structural control / disposition codes — by spec it carries NO PHI.
+ *
+ * @example
+ * ```ts
+ * import type { Ta1Segment } from "@cosyte/x12";
+ * declare const ta1: Ta1Segment;
+ * ta1.elements[1]; // TA1-01 — echoes inbound ISA-13
+ * ta1.elements[4]; // TA1-04 — "A" | "E" | "R"
+ * ```
+ */
+export interface Ta1Segment {
+  readonly raw: string;
+  readonly elements: readonly string[];
+}
+
+/**
  * A single ST..SE transaction set inside a functional group. Phase 2
  * decodes every body segment via {@link "./segment.js".decodeSegment} so
  * `segments` carries typed {@link X12Segment} entries (ST through SE,
@@ -258,6 +290,7 @@ export interface X12Interchange {
   readonly iea: IeaSegment | undefined;
   readonly delimiters: Delimiters;
   readonly groups: readonly X12FunctionalGroup[];
+  readonly ta1Segments: readonly Ta1Segment[];
   readonly warnings: readonly X12ParseWarning[];
   readonly trailingBytes?: string;
 }

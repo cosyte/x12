@@ -9,6 +9,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 3 — 999 + TA1 acknowledgments (TR3 005010X231A1).** Two
+  pure-function ack surfaces ship side-by-side; neither auto-sends, opens
+  a socket, or touches the filesystem. The cosyte ack archetype: the
+  library MECHANICALLY builds the disposition it is told and REFUSES to
+  fabricate an Accept against a non-empty error list. Mirrors hl7's
+  upcoming `buildAck` boundary and mllp's commit-contract pattern.
+  - **999 (Implementation Acknowledgment) — TR3 005010X231A1.**
+    `parse999(raw, opts?)` decodes the AK1 → AK2 → (IK3 [→ CTX] (IK4 [→
+    CTX])\*)\* → IK5 → AK9 hierarchy into the typed `X12Ack999`. Standard
+    X12 / pre-X231A1 legacy senders that emit `AK3`/`AK4`/`AK5` instead
+    of `IK3`/`IK4`/`IK5` are lenient-accepted on parse (normalized onto
+    the X231A1 names) per Postel's Law; `build999` always emits the
+    X231A1 names. `build999(spec)` assembles a complete `X12Interchange`
+    wrapping a single ISA → GS → ST..SE → GE → IEA with one 999 inside,
+    spec-clean and round-trippable through `parseX12`.
+  - **TA1 (Interchange Acknowledgment) — ASC X12 standard, envelope
+    level.** The Phase 1 envelope walker now captures envelope-level
+    TA1 segments verbatim onto `X12Interchange.ta1Segments` — TA1
+    between ISA and the first GS (the canonical position) is recognized
+    as spec-conformant and NO `X12_UNEXPECTED_SEGMENT` warning fires;
+    a TA1 inside an open functional group is still flagged as unexpected
+    (non-spec). `parseTA1(interchange)` returns the typed `X12AckTA1`
+    for the first captured TA1 (or `undefined`). `buildTA1(spec)` emits
+    a fixed-position 5-element `Ta1Segment` (`TA101`–`TA105`) — caller
+    wraps it in their preferred envelope. Both standalone TA1-only
+    interchanges (ISA → TA1 → IEA, no GS) and embedded TA1s round-trip.
+  - **Safety guards (refused via `AckBuildError`):** `build999` refuses
+    a functional `AK9-01 = 'A'` paired with any per-transaction non-`A`
+    response OR any error payload anywhere
+    (`X12_ACK_ACCEPT_WITH_ERRORS`); refuses internally inconsistent AK9
+    counts (`0 ≤ accepted ≤ received ≤ declared`,
+    `responses.length == received`, ≤ 5 syntax error codes on IK5/AK9)
+    (`X12_ACK_COUNT_MISMATCH`); refuses an ISA-13 longer than 9 chars
+    (`X12_ACK_INVALID_SPEC`). `buildTA1` refuses `TA1-04 = 'A'` paired
+    with a non-`000` TA1-05 note code (`X12_TA1_ACCEPT_WITH_NOTE`).
+    Four stable `ACK_BUILD_ERROR_CODES` typed as `AckBuildErrorCode`
+    discriminate the cases.
+  - **Public code-list registries:** `X12_ACK_DISPOSITION_CODES`
+    (code list 715: `A`/`E`/`P`/`R`/`M`/`W`/`X`),
+    `IK3_SYNTAX_ERROR_CODES` (code list 716, 13 codes),
+    `IK4_SYNTAX_ERROR_CODES` (code list 723, 18 codes),
+    `TA1_ACK_CODES` (code list I13: `A`/`E`/`R`),
+    `TA1_NOTE_CODES` (code list I18: `000`–`028`). String-literal
+    unions are exported for exhaustive narrowing. The helper
+    `isAcceptDisposition(code)` returns true for `A`/`E`/`P` and false
+    for the four reject codes.
+  - **PHI discipline (acks are structurally PHI-free by design):**
+    Control numbers, segment IDs, position counters, and structural
+    error codes ONLY. The one variable-shape surface that COULD carry
+    PHI — `IK4-04` (`copyOfBadDataElement`) — is documented on both the
+    parsed-model type AND the build-spec type as a caller-supplied
+    field that callers SHOULD omit when the offending bytes are PHI.
+    The library NEVER auto-populates `IK4-04`. Error messages
+    interpolate only control numbers, disposition codes, and count
+    integers; no PHI-shape paths. The `phi-redaction-review` crew gate
+    passed at commit time; locked `999 — PHI safety` and `TA1 — PHI
+    safety` test blocks assert no SSN / ISO-date / long-digit-run
+    shapes appear in built output.
+  - **Three Tier-1 999 fixtures** (`999-accept.edi`,
+    `999-accept-with-errors.edi`,
+    `999-reject-control-number-mismatch.edi`) and **three Tier-1 TA1
+    fixtures** (`ta1-accept.edi`, `ta1-accept-with-errors.edi`,
+    `ta1-reject-control-mismatch.edi`). All synthetic, no PHI.
+  - **Property tests:** `parse999(build999(spec))` round-trips
+    dispositions, counts, and AK1 echo on every clean accept (200
+    runs); functional `A` + any non-`A` per-transaction disposition
+    throws `AckBuildError` with code `X12_ACK_ACCEPT_WITH_ERRORS` (100
+    runs); functional `A` + non-empty AK9 syntax error codes throws the
+    same code (100 runs). Locks the Phase 3 safety invariant.
+  - **Public-surface additions** to the warning / fatal stability
+    snapshot: `Ta1Segment` type on the envelope-level surface;
+    `X12Interchange.ta1Segments: readonly Ta1Segment[]` (additive, no
+    rename); no new entries to `WARNING_CODES` or `FATAL_CODES`
+    (Phase 3 keeps both registries at the Phase-2-locked sizes of 10
+    and 4 — additions-only thereafter).
+  - **Spec traceability:** TR3 `005010X231A1` (999); ASC X12 standard §
+    TA1 Interchange Acknowledgment; code lists 715 / 716 / 723 / I13 / I18.
+  - **Known limitations after Phase 3:** Acks reference STRUCTURAL
+    errors only — they cannot report semantic / payment errors (those
+    live in `277CA` Phase 6 / `835` Phase 4). No multi-TA1 fan-out
+    helper (consumers iterate `ta1Segments` directly when more than
+    one inbound interchange is being acknowledged). The 999
+    transaction-set surface does not yet expose a public Loop-spec
+    artifact — Phase 3 hand-walks the AK1/AK2/IK3/IK4/IK5/AK9 hierarchy
+    in `parse-999.ts`; the dogfooding gate for `defineLoopSpec` lands
+    fully with Phase 4's 835 + Phase 5's 837 work.
+
 - **Phase 2 — syntactic core: segment / element / composite / repetition
   decode + warning registry + `defineLoopSpec`.** Every body segment inside
   a transaction is now decoded into an immutable `X12Segment` carrying its
