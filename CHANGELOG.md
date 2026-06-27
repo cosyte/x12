@@ -145,7 +145,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     helper). The `X12ClaimNote` JSDoc explicitly flags NTE-02 as
     PHI-bearing (provider-supplied free text). Every Phase 5 fixture
     is synthetic (test names `TEST PATIENT` / `SUB LAST` / `PATIENT
-    CHILD`; sequential member IDs `MEMBER001`–`MEMBER011` etc.; NPI-
+CHILD`; sequential member IDs `MEMBER001`–`MEMBER011` etc.; NPI-
     shaped sequential numbers; obvious test addresses) and matches
     the established 835 fixture conventions.
   - **Known limitations after this phase** (deliberate v1 scope; none

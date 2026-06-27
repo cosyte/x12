@@ -118,8 +118,8 @@
   271 MUST echo the requesting 270's TRN verbatim (safety-critical
   reassociation path); 277CA is the high-volume clearinghouse
   acknowledgment, not the same TR3 as 277-as-status. Bundled service-type
-  + CSCC / CSC code-list snapshots land alongside the existing CARC /
-  RARC / CLP_STATUS / HI_QUALIFIERS family.
+  - CSCC / CSC code-list snapshots land alongside the existing CARC /
+    RARC / CLP_STATUS / HI_QUALIFIERS family.
 
 ## v1 Scope Snapshot
 
