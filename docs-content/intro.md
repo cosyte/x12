@@ -127,12 +127,18 @@ const Loop2300 = defineLoopSpec({
   per-TR3 invariants on the general surface and round-trip through their reader field-for-field:
   `build835` (005010X221A1 ERA, REFUSES an out-of-balance remit via `Remit835BuildError`),
   `build837P/I/D` (claim submission, computes the HL spine + REFUSES an impossible hierarchy via
-  `Claim837BuildError`), and `build271` / `build277` / `build277CA` (eligibility + claim-status
+  `Claim837BuildError`), `build271` / `build277` / `build277CA` (eligibility + claim-status
   responses, echo the requesting TRN verbatim + compute the HL spine + REFUSE a broken hierarchy via
-  `Eligibility271BuildError` / `ClaimStatus277BuildError`). None ever auto-send, open a socket, or
-  touch the filesystem.
-- **Next** — the remaining domain builders (`build278` / `build820` / `build834`); vendor /
-  clearinghouse profile system.
+  `Eligibility271BuildError` / `ClaimStatus277BuildError`), and `build278Request` / `build278Response`
+  / `build820` / `build834` (services review + premium + enrollment; the 278 echoes the HCR
+  certification verbatim, the 834 refuses an unknown maintenance type). The v1 emit scope is now
+  complete; none ever auto-send, open a socket, or touch the filesystem.
+- **Profile system** — `defineProfile()` (mirroring `@cosyte/hl7`) + a `profiles` namespace of
+  built-ins that ATTRIBUTE clearinghouse / payer companion-guide quirks. v1 profiles are
+  **descriptive**: a profile attaches metadata to `ix.profile` and powers `partitionWarnings`, but
+  never alters the lossless lenient parse. The locked hard rule — **no invented quirks** — requires
+  every quirk to cite a Tier-2 fixture that demonstrably exhibits the deviation. Ships `availity` and
+  `bcbsCommon`; profiles whose only "deviation" is a canonical baseline are deferred, not invented.
 
 ## Next
 

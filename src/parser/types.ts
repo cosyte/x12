@@ -9,6 +9,8 @@
 // Forward reference to the warning shape owned by `./warnings.ts`. Declared
 // with `import type` so it contributes zero runtime cost and `./warnings.ts`
 // remains the single source of truth for `X12ParseWarning`.
+import type { X12Profile } from "../profiles/types.js";
+
 import type { X12Segment } from "./segment.js";
 import type { X12ParseWarning } from "./warnings.js";
 
@@ -80,6 +82,16 @@ export type OnWarningCallback = (warning: X12ParseWarning) => void;
 export interface X12ParseOptions {
   readonly strict?: boolean;
   readonly onWarning?: OnWarningCallback;
+  /**
+   * A trading-partner {@link X12Profile} to attach to the result. An explicit
+   * profile ALWAYS wins over any process-scoped default; pass `null` to opt
+   * out of the default for a single call. When omitted, `parseX12` consults
+   * `getDefaultProfile()`. The profile is attached as `ix.profile` for
+   * attribution and consumed by `partitionWarnings`; it does not alter the
+   * lenient parse itself (v1 profiles are descriptive — see the profile
+   * subsystem docs).
+   */
+  readonly profile?: X12Profile | null;
 }
 
 /**
@@ -293,4 +305,11 @@ export interface X12Interchange {
   readonly ta1Segments: readonly Ta1Segment[];
   readonly warnings: readonly X12ParseWarning[];
   readonly trailingBytes?: string;
+  /**
+   * The trading-partner {@link X12Profile} in effect for this parse, if any —
+   * either passed explicitly via `options.profile` or resolved from the
+   * process-scoped default. Present only when a profile applied; used for
+   * attribution and as the partition basis for `partitionWarnings`.
+   */
+  readonly profile?: X12Profile;
 }

@@ -10,11 +10,18 @@ import { cosyteVitest } from "@cosyte/vitest-config";
  *   - `code-lists/` — bundled WPC + X12-internal snapshots (Phase 4)
  *   - `serialize/` — spec-clean serializer (Phase 8)
  *   - `builder/` — general-purpose interchange builder (Phase 8)
- *
- * Future subdirs (`profiles/` Phase 9) get added as they land.
+ *   - `profiles/` — trading-partner profile system (Phase 9)
  */
 export default cosyteVitest({
-  coverageDirs: ["parser", "loops", "transactions", "code-lists", "serialize", "builder"],
+  coverageDirs: [
+    "parser",
+    "loops",
+    "transactions",
+    "code-lists",
+    "serialize",
+    "builder",
+    "profiles",
+  ],
   test: {
     globals: false,
     environment: "node",

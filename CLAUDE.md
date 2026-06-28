@@ -8,6 +8,50 @@
 
 ## Status
 
+- **Phase 9 — profile system + clearinghouse/payer companion-guide quirk
+  attribution shipped (2026-06-28).** A `defineProfile()` API mirroring
+  the sibling `@cosyte/hl7` profile shape, plus a `profiles` namespace of
+  built-ins, in `src/profiles/`. **v1 profiles are DESCRIPTIVE**: the
+  lenient parser is already lossless, so a profile NEVER alters the parse —
+  it attaches attribution metadata to the returned interchange
+  (`ix.profile`) and powers the one behavioural hook, `partitionWarnings`.
+  Profile-on / profile-off divergence is attribution-only: `groups`,
+  `warnings`, and `isa` are byte-identical with and without a profile
+  (asserted by a divergence test). `defineProfile(spec)` validates
+  (fail-fast name → Levenshtein "did you mean?" on unknown keys → quirk
+  set), merges any `extends` lineage (flatten + dedupe first-occurrence;
+  child wins on quirk-id collision keeping first-seen position; scalar
+  `description` last-wins), re-validates the composed set, and returns a
+  frozen `X12Profile` whose `describe()` yields a **structured**
+  `X12ProfileDescription` bucketed by effect (`relaxes` / `adds` /
+  `requires`) — deliberately structured DATA, not hl7's formatted string.
+  `setDefaultProfile()` / `getDefaultProfile()` hold a process-scoped
+  default; an explicit `{ profile }` wins, `{ profile: null }` opts out for
+  that call. **The locked HARD RULE — "a profile entry without a Tier-2
+  fixture demonstrating the deviation is forbidden; no invented quirks" —
+  is enforced three ways:** the `fixture` field is required at the type
+  level, `defineProfile()` rejects a missing/ill-formed fixture path, and
+  the accuracy suite's per-quirk DEMONSTRATOR registry asserts each cited
+  fixture actually exhibits its claimed deviation — a shipped quirk with no
+  demonstrator FAILS the suite, so a real-but-irrelevant fixture cannot
+  slip past. Built-ins ship ONLY where a Tier-2 fixture grounds them:
+  `profiles.availity` (payer-loop `REF*2U` + service-line `REF*F8`,
+  grounded in `remit/835-availity-quirk.edi`) and `profiles.bcbsCommon`
+  (backslash component separator, grounded in
+  `envelope/bcbs-subelement.edi`); a generic Medicare-FFS-style profile
+  whose only "deviation" is the canonical `:` baseline is DEFERRED rather
+  than invented. Built-ins are reachable only through the `profiles`
+  namespace, never the top-level export (mirrors hl7). **API divergence
+  from hl7, by design:** `describe()` returns structured data (not a
+  string), the input type is `X12ProfileSpec`, and `partitionWarnings` is
+  x12-only — conscious departures driven by x12's lossless-lenient reality.
+  New public exports: `defineProfile`, `setDefaultProfile`,
+  `getDefaultProfile`, `partitionWarnings`, `profiles`, `X12ProfileError`,
+  and the `X12Profile` / `X12ProfileSpec` / `X12ProfileQuirk` /
+  `X12ProfileDescription` / `X12ProfileEffect` / `X12WarningPartition` type
+  tree. No new warning codes (registry unchanged at 22). Verify gate green
+  across typecheck, lint, format, phi-scan, coverage (per-dir ≥90 incl. the
+  new `profiles/` dir), build, attw, and verify:exports.
 - **Phase 8f — domain builders `build820` (005010X218 Premium Payment)
   and `build834` (005010X220A1 Benefit Enrollment) shipped
   (2026-06-28) — the v1 emit scope is now COMPLETE.** The emit
