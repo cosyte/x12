@@ -43,6 +43,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Domain builders — `build837P` / `build837I` / `build837D` (005010
+  837 Health Care Claim: Professional `X222A2`, Institutional `X223A3`,
+  Dental `X224A2`).** The claim-submission emit counterpart to
+  `get837Claims`, layered on the Phase 8 general builder and mirroring
+  the pure-function `build835` pattern — they NEVER auto-send, open a
+  socket, or touch the filesystem.
+  - **`build837P/I/D(spec)`** each assemble a complete `X12Interchange`
+    (one GS..GE group, GS-01 `HC`; one ST..SE 837, ST-03 per variant)
+    from a typed `Build837Spec` whose monetary fields are `X12Decimal`
+    throughout (BigInt-exact, never `parseFloat`). Segments emit in TR3
+    loop order (BHT → Loop 1000A/1000B parties → Loop 2000A/B/C HL spine
+    → Loop 2300 claim → Loop 2400 service lines, incl. 2410 drug / TOO /
+    2430 line adjudication) and the output round-trips through `parseX12`
+    so a well-formed spec is reproduced by `get837Claims`
+    field-for-field. One HI composite emits per HI segment so the read
+    side's per-bucket diagnosis/procedure order is preserved; same-group
+    line-adjudication CAS triples pack into one CAS segment (≤ 6 each).
+  - **The HL spine is computed, never caller-supplied.** The builder
+    computes every HL-01 id, HL-02 parent pointer (20 → 22 → 23), and
+    HL-04 has-child flag from the nested billing-provider → subscriber →
+    (claims | patient) tree, so an inconsistent hierarchy is
+    unrepresentable and SE-01 is correct by construction.
+  - **Refusal, not silent corruption.** Where `get837Claims` only WARNS
+    on a broken HL parent pointer, the builder REFUSES a structurally
+    impossible spec via a typed `Claim837BuildError`. Codes:
+    `X12_837_BUILD_INVALID_HIERARCHY` (no billing providers / a childless
+    billing provider / a subscriber with neither claim nor dependent
+    patient / a childless dependent patient) and
+    `X12_837_BUILD_INVALID_SPEC` (empty `claimId`, no service line, a
+    line whose `variant` mismatches the builder, an empty procedure /
+    revenue code, an over-long control number). The message carries
+    structural locators only (`billing[0].subscriber[0].claim[0]`, level
+    codes, counts) — never the `claimId` or a member id (PHI discipline).
+  - New public exports: `build837P`, `build837I`, `build837D`,
+    `Claim837BuildError`, `CLAIM_837_BUILD_ERROR_CODES`,
+    `Claim837BuildErrorCode`, and the `Build837Spec` type tree.
+  - Known limitation: claim-/line-level provider addresses (Loop
+    2310/2420 N3/N4) are a documented read-side limitation — the NM1
+    fields round-trip, the address does not.
 - **Domain builder — `build835` (005010X221A1 ERA).** The first
   per-transaction emit helper layers the safety-critical TR3 invariants
   on top of the Phase 8 general builder, mirroring the pure-function

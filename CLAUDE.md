@@ -8,6 +8,52 @@
 
 ## Status
 
+- **Phase 8c — claim-submission builders `build837P` / `build837I` /
+  `build837D` (005010 837 Professional `X222A2` / Institutional `X223A3`
+  / Dental `X224A2`) shipped (2026-06-28).** The emit counterpart to
+  `get837Claims`, layering on the Phase 8 general builder and mirroring
+  the pure-function `build835` pattern — each NEVER auto-sends, opens a
+  socket, or touches the filesystem. `build837P/I/D(spec)` assembles a
+  complete `X12Interchange` (one GS..GE functional group, GS-01 `HC`,
+  wrapping one ST..SE 837, ST-03 per variant) from a typed `Build837Spec`
+  whose monetary fields are `X12Decimal` throughout (BigInt-exact, never
+  `parseFloat`). Segments emit in TR3 loop order (BHT → Loop 1000A/1000B
+  parties → Loop 2000A/B/C HL spine → Loop 2300 claim: CLM / DTP / HI /
+  NTE / AMT / REF / 2310 providers / 2320 other subscribers → Loop 2400
+  service lines: LX / SVx / DTP / LIN+CTP / TOO / NTE / AMT / REF / 2420
+  providers / 2430 SVD+CAS+DTP), one HI composite per HI segment, and
+  consecutive same-group line-adjudication CAS triples pack into one
+  segment (≤ 6 each); the envelope emits inline (not via
+  `buildInterchange`) so a pre-composed composite is never
+  double-escaped. The result round-trips through `parseX12` so
+  `get837Claims` reproduces a well-formed spec field-for-field. **The HL
+  spine is computed, never caller-supplied:** the builder OWNS the 837's
+  safety primitive — it computes every HL-01 id, HL-02 parent pointer
+  (20 → 22 → 23), HL-03 level, and HL-04 has-child flag from the nested
+  billing-provider → subscriber → (claims | patient) tree, so a
+  structurally inconsistent hierarchy is _unrepresentable_ and SE-01 is
+  correct by construction. **Refusal, not silent corruption:** where the
+  lenient read side only WARNS on a broken HL parent pointer, the builder
+  REFUSES a structurally impossible spec via a typed `Claim837BuildError`
+  — codes `X12_837_BUILD_INVALID_HIERARCHY` (no billing providers, a
+  billing provider with no subscriber, a subscriber with neither a direct
+  claim nor a dependent patient, a dependent patient with no claim) and
+  `X12_837_BUILD_INVALID_SPEC` (empty `claimId`, a claim with no service
+  line, a line whose `variant` mismatches the builder, an empty
+  procedure / revenue code, an over-long control number). The thrown
+  message carries structural locators only
+  (`billing[0].subscriber[0].claim[0]`, level codes, counts) — never the
+  `claimId` (patient-account number) or a member id (PHI discipline). New
+  public exports: `build837P`, `build837I`, `build837D`,
+  `Claim837BuildError`, `CLAIM_837_BUILD_ERROR_CODES`,
+  `Claim837BuildErrorCode`, and the `Build837Spec` type tree. Verify gate
+  green (typecheck + lint + format + phi-scan + coverage per-dir ≥90 +
+  build + attw + verify:exports). **Known limitation:** claim-/line-level
+  provider addresses (Loop 2310/2420 N3/N4) are a documented read-side
+  limitation — the NM1 fields round-trip, the address does not. **Scope:**
+  the remaining domain builders (`build271`, `build277`, `build278`,
+  `build820`, `build834`) layer on this same surface and are deferred to
+  chained follow-ups (X12-8d → X12-8f).
 - **Phase 8b — first domain builder `build835` (005010X221A1 ERA)
   shipped (2026-06-28).** The first per-transaction emit constructor,
   layering the safety-critical TR3 balance invariants on top of the
