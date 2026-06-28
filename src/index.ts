@@ -46,6 +46,7 @@ export {
   unknownClaimStatus,
   unknownClaimStatusCategory,
   unknownHiQualifier,
+  unknownMaintenanceType,
   unknownRarc,
 } from "./parser/warnings.js";
 export type { X12ParseWarning, X12WarningCode } from "./parser/warnings.js";
@@ -93,6 +94,7 @@ export {
   CLAIM_STATUS_CATEGORY_CODES,
   CLAIM_STATUS_CODES,
   CLP_STATUS,
+  MAINTENANCE_TYPE_CODES,
   RARC,
   HI_QUALIFIERS,
   SERVICE_TYPE_CODES,
@@ -103,6 +105,7 @@ export {
   lookupClaimStatus,
   lookupClaimStatusCategory,
   lookupClpStatus,
+  lookupMaintenanceType,
   lookupRarc,
   lookupServiceType,
   resolveHiQualifier,
@@ -234,6 +237,74 @@ export {
   type X12StatusReference,
   type X12StatusTrace,
 } from "./transactions/status/index.js";
+
+// Phase 7 — 820 Premium Payment surface (TR3 005010X218).
+export {
+  PREMIUM_820_LOOP_1000A,
+  PREMIUM_820_LOOP_1000B,
+  PREMIUM_820_LOOP_2000A,
+  PREMIUM_820_LOOP_2100A,
+  PREMIUM_820_LOOP_2300A,
+  PREMIUM_820_LOOP_2310A,
+  get820Payments,
+  type X12PremiumAddress,
+  type X12PremiumAdjustment,
+  type X12PremiumDate,
+  type X12PremiumEntity,
+  type X12PremiumOpenItem,
+  type X12PremiumParty,
+  type X12PremiumPaymentHeader,
+  type X12PremiumPayments,
+  type X12PremiumPerson,
+  type X12PremiumReference,
+  type X12PremiumRemittance,
+  type X12PremiumTrace,
+} from "./transactions/premium/index.js";
+
+// Phase 7 — 834 Benefit Enrollment and Maintenance surface (TR3 005010X220A1).
+export {
+  ENROLLMENT_834_LOOP_1000A,
+  ENROLLMENT_834_LOOP_1000B,
+  ENROLLMENT_834_LOOP_2000,
+  ENROLLMENT_834_LOOP_2100A,
+  ENROLLMENT_834_LOOP_2300,
+  ENROLLMENT_834_LOOP_2320,
+  get834Enrollments,
+  get834Header,
+  type X12CoordinationOfBenefits,
+  type X12Enrollment,
+  type X12EnrollmentAddress,
+  type X12EnrollmentAmount,
+  type X12EnrollmentDate,
+  type X12EnrollmentHeader,
+  type X12EnrollmentMember,
+  type X12EnrollmentParty,
+  type X12EnrollmentReference,
+  type X12HealthCoverage,
+} from "./transactions/enrollment/index.js";
+
+// Phase 7 — 278 Health Care Services Review surface (request TR3 005010X217 /
+// response TR3 005010X216).
+export {
+  AUTH_278_LOOP_2000A,
+  AUTH_278_LOOP_2000B,
+  AUTH_278_LOOP_2000C,
+  AUTH_278_LOOP_2000D,
+  AUTH_278_LOOP_2000E,
+  AUTH_278_LOOP_2000F,
+  get278Request,
+  get278Response,
+  type X12AuthDate,
+  type X12AuthDiagnosis,
+  type X12AuthEntity,
+  type X12AuthHeader,
+  type X12AuthMember,
+  type X12AuthReference,
+  type X12AuthTrace,
+  type X12ReviewDecision,
+  type X12ServiceReview,
+  type X12ServicesReview,
+} from "./transactions/auth/index.js";
 
 // Phase 6 — shared HL hierarchy primitive (271 / 277 / 277CA walkers).
 export type { X12Hl } from "./transactions/shared/hl.js";

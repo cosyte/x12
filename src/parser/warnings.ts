@@ -56,6 +56,7 @@ export const WARNING_CODES = {
   X12_837_UNKNOWN_VARIANT: "X12_837_UNKNOWN_VARIANT",
   X12_UNKNOWN_CLAIM_STATUS_CATEGORY: "X12_UNKNOWN_CLAIM_STATUS_CATEGORY",
   X12_UNKNOWN_CLAIM_STATUS: "X12_UNKNOWN_CLAIM_STATUS",
+  X12_834_UNKNOWN_MAINTENANCE_TYPE: "X12_834_UNKNOWN_MAINTENANCE_TYPE",
 } as const;
 
 /**
@@ -730,6 +731,45 @@ export function unknownClaimStatus(position: X12Position, code: string): X12Pars
   return {
     code: WARNING_CODES.X12_UNKNOWN_CLAIM_STATUS,
     message: `Unknown claim status code (CSC) "${safe}" — code is outside the bundled snapshot; verbatim value preserved, description unavailable.`,
+    position,
+  };
+}
+
+/**
+ * INS-03 / HD-01 Maintenance Type Code shape per X12 0875 — a 3-digit
+ * numeric code (`"001"`, `"021"`, `"024"`). Used to guard
+ * `X12_834_UNKNOWN_MAINTENANCE_TYPE` so the parser never echoes arbitrary
+ * bytes from a hostile inbound element value — the H-PHI invariant.
+ * @internal
+ */
+const MAINTENANCE_TYPE_SHAPE_RE = /^[0-9]{3}$/u;
+
+/**
+ * Build an `X12_834_UNKNOWN_MAINTENANCE_TYPE` warning. Emitted by the 834
+ * helper when a member-level `INS-03` (or a health-coverage `HD-01`)
+ * maintenance type code falls outside the bundled snapshot (see
+ * {@link "../code-lists/maintenance-type.js".MAINTENANCE_TYPE_CODES}).
+ * Maintenance type is the 834's safety-critical field — an unknown action
+ * code must NEVER be silently coerced to add / change / terminate, so the
+ * verbatim code is preserved on the parsed enrollment and this warning
+ * flags the gap. The code value is shape-validated against `[0-9]{3}`
+ * before echoing; a hostile non-conformant value collapses to the literal
+ * `(non-spec)` (H-PHI invariant).
+ *
+ * @example
+ * ```ts
+ * import { unknownMaintenanceType } from "@cosyte/x12";
+ * const w = unknownMaintenanceType(
+ *   { segmentIndex: 9, interchangeIndex: 0, groupIndex: 0, transactionIndex: 0 },
+ *   "999",
+ * );
+ * ```
+ */
+export function unknownMaintenanceType(position: X12Position, code: string): X12ParseWarning {
+  const safe = MAINTENANCE_TYPE_SHAPE_RE.test(code) ? code : "(non-spec)";
+  return {
+    code: WARNING_CODES.X12_834_UNKNOWN_MAINTENANCE_TYPE,
+    message: `Unknown 834 maintenance type "${safe}" — INS-03/HD-01 code is outside the bundled snapshot; verbatim value preserved, action NOT inferred.`,
     position,
   };
 }
