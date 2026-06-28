@@ -18,6 +18,24 @@
  */
 
 export { get278Request, get278Response } from "./get-278.js";
+export { build278Request, build278Response } from "./build-278.js";
+export { AUTH_278_BUILD_ERROR_CODES, ServicesReview278BuildError } from "./build-errors.js";
+export type { ServicesReview278BuildErrorCode } from "./build-errors.js";
+export type {
+  Build278DateSpec,
+  Build278DecisionSpec,
+  Build278DependentSpec,
+  Build278DiagnosisSpec,
+  Build278EntitySpec,
+  Build278EnvelopeSpec,
+  Build278HeaderSpec,
+  Build278MemberSpec,
+  Build278ReferenceSpec,
+  Build278ReviewSpec,
+  Build278Spec,
+  Build278SubscriberSpec,
+  Build278TraceSpec,
+} from "./build-278-types.js";
 export {
   AUTH_278_LOOP_2000A,
   AUTH_278_LOOP_2000B,
