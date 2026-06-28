@@ -8,6 +8,39 @@
 
 ## Status
 
+- **Phase 6 — 271 Eligibility + 277 / 277CA Claim Status shipped
+  (2026-06-28).** `get271Eligibility(delimiters, tx)` (TR3
+  `005010X279A1`), `get277Status(delimiters, tx)` (TR3 `005010X212`),
+  and `get277CADisposition(delimiters, tx)` (TR3 `005010X214`). 277 and
+  277CA share one internal walk disambiguated by `ST-03` —
+  `get277CADisposition` admits only `005010X214`, `get277Status` admits
+  either; both return `undefined` only on a mis-routed `ST-01`.
+  **TRN echo is locked as the safety-critical reassociation property**:
+  a 271 echoes the requesting 270's `TRN-02` verbatim onto its
+  subscriber / dependent, a 277 echoes the 276's onto its claim — never
+  mutated, normalized, or dropped (round-trip property test). STC
+  status-code fidelity: STC-01 / STC-10 / STC-11 (C043) decode into
+  verbatim CSCC (source 507) + CSC (source 508) + entity triples;
+  unknown codes preserve their value and emit
+  `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` / `X12_UNKNOWN_CLAIM_STATUS`. A
+  277CA provider-level batch ack opens a claim on a standalone STC (no
+  TRN). HL parent-pointer integrity via the shared `validateHl` (271
+  spine `20→21→22→23`; 277 / 277CA spine `20→21→19→22→23`) — mismatches
+  emit `X12_HL_PARENT_MISMATCH` / `X12_HL_PARENT_LEVEL_INVALID`, never
+  silently re-numbered. New dated code-list snapshots
+  `CLAIM_STATUS_CATEGORY_CODES` / `CLAIM_STATUS_CODES` /
+  `SERVICE_TYPE_CODES` (+ lookups) alongside the CARC / RARC family. All
+  monetary fields decode as `X12Decimal`. 13 dogfooded `LoopSpec`
+  artifacts through `defineLoopSpec()` (7 eligibility + 7 status, Loop
+  2200 / 2220 reused across subscriber + dependent). Warning registry
+  expanded 18 → 20 (additions-only), both new factories shape-validate
+  the echoed code (H-PHI invariant). Shared `X12Hl` exported for result
+  types. Six synthetic fixtures (271 canonical + dependent; 277
+  canonical + unknown-status; 277CA batch-ack + HL-orphan), unit tests,
+  TRN-echo round-trip + byte-flip fuzz. Verify gate green: typecheck +
+  lint + format + coverage (per-dir ≥90) + build + attw +
+  verify:exports. 361 tests total. **Phase 7+ (278 services review, 834
+  enrollment, 820 premium) is the next surface.**
 - **Phase 5 — 837 Healthcare Claim (Professional / Institutional / Dental)
   shipped (2026-06-27).** `get837Claims(delimiters, tx, opts?)` walks a
   parsed 837 transaction set into the typed `X12_837Submission` model
@@ -48,8 +81,7 @@
   6 fixtures). Verify gate green: typecheck + lint + format + coverage
   (96.91% stmts / 90.61% branches / 97.67% funcs / 98.49% lines;
   per-dir ≥90) + build + attw + verify:exports. 325 tests total.
-  **Phase 6 — `get271Eligibility`/`get277Status`/`get277CADisposition`
-  (eligibility + claim status) is the next safety-critical phase.**
+  **Phase 6 (eligibility + claim status) shipped 2026-06-28 — see above.**
 - **Phase 4 — 835 Healthcare Claim Payment/Advice (ERA) shipped (2026-06-27).**
   `get835(delimiters, tx)` walks a parsed 835 transaction set into the
   typed `X12Remittance` model: BPR payment header, TRN trace numbers,
@@ -112,14 +144,12 @@
 - On the shared cosyte engineering standard (migrated Phase E) — toolchain inherited from the
   published `@cosyte/*` config packages, CI/release are thin callers of `cosyte/.github`. Per-directory
   ≥90 coverage gate armed on `src/parser/`.
-- Pre-alpha `0.0.x`, not published to npm. Next: **Phase 6** —
-  `get271Eligibility()` (`005010X279A1`) + `get277Status()` (`005010X212`) +
-  `get277CADisposition()` (`005010X214`) for eligibility + claim-status.
-  271 MUST echo the requesting 270's TRN verbatim (safety-critical
-  reassociation path); 277CA is the high-volume clearinghouse
-  acknowledgment, not the same TR3 as 277-as-status. Bundled service-type
-  - CSCC / CSC code-list snapshots land alongside the existing CARC /
-    RARC / CLP_STATUS / HI_QUALIFIERS family.
+- Pre-alpha `0.0.x`, not published to npm. Next: **Phase 7+** — 278
+  services review (request + response), 834 benefit enrollment, and 820
+  premium payment round out the v1 scope. The eligibility (271) +
+  claim-status (277 / 277CA) surface shipped in Phase 6 with the
+  service-type + CSCC / CSC snapshots now living alongside the CARC /
+  RARC / CLP_STATUS / HI_QUALIFIERS family.
 
 ## v1 Scope Snapshot
 

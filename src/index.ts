@@ -43,6 +43,8 @@ export {
   unexpectedSegment,
   unknown837Variant,
   unknownCarc,
+  unknownClaimStatus,
+  unknownClaimStatusCategory,
   unknownHiQualifier,
   unknownRarc,
 } from "./parser/warnings.js";
@@ -88,15 +90,21 @@ export { X12Decimal } from "./decimal.js";
 export {
   CARC,
   CLAIM_ADJUSTMENT_GROUP_CODES,
+  CLAIM_STATUS_CATEGORY_CODES,
+  CLAIM_STATUS_CODES,
   CLP_STATUS,
   RARC,
   HI_QUALIFIERS,
+  SERVICE_TYPE_CODES,
   isClaimAdjustmentGroupCode,
   isDiagnosisQualifier,
   isProcedureQualifier,
   lookupCarc,
+  lookupClaimStatus,
+  lookupClaimStatusCategory,
   lookupClpStatus,
   lookupRarc,
+  lookupServiceType,
   resolveHiQualifier,
   type ClaimAdjustmentGroupCode,
   type CodeListEntry,
@@ -180,6 +188,55 @@ export {
   type X12_837ServiceLineProfessional,
   type X12_837Submission,
 } from "./transactions/claim/index.js";
+
+// Phase 6 — 271 Health Care Eligibility Benefit Response surface (TR3 005010X279A1).
+export {
+  ELIGIBILITY_271_LOOP_2000A,
+  ELIGIBILITY_271_LOOP_2000B,
+  ELIGIBILITY_271_LOOP_2000C,
+  ELIGIBILITY_271_LOOP_2000D,
+  ELIGIBILITY_271_LOOP_2100C,
+  ELIGIBILITY_271_LOOP_2100D,
+  ELIGIBILITY_271_LOOP_2110,
+  get271Eligibility,
+  type X12Eligibility,
+  type X12EligibilityAddress,
+  type X12EligibilityBenefit,
+  type X12EligibilityDate,
+  type X12EligibilityDependent,
+  type X12EligibilityEntity,
+  type X12EligibilityMember,
+  type X12EligibilityReference,
+  type X12EligibilityServiceType,
+  type X12EligibilitySubscriber,
+  type X12EligibilityTrace,
+} from "./transactions/eligibility/index.js";
+
+// Phase 6 — 277 / 277CA Claim Status surface (TR3s 005010X212 / X214).
+export {
+  STATUS_277_LOOP_2000A,
+  STATUS_277_LOOP_2000B,
+  STATUS_277_LOOP_2000C,
+  STATUS_277_LOOP_2000D,
+  STATUS_277_LOOP_2000E,
+  STATUS_277_LOOP_2200,
+  STATUS_277_LOOP_2220,
+  get277CADisposition,
+  get277Status,
+  type X12ClaimStatus,
+  type X12ClaimStatusResponse,
+  type X12ServiceLineStatus,
+  type X12StatusCode,
+  type X12StatusDate,
+  type X12StatusEntity,
+  type X12StatusInfo,
+  type X12StatusMember,
+  type X12StatusReference,
+  type X12StatusTrace,
+} from "./transactions/status/index.js";
+
+// Phase 6 — shared HL hierarchy primitive (271 / 277 / 277CA walkers).
+export type { X12Hl } from "./transactions/shared/hl.js";
 
 // Phase 3 — acknowledgments surface: parse / build 999 (005010X231A1) and
 // envelope-level TA1 as pure functions. See `src/transactions/ack/index.ts`

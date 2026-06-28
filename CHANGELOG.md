@@ -9,6 +9,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 6 — 271 Eligibility Benefit Response + 277 / 277CA Claim
+  Status — TR3s `005010X279A1` (270/271), `005010X212` (276/277),
+  `005010X214` (277CA).** Three new public walkers:
+  `get271Eligibility(delimiters, tx)`, `get277Status(delimiters, tx)`,
+  and `get277CADisposition(delimiters, tx)`. 277 and 277CA share one
+  internal walk disambiguated by the `ST-03` implementation-convention
+  reference — `get277CADisposition` admits only `005010X214`;
+  `get277Status` admits either. Each returns `undefined` only on a
+  mis-routed call (wrong `ST-01`); every recoverable deviation is a
+  warning, never a throw.
+  - **TRN echo (safety-critical reassociation).** A 271 echoes the
+    requesting 270's `TRN-02` trace verbatim onto its enclosing
+    subscriber / dependent, and a 277 echoes the 276's onto its claim,
+    so the provider can re-associate the answer with the request it
+    sent — the walkers NEVER mutate, normalize, or drop the trace. A
+    round-trip property test asserts byte-for-byte echo across an
+    arbitrary trace grammar.
+  - **Status-code fidelity (277 family).** Each STC composite
+    (STC-01 / STC-10 / STC-11, C043) decodes into a verbatim CSCC
+    (Claim Status Category Code, X12 source 507) + CSC (Claim Status
+    Code, source 508) + responsible-entity triple. Bundled snapshot
+    descriptions resolve when known; codes outside the subset preserve
+    their verbatim value and emit `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` /
+    `X12_UNKNOWN_CLAIM_STATUS`. A 277CA provider-level batch
+    acknowledgment opens a claim on a standalone STC (no TRN).
+  - **HL parent-pointer integrity.** Enforced through the shared
+    `validateHl` primitive — 271 spine `20 → 21 → 22 → 23`; 277 / 277CA
+    spine `20 → 21 → 19 → 22 → 23`. A dangling or mis-levelled parent
+    emits `X12_HL_PARENT_MISMATCH` / `X12_HL_PARENT_LEVEL_INVALID`; the
+    walker NEVER silently re-numbers and the verbatim declared parent id
+    is preserved.
+  - **Bundled code-list snapshots.** `CLAIM_STATUS_CATEGORY_CODES`,
+    `CLAIM_STATUS_CODES`, and `SERVICE_TYPE_CODES` ship as dated,
+    versioned data artifacts alongside the CARC / RARC family, with
+    `lookupClaimStatusCategory` / `lookupClaimStatus` /
+    `lookupServiceType`.
+  - All monetary fields (EB amounts, STC charge / payment, SVC line
+    charge / payment) decode as `X12Decimal`, never `parseFloat`. 13
+    dogfooded `LoopSpec` artifacts ship through `defineLoopSpec()`
+    (7 eligibility + 7 status; Loop 2200 / 2220 reused across the
+    subscriber + dependent branches). Warning registry expanded 18 → 20
+    (additions-only); both new factories shape-validate the echoed code
+    (H-PHI invariant). Shared `X12Hl` HL primitive exported for the
+    result types. Six synthetic fixtures + unit tests + byte-flip fuzz
+    (never-throw outside the 4 Tier-3 fatals) across every Phase 6
+    fixture.
+  - **Known limitations (deferred):** AAA request-validation segments,
+    HSD detail, and III / LS / LE markers in the 271, plus QTY / AMT
+    claim-summary roll-ups in a 277CA Loop 2200, are preserved on
+    `tx.segments` verbatim but not yet typed onto the model.
 - **Phase 5 — 837 Healthcare Claim — TR3s `005010X222A2` (Professional),
   `005010X223A3` (Institutional), `005010X224A2` (Dental).** The
   claim-creation surface — the volume side of HIPAA EDI traffic.
