@@ -43,6 +43,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Domain builders — `build278Request` (005010X217 Health Care Services
+  Review — Request for Review) and `build278Response` (005010X216 Services
+  Review — Response).** The emit counterparts to `get278Request` /
+  `get278Response`, layered on the Phase 8 general builder and mirroring
+  the pure-function `build277` / `build277CA` pattern — they NEVER
+  auto-send, open a socket, or touch the filesystem, and return a frozen
+  `X12Interchange`.
+  - **`build278Request(spec)` / `build278Response(spec)`** share one
+    `buildServicesReview` body (GS-01 `HI`, ST-01 `278`) and differ only
+    in ST-03 / GS-08 (`005010X217` vs `005010X216`) and the HCR direction
+    gate. They assemble a complete interchange from a typed `Build278Spec`
+    (envelope + BHT header + the UMO → requester → subscriber →
+    (dependent) → reviews tree). Segments emit in TR3 loop order (BHT →
+    HL 20 UMO → HL 21 requester → HL 22 subscriber NM1/DMG → [HL 23
+    dependent] → HL EV/SS review: TRN → UM → HCR → REF → DTP → HI → MSG →
+    provider NM1s, recursing SS service reviews under their EV event), and
+    the output round-trips through `parseX12` so a well-formed spec is
+    reproduced field-for-field.
+  - **The certification decision is the safety-critical, response-only
+    surface.** `build278Response` places the caller-supplied HCR-01
+    `actionCode` (`A1` certified / `A3` not-certified / `A4` pended / `A6`
+    modified / …) into the segment VERBATIM and NEVER infers, normalizes,
+    or upgrades it — the round-tripped `decision.actionCode` is
+    byte-for-byte the input. `build278Request` REFUSES a review carrying a
+    decision (HCR is response-only); `build278Response` refuses a decision
+    with an empty action code.
+  - **The HL spine is computed, never caller-supplied.** The builder
+    computes every HL-01 id, HL-02 parent pointer (`20 → 21 → 22 → 23 →
+EV/SS`), and HL-04 has-child flag from the nested input tree, so an
+    inconsistent hierarchy is unrepresentable and SE-01 is correct by
+    construction.
+  - **Refusal, not silent corruption.** The builder REFUSES a
+    structurally impossible spec via a typed `ServicesReview278BuildError`
+    (`X12_278_BUILD_INVALID_HIERARCHY` — a subscriber with neither a
+    review nor a dependent, a dependent with no review;
+    `X12_278_BUILD_INVALID_SPEC` — a review with no request category code,
+    a request review carrying an HCR decision, a response decision with an
+    empty action code, an over-long control number). The message carries
+    structural locators only (`subscriber.review[0]`, level codes) — never
+    a member name, member id, trace, or diagnosis code (PHI discipline).
+  - New public exports: `build278Request`, `build278Response`,
+    `ServicesReview278BuildError`, `AUTH_278_BUILD_ERROR_CODES`,
+    `ServicesReview278BuildErrorCode`, and the `Build278Spec` type tree.
 - **Domain builders — `build271` (005010X279A1 Eligibility Benefit
   Response) and `build277` / `build277CA` (005010X212 Claim Status
   Response / 005010X214 Claim Acknowledgment).** The response-side emit
