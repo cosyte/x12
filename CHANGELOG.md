@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Dev-dependency advisory remediation (no runtime impact —
+  `@cosyte/x12` ships zero runtime dependencies).** Added scoped
+  `pnpm.overrides` pinning two transitive **dev/build-time** packages to
+  their patched releases: `esbuild` (`>=0.27.3 <0.28.1` → `0.28.1`,
+  GHSA dev-server path-traversal — unreachable here: a library build
+  via `tsup`/`vitest`, never `esbuild serve`) and the
+  `@changesets/parse` copy of `js-yaml` (`>=4.0.0 <4.2.0` → `4.2.0`,
+  GHSA-h67p-54hq-rp68 merge-key DoS). The `js-yaml@3.14.2` pulled by
+  `read-yaml-file@1.1.0` (via `@manypkg/get-packages` →
+  `@changesets/cli`) is **intentionally left** — it calls
+  `yaml.safeLoad`, removed/throwing in js-yaml 4, so it cannot be
+  force-upgraded without breaking the release tooling; it only parses
+  trusted local repo YAML at release time. Verify gate green on the
+  upgraded tree.
+
 ### Added
 
 - **Phase 7 — 278 services review + 834 enrollment + 820 premium
