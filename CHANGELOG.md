@@ -9,6 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 7 — 278 services review + 834 enrollment + 820 premium
+  payment (the v1 transaction scope rounds out).** Four new read-side
+  helpers: `get278Request` / `get278Response` (TR3 `005010X217` /
+  `005010X216`), `get820Payments` (TR3 `005010X218`), and the streaming
+  pair `get834Header` + `get834Enrollments` (TR3 `005010X220A1`).
+  - **Safety-critical fields preserved verbatim, never inferred.** The
+    278 response `HCR-01` certification action (certified /
+    not-certified / pended / modified) is captured as-is on each event /
+    service review; the 834 `INS-03` / `HD-01` maintenance type (X12 0875) is preserved and an unknown code raises
+    `X12_834_UNKNOWN_MAINTENANCE_TYPE` on the affected member only — no
+    action is ever synthesized.
+  - **834 streaming.** `get834Enrollments` is an
+    `AsyncIterable<X12Enrollment>` yielding one member per `INS` loop;
+    a streaming property test drives a 10MB+ synthetic roster with
+    early-break. (Honest limitation: v1 still parses into `tx.segments`
+    up front — a true file→iterator source is a v2 item.)
+  - **278 HL spine** `20 → 21 → 22 → 23` validated via the shared
+    `validateHl`; the `EV` / `SS` event + service levels are
+    deliberately tolerant (omitted from the expected-parent map).
+  - **820** surfaces the BPR payment header, TRN traces, receiver
+    (`N1*PE`) + remitter (`N1*PR` / `N1*RM`) parties with addresses, and
+    both `ENT` organization-summary and bare-`NM1` individual
+    remittances with RMR open items, DTM dates, and ADX adjustments.
+  - All monetary fields decode as `X12Decimal` (BigInt-exact, never
+    `parseFloat`). 12 dogfooded `LoopSpec` artifacts ship through the
+    public `defineLoopSpec()` (6 × 278 + 3 × 820 + 3 × 834). Warning
+    registry expanded by `X12_834_UNKNOWN_MAINTENANCE_TYPE`
+    (additions-only); its factory shape-validates the echoed code
+    (H-PHI invariant). Synthetic fixtures across all three surfaces,
+    unit tests, and the 834 streaming property. Serialization is
+    Phase 8.
 - **PHI commit-gate — a zero-dependency, X12-shape-aware PHI scanner
   (`scripts/phi-scan.ts`, run via `pnpm phi-scan`).** Guards the
   synthetic fixture corpus: it refuses any test fixture or `src/` file

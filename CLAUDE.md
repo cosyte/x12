@@ -8,6 +8,38 @@
 
 ## Status
 
+- **Phase 7 — 278 Services Review + 834 Enrollment + 820 Premium
+  Payment shipped (2026-06-28).** Four read-side helpers round out the
+  v1 transaction scope: `get278Request` / `get278Response` (TR3
+  `005010X217` / `005010X216`) share one lenient HL-tree walk and differ
+  only in the `direction` recorded on the result; `get820Payments` (TR3
+  `005010X218`); and the streaming pair `get834Header` +
+  `get834Enrollments` (TR3 `005010X220A1`). **Safety-critical fields are
+  preserved verbatim and NEVER inferred**: the 278 response `HCR-01`
+  certification action lands as-is on each event / service review, and
+  the 834 `INS-03` / `HD-01` maintenance type (X12 0875) is preserved
+  with an unknown code raising `X12_834_UNKNOWN_MAINTENANCE_TYPE` on the
+  affected member only. `get834Enrollments` is an
+  `AsyncIterable<X12Enrollment>` — one decoded member per `INS` loop, so
+  a consumer holds one member at a time, not the whole roster (streaming
+  property test over a 10MB+ synthetic file with early-break; honest
+  v1 limitation: the file is still parsed into `tx.segments` up front).
+  The 278 HL spine `20 → 21 → 22 → 23` is validated via the shared
+  `validateHl`; the `EV` / `SS` event + service levels are deliberately
+  tolerant (omitted from the expected-parent map). The 820 surfaces the
+  BPR header, TRN traces, receiver (`N1*PE`) + remitter (`N1*PR` /
+  `N1*RM`) parties with addresses, and both `ENT` organization-summary
+  and bare-`NM1` individual remittances with RMR open items, DTM dates,
+  and ADX adjustments. All monetary fields decode as `X12Decimal`. 12
+  dogfooded `LoopSpec` artifacts via `defineLoopSpec()` (6 × 278 +
+  3 × 820 + 3 × 834). Warning registry expanded by
+  `X12_834_UNKNOWN_MAINTENANCE_TYPE` (additions-only), shape-validating
+  the echoed code (H-PHI invariant). Synthetic fixtures across all three
+  surfaces (278 request / response / comprehensive / edge; 820 canonical
+  / edge / loop; 834 canonical / edge) + unit tests. Verify gate green
+  across typecheck, lint, format, phi-scan, coverage (per-dir ≥90),
+  build, attw, and verify:exports. 407 tests total. **Serialization
+  (build side) for all v1 transactions is the next surface (Phase 8).**
 - **Phase 6 — 271 Eligibility + 277 / 277CA Claim Status shipped
   (2026-06-28).** `get271Eligibility(delimiters, tx)` (TR3
   `005010X279A1`), `get277Status(delimiters, tx)` (TR3 `005010X212`),
@@ -156,12 +188,11 @@
   `phi-scan-overrides.md`. Runs at pre-commit (`simple-git-hooks
 --staged`) and in CI (`run-phi-scan: true`); the `verify.sh` summary
   now shows `phi-scan ✓`.
-- Pre-alpha `0.0.x`, not published to npm. Next: **Phase 7+** — 278
-  services review (request + response), 834 benefit enrollment, and 820
-  premium payment round out the v1 scope. The eligibility (271) +
-  claim-status (277 / 277CA) surface shipped in Phase 6 with the
-  service-type + CSCC / CSC snapshots now living alongside the CARC /
-  RARC / CLP_STATUS / HI_QUALIFIERS family.
+- Pre-alpha `0.0.x`, not published to npm. The full v1 **read** scope is
+  now decoded (270/271, 276/277/277CA, 278, 820, 834, 835, 837P/I/D, 999,
+  TA1). Next: **Phase 8** — serialization (build side) for the
+  transaction sets, mirroring the pure-function `build999` / `buildTA1`
+  pattern already shipped for the acknowledgments.
 
 ## v1 Scope Snapshot
 
