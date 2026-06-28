@@ -1,0 +1,81 @@
+# scripts/phi-allow-list.txt
+#
+# PHI-scan allow-list — the positive declaration that a fixture's identifiers
+# are synthetic. `scripts/phi-scan.ts` reads this file; any realistic-PHI-shaped
+# token NOT covered here is a hit. X12 `.edi` files cannot carry an inline
+# `# synthetic: true` header (the ISA segment must start at byte 0), so this
+# allow-list is the synthetic-fixture declaration mechanism — the same approach
+# `@cosyte/dicom` uses for binary `.dcm` files.
+#
+# Format: `<TAG> <value>` per line. `#` comments and blank lines are ignored.
+#   NAME <token>         synthetic person/contact-name word (NM1 / PER name elements), case-insensitive
+#   DOB <CCYYMMDD>       synthetic date of birth (DMG*D8) — exempt from the date-of-service cutoff
+#   ID <value>           synthetic id that legitimately matches an SSN/EIN/NPI 9-or-10-digit shape
+#   EMAILDOMAIN <domain> reserved/test email domain that is allowed to appear
+#
+# To add a new synthetic fixture: reuse the tokens below, or append new ones here
+# and commit. Adding a token is a reviewed, intentional act — never silent.
+
+# --- Synthetic person + contact name tokens (NM1 entity-type-1, PER02) ---
+# Patient / subscriber / dependent placeholders
+NAME TEST
+NAME PATIENT
+NAME SUB
+NAME LAST
+NAME ORPHAN
+NAME OTHER
+NAME SUBSCRIBER
+NAME PARENT
+NAME CHILD
+NAME FAMILY
+NAME DOE
+NAME ROE
+NAME JANE
+NAME JOHN
+NAME BABY
+NAME SAM
+# Greek-letter placeholder surnames (835 multi-claim corpus)
+NAME ALPHA
+NAME BETA
+NAME GAMMA
+NAME DELTA
+NAME EPSILON
+NAME ZETA
+# Provider / role placeholders (rendering / attending / referring)
+NAME RENDERING
+NAME ATTENDING
+NAME REFERRING
+NAME PROVIDER
+NAME DOCTOR
+NAME DENTIST
+# Contact-name placeholders (PER02)
+NAME SUBMITTER
+NAME RECV
+NAME CONTACT
+NAME BILLER
+NAME COORDINATOR
+NAME AVAILITY
+NAME OPS
+NAME PAYER
+
+# --- Synthetic dates of birth (DMG*D8) ---
+DOB 19750505
+DOB 19800101
+DOB 19850101
+DOB 19850515
+DOB 19900101
+DOB 20200101
+DOB 20240101
+
+# --- Synthetic ids matching SSN/EIN 9-digit shapes (REF*SY / REF*EI) ---
+ID 987654321
+ID 111223333
+ID 444556666
+ID 555667777
+ID 111111111
+
+# --- Reserved / test email domains ---
+EMAILDOMAIN example.test
+EMAILDOMAIN example.com
+EMAILDOMAIN example.org
+EMAILDOMAIN example.net

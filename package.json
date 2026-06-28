@@ -60,19 +60,24 @@
     "build": "tsup",
     "changeset": "changeset",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --max-warnings=0",
-    "lint:fix": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --fix",
-    "format": "prettier --write \"src/**/*.{ts,md}\" \"test/**/*.ts\" \"*.{json,md,yml,yaml}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,md}\" \"test/**/*.ts\" \"*.{json,md,yml,yaml}\"",
+    "lint": "eslint \"src/**/*.ts\" \"scripts/**/*.ts\" \"test/**/*.ts\" --max-warnings=0 --no-error-on-unmatched-pattern",
+    "lint:fix": "eslint \"src/**/*.ts\" \"scripts/**/*.ts\" \"test/**/*.ts\" --fix --no-error-on-unmatched-pattern",
+    "format": "prettier --write \"src/**/*.{ts,md}\" \"scripts/**/*.ts\" \"test/**/*.ts\" \"*.{json,md,yml,yaml}\" --no-error-on-unmatched-pattern",
+    "format:check": "prettier --check \"src/**/*.{ts,md}\" \"scripts/**/*.ts\" \"test/**/*.ts\" \"*.{json,md,yml,yaml}\" --no-error-on-unmatched-pattern",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "clean": "rm -rf dist coverage *.tsbuildinfo",
+    "phi-scan": "tsx scripts/phi-scan.ts",
     "verify:exports": "node scripts/verify-exports.mjs && node scripts/verify-exports.cjs",
     "pack:docs": "bash scripts/build-docs-artifacts.sh",
     "attw": "attw --pack .",
     "release": "changeset publish",
-    "prepublishOnly": "pnpm clean && pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm attw"
+    "prepublishOnly": "pnpm clean && pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm attw",
+    "prepare": "command -v simple-git-hooks >/dev/null 2>&1 && simple-git-hooks || true"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm phi-scan --staged"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.4",
@@ -88,7 +93,9 @@
     "eslint": "10.5.0",
     "fast-check": "3.23.2",
     "prettier": "3.8.3",
+    "simple-git-hooks": "2.13.0",
     "tsup": "8.5.1",
+    "tsx": "4.21.0",
     "typescript": "5.9.3",
     "vite": "7.3.6",
     "vitest": "4.1.4"
