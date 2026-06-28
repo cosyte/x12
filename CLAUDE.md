@@ -144,6 +144,18 @@
 - On the shared cosyte engineering standard (migrated Phase E) — toolchain inherited from the
   published `@cosyte/*` config packages, CI/release are thin callers of `cosyte/.github`. Per-directory
   ≥90 coverage gate armed on `src/parser/`.
+- **PHI commit-gate armed (2026-06-28).** A zero-dep, X12-shape-aware
+  scanner (`scripts/phi-scan.ts`, `pnpm phi-scan`) refuses fixtures /
+  `src/` carrying real-PHI-shaped tokens — NM1 person names + SSN
+  qualifier `34`, MI member-id / XX NPI shapes, DMG dates of birth,
+  pre-2024 DTP/DTM/BHT/GS dates, dashed SSN / `REF*SY` / non-test
+  email. Synthetic tokens are positively declared in
+  `scripts/phi-allow-list.txt` (X12 is byte-strict, so no inline header
+  — same allow-list model as DICOM's binary `.dcm`); a whole-file
+  bypass needs `--allow-fixture` **and** an audit entry in
+  `phi-scan-overrides.md`. Runs at pre-commit (`simple-git-hooks
+--staged`) and in CI (`run-phi-scan: true`); the `verify.sh` summary
+  now shows `phi-scan ✓`.
 - Pre-alpha `0.0.x`, not published to npm. Next: **Phase 7+** — 278
   services review (request + response), 834 benefit enrollment, and 820
   premium payment round out the v1 scope. The eligibility (271) +

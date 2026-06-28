@@ -15,6 +15,9 @@ permissions:
 
 jobs:
   # Universal gates from the shared pipeline (typecheck, lint, format, test, coverage, build, attw,
-  # dual ESM/CJS smoke, actionlint) on the standard Node matrix (22 + 24).
+  # dual ESM/CJS smoke, actionlint) on the standard Node matrix (22 + 24). x12 ships a PHI scanner,
+  # so the shared pipeline's optional PHI-scan step is switched on.
   ci:
     uses: cosyte/.github/.github/workflows/ci.yml@main
+    with:
+      run-phi-scan: true

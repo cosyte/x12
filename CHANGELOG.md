@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **PHI commit-gate — a zero-dependency, X12-shape-aware PHI scanner
+  (`scripts/phi-scan.ts`, run via `pnpm phi-scan`).** Guards the
+  synthetic fixture corpus: it refuses any test fixture or `src/` file
+  carrying real-PHI-shaped tokens so a developer cannot commit a
+  real-looking interchange by accident. Wired into the pre-commit hook
+  (`simple-git-hooks` → `phi-scan --staged`) and CI (the reusable
+  `cosyte/.github` pipeline's `run-phi-scan: true`); flips the local
+  `scripts/verify.sh` summary from `phi-scan SKIP` to `phi-scan ✓`.
+  - **Synthetic allow-list, not an inline header.** X12 `.edi` is
+    byte-strict (ISA must start at byte 0), so an inline
+    `# synthetic: true` marker is impossible — it would break every
+    parser test. Same constraint DICOM hits with binary `.dcm`, so the
+    same proven solution: `scripts/phi-allow-list.txt` positively
+    declares which names / dates-of-birth / ids / email-domains are
+    fake. Any realistic-PHI token outside the allow-list is a hit.
+  - **Segment-aware scan** for ISA-detected files: NM1 person-name
+    tokens (entity-type-1) and SSN qualifier `34`, MI member-id and XX
+    NPI shapes, DMG date-of-birth (any format qualifier, not just
+    `D8`), and DTP / DTM / BHT / GS service/transaction dates before 2024. Every file also gets a cross-cutting shape pass (dashed SSN,
+    `REF*SY` SSN, non-test email). Non-X12 targets (hand-written
+    `src/`, plain text) get the conservative shape pass only, so JSDoc
+    `@example` snippets don't trip it.
+  - **Audited bypass.** A whole-file `--allow-fixture <path>` is
+    rejected unless `phi-scan-overrides.md` carries a matching
+    `### <path>` entry, so a silenced file is always a recorded act.
+    Every subprocess is `git` via `execFileSync` array args — no shell
+    form. Unit tests cover the clean interchange, each violator class,
+    the plain-text pass, and both arms of the override gate.
+
 - **Phase 6 — 271 Eligibility Benefit Response + 277 / 277CA Claim
   Status — TR3s `005010X279A1` (270/271), `005010X212` (276/277),
   `005010X214` (277CA).** Three new public walkers:
