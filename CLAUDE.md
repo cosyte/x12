@@ -8,6 +8,49 @@
 
 ## Status
 
+- **Phase 8b — first domain builder `build835` (005010X221A1 ERA)
+  shipped (2026-06-28).** The first per-transaction emit constructor,
+  layering the safety-critical TR3 balance invariants on top of the
+  Phase 8 general builder and mirroring the pure-function `build999` /
+  `buildTA1` pattern — it NEVER auto-sends, opens a socket, or touches
+  the filesystem. `build835(spec)` assembles a complete `X12Interchange`
+  (one GS..GE functional group, GS-01 `HP`, wrapping one ST..SE 835,
+  ST-03 `005010X221A1`) from a typed `Build835Spec` whose monetary
+  fields are `X12Decimal` throughout (BigInt-exact, never `parseFloat`).
+  Segments emit in TR3 loop order (BPR → TRN → Loop 1000A/1000B parties
+  → LX → Loop 2100 claims → Loop 2110 service lines → PLB); composite
+  elements (CLP-08, SVC-01, SVC-06, PLB) escape each component then join
+  with the raw component separator (the envelope is emitted inline, not
+  via `buildInterchange`, precisely to avoid double-escaping a
+  pre-composed element); consecutive same-group CAS and same-provider /
+  period PLB adjustments pack into one segment (≤ 6 triples / pairs). The
+  result round-trips through `parseX12` so `get835` reproduces a balanced
+  spec field-for-field. **Refusal, not silent corruption:** where the
+  lenient read side only WARNS on an out-of-balance payer artifact, the
+  builder REFUSES via a typed `Remit835BuildError`, reusing the
+  authoritative read-side validators (`checkServiceLineBalance` /
+  `checkClaimBalance` / `checkRemitTotalBalance`) against a materialized
+  read model so the emit guard and the parse warning share one source of
+  truth — error codes `X12_835_BUILD_BALANCE_MISMATCH` (any §1.10.2
+  invariant) and `X12_835_BUILD_INVALID_SPEC` (no TRN trace, empty
+  CLP-01, over-long ISA-13). The thrown message carries numeric totals
+  only — never a patient-control number or member id (PHI discipline).
+  New public exports: `build835`, `Remit835BuildError`,
+  `REMIT_835_BUILD_ERROR_CODES`, `Remit835BuildErrorCode`, and the
+  `Build835Spec` type tree. **Parser fix surfaced by the round-trip
+  review:** `splitSegments` used a naive `indexOf` for the segment
+  terminator and split mid-value on a `?`-release-escaped terminator
+  (`?~`); it is now release-aware via `findUnescapedTerminator` (a
+  degenerate terminator-is-release delimiter set falls back to the
+  literal scan), underpinning both the `build835` round-trip and the
+  Phase 8 `serialize(parse(s)) === s` fixed point; regression tests at
+  the parser (`parser-envelope`) and builder level. Verify gate green
+  (typecheck + lint + format + phi-scan + coverage per-dir ≥90,
+  `build-835.ts` at 94.6% branches + build + attw + verify:exports).
+  **Scope:** this slice is `build835` only — the remaining domain
+  builders (`build837P/I/D`, `build271`, `build277` / `277CA`,
+  `build278Request/Response`, `build820`, `build834`) layer on this same
+  surface and are deferred to chained follow-ups (X12-8c → X12-8f).
 - **Phase 8 — spec-clean serializer + general interchange builder
   shipped (2026-06-28).** The emit half of the parser. `serializeX12(ix,
 opts?)` reconstructs an `X12Interchange` back to bytes from the
