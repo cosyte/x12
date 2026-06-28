@@ -18,6 +18,39 @@
  */
 
 export { HL_LEVEL_CODES, NM1_QUALIFIERS, get837Claims } from "./get-837.js";
+export { build837D, build837I, build837P } from "./build-837.js";
+export {
+  CLAIM_837_BUILD_ERROR_CODES,
+  Claim837BuildError,
+  type Claim837BuildErrorCode,
+} from "./build-errors.js";
+export type {
+  Build837AddressSpec,
+  Build837AdjudicationSpec,
+  Build837AdjustmentSpec,
+  Build837AmountSpec,
+  Build837BillingProviderSpec,
+  Build837ClaimSpec,
+  Build837ContactSpec,
+  Build837DateSpec,
+  Build837DrugSpec,
+  Build837EntitySpec,
+  Build837EnvelopeSpec,
+  Build837HiCodeSpec,
+  Build837NoteSpec,
+  Build837OtherSubscriberSpec,
+  Build837PatientSpec,
+  Build837ReferenceSpec,
+  Build837ServiceLineBaseSpec,
+  Build837ServiceLineDentalSpec,
+  Build837ServiceLineInstitutionalSpec,
+  Build837ServiceLineProfessionalSpec,
+  Build837ServiceLineSpec,
+  Build837Spec,
+  Build837SubscriberInfoSpec,
+  Build837SubscriberSpec,
+  Build837ToothSpec,
+} from "./build-837-types.js";
 export {
   CLAIM_837D_LOOP_2000A,
   CLAIM_837D_LOOP_2300,
