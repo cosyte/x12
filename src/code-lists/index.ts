@@ -10,7 +10,10 @@
  */
 
 export { CARC, lookupCarc } from "./carc.js";
+export { CLAIM_STATUS_CATEGORY_CODES, lookupClaimStatusCategory } from "./claim-status-category.js";
+export { CLAIM_STATUS_CODES, lookupClaimStatus } from "./claim-status.js";
 export { CLP_STATUS, lookupClpStatus } from "./clp-status.js";
+export { SERVICE_TYPE_CODES, lookupServiceType } from "./service-type.js";
 export {
   CLAIM_ADJUSTMENT_GROUP_CODES,
   isClaimAdjustmentGroupCode,

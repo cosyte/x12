@@ -116,8 +116,11 @@ const Loop2300 = defineLoopSpec({
   never open sockets).
 - **Phase 4** — `get835` (cash posting — the #1 consultant ask).
 - **Phase 5** — `get837Claims` (837P / I / D).
-- **Phase 6+** — 270/271, 276/277, 277CA, 278, 820, 834; spec-clean serializer + builder; vendor
-  / clearinghouse profile system.
+- **Phase 6** — `get271Eligibility` (270/271), `get277Status` (276/277), `get277CADisposition`
+  (277CA). The 271 echoes the requesting 270's TRN verbatim (safety-critical reassociation);
+  STC status decodes verbatim CSCC / CSC codes against bundled snapshots.
+- **Phase 7+** — 278 services review, 820 premium payment, 834 enrollment; spec-clean serializer
+  + builder; vendor / clearinghouse profile system.
 
 ## Next
 

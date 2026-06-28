@@ -54,6 +54,8 @@ export const WARNING_CODES = {
   X12_UNKNOWN_HI_QUALIFIER: "X12_UNKNOWN_HI_QUALIFIER",
   X12_MISSING_REQUIRED_LOOP: "X12_MISSING_REQUIRED_LOOP",
   X12_837_UNKNOWN_VARIANT: "X12_837_UNKNOWN_VARIANT",
+  X12_UNKNOWN_CLAIM_STATUS_CATEGORY: "X12_UNKNOWN_CLAIM_STATUS_CATEGORY",
+  X12_UNKNOWN_CLAIM_STATUS: "X12_UNKNOWN_CLAIM_STATUS",
 } as const;
 
 /**
@@ -665,6 +667,69 @@ export function unknown837Variant(
   return {
     code: WARNING_CODES.X12_837_UNKNOWN_VARIANT,
     message: `837 variant could not be resolved — ST-03 implementation convention reference "${safe}" is not one of "005010X222A2" / "X223A3" / "X224A2"; no SVx service-line segment was seen to fall back on.`,
+    position,
+  };
+}
+
+/**
+ * Claim Status Category Code (CSCC) shape per X12 code source 507 — a
+ * leading uppercase letter + 1-2 alphanumerics (`A2`, `F3`, `F3F`, `P1`,
+ * `D0`). Used to guard `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` so the parser
+ * never echoes arbitrary bytes from a hostile STC composite — the H-PHI
+ * invariant. @internal
+ */
+const CLAIM_STATUS_CATEGORY_SHAPE_RE = /^[A-Z][0-9A-Z]{1,2}$/u;
+
+/**
+ * Build an `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` warning. Emitted by the 277
+ * / 277CA helpers when an STC composite's Claim Status Category Code
+ * (CSCC, first component) is outside the bundled snapshot (see
+ * {@link "../code-lists/claim-status-category.js".
+ * CLAIM_STATUS_CATEGORY_CODES}). The verbatim CSCC is still preserved on
+ * the parsed status — only the description is missing. The code value is
+ * shape-validated against the CSCC grammar before echoing; a hostile
+ * non-conformant value collapses to the literal `(non-spec)` so the
+ * parser never echoes arbitrary bytes (H-PHI invariant).
+ *
+ * @example
+ * ```ts
+ * import { unknownClaimStatusCategory } from "@cosyte/x12";
+ * const w = unknownClaimStatusCategory(
+ *   { segmentIndex: 18, interchangeIndex: 0, groupIndex: 0, transactionIndex: 0 },
+ *   "Z9",
+ * );
+ * ```
+ */
+export function unknownClaimStatusCategory(position: X12Position, code: string): X12ParseWarning {
+  const safe = CLAIM_STATUS_CATEGORY_SHAPE_RE.test(code) ? code : "(non-spec)";
+  return {
+    code: WARNING_CODES.X12_UNKNOWN_CLAIM_STATUS_CATEGORY,
+    message: `Unknown claim status category (CSCC) "${safe}" — code is outside the bundled snapshot; verbatim value preserved, description unavailable.`,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_UNKNOWN_CLAIM_STATUS` warning. Companion to
+ * {@link unknownClaimStatusCategory} for the Claim Status Code (CSC, the
+ * second component of an STC composite; X12 code source 508). Same
+ * shape-validation + verbatim-preserve posture; reuses the CARC/RARC
+ * `[A-Z0-9]{1,5}` value grammar (CSCs are short numeric tokens).
+ *
+ * @example
+ * ```ts
+ * import { unknownClaimStatus } from "@cosyte/x12";
+ * const w = unknownClaimStatus(
+ *   { segmentIndex: 18, interchangeIndex: 0, groupIndex: 0, transactionIndex: 0 },
+ *   "99999",
+ * );
+ * ```
+ */
+export function unknownClaimStatus(position: X12Position, code: string): X12ParseWarning {
+  const safe = CODE_LIST_VALUE_SHAPE_RE.test(code) ? code : "(non-spec)";
+  return {
+    code: WARNING_CODES.X12_UNKNOWN_CLAIM_STATUS,
+    message: `Unknown claim status code (CSC) "${safe}" — code is outside the bundled snapshot; verbatim value preserved, description unavailable.`,
     position,
   };
 }
