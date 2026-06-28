@@ -21,6 +21,26 @@
  */
 
 export { get834Enrollments, get834Header } from "./get-834.js";
+export { build834 } from "./build-834.js";
+export {
+  ENROLLMENT_834_BUILD_ERROR_CODES,
+  Enrollment834BuildError,
+  type Enrollment834BuildErrorCode,
+} from "./build-errors.js";
+export type {
+  Build834AddressSpec,
+  Build834AmountSpec,
+  Build834CoordinationOfBenefitsSpec,
+  Build834CoverageSpec,
+  Build834DateSpec,
+  Build834EnvelopeSpec,
+  Build834HeaderSpec,
+  Build834MemberNameSpec,
+  Build834MemberSpec,
+  Build834PartySpec,
+  Build834ReferenceSpec,
+  Build834Spec,
+} from "./build-834-types.js";
 export {
   ENROLLMENT_834_LOOP_1000A,
   ENROLLMENT_834_LOOP_1000B,

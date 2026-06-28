@@ -8,6 +8,56 @@
 
 ## Status
 
+- **Phase 8f — domain builders `build820` (005010X218 Premium Payment)
+  and `build834` (005010X220A1 Benefit Enrollment) shipped
+  (2026-06-28) — the v1 emit scope is now COMPLETE.** The emit
+  counterparts to `get820Payments` and `get834Header` /
+  `get834Enrollments`, layering on the Phase 8 general builder and
+  mirroring the pure-function `build835` pattern — each NEVER
+  auto-sends, opens a socket, or touches the filesystem, and returns a
+  frozen `X12Interchange`. `build820(spec)` emits one GS..GE group
+  (GS-01 `RA`) wrapping one ST..SE 820 (ST-03 `005010X218`) from a typed
+  `Build820Spec` whose monetary fields are `X12Decimal` throughout
+  (BigInt-exact, never `parseFloat`); segments emit in TR3 loop order
+  (BPR → TRN → Loop 1000A receiver `N1*PE` → Loop 1000B remitter
+  `N1*PR`/`N1*RM` → Loop 2000 remittances: ENT / NM1 → REF → DTM → RMR →
+  ADX). `build834(spec)` emits one GS..GE group (GS-01 `BE`) wrapping one
+  ST..SE 834 (ST-03 `005010X220A1`) from a typed `Build834Spec`
+  (envelope + BGN header + sponsor `N1*P5` / payer `N1*IN` + the member
+  roster); segments emit in TR3 loop order (BGN → N1 parties → REF → DTP,
+  then per member: INS → NM1\*IL + DMG + N3/N4 → REF → DTP → COB → Loop
+  2300 HD → DTP → AMT), with member DTPs emitted BEFORE the first HD so
+  the read side binds them to the member. Each result round-trips through
+  `parseX12` so its reader reproduces a well-formed spec field-for-field.
+  **The 820 carries no TR3 balance equation** (BPR-02 is not required to
+  equal Σ of the RMR open items), so the builder emits all monetary
+  amounts VERBATIM and NEVER raises a balance-mismatch refusal — a
+  deliberate contrast with `build835`. **Maintenance type is the 834's
+  safety primitive — emit verbatim, refuse the unknown:** the builder
+  places the caller-supplied INS-03 / HD-01 code (X12 Code Source 875)
+  into the segment VERBATIM and NEVER infers or normalizes it; where the
+  lenient read side only WARNS on an unknown code, the builder REFUSES to
+  EMIT an action it cannot name. **Refusal, not silent corruption:**
+  `build820` REFUSES via a typed `Premium820BuildError`
+  (`X12_820_BUILD_INVALID_SPEC` — no TRN trace, no remittance, a
+  remittance with neither an `ENT` nor an `NM1` to open its loop, a
+  remittance with no `RMR` open item, an open item with no identity, an
+  over-long control number); `build834` REFUSES via a typed
+  `Enrollment834BuildError` (`X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE` —
+  an INS-03 / HD-01 code outside the X12 875 subset;
+  `X12_834_BUILD_INVALID_SPEC` — no member loop, an empty required
+  INS-03, an over-long control number). Both messages carry structural
+  indices / counts only — `build834` additionally names the offending
+  maintenance code (an X12 control code, never PHI), but never a member
+  id or name (PHI discipline). New public exports: `build820`,
+  `Premium820BuildError`, `PREMIUM_820_BUILD_ERROR_CODES`,
+  `Premium820BuildErrorCode`, the `Build820Spec` type tree; `build834`,
+  `Enrollment834BuildError`, `ENROLLMENT_834_BUILD_ERROR_CODES`,
+  `Enrollment834BuildErrorCode`, and the `Build834Spec` type tree. Verify
+  gate green across typecheck, lint, format, phi-scan, coverage (per-dir
+  ≥90), build, attw, and verify:exports. **With this change the full v1
+  emit scope is complete — every v1 transaction now has a domain
+  builder.**
 - **Phase 8e — services-review builders `build278Request` (005010X217
   Request for Review) and `build278Response` (005010X216 Response) shipped
   (2026-06-28).** The emit counterparts to `get278Request` /
@@ -406,13 +456,15 @@ opts?)` reconstructs an `X12Interchange` back to bytes from the
   now shows `phi-scan ✓`.
 - Pre-alpha `0.0.x`, not published to npm. The full v1 **read** scope is
   now decoded (270/271, 276/277/277CA, 278, 820, 834, 835, 837P/I/D, 999,
-  TA1), and the general **emit** surface (`serializeX12` +
-  `buildInterchange`) shipped in Phase 8. Next: **domain per-transaction
-  builders** (`build835` / `build837P/I/D` / `build271` / …) that layer
-  the safety-critical per-TR3 invariants (balance, certification, count
-  reconciliation) on top of the general builder — mirroring the
-  pure-function `build999` / `buildTA1` pattern already shipped for the
-  acknowledgments.
+  TA1), the general **emit** surface (`serializeX12` + `buildInterchange`)
+  shipped in Phase 8, and — with Phase 8f — the full v1 **domain emit**
+  scope is complete: every v1 transaction has a per-TR3 domain builder
+  (`build835` / `build837P/I/D` / `build271` / `build277` / `277CA` /
+  `build278Request` / `build278Response` / `build820` / `build834`, plus
+  the pure-function `build999` / `buildTA1` acknowledgments) layering the
+  safety-critical per-TR3 invariants (balance, certification,
+  maintenance-type fidelity, count reconciliation) on top of the general
+  builder.
 
 ## v1 Scope Snapshot
 

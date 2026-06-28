@@ -15,6 +15,27 @@
  */
 
 export { get820Payments } from "./get-820.js";
+export { build820 } from "./build-820.js";
+export {
+  PREMIUM_820_BUILD_ERROR_CODES,
+  Premium820BuildError,
+  type Premium820BuildErrorCode,
+} from "./build-errors.js";
+export type {
+  Build820AddressSpec,
+  Build820AdjustmentSpec,
+  Build820DateSpec,
+  Build820EntitySpec,
+  Build820EnvelopeSpec,
+  Build820OpenItemSpec,
+  Build820PartySpec,
+  Build820PaymentSpec,
+  Build820PersonSpec,
+  Build820ReferenceSpec,
+  Build820RemittanceSpec,
+  Build820Spec,
+  Build820TraceSpec,
+} from "./build-820-types.js";
 export {
   PREMIUM_820_LOOP_1000A,
   PREMIUM_820_LOOP_1000B,
