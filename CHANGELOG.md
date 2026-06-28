@@ -71,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     with an empty action code.
   - **The HL spine is computed, never caller-supplied.** The builder
     computes every HL-01 id, HL-02 parent pointer (`20 → 21 → 22 → 23 →
-    EV/SS`), and HL-04 has-child flag from the nested input tree, so an
+EV/SS`), and HL-04 has-child flag from the nested input tree, so an
     inconsistent hierarchy is unrepresentable and SE-01 is correct by
     construction.
   - **Refusal, not silent corruption.** The builder REFUSES a

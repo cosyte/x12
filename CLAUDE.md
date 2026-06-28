@@ -33,7 +33,7 @@
   response-only) and `build278Response` refuses a decision with an empty
   action code. **The HL spine is computed, never caller-supplied:** the
   builder computes every HL-01 id, HL-02 parent pointer (`20 → 21 → 22 →
-  23 → EV/SS`), and HL-04 has-child flag from the nested input tree, so a
+23 → EV/SS`), and HL-04 has-child flag from the nested input tree, so a
   structurally inconsistent hierarchy is _unrepresentable_ and SE-01 is
   correct by construction. **Refusal, not silent corruption:** the builder
   REFUSES via a typed `ServicesReview278BuildError`
