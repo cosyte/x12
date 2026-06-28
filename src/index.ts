@@ -38,6 +38,7 @@ export {
   missingSe,
   pre005010,
   remitBalanceMismatch,
+  segmentCountMismatch,
   trailingGarbage,
   transactionCountMismatch,
   unexpectedSegment,
@@ -352,3 +353,18 @@ export {
   type X12AckDispositionCode,
   type X12AckTA1,
 } from "./transactions/ack/index.js";
+
+// Phase 8 — spec-clean serializer (the emit half of the parser).
+export { serializeX12 } from "./serialize/index.js";
+export type { SerializeOptions } from "./serialize/index.js";
+
+// Phase 8 — general-purpose, segment-level interchange builder. The
+// domain-specific builders (build835, build837P, …) layer on top of this.
+export { buildInterchange, X12_BUILD_ERROR_CODES, X12BuildError } from "./builder/index.js";
+export type {
+  FunctionalGroupSpec,
+  InterchangeSpec,
+  SegmentSpec,
+  TransactionSetSpec,
+  X12BuildErrorCode,
+} from "./builder/index.js";

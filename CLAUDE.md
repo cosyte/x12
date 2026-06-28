@@ -8,6 +8,40 @@
 
 ## Status
 
+- **Phase 8 — spec-clean serializer + general interchange builder
+  shipped (2026-06-28).** The emit half of the parser. `serializeX12(ix,
+opts?)` reconstructs an `X12Interchange` back to bytes from the
+  verbatim `.raw` strings — byte-faithful by default (the idempotency
+  fixed point `serialize(parse(s)) === s` for a Tier-1 input), and with
+  `{ specClean: true }` it reconciles the envelope (SE-01 / GE-01 /
+  IEA-01 counts + the ISA-13↔IEA-02 / GS-06↔GE-02 / ST-02↔SE-02 control
+  pairs), surfacing every mismatch via `onWarning` and NEVER silently
+  correcting it — corrected counts emit only with
+  `{ recomputeCounts: true }`, and control NUMBERS are identity, never
+  rewritten. `buildInterchange(spec)` is the general, segment-level
+  builder: it owns the 106-byte fixed-width ISA, the GS/GE/SE/IEA
+  control segments + their counts, escapes active delimiters in body
+  values via `?`, and round-trips its output through `parseX12` so the
+  result is bit-identical to the parsed form (an internal builder bug
+  surfaces as a warning, not silent corruption). Structurally impossible
+  specs are REFUSED with a typed `X12BuildError`
+  (`X12_BUILD_INVALID_SPEC` — over-long ISA-13, body segment with no
+  id). New warning `X12_SEGMENT_COUNT_MISMATCH` is a serializer-only
+  diagnostic (the parser never validated SE-01); registry expands
+  21 → 22, additions-only, bounded metadata only (H-PHI invariant).
+  13 committed round-trip goldens (one per v1 transaction, regenerated
+  by `test/scripts/gen-serialize-goldens.ts`) assert
+  `serializeX12(parseX12(fixture))` reproduces the golden byte-for-byte;
+  `roundTripProperty` (300 runs) + a builder property (200 runs) lock
+  serialize idempotency + a self-consistent built envelope. The new
+  reconciliation also caught + fixed four latent fixture defects the
+  lenient parser never validated (SE-01 miscounts in 837i / 837d / 999;
+  a GS-06/GE-02 mismatch in 278-response). Verify gate green across
+  typecheck, lint, format, phi-scan, coverage (per-dir ≥90 incl. the new
+  `serialize/` + `builder/` dirs), build, attw, verify:exports. 467
+  tests total. **Deferred to a follow-up: domain per-transaction
+  builders (`build835` / `build837P/I/D` / `build271` / …, the
+  safety-critical emit code) layer on top of this general surface.**
 - **Phase 7 — 278 Services Review + 834 Enrollment + 820 Premium
   Payment shipped (2026-06-28).** Four read-side helpers round out the
   v1 transaction scope: `get278Request` / `get278Response` (TR3
@@ -190,9 +224,13 @@
   now shows `phi-scan ✓`.
 - Pre-alpha `0.0.x`, not published to npm. The full v1 **read** scope is
   now decoded (270/271, 276/277/277CA, 278, 820, 834, 835, 837P/I/D, 999,
-  TA1). Next: **Phase 8** — serialization (build side) for the
-  transaction sets, mirroring the pure-function `build999` / `buildTA1`
-  pattern already shipped for the acknowledgments.
+  TA1), and the general **emit** surface (`serializeX12` +
+  `buildInterchange`) shipped in Phase 8. Next: **domain per-transaction
+  builders** (`build835` / `build837P/I/D` / `build271` / …) that layer
+  the safety-critical per-TR3 invariants (balance, certification, count
+  reconciliation) on top of the general builder — mirroring the
+  pure-function `build999` / `buildTA1` pattern already shipped for the
+  acknowledgments.
 
 ## v1 Scope Snapshot
 

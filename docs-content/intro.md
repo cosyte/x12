@@ -119,8 +119,13 @@ const Loop2300 = defineLoopSpec({
 - **Phase 6** — `get271Eligibility` (270/271), `get277Status` (276/277), `get277CADisposition`
   (277CA). The 271 echoes the requesting 270's TRN verbatim (safety-critical reassociation);
   STC status decodes verbatim CSCC / CSC codes against bundled snapshots.
-- **Phase 7+** — 278 services review, 820 premium payment, 834 enrollment; spec-clean serializer
-  + builder; vendor / clearinghouse profile system.
+- **Phase 7** — 278 services review, 820 premium payment, 834 enrollment.
+- **Phase 8** — the **emit** half: `serializeX12(ix, opts?)` (byte-faithful by default; spec-clean
+  envelope-count + control-pair reconciliation via `onWarning`, never silently corrected) and the
+  general `buildInterchange(spec)` (owns the ISA / GS / GE / SE / IEA mechanics + counts).
+- **Next** — domain per-transaction builders (`build835` / `build837P/I/D` / `build271` / …) that
+  layer the safety-critical per-TR3 invariants on top of `buildInterchange`; vendor / clearinghouse
+  profile system.
 
 ## Next
 
