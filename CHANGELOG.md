@@ -24,7 +24,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   trusted local repo YAML at release time. Verify gate green on the
   upgraded tree.
 
+### Fixed
+
+- **Segment splitting now honours the `?`-release-escaped terminator.**
+  `splitSegments` (the envelope tokenizer) used a naive `indexOf` for the
+  segment terminator, so a value carrying a literal terminator byte —
+  emitted by `escapeRelease` as `?~` — was split mid-value: the segment
+  was truncated at the `?`, a phantom empty segment was injected, and the
+  round-trip silently corrupted the value (the element splitter
+  `splitWithRelease` had always been release-aware; only the segment
+  splitter was not). The fix mirrors the element-splitter scan
+  (`?` consumes the next byte) so an escaped terminator stays inside its
+  value. The Phase 8 `serialize(parse(s)) === s` fixed point and the new
+  `build835` round-trip both depend on this. A degenerate delimiter set
+  where the terminator IS the release character falls back to the literal
+  scan, preserving prior behaviour. Surfaced by the `build835` round-trip
+  review.
+
 ### Added
+
+- **Domain builder — `build835` (005010X221A1 ERA).** The first
+  per-transaction emit helper layers the safety-critical TR3 invariants
+  on top of the Phase 8 general builder, mirroring the pure-function
+  `build999` / `buildTA1` pattern — it NEVER auto-sends, opens a socket,
+  or touches the filesystem.
+  - **`build835(spec)`** assembles a complete `X12Interchange` (one
+    GS..GE group, GS-01 `HP`; one ST..SE 835, ST-03 `005010X221A1`) from
+    a typed `Build835Spec` whose monetary fields are `X12Decimal`
+    throughout (BigInt-exact, never `parseFloat`). Segments emit in TR3
+    loop order (BPR → TRN\* → Loop 1000A/1000B parties → LX → Loop 2100
+    claims → Loop 2110 service lines → PLB) and the output round-trips
+    through `parseX12` so a balanced spec is reproduced by `get835`
+    field-for-field. Composites (CLP-08, SVC-01, SVC-06, PLB) escape
+    each component then join with the raw component separator — the
+    envelope is emitted inline (not via `buildInterchange`) to avoid
+    double-escaping a pre-composed element. Same-group CAS and
+    same-provider/period PLB adjustments pack into one segment (≤ 6
+    triples / pairs); PLB carries the raw EDI sign
+    (`BPR-02 == Σ(CLP-04) − Σ(PLB)`).
+  - **Refusal, not silent corruption.** Where `get835` only WARNS on an
+    out-of-balance payer artifact, the builder REFUSES via a typed
+    `Remit835BuildError`, reusing the authoritative read-side validators
+    (`checkServiceLineBalance` / `checkClaimBalance` /
+    `checkRemitTotalBalance`) against a materialized read model so emit
+    guard and parse warning share one source of truth. Codes:
+    `X12_835_BUILD_BALANCE_MISMATCH` (any §1.10.2 invariant — line,
+    claim, or top-of-remit) and `X12_835_BUILD_INVALID_SPEC` (no TRN
+    trace, an empty CLP-01, an over-long ISA-13). The thrown message
+    carries numeric totals only — never a patient-control number or
+    member id (PHI discipline).
+  - **New exports.** `build835`, `Remit835BuildError`,
+    `REMIT_835_BUILD_ERROR_CODES`, `Remit835BuildErrorCode`, and the
+    `Build835Spec` type tree (`Build835EnvelopeSpec` / `…PaymentSpec` /
+    `…TraceSpec` / `…PartySpec` / `…AddressSpec` / `…ReferenceSpec` /
+    `…ContactSpec` / `…PersonSpec` / `…ProviderSpec` / `…AdjustmentSpec` /
+    `…RemarkSpec` / `…AmountSpec` / `…ServiceLineSpec` / `…ClaimSpec` /
+    `…ProviderAdjustmentSpec`).
+  - **Known limitation (deferred).** The remaining domain builders
+    (`build837P/I/D` / `build271` / `build277` / `build278` /
+    `build820` / `build834`) layer on the same general surface and are
+    NOT in this change.
 
 - **Phase 8 — spec-clean serializer + general interchange builder (the
   emit half lands).** Two new public surfaces close the read↔write loop.

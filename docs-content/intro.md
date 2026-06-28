@@ -123,9 +123,12 @@ const Loop2300 = defineLoopSpec({
 - **Phase 8** — the **emit** half: `serializeX12(ix, opts?)` (byte-faithful by default; spec-clean
   envelope-count + control-pair reconciliation via `onWarning`, never silently corrected) and the
   general `buildInterchange(spec)` (owns the ISA / GS / GE / SE / IEA mechanics + counts).
-- **Next** — domain per-transaction builders (`build835` / `build837P/I/D` / `build271` / …) that
-  layer the safety-critical per-TR3 invariants on top of `buildInterchange`; vendor / clearinghouse
-  profile system.
+- **`build835`** — the first domain per-transaction builder lands (005010X221A1 ERA): a
+  pure-function emit helper that REFUSES an out-of-balance remit (`Remit835BuildError`) rather than
+  emit a cash-posting hazard, reusing the read-side §1.10.2 balance validators. Round-trips through
+  `get835` field-for-field.
+- **Next** — the remaining domain builders (`build837P/I/D` / `build271` / …) that layer the
+  safety-critical per-TR3 invariants on the general surface; vendor / clearinghouse profile system.
 
 ## Next
 
