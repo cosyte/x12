@@ -18,6 +18,30 @@
  */
 
 export { get277Status, get277CADisposition } from "./get-277.js";
+export { build277, build277CA } from "./build-277.js";
+export {
+  CLAIM_STATUS_277_BUILD_ERROR_CODES,
+  ClaimStatus277BuildError,
+  type ClaimStatus277BuildErrorCode,
+} from "./build-errors.js";
+export type {
+  Build277ClaimSpec,
+  Build277DateSpec,
+  Build277DependentSpec,
+  Build277EntitySpec,
+  Build277EnvelopeSpec,
+  Build277InformationReceiverSpec,
+  Build277InformationSourceSpec,
+  Build277MemberSpec,
+  Build277ProviderSpec,
+  Build277ReferenceSpec,
+  Build277ServiceLineSpec,
+  Build277Spec,
+  Build277StatusCodeSpec,
+  Build277StatusSpec,
+  Build277SubscriberSpec,
+  Build277TraceSpec,
+} from "./build-277-types.js";
 export {
   STATUS_277_LOOP_2000A,
   STATUS_277_LOOP_2000B,

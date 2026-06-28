@@ -123,12 +123,16 @@ const Loop2300 = defineLoopSpec({
 - **Phase 8** — the **emit** half: `serializeX12(ix, opts?)` (byte-faithful by default; spec-clean
   envelope-count + control-pair reconciliation via `onWarning`, never silently corrected) and the
   general `buildInterchange(spec)` (owns the ISA / GS / GE / SE / IEA mechanics + counts).
-- **`build835`** — the first domain per-transaction builder lands (005010X221A1 ERA): a
-  pure-function emit helper that REFUSES an out-of-balance remit (`Remit835BuildError`) rather than
-  emit a cash-posting hazard, reusing the read-side §1.10.2 balance validators. Round-trips through
-  `get835` field-for-field.
-- **Next** — the remaining domain builders (`build837P/I/D` / `build271` / …) that layer the
-  safety-critical per-TR3 invariants on the general surface; vendor / clearinghouse profile system.
+- **Domain builders** — pure-function per-transaction emit helpers that layer the safety-critical
+  per-TR3 invariants on the general surface and round-trip through their reader field-for-field:
+  `build835` (005010X221A1 ERA, REFUSES an out-of-balance remit via `Remit835BuildError`),
+  `build837P/I/D` (claim submission, computes the HL spine + REFUSES an impossible hierarchy via
+  `Claim837BuildError`), and `build271` / `build277` / `build277CA` (eligibility + claim-status
+  responses, echo the requesting TRN verbatim + compute the HL spine + REFUSE a broken hierarchy via
+  `Eligibility271BuildError` / `ClaimStatus277BuildError`). None ever auto-send, open a socket, or
+  touch the filesystem.
+- **Next** — the remaining domain builders (`build278` / `build820` / `build834`); vendor /
+  clearinghouse profile system.
 
 ## Next
 
