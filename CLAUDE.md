@@ -8,6 +8,56 @@
 
 ## Status
 
+- **Phase 8d — response builders `build271` (005010X279A1 Eligibility
+  Benefit Response) and `build277` / `build277CA` (005010X212 Claim
+  Status Response / 005010X214 Claim Acknowledgment) shipped
+  (2026-06-28).** The response-side emit counterparts to
+  `get271Eligibility` / `get277Status` / `get277CADisposition`, layering
+  on the Phase 8 general builder and mirroring the pure-function
+  `build835` / `build837` pattern — each NEVER auto-sends, opens a
+  socket, or touches the filesystem, and returns a frozen
+  `X12Interchange`. `build271(spec)` emits one GS..GE group (GS-01 `HB`)
+  wrapping one ST..SE 271 (ST-03 `005010X279A1`); `build277` /
+  `build277CA` share one `buildClaimStatus` body (GS-01 `HN`) and differ
+  only in ST-03 / GS-08 (`005010X212` vs `005010X214`). Monetary /
+  percent / quantity fields are `X12Decimal` throughout (BigInt-exact,
+  never `parseFloat`). Segments emit in TR3 loop order (271: HL spine →
+  TRN → NM1 → N3/N4 → DMG → REF → DTP → EB + nested NM1 / REF / DTP /
+  MSG; 277: HL spine → NM1 member → Loop 2200 claim TRN → STC → REF →
+  DTP → Loop 2220 SVC → STC / REF / DTP; STC-01/10/11 are C043
+  category : status : entity composites), and each result round-trips
+  through `parseX12` so its reader reproduces a well-formed spec
+  field-for-field. **TRN echo is the safety-critical reassociation
+  invariant:** the builder places the caller-supplied trace into TRN-02
+  verbatim and NEVER fabricates, normalizes, or mutates it — a build-side
+  property test feeds random trace tokens through all three builders and
+  asserts the round-tripped `referenceId` is byte-for-byte the input.
+  **The HL spine is computed, never caller-supplied:** the builder
+  computes every HL-01 id, HL-02 parent pointer, and HL-04 has-child flag
+  from the nested input tree (271 spine `20 → 21 → 22 → 23`; 277 / 277CA
+  spine `20 → 21 → 19 → 22 → 23`), so a structurally inconsistent
+  hierarchy is _unrepresentable_ and SE-01 is correct by construction.
+  **Refusal, not silent corruption:** the builder REFUSES a structurally
+  impossible spec via a typed `Eligibility271BuildError`
+  (`X12_271_BUILD_INVALID_HIERARCHY` — no source / a childless source /
+  receiver; `X12_271_BUILD_INVALID_SPEC` — over-long control number) or
+  `ClaimStatus277BuildError` (`X12_277_BUILD_INVALID_HIERARCHY` — no
+  source / a childless source / receiver / provider / a subscriber with
+  neither claim nor dependent / a childless dependent;
+  `X12_277_BUILD_INVALID_SPEC` — a claim with no trace / status / service
+  line, an STC with no category code, an over-long control number). The
+  thrown message carries structural locators only
+  (`source[0].receiver[0].provider[0].subscriber[0]`, level codes,
+  counts) — never a member name, member id, or trace (PHI discipline).
+  New public exports: `build271`, `Eligibility271BuildError`,
+  `ELIGIBILITY_271_BUILD_ERROR_CODES`, `Eligibility271BuildErrorCode`,
+  the `Build271Spec` type tree; `build277`, `build277CA`,
+  `ClaimStatus277BuildError`, `CLAIM_STATUS_277_BUILD_ERROR_CODES`,
+  `ClaimStatus277BuildErrorCode`, and the `Build277Spec` type tree.
+  Verify gate green (typecheck + lint + format + phi-scan + coverage
+  per-dir ≥90 + build + attw + verify:exports). **Scope:** the remaining
+  domain builders (`build278`, `build820`, `build834`) layer on this same
+  surface and are deferred to chained follow-ups (X12-8e → X12-8f).
 - **Phase 8c — claim-submission builders `build837P` / `build837I` /
   `build837D` (005010 837 Professional `X222A2` / Institutional `X223A3`
   / Dental `X224A2`) shipped (2026-06-28).** The emit counterpart to

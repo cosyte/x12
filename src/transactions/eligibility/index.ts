@@ -15,6 +15,28 @@
  */
 
 export { get271Eligibility } from "./get-271.js";
+export { build271 } from "./build-271.js";
+export {
+  ELIGIBILITY_271_BUILD_ERROR_CODES,
+  Eligibility271BuildError,
+  type Eligibility271BuildErrorCode,
+} from "./build-errors.js";
+export type {
+  Build271AddressSpec,
+  Build271BenefitSpec,
+  Build271DateSpec,
+  Build271DependentSpec,
+  Build271EntitySpec,
+  Build271EnvelopeSpec,
+  Build271InformationReceiverSpec,
+  Build271InformationSourceSpec,
+  Build271MemberSpec,
+  Build271ReferenceSpec,
+  Build271ServiceTypeSpec,
+  Build271Spec,
+  Build271SubscriberSpec,
+  Build271TraceSpec,
+} from "./build-271-types.js";
 export {
   ELIGIBILITY_271_LOOP_2000A,
   ELIGIBILITY_271_LOOP_2000B,
