@@ -14,6 +14,7 @@
  */
 
 import { ISA_MIN_LENGTH } from "./delimiters.js";
+import { RELEASE_CHAR } from "./release.js";
 import { decodeSegment, type X12Segment } from "./segment.js";
 import type {
   Delimiters,
@@ -79,6 +80,37 @@ function stripLeadingNewlines(text: string, start: number): number {
 }
 
 /**
+ * Find the next UNescaped segment terminator at or after `from`, honouring
+ * the `?`-release-character escape exactly as the element splitter
+ * ({@link "./release.js".splitWithRelease}) does: a `?` consumes the byte
+ * that follows it (so `?~` is a literal `~`, never a terminator; `??~` is a
+ * literal `?` then a real terminator). Returns the index of the first
+ * unescaped terminator, or `-1` if none remains. A naive `indexOf` would
+ * split on an escaped terminator and corrupt any value carrying a literal
+ * segment-terminator byte — the asymmetry the serializer's `escapeRelease`
+ * is meant to prevent.
+ *
+ * @internal
+ */
+function findUnescapedTerminator(text: string, from: number, term: string): number {
+  // When the terminator IS the release character (a degenerate delimiter
+  // set), `?` cannot also escape — fall back to a literal scan so a `?`
+  // terminator still splits, matching the historical behaviour.
+  if (term.length !== 1 || term === RELEASE_CHAR) return text.indexOf(term, from);
+  let i = from;
+  while (i < text.length) {
+    const ch = text.charAt(i);
+    if (ch === RELEASE_CHAR && i + 1 < text.length) {
+      i += 2;
+      continue;
+    }
+    if (ch === term) return i;
+    i += 1;
+  }
+  return -1;
+}
+
+/**
  * Yield successive segment strings (terminator-stripped) from the input,
  * starting at byte `start`. Returns the array of segment strings and the
  * byte index immediately after the last consumed segment terminator
@@ -96,7 +128,7 @@ function splitSegments(
   let cursor = stripLeadingNewlines(text, start);
   let lastEnd = cursor;
   while (cursor < text.length) {
-    const termIdx = text.indexOf(term, cursor);
+    const termIdx = findUnescapedTerminator(text, cursor, term);
     if (termIdx === -1) {
       // No further terminator — the trailing bytes are an unterminated
       // segment. Preserve them as a final segment so they're visible to

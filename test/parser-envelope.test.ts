@@ -79,6 +79,22 @@ describe("parseX12 — happy paths", () => {
     expect(ix.delimiters.component).toBe("\\");
     expect(ix.warnings).toHaveLength(0);
   });
+
+  it("does not split a segment on a `?`-escaped terminator inside a value", () => {
+    // The element splitter has always honoured `?`-release escapes; the
+    // segment splitter must too, or a value carrying a literal terminator
+    // byte (emitted as `?~` by `escapeRelease`) is corrupted and an empty
+    // phantom segment is injected. Regression for the build835 round-trip.
+    const raw = buildInterchange({ trailingCrlf: false, transactionBody: ["REF*XX*AB?~CD"] });
+    const ix = parseX12(raw);
+    const tx = ix.groups[0]?.transactions[0];
+    const ids = (tx?.segments ?? []).map((s) => s.id);
+    expect(ids).toEqual(["ST", "REF", "SE"]);
+    const ref = tx?.segments.find((s) => s.id === "REF");
+    // elements hold raw (pre-unescape) text — the escape sequence survives.
+    expect(ref?.elements[2]).toBe("AB?~CD");
+    expect(ix.warnings).toHaveLength(0);
+  });
 });
 
 describe("parseX12 — Tier-3 fatals", () => {
