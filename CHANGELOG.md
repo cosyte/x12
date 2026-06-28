@@ -43,6 +43,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Profile system — descriptive, fixture-grounded clearinghouse / payer
+  companion-guide quirk attribution.** A `defineProfile()` API mirroring
+  the sibling `@cosyte/hl7` profile shape, plus a `profiles` namespace of
+  built-ins. The parser is already lenient and lossless, so a **v1 profile
+  is DESCRIPTIVE**: it attaches attribution metadata to the returned
+  `X12Interchange` (`ix.profile`) and powers `partitionWarnings`, but
+  NEVER alters the parse — `groups`, `warnings`, and `isa` are
+  byte-identical with and without a profile (proven by a divergence test).
+  - **`defineProfile(spec)`** validates the spec (fail-fast on name, then
+    Levenshtein "did you mean?" hints on unknown option keys, then the
+    quirk set), merges any `extends` lineage (flatten + dedupe
+    first-occurrence; child wins on quirk-id collision keeping first-seen
+    position; scalar `description` last-wins), re-validates the composed
+    set, and returns a frozen `X12Profile` whose `describe()` yields a
+    structured `X12ProfileDescription` bucketed by effect
+    (`relaxes` / `adds` / `requires`) — structured DATA, not hl7's
+    formatted string, so consumers can program against it.
+  - **The locked HARD RULE — no invented quirks.** Every quirk MUST cite a
+    `fixture` (a relative path under `test/fixtures/`) that actually
+    EXHIBITS the deviation; the field is required at the type level and
+    enforced in `defineProfile()`. The accuracy suite goes further: a
+    per-quirk DEMONSTRATOR registry asserts each cited fixture exhibits its
+    claimed deviation, and a shipped quirk with no demonstrator FAILS the
+    suite — so a real-but-irrelevant fixture cannot slip past.
+  - **`setDefaultProfile()` / `getDefaultProfile()`** set a process-scoped
+    default applied when a `parseX12` call passes no `profile`. An explicit
+    `{ profile }` wins; `{ profile: null }` opts out of the default for
+    that call. `partitionWarnings(warnings, profile)` splits a parse's
+    warnings into `{ expected, unexpected }` on the union of the profile's
+    quirk `expectedWarnings` — the one behavioural hook a v1 profile
+    offers.
+  - **Built-ins ship ONLY where a Tier-2 fixture grounds them:**
+    `profiles.availity` (payer-loop `REF*2U` + service-line `REF*F8`
+    additions, grounded in `remit/835-availity-quirk.edi`) and
+    `profiles.bcbsCommon` (backslash component separator, grounded in
+    `envelope/bcbs-subelement.edi`). Profiles whose only "deviation" would
+    be a canonical `:` baseline (e.g. a generic Medicare FFS profile) are
+    deliberately DEFERRED rather than invented — shipping them would
+    violate the hard rule. Built-ins are reachable only through the
+    `profiles` namespace, never the top-level export (mirrors hl7).
+  - **API divergence from `@cosyte/hl7`, by design:** `describe()` returns
+    structured data (not a string); the input type is `X12ProfileSpec`; and
+    `partitionWarnings` is x12-only. These are conscious departures driven
+    by x12's lossless-lenient reality, not drift.
+  - New public exports: `defineProfile`, `setDefaultProfile`,
+    `getDefaultProfile`, `partitionWarnings`, `profiles`, `X12ProfileError`,
+    and the `X12Profile` / `X12ProfileSpec` / `X12ProfileQuirk` /
+    `X12ProfileDescription` / `X12ProfileEffect` / `X12WarningPartition`
+    type tree.
 - **Domain builders — `build820` (005010X218 Premium Payment) and
   `build834` (005010X220A1 Benefit Enrollment and Maintenance).** The emit
   counterparts to `get820Payments` and `get834Header` /

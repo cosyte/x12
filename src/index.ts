@@ -509,3 +509,23 @@ export type {
   TransactionSetSpec,
   X12BuildErrorCode,
 } from "./builder/index.js";
+
+// Phase 9 — trading-partner / companion-guide profile system. Built-ins are
+// reached via the `profiles` namespace (not top-level), each grounded in a
+// real Tier-2 fixture per the locked hard rule.
+export {
+  defineProfile,
+  getDefaultProfile,
+  partitionWarnings,
+  profiles,
+  setDefaultProfile,
+  X12ProfileError,
+} from "./profiles/index.js";
+export type {
+  X12Profile,
+  X12ProfileDescription,
+  X12ProfileEffect,
+  X12ProfileQuirk,
+  X12ProfileSpec,
+  X12WarningPartition,
+} from "./profiles/index.js";

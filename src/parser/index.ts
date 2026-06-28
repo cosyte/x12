@@ -13,6 +13,8 @@
 
 import type { Buffer } from "node:buffer";
 
+import { getDefaultProfile } from "../profiles/default.js";
+
 import { detectDelimiters } from "./delimiters.js";
 import { FATAL_CODES, X12ParseError, snippet } from "./errors.js";
 import { decodeEnvelope } from "./envelope.js";
@@ -113,7 +115,13 @@ export function parseX12(raw: string | Buffer, options: X12ParseOptions = {}): X
     }
   }
 
-  // exactOptionalPropertyTypes: conditionally include `trailingBytes`.
+  // Resolve the profile in effect: an explicit profile wins; `null` opts out
+  // of the default for this call; otherwise fall back to the process-scoped
+  // default. v1 profiles are descriptive — the profile is attached for
+  // attribution (and `partitionWarnings`) but does not alter the parse above.
+  const profile = options.profile === null ? undefined : (options.profile ?? getDefaultProfile());
+
+  // exactOptionalPropertyTypes: conditionally include optional fields.
   const result: X12Interchange = {
     isa: decoded.isa,
     iea: decoded.iea,
@@ -122,6 +130,7 @@ export function parseX12(raw: string | Buffer, options: X12ParseOptions = {}): X
     ta1Segments: decoded.ta1Segments,
     warnings: decoded.warnings,
     ...(decoded.trailingBytes !== undefined ? { trailingBytes: decoded.trailingBytes } : {}),
+    ...(profile !== undefined ? { profile } : {}),
   };
   return Object.freeze(result);
 }
