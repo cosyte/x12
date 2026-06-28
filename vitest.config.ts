@@ -8,12 +8,13 @@ import { cosyteVitest } from "@cosyte/vitest-config";
  *   - `loops/` — defineLoopSpec (Phase 2)
  *   - `transactions/` — ack 999/TA1 (Phase 3) + remit 835 (Phase 4)
  *   - `code-lists/` — bundled WPC + X12-internal snapshots (Phase 4)
+ *   - `serialize/` — spec-clean serializer (Phase 8)
+ *   - `builder/` — general-purpose interchange builder (Phase 8)
  *
- * Future subdirs (`serialize/` Phase 8, `profiles/` Phase 9) get added as
- * they land.
+ * Future subdirs (`profiles/` Phase 9) get added as they land.
  */
 export default cosyteVitest({
-  coverageDirs: ["parser", "loops", "transactions", "code-lists"],
+  coverageDirs: ["parser", "loops", "transactions", "code-lists", "serialize", "builder"],
   test: {
     globals: false,
     environment: "node",

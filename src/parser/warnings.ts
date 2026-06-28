@@ -40,6 +40,7 @@ export const WARNING_CODES = {
   X12_PRE_005010: "X12_PRE_005010",
   X12_GROUP_COUNT_MISMATCH: "X12_GROUP_COUNT_MISMATCH",
   X12_TRANSACTION_COUNT_MISMATCH: "X12_TRANSACTION_COUNT_MISMATCH",
+  X12_SEGMENT_COUNT_MISMATCH: "X12_SEGMENT_COUNT_MISMATCH",
   X12_TRAILING_GARBAGE: "X12_TRAILING_GARBAGE",
   X12_MISSING_IEA: "X12_MISSING_IEA",
   X12_MISSING_GE: "X12_MISSING_GE",
@@ -206,6 +207,38 @@ export function transactionCountMismatch(
   return {
     code: WARNING_CODES.X12_TRANSACTION_COUNT_MISMATCH,
     message: `GE-01 declares ${declared} transaction(s); ${String(actual)} were present.`,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_SEGMENT_COUNT_MISMATCH` warning. Emitted by the spec-clean
+ * serializer when an SE-01 value does not equal the actual number of
+ * segments in the transaction set it closes (ST through SE inclusive). Like
+ * the group/transaction count factories, the serializer surfaces both values
+ * verbatim and NEVER silently corrects them — corrected counts are emitted
+ * only on `serializeX12(ix, { recomputeCounts: true })`. The parser does not
+ * emit this code (it leaves SE-01 reconciliation to the emit half); it is a
+ * Phase-8 serializer diagnostic.
+ *
+ * @example
+ * ```ts
+ * import { segmentCountMismatch } from "@cosyte/x12";
+ * const w = segmentCountMismatch(
+ *   { segmentIndex: 2, interchangeIndex: 0, groupIndex: 0, transactionIndex: 0, elementIndex: 1 },
+ *   "6",
+ *   7,
+ * );
+ * ```
+ */
+export function segmentCountMismatch(
+  position: X12Position,
+  declared: string,
+  actual: number,
+): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_SEGMENT_COUNT_MISMATCH,
+    message: `SE-01 declares ${declared} segment(s); ${String(actual)} were present.`,
     position,
   };
 }
