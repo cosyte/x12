@@ -1,0 +1,109 @@
+name: Nightly fuzz
+
+# Amplified byte-flip / never-throw fuzzing of the parser + per-transaction walkers (X12-10).
+# The per-commit `ci` job runs the property/fuzz suite at its committed base iteration counts
+# against a pinned seed (coverage-stable). This nightly job runs the same targets at a HIGHER
+# iteration count (`X12_FUZZ_RUNS`) and rotates the seed (`X12_FUZZ_SEED`) so each night explores
+# a different slice of the input space — the deep search that would make the per-commit run slow.
+# A failure opens/updates a single sticky issue so a regression NOTIFIES instead of scrolling past
+# in the Actions log; a clean run auto-closes it. Any finding is replayable: the log prints the
+# fast-check counterexample and the effective seed — re-run `X12_FUZZ_SEED=<seed> pnpm vitest run
+# test/property` locally to reproduce.
+
+on:
+  schedule:
+    # 06:00 UTC daily (after the docs/website deploy windows, before the workday).
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      runs-multiplier:
+        description: "X12_FUZZ_RUNS multiplier (base counts × this)"
+        required: false
+        default: "20"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: fuzz-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GH_REPO: ${{ github.repository }}
+  ISSUE_MARKER: "<!-- cosyte-x12-fuzz-failure-v1 -->"
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Amplified fuzz run
+        id: fuzz
+        env:
+          # Rotate the seed each run; amplify iterations (dispatch input wins, else 20).
+          X12_FUZZ_SEED: ${{ github.run_id }}
+          X12_FUZZ_RUNS: ${{ github.event.inputs.runs-multiplier || '20' }}
+        # Only the property/fuzz layer — the amplification knob is scoped to the byte-flip targets;
+        # no coverage gate here (that is the per-commit `ci` job's job).
+        run: pnpm vitest run test/property
+
+  # Open/refresh a sticky issue on failure; auto-close it on the next green run. Built-in token only.
+  notify-failure:
+    needs: fuzz
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_REPO: ${{ github.repository }}
+      ISSUE_MARKER: "<!-- cosyte-x12-fuzz-failure-v1 -->"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Open or update the sticky fuzz-failure issue
+        run: |
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          existing="$(gh issue list --state open --search "$ISSUE_MARKER in:body" --json number --jq '.[0].number // ""')"
+          body="$ISSUE_MARKER
+          The **nightly fuzz** run failed — a byte-flip / hostile input tripped an unsanctioned throw or a
+          walker invariant. This is a hard signal: the lenient parser must NEVER throw outside the 4 Tier-3
+          fatals, and the per-transaction walkers must never throw on lenient-parsed input.
+
+          - Failing run: $run_url
+          - Reproduce locally: the log prints the fast-check counterexample and the seed; re-run with
+            \`X12_FUZZ_SEED=${{ github.run_id }} pnpm vitest run test/property\`.
+
+          This issue auto-closes on the next green nightly fuzz run."
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "Nightly fuzz failure" --body "$body" --label "fuzz" 2>/dev/null \
+              || gh issue create --title "Nightly fuzz failure" --body "$body"
+          fi
+
+  close-failure-alert:
+    needs: fuzz
+    if: success()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_REPO: ${{ github.repository }}
+      ISSUE_MARKER: "<!-- cosyte-x12-fuzz-failure-v1 -->"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Close any open fuzz-failure issue
+        run: |
+          existing="$(gh issue list --state open --search "$ISSUE_MARKER in:body" --json number --jq '.[0].number // ""')"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Nightly fuzz is green again ($GITHUB_RUN_ID) — auto-closing."
+            gh issue close "$existing"
+          fi

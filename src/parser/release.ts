@@ -35,6 +35,13 @@ import { danglingReleaseChar, type X12ParseWarning } from "./warnings.js";
  * consumer needs a different release character, the constant is `as const`
  * so a parameterized variant can be added without breaking the public API.
  *
+ * @example
+ * ```ts
+ * import { RELEASE_CHAR } from "@cosyte/x12";
+ * // `?~` is an escaped segment terminator inside a value, not a real one:
+ * "PER*IC*ACME?~BILLING".includes(RELEASE_CHAR); // true
+ * ```
+ *
  * @internal
  */
 export const RELEASE_CHAR = "?" as const;

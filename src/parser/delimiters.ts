@@ -23,6 +23,12 @@ import type { Delimiters } from "./types.js";
  * (sum of fixed widths 2+10+2+10+2+15+2+15+6+4+1+5+9+1+1+1) + 1
  * terminator = 106. Anything shorter cannot carry the 16 ISA elements and
  * is Tier-3 `X12_ISA_TOO_SHORT`.
+ *
+ * @example
+ * ```ts
+ * import { ISA_MIN_LENGTH } from "@cosyte/x12";
+ * ISA_MIN_LENGTH; // 106 — a raw interchange shorter than this is X12_ISA_TOO_SHORT
+ * ```
  */
 export const ISA_MIN_LENGTH = 106;
 
@@ -35,6 +41,13 @@ export const ISA_MIN_LENGTH = 106;
  *   slot, repurposed as the repetition separator in 005010+).
  * - `component` at byte 104 — ISA-16 (the LAST element).
  * - `segment` at byte 105 — the byte immediately after ISA-16.
+ *
+ * @example
+ * ```ts
+ * import { DELIMITER_POSITIONS } from "@cosyte/x12";
+ * // The element separator is always the 4th byte of a well-formed ISA:
+ * raw.charAt(DELIMITER_POSITIONS.element); // e.g. "*"
+ * ```
  *
  * @internal
  */

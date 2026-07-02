@@ -20,6 +20,7 @@ import fc from "fast-check";
 import { FATAL_CODES, parseX12, X12ParseError } from "../../src/index.js";
 
 import { bitFlippedInterchange } from "./_arbitraries.js";
+import { fuzzRuns } from "./_fuzz-config.js";
 
 const FATAL_CODE_SET: ReadonlySet<string> = new Set(Object.values(FATAL_CODES));
 
@@ -36,7 +37,7 @@ describe("envelope fuzz: byte-flipped interchanges never throw unsanctioned erro
           }
         }
       }),
-      { numRuns: 500 },
+      { numRuns: fuzzRuns(500) },
     );
   });
 });

@@ -19,6 +19,8 @@ import { describe, it } from "vitest";
 
 import { FATAL_CODES, X12ParseError, get837Claims, parseX12 } from "../../src/index.js";
 
+import { fuzzRuns } from "./_fuzz-config.js";
+
 const FIXTURE_DIR = join(__dirname, "..", "fixtures", "claim");
 const fixtures = readdirSync(FIXTURE_DIR).filter((f) => f.endsWith(".edi"));
 
@@ -51,7 +53,7 @@ describe("get837Claims byte-flip fuzz (300 runs per fixture)", () => {
             }
           },
         ),
-        { numRuns: 300 },
+        { numRuns: fuzzRuns(300) },
       );
     });
   }
