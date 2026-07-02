@@ -17,6 +17,8 @@ import fc from "fast-check";
 
 import { FATAL_CODES, X12ParseError, get835, parseX12 } from "../../src/index.js";
 
+import { fuzzRuns } from "./_fuzz-config.js";
+
 const FATAL_CODE_SET: ReadonlySet<string> = new Set(Object.values(FATAL_CODES));
 const FIXTURE_DIR = join(__dirname, "..", "fixtures", "remit");
 
@@ -48,7 +50,7 @@ describe("835 fuzz: byte-flipped fixtures never throw outside the 4 Tier-3 fatal
             }
           },
         ),
-        { numRuns: 300 },
+        { numRuns: fuzzRuns(300) },
       );
     });
   }

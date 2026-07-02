@@ -69,6 +69,7 @@
     "test:coverage": "vitest run --coverage",
     "clean": "rm -rf dist coverage *.tsbuildinfo",
     "phi-scan": "tsx scripts/phi-scan.ts",
+    "refresh:code-lists": "tsx scripts/refresh-code-lists.ts",
     "verify:exports": "node scripts/verify-exports.mjs && node scripts/verify-exports.cjs",
     "pack:docs": "bash scripts/build-docs-artifacts.sh",
     "attw": "attw --pack .",

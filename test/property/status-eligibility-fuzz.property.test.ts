@@ -25,6 +25,8 @@ import {
   parseX12,
 } from "../../src/index.js";
 
+import { fuzzRuns } from "./_fuzz-config.js";
+
 const ALLOWED_FATAL_CODES = new Set<string>(Object.values(FATAL_CODES));
 
 const CASES = [
@@ -65,7 +67,7 @@ describe("Phase 6 walkers byte-flip fuzz (300 runs per fixture)", () => {
               }
             },
           ),
-          { numRuns: 300 },
+          { numRuns: fuzzRuns(300) },
         );
       });
     }
