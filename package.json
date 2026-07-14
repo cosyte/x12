@@ -88,25 +88,25 @@
     }
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "0.18.4",
+    "@arethetypeswrong/cli": "0.18.5",
     "@changesets/cli": "2.31.0",
-    "@cosyte/eslint-config": "^0.0.3",
+    "@cosyte/eslint-config": "^0.0.4",
     "@cosyte/prettier-config": "^0.0.2",
     "@cosyte/test-utils": "^0.0.1",
     "@cosyte/tsconfig": "^0.0.2",
     "@cosyte/tsup-config": "^0.0.1",
     "@cosyte/vitest-config": "^0.0.1",
-    "@types/node": "^22.0.0",
-    "@vitest/coverage-v8": "4.1.4",
-    "eslint": "10.5.0",
-    "fast-check": "3.23.2",
-    "prettier": "3.8.3",
-    "simple-git-hooks": "2.13.0",
+    "@types/node": "^26.1.1",
+    "@vitest/coverage-v8": "4.1.10",
+    "eslint": "10.7.0",
+    "fast-check": "4.9.0",
+    "prettier": "3.9.5",
+    "simple-git-hooks": "2.13.1",
     "tsup": "8.5.1",
-    "tsx": "4.21.0",
-    "typescript": "5.9.3",
-    "vite": "7.3.6",
-    "vitest": "4.1.4"
+    "tsx": "4.23.1",
+    "typescript": "7.0.2",
+    "vite": "8.1.4",
+    "vitest": "4.1.10"
   },
   "dependencies": {}
 }
