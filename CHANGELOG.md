@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The `VERSION` export now tracks `package.json`, and the missing `version`
+  script is restored (VERSION-SYNC).** Two latent release bugs, both of which
+  would have bitten at the first publish. (1) `VERSION` was hardcoded `"0.0.0"`
+  in `src/index.ts` while `changeset version` bumps only `package.json`, so a
+  published `0.0.1` would have shipped an export reading `"0.0.0"` — every
+  consumer asserting on or logging `VERSION` told the wrong version of the
+  parser they were running. New `scripts/sync-version.mjs` rewrites the constant
+  from `package.json` (idempotent; exits non-zero if the declaration is renamed
+  rather than silently no-op'ing). (2) **No `version` script existed at all** —
+  the shared `cosyte/.github` release workflow drives Changesets with
+  `version: pnpm run version`, which would have failed with `ERR_PNPM_NO_SCRIPT`,
+  so the "Version Packages" PR could never have been opened. The guard in
+  `test/sanity.test.ts` was **inverted**: it asserted
+  `expect(VERSION).toBe("0.0.0")` — literal against literal — which stays green
+  through exactly this drift and goes red on a _correct_ bump. It now compares
+  `VERSION` against `package.json` at test time. Ported from `@cosyte/mllp`
+  (MLLP-10), in the canonical form `@cosyte/hl7` carries. No version bumped,
+  nothing published — still `0.0.0`.
+
 ### Added
 
 - **Phase 10 — release hardening.** The v1 close-out; no new parser
