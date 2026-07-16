@@ -447,8 +447,8 @@ opts?)` reconstructs an `X12Interchange` back to bytes from the
   through the public `defineLoopSpec()` API — the dogfooding gate.
   Warning registry expanded 10 → 13 (additions-only); shape-validated
   CARC / RARC echoes mirror the H-PHI invariant from `@cosyte/hl7`.
-  Six fixtures (5 Tier-1 synthetic spec-clean + 1 Tier-2 Availity-
-  quirk de-identified). Property tests: `X12Decimal` algebra invariants
+  Six fixtures (5 Tier-1 synthetic spec-clean + 1 Tier-2 synthetic
+  Availity-quirk shape). Property tests: `X12Decimal` algebra invariants
   (round-trip / additive identity / commutativity / subtraction-by-
   addition / negation involution); balance-invariant property
   (balanced ⇒ no warning; imbalanced ⇒ warning + verbatim preservation);
