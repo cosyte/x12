@@ -834,7 +834,7 @@ description }` for known codes, `undefined` otherwise; unknown
     synthetic spec-clean (`835-medicare-canonical.edi`,
     `835-multi-claim.edi`, `835-with-plb.edi`,
     `835-carc-rarc-mix.edi`, `835-imbalance.edi`) and one Tier-2
-    de-identified-quirk shape (`835-availity-quirk.edi` — REF*2U + REF*F8
+    synthetic quirk shape (`835-availity-quirk.edi` — REF*2U + REF*F8
     placements). The imbalance fixture is deliberately off-by-$10 to
     prove the balance warning fires and the model preserves the
     verbatim amounts.
