@@ -1,5 +1,0 @@
----
-"@cosyte/x12": patch
----
-
-Security (dev-dependency advisory remediation; no runtime impact — `@cosyte/x12` ships zero runtime dependencies, so the published artifact is unchanged). Added scoped `pnpm.overrides` pinning two transitive **dev/build-time** packages to patched releases: `esbuild` (`>=0.27.3 <0.28.1` → `0.28.1`; GHSA dev-server path-traversal on Windows — not reachable here, the package builds via `tsup`/`vitest` and never runs `esbuild serve`) and the `@changesets/parse` copy of `js-yaml` (`>=4.0.0 <4.2.0` → `4.2.0`; GHSA-h67p-54hq-rp68 quadratic merge-key DoS). The `js-yaml@3.14.2` reached through `read-yaml-file@1.1.0` (`@manypkg/get-packages` → `@changesets/cli`) is left in place deliberately: it calls `yaml.safeLoad`, which throws in js-yaml 4, so it cannot be force-upgraded without breaking the release tooling, and it only parses trusted local repository YAML at release time. The full verify gate (typecheck, lint, format, phi-scan, coverage, build, attw, verify:exports) is green on the upgraded dependency tree.
