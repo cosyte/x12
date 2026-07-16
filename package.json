@@ -1,6 +1,6 @@
 {
   "name": "@cosyte/x12",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Developer-focused ASC X12 EDI parser and utility library for Node.js/TypeScript.",
   "license": "MIT",
   "author": "Cosyte <hello@cosyte.com> (https://cosyte.com)",
