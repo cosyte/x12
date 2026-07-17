@@ -38,6 +38,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Trademark notice (`TRADEMARKS.md`).** This package names third-party systems to describe what it
+  interoperates with; the notice records that cosyte is not affiliated with, endorsed by, or
+  sponsored by any of them, that every reference is descriptive, and that the built-in profiles are
+  authored from public sources only. Added to `files` so it ships inside the published tarball, not
+  just on GitHub. Documentation only — no runtime or API change.
+
 - **Phase 10 — release hardening.** The v1 close-out; no new parser
   surface, just the gates, tooling, and docs that make the package
   trustworthy to publish.

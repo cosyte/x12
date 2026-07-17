@@ -44,6 +44,11 @@ That's the pitch: no schema upload, no spec knowledge. The parser accepts vendor
 
 See the [**Cookbook**](./docs-content/cookbook.md) for task-oriented recipes (post an 835, route 277CA rejections, round-trip a 271, walk an 837, read a 999) and [**KNOWN-LIMITATIONS.md**](./KNOWN-LIMITATIONS.md) for the honest do-not-over-trust list.
 
+## Trademarks
+
+Availity and Blue Cross Blue Shield are trademarks of their respective owners. cosyte is not affiliated with, endorsed by, or
+sponsored by any of them — the names identify the trading partners whose companion-guide deviations the built-in profiles accommodate. See [TRADEMARKS.md](./TRADEMARKS.md).
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).

@@ -49,6 +49,7 @@
     "dist",
     "README.md",
     "LICENSE",
+    "TRADEMARKS.md",
     "CHANGELOG.md"
   ],
   "publishConfig": {
