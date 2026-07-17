@@ -11,7 +11,8 @@
  * The guard against drift is `test/sanity.test.ts`, which compares the export against `package.json`
  * at test time. Skipping this script makes that test go red — deliberately.
  *
- * Idempotent; exits non-zero if the declaration can't be found (a rename must not silently no-op).
+ * Idempotent; exits non-zero if the declaration is missing or ambiguous — a rename must not silently
+ * no-op, and a decoy declaration in a comment must not be rewritten ahead of the real one.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -26,9 +27,11 @@ if (typeof version !== "string" || version.length === 0) {
 }
 
 const source = readFileSync(srcUrl, "utf8");
-const declaration = /^export const VERSION: string = "[^"]*";$/m;
+const declaration = /^export const VERSION: string = "[^"]*";$/gm;
 
-if (!declaration.test(source)) {
+const matches = source.match(declaration);
+
+if (matches === null) {
   console.error(
     'sync-version: could not find `export const VERSION: string = "...";` in src/index.ts.\n' +
       "The declaration was renamed or reformatted — update this script alongside it.",
@@ -36,7 +39,18 @@ if (!declaration.test(source)) {
   process.exit(1);
 }
 
-const updated = source.replace(declaration, `export const VERSION: string = "${version}";`);
+if (matches.length !== 1) {
+  console.error(
+    `sync-version: found ${matches.length} \`export const VERSION\` declarations in src/index.ts; expected exactly one.\n` +
+      "A column-0 decoy (e.g. in a comment) is ambiguous — remove it so the real declaration is unmistakable.",
+  );
+  process.exit(1);
+}
+
+// Pass a replacer *function*, not a replacement string: `String.prototype.replace` interprets
+// `$&`, `$1`, `` $` ``, etc. in a replacement string, so a version like `1.2.3-$&x` would inject the
+// matched text and corrupt the constant. A function's return value is inserted literally.
+const updated = source.replace(declaration, () => `export const VERSION: string = "${version}";`);
 
 if (updated === source) {
   console.log(`sync-version: VERSION already ${version}`);
