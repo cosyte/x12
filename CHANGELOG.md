@@ -22,6 +22,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`scripts/sync-version.mjs` hardened against two latent defects, and gated in CI
+  (SYNC-VERSION-HARDENING).** Follow-up hardening on the VERSION-SYNC script; ported byte-identically
+  across `hl7`, `x12`, and `mllp`. (1) The version was spliced into `src/index.ts` via
+  `String.prototype.replace` with a _replacement string_, which interprets `$&`, `$1`, `` $` ``, etc.,
+  so a version like `1.2.3-$&x` would inject the matched text and corrupt the `VERSION` constant while
+  exiting 0 — the replacement is now a replacer _function_, whose return value is inserted literally.
+  (2) The declaration regex was non-global, so `.replace` silently rewrote the _first_ match; a
+  column-0 decoy (e.g. inside a comment) ahead of the real declaration could be edited instead — the
+  script now matches globally, asserts exactly one declaration, and exits non-zero loudly otherwise.
+  Neither defect is reachable through Changesets today and both previously failed loud rather than
+  shipping a lying `VERSION`, so this is hardening, not a fix for an observed break. The
+  `format`/`format:check` globs now cover `scripts/**/*.mjs` so the script is prettier-gated in CI
+  (the `.mjs` scripts were matched by no format glob before; `scripts/**/*.ts` was already gated).
+  Build tooling only — no runtime or public-API change.
 - **The `intro.md` status/roadmap section was stale** — it described Phase 1/2 as the frontier and
   listed the now-shipped read + emit + profile surfaces as "coming in later phases." Refreshed to the
   current shipped reality with an honest pre-alpha status banner.
