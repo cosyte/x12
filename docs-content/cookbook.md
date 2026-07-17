@@ -29,7 +29,7 @@ an 835. Money is `X12Decimal` throughout (BigInt-exact — **never `parseFloat` 
 import { parseX12, get835, lookupCarc, lookupRarc, WARNING_CODES } from "@cosyte/x12";
 
 const raw =
-  "ISA*00*          *00*          *ZZ*MEDPAY          *ZZ*CLINIC001       " +
+  "ISA*00*          *00*          *ZZ*MEDPAY         *ZZ*CLINIC001      " +
   "*260601*1200*^*00501*000000001*0*P*:~" +
   "GS*HP*MEDPAY*CLINIC001*20260601*1200*1*X*005010X221A1~" +
   "ST*835*0001~" +

@@ -7,7 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`docs-content/` now ships the full canonical Diátaxis spine (DOCS-CONTENT-P4).** The sidebar was
+  Overview-only, with `cookbook.md` authored but orphaned (invisible to every reader). This wires the
+  cookbook into **Guides** and adds the rest of the spine every `@cosyte/*` package shares: four new
+  **Core Concepts** pages (the envelope/loop model; the 80/20 transaction sets, mapping each shipped
+  set to its reader/builder pair and the field it preserves verbatim; the tolerance tiers +
+  warning-code model; and decimal-exact money via `X12Decimal`), **Installation** and **Quickstart**
+  tutorials (parse an 835 and post the cash), and a **Troubleshooting & known limitations** page (the
+  fatal-vs-warn model, a symptom→cause table, PHI-in-logs discipline, and the v1 non-goals). Depth is
+  gated to the shipped surface — no unshipped API is documented. Synthetic-only fixtures throughout.
+  Docs only — no runtime or public-API change.
+
 ### Fixed
+
+- **The `intro.md` status/roadmap section was stale** — it described Phase 1/2 as the frontier and
+  listed the now-shipped read + emit + profile surfaces as "coming in later phases." Refreshed to the
+  current shipped reality with an honest pre-alpha status banner.
+- **A latent malformed-ISA fixture in `cookbook.md`.** The self-contained 835 example's ISA padded
+  the sender/receiver IDs to 16 bytes instead of the fixed 15, so the 106-byte ISA was misaligned and
+  delimiter detection would reject it. It went unnoticed because the cookbook block was illustrative,
+  never executed; making the examples runnable under the doc/code-agreement harness surfaced it.
+
+### Changed
+
+- **Every runnable docs snippet is gated by the shared doc/code-agreement harness.**
+  `test/docs-content.test.ts` runs `docSnippetSuite()` (from `@cosyte/vitest-config/snippets`) over
+  `docs-content/`, extracting each ` ```ts runnable ` block, compiling it, executing it against the
+  **built** ESM artifact, and asserting its inline `// =>` results — so a documented example can never
+  silently drift from the shipped code. Bumps the `@cosyte/vitest-config` devDependency to `^0.0.2`
+  for its `/snippets` export.
 
 - **The Release workflow can actually start.** `.github/workflows/release.yml` calls the shared
   `cosyte/.github` pipeline, which requests `contents`/`id-token`/`pull-requests: write`, but declared

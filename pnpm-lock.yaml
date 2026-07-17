@@ -34,8 +34,8 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1(tsup@8.5.1(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3))
       '@cosyte/vitest-config':
-        specifier: ^0.0.1
-        version: 0.0.1(@vitest/coverage-v8@4.1.4)(vitest@4.1.4)
+        specifier: ^0.0.2
+        version: 0.0.2(@vitest/coverage-v8@4.1.4)(vite@7.3.6(@types/node@22.20.0)(lightningcss@1.32.0)(tsx@4.21.0))(vitest@4.1.4)
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.0
@@ -194,10 +194,11 @@ packages:
     peerDependencies:
       tsup: ^8.0.0
 
-  '@cosyte/vitest-config@0.0.1':
-    resolution: {integrity: sha512-2WM1ZHv7kfCGOKc/1irKQ6RDfkYJ8W9ec1SRk80rK9H9m//+GAheKiYnxHxwnsvXrLiETAUZ4YmVoFP2HbZCEQ==}
+  '@cosyte/vitest-config@0.0.2':
+    resolution: {integrity: sha512-2LzDFAXlwjHGVhB1eE5zYyNsGITyGZqenuhZSFIuZ33BEjfIpQtZnpObGr1gXKkrvbtEM36f6Vz0Y3zhEUm7sA==}
     peerDependencies:
       '@vitest/coverage-v8': ^4.0.0
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
       vitest: ^4.0.0
 
   '@es-joy/jsdoccomment@0.87.0':
@@ -2080,9 +2081,10 @@ snapshots:
     dependencies:
       tsup: 8.5.1(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)
 
-  '@cosyte/vitest-config@0.0.1(@vitest/coverage-v8@4.1.4)(vitest@4.1.4)':
+  '@cosyte/vitest-config@0.0.2(@vitest/coverage-v8@4.1.4)(vite@7.3.6(@types/node@22.20.0)(lightningcss@1.32.0)(tsx@4.21.0))(vitest@4.1.4)':
     dependencies:
       '@vitest/coverage-v8': 4.1.4(vitest@4.1.4)
+      vite: 7.3.6(@types/node@22.20.0)(lightningcss@1.32.0)(tsx@4.21.0)
       vitest: 4.1.4(@types/node@22.20.0)(@vitest/coverage-v8@4.1.4)(vite@7.3.6(@types/node@22.20.0)(lightningcss@1.32.0)(tsx@4.21.0))
 
   '@es-joy/jsdoccomment@0.87.0':
