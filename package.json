@@ -96,7 +96,7 @@
     "@cosyte/test-utils": "^0.0.1",
     "@cosyte/tsconfig": "^0.0.2",
     "@cosyte/tsup-config": "^0.0.1",
-    "@cosyte/vitest-config": "^0.0.1",
+    "@cosyte/vitest-config": "^0.0.2",
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "4.1.4",
     "eslint": "10.5.0",
