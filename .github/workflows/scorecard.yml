@@ -1,0 +1,17 @@
+name: Scorecard
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "27 3 * * 2"
+
+permissions:
+  contents: read
+
+jobs:
+  scorecard:
+    permissions:
+      security-events: write # upload the SARIF to the Security tab
+      id-token: write # publish results to the OpenSSF API (for the badge)
+    uses: cosyte/.github/.github/workflows/scorecard.yml@main
