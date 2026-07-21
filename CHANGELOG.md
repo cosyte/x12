@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **README status line corrected to the published reality (README-ORG-SWEEP).** The status line still
+  read "pre-alpha (`0.0.x`, not yet published to npm) … the first npm publish is gated on the
+  coordinated public launch," which contradicted the npm-version badge and the `pnpm add @cosyte/x12`
+  install line already in the same README — the package is published on npm at `0.0.1` from a public
+  repo. Rewritten to state that it is published at `0.0.1`, in a public repo, still pre-alpha on the
+  `0.0.x`-until-first-alpha ladder; the read/emit scope claim is unchanged. Docs only — no runtime or
+  public-API change.
+
 ### Added
 
 - **`docs-content/` now ships the full canonical Diátaxis spine (DOCS-CONTENT-P4).** The sidebar was
