@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Developer-docs publish status corrected to the published reality (README-ORG-SWEEP).** The
+  docs.cosyte.com pages (`docs-content/intro.md`, `installation.md`, `troubleshooting.md`) and
+  `KNOWN-LIMITATIONS.md` still said "not yet published to npm" / "gated on the coordinated public
+  launch" (and `KNOWN-LIMITATIONS.md` still read `0.0.0`), contradicting the live `npm install`
+  command already documented. Rewritten to state the package is published at `0.0.1`, public, still
+  pre-alpha on the `0.0.x`-until-first-alpha ladder; the install command is now described as live
+  rather than aspirational. Docs only — no runtime or public-API change.
 - **README status line corrected to the published reality (README-ORG-SWEEP).** The status line still
   read "pre-alpha (`0.0.x`, not yet published to npm) … the first npm publish is gated on the
   coordinated public launch," which contradicted the npm-version badge and the `pnpm add @cosyte/x12`

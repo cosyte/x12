@@ -10,8 +10,9 @@ sidebar_position: 1
 per-condition type declarations, so it works from either module system without configuration, and it
 has **zero runtime dependencies** — Node stdlib only.
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. The command below is the shape it will
-> take at first publish; until then, consume it from source or a workspace link.
+> **Status:** published on npm at `0.0.1` and public, still pre-alpha on the
+> `0.0.x`-until-first-alpha ladder. The `npm install` below is live; pin the exact version and treat
+> the API as pre-alpha until the first alpha.
 
 ## Prerequisites
 
