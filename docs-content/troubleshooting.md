@@ -105,8 +105,9 @@ not the field content.
   (`X12_PRE_005010`), not decoded to older field maps.
 - **No transport.** AS2, SFTP, and MLLP-style delivery are out of scope — this is a parser/serializer,
   not a communications stack.
-- **Not yet published.** The package sits on the `0.0.x`-until-first-alpha ladder and is **not on
-  npm**; the first provenance publish is gated on the coordinated public launch.
+- **Published, still pre-alpha.** The package is published on npm as `@cosyte/x12` at `0.0.1` and is
+  public, but it stays on the `0.0.x`-until-first-alpha ladder — treat the API as pre-alpha and pin
+  the exact version until the first alpha.
 
 For the phase-by-phase surface and the exact fields each helper decodes, see the package's
 `CLAUDE.md` status section and the [Cookbook](./cookbook).
