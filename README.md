@@ -9,7 +9,7 @@
 
 A developer-focused ASC X12 EDI parser and utility library for Node.js and TypeScript — the payer-side sibling of [`@cosyte/hl7`](https://github.com/cosyte/hl7). Zero runtime dependencies, dual ESM/CJS, strict types. Lenient on the way in (vendor deviations become warnings, not exceptions), spec-clean on the way out.
 
-> **Status:** pre-alpha (`0.0.x`, not yet published to npm). The full v1 **read** scope (270/271, 276/277/277CA, 278, 820, 834, 835, 837P/I/D, 999, TA1) and **emit** scope (per-transaction domain builders + a general serializer) are complete and hardened; the first npm publish is gated on the coordinated public launch.
+> **Status:** pre-alpha — **published on npm at `0.0.1`**, on the `0.0.x`-until-first-alpha ladder, from a public repo. The full v1 **read** scope (270/271, 276/277/277CA, 278, 820, 834, 835, 837P/I/D, 999, TA1) and **emit** scope (per-transaction domain builders + a general serializer) are complete and hardened. Pre-alpha means the public API may still move before `0.1` — pin an exact version.
 
 ## Quickstart
 
