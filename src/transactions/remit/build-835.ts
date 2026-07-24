@@ -1,13 +1,13 @@
 /**
- * `build835` — pure-function builder for a 005010X221A1 Health Care Claim
+ * `build835` - pure-function builder for a 005010X221A1 Health Care Claim
  * Payment/Advice (ERA). NEVER auto-sends, NEVER opens a socket, NEVER
  * touches the filesystem. The library mechanically emits the remittance it
  * is told; a spec that violates a TR3 §1.10.2 balance invariant is REFUSED
- * via {@link "./build-errors.js".Remit835BuildError} — emitting an
+ * via {@link "./build-errors.js".Remit835BuildError} - emitting an
  * out-of-balance 835 would tell a downstream cash-poster that money math
  * holds when it does not (mirrors `build999`'s accept-with-errors refusal).
  *
- * The read side ({@link "./get-835.js".get835}) is lenient — a real,
+ * The read side ({@link "./get-835.js".get835}) is lenient - a real,
  * payer-issued, out-of-balance 835 is WARNED, never rejected. The builder
  * takes the opposite stance: it REFUSES rather than emit. A caller that
  * must reproduce a knowingly-imbalanced payer artifact drops to {@link
@@ -47,7 +47,7 @@ import { escapeRelease } from "../../parser/release.js";
 
 /**
  * GS-08 / ST-03 version + release emitted for every 835 the library builds
- * — the WPC TR3 `005010X221A1` implementation guide.
+ * - the WPC TR3 `005010X221A1` implementation guide.
  * @internal
  */
 const X221A1_VERSION_RELEASE = "005010X221A1";
@@ -60,14 +60,14 @@ const X221A1_VERSION_RELEASE = "005010X221A1";
 const X12_835_FUNCTIONAL_ID = "HP";
 
 /**
- * The single ASC X12 standards agency code emitted at GS-07 — `X` for ASC
+ * The single ASC X12 standards agency code emitted at GS-07 - `X` for ASC
  * X12 itself.
  * @internal
  */
 const X12_AGENCY_CODE = "X";
 
 /**
- * `build835` — assemble a 005010X221A1 835 around the supplied spec.
+ * `build835` - assemble a 005010X221A1 835 around the supplied spec.
  *
  * Refused via {@link "./build-errors.js".Remit835BuildError}:
  * - No trace supplied, or a claim with no patient-control number, etc. →
@@ -133,7 +133,7 @@ export function build835(spec: Build835Spec): X12Interchange {
   /**
    * Join already-escaped/composed element strings into a segment, dropping
    * trailing empty elements (interior empties are positionally meaningful
-   * and kept). Never re-escapes — composites arrive pre-escaped.
+   * and kept). Never re-escapes - composites arrive pre-escaped.
    */
   const seg = (parts: readonly string[]): string => {
     let end = parts.length;
@@ -170,8 +170,8 @@ export function build835(spec: Build835Spec): X12Interchange {
       pad(envelope.senderId, 15), // ISA-06
       pad(receiverQualifier, 2), // ISA-07
       pad(envelope.receiverId, 15), // ISA-08
-      pad(envelope.interchangeDate, 6), // ISA-09 — YYMMDD
-      pad(envelope.interchangeTime, 4), // ISA-10 — HHMM
+      pad(envelope.interchangeDate, 6), // ISA-09 - YYMMDD
+      pad(envelope.interchangeTime, 4), // ISA-10 - HHMM
       repetitionSeparator, // ISA-11
       "00501", // ISA-12
       interchangeControlNumber, // ISA-13
@@ -189,11 +189,11 @@ export function build835(spec: Build835Spec): X12Interchange {
 
   const gs = seg([
     "GS",
-    X12_835_FUNCTIONAL_ID, // GS-01 — "HP"
+    X12_835_FUNCTIONAL_ID, // GS-01 - "HP"
     esc(applicationSenderCode), // GS-02
     esc(applicationReceiverCode), // GS-03
-    groupDate, // GS-04 — CCYYMMDD
-    groupTime, // GS-05 — HHMM
+    groupDate, // GS-04 - CCYYMMDD
+    groupTime, // GS-05 - HHMM
     esc(envelope.groupControlNumber), // GS-06
     X12_AGENCY_CODE, // GS-07
     X221A1_VERSION_RELEASE, // GS-08
@@ -206,7 +206,7 @@ export function build835(spec: Build835Spec): X12Interchange {
 
   const body: string[] = [];
 
-  // BPR — payment header. BPR-16 (payment date) is positionally pinned at
+  // BPR - payment header. BPR-16 (payment date) is positionally pinned at
   // element 16, so the interior elements 6..15 are emitted empty and NOT
   // trimmed (the date keeps them in place).
   body.push(
@@ -270,7 +270,7 @@ export function build835(spec: Build835Spec): X12Interchange {
   const raw = isa + gs + st + body.join("") + se + ge + iea;
 
   // Final round-trip through `parseX12` so the returned interchange is
-  // bit-identical with the parsed form every other helper consumes — and
+  // bit-identical with the parsed form every other helper consumes - and
   // so the build path inherits delimiter detection + envelope walking, and
   // any internal builder bug surfaces as Tier-2 warnings on the result.
   return parseX12(raw);
@@ -345,7 +345,7 @@ function enforceBalance(spec: Build835Spec): void {
 }
 
 // ---------------------------------------------------------------------------
-// Read-model materializers — only the fields the balance validators read are
+// Read-model materializers - only the fields the balance validators read are
 // load-bearing; lookup-derived descriptions are left `undefined`.
 // ---------------------------------------------------------------------------
 
@@ -567,7 +567,7 @@ function emitServiceLine(
       svc01,
       esc(line.chargeAmount.toString()),
       esc(line.paymentAmount.toString()),
-      "", // SVC-04 — revenue code is SVC-05 in X221A1; SVC-04 unused
+      "", // SVC-04 - revenue code is SVC-05 in X221A1; SVC-04 unused
       esc(line.revenueCode ?? ""),
       svc06,
       line.paidUnitsOfService === undefined ? "" : esc(line.paidUnitsOfService.toString()),
@@ -721,7 +721,7 @@ function emitProviderAdjustments(
 }
 
 // ---------------------------------------------------------------------------
-// String helpers — mirror the `build999` / `buildInterchange` emit primitives.
+// String helpers - mirror the `build999` / `buildInterchange` emit primitives.
 // ---------------------------------------------------------------------------
 
 /** @internal */
@@ -734,7 +734,7 @@ function pad(value: string, width: number): string {
 /**
  * Zero-pad a control number to `width` chars (ISA-13 / IEA-02 are always
  * 9). Throws {@link Remit835BuildError} if the value already exceeds the
- * width — a silently-truncated control number would break ISA-13↔IEA-02
+ * width - a silently-truncated control number would break ISA-13↔IEA-02
  * reconciliation. @internal
  */
 function padControl(value: string, width: number): string {

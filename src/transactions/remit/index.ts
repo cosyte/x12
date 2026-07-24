@@ -1,8 +1,8 @@
 /**
- * Barrel for the 835 Healthcare Claim Payment/Advice (ERA) surface — TR3
+ * Barrel for the 835 Healthcare Claim Payment/Advice (ERA) surface - TR3
  * `005010X221A1`. The public entry point is {@link get835}; types
  * surface the typed result shape; the loop spec is exported so consumers
- * can introspect or extend it. {@link build835} is the emit counterpart —
+ * can introspect or extend it. {@link build835} is the emit counterpart -
  * it REFUSES an out-of-balance spec rather than emit a cash-posting hazard.
  *
  * @example

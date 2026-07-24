@@ -1,5 +1,5 @@
 /**
- * `build837P` / `build837I` / `build837D` — pure-function builders for a
+ * `build837P` / `build837I` / `build837D` - pure-function builders for a
  * 005010 837 Healthcare Claim (Professional `X222A2`, Institutional
  * `X223A3`, Dental `X224A2`). NEVER auto-sends, NEVER opens a socket, NEVER
  * touches the filesystem. The library mechanically emits the claim it is
@@ -10,11 +10,11 @@
  * The HL spine is the 837's safety primitive, so the builder OWNS it: it
  * computes every HL-01 id (sequential within the transaction), HL-02 parent
  * pointer (20 → 22 → 23), and HL-04 has-child flag from the nested tree.
- * Callers never hand-code the spine — a structurally inconsistent hierarchy
+ * Callers never hand-code the spine - a structurally inconsistent hierarchy
  * is therefore unrepresentable, and the SE-01 segment count is correct by
  * construction (it counts the segments actually emitted, ST/SE inclusive).
  *
- * The read side ({@link "./get-837.js".get837Claims}) is lenient — a real
+ * The read side ({@link "./get-837.js".get837Claims}) is lenient - a real
  * 837 with a broken HL parent pointer is WARNED, never rejected. The builder
  * takes the opposite stance: it REFUSES rather than emit a hierarchy a
  * downstream payer would have to repair. A caller that must reproduce a
@@ -54,7 +54,7 @@ import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
 
 /**
- * GS-08 / ST-03 version + release emitted per variant — the WPC TR3
+ * GS-08 / ST-03 version + release emitted per variant - the WPC TR3
  * implementation guides. @internal
  */
 const VERSION_BY_VARIANT: Readonly<Record<"P" | "I" | "D", string>> = {
@@ -66,14 +66,14 @@ const VERSION_BY_VARIANT: Readonly<Record<"P" | "I" | "D", string>> = {
 /** GS-01 functional identifier code for the 837. `HC` = Health Care Claim. @internal */
 const X12_837_FUNCTIONAL_ID = "HC";
 
-/** GS-07 standards agency code — `X` for ASC X12. @internal */
+/** GS-07 standards agency code - `X` for ASC X12. @internal */
 const X12_AGENCY_CODE = "X";
 
 /** HL-03 level codes for the spine the builder computes. @internal */
 const HL_LEVEL = { BILLING: "20", SUBSCRIBER: "22", PATIENT: "23" } as const;
 
 /**
- * `build837P` — assemble a 005010X222A2 Professional 837 around the spec.
+ * `build837P` - assemble a 005010X222A2 Professional 837 around the spec.
  *
  * @example
  * ```ts
@@ -108,7 +108,7 @@ export function build837P(spec: Build837Spec): X12Interchange {
 }
 
 /**
- * `build837I` — assemble a 005010X223A3 Institutional 837 around the spec.
+ * `build837I` - assemble a 005010X223A3 Institutional 837 around the spec.
  * Service lines must be `variant: "I"` (SV2).
  *
  * @example
@@ -123,7 +123,7 @@ export function build837I(spec: Build837Spec): X12Interchange {
 }
 
 /**
- * `build837D` — assemble a 005010X224A2 Dental 837 around the spec. Service
+ * `build837D` - assemble a 005010X224A2 Dental 837 around the spec. Service
  * lines must be `variant: "D"` (SV3); per-line tooth detail rides on TOO.
  *
  * @example
@@ -232,7 +232,7 @@ function buildClaim837(variant: "P" | "I" | "D", spec: Build837Spec): X12Interch
 
   const body: string[] = [];
 
-  // BHT — required beginning-of-hierarchical-transaction header.
+  // BHT - required beginning-of-hierarchical-transaction header.
   body.push(
     seg([
       "BHT",
@@ -249,7 +249,7 @@ function buildClaim837(variant: "P" | "I" | "D", spec: Build837Spec): X12Interch
   emitEntity(spec.submitter, body, ctx);
   emitEntity(spec.receiver, body, ctx);
 
-  // Loops 2000A/B/C — emit the computed HL spine depth-first.
+  // Loops 2000A/B/C - emit the computed HL spine depth-first.
   const hlCounter: HlCounter = { next: 1 };
   for (const billing of spec.billingProviders) {
     emitBillingProvider(variant, billing, body, ctx, hlCounter);
@@ -809,7 +809,7 @@ function emitHi(hi: Build837HiCodeSpec, body: string[], ctx: EmitContext): void 
 }
 
 // ---------------------------------------------------------------------------
-// String helpers — mirror the `build835` emit primitives.
+// String helpers - mirror the `build835` emit primitives.
 // ---------------------------------------------------------------------------
 
 /** @internal */

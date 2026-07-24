@@ -1,7 +1,7 @@
 /**
  * Pin a global fast-check seed for the whole suite. The property/fuzz tests
  * (byte-flip fuzz, round-trip, lenient-parse) contribute to branch coverage,
- * so an unpinned seed makes coverage non-deterministic — the same code can
+ * so an unpinned seed makes coverage non-deterministic - the same code can
  * clear the per-directory 90% gate on one run and miss it on the next, and
  * the gap widens across V8 versions (CI runs Node 22 + 24). Pinning the seed
  * makes coverage reproducible and a failure replayable. Individual `fc.assert`
@@ -24,7 +24,7 @@ const seedOverride = Number(seedRaw);
 // Honor a non-blank, INTEGER override only. `Number("")` / `Number(" ")` are a
 // finite `0` and `Number("12.5")` a non-integer, so a bare `Number.isFinite`
 // guard would silently unpin the coverage seed on a blank or fractional env
-// var — this mirrors `fuzzRuns()`'s rigor so a malformed value always falls
+// var - this mirrors `fuzzRuns()`'s rigor so a malformed value always falls
 // back to the pinned seed rather than quietly changing it.
 const useSeedOverride =
   seedRaw !== undefined && seedRaw.trim() !== "" && Number.isInteger(seedOverride);

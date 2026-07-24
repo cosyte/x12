@@ -8,7 +8,7 @@
  * fixed per builder entry point) and minus the read-only `warnings` /
  * `hierarchies` arrays.
  *
- * The HL spine is NEVER caller-supplied — the builder computes every HL-01
+ * The HL spine is NEVER caller-supplied - the builder computes every HL-01
  * id, HL-02 parent pointer (20 → 21 → 22 → 23 → EV/SS), and HL-04 has-child
  * flag from the nested UMO → requester → subscriber → (dependent) → reviews
  * tree.
@@ -43,33 +43,33 @@
  * ```
  */
 export interface Build278EnvelopeSpec {
-  /** ISA-06 — interchange sender id (padded to 15 on emit). */
+  /** ISA-06 - interchange sender id (padded to 15 on emit). */
   readonly senderId: string;
-  /** ISA-08 — interchange receiver id (padded to 15 on emit). */
+  /** ISA-08 - interchange receiver id (padded to 15 on emit). */
   readonly receiverId: string;
-  /** ISA-09 — interchange date YYMMDD. */
+  /** ISA-09 - interchange date YYMMDD. */
   readonly interchangeDate: string;
-  /** ISA-10 — interchange time HHMM. */
+  /** ISA-10 - interchange time HHMM. */
   readonly interchangeTime: string;
-  /** ISA-13 / IEA-02 — interchange control number (zero-padded to 9 on emit). */
+  /** ISA-13 / IEA-02 - interchange control number (zero-padded to 9 on emit). */
   readonly interchangeControlNumber: string;
-  /** GS-06 / GE-02 — group control number. */
+  /** GS-06 / GE-02 - group control number. */
   readonly groupControlNumber: string;
-  /** ST-02 / SE-02 — transaction set control number. */
+  /** ST-02 / SE-02 - transaction set control number. */
   readonly transactionSetControlNumber: string;
-  /** ISA-05 — interchange sender qualifier. Default `"ZZ"`. */
+  /** ISA-05 - interchange sender qualifier. Default `"ZZ"`. */
   readonly senderQualifier?: string;
-  /** ISA-07 — interchange receiver qualifier. Default `"ZZ"`. */
+  /** ISA-07 - interchange receiver qualifier. Default `"ZZ"`. */
   readonly receiverQualifier?: string;
-  /** ISA-15 — usage indicator (`P` production, `T` test). Default `"P"`. */
+  /** ISA-15 - usage indicator (`P` production, `T` test). Default `"P"`. */
   readonly usageIndicator?: string;
-  /** GS-02 — application sender code. Default: the interchange sender id. */
+  /** GS-02 - application sender code. Default: the interchange sender id. */
   readonly applicationSenderCode?: string;
-  /** GS-03 — application receiver code. Default: the interchange receiver id. */
+  /** GS-03 - application receiver code. Default: the interchange receiver id. */
   readonly applicationReceiverCode?: string;
-  /** GS-04 — group date CCYYMMDD. Default: century-expanded ISA-09. */
+  /** GS-04 - group date CCYYMMDD. Default: century-expanded ISA-09. */
   readonly groupDate?: string;
-  /** GS-05 — group time HHMM. Default: the interchange time. */
+  /** GS-05 - group time HHMM. Default: the interchange time. */
   readonly groupTime?: string;
   /** Element separator (ISA byte 4). Default `"*"`. */
   readonly elementSeparator?: string;
@@ -96,22 +96,22 @@ export interface Build278EnvelopeSpec {
  * ```
  */
 export interface Build278HeaderSpec {
-  /** BHT-01 — hierarchical structure code (`0078` services review). */
+  /** BHT-01 - hierarchical structure code (`0078` services review). */
   readonly structurePurposeCode: string;
-  /** BHT-02 — transaction set purpose code (`13` request / `11` response). */
+  /** BHT-02 - transaction set purpose code (`13` request / `11` response). */
   readonly purposeCode?: string;
-  /** BHT-03 — submitter transaction reference (re-association key). */
+  /** BHT-03 - submitter transaction reference (re-association key). */
   readonly referenceId?: string;
-  /** BHT-04 — transaction set creation date (CCYYMMDD). */
+  /** BHT-04 - transaction set creation date (CCYYMMDD). */
   readonly date?: string;
-  /** BHT-05 — transaction set creation time (HHMM). */
+  /** BHT-05 - transaction set creation time (HHMM). */
   readonly time?: string;
-  /** BHT-06 — transaction type code. */
+  /** BHT-06 - transaction type code. */
   readonly transactionTypeCode?: string;
 }
 
 /**
- * A non-person entity (NM1) — the UMO (Loop 2010A), the requester (Loop
+ * A non-person entity (NM1) - the UMO (Loop 2010A), the requester (Loop
  * 2010B), or a provider attached to a review. Mirrors {@link
  * "./types.js".X12AuthEntity}.
  *
@@ -125,21 +125,21 @@ export interface Build278HeaderSpec {
  * ```
  */
 export interface Build278EntitySpec {
-  /** NM1-01 — entity identifier code (`X3` UMO, `1P` requester, `71` attending). */
+  /** NM1-01 - entity identifier code (`X3` UMO, `1P` requester, `71` attending). */
   readonly entityIdentifierCode: string;
-  /** NM1-02 — entity type qualifier (`1` person, `2` non-person). */
+  /** NM1-02 - entity type qualifier (`1` person, `2` non-person). */
   readonly entityTypeQualifier: string;
-  /** NM1-03 — name (organization or last name). */
+  /** NM1-03 - name (organization or last name). */
   readonly name: string;
-  /** NM1-08 — identification code qualifier. */
+  /** NM1-08 - identification code qualifier. */
   readonly idQualifier?: string;
-  /** NM1-09 — identification code. */
+  /** NM1-09 - identification code. */
   readonly idCode?: string;
 }
 
 /**
- * A person (subscriber Loop 2010C / dependent Loop 2010D) — NM1 plus the
- * optional DMG demographics. `idCode` (NM1-09) is the member identifier —
+ * A person (subscriber Loop 2010C / dependent Loop 2010D) - NM1 plus the
+ * optional DMG demographics. `idCode` (NM1-09) is the member identifier -
  * synthetic-only in fixtures. Mirrors {@link "./types.js".X12AuthMember}.
  *
  * @example
@@ -153,25 +153,25 @@ export interface Build278EntitySpec {
  * ```
  */
 export interface Build278MemberSpec {
-  /** NM1-01 — entity identifier code (`IL` insured, `QC` patient). */
+  /** NM1-01 - entity identifier code (`IL` insured, `QC` patient). */
   readonly entityIdentifierCode: string;
-  /** NM1-02 — entity type qualifier (`1` person). */
+  /** NM1-02 - entity type qualifier (`1` person). */
   readonly entityTypeQualifier: string;
-  /** NM1-03 — last name. */
+  /** NM1-03 - last name. */
   readonly lastName?: string;
-  /** NM1-04 — first name. */
+  /** NM1-04 - first name. */
   readonly firstName?: string;
-  /** NM1-05 — middle name. */
+  /** NM1-05 - middle name. */
   readonly middleName?: string;
-  /** NM1-07 — name suffix. */
+  /** NM1-07 - name suffix. */
   readonly suffix?: string;
-  /** NM1-08 — identification code qualifier (`MI` member id). */
+  /** NM1-08 - identification code qualifier (`MI` member id). */
   readonly idQualifier?: string;
-  /** NM1-09 — identification code (the member id). */
+  /** NM1-09 - identification code (the member id). */
   readonly idCode?: string;
-  /** DMG-02 — date of birth (CCYYMMDD). A DMG is emitted only when this or `genderCode` is set. */
+  /** DMG-02 - date of birth (CCYYMMDD). A DMG is emitted only when this or `genderCode` is set. */
   readonly dateOfBirth?: string;
-  /** DMG-03 — gender code (`M` / `F` / `U`). */
+  /** DMG-03 - gender code (`M` / `F` / `U`). */
   readonly genderCode?: string;
 }
 
@@ -187,19 +187,19 @@ export interface Build278MemberSpec {
  * ```
  */
 export interface Build278TraceSpec {
-  /** TRN-01 — trace type code. */
+  /** TRN-01 - trace type code. */
   readonly traceTypeCode: string;
-  /** TRN-02 — reference identification (echoed verbatim between request/response). */
+  /** TRN-02 - reference identification (echoed verbatim between request/response). */
   readonly referenceId: string;
-  /** TRN-03 — originating company identifier. */
+  /** TRN-03 - originating company identifier. */
   readonly originatingCompanyId?: string;
-  /** TRN-04 — supplemental reference identifier. */
+  /** TRN-04 - supplemental reference identifier. */
   readonly supplementalReferenceId?: string;
 }
 
 /**
  * One diagnosis composite emitted into the review's HI segment. Only the
- * verbatim `qualifier` (HI-0x-01) + `code` (HI-0x-02) are supplied — the read
+ * verbatim `qualifier` (HI-0x-01) + `code` (HI-0x-02) are supplied - the read
  * side resolves the `codeSystem`. Mirrors {@link
  * "./types.js".X12AuthDiagnosis} minus the derived `codeSystem`.
  *
@@ -210,9 +210,9 @@ export interface Build278TraceSpec {
  * ```
  */
 export interface Build278DiagnosisSpec {
-  /** HI-0x-01 — diagnosis code-source qualifier (`ABK` ICD-10-CM principal). */
+  /** HI-0x-01 - diagnosis code-source qualifier (`ABK` ICD-10-CM principal). */
   readonly qualifier: string;
-  /** HI-0x-02 — diagnosis code. */
+  /** HI-0x-02 - diagnosis code. */
   readonly code: string;
 }
 
@@ -227,11 +227,11 @@ export interface Build278DiagnosisSpec {
  * ```
  */
 export interface Build278ReferenceSpec {
-  /** REF-01 — reference identification qualifier. */
+  /** REF-01 - reference identification qualifier. */
   readonly qualifier: string;
-  /** REF-02 — reference identification. */
+  /** REF-02 - reference identification. */
   readonly value: string;
-  /** REF-03 — description. */
+  /** REF-03 - description. */
   readonly description?: string;
 }
 
@@ -246,17 +246,17 @@ export interface Build278ReferenceSpec {
  * ```
  */
 export interface Build278DateSpec {
-  /** DTP-01 — date/time qualifier (`435` admission, `472` service). */
+  /** DTP-01 - date/time qualifier (`435` admission, `472` service). */
   readonly qualifier: string;
-  /** DTP-02 — date/time format qualifier (`D8` / `RD8`). */
+  /** DTP-02 - date/time format qualifier (`D8` / `RD8`). */
   readonly formatQualifier: string;
-  /** DTP-03 — date/time value. */
+  /** DTP-03 - date/time value. */
   readonly value: string;
 }
 
 /**
  * The HCR Health Care Services Review decision (RESPONSE ONLY). **`actionCode`
- * (HCR-01) is the certification outcome and is emitted VERBATIM** — the
+ * (HCR-01) is the certification outcome and is emitted VERBATIM** - the
  * builder never infers or upgrades it, so the response round-trips the exact
  * decision the caller supplied. A request spec carrying a decision is
  * REFUSED. Mirrors {@link "./types.js".X12ReviewDecision}.
@@ -268,18 +268,18 @@ export interface Build278DateSpec {
  * ```
  */
 export interface Build278DecisionSpec {
-  /** HCR-01 — action code (`A1` certified, `A3` not certified, `A4` pended, `A6` modified). */
+  /** HCR-01 - action code (`A1` certified, `A3` not certified, `A4` pended, `A6` modified). */
   readonly actionCode: string;
-  /** HCR-02 — review / authorization identification number. */
+  /** HCR-02 - review / authorization identification number. */
   readonly reviewIdentificationNumber?: string;
-  /** HCR-03 — reason code. */
+  /** HCR-03 - reason code. */
   readonly reasonCode?: string;
-  /** HCR-04 — second surgical opinion code. */
+  /** HCR-04 - second surgical opinion code. */
   readonly secondSurgicalOpinionCode?: string;
 }
 
 /**
- * One services-review item — a patient-event (`EV`, Loop 2000E) or service
+ * One services-review item - a patient-event (`EV`, Loop 2000E) or service
  * (`SS`, Loop 2000F) HL. Carries the UM review information, the optional HCR
  * decision (response only), echoed TRN traces, HI diagnoses, attached
  * provider NM1s, and the supplemental REF / DTP / MSG. Nested `reviews` become
@@ -298,17 +298,17 @@ export interface Build278DecisionSpec {
  * ```
  */
 export interface Build278ReviewSpec {
-  /** HL-03 — review level code (`EV` patient event / `SS` service). Default `"EV"`. */
+  /** HL-03 - review level code (`EV` patient event / `SS` service). Default `"EV"`. */
   readonly levelCode?: "EV" | "SS";
-  /** UM-01 — request category code (required; a review with none is refused). */
+  /** UM-01 - request category code (required; a review with none is refused). */
   readonly requestCategoryCode: string;
-  /** UM-02 — certification type code (`I` initial / `R` renewal). */
+  /** UM-02 - certification type code (`I` initial / `R` renewal). */
   readonly certificationTypeCode?: string;
-  /** UM-03 — service type code. */
+  /** UM-03 - service type code. */
   readonly serviceTypeCode?: string;
-  /** UM-06 — level of service code. */
+  /** UM-06 - level of service code. */
   readonly levelOfServiceCode?: string;
-  /** HCR decision — RESPONSE ONLY (a request review carrying one is refused). */
+  /** HCR decision - RESPONSE ONLY (a request review carrying one is refused). */
   readonly decision?: Build278DecisionSpec;
   /** Loop 2000E/2000F TRN traces. */
   readonly traces?: readonly Build278TraceSpec[];
@@ -327,7 +327,7 @@ export interface Build278ReviewSpec {
 }
 
 /**
- * One dependent (Loop 2000D / 2010D — HL level 23) — a patient who is not the
+ * One dependent (Loop 2000D / 2010D - HL level 23) - a patient who is not the
  * subscriber. Carries the optional member NM1 + DMG and the reviews tracked
  * for that dependent (at least one required).
  *
@@ -348,7 +348,7 @@ export interface Build278DependentSpec {
 }
 
 /**
- * One subscriber (Loop 2000C / 2010C — HL level 22). Carries the optional
+ * One subscriber (Loop 2000C / 2010C - HL level 22). Carries the optional
  * member NM1 + DMG, the subscriber-level reviews, and an optional dependent.
  * A subscriber with neither a review nor a dependent is REFUSED.
  *

@@ -1,10 +1,10 @@
 /**
- * **Claim Status Code (CSC)** — X12 external code source 508. The second
+ * **Claim Status Code (CSC)** - X12 external code source 508. The second
  * component of an `STC-01` (and `STC-10` / `STC-11`) composite in a 277
  * Claim Status Response (`005010X212`) or 277CA Claim Acknowledgment
  * (`005010X214`). The CSC carries the *specific* status detail that
  * refines its paired {@link "./claim-status-category.js".
- * CLAIM_STATUS_CATEGORY_CODES} (CSCC) — e.g. category `A7`
+ * CLAIM_STATUS_CATEGORY_CODES} (CSCC) - e.g. category `A7`
  * (rejected/invalid) + status `21` ("Missing or invalid information").
  *
  * **Safety:** a wrong CSC silently misattributes *why* a claim was

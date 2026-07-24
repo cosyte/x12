@@ -9,8 +9,8 @@
  *   resolved against the bundled HI_QUALIFIERS snapshot, an attached
  *   service-provider NM1, a DTP date, and an echoed TRN trace.
  * - Tier-1 canonical 278 response (X216): the same HL spine plus the
- *   safety-critical HCR decision — action code preserved verbatim, never
- *   inferred — and the TRN echoed from the request for reassociation.
+ *   safety-critical HCR decision - action code preserved verbatim, never
+ *   inferred - and the TRN echoed from the request for reassociation.
  * - HL parent-pointer integrity: the `20 → 21 → 22 → 23` spine validates
  *   clean (no warnings); the `EV` event level is tolerated (no false
  *   `X12_HL_PARENT_MISMATCH`).
@@ -44,7 +44,7 @@ function load278(raw: string): { delimiters: Delimiters; tx: X12TransactionSet }
   return { delimiters: ix.delimiters, tx };
 }
 
-describe("get278Request — Tier-1 canonical (X217)", () => {
+describe("get278Request - Tier-1 canonical (X217)", () => {
   it("decodes the BHT header, HL parties, and the patient-event review", () => {
     const raw = readFileSync(join(FIXTURE_DIR, "278-request.edi"), "utf8");
     const { delimiters, tx } = load278(raw);
@@ -84,7 +84,7 @@ describe("get278Request — Tier-1 canonical (X217)", () => {
   });
 });
 
-describe("get278Response — Tier-1 canonical (X216)", () => {
+describe("get278Response - Tier-1 canonical (X216)", () => {
   it("decodes the HCR decision verbatim and echoes the request TRN", () => {
     const raw = readFileSync(join(FIXTURE_DIR, "278-response.edi"), "utf8");
     const { delimiters, tx } = load278(raw);
@@ -96,7 +96,7 @@ describe("get278Response — Tier-1 canonical (X216)", () => {
 
     expect(resp?.reviews).toHaveLength(1);
     const review = resp?.reviews[0];
-    // HCR-01 action code is the safety-critical surface — preserved verbatim.
+    // HCR-01 action code is the safety-critical surface - preserved verbatim.
     expect(review?.decision?.actionCode).toBe("A1");
     expect(review?.decision?.reviewIdentificationNumber).toBe("AUTH123456");
     // TRN echoed from the request for reassociation, never mutated.
@@ -104,7 +104,7 @@ describe("get278Response — Tier-1 canonical (X216)", () => {
   });
 });
 
-describe("get278Response — comprehensive (dependent, event + service, edge segments)", () => {
+describe("get278Response - comprehensive (dependent, event + service, edge segments)", () => {
   it("decodes the dependent HL and both the event and service reviews", () => {
     const raw = readFileSync(join(FIXTURE_DIR, "278-comprehensive.edi"), "utf8");
     const { delimiters, tx } = load278(raw);
@@ -152,7 +152,7 @@ describe("get278Response — comprehensive (dependent, event + service, edge seg
     expect(event?.messages).toEqual(["Outpatient services certified"]);
     expect(event?.providers.map((p) => p.entityIdentifierCode)).toEqual(["71"]);
 
-    // One warning only — the unknown HI qualifier, shape-valid (never PHI).
+    // One warning only - the unknown HI qualifier, shape-valid (never PHI).
     expect(resp?.warnings).toHaveLength(1);
     expect(resp?.warnings[0]?.code).toBe(WARNING_CODES.X12_UNKNOWN_HI_QUALIFIER);
   });
@@ -176,17 +176,17 @@ describe("get278Response — comprehensive (dependent, event + service, edge seg
   });
 });
 
-describe("get278Request — edge cases (orphan segments, missing ST-03)", () => {
+describe("get278Request - edge cases (orphan segments, missing ST-03)", () => {
   it("drops UM/HCR/HI/TRN/REF/DMG that arrive with no open review or member", () => {
     const raw = readFileSync(join(FIXTURE_DIR, "278-edge.edi"), "utf8");
     const { delimiters, tx } = load278(raw);
     const req = get278Request(delimiters, tx);
 
-    // ST-03 is absent — the implementation convention reference is undefined.
+    // ST-03 is absent - the implementation convention reference is undefined.
     expect(req?.implementationConventionReference).toBeUndefined();
     expect(req?.utilizationManagementOrganization?.entityIdentifierCode).toBe("X3");
 
-    // The DMG before the subscriber NM1 finds no member — DOB stays unset.
+    // The DMG before the subscriber NM1 finds no member - DOB stays unset.
     expect(req?.subscriber?.lastName).toBe("DOE");
     expect(req?.subscriber?.dateOfBirth).toBeUndefined();
 
@@ -198,7 +198,7 @@ describe("get278Request — edge cases (orphan segments, missing ST-03)", () => 
     expect(review?.decision).toBeUndefined();
     expect(review?.traces).toHaveLength(0);
     expect(review?.references).toHaveLength(0);
-    // The HI*:E1165 has a code but no qualifier — preserved verbatim.
+    // The HI*:E1165 has a code but no qualifier - preserved verbatim.
     expect(review?.diagnoses[0]?.qualifier).toBe("");
     expect(review?.diagnoses[0]?.code).toBe("E1165");
     expect(review?.diagnoses[0]?.codeSystem).toBe("unknown");
@@ -223,7 +223,7 @@ describe("get278Request — edge cases (orphan segments, missing ST-03)", () => 
   });
 });
 
-describe("get278 — guards + dogfooded specs", () => {
+describe("get278 - guards + dogfooded specs", () => {
   it("returns undefined for a non-278 transaction set", () => {
     const raw = readFileSync(join(FIXTURE_DIR, "278-request.edi"), "utf8");
     const { delimiters, tx } = load278(raw);

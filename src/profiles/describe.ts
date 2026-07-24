@@ -1,8 +1,8 @@
 /**
  * Build the structured {@link "./types.js".X12ProfileDescription} returned
  * by `profile.describe()`. Unlike hl7 (which returns a formatted multi-line
- * string), x12 returns DATA — the "relaxes / adds / requires" buckets plus
- * the union of expected warnings — so downstream tooling can consume it
+ * string), x12 returns DATA - the "relaxes / adds / requires" buckets plus
+ * the union of expected warnings - so downstream tooling can consume it
  * programmatically. This record is published with the package.
  *
  * @internal
@@ -12,7 +12,7 @@ import { collectExpectedWarnings } from "./validate.js";
 import type { X12ProfileDescription, X12ProfileQuirk } from "./types.js";
 
 /**
- * Local mutable-during-assembly helper — honours `exactOptionalPropertyTypes`
+ * Local mutable-during-assembly helper - honours `exactOptionalPropertyTypes`
  * by conditionally assigning the optional `description` rather than writing
  * `description: undefined`.
  *

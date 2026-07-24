@@ -1,5 +1,5 @@
 /**
- * `build271` — pure-function builder for a 005010X279A1 Health Care
+ * `build271` - pure-function builder for a 005010X279A1 Health Care
  * Eligibility Benefit Response. NEVER auto-sends, NEVER opens a socket,
  * NEVER touches the filesystem. The library mechanically emits the response
  * it is told; a spec whose informationSources → receivers → subscribers →
@@ -9,11 +9,11 @@
  * The HL spine is the 271's safety primitive, so the builder OWNS it: it
  * computes every HL-01 id (sequential within the transaction), HL-02 parent
  * pointer (20 → 21 → 22 → 23), and HL-04 has-child flag from the nested
- * tree. Callers never hand-code the spine — a structurally inconsistent
+ * tree. Callers never hand-code the spine - a structurally inconsistent
  * hierarchy is therefore unrepresentable, and the SE-01 segment count is
  * correct by construction.
  *
- * The read side ({@link "./get-271.js".get271Eligibility}) is lenient — a
+ * The read side ({@link "./get-271.js".get271Eligibility}) is lenient - a
  * real 271 with a broken HL parent pointer is WARNED, never rejected. The
  * builder takes the opposite stance: it REFUSES rather than emit a
  * hierarchy a downstream consumer would have to repair. A caller that must
@@ -46,20 +46,20 @@ import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
 
-/** GS-08 / ST-03 version + release emitted for every 271 — the WPC TR3 `005010X279A1`. @internal */
+/** GS-08 / ST-03 version + release emitted for every 271 - the WPC TR3 `005010X279A1`. @internal */
 const X279A1_VERSION_RELEASE = "005010X279A1";
 
 /** GS-01 functional identifier code for the 271. `HB` = Eligibility, Coverage or Benefit Information. @internal */
 const X12_271_FUNCTIONAL_ID = "HB";
 
-/** GS-07 standards agency code — `X` for ASC X12. @internal */
+/** GS-07 standards agency code - `X` for ASC X12. @internal */
 const X12_AGENCY_CODE = "X";
 
 /** HL-03 level codes for the spine the builder computes. @internal */
 const HL_LEVEL = { SOURCE: "20", RECEIVER: "21", SUBSCRIBER: "22", DEPENDENT: "23" } as const;
 
 /**
- * `build271` — assemble a 005010X279A1 271 around the supplied spec.
+ * `build271` - assemble a 005010X279A1 271 around the supplied spec.
  *
  * Refused via {@link "./build-errors.js".Eligibility271BuildError}:
  * - No information sources, a source with no receivers, or a receiver with
@@ -169,7 +169,7 @@ export function build271(spec: Build271Spec): X12Interchange {
   const stControlNumber = envelope.transactionSetControlNumber;
   const st = seg(["ST", "271", esc(stControlNumber), X279A1_VERSION_RELEASE]);
 
-  // ---- Body segments — emit the computed HL spine depth-first -----------
+  // ---- Body segments - emit the computed HL spine depth-first -----------
 
   const body: string[] = [];
   const hlCounter: HlCounter = { next: 1 };
@@ -465,7 +465,7 @@ function emitDate(
 }
 
 // ---------------------------------------------------------------------------
-// String helpers — mirror the `build835` / `build837` emit primitives.
+// String helpers - mirror the `build835` / `build837` emit primitives.
 // ---------------------------------------------------------------------------
 
 /** @internal */

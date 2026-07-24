@@ -1,11 +1,11 @@
 /**
  * Typed model for an X12 005010X221A1 835 Healthcare Claim Payment/Advice
- * (ERA). The shape is the public contract of `get835()` — adding fields is
+ * (ERA). The shape is the public contract of `get835()` - adding fields is
  * backward-compatible; renaming fields is breaking. All monetary fields
- * are {@link "../../decimal.js".X12Decimal} (NEVER `number` — float
+ * are {@link "../../decimal.js".X12Decimal} (NEVER `number` - float
  * arithmetic destroys cents on a real-world remit).
  *
- * Spec source: WPC TR3 `005010X221A1` — Healthcare Claim Payment/Advice
+ * Spec source: WPC TR3 `005010X221A1` - Healthcare Claim Payment/Advice
  * (835). Segment-level references in JSDoc are 1-indexed against that TR3.
  */
 
@@ -17,7 +17,7 @@ import type { X12ParseWarning } from "../../parser/warnings.js";
  * the payment header (BPR), the trace (TRN), payer + payee identification
  * (Loop 1000A/1000B), every claim payment loop (Loop 2100 → Loop 2110),
  * provider-level adjustments (PLB), and every warning surfaced during the
- * walk — including the safety-critical {@link
+ * walk - including the safety-critical {@link
  * "../../parser/warnings.js".WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH}.
  *
  * @example
@@ -46,10 +46,10 @@ export interface X12Remittance {
 }
 
 /**
- * Decoded BPR — Financial Information / payment header. The PAYMENT
+ * Decoded BPR - Financial Information / payment header. The PAYMENT
  * MOVEMENT primitive: actual payment amount, credit/debit flag, method
  * (`ACH`/`CHK`/`NON`/`BOP`/`FWT`), payment date. **`totalActualPayment`
- * is the sum the bank actually moved** — `Σ(claim CLP-04) + Σ(PLB
+ * is the sum the bank actually moved** - `Σ(claim CLP-04) + Σ(PLB
  * adjustments) === BPR-02` is the top-level balance invariant.
  *
  * @example
@@ -65,8 +65,8 @@ export interface X12RemitPaymentHeader {
   readonly transactionHandlingCode: string;
   readonly totalActualPayment: X12Decimal;
   /**
-   * BPR-03 credit/debit flag. Spec-defined values: `"C"` (credit — money
-   * to provider, the normal case) or `"D"` (debit — refund / chargeback,
+   * BPR-03 credit/debit flag. Spec-defined values: `"C"` (credit - money
+   * to provider, the normal case) or `"D"` (debit - refund / chargeback,
    * uncommon). The field is typed as `string` to preserve verbatim any
    * non-spec value from a quirky payer; consumers branching on it should
    * compare against the literals.
@@ -78,7 +78,7 @@ export interface X12RemitPaymentHeader {
 }
 
 /**
- * Decoded TRN — Reassociation Trace Number. Pairs the 835 to the
+ * Decoded TRN - Reassociation Trace Number. Pairs the 835 to the
  * originating payer's payment artifact (ACH trace, check number) so a
  * cash-poster can reconcile. `referenceId` is the trace number a bank
  * statement / ACH addenda will carry; `originatingCompanyId` is the
@@ -88,7 +88,7 @@ export interface X12RemitPaymentHeader {
  * ```ts
  * import type { X12RemitTrace } from "@cosyte/x12";
  * declare const t: X12RemitTrace;
- * t.traceTypeCode;             // "1" — Current Transaction Trace Numbers
+ * t.traceTypeCode;             // "1" - Current Transaction Trace Numbers
  * t.referenceId;               // e.g. "12345" (verbatim)
  * t.originatingCompanyId;      // e.g. "1512345678"
  * ```
@@ -105,7 +105,7 @@ export interface X12RemitTrace {
  * Identification) party. The shape is uniform across both loops so a
  * consumer can iterate by role. PHI surface here: payer/payee names +
  * addresses + contact info are PII (payee may be an individual provider)
- * but NOT PHI in the §164.514 sense — patient identity lives on the
+ * but NOT PHI in the §164.514 sense - patient identity lives on the
  * per-claim level.
  *
  * @example
@@ -129,7 +129,7 @@ export interface X12RemitParty {
 /**
  * Decoded N3 + N4 address block attached to a party. `lines` is the N3
  * address lines (1-2 entries); `city`/`state`/`postalCode` come from N4.
- * All fields verbatim — no normalization (no proper-casing, no
+ * All fields verbatim - no normalization (no proper-casing, no
  * postal-code canonicalization).
  *
  * @example
@@ -151,7 +151,7 @@ export interface X12RemitAddress {
 }
 
 /**
- * Decoded REF segment — additional identifier (Tax ID, payer ID,
+ * Decoded REF segment - additional identifier (Tax ID, payer ID,
  * supplemental). `qualifier` is the X12 reference-identification
  * qualifier (`"2U"` payer ID, `"TJ"` Tax ID, `"EV"` participant
  * receiver, `"D9"` claim number, …); `value` is the verbatim ID. Used on
@@ -193,7 +193,7 @@ export interface X12RemitContact {
 }
 
 /**
- * Decoded Loop 2100 — Claim Payment Information. The clinical-claim
+ * Decoded Loop 2100 - Claim Payment Information. The clinical-claim
  * unit: one provider-billed claim adjudicated by the payer. **Carries
  * the per-claim balance invariant** (`totalPaymentAmount +
  * patientResponsibilityAmount + Σ(claim-level adjustments) ===
@@ -212,7 +212,7 @@ export interface X12RemitContact {
  * c.patientControlNumber;          // "PT-ACCT-001"
  * c.totalChargeAmount.toString();  // "500.00"
  * c.totalPaymentAmount.toString(); // "450.00"
- * c.claimStatusCode;               // "1" — Processed as Primary
+ * c.claimStatusCode;               // "1" - Processed as Primary
  * c.serviceLines.length;           // count of SVC loops
  * ```
  */
@@ -247,7 +247,7 @@ export interface X12RemitClaim {
  * `groupCode` (CAS-01). The walker flattens these so each
  * {@link X12RemitAdjustment} is ONE adjustment, not one segment.
  *
- * **`groupCode` is the safety primitive** — see
+ * **`groupCode` is the safety primitive** - see
  * {@link "../../code-lists/cagc.js".CLAIM_ADJUSTMENT_GROUP_CODES}. `CO`
  * = provider write-off; `PR` = patient owes; `OA` / `PI` = other / payer
  * edit. `reasonCode` is the CARC value (verbatim); `reasonDescription`
@@ -272,9 +272,9 @@ export interface X12RemitAdjustment {
 }
 
 /**
- * Decoded NM1 person — patient, subscriber, or corrected patient. The
+ * Decoded NM1 person - patient, subscriber, or corrected patient. The
  * `idQualifier` distinguishes member ID (`MI`), Social Security
- * (`34` — rare, regulated), payer ID, etc. PHI surface: every field on
+ * (`34` - rare, regulated), payer ID, etc. PHI surface: every field on
  * a person model carries PHI.
  *
  * @example
@@ -298,7 +298,7 @@ export interface X12RemitPerson {
 }
 
 /**
- * Decoded NM1 provider — service provider (`82`), rendering provider
+ * Decoded NM1 provider - service provider (`82`), rendering provider
  * (`82` in some contexts), crossover carrier (`TT`), other payer
  * (`PR` / `GB`), etc. Same shape as a person but the qualifier semantics
  * are organizational.
@@ -321,7 +321,7 @@ export interface X12RemitProvider {
 }
 
 /**
- * Decoded AMT segment — supplemental claim or service amount (allowed
+ * Decoded AMT segment - supplemental claim or service amount (allowed
  * charge, late filing penalty, capitation payment, etc.). `qualifier`
  * names which amount (`AU` coverage amount, `B6` allowed actual, …).
  * Surfaced verbatim; never folded into the balance invariant (which
@@ -364,7 +364,7 @@ export interface X12RemitRemark {
 }
 
 /**
- * Decoded Loop 2110 — Service Payment Information. One per service line
+ * Decoded Loop 2110 - Service Payment Information. One per service line
  * adjudicated. Line-level CAS adjustments roll up into the claim-level
  * balance invariant (`Σ(SVC paid) + Σ(line CAS) === CLP-04`); a mismatch
  * fires `X12_835_REMIT_BALANCE_MISMATCH` on the parent claim.
@@ -372,7 +372,7 @@ export interface X12RemitRemark {
  * `productServiceIdQualifier` is the SVC-01-1 procedure-code system
  * (`HC` HCPCS/CPT, `AD` ADA dental, `N4` NDC, `WK` Advanced Billing
  * Concepts, `IV` HIPPS rate code, …); `productServiceId` is the verbatim
- * code. The qualifier governs interpretation — **misreading it picks
+ * code. The qualifier governs interpretation - **misreading it picks
  * the wrong code system** and corrupts the clinical context.
  *
  * @example
@@ -404,7 +404,7 @@ export interface X12RemitServiceLine {
 }
 
 /**
- * Decoded PLB — Provider-Level Adjustment. Off-claim adjustments
+ * Decoded PLB - Provider-Level Adjustment. Off-claim adjustments
  * (recoupments, interest, capitation, write-offs) that move money at
  * the provider level, not the claim level. Each PLB segment carries up
  * to 6 adjustment triples (reason + amount); the walker flattens these

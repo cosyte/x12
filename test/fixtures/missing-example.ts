@@ -17,6 +17,6 @@
 // (tests don't ship public exports).
 
 /**
- * A deliberate missing-@example public export — see file header above.
+ * A deliberate missing-@example public export - see file header above.
  */
 export const MUST_FAIL_LINT_WHEN_COPIED_TO_SRC = "missing @example on purpose";

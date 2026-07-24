@@ -1,7 +1,7 @@
 /**
  * Unit tests for the Phase 8 general-purpose interchange builder
- * (`buildInterchange`). The builder owns every envelope mechanic — ISA layout,
- * GS/GE/SE/IEA control segments, and the SE-01 / GE-01 / IEA-01 counts — so a
+ * (`buildInterchange`). The builder owns every envelope mechanic - ISA layout,
+ * GS/GE/SE/IEA control segments, and the SE-01 / GE-01 / IEA-01 counts - so a
  * caller supplies only identity + body segments. These tests lock that the
  * built interchange round-trips through the parser with ZERO warnings (a
  * builder that emits a self-inconsistent envelope is a bug), that the counts

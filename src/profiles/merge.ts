@@ -6,7 +6,7 @@
  * last-wins, and a quirk merge keyed by id where later layers (child) win on
  * id collision while non-colliding parent quirks survive additively.
  *
- * Post-merge re-validation is the CALLER's responsibility — these helpers
+ * Post-merge re-validation is the CALLER's responsibility - these helpers
  * are pure reducers.
  *
  * @internal

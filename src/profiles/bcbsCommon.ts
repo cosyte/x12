@@ -1,9 +1,9 @@
 /**
- * Built-in `bcbsCommon` profile — the lowest-common-denominator BCBS
+ * Built-in `bcbsCommon` profile - the lowest-common-denominator BCBS
  * envelope quirk. Authored via the public `defineProfile()` API; use via
  * `parseX12(raw, { profile: profiles.bcbsCommon })`.
  *
- * Each BCBS plan still ships its own companion guide — this is a documented
+ * Each BCBS plan still ships its own companion guide - this is a documented
  * starting point, not a complete BCBS edit set. The one quirk here is
  * grounded in `test/fixtures/envelope/bcbs-subelement.edi` (see
  * `test/parser-envelope.test.ts`), which uses a backslash component separator
@@ -28,7 +28,7 @@ import { defineProfile } from "./define.js";
 export const bcbsCommon = defineProfile({
   name: "bcbsCommon",
   description:
-    "Lowest-common-denominator BCBS envelope quirks — a documented starting point, not a complete plan-specific edit set",
+    "Lowest-common-denominator BCBS envelope quirks - a documented starting point, not a complete plan-specific edit set",
   quirks: [
     {
       id: "backslash-component-separator",
@@ -36,7 +36,7 @@ export const bcbsCommon = defineProfile({
       summary:
         "ISA-16 component (sub-element) separator is a backslash `\\`, not the commonly-assumed `:`.",
       fixture: "envelope/bcbs-subelement.edi",
-      sourceCategory: "BCBS plan companion guides — non-colon ISA-16 sub-element separator",
+      sourceCategory: "BCBS plan companion guides - non-colon ISA-16 sub-element separator",
     },
   ],
 });

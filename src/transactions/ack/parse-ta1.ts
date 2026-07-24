@@ -1,15 +1,15 @@
 /**
- * `parseTA1` — decode the first envelope-level TA1 Interchange
+ * `parseTA1` - decode the first envelope-level TA1 Interchange
  * Acknowledgment on a parsed {@link X12Interchange} into the typed
  * {@link X12AckTA1} model. PURE FUNCTION.
  *
  * TA1 is NOT a transaction set: per the ASC X12 standard it lives at the
  * envelope level, between ISA and the first GS (or alone inside an
- * ISA..IEA with no GS at all — the "TA1-only interchange" pattern). The
+ * ISA..IEA with no GS at all - the "TA1-only interchange" pattern). The
  * Phase 3 envelope walker captures every envelope-level TA1 verbatim onto
  * {@link X12Interchange.ta1Segments}; this function decodes the first
  * one. Multiple TA1 acks for prior interchanges may co-exist on a single
- * inbound — pass `index` to read the Nth, or scan `ta1Segments` directly.
+ * inbound - pass `index` to read the Nth, or scan `ta1Segments` directly.
  */
 
 import type { X12Interchange } from "../../parser/types.js";
@@ -36,7 +36,7 @@ export function parseTA1(interchange: X12Interchange): X12AckTA1 | undefined {
   const ta1 = interchange.ta1Segments[0];
   if (ta1 === undefined) return undefined;
 
-  // TA1 is a fixed-position 5-element segment (no `?`-escape applies — the
+  // TA1 is a fixed-position 5-element segment (no `?`-escape applies - the
   // standard does NOT define escaped TA1 content). Read elements verbatim.
   const elements = ta1.elements;
   const interchangeControlNumber = elements[1] ?? "";
@@ -46,7 +46,7 @@ export function parseTA1(interchange: X12Interchange): X12AckTA1 | undefined {
   const noteCodeRaw = elements[5] ?? "";
 
   // Lenient narrow: unknown ack code (anything past code list I13) falls
-  // back to typed reject — fail-safe. Unknown note code (anything past
+  // back to typed reject - fail-safe. Unknown note code (anything past
   // code list I18 028) collapses the typed narrow to `undefined` but
   // preserves the verbatim raw string for forensic review.
   const ackCode = narrowAckCode(ackCodeRaw) ?? TA1_ACK_CODES.R;

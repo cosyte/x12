@@ -6,7 +6,7 @@
  * pass `opts.name` to every subsequent throw site (fail-fast: a caller who
  * hits a quirk error should see their own profile flagged by name).
  *
- * Zero runtime deps — inlined Levenshtein (~15 LoC) for "did you mean?"
+ * Zero runtime deps - inlined Levenshtein (~15 LoC) for "did you mean?"
  * hints on unknown option keys.
  *
  * @internal
@@ -168,7 +168,7 @@ export function validateQuirks(quirks: readonly X12ProfileQuirk[], profileName: 
     seenIds.add(q.id);
     if (typeof q.effect !== "string" || !KNOWN_EFFECTS.includes(q.effect)) {
       throw new X12ProfileError(
-        `Profile '${profileName}' quirk '${q.id}' has invalid effect ${JSON.stringify(q.effect)} — ` +
+        `Profile '${profileName}' quirk '${q.id}' has invalid effect ${JSON.stringify(q.effect)} - ` +
           `must be one of ${KNOWN_EFFECTS.join(" / ")}.`,
         profileName,
       );
@@ -182,7 +182,7 @@ export function validateQuirks(quirks: readonly X12ProfileQuirk[], profileName: 
     // The locked hard rule: no quirk without a demonstrating fixture.
     if (typeof q.fixture !== "string" || !FIXTURE_PATH_RE.test(q.fixture)) {
       throw new X12ProfileError(
-        `Profile '${profileName}' quirk '${q.id}' must cite a 'fixture' — a relative path under test/fixtures/ ` +
+        `Profile '${profileName}' quirk '${q.id}' must cite a 'fixture' - a relative path under test/fixtures/ ` +
           `(e.g. "remit/835-availity-quirk.edi") demonstrating the deviation. No invented quirks. ` +
           `Received: ${JSON.stringify(q.fixture)}.`,
         profileName,
@@ -199,7 +199,7 @@ export function validateQuirks(quirks: readonly X12ProfileQuirk[], profileName: 
       for (const code of q.expectedWarnings) {
         if (!WARNING_CODE_SET.has(code)) {
           throw new X12ProfileError(
-            `Profile '${profileName}' quirk '${q.id}' lists unknown expected warning ${JSON.stringify(code)} — ` +
+            `Profile '${profileName}' quirk '${q.id}' lists unknown expected warning ${JSON.stringify(code)} - ` +
               `must be a member of WARNING_CODES.`,
             profileName,
           );

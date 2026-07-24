@@ -1,8 +1,8 @@
 /**
- * Barrel for the 834 Benefit Enrollment and Maintenance surface — TR3
+ * Barrel for the 834 Benefit Enrollment and Maintenance surface - TR3
  * `005010X220A1`. The header reads synchronously via {@link get834Header};
  * the member-level detail streams via {@link get834Enrollments} (an
- * `AsyncIterable` — one member per `INS` loop). The loop specs are exported
+ * `AsyncIterable` - one member per `INS` loop). The loop specs are exported
  * so consumers can introspect or extend the hierarchy.
  *
  * @example

@@ -1,6 +1,6 @@
 /**
  * 835 balance-invariant validators. Money is the largest blast radius in
- * a remit parser — a dropped decimal or a wrong-sign adjustment posts
+ * a remit parser - a dropped decimal or a wrong-sign adjustment posts
  * cash to the wrong dollar. These checks NEVER silently rebalance: a
  * failed invariant emits an {@link
  * "../../parser/warnings.js".WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH}
@@ -13,10 +13,10 @@
  *    Loop 2110 service line. "Submitted charge = paid + adjustments."
  *
  * 2. **Claim-level:** `CLP-03 === CLP-04 + Σ(all CAS in claim, claim AND
- *    line level)` per Loop 2100. The X12 spec balance — every adjustment
+ *    line level)` per Loop 2100. The X12 spec balance - every adjustment
  *    inside the claim, regardless of whether it sits on the CLP loop
  *    directly or under a nested SVC. (CLP-05 / Patient Responsibility
- *    Amount is informational, NOT part of the balance — it equals
+ *    Amount is informational, NOT part of the balance - it equals
  *    `Σ(PR-group CAS)` separately; spec note in JSDoc on the per-claim
  *    check.)
  *
@@ -27,15 +27,15 @@
  *    BPR-02). So subtraction is what makes the equation balance.
  *
  * > Phase 4 implementation note: the cosyte roadmap (`operations/roadmaps/x12.md`
- * > §4) sketched these invariants slightly differently — that sketch was a
+ * > §4) sketched these invariants slightly differently - that sketch was a
  * > simplification. The implementation here matches the **X12 005010X221A1
  * > TR3 §1.10.2 spec text** directly; the roadmap is updated in the same
  * > slice with a forward-pointer to this module so the contract stays
  * > consistent.
  *
  * **PHI discipline:** mismatch messages echo only the invariant label +
- * the X12Decimal text values (numeric — no PHI by shape). Patient
- * control numbers / member ids are NOT in the message — consumers
+ * the X12Decimal text values (numeric - no PHI by shape). Patient
+ * control numbers / member ids are NOT in the message - consumers
  * locate the offending claim via the warning's `position` + the claim's
  * sequence in `remit.claims`.
  */
@@ -53,7 +53,7 @@ import type {
 /**
  * Check the claim-level invariant `CLP-03 === CLP-04 + Σ(all CAS in
  * claim, both claim and line level)`. Returns the warning when out of
- * balance, or `undefined` otherwise. Pure — no side effects.
+ * balance, or `undefined` otherwise. Pure - no side effects.
  *
  * @example
  * ```ts
@@ -61,7 +61,7 @@ import type {
  * declare const claim: X12RemitClaim;
  * const w = checkClaimBalance(claim, { segmentIndex: 12 });
  * if (w !== undefined) {
- *   // not balanced — w.message names invariant + spec + computed + delta
+ *   // not balanced - w.message names invariant + spec + computed + delta
  * }
  * ```
  */
@@ -90,7 +90,7 @@ export function checkClaimBalance(
  * Check the per-service-line invariant `SVC-02 === SVC-03 + Σ(line CAS)`.
  * Returns one warning per out-of-balance service line. Header-only
  * adjudications (claims with zero service lines) produce no per-line
- * warning. Pure — no side effects.
+ * warning. Pure - no side effects.
  *
  * @example
  * ```ts
@@ -127,7 +127,7 @@ export function checkServiceLineBalance(
 /**
  * Check the top-of-remit invariant `BPR-02 === Σ(CLP-04) - Σ(PLB
  * amounts)`. PLB amounts are preserved with their **raw EDI sign**
- * (positive = take-back from provider; negative = credit to provider —
+ * (positive = take-back from provider; negative = credit to provider -
  * see {@link "./types.js".X12RemitProviderAdjustment}), so the
  * *subtraction* is what makes the equation balance. Returns the warning
  * when out of balance, or `undefined` when balanced.

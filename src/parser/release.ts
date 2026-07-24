@@ -4,13 +4,13 @@
  * suppress the special meaning of the next delimiter. In HIPAA 005010 it is
  * conventionally `?`: `?~` is a literal `~`, `?*` a literal `*`, and `??` a
  * literal `?`. The release character itself is NOT transmitted as a fifth
- * ISA-level delimiter — its slot in the standard is informational and most
+ * ISA-level delimiter - its slot in the standard is informational and most
  * 005010 traffic omits release sequences entirely, so the parser keeps `?`
  * hardcoded as the conventional release character and only consumes it when
  * the next byte is one of the four detected delimiters or another `?`.
  *
  * Postel's Law applies: an isolated `?` followed by a non-delimiter (e.g.
- * `?A`) is preserved verbatim — the spec leaves this case ambiguous and the
+ * `?A`) is preserved verbatim - the spec leaves this case ambiguous and the
  * most defensible behavior is to keep the bytes the sender sent. A trailing
  * `?` with nothing after (a dangling release character at end-of-input or
  * end-of-element) is preserved verbatim AND warned (Tier-2
@@ -18,7 +18,7 @@
  *
  * The pair `{ unescapeRelease, escapeRelease }` is bijective on inputs that
  * either contain no release-relevant characters OR are already a clean
- * round-trip — this gives the Phase 2 lossless round-trip property: for any
+ * round-trip - this gives the Phase 2 lossless round-trip property: for any
  * value `v` and delimiter set `d`, `unescapeRelease(escapeRelease(v, d), d)`
  * deep-equals `v`.
  */
@@ -30,7 +30,7 @@ import { danglingReleaseChar, type X12ParseWarning } from "./warnings.js";
 /**
  * The release character is conventionally `?` per ASC X12; HIPAA 005010
  * does not transmit it as a fifth ISA delimiter. The library accepts `?` as
- * the universal release character — a non-`?` release sequence has never
+ * the universal release character - a non-`?` release sequence has never
  * been observed in real-world US healthcare X12 traffic. If a future
  * consumer needs a different release character, the constant is `as const`
  * so a parameterized variant can be added without breaking the public API.
@@ -50,11 +50,11 @@ export const RELEASE_CHAR = "?" as const;
  * Reverse a single X12 release-character escape sequence. Consumes `?` plus
  * its target byte when the target is one of the four detected delimiters or
  * another `?`; preserves the `?` verbatim when the target is anything else
- * (Postel's-Law tolerance — the spec leaves the `?A` case ambiguous and
+ * (Postel's-Law tolerance - the spec leaves the `?A` case ambiguous and
  * preserving the bytes is the most defensible behavior).
  *
  * Emits a single Tier-2 `X12_DANGLING_RELEASE_CHAR` warning when the input
- * ends with a bare `?` (no target byte to escape) — the bytes are preserved
+ * ends with a bare `?` (no target byte to escape) - the bytes are preserved
  * verbatim so round-trip is still byte-exact.
  *
  * @example
@@ -142,7 +142,7 @@ export function escapeRelease(value: string, delimiters: Delimiters): string {
 /**
  * Split a string by `sep`, honouring the `?`-release-character escape so
  * an escaped separator (`?sep`) is treated as part of the surrounding token.
- * Dangling-release warnings are NOT emitted here — the caller (which knows
+ * Dangling-release warnings are NOT emitted here - the caller (which knows
  * the right positional context) re-runs {@link unescapeRelease} on each
  * resulting token to surface them.
  *

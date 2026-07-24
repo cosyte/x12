@@ -7,7 +7,7 @@
  *   EB benefit lines (active coverage, copay, deductible) with
  *   repetition-separated service-type codes resolved against the bundled
  *   snapshot.
- * - **TRN echo** — the safety-critical reassociation property: the 271
+ * - **TRN echo** - the safety-critical reassociation property: the 271
  *   carries the requesting 270's trace number verbatim on its enclosing
  *   subscriber / dependent. The walker never mutates it.
  * - Tier-2 dependent fixture: a dependent HL (Loop 2000D) with its own
@@ -45,7 +45,7 @@ function readEligibilityFixture(name: string): X12Eligibility {
   return elig;
 }
 
-describe("get271Eligibility — Tier-1 canonical (X279A1)", () => {
+describe("get271Eligibility - Tier-1 canonical (X279A1)", () => {
   it("decodes the canonical 271 fixture end-to-end with no warnings", () => {
     const elig = readEligibilityFixture("271-canonical.edi");
     expect(elig.warnings).toHaveLength(0);
@@ -100,7 +100,7 @@ describe("get271Eligibility — Tier-1 canonical (X279A1)", () => {
   });
 });
 
-describe("get271Eligibility — Tier-2 dependent (Loop 2000D)", () => {
+describe("get271Eligibility - Tier-2 dependent (Loop 2000D)", () => {
   it("captures the dependent, its own TRN echo, and its benefits", () => {
     const elig = readEligibilityFixture("271-dependent.edi");
     expect(elig.warnings).toHaveLength(0);
@@ -120,7 +120,7 @@ describe("get271Eligibility — Tier-2 dependent (Loop 2000D)", () => {
   });
 });
 
-describe("get271Eligibility — guards + dogfooded specs", () => {
+describe("get271Eligibility - guards + dogfooded specs", () => {
   it("returns undefined for a non-271 transaction set", () => {
     const raw = readFileSync(join(FIXTURE_DIR, "271-canonical.edi"), "utf8").trimEnd();
     const ix = parseX12(raw);

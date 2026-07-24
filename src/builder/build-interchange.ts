@@ -1,19 +1,19 @@
 /**
- * `buildInterchange` — the general-purpose, segment-level interchange builder
+ * `buildInterchange` - the general-purpose, segment-level interchange builder
  * for `@cosyte/x12`. Given an {@link InterchangeSpec} (ISA identity + groups +
  * per-transaction body segments) it assembles a complete, spec-clean X12 byte
- * stream — owning every envelope mechanic the caller should never hand-roll:
+ * stream - owning every envelope mechanic the caller should never hand-roll:
  * the ISA fixed-width layout, the GS/GE/SE/IEA control segments, and the
  * SE-01 / GE-01 / IEA-01 counts. The result is round-tripped back through
  * {@link parseX12} so the returned {@link X12Interchange} is bit-identical to
- * the parsed form every other helper consumes — and so the build path inherits
+ * the parsed form every other helper consumes - and so the build path inherits
  * delimiter detection and envelope walking for free (any internal builder bug
  * surfaces as Tier-2 warnings on the returned interchange's `warnings` array).
  *
  * NEVER auto-sends, NEVER opens a socket, NEVER touches the filesystem.
  * Structurally impossible specs (an over-long ISA-13, a segment with no id)
  * are REFUSED via {@link "./errors.js".X12BuildError}; this mirrors the
- * `build999` boundary but without any disposition-specific safety guard —
+ * `build999` boundary but without any disposition-specific safety guard -
  * those belong to the domain builders layered on top.
  */
 
@@ -69,7 +69,7 @@ export function buildInterchange(spec: InterchangeSpec): X12Interchange {
   const version = spec.version ?? "00501";
   const interchangeControlNumber = padControl(spec.interchangeControlNumber, 9);
 
-  // ISA is fixed-width per ASC X12 .5 — pad each element, never escape (the
+  // ISA is fixed-width per ASC X12 .5 - pad each element, never escape (the
   // separators are the ISA's own structural bytes, declared in-band).
   const isa =
     [
@@ -82,12 +82,12 @@ export function buildInterchange(spec: InterchangeSpec): X12Interchange {
       pad(spec.senderId, 15), // ISA-06
       pad(receiverQualifier, 2), // ISA-07
       pad(spec.receiverId, 15), // ISA-08
-      pad(spec.interchangeDate, 6), // ISA-09 — YYMMDD
-      pad(spec.interchangeTime, 4), // ISA-10 — HHMM
+      pad(spec.interchangeDate, 6), // ISA-09 - YYMMDD
+      pad(spec.interchangeTime, 4), // ISA-10 - HHMM
       repetitionSeparator, // ISA-11
       pad(version, 5), // ISA-12
       interchangeControlNumber, // ISA-13
-      "0", // ISA-14 — ack requested (0 = no inbound TA1)
+      "0", // ISA-14 - ack requested (0 = no inbound TA1)
       usageIndicator, // ISA-15
       componentSeparator, // ISA-16
     ].join(elementSeparator) + segmentTerminator;
@@ -187,7 +187,7 @@ function buildTransaction(
 }
 
 // ---------------------------------------------------------------------------
-// String helpers — mirror the `build999` emit primitives.
+// String helpers - mirror the `build999` emit primitives.
 // ---------------------------------------------------------------------------
 
 /** @internal */
@@ -208,7 +208,7 @@ function pad(value: string, width: number): string {
 
 /**
  * Zero-pad a control number to `width` chars (ISA-13 / IEA-02 are always 9).
- * Throws {@link X12BuildError} if the value already exceeds the width — a
+ * Throws {@link X12BuildError} if the value already exceeds the width - a
  * silently-truncated control number would break ISA-13↔IEA-02 reconciliation.
  *
  * @internal
@@ -224,7 +224,7 @@ function padControl(value: string, width: number): string {
 
 /**
  * Expand a 6-digit YYMMDD into CCYYMMDD for GS-04. Years `00`–`49` are 21st
- * century, `50`–`99` are 20th — the conventional X12 century window. A value
+ * century, `50`–`99` are 20th - the conventional X12 century window. A value
  * already in CCYYMMDD form passes through unchanged.
  *
  * @internal

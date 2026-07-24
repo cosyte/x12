@@ -4,11 +4,11 @@
  * envelope (per ASC X12 .5, Interchange Control Structures) and throws a
  * Tier-3 `X12ParseError` if the structural preconditions fail. Downstream
  * stages (`envelope.ts`) consume the returned {@link Delimiters} verbatim
- * and NEVER assume any delimiter — in particular the component separator
+ * and NEVER assume any delimiter - in particular the component separator
  * (ISA-16) is rarely `:` outside Medicare; clearinghouses commonly use
  * `\`, `^`, or `|`.
  *
- * Three of the four Tier-3 fatal codes originate here —
+ * Three of the four Tier-3 fatal codes originate here -
  * `X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`, `X12_INVALID_DELIMITERS`. The
  * fourth, `X12_EMPTY_INPUT`, is owned by the top-level `parseX12` entry.
  */
@@ -27,7 +27,7 @@ import type { Delimiters } from "./types.js";
  * @example
  * ```ts
  * import { ISA_MIN_LENGTH } from "@cosyte/x12";
- * ISA_MIN_LENGTH; // 106 — a raw interchange shorter than this is X12_ISA_TOO_SHORT
+ * ISA_MIN_LENGTH; // 106 - a raw interchange shorter than this is X12_ISA_TOO_SHORT
  * ```
  */
 export const ISA_MIN_LENGTH = 106;
@@ -36,11 +36,11 @@ export const ISA_MIN_LENGTH = 106;
  * Zero-indexed byte positions of the four delimiter classes inside the
  * 106-byte ISA. Locked by ASC X12 .5; do NOT make these configurable.
  *
- * - `element` at byte 3 — the byte immediately after the literal `"ISA"`.
- * - `repetition` at byte 82 — ISA-11 (the Control Standards Identifier
+ * - `element` at byte 3 - the byte immediately after the literal `"ISA"`.
+ * - `repetition` at byte 82 - ISA-11 (the Control Standards Identifier
  *   slot, repurposed as the repetition separator in 005010+).
- * - `component` at byte 104 — ISA-16 (the LAST element).
- * - `segment` at byte 105 — the byte immediately after ISA-16.
+ * - `component` at byte 104 - ISA-16 (the LAST element).
+ * - `segment` at byte 105 - the byte immediately after ISA-16.
  *
  * @example
  * ```ts
@@ -69,11 +69,11 @@ export const DELIMITER_POSITIONS = {
  *   character and the four are mutually distinct (else
  *   `X12_INVALID_DELIMITERS`),
  * - the detected element separator actually appears at every fixed ISA
- *   element-separator position (else `X12_INVALID_DELIMITERS`) — guards
+ *   element-separator position (else `X12_INVALID_DELIMITERS`) - guards
  *   against an input that begins with `"ISA"` followed by structurally
  *   wrong bytes (e.g. a tab as element separator with `:` further in).
  *
- * Phase 1 is liberal in what it accepts AFTER the ISA — downstream
+ * Phase 1 is liberal in what it accepts AFTER the ISA - downstream
  * envelope walking emits Tier-2 warnings rather than throwing. But the
  * ISA itself MUST be structurally readable; otherwise no later stage has
  * a delimiter set to work with.
@@ -95,7 +95,7 @@ export function detectDelimiters(raw: string): Delimiters {
   if (raw.length < 3 || raw.slice(0, 3) !== "ISA") {
     throw new X12ParseError(
       FATAL_CODES.X12_NO_ISA_HEADER,
-      "Input does not begin with an ISA segment — X12 interchanges must start with ISA.",
+      "Input does not begin with an ISA segment - X12 interchanges must start with ISA.",
       fatalPosition,
       snip,
     );
@@ -104,7 +104,7 @@ export function detectDelimiters(raw: string): Delimiters {
   if (raw.length < ISA_MIN_LENGTH) {
     throw new X12ParseError(
       FATAL_CODES.X12_ISA_TOO_SHORT,
-      `ISA segment is truncated — need ${String(ISA_MIN_LENGTH)} bytes including the segment terminator, got ${String(raw.length)}.`,
+      `ISA segment is truncated - need ${String(ISA_MIN_LENGTH)} bytes including the segment terminator, got ${String(raw.length)}.`,
       fatalPosition,
       snip,
     );
@@ -156,7 +156,7 @@ export function detectDelimiters(raw: string): Delimiters {
   }
 
   // Verify the element separator actually appears at every fixed ISA
-  // element-separator position — guards against an input that begins
+  // element-separator position - guards against an input that begins
   // with `"ISA"` followed by structurally wrong bytes. ISA has 16
   // elements, so there are 16 element separators (one before each
   // element). Positions: 3, 6, 17, 20, 31, 34, 50, 53, 69, 76, 81, 83,
@@ -167,7 +167,7 @@ export function detectDelimiters(raw: string): Delimiters {
     if (raw.charAt(pos) !== element) {
       throw new X12ParseError(
         FATAL_CODES.X12_INVALID_DELIMITERS,
-        `Element separator "${element}" was detected at ISA byte 4 but is missing at fixed ISA byte ${String(pos + 1)} — ISA element layout is not 005010-conformant.`,
+        `Element separator "${element}" was detected at ISA byte 4 but is missing at fixed ISA byte ${String(pos + 1)} - ISA element layout is not 005010-conformant.`,
         fatalPosition,
         snip,
       );

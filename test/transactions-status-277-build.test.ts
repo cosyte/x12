@@ -1,5 +1,5 @@
 /**
- * Unit tests for the 005010X212 277 / 005010X214 277CA emit surface —
+ * Unit tests for the 005010X212 277 / 005010X214 277CA emit surface -
  * `build277` / `build277CA`. Covers:
  *
  * - Happy path: a built 277 round-trips through `get277Status`
@@ -153,7 +153,7 @@ const CANONICAL_SPEC: Build277Spec = {
   ],
 };
 
-describe("build277 — envelope identity", () => {
+describe("build277 - envelope identity", () => {
   it("emits GS-01 HN / ST-01 277 / ST-03 005010X212", () => {
     const ix = build277(CANONICAL_SPEC);
     const group = ix.groups[0];
@@ -176,7 +176,7 @@ describe("build277 — envelope identity", () => {
   });
 });
 
-describe("build277 — round-trip fidelity", () => {
+describe("build277 - round-trip fidelity", () => {
   it("reproduces the claim, TRN echo, STC composites, and amounts", () => {
     const status = statusOf(build277(CANONICAL_SPEC));
     expect(status.warnings).toHaveLength(0);
@@ -220,7 +220,7 @@ describe("build277 — round-trip fidelity", () => {
   });
 });
 
-describe("build277CA — claim acknowledgment", () => {
+describe("build277CA - claim acknowledgment", () => {
   it("emits ST-03 005010X214 and is admitted by get277CADisposition", () => {
     const ix = build277CA(CANONICAL_SPEC);
     const tx = ix.groups[0]?.transactions[0];
@@ -275,7 +275,7 @@ describe("build277CA — claim acknowledgment", () => {
   });
 });
 
-describe("build277 — dependent hierarchy", () => {
+describe("build277 - dependent hierarchy", () => {
   const DEPENDENT_SPEC: Build277Spec = {
     envelope: ENVELOPE,
     informationSources: [
@@ -340,7 +340,7 @@ describe("build277 — dependent hierarchy", () => {
   });
 });
 
-describe("build277 — structural refusals", () => {
+describe("build277 - structural refusals", () => {
   it("refuses an empty information-source list (INVALID_HIERARCHY)", () => {
     try {
       build277({ envelope: ENVELOPE, informationSources: [] });
@@ -646,7 +646,7 @@ describe("build277 — structural refusals", () => {
   });
 });
 
-describe("build277 — PHI safety", () => {
+describe("build277 - PHI safety", () => {
   it("structural-error message carries indices only, never a name / member id", () => {
     const spec: Build277Spec = {
       envelope: ENVELOPE,
@@ -701,7 +701,7 @@ describe("build277 — PHI safety", () => {
   });
 });
 
-describe("build277 — optional-field defaults", () => {
+describe("build277 - optional-field defaults", () => {
   it("round-trips a spec that omits the optional member / claim / line / status fields", () => {
     const spec: Build277Spec = {
       envelope: ENVELOPE,
@@ -749,7 +749,7 @@ describe("build277 — optional-field defaults", () => {
   });
 });
 
-describe("build277 — envelope control-number / date expansion", () => {
+describe("build277 - envelope control-number / date expansion", () => {
   it("zero-pads a short interchange control number to 9 chars", () => {
     const ix = build277({
       ...CANONICAL_SPEC,

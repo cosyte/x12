@@ -2,7 +2,7 @@
  * Typed model for an X12 `005010X220A1` 834 Benefit Enrollment and
  * Maintenance transaction. Split into a sync {@link X12EnrollmentHeader}
  * (the BGN header + sponsor / payer parties) and a stream of
- * {@link X12Enrollment} member-level detail loops — one per `INS` segment —
+ * {@link X12Enrollment} member-level detail loops - one per `INS` segment -
  * yielded by {@link "./get-834.js".get834Enrollments} as an
  * `AsyncIterable`. The 834 is the bulky open-enrollment workhorse (files
  * can run to hundreds of MB), so the member surface is a stream, not an
@@ -10,7 +10,7 @@
  * whole roster in memory at once.
  *
  * Maintenance type (`INS-03` / `HD-01`, X12 0875) is the safety-critical
- * field — add / change / terminate / reinstate. The verbatim code is
+ * field - add / change / terminate / reinstate. The verbatim code is
  * ALWAYS preserved and the parser NEVER infers an action for an unknown
  * code (it raises `X12_834_UNKNOWN_MAINTENANCE_TYPE` instead). Every
  * member NM1 / DMG field carries PHI; surfaced verbatim, never echoed in a
@@ -24,7 +24,7 @@ import type { X12Decimal } from "../../decimal.js";
 import type { X12ParseWarning } from "../../parser/warnings.js";
 
 /**
- * Decoded 834 header — the BGN Beginning Segment plus the sponsor
+ * Decoded 834 header - the BGN Beginning Segment plus the sponsor
  * (`N1*P5`) and payer (`N1*IN`) parties. Returned by
  * {@link "./get-834.js".get834Header}; the per-member stream is separate
  * so a consumer can read the file-level context without draining the
@@ -73,10 +73,10 @@ export interface X12EnrollmentParty {
 }
 
 /**
- * One decoded Loop 2000 member-level detail (`INS`) — a single member's
+ * One decoded Loop 2000 member-level detail (`INS`) - a single member's
  * enrollment action. Carries the member identity (Loop 2100A NM1 + DMG +
- * address), the supplemental ids (REF — subscriber id, group/policy), the
- * dates (DTP — eligibility begin/end), the health-coverage loops (Loop
+ * address), the supplemental ids (REF - subscriber id, group/policy), the
+ * dates (DTP - eligibility begin/end), the health-coverage loops (Loop
  * 2300 HD), and the coordination-of-benefits loops (Loop 2320 COB). Any
  * recoverable deviation (e.g. an unknown maintenance type) is surfaced on
  * `warnings` for THIS member only.
@@ -137,7 +137,7 @@ export interface X12EnrollmentMember {
 /**
  * Decoded N3 + N4 address block attached to a member. `lines` is the N3
  * address lines (1-2 entries); `city` / `state` / `postalCode` come from
- * N4. All verbatim — no normalization.
+ * N4. All verbatim - no normalization.
  *
  * @example
  * ```ts
@@ -158,7 +158,7 @@ export interface X12EnrollmentAddress {
 /**
  * Decoded Loop 2300 health coverage (`HD`) plus its attached dates (`DTP`)
  * and monetary amounts (`AMT`). `insuranceLineCode` is HD-03 (`HLT`, `DEN`,
- * `VIS`, …); `maintenanceTypeCode` is HD-01 — the per-coverage echo of the
+ * `VIS`, …); `maintenanceTypeCode` is HD-01 - the per-coverage echo of the
  * member action, validated against the same X12 0875 snapshot as INS-03.
  *
  * @example
@@ -201,7 +201,7 @@ export interface X12CoordinationOfBenefits {
 }
 
 /**
- * Decoded REF — supplemental identifier (subscriber id `0F`, group/policy
+ * Decoded REF - supplemental identifier (subscriber id `0F`, group/policy
  * `1L`, member id `23`, …). `qualifier` is the X12 reference-identification
  * qualifier; `value` is the verbatim id.
  *
@@ -239,7 +239,7 @@ export interface X12EnrollmentDate {
 
 /**
  * Decoded AMT amount attached to a health-coverage loop. `qualifier` is the
- * amount qualifier (AMT-01 — `"P3"` premium, `"B9"` co-insurance, …);
+ * amount qualifier (AMT-01 - `"P3"` premium, `"B9"` co-insurance, …);
  * `amount` is {@link "../../decimal.js".X12Decimal} (NEVER `number`).
  *
  * @example

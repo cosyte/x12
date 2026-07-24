@@ -4,10 +4,10 @@ name: Nightly fuzz
 # The per-commit `ci` job runs the property/fuzz suite at its committed base iteration counts
 # against a pinned seed (coverage-stable). This nightly job runs the same targets at a HIGHER
 # iteration count (`X12_FUZZ_RUNS`) and rotates the seed (`X12_FUZZ_SEED`) so each night explores
-# a different slice of the input space — the deep search that would make the per-commit run slow.
+# a different slice of the input space, the deep search that would make the per-commit run slow.
 # A failure opens/updates a single sticky issue so a regression NOTIFIES instead of scrolling past
 # in the Actions log; a clean run auto-closes it. Any finding is replayable: the log prints the
-# fast-check counterexample and the effective seed — re-run `X12_FUZZ_SEED=<seed> pnpm vitest run
+# fast-check counterexample and the effective seed, re-run `X12_FUZZ_SEED=<seed> pnpm vitest run
 # test/property` locally to reproduce.
 
 on:
@@ -50,7 +50,7 @@ jobs:
           # Rotate the seed each run; amplify iterations (dispatch input wins, else 20).
           X12_FUZZ_SEED: ${{ github.run_id }}
           X12_FUZZ_RUNS: ${{ github.event.inputs.runs-multiplier || '20' }}
-        # Only the property/fuzz layer — the amplification knob is scoped to the byte-flip targets;
+        # Only the property/fuzz layer, the amplification knob is scoped to the byte-flip targets;
         # no coverage gate here (that is the per-commit `ci` job's job).
         run: pnpm vitest run test/property
 
@@ -72,7 +72,7 @@ jobs:
           run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           existing="$(gh issue list --state open --search "$ISSUE_MARKER in:body" --json number --jq '.[0].number // ""')"
           body="$ISSUE_MARKER
-          The **nightly fuzz** run failed — a byte-flip / hostile input tripped an unsanctioned throw or a
+          The **nightly fuzz** run failed, a byte-flip / hostile input tripped an unsanctioned throw or a
           walker invariant. This is a hard signal: the lenient parser must NEVER throw outside the 4 Tier-3
           fatals, and the per-transaction walkers must never throw on lenient-parsed input.
 
@@ -104,6 +104,6 @@ jobs:
         run: |
           existing="$(gh issue list --state open --search "$ISSUE_MARKER in:body" --json number --jq '.[0].number // ""')"
           if [ -n "$existing" ]; then
-            gh issue comment "$existing" --body "Nightly fuzz is green again ($GITHUB_RUN_ID) — auto-closing."
+            gh issue comment "$existing" --body "Nightly fuzz is green again ($GITHUB_RUN_ID), auto-closing."
             gh issue close "$existing"
           fi

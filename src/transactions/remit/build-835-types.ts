@@ -8,7 +8,7 @@
  * caller must supply is here; everything the library can look up or
  * compute is not.
  *
- * Money is {@link "../../decimal.js".X12Decimal} throughout — never
+ * Money is {@link "../../decimal.js".X12Decimal} throughout - never
  * `number` (float arithmetic destroys cents, and the balance guard relies
  * on exact `BigInt`-backed equality). Construct values with
  * `X12Decimal.fromString("450.00")`.
@@ -38,33 +38,33 @@ import type { X12Decimal } from "../../decimal.js";
  * ```
  */
 export interface Build835EnvelopeSpec {
-  /** ISA-06 — interchange sender id (padded to 15 on emit). */
+  /** ISA-06 - interchange sender id (padded to 15 on emit). */
   readonly senderId: string;
-  /** ISA-08 — interchange receiver id (padded to 15 on emit). */
+  /** ISA-08 - interchange receiver id (padded to 15 on emit). */
   readonly receiverId: string;
-  /** ISA-09 — interchange date YYMMDD. */
+  /** ISA-09 - interchange date YYMMDD. */
   readonly interchangeDate: string;
-  /** ISA-10 — interchange time HHMM. */
+  /** ISA-10 - interchange time HHMM. */
   readonly interchangeTime: string;
-  /** ISA-13 / IEA-02 — interchange control number (zero-padded to 9 on emit). */
+  /** ISA-13 / IEA-02 - interchange control number (zero-padded to 9 on emit). */
   readonly interchangeControlNumber: string;
-  /** GS-06 / GE-02 — group control number. */
+  /** GS-06 / GE-02 - group control number. */
   readonly groupControlNumber: string;
-  /** ST-02 / SE-02 — transaction set control number. */
+  /** ST-02 / SE-02 - transaction set control number. */
   readonly transactionSetControlNumber: string;
-  /** ISA-05 — interchange sender qualifier. Default `"ZZ"`. */
+  /** ISA-05 - interchange sender qualifier. Default `"ZZ"`. */
   readonly senderQualifier?: string;
-  /** ISA-07 — interchange receiver qualifier. Default `"ZZ"`. */
+  /** ISA-07 - interchange receiver qualifier. Default `"ZZ"`. */
   readonly receiverQualifier?: string;
-  /** ISA-15 — usage indicator (`P` production, `T` test). Default `"P"`. */
+  /** ISA-15 - usage indicator (`P` production, `T` test). Default `"P"`. */
   readonly usageIndicator?: string;
-  /** GS-02 — application sender code. Default: the interchange sender id. */
+  /** GS-02 - application sender code. Default: the interchange sender id. */
   readonly applicationSenderCode?: string;
-  /** GS-03 — application receiver code. Default: the interchange receiver id. */
+  /** GS-03 - application receiver code. Default: the interchange receiver id. */
   readonly applicationReceiverCode?: string;
-  /** GS-04 — group date CCYYMMDD. Default: century-expanded ISA-09. */
+  /** GS-04 - group date CCYYMMDD. Default: century-expanded ISA-09. */
   readonly groupDate?: string;
-  /** GS-05 — group time HHMM. Default: the interchange time. */
+  /** GS-05 - group time HHMM. Default: the interchange time. */
   readonly groupTime?: string;
   /** Element separator (ISA byte 4). Default `"*"`. */
   readonly elementSeparator?: string;
@@ -78,7 +78,7 @@ export interface Build835EnvelopeSpec {
 
 /**
  * BPR financial-information / payment header. `totalActualPayment` is the
- * sum the bank moved — it is the right-hand side of the top-of-remit
+ * sum the bank moved - it is the right-hand side of the top-of-remit
  * balance invariant `BPR-02 == Σ(CLP-04) − Σ(PLB)` the builder enforces.
  *
  * @example
@@ -95,17 +95,17 @@ export interface Build835EnvelopeSpec {
  * ```
  */
 export interface Build835PaymentSpec {
-  /** BPR-01 — transaction handling code (`I` remittance + payment, `H` notification, …). */
+  /** BPR-01 - transaction handling code (`I` remittance + payment, `H` notification, …). */
   readonly transactionHandlingCode: string;
-  /** BPR-02 — total actual provider payment amount. */
+  /** BPR-02 - total actual provider payment amount. */
   readonly totalActualPayment: X12Decimal;
-  /** BPR-03 — credit/debit flag (`C` credit, `D` debit). */
+  /** BPR-03 - credit/debit flag (`C` credit, `D` debit). */
   readonly creditDebitFlag: string;
-  /** BPR-04 — payment method (`ACH`, `CHK`, `NON`, `BOP`, `FWT`). */
+  /** BPR-04 - payment method (`ACH`, `CHK`, `NON`, `BOP`, `FWT`). */
   readonly method: string;
-  /** BPR-05 — payment format code (situational). */
+  /** BPR-05 - payment format code (situational). */
   readonly paymentFormatCode?: string;
-  /** BPR-16 — payment effective date (CCYYMMDD). */
+  /** BPR-16 - payment effective date (CCYYMMDD). */
   readonly paymentDate: string;
 }
 
@@ -122,13 +122,13 @@ export interface Build835PaymentSpec {
  * ```
  */
 export interface Build835TraceSpec {
-  /** TRN-01 — trace type code (`1` current transaction trace numbers). */
+  /** TRN-01 - trace type code (`1` current transaction trace numbers). */
   readonly traceTypeCode: string;
-  /** TRN-02 — reference identification (the trace / check number). */
+  /** TRN-02 - reference identification (the trace / check number). */
   readonly referenceId: string;
-  /** TRN-03 — originating company identifier. */
+  /** TRN-03 - originating company identifier. */
   readonly originatingCompanyId?: string;
-  /** TRN-04 — originating company supplemental code. */
+  /** TRN-04 - originating company supplemental code. */
   readonly originatingCompanySupplementalCode?: string;
 }
 
@@ -147,13 +147,13 @@ export interface Build835TraceSpec {
 export interface Build835AddressSpec {
   /** N3 address lines (1-2). */
   readonly lines: readonly string[];
-  /** N4-01 — city. */
+  /** N4-01 - city. */
   readonly city?: string;
-  /** N4-02 — state / province. */
+  /** N4-02 - state / province. */
   readonly state?: string;
-  /** N4-03 — postal code. */
+  /** N4-03 - postal code. */
   readonly postalCode?: string;
-  /** N4-04 — country code. */
+  /** N4-04 - country code. */
   readonly countryCode?: string;
 }
 
@@ -169,11 +169,11 @@ export interface Build835AddressSpec {
  * ```
  */
 export interface Build835ReferenceSpec {
-  /** REF-01 — reference identification qualifier. */
+  /** REF-01 - reference identification qualifier. */
   readonly qualifier: string;
-  /** REF-02 — reference identification value. */
+  /** REF-02 - reference identification value. */
   readonly value: string;
-  /** REF-03 — description (situational). */
+  /** REF-03 - description (situational). */
   readonly description?: string;
 }
 
@@ -193,16 +193,16 @@ export interface Build835ReferenceSpec {
  * ```
  */
 export interface Build835ContactSpec {
-  /** PER-01 — contact function code (`BL` technical, `CX` claim office, …). */
+  /** PER-01 - contact function code (`BL` technical, `CX` claim office, …). */
   readonly contactFunctionCode: string;
-  /** PER-02 — contact name. */
+  /** PER-02 - contact name. */
   readonly name?: string;
   /** Up to 3 communication channels (PER-03/04, 05/06, 07/08). */
   readonly communications?: readonly { readonly qualifier: string; readonly value: string }[];
 }
 
 /**
- * N1 party — payer (Loop 1000A, `entityIdentifierCode: "PR"`) or payee
+ * N1 party - payer (Loop 1000A, `entityIdentifierCode: "PR"`) or payee
  * (Loop 1000B, `"PE"`). Mirrors {@link "./types.js".X12RemitParty}.
  *
  * @example
@@ -215,13 +215,13 @@ export interface Build835ContactSpec {
  * ```
  */
 export interface Build835PartySpec {
-  /** N1-01 — entity identifier code (`PR` payer / `PE` payee). */
+  /** N1-01 - entity identifier code (`PR` payer / `PE` payee). */
   readonly entityIdentifierCode: string;
-  /** N1-02 — party name. */
+  /** N1-02 - party name. */
   readonly name: string;
-  /** N1-03 — identification code qualifier. */
+  /** N1-03 - identification code qualifier. */
   readonly idQualifier?: string;
-  /** N1-04 — identification code. */
+  /** N1-04 - identification code. */
   readonly idCode?: string;
   /** N3 + N4 address block. */
   readonly address?: Build835AddressSpec;
@@ -232,7 +232,7 @@ export interface Build835PartySpec {
 }
 
 /**
- * NM1 person on a claim — patient (`QC`), subscriber (`IL`), or corrected
+ * NM1 person on a claim - patient (`QC`), subscriber (`IL`), or corrected
  * patient (`74`). Mirrors {@link "./types.js".X12RemitPerson}. NM1-02
  * (entity type qualifier) is emitted as `"1"` (person).
  *
@@ -246,24 +246,24 @@ export interface Build835PartySpec {
  * ```
  */
 export interface Build835PersonSpec {
-  /** NM1-01 — entity identifier code (`QC` patient / `IL` insured / `74` corrected). */
+  /** NM1-01 - entity identifier code (`QC` patient / `IL` insured / `74` corrected). */
   readonly entityIdentifierCode: string;
-  /** NM1-03 — last name / organization name. */
+  /** NM1-03 - last name / organization name. */
   readonly lastName?: string;
-  /** NM1-04 — first name. */
+  /** NM1-04 - first name. */
   readonly firstName?: string;
-  /** NM1-05 — middle name. */
+  /** NM1-05 - middle name. */
   readonly middleName?: string;
-  /** NM1-07 — name suffix. */
+  /** NM1-07 - name suffix. */
   readonly suffix?: string;
-  /** NM1-08 — identification code qualifier (`MI`, `34`, …). */
+  /** NM1-08 - identification code qualifier (`MI`, `34`, …). */
   readonly idQualifier?: string;
-  /** NM1-09 — identification code. */
+  /** NM1-09 - identification code. */
   readonly idCode?: string;
 }
 
 /**
- * NM1 provider on a claim — service provider (`82`). Mirrors {@link
+ * NM1 provider on a claim - service provider (`82`). Mirrors {@link
  * "./types.js".X12RemitProvider}. NM1-02 is emitted as `"2"`
  * (non-person / organization).
  *
@@ -277,13 +277,13 @@ export interface Build835PersonSpec {
  * ```
  */
 export interface Build835ProviderSpec {
-  /** NM1-01 — entity identifier code (`82` service provider). */
+  /** NM1-01 - entity identifier code (`82` service provider). */
   readonly entityIdentifierCode: string;
-  /** NM1-03 — organization name. */
+  /** NM1-03 - organization name. */
   readonly name?: string;
-  /** NM1-08 — identification code qualifier (`XX` NPI). */
+  /** NM1-08 - identification code qualifier (`XX` NPI). */
   readonly idQualifier?: string;
-  /** NM1-09 — identification code. */
+  /** NM1-09 - identification code. */
   readonly idCode?: string;
 }
 
@@ -303,7 +303,7 @@ export interface Build835ProviderSpec {
  * ```
  */
 export interface Build835AdjustmentSpec {
-  /** CAS-01 — claim adjustment group code (`CO`, `PR`, `OA`, `PI`). */
+  /** CAS-01 - claim adjustment group code (`CO`, `PR`, `OA`, `PI`). */
   readonly groupCode: string;
   /** Adjustment reason code (CARC). */
   readonly reasonCode: string;
@@ -316,7 +316,7 @@ export interface Build835AdjustmentSpec {
 /**
  * One remark (LQ). Mirrors {@link "./types.js".X12RemitRemark} minus the
  * looked-up `description`. Emitted as `LQ*{system}*{code}`. Note: the read
- * side also surfaces MIA/MOA remark codes as `system: "HE"` remarks — the
+ * side also surfaces MIA/MOA remark codes as `system: "HE"` remarks - the
  * builder emits all remarks via LQ, so a round-trip reproduces the
  * `{ system, code }` pair (the equivalent model), not the original
  * MIA/MOA segment.
@@ -328,9 +328,9 @@ export interface Build835AdjustmentSpec {
  * ```
  */
 export interface Build835RemarkSpec {
-  /** LQ-01 — code list qualifier code (`HE` healthcare remark / RARC, …). */
+  /** LQ-01 - code list qualifier code (`HE` healthcare remark / RARC, …). */
   readonly system: string;
-  /** LQ-02 — industry code value. */
+  /** LQ-02 - industry code value. */
   readonly code: string;
 }
 
@@ -346,15 +346,15 @@ export interface Build835RemarkSpec {
  * ```
  */
 export interface Build835AmountSpec {
-  /** AMT-01 — amount qualifier code (`AU`, `B6`, …). */
+  /** AMT-01 - amount qualifier code (`AU`, `B6`, …). */
   readonly qualifier: string;
-  /** AMT-02 — monetary amount. */
+  /** AMT-02 - monetary amount. */
   readonly amount: X12Decimal;
 }
 
 /**
  * Loop 2110 service-line spec. Subject to the per-line balance invariant
- * `SVC-02 == SVC-03 + Σ(line CAS)` — the builder REFUSES an out-of-balance
+ * `SVC-02 == SVC-03 + Σ(line CAS)` - the builder REFUSES an out-of-balance
  * line. Mirrors {@link "./types.js".X12RemitServiceLine}.
  *
  * @example
@@ -370,23 +370,23 @@ export interface Build835AmountSpec {
  * ```
  */
 export interface Build835ServiceLineSpec {
-  /** SVC-01-1 — product/service ID qualifier (`HC`, `AD`, `N4`, `WK`, `IV`). */
+  /** SVC-01-1 - product/service ID qualifier (`HC`, `AD`, `N4`, `WK`, `IV`). */
   readonly productServiceIdQualifier: string;
-  /** SVC-01-2 — product/service ID (the procedure code). */
+  /** SVC-01-2 - product/service ID (the procedure code). */
   readonly productServiceId: string;
-  /** SVC-01-3..6 — procedure modifiers. */
+  /** SVC-01-3..6 - procedure modifiers. */
   readonly modifiers?: readonly string[];
-  /** SVC-02 — line item charge amount. */
+  /** SVC-02 - line item charge amount. */
   readonly chargeAmount: X12Decimal;
-  /** SVC-03 — line item provider payment amount. */
+  /** SVC-03 - line item provider payment amount. */
   readonly paymentAmount: X12Decimal;
-  /** SVC-05 — revenue code (institutional). */
+  /** SVC-05 - revenue code (institutional). */
   readonly revenueCode?: string;
-  /** SVC-07 — units of service paid. */
+  /** SVC-07 - units of service paid. */
   readonly paidUnitsOfService?: X12Decimal;
-  /** SVC-06-2 — original (submitted) product/service ID. */
+  /** SVC-06-2 - original (submitted) product/service ID. */
   readonly originalServiceId?: string;
-  /** SVC-06-1 — original product/service ID qualifier. */
+  /** SVC-06-1 - original product/service ID qualifier. */
   readonly originalServiceIdQualifier?: string;
   /** Service date start (DTM*150, or single DTM*472 when start == end). */
   readonly serviceDateStart?: string;
@@ -404,7 +404,7 @@ export interface Build835ServiceLineSpec {
 
 /**
  * Loop 2100 claim-payment spec. Subject to the claim balance invariant
- * `CLP-03 == CLP-04 + Σ(claim CAS + line CAS)` — the builder REFUSES an
+ * `CLP-03 == CLP-04 + Σ(claim CAS + line CAS)` - the builder REFUSES an
  * out-of-balance claim. Mirrors {@link "./types.js".X12RemitClaim} minus
  * the looked-up `claimStatusDescription`.
  *
@@ -421,23 +421,23 @@ export interface Build835ServiceLineSpec {
  * ```
  */
 export interface Build835ClaimSpec {
-  /** CLP-01 — patient control number. */
+  /** CLP-01 - patient control number. */
   readonly patientControlNumber: string;
-  /** CLP-02 — claim status code. */
+  /** CLP-02 - claim status code. */
   readonly claimStatusCode: string;
-  /** CLP-03 — total submitted charge amount. */
+  /** CLP-03 - total submitted charge amount. */
   readonly totalChargeAmount: X12Decimal;
-  /** CLP-04 — total claim payment amount. */
+  /** CLP-04 - total claim payment amount. */
   readonly totalPaymentAmount: X12Decimal;
-  /** CLP-05 — patient responsibility amount (informational, not balanced). */
+  /** CLP-05 - patient responsibility amount (informational, not balanced). */
   readonly patientResponsibilityAmount: X12Decimal;
-  /** CLP-06 — claim filing indicator code. */
+  /** CLP-06 - claim filing indicator code. */
   readonly claimFilingIndicatorCode?: string;
-  /** CLP-07 — payer claim control number. */
+  /** CLP-07 - payer claim control number. */
   readonly payerClaimControlNumber?: string;
-  /** CLP-08-1 — facility type code. */
+  /** CLP-08-1 - facility type code. */
   readonly facilityTypeCode?: string;
-  /** CLP-08-3 — claim frequency code. */
+  /** CLP-08-3 - claim frequency code. */
   readonly claimFrequencyCode?: string;
   /** Claim-level CAS adjustments. */
   readonly adjustments?: readonly Build835AdjustmentSpec[];
@@ -483,9 +483,9 @@ export interface Build835ClaimSpec {
  * ```
  */
 export interface Build835ProviderAdjustmentSpec {
-  /** PLB-01 — provider identifier. */
+  /** PLB-01 - provider identifier. */
   readonly providerId: string;
-  /** PLB-02 — fiscal period date (CCYYMMDD). */
+  /** PLB-02 - fiscal period date (CCYYMMDD). */
   readonly fiscalPeriodDate: string;
   /** Adjustment reason code (PLB composite component 1). */
   readonly reasonCode: string;

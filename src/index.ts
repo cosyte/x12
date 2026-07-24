@@ -20,7 +20,7 @@
  */
 export const VERSION: string = "0.0.1";
 
-// Phase 1 — envelope parser surface.
+// Phase 1 - envelope parser surface.
 export { parseX12 } from "./parser/index.js";
 export { detectDelimiters, DELIMITER_POSITIONS, ISA_MIN_LENGTH } from "./parser/delimiters.js";
 export { FATAL_CODES, X12ParseError } from "./parser/errors.js";
@@ -66,7 +66,7 @@ export type {
   X12TransactionSet,
 } from "./parser/types.js";
 
-// Phase 2 — segment / element / composite / repetition decode surface.
+// Phase 2 - segment / element / composite / repetition decode surface.
 export { escapeRelease, RELEASE_CHAR, unescapeRelease } from "./parser/release.js";
 export {
   collectElementValues,
@@ -81,13 +81,13 @@ export {
 } from "./parser/segment.js";
 export type { X12Segment } from "./parser/segment.js";
 
-// Phase 2 — loop-spec authoring surface (dogfooded by built-in transaction
+// Phase 2 - loop-spec authoring surface (dogfooded by built-in transaction
 // specs in Phases 3+).
 export { defineLoopSpec, LoopSpecDefinitionError } from "./loops/define.js";
 export type { DefineLoopSpecInput } from "./loops/define.js";
 export type { LoopMax, LoopSegmentSpec, LoopSpec, LoopUsage } from "./loops/types.js";
 
-// Phase 4 — money + bundled code-list snapshots used by 835.
+// Phase 4 - money + bundled code-list snapshots used by 835.
 export { X12Decimal } from "./decimal.js";
 export {
   CARC,
@@ -119,7 +119,7 @@ export {
   type X12HiQualifier,
 } from "./code-lists/index.js";
 
-// Phase 4 — 835 Healthcare Claim Payment/Advice (ERA) surface (TR3 005010X221A1).
+// Phase 4 - 835 Healthcare Claim Payment/Advice (ERA) surface (TR3 005010X221A1).
 export {
   REMIT_835_BUILD_ERROR_CODES,
   REMIT_835_LOOP_1000A,
@@ -167,7 +167,7 @@ export {
   type X12Remittance,
 } from "./transactions/remit/index.js";
 
-// Phase 5 — 837 Healthcare Claim surface (TR3s 005010X222A2 / X223A3 / X224A2).
+// Phase 5 - 837 Healthcare Claim surface (TR3s 005010X222A2 / X223A3 / X224A2).
 export {
   CLAIM_837D_LOOP_2000A,
   CLAIM_837D_LOOP_2300,
@@ -244,7 +244,7 @@ export {
   type X12_837Submission,
 } from "./transactions/claim/index.js";
 
-// Phase 6 — 271 Health Care Eligibility Benefit Response surface (TR3 005010X279A1).
+// Phase 6 - 271 Health Care Eligibility Benefit Response surface (TR3 005010X279A1).
 export {
   ELIGIBILITY_271_BUILD_ERROR_CODES,
   ELIGIBILITY_271_LOOP_2000A,
@@ -285,7 +285,7 @@ export {
   type X12EligibilityTrace,
 } from "./transactions/eligibility/index.js";
 
-// Phase 6 — 277 / 277CA Claim Status surface (TR3s 005010X212 / X214).
+// Phase 6 - 277 / 277CA Claim Status surface (TR3s 005010X212 / X214).
 export {
   CLAIM_STATUS_277_BUILD_ERROR_CODES,
   ClaimStatus277BuildError,
@@ -329,7 +329,7 @@ export {
   type X12StatusTrace,
 } from "./transactions/status/index.js";
 
-// Phase 7 — 820 Premium Payment surface (TR3 005010X218).
+// Phase 7 - 820 Premium Payment surface (TR3 005010X218).
 export {
   PREMIUM_820_LOOP_1000A,
   PREMIUM_820_LOOP_1000B,
@@ -369,7 +369,7 @@ export {
   type X12PremiumTrace,
 } from "./transactions/premium/index.js";
 
-// Phase 7 — 834 Benefit Enrollment and Maintenance surface (TR3 005010X220A1).
+// Phase 7 - 834 Benefit Enrollment and Maintenance surface (TR3 005010X220A1).
 export {
   ENROLLMENT_834_LOOP_1000A,
   ENROLLMENT_834_LOOP_1000B,
@@ -407,7 +407,7 @@ export {
   type X12HealthCoverage,
 } from "./transactions/enrollment/index.js";
 
-// Phase 7 — 278 Health Care Services Review surface (request TR3 005010X217 /
+// Phase 7 - 278 Health Care Services Review surface (request TR3 005010X217 /
 // response TR3 005010X216).
 export {
   AUTH_278_BUILD_ERROR_CODES,
@@ -448,10 +448,10 @@ export {
   type X12ServicesReview,
 } from "./transactions/auth/index.js";
 
-// Phase 6 — shared HL hierarchy primitive (271 / 277 / 277CA walkers).
+// Phase 6 - shared HL hierarchy primitive (271 / 277 / 277CA walkers).
 export type { X12Hl } from "./transactions/shared/hl.js";
 
-// Phase 3 — acknowledgments surface: parse / build 999 (005010X231A1) and
+// Phase 3 - acknowledgments surface: parse / build 999 (005010X231A1) and
 // envelope-level TA1 as pure functions. See `src/transactions/ack/index.ts`
 // for the full barrel.
 export {
@@ -495,11 +495,11 @@ export {
   type X12AckTA1,
 } from "./transactions/ack/index.js";
 
-// Phase 8 — spec-clean serializer (the emit half of the parser).
+// Phase 8 - spec-clean serializer (the emit half of the parser).
 export { serializeX12 } from "./serialize/index.js";
 export type { SerializeOptions } from "./serialize/index.js";
 
-// Phase 8 — general-purpose, segment-level interchange builder. The
+// Phase 8 - general-purpose, segment-level interchange builder. The
 // domain-specific builders (build835, build837P, …) layer on top of this.
 export { buildInterchange, X12_BUILD_ERROR_CODES, X12BuildError } from "./builder/index.js";
 export type {
@@ -510,7 +510,7 @@ export type {
   X12BuildErrorCode,
 } from "./builder/index.js";
 
-// Phase 9 — trading-partner / companion-guide profile system. Built-ins are
+// Phase 9 - trading-partner / companion-guide profile system. Built-ins are
 // reached via the `profiles` namespace (not top-level), each grounded in a
 // real Tier-2 fixture per the locked hard rule.
 export {

@@ -1,11 +1,11 @@
 /**
- * Typed model for the X12 005010 claim-status family — 277 Health Care
+ * Typed model for the X12 005010 claim-status family - 277 Health Care
  * Claim Status Response (`005010X212`) and 277CA Claim Acknowledgment
  * (`005010X214`). Both share `ST-01 = "277"`, the STC composite, and the
  * HL hierarchy; they are disambiguated by `ST-03` (the implementation
  * convention reference). The shared shape is the public contract of
  * {@link "./get-277.js".get277Status} / {@link
- * "./get-277.js".get277CADisposition} — adding fields is backward-
+ * "./get-277.js".get277CADisposition} - adding fields is backward-
  * compatible; renaming fields is breaking. Monetary fields are
  * {@link "../../decimal.js".X12Decimal} (NEVER `number`).
  *
@@ -56,8 +56,8 @@ export interface X12ClaimStatusResponse {
 
 /**
  * One claim status-tracking loop (Loop 2200). A claim opens on a TRN
- * (claim-level reassociation trace) or — in a 277CA provider-level batch
- * acknowledgment — on a standalone STC. Carries the resolved HL context,
+ * (claim-level reassociation trace) or - in a 277CA provider-level batch
+ * acknowledgment - on a standalone STC. Carries the resolved HL context,
  * the echoed traces, the decoded STC statuses, supplemental REF / DTP, and
  * any service-line statuses (Loop 2220).
  *
@@ -84,7 +84,7 @@ export interface X12ClaimStatus {
 }
 
 /**
- * A non-person entity decoded from an NM1 — the payer (Loop 2100A),
+ * A non-person entity decoded from an NM1 - the payer (Loop 2100A),
  * information receiver (2100B), or service provider (2100C).
  *
  * @example
@@ -106,7 +106,7 @@ export interface X12StatusEntity {
 
 /**
  * A person (subscriber Loop 2100D / dependent Loop 2100E) decoded from an
- * NM1. `idCode` is the member identifier (NM1-09) — synthetic-only in
+ * NM1. `idCode` is the member identifier (NM1-09) - synthetic-only in
  * fixtures.
  *
  * @example
@@ -149,7 +149,7 @@ export interface X12StatusTrace {
 }
 
 /**
- * One decoded STC segment — the headline status fields plus the up-to-three
+ * One decoded STC segment - the headline status fields plus the up-to-three
  * {@link X12StatusCode} composites (STC-01, STC-10, STC-11). A single claim
  * (or service line) can carry multiple STC segments; each becomes one
  * `X12StatusInfo`.

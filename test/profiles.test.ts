@@ -3,7 +3,7 @@
  * composition, the structured `describe()` record, the process-scoped default
  * profile, `partitionWarnings`, parse-time attribution, and immutability.
  *
- * Built-in fixture grounding (the locked hard rule — every quirk demonstrated
+ * Built-in fixture grounding (the locked hard rule - every quirk demonstrated
  * by a real Tier-2 fixture) is verified separately in
  * `test/profiles-builtins.test.ts`.
  */
@@ -36,18 +36,18 @@ function quirk(overrides: Partial<X12ProfileQuirk> = {}): X12ProfileQuirk {
   };
 }
 
-/** A valid 005010 envelope with no deviations — produces zero warnings. */
+/** A valid 005010 envelope with no deviations - produces zero warnings. */
 const CLEAN_ENVELOPE =
   "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       *250101*1200*^*00501*000000001*0*P*:~" +
   "GS*HC*S*R*20250101*1200*1*X*005010X222A2~ST*837*0001~SE*2*0001~GE*1*1~IEA*1*000000001~";
 
 afterEach(() => {
-  // The default profile is the only mutable module-scoped state — reset it
+  // The default profile is the only mutable module-scoped state - reset it
   // after every test so registrations cannot bleed across files.
   setDefaultProfile(null);
 });
 
-describe("defineProfile — basic assembly", () => {
+describe("defineProfile - basic assembly", () => {
   it("builds a single-profile (no extends) with lineage = [name]", () => {
     const p = defineProfile({ name: "acme", quirks: [quirk()] });
     expect(p.name).toBe("acme");
@@ -100,26 +100,26 @@ describe("defineProfile — basic assembly", () => {
   });
 });
 
-describe("defineProfile — validation", () => {
+describe("defineProfile - validation", () => {
   it("throws on missing/empty name", () => {
     expect(() => defineProfile({ name: "" })).toThrow(X12ProfileError);
-    // @ts-expect-error — exercising a JS caller passing a non-string name.
+    // @ts-expect-error - exercising a JS caller passing a non-string name.
     expect(() => defineProfile({ name: 123 })).toThrow(/non-empty string/u);
   });
 
   it("throws on an unknown option key with a did-you-mean hint", () => {
-    // @ts-expect-error — exercising an unknown key.
+    // @ts-expect-error - exercising an unknown key.
     expect(() => defineProfile({ name: "acme", quirk: [] })).toThrow(/Did you mean 'quirks'/u);
   });
 
   it("throws on a far-off unknown key without a hint", () => {
-    // @ts-expect-error — a key far from every known option (no hint emitted).
+    // @ts-expect-error - a key far from every known option (no hint emitted).
     expect(() => defineProfile({ name: "acme", zzzzzzzz: 1 })).toThrow(/unknown option key/u);
   });
 
-  it("enforces the hard rule — a quirk without a fixture is rejected", () => {
+  it("enforces the hard rule - a quirk without a fixture is rejected", () => {
     expect(() =>
-      // @ts-expect-error — omitting the required fixture field.
+      // @ts-expect-error - omitting the required fixture field.
       defineProfile({ name: "acme", quirks: [{ ...quirk(), fixture: undefined }] }),
     ).toThrow(/must cite a 'fixture'/u);
   });
@@ -134,7 +134,7 @@ describe("defineProfile — validation", () => {
   });
 
   it("rejects an invalid effect", () => {
-    // @ts-expect-error — invalid effect literal.
+    // @ts-expect-error - invalid effect literal.
     expect(() => defineProfile({ name: "acme", quirks: [quirk({ effect: "removes" })] })).toThrow(
       /invalid effect/u,
     );
@@ -156,21 +156,21 @@ describe("defineProfile — validation", () => {
     expect(() =>
       defineProfile({
         name: "acme",
-        // @ts-expect-error — not a real warning code.
+        // @ts-expect-error - not a real warning code.
         quirks: [quirk({ expectedWarnings: ["X12_NOT_A_REAL_CODE"] })],
       }),
     ).toThrow(/unknown expected warning/u);
   });
 
   it("throws when the options object itself is null/undefined", () => {
-    // @ts-expect-error — exercising a JS caller passing null.
+    // @ts-expect-error - exercising a JS caller passing null.
     expect(() => defineProfile(null)).toThrow(/options is required/u);
-    // @ts-expect-error — exercising a JS caller passing undefined.
+    // @ts-expect-error - exercising a JS caller passing undefined.
     expect(() => defineProfile(undefined)).toThrow(/options is required/u);
   });
 
   it("rejects a non-object quirk entry", () => {
-    // @ts-expect-error — a null quirk slot.
+    // @ts-expect-error - a null quirk slot.
     expect(() => defineProfile({ name: "acme", quirks: [null] })).toThrow(/must be an object/u);
   });
 
@@ -184,7 +184,7 @@ describe("defineProfile — validation", () => {
   });
 });
 
-describe("defineProfile — extends composition", () => {
+describe("defineProfile - extends composition", () => {
   it("flattens + dedupes lineage and merges quirks additively", () => {
     const base = defineProfile({ name: "base", quirks: [quirk({ id: "base-quirk" })] });
     const child = defineProfile({
@@ -227,13 +227,13 @@ describe("defineProfile — extends composition", () => {
   it("dedupes overlapping ancestor lineages (diamond)", () => {
     const base = defineProfile({ name: "base" });
     const mid = defineProfile({ name: "mid", extends: base });
-    // Both parents share "base" in their lineage — it must appear once.
+    // Both parents share "base" in their lineage - it must appear once.
     const leaf = defineProfile({ name: "leaf", extends: [base, mid] });
     expect(leaf.lineage).toEqual(["base", "mid", "leaf"]);
   });
 
   it("falls back to [parent.name] when a hand-crafted parent has an empty lineage", () => {
-    // A profile NOT produced by defineProfile (lineage never empty there) —
+    // A profile NOT produced by defineProfile (lineage never empty there) -
     // covers the defensive fallback in mergeLineage.
     const rogue = {
       name: "rogue",
@@ -246,7 +246,7 @@ describe("defineProfile — extends composition", () => {
   });
 });
 
-describe("default profile — process-scoped", () => {
+describe("default profile - process-scoped", () => {
   it("is unset initially", () => {
     expect(getDefaultProfile()).toBeUndefined();
   });

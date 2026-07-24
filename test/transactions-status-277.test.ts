@@ -6,7 +6,7 @@
  *   Service Provider → Subscriber), claim-level TRN trace, STC status
  *   decode (CSCC / CSC resolved against the bundled snapshot), supplemental
  *   REF / DTP, and a service-line status (Loop 2220) opened on SVC.
- * - **Status-code fidelity** — the safety property: STC category + status
+ * - **Status-code fidelity** - the safety property: STC category + status
  *   codes surface verbatim; unknown codes (Tier-2 fixture) preserve their
  *   value and emit `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` /
  *   `X12_UNKNOWN_CLAIM_STATUS`.
@@ -16,7 +16,7 @@
  * - `get277CADisposition` admits ONLY the X214 convention reference;
  *   `get277Status` admits either. Both reject a non-277 transaction set.
  * - Tier-2 277CA HL-orphan quirk: a dangling HL parent pointer emits
- *   `X12_HL_PARENT_MISMATCH` and the verbatim parent id is preserved —
+ *   `X12_HL_PARENT_MISMATCH` and the verbatim parent id is preserved -
  *   the walker NEVER silently re-numbers.
  * - X12Decimal: STC + SVC monetary fields decode as decimal, not float.
  */
@@ -53,7 +53,7 @@ function readStatus(
   return result;
 }
 
-describe("get277Status — Tier-1 canonical (X212)", () => {
+describe("get277Status - Tier-1 canonical (X212)", () => {
   it("decodes the canonical 277 fixture end-to-end with no warnings", () => {
     const r = readStatus("277-canonical.edi");
     expect(r.transactionType).toBe("claim-status");
@@ -106,7 +106,7 @@ describe("get277Status — Tier-1 canonical (X212)", () => {
   });
 });
 
-describe("get277Status — Tier-2 unknown status codes (fidelity)", () => {
+describe("get277Status - Tier-2 unknown status codes (fidelity)", () => {
   it("preserves verbatim unknown CSCC / CSC and emits both warnings", () => {
     const r = readStatus("277-unknown-status.edi");
     const code = r.claims[0]?.statuses[0]?.statuses[0];
@@ -121,7 +121,7 @@ describe("get277Status — Tier-2 unknown status codes (fidelity)", () => {
   });
 });
 
-describe("get277CADisposition — Tier-1 batch acknowledgment (X214)", () => {
+describe("get277CADisposition - Tier-1 batch acknowledgment (X214)", () => {
   it("decodes a provider-level batch ack into per-claim dispositions", () => {
     const r = readStatus("277ca-canonical.edi", get277CADisposition);
     expect(r.transactionType).toBe("claim-acknowledgment");
@@ -166,7 +166,7 @@ describe("get277CADisposition — Tier-1 batch acknowledgment (X214)", () => {
   });
 });
 
-describe("get277CADisposition — Tier-2 HL-orphan quirk", () => {
+describe("get277CADisposition - Tier-2 HL-orphan quirk", () => {
   it("emits X12_HL_PARENT_MISMATCH and preserves the verbatim parent id", () => {
     const r = readStatus("277ca-hl-orphan.edi", get277CADisposition);
     const codes = r.warnings.map((w) => w.code);
@@ -175,7 +175,7 @@ describe("get277CADisposition — Tier-2 HL-orphan quirk", () => {
   });
 });
 
-describe("get277Status — guards + dogfooded specs", () => {
+describe("get277Status - guards + dogfooded specs", () => {
   it("returns undefined for a non-277 transaction set", () => {
     const raw = readFileSync(join(FIXTURE_DIR, "277-canonical.edi"), "utf8").trimEnd();
     const ix = parseX12(raw);

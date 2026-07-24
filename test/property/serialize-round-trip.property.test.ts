@@ -1,11 +1,11 @@
 /**
- * Property tests for the Phase 8 emit half — the serializer + builder
+ * Property tests for the Phase 8 emit half - the serializer + builder
  * round-trip / idempotency invariant, wired into `@cosyte/test-utils`'
  * `roundTripProperty` runner so it stays uniform with the rest of the suite.
  *
  * For every generated spec-clean interchange, `roundTripProperty` asserts:
- *   1. round-trip equality — `parse(serialize(ix))` deep-equals `ix`;
- *   2. serialize idempotency — `serialize(parse(serialize(ix))) === serialize(ix)`.
+ *   1. round-trip equality - `parse(serialize(ix))` deep-equals `ix`;
+ *   2. serialize idempotency - `serialize(parse(serialize(ix))) === serialize(ix)`.
  *
  * A second property generates interchanges through the public
  * `buildInterchange` builder and asserts the builder NEVER emits a
@@ -39,7 +39,7 @@ describe("serialize: round-trip + idempotency over spec-clean interchanges", () 
 });
 
 /**
- * Generator of valid {@link InterchangeSpec}s for the builder property —
+ * Generator of valid {@link InterchangeSpec}s for the builder property -
  * random delimiters, identifiers, group/transaction control numbers, and a
  * small body of opaque-but-well-formed segments.
  */

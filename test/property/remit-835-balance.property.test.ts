@@ -3,9 +3,9 @@
  * deliberately-imbalanced single-claim single-line interchanges via a
  * minimal template, runs them through `get835`, and asserts the
  * `X12_835_REMIT_BALANCE_MISMATCH` warning fires iff the input is out of
- * balance — never silently rebalanced.
+ * balance - never silently rebalanced.
  *
- * The invariants exercised (per TR3 X221A1 §1.10.2 — see
+ * The invariants exercised (per TR3 X221A1 §1.10.2 - see
  * `src/transactions/remit/balance.ts`):
  *
  * - Line: `SVC-02 === SVC-03 + Σ(line CAS)`
@@ -62,7 +62,7 @@ const arbitraryDollars = fc
   .integer({ min: 0, max: 100_000 })
   .map((cents) => `${(cents / 100).toFixed(2)}`);
 
-describe("835 balance — balanced fixtures produce no balance warning", () => {
+describe("835 balance - balanced fixtures produce no balance warning", () => {
   it("balanced single-line claim parses with zero balance warnings", () => {
     fc.assert(
       fc.property(arbitraryDollars, arbitraryDollars, (paidStr, casStr) => {
@@ -86,7 +86,7 @@ describe("835 balance — balanced fixtures produce no balance warning", () => {
   });
 });
 
-describe("835 balance — imbalanced fixtures warn and never rebalance", () => {
+describe("835 balance - imbalanced fixtures warn and never rebalance", () => {
   it("a deliberate $1 line under-adjustment produces a balance warning AND preserves the inbound amounts verbatim", () => {
     fc.assert(
       fc.property(arbitraryDollars, (paidStr) => {
@@ -103,7 +103,7 @@ describe("835 balance — imbalanced fixtures warn and never rebalance", () => {
           (w) => w.code === WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
         );
         expect(balanceWarnings.length).toBeGreaterThan(0);
-        // Verbatim inbound amounts preserved — never silently rebalanced.
+        // Verbatim inbound amounts preserved - never silently rebalanced.
         expect(remit.claims[0]?.totalChargeAmount.toString()).toBe(charge.toFixed(2));
         expect(remit.claims[0]?.totalPaymentAmount.toString()).toBe(paidStr);
         expect(remit.claims[0]?.serviceLines[0]?.adjustments[0]?.amount.toString()).toBe("10.00");

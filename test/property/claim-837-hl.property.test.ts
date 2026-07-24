@@ -1,7 +1,7 @@
 /**
  * Property tests for the 837 HL hierarchy walker. The 837 family treats
  * HL parent-pointer integrity as THE safety primitive (see x12 roadmap §4,
- * safety-critical path #7) — the parser must NEVER silently re-number a
+ * safety-critical path #7) - the parser must NEVER silently re-number a
  * hierarchy. These properties lock the invariant across the fixture
  * corpus.
  */
@@ -26,7 +26,7 @@ describe("HL hierarchy properties (over every 837 fixture)", () => {
       const sub = get837Claims(ix.delimiters, tx);
       if (sub === undefined) continue;
       // For each HL in the fixture, the parsed entry's parent id MUST
-      // equal what the source declared (verbatim) — the walker NEVER
+      // equal what the source declared (verbatim) - the walker NEVER
       // silently re-numbers, regardless of whether the parent resolves.
       const sourceHls: { hlId: string; parentId: string | undefined }[] = [];
       for (const seg of tx.segments) {

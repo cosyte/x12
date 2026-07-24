@@ -20,9 +20,9 @@
  * - `"03[2]-1"` → component 1 of repetition 2 of element 3.
  *
  * The parser deliberately does NOT support cross-segment paths at this
- * phase — `Segment.get` operates inside a single segment. Cross-loop
+ * phase - `Segment.get` operates inside a single segment. Cross-loop
  * traversal arrives with `defineLoopSpec` in Phase 3+ (which authors the
- * built-in transaction loops through the same public API as consumers —
+ * built-in transaction loops through the same public API as consumers -
  * the dogfooding gate).
  */
 
@@ -33,14 +33,14 @@ import { danglingReleaseChar, type X12ParseWarning } from "./warnings.js";
 /**
  * Immutable decoded X12 segment. `elements` is 1-indexed: `elements[0]` is
  * the segment id placeholder (matching {@link "./types.js".IsaSegment},
- * `GsSegment`, etc. — every typed segment in the envelope follows the same
+ * `GsSegment`, etc. - every typed segment in the envelope follows the same
  * 1-indexed shape so consumers learn one rule and never have to recall
  * whether a particular accessor offsets by one). `raw` preserves the exact
  * segment text from input (terminator stripped) so a byte-exact round-trip
  * survives even when downstream stages mutate the model.
  *
  * Element values are stored RAW (pre-`?`-unescape). Reads via {@link
- * getSegmentValue} apply {@link unescapeRelease} on demand — this keeps
+ * getSegmentValue} apply {@link unescapeRelease} on demand - this keeps
  * round-trip byte-exact while still letting helpers receive
  * spec-compliant logical values.
  *
@@ -64,7 +64,7 @@ export interface X12Segment {
  * preserves the verbatim raw text, and surfaces dangling-release warnings
  * via the supplied emitter with positional context tied to the segment.
  *
- * Never throws — malformed input produces a best-effort segment and any
+ * Never throws - malformed input produces a best-effort segment and any
  * issues surface as Tier-2 warnings via `emit`. An empty input string
  * decodes to an empty segment (`id: ""`, `elements: [""]`); callers that
  * care can guard.
@@ -85,7 +85,7 @@ export function decodeSegment(
   position: X12Position,
 ): X12Segment {
   const elements = Object.freeze(splitWithRelease(raw, delimiters.element));
-  // Dangling-release detection — a bare `?` at the very end of the
+  // Dangling-release detection - a bare `?` at the very end of the
   // segment cannot escape anything. Detection counts consecutive `?` at
   // the segment's tail: an odd run means the trailing `?` is unpaired
   // (dangling); an even run means it is the second half of a `??` escape
@@ -329,18 +329,18 @@ const noop = (_w: X12ParseWarning): void => {
 };
 
 // ---------------------------------------------------------------------------
-// Element-read ergonomic helpers — shared by every transaction walker.
+// Element-read ergonomic helpers - shared by every transaction walker.
 // Wrap getSegmentValue() with the conventional 1-indexed numeric APIs that
 // match how TR3s read (NM1-03, CLM-02, HI-01-2, etc.). Hoisted here so a
 // new walker doesn't have to re-derive them. `X12Decimal` flavors live with
-// the decimal type — see `X12Decimal.elDec` / `elDecZero` below.
+// the decimal type - see `X12Decimal.elDec` / `elDecZero` below.
 // ---------------------------------------------------------------------------
 
 import { X12Decimal } from "../decimal.js";
 
 /**
  * Read element N (1-indexed) from a decoded segment as a string. Returns
- * `""` when the element is absent or empty — convenient when downstream
+ * `""` when the element is absent or empty - convenient when downstream
  * code wants to fold "absent" and "empty" into one branch. For
  * "absent / empty → `undefined`" use {@link elementOptional}.
  *
@@ -358,7 +358,7 @@ export function elementValue(seg: X12Segment, n: number, delimiters: Delimiters)
 
 /**
  * Read element N (1-indexed) as `string | undefined`. Empty strings
- * collapse to `undefined` — the conventional "absent" sentinel for
+ * collapse to `undefined` - the conventional "absent" sentinel for
  * optional element slots.
  *
  * @example
@@ -400,7 +400,7 @@ export function componentOptional(
 /**
  * Read element N (1-indexed) as an {@link X12Decimal}, or `undefined`
  * when absent / empty / malformed. The walker discipline for every
- * monetary or quantity field — NEVER `parseFloat`.
+ * monetary or quantity field - NEVER `parseFloat`.
  *
  * @example
  * ```ts

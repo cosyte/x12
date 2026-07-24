@@ -1,5 +1,5 @@
 /**
- * Unit tests for `defineLoopSpec()` — Phase 2's public loop-authoring API.
+ * Unit tests for `defineLoopSpec()` - Phase 2's public loop-authoring API.
  * The DOGFOODING gate: built-in transaction loop specs in Phases 3+ are
  * authored through this same API. Misbehaving validation here surfaces as
  * Phase 3+ work being unable to declare its own loops, so the surface is
@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 
 import { LoopSpecDefinitionError, defineLoopSpec } from "../src/loops/define.js";
 
-describe("defineLoopSpec — happy path", () => {
+describe("defineLoopSpec - happy path", () => {
   it("freezes and returns a structurally-valid LoopSpec", () => {
     const Loop2110 = defineLoopSpec({
       id: "2110",
@@ -58,7 +58,7 @@ describe("defineLoopSpec — happy path", () => {
   });
 });
 
-describe("defineLoopSpec — structural validation refuses consumer bugs", () => {
+describe("defineLoopSpec - structural validation refuses consumer bugs", () => {
   it("rejects an empty id", () => {
     expect(() =>
       defineLoopSpec({

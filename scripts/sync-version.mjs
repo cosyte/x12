@@ -3,15 +3,15 @@
  * Sync the `VERSION` constant in `src/index.ts` with `package.json`'s `version`.
  *
  * Why this exists: `VERSION` is a public export, but the version bump is owned by Changesets, which
- * only rewrites `package.json`. Without this step the package publishes a `VERSION` that *lies* —
+ * only rewrites `package.json`. Without this step the package publishes a `VERSION` that *lies* -
  * `0.0.1` on the registry, `"0.0.0"` from the export. The `version` script (which the shared release
  * workflow invokes as `pnpm run version`) runs `changeset version` and then this, so the bump and the
  * constant always land in the same "Version Packages" commit.
  *
  * The guard against drift is `test/sanity.test.ts`, which compares the export against `package.json`
- * at test time. Skipping this script makes that test go red — deliberately.
+ * at test time. Skipping this script makes that test go red - deliberately.
  *
- * Idempotent; exits non-zero if the declaration is missing or ambiguous — a rename must not silently
+ * Idempotent; exits non-zero if the declaration is missing or ambiguous - a rename must not silently
  * no-op, and a decoy declaration in a comment must not be rewritten ahead of the real one.
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -34,7 +34,7 @@ const matches = source.match(declaration);
 if (matches === null) {
   console.error(
     'sync-version: could not find `export const VERSION: string = "...";` in src/index.ts.\n' +
-      "The declaration was renamed or reformatted — update this script alongside it.",
+      "The declaration was renamed or reformatted - update this script alongside it.",
   );
   process.exit(1);
 }
@@ -42,7 +42,7 @@ if (matches === null) {
 if (matches.length !== 1) {
   console.error(
     `sync-version: found ${matches.length} \`export const VERSION\` declarations in src/index.ts; expected exactly one.\n` +
-      "A column-0 decoy (e.g. in a comment) is ambiguous — remove it so the real declaration is unmistakable.",
+      "A column-0 decoy (e.g. in a comment) is ambiguous - remove it so the real declaration is unmistakable.",
   );
   process.exit(1);
 }

@@ -1,15 +1,15 @@
 /**
- * Typed model for an X12 005010 837 Healthcare Claim — the three sibling
+ * Typed model for an X12 005010 837 Healthcare Claim - the three sibling
  * TR3s (`005010X222A2` Professional / `005010X223A3` Institutional /
  * `005010X224A2` Dental). The shape is the public contract of
- * `get837Claims()` — adding fields is backward-compatible; renaming
+ * `get837Claims()` - adding fields is backward-compatible; renaming
  * fields is breaking.
  *
  * Spec source: WPC TR3s for X222A2 / X223A3 / X224A2 plus the X12 005010
  * base specification (envelope + segment definitions).
  *
  * All monetary fields use {@link "../../decimal.js".X12Decimal} (NEVER
- * `number` — float arithmetic destroys cents at scale). All dates are
+ * `number` - float arithmetic destroys cents at scale). All dates are
  * preserved verbatim alongside their `formatQualifier` so the consumer
  * can branch on `D8` (CCYYMMDD) vs `RD8` (date range) without re-parsing.
  *
@@ -27,7 +27,7 @@ import type { X12RemitAdjustment } from "../remit/types.js";
 import type { X12HiCategory, X12HiCodeSystem } from "../../code-lists/hi-qualifiers.js";
 
 /**
- * 837 variant — discriminator for the service-line union and for any
+ * 837 variant - discriminator for the service-line union and for any
  * variant-specific helper logic. `"unknown"` covers transactions where
  * neither ST-03 nor a service-line segment id resolved the variant.
  *
@@ -42,9 +42,9 @@ export type X12Claim837Variant = "P" | "I" | "D" | "unknown";
 /**
  * The top-level result returned by `get837Claims()`. Carries the submitter
  * (Loop 1000A) and receiver (Loop 1000B) parties, the HL hierarchy walk
- * (Loops 2000A/B/C — every HL segment captured with parent-pointer
+ * (Loops 2000A/B/C - every HL segment captured with parent-pointer
  * provenance), every claim payment loop (Loop 2300), and every warning
- * surfaced during the walk — including the safety-critical
+ * surfaced during the walk - including the safety-critical
  * `X12_HL_PARENT_MISMATCH` and `X12_HL_PARENT_LEVEL_INVALID`.
  *
  * @example
@@ -85,7 +85,7 @@ export interface X12_837Submission {
  * validates HL-02 references an earlier-emitted HL-01 in the same
  * transaction AND that the parent's HL-03 level is consistent with this
  * level (20 → 22; 22 → 23). Violations emit
- * `X12_HL_PARENT_MISMATCH` and `X12_HL_PARENT_LEVEL_INVALID` —
+ * `X12_HL_PARENT_MISMATCH` and `X12_HL_PARENT_LEVEL_INVALID` -
  * the parser NEVER silently re-numbers.
  *
  * @example
@@ -115,7 +115,7 @@ export interface X12HierarchicalLevel {
  *
  * PHI surface: `lastName`/`firstName`/`idCode` carry PHI when the role is
  * a person (subscriber, patient, rendering provider as an individual).
- * Surfaced verbatim — the parser never echoes them in warnings.
+ * Surfaced verbatim - the parser never echoes them in warnings.
  *
  * @example
  * ```ts
@@ -143,7 +143,7 @@ export interface X12ClaimEntity {
 
 /**
  * Decoded N3 + N4 address block attached to an entity. Same shape as the
- * 835's address (intentional — symmetry across helpers). All fields
+ * 835's address (intentional - symmetry across helpers). All fields
  * verbatim, no normalization.
  *
  * @example
@@ -186,7 +186,7 @@ export interface X12ClaimContact {
 }
 
 /**
- * Decoded REF segment — additional identifier on an entity or claim.
+ * Decoded REF segment - additional identifier on an entity or claim.
  * Verbatim across the table; the qualifier vocabulary depends on the
  * context (`EI` Employer ID at the billing provider, `D9` Claim Number on
  * an other-payer reference, `G1` Prior Authorization, etc.).
@@ -206,9 +206,9 @@ export interface X12ClaimReference {
 }
 
 /**
- * Decoded DTP date — claim-level or service-line-level. `formatQualifier`
+ * Decoded DTP date - claim-level or service-line-level. `formatQualifier`
  * is DTP-02 (`D8` single-date CCYYMMDD; `RD8` date range
- * CCYYMMDD-CCYYMMDD). `value` is DTP-03 verbatim — the parser never
+ * CCYYMMDD-CCYYMMDD). `value` is DTP-03 verbatim - the parser never
  * normalizes the literal.
  *
  * Date-qualifier vocabulary on 837 (X12 374): `472` Service Date, `434`
@@ -238,17 +238,17 @@ export interface X12ClaimDate {
  * without re-deriving the mapping. The `category` discriminates the role
  * (diagnosis / procedure / NUBC code-set entry).
  *
- * `poaIndicator` (Present-on-Admission) is HI-NN-9 — 837I institutional
+ * `poaIndicator` (Present-on-Admission) is HI-NN-9 - 837I institutional
  * inpatient only. CMS-mandated values: `Y` Yes, `N` No, `U` Insufficient
  * documentation, `W` Clinically undetermined, `1` Exempt from POA
- * reporting. Verbatim — the parser preserves the value, never validates
+ * reporting. Verbatim - the parser preserves the value, never validates
  * against the spec list (Phase 9 profile may layer enforcement).
  *
  * @example
  * ```ts
  * import type { X12ClaimHiCode } from "@cosyte/x12";
  * declare const dx: X12ClaimHiCode;
- * dx.qualifier;     // "ABK" — principal diagnosis ICD-10-CM
+ * dx.qualifier;     // "ABK" - principal diagnosis ICD-10-CM
  * dx.codeSystem;    // "ICD-10-CM"
  * dx.category;      // "principal-diagnosis"
  * dx.code;          // "J45.50"
@@ -269,12 +269,12 @@ export interface X12ClaimHiCode {
 }
 
 /**
- * Decoded NTE note — free-text annotation. `noteReferenceCode` (NTE-01)
+ * Decoded NTE note - free-text annotation. `noteReferenceCode` (NTE-01)
  * classifies the note ('ADD' Additional Information, 'CER' Certification,
  * 'DCP' Goals/Rehabilitation/Discharge Plans, 'DGN' Diagnosis, 'DME' DME,
  * 'MED' Medications, etc., X12 code list 363).
  *
- * NOTE: NTE-02 is free text supplied by the provider — it may include
+ * NOTE: NTE-02 is free text supplied by the provider - it may include
  * incidental PHI (a patient name in a clinical note). Surfaced verbatim
  * for fidelity; the parser flags this surface in JSDoc but never
  * redacts. Consumers should treat NTE-02 as PHI-bearing.
@@ -284,7 +284,7 @@ export interface X12ClaimHiCode {
  * import type { X12ClaimNote } from "@cosyte/x12";
  * declare const n: X12ClaimNote;
  * n.noteReferenceCode; // "ADD"
- * n.description;       // verbatim — may include incidental PHI
+ * n.description;       // verbatim - may include incidental PHI
  * ```
  */
 export interface X12ClaimNote {
@@ -293,7 +293,7 @@ export interface X12ClaimNote {
 }
 
 /**
- * Decoded AMT segment — supplemental claim amount (patient-paid amount,
+ * Decoded AMT segment - supplemental claim amount (patient-paid amount,
  * coverage amount, etc.). `qualifier` from X12 522. Surfaced verbatim;
  * never folded into a computed total (the 837 has no on-spec balance
  * invariant analogous to the 835's CLP balance).
@@ -312,8 +312,8 @@ export interface X12ClaimAmount {
 }
 
 /**
- * Decoded SBR — Subscriber Information (Loop 2000B's primary trigger). Or
- * decoded PAT — Patient Information when the patient is the subscriber.
+ * Decoded SBR - Subscriber Information (Loop 2000B's primary trigger). Or
+ * decoded PAT - Patient Information when the patient is the subscriber.
  *
  * - `payerResponsibilityCode` (SBR-01 / X12 1138): `P` Primary, `S`
  *   Secondary, `T` Tertiary, etc. Drives COB ordering.
@@ -341,7 +341,7 @@ export interface X12SubscriberInfo {
 }
 
 /**
- * A claim's subscriber or patient — the NM1 entity plus the SBR/PAT
+ * A claim's subscriber or patient - the NM1 entity plus the SBR/PAT
  * metadata that wraps it.
  *
  * @example
@@ -358,7 +358,7 @@ export interface X12ClaimMember {
 }
 
 /**
- * Decoded Loop 2320 — Other Subscriber Information. Captures the SBR-01
+ * Decoded Loop 2320 - Other Subscriber Information. Captures the SBR-01
  * payer responsibility code and the associated other-subscriber / other-
  * payer NM1 entities; Phase 5 records the surface so a consumer knows
  * COB exists. Detailed CAS / OI / MOA breakdown inside Loop 2320 is
@@ -433,7 +433,7 @@ export interface X12Claim {
 }
 
 /**
- * Service-line discriminated union — one variant per TR3. The walker
+ * Service-line discriminated union - one variant per TR3. The walker
  * picks the variant from the segment id (`SV1` → P, `SV2` → I, `SV3` →
  * D). When an `LX` opens a service line with no SVx segment that follows
  * before the next LX / SE, the line is dropped (an `X12_UNEXPECTED_SEGMENT`
@@ -509,7 +509,7 @@ export interface X12_837ServiceLineProfessional extends X12_837ServiceLineBase {
 
 /**
  * 837I service line (SV2). Institutional lines lead with a `revenueCode`
- * (SV2-01, NUBC 4-digit revenue code — what *kind* of service this is);
+ * (SV2-01, NUBC 4-digit revenue code - what *kind* of service this is);
  * the procedure code (HCPCS) and modifiers in SV2-02 are situational.
  * `nonCoveredCharge` (SV2-07) is the portion of the line the provider
  * has marked as not covered before the payer adjudicates.
@@ -561,7 +561,7 @@ export interface X12_837ServiceLineDental extends X12_837ServiceLineBase {
 }
 
 /**
- * Decoded TOO — Tooth Information (837D Loop 2400). `qualifier` is the
+ * Decoded TOO - Tooth Information (837D Loop 2400). `qualifier` is the
  * tooth-numbering code list (`JP` ADA Universal Tooth Numbering, `JO`
  * ANSI / ISO 3950 / FDI). `toothCode` is the verbatim tooth identifier;
  * `surfaces` are the per-surface codes (`M` mesial, `O` occlusal, `D`
@@ -583,7 +583,7 @@ export interface X12ToothInformation {
 }
 
 /**
- * Decoded LIN + CTP — Drug Identification (837P Loop 2410). Surfaces the
+ * Decoded LIN + CTP - Drug Identification (837P Loop 2410). Surfaces the
  * NDC and the optional dispensed-quantity + UCUM unit. `qualifier`
  * = `N4` NDC (overwhelmingly common), `EN` EAN/UCC-13, `HI` HIBC.
  *
@@ -605,13 +605,13 @@ export interface X12LineDrug {
 }
 
 /**
- * Decoded SVD + adjacent CAS / DTP — Line Adjudication Information (Loop
+ * Decoded SVD + adjacent CAS / DTP - Line Adjudication Information (Loop
  * 2430). Captures another payer's prior adjudication of THIS line so the
  * downstream payer has the COB context. The `adjustments` re-use the
  * remit `X12RemitAdjustment` shape since the CAS semantics are identical
  * to those on the 835.
  *
- * `procedureCode` is SVD-03-2 (verbatim) — the adjudicated procedure
+ * `procedureCode` is SVD-03-2 (verbatim) - the adjudicated procedure
  * code as the other payer recorded it. May differ from the line's SV
  * procedure code if the other payer remapped.
  *

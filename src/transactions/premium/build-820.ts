@@ -1,12 +1,12 @@
 /**
- * `build820` — pure-function builder for a 005010X218 Payroll Deducted and
+ * `build820` - pure-function builder for a 005010X218 Payroll Deducted and
  * Other Group Premium Payment for Insurance Products (820). NEVER
  * auto-sends, NEVER opens a socket, NEVER touches the filesystem. The
  * library mechanically emits the premium payment it is told; a spec whose
  * remittance loops cannot form a self-consistent structure is REFUSED via
  * {@link "./build-errors.js".Premium820BuildError}.
  *
- * The read side ({@link "./get-820.js".get820Payments}) is lenient — a real
+ * The read side ({@link "./get-820.js".get820Payments}) is lenient - a real
  * 820 with a stray, un-openable RMR is preserved verbatim, never rejected.
  * The builder takes the opposite stance: it REFUSES rather than emit a
  * remittance a downstream cash-poster would silently drop or merge into the
@@ -22,7 +22,7 @@
  *
  * Known limitation: the 820 carries no hard TR3 balance equation (BPR-02 is
  * not required to equal Σ of the RMR open items), so the builder emits all
- * monetary amounts verbatim and never raises a balance-mismatch refusal — a
+ * monetary amounts verbatim and never raises a balance-mismatch refusal - a
  * deliberate contrast with `build835`.
  */
 
@@ -40,17 +40,17 @@ import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
 
-/** GS-08 / ST-03 version + release emitted for every 820 — the WPC TR3 `005010X218`. @internal */
+/** GS-08 / ST-03 version + release emitted for every 820 - the WPC TR3 `005010X218`. @internal */
 const X218_VERSION_RELEASE = "005010X218";
 
 /** GS-01 functional identifier code for the 820. `RA` = Payment Order/Remittance Advice. @internal */
 const X12_820_FUNCTIONAL_ID = "RA";
 
-/** GS-07 standards agency code — `X` for ASC X12. @internal */
+/** GS-07 standards agency code - `X` for ASC X12. @internal */
 const X12_AGENCY_CODE = "X";
 
 /**
- * `build820` — assemble a 005010X218 820 around the supplied spec.
+ * `build820` - assemble a 005010X218 820 around the supplied spec.
  *
  * Refused via {@link "./build-errors.js".Premium820BuildError} with code
  * `X12_820_BUILD_INVALID_SPEC`:
@@ -132,8 +132,8 @@ export function build820(spec: Build820Spec): X12Interchange {
       pad(envelope.senderId, 15), // ISA-06
       pad(receiverQualifier, 2), // ISA-07
       pad(envelope.receiverId, 15), // ISA-08
-      pad(envelope.interchangeDate, 6), // ISA-09 — YYMMDD
-      pad(envelope.interchangeTime, 4), // ISA-10 — HHMM
+      pad(envelope.interchangeDate, 6), // ISA-09 - YYMMDD
+      pad(envelope.interchangeTime, 4), // ISA-10 - HHMM
       repetitionSeparator, // ISA-11
       "00501", // ISA-12
       interchangeControlNumber, // ISA-13
@@ -151,11 +151,11 @@ export function build820(spec: Build820Spec): X12Interchange {
 
   const gs = seg([
     "GS",
-    X12_820_FUNCTIONAL_ID, // GS-01 — "RA"
+    X12_820_FUNCTIONAL_ID, // GS-01 - "RA"
     esc(applicationSenderCode), // GS-02
     esc(applicationReceiverCode), // GS-03
-    groupDate, // GS-04 — CCYYMMDD
-    groupTime, // GS-05 — HHMM
+    groupDate, // GS-04 - CCYYMMDD
+    groupTime, // GS-05 - HHMM
     esc(envelope.groupControlNumber), // GS-06
     X12_AGENCY_CODE, // GS-07
     X218_VERSION_RELEASE, // GS-08
@@ -168,7 +168,7 @@ export function build820(spec: Build820Spec): X12Interchange {
 
   const body: string[] = [];
 
-  // BPR — payment header. BPR-16 (payment date) is positionally pinned at
+  // BPR - payment header. BPR-16 (payment date) is positionally pinned at
   // element 16, so interior elements 6..15 are emitted empty and held in
   // place by the trailing date.
   body.push(
@@ -205,7 +205,7 @@ export function build820(spec: Build820Spec): X12Interchange {
     );
   }
 
-  // Header parties — receiver (Loop 1000A, N1*PE) then remitter (Loop
+  // Header parties - receiver (Loop 1000A, N1*PE) then remitter (Loop
   // 1000B, N1*PR / N1*RM). The read side keys on the N1 qualifier, not the
   // order, but each party's N3/N4/REF must immediately follow its N1.
   if (spec.receiver !== undefined) emitParty(spec.receiver, body, seg, esc);
@@ -387,7 +387,7 @@ function emitPerson(
   return seg([
     "NM1",
     esc(person.entityIdentifierCode),
-    "1", // NM1-02 entity type qualifier — not read by get820Payments
+    "1", // NM1-02 entity type qualifier - not read by get820Payments
     esc(person.lastName ?? ""),
     esc(person.firstName ?? ""),
     esc(person.middleName ?? ""),
@@ -424,7 +424,7 @@ function emitRef(
 }
 
 // ---------------------------------------------------------------------------
-// String helpers — mirror the `build835` emit primitives.
+// String helpers - mirror the `build835` emit primitives.
 // ---------------------------------------------------------------------------
 
 /** @internal */
@@ -437,7 +437,7 @@ function pad(value: string, width: number): string {
 /**
  * Zero-pad a control number to `width` chars (ISA-13 / IEA-02 are always 9).
  * Throws {@link Premium820BuildError} if the value already exceeds the
- * width — a silently-truncated control number would break ISA-13↔IEA-02
+ * width - a silently-truncated control number would break ISA-13↔IEA-02
  * reconciliation. @internal
  */
 function padControl(value: string, width: number): string {

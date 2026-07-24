@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * `@cosyte/x12` PHI scanner — the CI / pre-commit half of the PHI commit-gate.
+ * `@cosyte/x12` PHI scanner - the CI / pre-commit half of the PHI commit-gate.
  *
  * Pure Node. Zero runtime deps. Walks the synthetic test fixtures (and a
  * conservative text pass over `src/`) and REFUSES anything that looks like real
@@ -9,13 +9,13 @@
  * X12 carries PHI by design (member ids, patient / subscriber names, dates of
  * service, SSNs, contact phones/emails). Unlike HL7 or JSON, an X12 `.edi` file
  * is byte-strict: the ISA segment must start at byte 0, so an inline
- * `# synthetic: true` header is impossible — it would break every parser test.
+ * `# synthetic: true` header is impossible - it would break every parser test.
  * This is the same constraint DICOM hits with binary `.dcm` files, and we solve
  * it the same proven way: a **synthetic allow-list** (`scripts/phi-allow-list.txt`)
  * is the positive declaration that a fixture's identifiers are fake. Any
  * realistic-PHI-shaped token not covered by the allow-list is a hit. Adding a
  * new synthetic fixture therefore means either reusing known-synthetic tokens or
- * consciously extending the allow-list — a reviewed act, never silent.
+ * consciously extending the allow-list - a reviewed act, never silent.
  *
  * SECURITY: every subprocess is `git`, invoked via `execFileSync` with array
  * args only. Never shell-form spawn.
@@ -44,13 +44,13 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 
 // Roots walked in "all" mode. test/fixtures gets the full X12-aware scan;
 // src gets a conservative text pass (dashed-SSN + non-test email only) because
-// it is hand-written code, not data — JSDoc `@example` snippets must not trip it.
+// it is hand-written code, not data - JSDoc `@example` snippets must not trip it.
 const FIXTURE_ROOT = join(REPO_ROOT, "test", "fixtures");
 const SRC_ROOT = join(REPO_ROOT, "src");
 
 // Service / transaction-date segments. Their dates are CCYYMMDD and a real feed
 // would carry a past date; synthetic fixtures use 2024+. DMG (date of birth) is
-// deliberately NOT here — a synthetic DOB is legitimately decades old, so DOBs
+// deliberately NOT here - a synthetic DOB is legitimately decades old, so DOBs
 // are gated by the allow-list instead (DOB: lines), not by this cutoff.
 const DATE_SEGMENTS = new Set<string>(["DTP", "DTM", "BHT", "GS"]);
 const SERVICE_DATE_CUTOFF_YEAR = 2024;
@@ -132,7 +132,7 @@ function parseArgs(argv: string[]): Args {
   }
 
   // An `--allow-fixture` path is a *subtractive* acknowledgement on a broader
-  // scan, never a scan target on its own — so it also seeds the positional path
+  // scan, never a scan target on its own - so it also seeds the positional path
   // set. That makes `--allow-fixture X` mean "scan X, but allow it" (proving the
   // override gate actually subtracts a scanned target) instead of a silent no-op.
   const scanPaths = paths.length > 0 ? paths : [...allowFixtures];
@@ -247,7 +247,7 @@ function gitIgnored(paths: string[]): Set<string> {
   const ignored = new Set<string>();
   if (paths.length === 0) return ignored;
   try {
-    // SECURITY: array-form execFileSync, no shell. Default (Buffer) encoding —
+    // SECURITY: array-form execFileSync, no shell. Default (Buffer) encoding -
     // `encoding: "buffer"` with `input` is rejected by Node.
     const out = execFileSync("git", ["check-ignore", "--stdin", "-z"], {
       input: paths.map(normalizePath).join("\0"),
@@ -257,7 +257,7 @@ function gitIgnored(paths: string[]): Set<string> {
       if (p.length > 0) ignored.add(p);
     }
   } catch {
-    // `git check-ignore` exits 1 when nothing matches — treat as none ignored.
+    // `git check-ignore` exits 1 when nothing matches - treat as none ignored.
   }
   return ignored;
 }
@@ -372,7 +372,7 @@ function checkNm1(path: string, elems: string[], allow: AllowList, hits: Hit[]):
   }
 
   if (entityType === "1") {
-    // person — last / first / middle name elements
+    // person - last / first / middle name elements
     for (const el of [elems[3], elems[4], elems[5]]) {
       if (el === undefined || el.length === 0) continue;
       for (const tok of nameTokens(el)) {
@@ -472,7 +472,7 @@ function scanCommonShapes(target: Target, content: string, allow: AllowList, hit
   for (const m of content.matchAll(/\b\d{3}-\d{2}-\d{4}\b/g)) {
     pushHit(hits, target.path, "(ssn)", m[0], "dashed SSN pattern");
   }
-  // REF*SY*<value> (SSN qualifier) — 9-digit value must be allow-listed.
+  // REF*SY*<value> (SSN qualifier) - 9-digit value must be allow-listed.
   for (const m of content.matchAll(/REF.SY.([0-9]{9})\b/g)) {
     const v = m[1];
     if (v !== undefined && !allow.ids.has(v.toUpperCase())) {
@@ -506,7 +506,7 @@ function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
     scanX12(target, text, allow, hits);
   } else {
     // Non-X12 target (hand-written src, plain-text notes): conservative shape
-    // pass only — no segment model to lean on.
+    // pass only - no segment model to lean on.
     scanCommonShapes(target, text, allow, hits);
   }
 }
@@ -517,7 +517,7 @@ function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
 
 function report(hits: Hit[]): void {
   if (hits.length === 0) {
-    process.stdout.write("[phi-scan] OK — no hits\n");
+    process.stdout.write("[phi-scan] OK - no hits\n");
     return;
   }
   const byPath = new Map<string, Hit[]>();

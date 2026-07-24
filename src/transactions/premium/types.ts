@@ -1,12 +1,12 @@
 /**
  * Typed model for an X12 005010X218 820 Payment Order / Remittance Advice
  * (premium payment). The shape is the public contract of
- * {@link "./get-820.js".get820Payments} — adding fields is
+ * {@link "./get-820.js".get820Payments} - adding fields is
  * backward-compatible; renaming fields is breaking. All monetary fields are
- * {@link "../../decimal.js".X12Decimal} (NEVER `number` — float arithmetic
+ * {@link "../../decimal.js".X12Decimal} (NEVER `number` - float arithmetic
  * destroys cents on a real-world premium remittance).
  *
- * Spec source: WPC TR3 `005010X218` — Payroll Deducted and Other Group
+ * Spec source: WPC TR3 `005010X218` - Payroll Deducted and Other Group
  * Premium Payment for Insurance Products (820). Segment-level references in
  * JSDoc are 1-indexed against that TR3.
  */
@@ -45,7 +45,7 @@ export interface X12PremiumPayments {
 }
 
 /**
- * Decoded BPR — Financial Information / payment header (identical segment
+ * Decoded BPR - Financial Information / payment header (identical segment
  * shape to the 835). `totalPremiumAmount` is BPR-02, the aggregate premium
  * the bank actually moved; `method` is BPR-04 (`ACH` / `CHK` / `NON` / …).
  *
@@ -73,7 +73,7 @@ export interface X12PremiumPaymentHeader {
 }
 
 /**
- * Decoded TRN — Reassociation Trace Number. Pairs the 820 to the
+ * Decoded TRN - Reassociation Trace Number. Pairs the 820 to the
  * originating ACH / check artifact so the receiver can reconcile the
  * premium deposit. `referenceId` is the trace number a bank statement / ACH
  * addenda will carry.
@@ -82,7 +82,7 @@ export interface X12PremiumPaymentHeader {
  * ```ts
  * import type { X12PremiumTrace } from "@cosyte/x12";
  * declare const t: X12PremiumTrace;
- * t.traceTypeCode;        // "1" — Current Transaction Trace Numbers
+ * t.traceTypeCode;        // "1" - Current Transaction Trace Numbers
  * t.referenceId;          // e.g. "PREM-202606" (verbatim)
  * ```
  */
@@ -97,7 +97,7 @@ export interface X12PremiumTrace {
  * Decoded Loop 1000A (Premium Receiver, `N1*PE`) or Loop 1000B (Premium
  * Payer / Remitter, `N1*PR` / `N1*RM`) party. Uniform shape so a consumer
  * can read both by role. Names + addresses here are PII (organizational),
- * not PHI in the §164.514 sense — member identity lives on the per-member
+ * not PHI in the §164.514 sense - member identity lives on the per-member
  * remittance detail.
  *
  * @example
@@ -120,7 +120,7 @@ export interface X12PremiumParty {
 /**
  * Decoded N3 + N4 address block attached to a party. `lines` is the N3
  * address lines (1-2 entries); `city` / `state` / `postalCode` come from
- * N4. All verbatim — no normalization.
+ * N4. All verbatim - no normalization.
  *
  * @example
  * ```ts
@@ -139,7 +139,7 @@ export interface X12PremiumAddress {
 }
 
 /**
- * Decoded REF segment — supplemental identifier (master policy number, plan
+ * Decoded REF segment - supplemental identifier (master policy number, plan
  * id, version). `qualifier` is the X12 reference-identification qualifier;
  * `value` is the verbatim id.
  *
@@ -176,10 +176,10 @@ export interface X12PremiumDate {
 }
 
 /**
- * Decoded Loop 2000 remittance entry — one organization-summary (`ENT`) or
+ * Decoded Loop 2000 remittance entry - one organization-summary (`ENT`) or
  * individual (`NM1`) remittance. Carries the open-item references (RMR), the
  * adjustments (ADX), and any REF / DTM context. The entity / individual
- * name fields carry PII / PHI (member name + id) — surfaced verbatim, never
+ * name fields carry PII / PHI (member name + id) - surfaced verbatim, never
  * echoed in a warning, never normalized.
  *
  * @example
@@ -201,7 +201,7 @@ export interface X12PremiumRemittance {
 }
 
 /**
- * Decoded ENT — Entity (organization-summary remittance). `assignedNumber`
+ * Decoded ENT - Entity (organization-summary remittance). `assignedNumber`
  * is ENT-01; the entity is identified by ENT-02 (entity id code) plus the
  * ENT-03 / ENT-04 qualifier + id. All verbatim.
  *
@@ -246,10 +246,10 @@ export interface X12PremiumPerson {
 }
 
 /**
- * Decoded RMR — Remittance Advice Accounts Receivable Open Item Reference.
+ * Decoded RMR - Remittance Advice Accounts Receivable Open Item Reference.
  * The premium-line unit: a policy / invoice reference plus the amount paid
  * and (optionally) the amount due. `qualifier` is RMR-01 (reference id
- * qualifier — `"11"` account number, `"IK"` invoice, `"AZ"` health-insurance
+ * qualifier - `"11"` account number, `"IK"` invoice, `"AZ"` health-insurance
  * policy number); `referenceId` is RMR-02; `amountPaid` is RMR-04;
  * `amountDue` is RMR-05.
  *
@@ -271,8 +271,8 @@ export interface X12PremiumOpenItem {
 }
 
 /**
- * Decoded ADX — Adjustment to a premium remittance. `amount` is ADX-01
- * (signed monetary adjustment); `reasonCode` is ADX-02 (adjustment reason —
+ * Decoded ADX - Adjustment to a premium remittance. `amount` is ADX-01
+ * (signed monetary adjustment); `reasonCode` is ADX-02 (adjustment reason -
  * `"52"` credit memo, `"53"` debit memo, …); the optional
  * `referenceQualifier` / `referenceId` (ADX-03 / ADX-04) tie the adjustment
  * to a prior item.

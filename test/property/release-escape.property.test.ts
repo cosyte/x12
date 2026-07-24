@@ -1,7 +1,7 @@
 /**
  * Property: `unescapeRelease(escapeRelease(v, d), d)` deep-equals `v` for any
  * value `v` and any 4-distinct-delimiter set `d`. The Phase 2 lossless
- * round-trip invariant — if this can ever fail, every helper / serializer /
+ * round-trip invariant - if this can ever fail, every helper / serializer /
  * builder downstream is built on a broken byte primitive.
  */
 
@@ -31,7 +31,7 @@ const fourDistinctDelimiters = fc
 
 const POS: X12Position = { segmentIndex: 0, interchangeIndex: 0 };
 
-describe("?-release-character escape — lossless round-trip property", () => {
+describe("?-release-character escape - lossless round-trip property", () => {
   it("any value survives escape→unescape across any 4-distinct-delimiter set", () => {
     fc.assert(
       fc.property(
@@ -40,7 +40,7 @@ describe("?-release-character escape — lossless round-trip property", () => {
         (value, delimiters) => {
           const encoded = escapeRelease(value, delimiters);
           // After escapeRelease, no bare delimiter or bare release-char
-          // remains — every reserved byte is preceded by `?`.
+          // remains - every reserved byte is preceded by `?`.
           const decoded = unescapeRelease(encoded, delimiters, () => {}, POS);
           return decoded === value;
         },
@@ -65,7 +65,7 @@ describe("?-release-character escape — lossless round-trip property", () => {
           // Left-to-right consumer: at each position, expect either a
           // non-reserved byte (consume 1) or a `?` followed by exactly
           // one reserved byte (consume 2). Any other shape means
-          // escapeRelease left a bare reserved byte — a bug.
+          // escapeRelease left a bare reserved byte - a bug.
           let i = 0;
           while (i < encoded.length) {
             const ch = encoded.charAt(i);

@@ -7,13 +7,13 @@
  * form a valid HL hierarchy, or a per-loop / certification precondition
  * fails.
  *
- * The HL spine is the 278's safety primitive — the builder OWNS it,
+ * The HL spine is the 278's safety primitive - the builder OWNS it,
  * computing every HL-01 id, HL-02 parent pointer (20 → 21 → 22 → 23), and
  * HL-04 has-child flag from the nested UMO → requester → subscriber →
  * (dependent) → reviews tree, so a structurally inconsistent hierarchy is
  * *unrepresentable* and SE-01 is correct by construction.
  *
- * The read side ({@link "./get-278.js".get278Request}) is lenient — a real
+ * The read side ({@link "./get-278.js".get278Request}) is lenient - a real
  * 278 with a broken HL parent pointer is WARNED, never rejected. The builder
  * takes the opposite stance: it REFUSES rather than emit a hierarchy a
  * downstream consumer would have to repair. A caller that must reproduce a
@@ -26,13 +26,13 @@
  * here so consumers can narrow exhaustively on `err.code`; additions-only
  * thereafter (renaming any code is a breaking change).
  *
- * - `X12_278_BUILD_INVALID_HIERARCHY` — the nested tree cannot form a valid
+ * - `X12_278_BUILD_INVALID_HIERARCHY` - the nested tree cannot form a valid
  *   278 HL spine (a subscriber with neither a review nor a dependent; a
  *   dependent with no review). The message carries structural indices +
- *   counts only — never a member id / name.
- * - `X12_278_BUILD_INVALID_SPEC` — a non-hierarchy precondition failed (a
+ *   counts only - never a member id / name.
+ * - `X12_278_BUILD_INVALID_SPEC` - a non-hierarchy precondition failed (a
  *   review with no `requestCategoryCode`; a request spec carrying an `HCR`
- *   certification decision — `HCR` is response-only; a response review with a
+ *   certification decision - `HCR` is response-only; a response review with a
  *   decision whose `actionCode` is empty; an over-long ISA-13 control
  *   number).
  *
@@ -46,7 +46,7 @@
  *     err instanceof ServicesReview278BuildError &&
  *     err.code === AUTH_278_BUILD_ERROR_CODES.X12_278_BUILD_INVALID_HIERARCHY
  *   ) {
- *     // the hierarchy is impossible — fix the tree, do not emit
+ *     // the hierarchy is impossible - fix the tree, do not emit
  *   }
  * }
  * ```
@@ -66,11 +66,11 @@ export type ServicesReview278BuildErrorCode =
 /**
  * Thrown by {@link "./build-278.js".build278Request} / {@link
  * "./build-278.js".build278Response} when the supplied services-review spec
- * cannot be emitted as a conformant, self-consistent 278 — most importantly
+ * cannot be emitted as a conformant, self-consistent 278 - most importantly
  * when its nested tree cannot form a valid HL hierarchy, or when a response's
  * `HCR` certification action is missing the verbatim `actionCode` the builder
  * is forbidden to infer. Carries a stable `code` for programmatic narrowing.
- * Deliberately does NOT extend `X12ParseError` or `X12BuildError` — the
+ * Deliberately does NOT extend `X12ParseError` or `X12BuildError` - the
  * domain-refusal distinction matters at the type level.
  *
  * @example

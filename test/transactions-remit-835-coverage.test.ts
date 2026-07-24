@@ -1,5 +1,5 @@
 /**
- * Coverage-focused tests for the Phase 4 835 walker — pins down the
+ * Coverage-focused tests for the Phase 4 835 walker - pins down the
  * branches that the six narrative fixtures do not exercise:
  *
  * - MIA (inpatient adjudication info) carrying RARC codes at MIA-05 / MIA-20.
@@ -34,7 +34,7 @@ function parse835(body: string, seCount: number): ReturnType<typeof get835> {
   return get835(ix.delimiters, tx);
 }
 
-describe("get835 coverage — MIA / MOA / AMT / NM1*74", () => {
+describe("get835 coverage - MIA / MOA / AMT / NM1*74", () => {
   it("MIA-05 and MIA-20 surface as service-line LQ-equivalent remarks at claim level", () => {
     // Charge 1000, paid 800, MIA*05=N4 MIA*20=ZZZZ; claim-level CAS for $200 to keep balance.
     const body =

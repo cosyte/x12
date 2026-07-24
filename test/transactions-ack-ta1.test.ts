@@ -1,10 +1,10 @@
 /**
  * Unit tests for the envelope-level TA1 Interchange Acknowledgment Phase
- * 3 surface — `parseTA1` + `buildTA1`. Covers:
+ * 3 surface - `parseTA1` + `buildTA1`. Covers:
  *
  * - Three Tier-1 fixtures (accept; accept-with-errors; reject-on-control-
  *   number-mismatch). Each fixture is a TA1-only interchange (ISA → TA1
- *   → IEA with no GS) — the canonical form for a TA1 transmitted in
+ *   → IEA with no GS) - the canonical form for a TA1 transmitted in
  *   isolation per the ASC X12 standard.
  * - The TA1-only interchange parses to a `groups: []` shape with the TA1
  *   surfaced on `interchange.ta1Segments` and NO `X12_UNEXPECTED_SEGMENT`
@@ -40,7 +40,7 @@ function readFixture(name: string): string {
 // Tier-1 fixtures.
 // ---------------------------------------------------------------------------
 
-describe("parseTA1 — Tier-1 fixtures", () => {
+describe("parseTA1 - Tier-1 fixtures", () => {
   it("decodes a clean accept (TA1*...*A*000)", () => {
     const ix = parseX12(readFixture("ta1-accept.edi"));
     expect(ix.ta1Segments).toHaveLength(1);
@@ -86,7 +86,7 @@ describe("parseTA1 — Tier-1 fixtures", () => {
   });
 });
 
-describe("envelope walker — TA1 capture", () => {
+describe("envelope walker - TA1 capture", () => {
   it("captures an envelope-level TA1 onto interchange.ta1Segments verbatim", () => {
     const raw =
       "ISA*00*          *00*          *ZZ*RECEIVER       *ZZ*SENDER         *250101*1200*^*00501*000000050*0*P*:~" +
@@ -97,7 +97,7 @@ describe("envelope walker — TA1 capture", () => {
     const ta1Seg = ix.ta1Segments[0];
     expect(ta1Seg?.raw).toBe("TA1*000000019*250101*1200*A*000");
     expect(ta1Seg?.elements).toEqual(["TA1", "000000019", "250101", "1200", "A", "000"]);
-    // No unexpected-segment warning — TA1 at envelope level is spec-conformant.
+    // No unexpected-segment warning - TA1 at envelope level is spec-conformant.
     expect(ix.warnings.filter((w) => w.code === WARNING_CODES.X12_UNEXPECTED_SEGMENT)).toHaveLength(
       0,
     );
@@ -121,7 +121,7 @@ describe("envelope walker — TA1 capture", () => {
 // `buildTA1` happy paths + safety guard.
 // ---------------------------------------------------------------------------
 
-describe("buildTA1 — happy paths", () => {
+describe("buildTA1 - happy paths", () => {
   it("emits a spec-clean A*000 segment for an accept", () => {
     const ta1 = buildTA1({
       interchangeControlNumber: "000000019",
@@ -160,7 +160,7 @@ describe("buildTA1 — happy paths", () => {
   });
 });
 
-describe("buildTA1 — safety guard", () => {
+describe("buildTA1 - safety guard", () => {
   it("refuses A paired with a non-000 note (X12_TA1_ACCEPT_WITH_NOTE)", () => {
     try {
       buildTA1({
@@ -193,10 +193,10 @@ describe("buildTA1 — safety guard", () => {
 });
 
 // ---------------------------------------------------------------------------
-// PHI safety — TA1 carries no PHI by construction.
+// PHI safety - TA1 carries no PHI by construction.
 // ---------------------------------------------------------------------------
 
-describe("TA1 — PHI safety", () => {
+describe("TA1 - PHI safety", () => {
   it("an emitted TA1 contains only structural fields (control number, date, time, codes)", () => {
     const ta1 = buildTA1({
       interchangeControlNumber: "000000019",

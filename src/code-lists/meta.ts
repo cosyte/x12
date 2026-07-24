@@ -1,21 +1,21 @@
 /**
  * Shared types for bundled X12 code-list snapshots. Every snapshot is a
- * **versioned data artifact** (not a runtime fetch) — `meta.snapshotDate`
+ * **versioned data artifact** (not a runtime fetch) - `meta.snapshotDate`
  * is the date this package captured the list; `meta.publishedDate` is the
  * WPC / X12 / CMS publication date the snapshot reflects.
  *
- * Snapshots are deliberately tiny in v0.0.x — pre-launch initial subsets
+ * Snapshots are deliberately tiny in v0.0.x - pre-launch initial subsets
  * covering only the codes already exercised by the parser's Tier-1 + Tier-2
  * fixtures. The Phase 10 `pnpm refresh:code-lists` script will regenerate
  * the full WPC-published lists from canonical sources for the first real
  * release; until then `lookup(code)` returns `undefined` for codes outside
  * the subset and consumers receive the **verbatim** inbound code (the
- * value is never lost — only the human-readable description is absent).
+ * value is never lost - only the human-readable description is absent).
  *
  * Update / freshness policy: WPC updates CARC + RARC monthly; CSCC + CSC
  * monthly; X12 internal code lists (Claim Adjustment Group, etc.) follow
  * the standard release cadence (rare). Snapshots are refreshed on a
- * release cadence, not at runtime — a stale description never produces a
+ * release cadence, not at runtime - a stale description never produces a
  * wrong code, only a missing description.
  */
 
@@ -66,7 +66,7 @@ export interface CodeListEntry {
  * A complete bundled code-list snapshot. `meta` carries provenance;
  * `codes` is a frozen plain object so consumers can iterate or build their
  * own lookups without going through the helper. Internal use prefers the
- * per-snapshot `lookup*` helpers — they return a frozen {@link
+ * per-snapshot `lookup*` helpers - they return a frozen {@link
  * CodeListEntry} ergonomic for the helper APIs.
  *
  * @example
@@ -84,10 +84,10 @@ export interface CodeListSnapshot {
 /**
  * Construct a `lookup` helper for a {@link CodeListSnapshot}. Returns
  * `undefined` for codes outside the bundled subset (which is the
- * fail-safe — the verbatim inbound code is preserved by the helper that
+ * fail-safe - the verbatim inbound code is preserved by the helper that
  * called us; only the description is unavailable).
  *
- * @internal — exported only for the per-snapshot modules.
+ * @internal - exported only for the per-snapshot modules.
  */
 export function makeLookup(
   snapshot: CodeListSnapshot,

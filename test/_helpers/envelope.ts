@@ -4,7 +4,7 @@
  * from a small option bag so tests can stress one variable at a time
  * without hand-counting fixed positions.
  *
- * Lives under `test/_helpers/` so it is NOT shipped — pure test utility.
+ * Lives under `test/_helpers/` so it is NOT shipped - pure test utility.
  * @internal
  */
 
@@ -40,7 +40,7 @@ export interface BuildIsaOptions {
 /**
  * Assemble a 106-byte (including terminator) ISA segment from the named
  * delimiters + field overrides. The returned string is exactly what would
- * appear on the wire — split on `delimiters.element` it has 17 entries
+ * appear on the wire - split on `delimiters.element` it has 17 entries
  * (`"ISA"` + 16 elements). The last char is the segment terminator.
  */
 export function buildIsa(opts: BuildIsaOptions = {}): string {
@@ -85,8 +85,8 @@ export function buildIsa(opts: BuildIsaOptions = {}): string {
 }
 
 /**
- * Assemble a complete minimal interchange — ISA, one GS..GE group, one
- * ST..SE transaction (claims body kept empty / opaque), IEA — using the
+ * Assemble a complete minimal interchange - ISA, one GS..GE group, one
+ * ST..SE transaction (claims body kept empty / opaque), IEA - using the
  * delimiters from {@link buildIsa}.
  */
 export interface BuildInterchangeOptions extends BuildIsaOptions {

@@ -1,20 +1,20 @@
 # scripts/phi-allow-list.txt
 #
-# PHI-scan allow-list — the positive declaration that a fixture's identifiers
+# PHI-scan allow-list, the positive declaration that a fixture's identifiers
 # are synthetic. `scripts/phi-scan.ts` reads this file; any realistic-PHI-shaped
 # token NOT covered here is a hit. X12 `.edi` files cannot carry an inline
 # `# synthetic: true` header (the ISA segment must start at byte 0), so this
-# allow-list is the synthetic-fixture declaration mechanism — the same approach
+# allow-list is the synthetic-fixture declaration mechanism, the same approach
 # `@cosyte/dicom` uses for binary `.dcm` files.
 #
 # Format: `<TAG> <value>` per line. `#` comments and blank lines are ignored.
 #   NAME <token>         synthetic person/contact-name word (NM1 / PER name elements), case-insensitive
-#   DOB <CCYYMMDD>       synthetic date of birth (DMG*D8) — exempt from the date-of-service cutoff
+#   DOB <CCYYMMDD>       synthetic date of birth (DMG*D8), exempt from the date-of-service cutoff
 #   ID <value>           synthetic id that legitimately matches an SSN/EIN/NPI 9-or-10-digit shape
 #   EMAILDOMAIN <domain> reserved/test email domain that is allowed to appear
 #
 # To add a new synthetic fixture: reuse the tokens below, or append new ones here
-# and commit. Adding a token is a reviewed, intentional act — never silent.
+# and commit. Adding a token is a reviewed, intentional act, never silent.
 
 # --- Synthetic person + contact name tokens (NM1 entity-type-1, PER02) ---
 # Patient / subscriber / dependent placeholders

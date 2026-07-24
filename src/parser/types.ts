@@ -1,6 +1,6 @@
 /**
  * Shared type definitions consumed across the `@cosyte/x12` parser pipeline.
- * Every type here is deliberately readonly — the parser produces immutable
+ * Every type here is deliberately readonly - the parser produces immutable
  * data structures and consumers must not mutate them. Narrowing is done via
  * the `X12ParseWarning.code` and `X12ParseError.code` discriminants defined
  * in sibling files.
@@ -20,13 +20,13 @@ import type { X12ParseWarning } from "./warnings.js";
  * then transaction, then segment, then element within that segment, then
  * component within that element).
  *
- * All fields past `segmentIndex` are optional — for a top-level fatal like
+ * All fields past `segmentIndex` are optional - for a top-level fatal like
  * `X12_EMPTY_INPUT` only `segmentIndex: 0` is populated; for a per-element
  * warning deep inside a transaction every field may be set.
  *
  * @remarks
  * With `exactOptionalPropertyTypes: true`, do not pass `interchangeIndex:
- * undefined` explicitly — omit the key instead.
+ * undefined` explicitly - omit the key instead.
  *
  * @example
  * ```ts
@@ -67,7 +67,7 @@ export type OnWarningCallback = (warning: X12ParseWarning) => void;
  *
  * @remarks
  * With `exactOptionalPropertyTypes: true`, callers cannot pass
- * `{ strict: undefined }` — either omit the key or pass a boolean.
+ * `{ strict: undefined }` - either omit the key or pass a boolean.
  *
  * @example
  * ```ts
@@ -88,7 +88,7 @@ export interface X12ParseOptions {
    * out of the default for a single call. When omitted, `parseX12` consults
    * `getDefaultProfile()`. The profile is attached as `ix.profile` for
    * attribution and consumed by `partitionWarnings`; it does not alter the
-   * lenient parse itself (v1 profiles are descriptive — see the profile
+   * lenient parse itself (v1 profiles are descriptive - see the profile
    * subsystem docs).
    */
   readonly profile?: X12Profile | null;
@@ -96,16 +96,16 @@ export interface X12ParseOptions {
 
 /**
  * The four X12 delimiter classes discovered from fixed byte positions inside
- * the ISA envelope. Phase 1 detects all four from the ISA itself — they are
+ * the ISA envelope. Phase 1 detects all four from the ISA itself - they are
  * NEVER assumed (in particular, `component` is rarely `:` outside Medicare).
  *
- * - `element` — ISA byte 4 (1-indexed); separates the 16 ISA elements.
- * - `repetition` — ISA-11 (byte 83, 1-indexed); separates repetitions inside
+ * - `element` - ISA byte 4 (1-indexed); separates the 16 ISA elements.
+ * - `repetition` - ISA-11 (byte 83, 1-indexed); separates repetitions inside
  *   an element. Carries the legacy Control Standards Identifier
  *   (typically `U`) for pre-005010 inputs; Phase 1 surfaces it verbatim.
- * - `component` — ISA-16 (byte 105, 1-indexed); separates sub-elements of a
+ * - `component` - ISA-16 (byte 105, 1-indexed); separates sub-elements of a
  *   composite. Real-world senders use `:`, `\\`, `^`, `|`, and more.
- * - `segment` — the byte immediately after ISA-16 (byte 106, 1-indexed);
+ * - `segment` - the byte immediately after ISA-16 (byte 106, 1-indexed);
  *   terminates each segment. Typically `~`, often followed by optional
  *   `\r\n` which is silently tolerated.
  *
@@ -138,8 +138,8 @@ export interface Delimiters {
  * ```ts
  * import type { IsaSegment } from "@cosyte/x12";
  * declare const isa: IsaSegment;
- * isa.elements[12]; // ISA-12 — version, expected "00501"
- * isa.elements[13]; // ISA-13 — interchange control number
+ * isa.elements[12]; // ISA-12 - version, expected "00501"
+ * isa.elements[13]; // ISA-13 - interchange control number
  * ```
  */
 export interface IsaSegment {
@@ -151,13 +151,13 @@ export interface IsaSegment {
  * The decoded IEA interchange trailer. `raw` is the exact segment string
  * (without the segment terminator) and `elements` is the IEA values,
  * 1-indexed (`elements[0]` = `"IEA"`, `elements[1]` = IEA-01 group count,
- * `elements[2]` = IEA-02 interchange control number — must match ISA-13).
+ * `elements[2]` = IEA-02 interchange control number - must match ISA-13).
  *
  * @example
  * ```ts
  * import type { IeaSegment } from "@cosyte/x12";
  * declare const iea: IeaSegment;
- * iea.elements[2]; // IEA-02 — must equal ISA-13
+ * iea.elements[2]; // IEA-02 - must equal ISA-13
  * ```
  */
 export interface IeaSegment {
@@ -175,8 +175,8 @@ export interface IeaSegment {
  * ```ts
  * import type { GsSegment } from "@cosyte/x12";
  * declare const gs: GsSegment;
- * gs.elements[1]; // GS-01 — functional ID code
- * gs.elements[6]; // GS-06 — group control number
+ * gs.elements[1]; // GS-01 - functional ID code
+ * gs.elements[6]; // GS-06 - group control number
  * ```
  */
 export interface GsSegment {
@@ -194,7 +194,7 @@ export interface GsSegment {
  * ```ts
  * import type { GeSegment } from "@cosyte/x12";
  * declare const ge: GeSegment;
- * ge.elements[2]; // GE-02 — must equal GS-06
+ * ge.elements[2]; // GE-02 - must equal GS-06
  * ```
  */
 export interface GeSegment {
@@ -204,7 +204,7 @@ export interface GeSegment {
 
 /**
  * A decoded envelope-level TA1 Interchange Acknowledgment segment. TA1 is
- * NOT a transaction set — per the ASC X12 standard it lives at the envelope
+ * NOT a transaction set - per the ASC X12 standard it lives at the envelope
  * level, between ISA and the first GS, or alone inside an ISA..IEA with no
  * GS at all (a TA1-only interchange). One interchange may carry multiple
  * TA1 segments, each acknowledging a prior inbound interchange.
@@ -219,14 +219,14 @@ export interface GeSegment {
  *
  * The Phase 3 envelope walker captures TA1 segments here verbatim; the
  * typed-ack model is built on top by `parseTA1`. TA1 contains only
- * structural control / disposition codes — by spec it carries NO PHI.
+ * structural control / disposition codes - by spec it carries NO PHI.
  *
  * @example
  * ```ts
  * import type { Ta1Segment } from "@cosyte/x12";
  * declare const ta1: Ta1Segment;
- * ta1.elements[1]; // TA1-01 — echoes inbound ISA-13
- * ta1.elements[4]; // TA1-04 — "A" | "E" | "R"
+ * ta1.elements[1]; // TA1-01 - echoes inbound ISA-13
+ * ta1.elements[4]; // TA1-04 - "A" | "E" | "R"
  * ```
  */
 export interface Ta1Segment {
@@ -250,7 +250,7 @@ export interface Ta1Segment {
  * ```ts
  * import type { X12TransactionSet } from "@cosyte/x12";
  * declare const tx: X12TransactionSet;
- * tx.st.elements[1];             // ST-01 — transaction set ID (e.g. "835")
+ * tx.st.elements[1];             // ST-01 - transaction set ID (e.g. "835")
  * tx.segments[1]?.id;            // first body segment id
  * tx.rawSegments[1];             // first body segment raw text
  * ```
@@ -265,13 +265,13 @@ export interface X12TransactionSet {
 /**
  * A single GS..GE functional group inside an interchange. `transactions`
  * is the ordered list of ST..SE transaction sets inside it (opaque bodies
- * at Phase 1 — see {@link X12TransactionSet}).
+ * at Phase 1 - see {@link X12TransactionSet}).
  *
  * @example
  * ```ts
  * import type { X12FunctionalGroup } from "@cosyte/x12";
  * declare const group: X12FunctionalGroup;
- * group.gs.elements[1]; // GS-01 — functional ID code
+ * group.gs.elements[1]; // GS-01 - functional ID code
  * group.transactions.length;
  * ```
  */
@@ -287,7 +287,7 @@ export interface X12FunctionalGroup {
  * detected from fixed positions inside `isa.raw`; `groups` is the ordered
  * GS..GE list; `warnings` accumulates every Tier-2 deviation observed
  * during the parse (lenient mode); `trailingBytes` (when present) is any
- * non-empty content after IEA — preserved verbatim so a consumer can
+ * non-empty content after IEA - preserved verbatim so a consumer can
  * inspect or re-emit it.
  *
  * @example
@@ -306,7 +306,7 @@ export interface X12Interchange {
   readonly warnings: readonly X12ParseWarning[];
   readonly trailingBytes?: string;
   /**
-   * The trading-partner {@link X12Profile} in effect for this parse, if any —
+   * The trading-partner {@link X12Profile} in effect for this parse, if any -
    * either passed explicitly via `options.profile` or resolved from the
    * process-scoped default. Present only when a profile applied; used for
    * attribution and as the partition basis for `partitionWarnings`.

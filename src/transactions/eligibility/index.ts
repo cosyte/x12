@@ -1,5 +1,5 @@
 /**
- * Barrel for the 271 Health Care Eligibility Benefit Response surface —
+ * Barrel for the 271 Health Care Eligibility Benefit Response surface -
  * TR3 `005010X279A1`. The public entry point is {@link get271Eligibility};
  * types surface the typed result shape; the loop specs are exported so
  * consumers can introspect or extend the HL hierarchy.

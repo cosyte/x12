@@ -6,14 +6,14 @@
  * spec cannot form a valid HL hierarchy, or a per-loop structural
  * precondition fails.
  *
- * The HL spine is the 277's safety primitive — the builder OWNS it,
+ * The HL spine is the 277's safety primitive - the builder OWNS it,
  * computing every HL-01 id, HL-02 parent pointer (20 → 21 → 19 → 22 → 23),
  * and HL-04 has-child flag from the nested informationSources → receivers →
  * providers → subscribers → (dependents) tree, so a structurally
  * inconsistent hierarchy is *unrepresentable* and SE-01 is correct by
  * construction.
  *
- * The read side ({@link "./get-277.js".get277Status}) is lenient — a real
+ * The read side ({@link "./get-277.js".get277Status}) is lenient - a real
  * 277 with a broken HL parent pointer is WARNED, never rejected. The builder
  * takes the opposite stance: it REFUSES rather than emit a hierarchy a
  * downstream consumer would have to repair. A caller that must reproduce a
@@ -26,13 +26,13 @@
  * here so consumers can narrow exhaustively on `err.code`; additions-only
  * thereafter (renaming any code is a breaking change).
  *
- * - `X12_277_BUILD_INVALID_HIERARCHY` — the nested tree cannot form a valid
+ * - `X12_277_BUILD_INVALID_HIERARCHY` - the nested tree cannot form a valid
  *   277 HL spine (no sources, a source with no receiver, a receiver with no
  *   provider, a provider with no subscriber, a subscriber with neither
  *   claims nor dependents, a dependent with no claim). The message carries
- *   structural indices + counts only — never a member id / name.
- * - `X12_277_BUILD_INVALID_SPEC` — a non-hierarchy precondition failed (a
- *   claim that would not materialize on read — no trace, no statuses, no
+ *   structural indices + counts only - never a member id / name.
+ * - `X12_277_BUILD_INVALID_SPEC` - a non-hierarchy precondition failed (a
+ *   claim that would not materialize on read - no trace, no statuses, no
  *   service lines; a status whose first composite has no category code; an
  *   over-long ISA-13 control number).
  *
@@ -46,7 +46,7 @@
  *     err instanceof ClaimStatus277BuildError &&
  *     err.code === CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_HIERARCHY
  *   ) {
- *     // the hierarchy is impossible — fix the tree, do not emit
+ *     // the hierarchy is impossible - fix the tree, do not emit
  *   }
  * }
  * ```
@@ -66,10 +66,10 @@ export type ClaimStatus277BuildErrorCode =
 /**
  * Thrown by {@link "./build-277.js".build277} / {@link
  * "./build-277.js".build277CA} when the supplied claim-status spec cannot be
- * emitted as a conformant, self-consistent 277 — most importantly when its
+ * emitted as a conformant, self-consistent 277 - most importantly when its
  * nested tree cannot form a valid HL hierarchy. Carries a stable `code` for
  * programmatic narrowing. Deliberately does NOT extend `X12ParseError` or
- * `X12BuildError` — the domain-refusal distinction matters at the type
+ * `X12BuildError` - the domain-refusal distinction matters at the type
  * level.
  *
  * @example

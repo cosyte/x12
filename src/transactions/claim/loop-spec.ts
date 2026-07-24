@@ -1,5 +1,5 @@
 /**
- * 837 TR3 loop specifications — authored through the **public**
+ * 837 TR3 loop specifications - authored through the **public**
  * {@link "../../loops/define.js".defineLoopSpec} API (the Phase 2
  * dogfooding gate: the built-in 837 loop hierarchy goes through the SAME
  * factory consumers use for payer-specific companion-guide loops).
@@ -15,25 +15,25 @@
  * ```text
  *  Header
  *    BHT       Beginning of Hierarchical Transaction
- *  Loop 1000A — Submitter Name           (NM1*41) required, max 1
- *  Loop 1000B — Receiver Name            (NM1*40) required, max 1
- *  Loop 2000A — Billing Provider HL      (HL*..*20) required, max >1
- *    Loop 2010AA — Billing Provider Name (NM1*85)
- *    Loop 2010AB — Pay-To Address        (NM1*87) situational
- *    Loop 2010AC — Pay-To Plan (837I)    (NM1*PE) situational
- *    Loop 2000B — Subscriber HL          (HL*..*22) required, max >1
- *      Loop 2010BA — Subscriber Name     (NM1*IL)
- *      Loop 2010BB — Payer Name          (NM1*PR)
- *      Loop 2000C — Patient HL           (HL*..*23) situational
- *        Loop 2010CA — Patient Name      (NM1*QC)
- *        Loop 2300 — Claim Information   (CLM)
- *          Loop 2310x — multiple provider roles (NM1)
- *          Loop 2320 — Other Subscriber Information (SBR)
- *          Loop 2330x — Other Subscriber / Other Payer (NM1)
- *          Loop 2400 — Service Line      (LX → SV1/SV2/SV3)
- *            Loop 2410 — Drug Identification (LIN) 837P
- *            Loop 2420x — Service-Line Provider Names (NM1)
- *            Loop 2430 — Line Adjudication (SVD)
+ *  Loop 1000A - Submitter Name           (NM1*41) required, max 1
+ *  Loop 1000B - Receiver Name            (NM1*40) required, max 1
+ *  Loop 2000A - Billing Provider HL      (HL*..*20) required, max >1
+ *    Loop 2010AA - Billing Provider Name (NM1*85)
+ *    Loop 2010AB - Pay-To Address        (NM1*87) situational
+ *    Loop 2010AC - Pay-To Plan (837I)    (NM1*PE) situational
+ *    Loop 2000B - Subscriber HL          (HL*..*22) required, max >1
+ *      Loop 2010BA - Subscriber Name     (NM1*IL)
+ *      Loop 2010BB - Payer Name          (NM1*PR)
+ *      Loop 2000C - Patient HL           (HL*..*23) situational
+ *        Loop 2010CA - Patient Name      (NM1*QC)
+ *        Loop 2300 - Claim Information   (CLM)
+ *          Loop 2310x - multiple provider roles (NM1)
+ *          Loop 2320 - Other Subscriber Information (SBR)
+ *          Loop 2330x - Other Subscriber / Other Payer (NM1)
+ *          Loop 2400 - Service Line      (LX → SV1/SV2/SV3)
+ *            Loop 2410 - Drug Identification (LIN) 837P
+ *            Loop 2420x - Service-Line Provider Names (NM1)
+ *            Loop 2430 - Line Adjudication (SVD)
  *  Trailer
  *    SE
  * ```
@@ -52,7 +52,7 @@ import type { LoopSpec } from "../../loops/types.js";
 // ---------------------------------------------------------------------------
 
 /**
- * 837 Loop 2010AA — Billing Provider Name. Triggered by `NM1` with
+ * 837 Loop 2010AA - Billing Provider Name. Triggered by `NM1` with
  * `NM1-01 = "85"`. The trigger qualifier value is enforced in the walker
  * (the loop spec keys off the segment id, not the element value).
  *
@@ -64,7 +64,7 @@ import type { LoopSpec } from "../../loops/types.js";
  */
 export const CLAIM_837_LOOP_2010AA: LoopSpec = defineLoopSpec({
   id: "2010AA",
-  description: "837 Loop 2010AA — Billing Provider Name",
+  description: "837 Loop 2010AA - Billing Provider Name",
   trigger: "NM1",
   segments: [
     { id: "NM1", usage: "required", max: 1 },
@@ -76,7 +76,7 @@ export const CLAIM_837_LOOP_2010AA: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 837 Loop 2010BA — Subscriber Name (NM1*IL). The subscriber identity
+ * 837 Loop 2010BA - Subscriber Name (NM1*IL). The subscriber identity
  * + member id; address is situational.
  *
  * @example
@@ -87,7 +87,7 @@ export const CLAIM_837_LOOP_2010AA: LoopSpec = defineLoopSpec({
  */
 export const CLAIM_837_LOOP_2010BA: LoopSpec = defineLoopSpec({
   id: "2010BA",
-  description: "837 Loop 2010BA — Subscriber Name",
+  description: "837 Loop 2010BA - Subscriber Name",
   trigger: "NM1",
   segments: [
     { id: "NM1", usage: "required", max: 1 },
@@ -100,7 +100,7 @@ export const CLAIM_837_LOOP_2010BA: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 837 Loop 2010BB — Payer Name (NM1*PR). Identifies the payer the
+ * 837 Loop 2010BB - Payer Name (NM1*PR). Identifies the payer the
  * provider is billing for this hierarchy.
  *
  * @example
@@ -111,7 +111,7 @@ export const CLAIM_837_LOOP_2010BA: LoopSpec = defineLoopSpec({
  */
 export const CLAIM_837_LOOP_2010BB: LoopSpec = defineLoopSpec({
   id: "2010BB",
-  description: "837 Loop 2010BB — Payer Name",
+  description: "837 Loop 2010BB - Payer Name",
   trigger: "NM1",
   segments: [
     { id: "NM1", usage: "required", max: 1 },
@@ -123,7 +123,7 @@ export const CLAIM_837_LOOP_2010BB: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 837 Loop 2010CA — Patient Name (NM1*QC). Triggered only when Loop 2000C
+ * 837 Loop 2010CA - Patient Name (NM1*QC). Triggered only when Loop 2000C
  * (patient HL) is present (patient ≠ subscriber).
  *
  * @example
@@ -134,7 +134,7 @@ export const CLAIM_837_LOOP_2010BB: LoopSpec = defineLoopSpec({
  */
 export const CLAIM_837_LOOP_2010CA: LoopSpec = defineLoopSpec({
   id: "2010CA",
-  description: "837 Loop 2010CA — Patient Name",
+  description: "837 Loop 2010CA - Patient Name",
   trigger: "NM1",
   segments: [
     { id: "NM1", usage: "required", max: 1 },
@@ -146,7 +146,7 @@ export const CLAIM_837_LOOP_2010CA: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 837P Loop 2410 — Drug Identification. Triggered by `LIN` inside the
+ * 837P Loop 2410 - Drug Identification. Triggered by `LIN` inside the
  * 2400 service-line loop. Carries the NDC + dispensed quantity for a
  * professional pharmacy / injectable claim line.
  *
@@ -158,7 +158,7 @@ export const CLAIM_837_LOOP_2010CA: LoopSpec = defineLoopSpec({
  */
 export const CLAIM_837P_LOOP_2410: LoopSpec = defineLoopSpec({
   id: "2410",
-  description: "837P Loop 2410 — Drug Identification",
+  description: "837P Loop 2410 - Drug Identification",
   trigger: "LIN",
   segments: [
     { id: "LIN", usage: "required", max: 1 },
@@ -168,7 +168,7 @@ export const CLAIM_837P_LOOP_2410: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 837 Loop 2430 — Line Adjudication Information. Triggered by `SVD`.
+ * 837 Loop 2430 - Line Adjudication Information. Triggered by `SVD`.
  * Captures a prior payer's adjudication of this line for COB.
  *
  * @example
@@ -179,7 +179,7 @@ export const CLAIM_837P_LOOP_2410: LoopSpec = defineLoopSpec({
  */
 export const CLAIM_837_LOOP_2430: LoopSpec = defineLoopSpec({
   id: "2430",
-  description: "837 Loop 2430 — Line Adjudication Information",
+  description: "837 Loop 2430 - Line Adjudication Information",
   trigger: "SVD",
   segments: [
     { id: "SVD", usage: "required", max: 1 },
@@ -194,7 +194,7 @@ export const CLAIM_837_LOOP_2430: LoopSpec = defineLoopSpec({
 // ---------------------------------------------------------------------------
 
 /**
- * 837P Loop 2400 — Service Line (professional). Triggered by `LX`, body
+ * 837P Loop 2400 - Service Line (professional). Triggered by `LX`, body
  * led by `SV1`. Nests Loop 2410 (drug) and Loop 2430 (line adjudication).
  *
  * @example
@@ -205,7 +205,7 @@ export const CLAIM_837_LOOP_2430: LoopSpec = defineLoopSpec({
  */
 export const CLAIM_837P_LOOP_2400: LoopSpec = defineLoopSpec({
   id: "2400",
-  description: "837P Loop 2400 — Service Line (professional)",
+  description: "837P Loop 2400 - Service Line (professional)",
   trigger: "LX",
   segments: [
     { id: "LX", usage: "required", max: 1 },
@@ -220,7 +220,7 @@ export const CLAIM_837P_LOOP_2400: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 837I Loop 2400 — Service Line (institutional). Body led by `SV2`
+ * 837I Loop 2400 - Service Line (institutional). Body led by `SV2`
  * (revenue code + HCPCS).
  *
  * @example
@@ -231,7 +231,7 @@ export const CLAIM_837P_LOOP_2400: LoopSpec = defineLoopSpec({
  */
 export const CLAIM_837I_LOOP_2400: LoopSpec = defineLoopSpec({
   id: "2400",
-  description: "837I Loop 2400 — Service Line (institutional)",
+  description: "837I Loop 2400 - Service Line (institutional)",
   trigger: "LX",
   segments: [
     { id: "LX", usage: "required", max: 1 },
@@ -245,7 +245,7 @@ export const CLAIM_837I_LOOP_2400: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 837D Loop 2400 — Service Line (dental). Body led by `SV3`; per-line
+ * 837D Loop 2400 - Service Line (dental). Body led by `SV3`; per-line
  * `TOO` segments capture tooth + surface detail.
  *
  * @example
@@ -256,7 +256,7 @@ export const CLAIM_837I_LOOP_2400: LoopSpec = defineLoopSpec({
  */
 export const CLAIM_837D_LOOP_2400: LoopSpec = defineLoopSpec({
   id: "2400",
-  description: "837D Loop 2400 — Service Line (dental)",
+  description: "837D Loop 2400 - Service Line (dental)",
   trigger: "LX",
   segments: [
     { id: "LX", usage: "required", max: 1 },
@@ -271,7 +271,7 @@ export const CLAIM_837D_LOOP_2400: LoopSpec = defineLoopSpec({
 });
 
 // ---------------------------------------------------------------------------
-// Shared Loop 2300 (claim information) — children differ by variant.
+// Shared Loop 2300 (claim information) - children differ by variant.
 // ---------------------------------------------------------------------------
 
 /**
@@ -284,7 +284,7 @@ export const CLAIM_837D_LOOP_2400: LoopSpec = defineLoopSpec({
 function makeLoop2300(loop2400: LoopSpec, variantLabel: string): LoopSpec {
   return defineLoopSpec({
     id: "2300",
-    description: `837${variantLabel} Loop 2300 — Claim Information`,
+    description: `837${variantLabel} Loop 2300 - Claim Information`,
     trigger: "CLM",
     segments: [
       { id: "CLM", usage: "required", max: 1 },
@@ -302,7 +302,7 @@ function makeLoop2300(loop2400: LoopSpec, variantLabel: string): LoopSpec {
 }
 
 /**
- * 837P Loop 2300 — Claim Information (professional). Triggered by `CLM`.
+ * 837P Loop 2300 - Claim Information (professional). Triggered by `CLM`.
  * Nests {@link CLAIM_837P_LOOP_2400} (SV1-led service lines).
  *
  * @example
@@ -314,7 +314,7 @@ function makeLoop2300(loop2400: LoopSpec, variantLabel: string): LoopSpec {
 export const CLAIM_837P_LOOP_2300: LoopSpec = makeLoop2300(CLAIM_837P_LOOP_2400, "P");
 
 /**
- * 837I Loop 2300 — Claim Information (institutional). Triggered by `CLM`.
+ * 837I Loop 2300 - Claim Information (institutional). Triggered by `CLM`.
  * Nests {@link CLAIM_837I_LOOP_2400} (SV2-led service lines).
  *
  * @example
@@ -326,7 +326,7 @@ export const CLAIM_837P_LOOP_2300: LoopSpec = makeLoop2300(CLAIM_837P_LOOP_2400,
 export const CLAIM_837I_LOOP_2300: LoopSpec = makeLoop2300(CLAIM_837I_LOOP_2400, "I");
 
 /**
- * 837D Loop 2300 — Claim Information (dental). Triggered by `CLM`.
+ * 837D Loop 2300 - Claim Information (dental). Triggered by `CLM`.
  * Nests {@link CLAIM_837D_LOOP_2400} (SV3-led service lines).
  *
  * @example
@@ -348,7 +348,7 @@ export const CLAIM_837D_LOOP_2300: LoopSpec = makeLoop2300(CLAIM_837D_LOOP_2400,
 function makeLoop2000C(loop2300: LoopSpec, variantLabel: string): LoopSpec {
   return defineLoopSpec({
     id: "2000C",
-    description: `837${variantLabel} Loop 2000C — Patient Hierarchical Level`,
+    description: `837${variantLabel} Loop 2000C - Patient Hierarchical Level`,
     trigger: "HL",
     segments: [
       { id: "HL", usage: "required", max: 1 },
@@ -365,7 +365,7 @@ function makeLoop2000C(loop2300: LoopSpec, variantLabel: string): LoopSpec {
 function makeLoop2000B(loop2300: LoopSpec, loop2000C: LoopSpec, variantLabel: string): LoopSpec {
   return defineLoopSpec({
     id: "2000B",
-    description: `837${variantLabel} Loop 2000B — Subscriber Hierarchical Level`,
+    description: `837${variantLabel} Loop 2000B - Subscriber Hierarchical Level`,
     trigger: "HL",
     segments: [
       { id: "HL", usage: "required", max: 1 },
@@ -383,7 +383,7 @@ function makeLoop2000B(loop2300: LoopSpec, loop2000C: LoopSpec, variantLabel: st
 function makeLoop2000A(loop2000B: LoopSpec, variantLabel: string): LoopSpec {
   return defineLoopSpec({
     id: "2000A",
-    description: `837${variantLabel} Loop 2000A — Billing Provider Hierarchical Level`,
+    description: `837${variantLabel} Loop 2000A - Billing Provider Hierarchical Level`,
     trigger: "HL",
     segments: [
       { id: "HL", usage: "required", max: 1 },
@@ -404,7 +404,7 @@ const DENTAL_2000C = makeLoop2000C(CLAIM_837D_LOOP_2300, "D");
 const DENTAL_2000B = makeLoop2000B(CLAIM_837D_LOOP_2300, DENTAL_2000C, "D");
 
 /**
- * 837P Loop 2000A — Billing Provider Hierarchical Level (professional).
+ * 837P Loop 2000A - Billing Provider Hierarchical Level (professional).
  * Top of the HL tree for professional claims. Nests Loop 2010AA (Billing
  * Provider Name) and Loop 2000B (Subscriber HL).
  *
@@ -417,7 +417,7 @@ const DENTAL_2000B = makeLoop2000B(CLAIM_837D_LOOP_2300, DENTAL_2000C, "D");
 export const CLAIM_837P_LOOP_2000A: LoopSpec = makeLoop2000A(PROFESSIONAL_2000B, "P");
 
 /**
- * 837I Loop 2000A — Billing Provider Hierarchical Level (institutional).
+ * 837I Loop 2000A - Billing Provider Hierarchical Level (institutional).
  *
  * @example
  * ```ts
@@ -428,7 +428,7 @@ export const CLAIM_837P_LOOP_2000A: LoopSpec = makeLoop2000A(PROFESSIONAL_2000B,
 export const CLAIM_837I_LOOP_2000A: LoopSpec = makeLoop2000A(INSTITUTIONAL_2000B, "I");
 
 /**
- * 837D Loop 2000A — Billing Provider Hierarchical Level (dental).
+ * 837D Loop 2000A - Billing Provider Hierarchical Level (dental).
  *
  * @example
  * ```ts
@@ -439,7 +439,7 @@ export const CLAIM_837I_LOOP_2000A: LoopSpec = makeLoop2000A(INSTITUTIONAL_2000B
 export const CLAIM_837D_LOOP_2000A: LoopSpec = makeLoop2000A(DENTAL_2000B, "D");
 
 /**
- * 837 Loop 1000A — Submitter Name. Same across variants.
+ * 837 Loop 1000A - Submitter Name. Same across variants.
  *
  * @example
  * ```ts
@@ -449,7 +449,7 @@ export const CLAIM_837D_LOOP_2000A: LoopSpec = makeLoop2000A(DENTAL_2000B, "D");
  */
 export const CLAIM_837_LOOP_1000A: LoopSpec = defineLoopSpec({
   id: "1000A",
-  description: "837 Loop 1000A — Submitter Name",
+  description: "837 Loop 1000A - Submitter Name",
   trigger: "NM1",
   segments: [
     { id: "NM1", usage: "required", max: 1 },
@@ -458,7 +458,7 @@ export const CLAIM_837_LOOP_1000A: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 837 Loop 1000B — Receiver Name. Same across variants.
+ * 837 Loop 1000B - Receiver Name. Same across variants.
  *
  * @example
  * ```ts
@@ -468,7 +468,7 @@ export const CLAIM_837_LOOP_1000A: LoopSpec = defineLoopSpec({
  */
 export const CLAIM_837_LOOP_1000B: LoopSpec = defineLoopSpec({
   id: "1000B",
-  description: "837 Loop 1000B — Receiver Name",
+  description: "837 Loop 1000B - Receiver Name",
   trigger: "NM1",
   segments: [{ id: "NM1", usage: "required", max: 1 }],
 });

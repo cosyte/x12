@@ -1,25 +1,25 @@
 /**
- * **CARC — Claim Adjustment Reason Codes.** Lives on every CAS adjustment
+ * **CARC - Claim Adjustment Reason Codes.** Lives on every CAS adjustment
  * in an 835 (and on 837 COB CAS adjustments). The numeric code identifies
  * *why* the adjustment was made (e.g. "deductible", "non-covered",
  * "exceeds fee schedule"); paired with the Claim Adjustment Group Code on
  * `CAS-01` it tells a cash-poster who owes the unpaid balance and what
  * the next action is (appeal, write-off, patient bill).
  *
- * Source: **WPC (Washington Publishing Company)** — `x12.org/codes/claim-
+ * Source: **WPC (Washington Publishing Company)** - `x12.org/codes/claim-
  * adjustment-reason-codes`. WPC updates the list **monthly**. Misreading a
- * code drives wrong patient billing or a wrong appeal — the parser surfaces
+ * code drives wrong patient billing or a wrong appeal - the parser surfaces
  * the verbatim code AND the bundled-snapshot description; unknown codes
  * carry the verbatim value with `description: undefined` AND emit a
  * `X12_UNKNOWN_CARC` warning.
  *
  * **Pre-launch initial subset.** This snapshot covers the ~30 most
- * commonly observed CARC codes — every value exercised by the Tier-1 /
+ * commonly observed CARC codes - every value exercised by the Tier-1 /
  * Tier-2 fixtures plus the long-tail codes most cash-posting workflows
  * branch on. The Phase 10 `pnpm refresh:code-lists` script regenerates
  * the full WPC-published list from the canonical source for the first
  * real publish; until then a CARC absent from the snapshot still parses
- * fine (verbatim) — only its description is unavailable.
+ * fine (verbatim) - only its description is unavailable.
  */
 
 import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js";
@@ -27,7 +27,7 @@ import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js
 /**
  * Bundled CARC snapshot. `meta.publishedDate` is the WPC publication
  * date this subset reflects; `meta.snapshotDate` is when cosyte captured
- * it. The `codes` map is frozen — use the {@link lookupCarc} helper for
+ * it. The `codes` map is frozen - use the {@link lookupCarc} helper for
  * the ergonomic `{ code, description }` shape consumed by the 835
  * helper.
  *
@@ -43,7 +43,7 @@ export const CARC: CodeListSnapshot = Object.freeze({
   meta: Object.freeze({
     id: "CARC",
     description: "Claim Adjustment Reason Codes",
-    source: "WPC (Washington Publishing Company) — x12.org/codes/claim-adjustment-reason-codes",
+    source: "WPC (Washington Publishing Company) - x12.org/codes/claim-adjustment-reason-codes",
     publishedDate: "2026-03-01",
     snapshotDate: "2026-06-27",
     note: "Pre-launch initial subset (~30 most commonly observed codes). Phase 10 ships a full-regen script.",
@@ -83,7 +83,7 @@ export const CARC: CodeListSnapshot = Object.freeze({
 
 /**
  * Look up a CARC code's bundled description. Returns `undefined` when
- * the code is not in the initial subset — the verbatim code is still
+ * the code is not in the initial subset - the verbatim code is still
  * preserved on the parsed model and the 835 walker emits
  * `X12_UNKNOWN_CARC` so consumers know the description gap exists.
  *

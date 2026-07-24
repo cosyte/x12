@@ -1,8 +1,8 @@
 /**
- * Claim Adjustment Group Code (CAGC) — the spec-fixed 4-value code list
+ * Claim Adjustment Group Code (CAGC) - the spec-fixed 4-value code list
  * that lives on **`CAS-01`** (group code) for every CAS adjustment in an
  * 835 or in an 837 COB segment. **`CAGC` is the safety primitive that
- * tells a cash-poster who owes the unpaid balance** — patient vs. payer
+ * tells a cash-poster who owes the unpaid balance** - patient vs. payer
  * vs. third party. Misreading the group code flips the bill to the wrong
  * party. Spec-fixed: this list never grows or churns (unlike WPC CARC /
  * RARC), so it ships as a frozen literal union, not as a snapshot.
@@ -16,17 +16,17 @@
  * `as const` so consumers compare `code === CLAIM_ADJUSTMENT_GROUP_CODES.PR`
  * and TypeScript narrows exhaustively.
  *
- * - `CO` — **Contractual Obligation.** The provider's contracted write-off
+ * - `CO` - **Contractual Obligation.** The provider's contracted write-off
  *   (e.g. payer fee schedule below billed charges). **The PROVIDER eats
  *   this.** Posting `CO` to patient responsibility is the wrong-party bug.
- * - `PR` — **Patient Responsibility.** Patient deductible / coinsurance /
+ * - `PR` - **Patient Responsibility.** Patient deductible / coinsurance /
  *   copay / non-covered. **The PATIENT owes this.** This is the
  *   patient-statement total.
- * - `OA` — **Other Adjustment.** Used when neither CO nor PR fits —
+ * - `OA` - **Other Adjustment.** Used when neither CO nor PR fits -
  *   typically prior-payer payments, COB adjustments, withholding for
  *   refund. Use is fact-pattern-specific.
- * - `PI` — **Payer Initiated Reductions.** Payer-side reduction the
- *   provider may not dispute under the contract — e.g. bundling edits,
+ * - `PI` - **Payer Initiated Reductions.** Payer-side reduction the
+ *   provider may not dispute under the contract - e.g. bundling edits,
  *   prepayment review reductions.
  *
  * @example

@@ -1,6 +1,6 @@
 /**
  * Barrel for the 820 Payroll Deducted and Other Group Premium Payment
- * surface — TR3 `005010X218`. The public entry point is
+ * surface - TR3 `005010X218`. The public entry point is
  * {@link get820Payments}; types surface the typed result shape; the loop
  * specs are exported so consumers can introspect or extend the hierarchy.
  *

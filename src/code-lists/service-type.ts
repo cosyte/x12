@@ -2,12 +2,12 @@
  * **Service Type Code** (X12 element 1365, EB-03 / EQ-01). Identifies the
  * category of service or benefit a 270 inquires about and a 271 reports
  * eligibility for (`EB-03` in Loop 2110C/D). A repeating, `^`-separated
- * element — a single EB may list several service types under one benefit
+ * element - a single EB may list several service types under one benefit
  * statement. Misreading the service type silently re-scopes a coverage
  * answer (e.g. "active coverage for Dental" read as "Medical").
  *
  * Spec source: ASC X12 005010X279A1 TR3 §"EB Eligibility or Benefit
- * Information", Element `EB-03` (Code Source: X12 external 1365 — Service
+ * Information", Element `EB-03` (Code Source: X12 external 1365 - Service
  * Type Code). The full list is large (~600 values) and X12-maintained.
  *
  * **Initial bundled subset** covers the most common service types seen in
@@ -39,7 +39,7 @@ export const SERVICE_TYPE_CODES: CodeListSnapshot = Object.freeze({
       "ASC X12 005010X279A1 TR3 §EB Eligibility or Benefit Information, Element EB-03 (Code Source 1365)",
     publishedDate: "2008-08-01",
     snapshotDate: "2026-06-27",
-    note: "Initial common subset; X12-maintained list (~600 codes) — refreshed on the Phase 10 release cadence, never at runtime.",
+    note: "Initial common subset; X12-maintained list (~600 codes) - refreshed on the Phase 10 release cadence, never at runtime.",
   }),
   codes: Object.freeze({
     "1": "Medical Care",

@@ -1,9 +1,9 @@
 /**
- * Unit tests for the 005010X220A1 834 emit surface — `build834`. Covers:
+ * Unit tests for the 005010X220A1 834 emit surface - `build834`. Covers:
  *
  * - Happy path: an enrollment round-trips through `get834Header` +
  *   `get834Enrollments` (an `AsyncIterable`, driven with `for await`)
- *   field-for-field with zero warnings — BGN header, sponsor (`N1*P5`) +
+ *   field-for-field with zero warnings - BGN header, sponsor (`N1*P5`) +
  *   payer (`N1*IN`), and per-member INS + NM1/DMG/N3/N4 + REF + DTP + COB +
  *   Loop 2300 HD/DTP/AMT.
  * - Maintenance-type fidelity (the 834's safety primitive): INS-03 and
@@ -15,7 +15,7 @@
  * - Envelope identity: GS-01 `BE`, ST-01 `834`, ST-03 `005010X220A1`.
  * - Pure-function discipline: returns a frozen interchange.
  * - PHI safety: a thrown error's message carries indices / counts (and the
- *   non-PHI maintenance control code) only — no member id / name.
+ *   non-PHI maintenance control code) only - no member id / name.
  */
 
 import { describe, expect, it } from "vitest";
@@ -125,7 +125,7 @@ const CANONICAL_SPEC: Build834Spec = {
   ],
 };
 
-describe("build834 — envelope identity", () => {
+describe("build834 - envelope identity", () => {
   it("emits GS-01 BE, ST-01 834, ST-03 005010X220A1", () => {
     const ix = build834(CANONICAL_SPEC);
     expect(ix.groups).toHaveLength(1);
@@ -210,7 +210,7 @@ describe("build834 → get834Enrollments round-trip", () => {
   });
 });
 
-describe("build834 — maintenance-type refusals", () => {
+describe("build834 - maintenance-type refusals", () => {
   it("refuses an unknown INS-03 maintenance type code", () => {
     const spec: Build834Spec = {
       ...CANONICAL_SPEC,
@@ -276,7 +276,7 @@ describe("build834 — maintenance-type refusals", () => {
   });
 });
 
-describe("build834 — PHI safety", () => {
+describe("build834 - PHI safety", () => {
   it("an unknown-maintenance error names the control code but no member id / name", () => {
     const spec: Build834Spec = {
       ...CANONICAL_SPEC,
@@ -290,9 +290,9 @@ describe("build834 — PHI safety", () => {
     } catch (err) {
       expect(err).toBeInstanceOf(Enrollment834BuildError);
       const message = (err as Enrollment834BuildError).message;
-      // The maintenance code is an X12 control code (not PHI) — it IS named.
+      // The maintenance code is an X12 control code (not PHI) - it IS named.
       expect(message).toContain("999");
-      // The member id / name are PHI — they are NEVER named.
+      // The member id / name are PHI - they are NEVER named.
       expect(message).not.toContain("MBR-SECRET");
       expect(message).not.toContain("SECRETNAME");
     }

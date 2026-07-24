@@ -1,5 +1,5 @@
 /**
- * Unit tests for `X12Decimal` — the Phase 4 string-backed decimal type.
+ * Unit tests for `X12Decimal` - the Phase 4 string-backed decimal type.
  * Covers:
  *
  * - Parsing valid and invalid lexical forms (incl. empty → undefined).
@@ -9,7 +9,7 @@
  * - Cross-scale equality (`"0.00"` equals `"0"`).
  * - Sign handling (`signum`, `isZero`, `abs`, `negate`).
  * - Three-way compare across scales.
- * - Lossy `toNumber()` (truthy / reasonable values only — no precision claim).
+ * - Lossy `toNumber()` (truthy / reasonable values only - no precision claim).
  */
 
 import { describe, expect, it } from "vitest";
@@ -24,7 +24,7 @@ function decimal(raw: string): X12Decimal {
   return d;
 }
 
-describe("X12Decimal.fromString — parsing", () => {
+describe("X12Decimal.fromString - parsing", () => {
   it.each([
     ["1234.56", "1234.56"],
     ["-1234.56", "-1234.56"],
@@ -47,7 +47,7 @@ describe("X12Decimal.fromString — parsing", () => {
   );
 });
 
-describe("X12Decimal — signum / isZero / abs / negate", () => {
+describe("X12Decimal - signum / isZero / abs / negate", () => {
   it("treats every zero (any scale, any sign) as signum 0", () => {
     expect(decimal("0").signum()).toBe(0);
     expect(decimal("0.00").signum()).toBe(0);
@@ -82,7 +82,7 @@ describe("X12Decimal — signum / isZero / abs / negate", () => {
   });
 });
 
-describe("X12Decimal — add / subtract", () => {
+describe("X12Decimal - add / subtract", () => {
   it("adds two same-scale values exactly", () => {
     expect(decimal("450.00").add(decimal("50.00")).toString()).toBe("500.00");
   });
@@ -91,7 +91,7 @@ describe("X12Decimal — add / subtract", () => {
     expect(decimal("0.1").add(decimal("0.2")).toString()).toBe("0.3");
   });
 
-  it("aligns scales — adding 100 and 0.50 yields 100.50 at the higher scale", () => {
+  it("aligns scales - adding 100 and 0.50 yields 100.50 at the higher scale", () => {
     expect(decimal("100").add(decimal("0.50")).toString()).toBe("100.50");
   });
 
@@ -108,7 +108,7 @@ describe("X12Decimal — add / subtract", () => {
   });
 });
 
-describe("X12Decimal — equals / compareTo across scales", () => {
+describe("X12Decimal - equals / compareTo across scales", () => {
   it("equates 0 / 0.00 / -0.00 mathematically (true) while toString differs", () => {
     const a = decimal("0");
     const b = decimal("0.00");
@@ -136,7 +136,7 @@ describe("X12Decimal — equals / compareTo across scales", () => {
   });
 });
 
-describe("X12Decimal.fromBigInt — canonical rendering", () => {
+describe("X12Decimal.fromBigInt - canonical rendering", () => {
   it.each([
     [123456n, 2, "1234.56"],
     [-50n, 0, "-50"],
@@ -157,7 +157,7 @@ describe("X12Decimal.fromBigInt — canonical rendering", () => {
   });
 });
 
-describe("X12Decimal.toNumber — lossy conversion", () => {
+describe("X12Decimal.toNumber - lossy conversion", () => {
   it("returns a JS number close to the underlying value", () => {
     expect(decimal("1234.56").toNumber()).toBeCloseTo(1234.56);
     expect(decimal("-50.00").toNumber()).toBeCloseTo(-50);

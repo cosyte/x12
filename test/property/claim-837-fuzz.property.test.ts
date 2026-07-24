@@ -1,6 +1,6 @@
 /**
  * 837 byte-flip fuzz property. Real-world 837 EDI is malformed in
- * creative ways — a payer's clearinghouse will deliver bytes the spec
+ * creative ways - a payer's clearinghouse will deliver bytes the spec
  * didn't anticipate. The parser must remain lenient: every byte-flipped
  * 837 fixture must still parse without throwing (only the 4 Tier-3
  * envelope fatals are allowed to throw; the rest is Tier-2 warnings).

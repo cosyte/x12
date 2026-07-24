@@ -2,12 +2,12 @@
  * Build-side safety properties for the 005010X218 820 and 005010X220A1 834
  * domain builders. Two invariants, mirroring the read-side fuzz/echo tests:
  *
- * - **820 RMR echo** — `build820` places the caller's open-item reference
+ * - **820 RMR echo** - `build820` places the caller's open-item reference
  *   (RMR-02) and amount paid (RMR-04) into the segment verbatim and NEVER
  *   normalizes them; building a remittance around a random policy reference
  *   and a random cents-exact amount, then walking the result, yields the
  *   byte-for-byte original.
- * - **834 maintenance-type fidelity** — INS-03 is the 834's safety
+ * - **834 maintenance-type fidelity** - INS-03 is the 834's safety
  *   primitive. For any KNOWN maintenance code the builder emits it verbatim
  *   (round-trips byte-for-byte); for any code OUTSIDE the validated X12 875
  *   subset the builder REFUSES rather than emit an action a downstream
@@ -97,7 +97,7 @@ function spec834(maintenanceTypeCode: string): Build834Spec {
   };
 }
 
-describe("build820 — RMR open-item echo property", () => {
+describe("build820 - RMR open-item echo property", () => {
   it("emits the caller's reference and amount verbatim", () => {
     fc.assert(
       fc.property(refArb, amountArb, (reference, amount) => {
@@ -112,7 +112,7 @@ describe("build820 — RMR open-item echo property", () => {
   });
 });
 
-describe("build834 — maintenance-type fidelity property", () => {
+describe("build834 - maintenance-type fidelity property", () => {
   // Every known code in the validated X12 875 subset.
   const knownCodes = ["001", "002", "003", "004", "021", "024", "025", "026", "030"] as const;
 

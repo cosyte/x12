@@ -1,18 +1,18 @@
 /**
  * Typed model for an X12 005010X279A1 271 Health Care Eligibility Benefit
  * Response. The shape is the public contract of {@link
- * "./get-271.js".get271Eligibility} — adding fields is backward-
+ * "./get-271.js".get271Eligibility} - adding fields is backward-
  * compatible; renaming fields is breaking. Monetary + quantity fields are
- * {@link "../../decimal.js".X12Decimal} (NEVER `number` — float arithmetic
+ * {@link "../../decimal.js".X12Decimal} (NEVER `number` - float arithmetic
  * destroys cents on a benefit amount).
  *
  * **TRN echo is the #1 safety property of a 271.** The response MUST echo
  * the requesting 270's TRN trace numbers verbatim so a provider can
  * re-associate the answer with the question. The walker captures every
- * TRN onto its enclosing subscriber / dependent without re-numbering — see
+ * TRN onto its enclosing subscriber / dependent without re-numbering - see
  * {@link X12EligibilityTrace}.
  *
- * Spec source: WPC TR3 `005010X279A1` — Health Care Eligibility Benefit
+ * Spec source: WPC TR3 `005010X279A1` - Health Care Eligibility Benefit
  * Inquiry and Response (270/271). Segment-level references in JSDoc are
  * 1-indexed against that TR3.
  */
@@ -77,7 +77,7 @@ export interface X12EligibilitySubscriber {
 }
 
 /**
- * One dependent (Loop 2000D / 2100D) — a patient who is not the subscriber
+ * One dependent (Loop 2000D / 2100D) - a patient who is not the subscriber
  * (relationship is carried at the HL level). Same benefit-bearing shape as
  * a subscriber minus the nested dependents.
  *
@@ -100,7 +100,7 @@ export interface X12EligibilityDependent {
 
 /**
  * A non-person entity (payer in Loop 2100A, provider in Loop 2100B, or a
- * benefit-related entity in Loop 2120C). Decoded from an NM1 — no
+ * benefit-related entity in Loop 2120C). Decoded from an NM1 - no
  * demographics, just the organization / provider name + identifier.
  *
  * @example
@@ -123,7 +123,7 @@ export interface X12EligibilityEntity {
 /**
  * A person (subscriber / dependent) decoded from NM1 + the optional DMG
  * demographics + N3/N4 address. `idCode` is the member identifier (NM1-09)
- * — synthetic-only in fixtures.
+ * - synthetic-only in fixtures.
  *
  * @example
  * ```ts
@@ -150,14 +150,14 @@ export interface X12EligibilityMember {
 
 /**
  * A reassociation trace (TRN). **The verbatim echo of the requesting 270's
- * trace number** — `referenceId` (TRN-02) is the value a provider matches
+ * trace number** - `referenceId` (TRN-02) is the value a provider matches
  * against the trace it sent. The walker NEVER mutates it.
  *
  * @example
  * ```ts
  * import type { X12EligibilityTrace } from "@cosyte/x12";
  * declare const t: X12EligibilityTrace;
- * t.traceTypeCode; // "2" (referenced — added by the payer in the 271)
+ * t.traceTypeCode; // "2" (referenced - added by the payer in the 271)
  * t.referenceId;   // "ELIG20260627001" (echoed verbatim from the 270)
  * ```
  */

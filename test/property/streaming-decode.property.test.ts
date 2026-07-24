@@ -22,7 +22,7 @@ import { parseX12 } from "../../src/index.js";
 
 import { specCleanInterchange } from "./_arbitraries.js";
 
-describe("streaming-decode invariant — output independent of chunk boundary", () => {
+describe("streaming-decode invariant - output independent of chunk boundary", () => {
   it("string-level concatenation: parse(s) === parse(s[:k] + s[k:])", () => {
     fc.assert(
       fc.property(specCleanInterchange, fc.integer({ min: 0, max: 5000 }), (raw, splitSeed) => {

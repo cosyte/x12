@@ -1,20 +1,20 @@
 /**
- * `get834Header` + `get834Enrollments` — extract a typed 834 Benefit
+ * `get834Header` + `get834Enrollments` - extract a typed 834 Benefit
  * Enrollment and Maintenance (`005010X220A1`) from a parsed transaction set.
  * The header (BGN + sponsor/payer) is a small synchronous read; the
- * member-level detail is a **stream** — `get834Enrollments` is an
+ * member-level detail is a **stream** - `get834Enrollments` is an
  * `AsyncIterable` yielding one {@link X12Enrollment} per `INS` loop so a
  * consumer never holds the whole roster in memory at once.
  *
  * Lenient on parse: every recoverable deviation is preserved verbatim,
  * never thrown. Maintenance type (`INS-03` / `HD-01`, X12 0875) is the
- * safety-critical field — the verbatim code is ALWAYS preserved and the
+ * safety-critical field - the verbatim code is ALWAYS preserved and the
  * parser NEVER infers an action for an unknown code; it raises
  * `X12_834_UNKNOWN_MAINTENANCE_TYPE` on the affected member instead.
  *
  * Streaming caveat (honest limitation): the member stream iterates over an
  * ALREADY-parsed `X12TransactionSet`, so the file is still parsed into
- * `tx.segments` up front. The memory win is on the RESULT side — a consumer
+ * `tx.segments` up front. The memory win is on the RESULT side - a consumer
  * processing a hundreds-of-MB 834 holds one decoded member at a time, not
  * the whole decoded roster. A true file→iterator streaming parser is a v2
  * item (see roadmap Phase 2 streaming invariant).
@@ -51,10 +51,10 @@ function enrollmentBody(tx: X12TransactionSet): readonly X12Segment[] {
 }
 
 /**
- * Extract the 834 header — BGN + sponsor (`N1*P5`) + payer (`N1*IN`).
+ * Extract the 834 header - BGN + sponsor (`N1*P5`) + payer (`N1*IN`).
  * Pure function. Returns `undefined` only if the input transaction's ST-01
  * is not `"834"` (mis-routed call). Stops collecting header parties at the
- * first `INS` (member-level detail) — those belong to the member stream.
+ * first `INS` (member-level detail) - those belong to the member stream.
  *
  * @example
  * ```ts
@@ -83,7 +83,7 @@ export function get834Header(
   let payer: X12EnrollmentParty | undefined;
 
   for (const seg of enrollmentBody(tx)) {
-    if (seg.id === "INS") break; // member-level detail begins — header is done.
+    if (seg.id === "INS") break; // member-level detail begins - header is done.
     switch (seg.id) {
       case "BGN": {
         purpose = elementValue(seg, 1, delimiters);
@@ -129,7 +129,7 @@ export function get834Header(
 }
 
 /**
- * Stream the 834 member-level detail loops — one {@link X12Enrollment} per
+ * Stream the 834 member-level detail loops - one {@link X12Enrollment} per
  * `INS` segment. For a non-834 transaction the iterable yields nothing.
  * Async-generator typed so the contract leaves room for a future
  * file→iterator streaming source; the v1 implementation iterates the
@@ -153,7 +153,7 @@ export async function* get834Enrollments(
   tx: X12TransactionSet,
 ): AsyncIterable<X12Enrollment> {
   if (tx.st.elements[1] !== "834") return;
-  // Yield to the microtask queue so the iterator is genuinely async — a
+  // Yield to the microtask queue so the iterator is genuinely async - a
   // consumer's `for await` interleaves with other work even on the v1
   // in-memory source. (Also satisfies the no-bare-async-generator lint.)
   await Promise.resolve();
@@ -183,7 +183,7 @@ export async function* get834Enrollments(
       currentCoverage = undefined;
       continue;
     }
-    if (current === undefined) continue; // pre-INS header segments — not ours.
+    if (current === undefined) continue; // pre-INS header segments - not ours.
 
     switch (seg.id) {
       case "NM1": {
@@ -464,7 +464,7 @@ function decodeCob(seg: X12Segment, delimiters: Delimiters): X12CoordinationOfBe
 }
 
 // ---------------------------------------------------------------------------
-// Member / address mutators (immutable — return a new member with the change).
+// Member / address mutators (immutable - return a new member with the change).
 // ---------------------------------------------------------------------------
 
 const EMPTY_ADDRESS: X12EnrollmentAddress = Object.freeze({

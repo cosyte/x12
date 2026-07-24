@@ -1,5 +1,5 @@
 /**
- * `get277Status` / `get277CADisposition` — extract a typed
+ * `get277Status` / `get277CADisposition` - extract a typed
  * {@link X12ClaimStatusResponse} from a parsed X12 005010 277 Claim Status
  * Response (`005010X212`) or 277CA Claim Acknowledgment (`005010X214`).
  * Both transactions carry `ST-01 = "277"`; they share the HL spine + STC
@@ -11,7 +11,7 @@
  * never a throw. Monetary fields decode as
  * {@link "../../decimal.js".X12Decimal} (never `parseFloat`). HL
  * parent-pointer integrity is enforced via the shared
- * {@link "../shared/hl.js".validateHl} — mismatches emit
+ * {@link "../shared/hl.js".validateHl} - mismatches emit
  * `X12_HL_PARENT_MISMATCH` / `X12_HL_PARENT_LEVEL_INVALID`; the walker
  * NEVER silently re-numbers. Unknown CSCC / CSC codes preserve their
  * verbatim value and emit `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` /
@@ -75,7 +75,7 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Obje
 
 /**
  * Extract a typed {@link X12ClaimStatusResponse} from a 277 / 277CA
- * transaction set. Pure function — no I/O, no global state. Returns
+ * transaction set. Pure function - no I/O, no global state. Returns
  * `undefined` only when `ST-01` is not `"277"` (mis-routed call); every
  * other deviation is recoverable and surfaces on `result.warnings`. The
  * `transactionType` discriminator is derived from `ST-03`
@@ -107,7 +107,7 @@ export function get277Status(
 
 /**
  * Extract a 277CA Claim Acknowledgment (`005010X214`). Returns `undefined`
- * unless the transaction is a 277 whose `ST-03` is `005010X214` — use
+ * unless the transaction is a 277 whose `ST-03` is `005010X214` - use
  * {@link get277Status} for the general 277 Claim Status Response. The
  * returned model is the same {@link X12ClaimStatusResponse}; the
  * `transactionType` is always `"claim-acknowledgment"`.
@@ -258,7 +258,7 @@ function walk277(delimiters: Delimiters, tx: X12TransactionSet): X12ClaimStatusR
         if (currentServiceLine !== undefined) {
           currentServiceLine.statuses.push(info);
         } else {
-          // A 277CA provider-level batch ack may emit STC with no TRN —
+          // A 277CA provider-level batch ack may emit STC with no TRN -
           // open a claim on first STC so the status is never dropped.
           if (currentClaim === undefined) currentClaim = openClaim();
           currentClaim.statuses.push(info);

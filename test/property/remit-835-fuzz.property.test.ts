@@ -1,8 +1,8 @@
 /**
- * 835 fuzz target — byte-flip every one of the six 835 fixtures at a
+ * 835 fuzz target - byte-flip every one of the six 835 fixtures at a
  * uniformly random position and feed the result back through `get835`.
  * The contract is the same as the envelope fuzz target (Phase 1) layered
- * with the Phase 4 helper: `get835` must NEVER throw — every recoverable
+ * with the Phase 4 helper: `get835` must NEVER throw - every recoverable
  * deviation surfaces as a warning, every unrecoverable structural error
  * comes from `parseX12` and is one of the 4 Tier-3 fatals.
  *

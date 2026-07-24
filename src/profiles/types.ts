@@ -2,7 +2,7 @@
  * Type definitions for the `@cosyte/x12` profile subsystem (Phase 9).
  *
  * A profile captures **trading-partner / companion-guide deviations** as
- * typed, documented, fixture-grounded data — never silent leniency. It
+ * typed, documented, fixture-grounded data - never silent leniency. It
  * mirrors the `@cosyte/hl7` `defineProfile` shape, adapted to X12's reality:
  * the deviations X12 senders exhibit are not custom Z-segments + date
  * formats (the HL7 axes) but extra REF segments, alternate delimiters, and
@@ -10,7 +10,7 @@
  *
  * **Hard rule (locked, matches hl7 + ccda):** every {@link X12ProfileQuirk}
  * MUST cite a real Tier-2 `fixture` that demonstrates the deviation. There
- * are no invented quirks — the `fixture` field is required at the type level
+ * are no invented quirks - the `fixture` field is required at the type level
  * and verified by the accuracy test (`test/profiles-builtins.test.ts`),
  * which parses each cited fixture and asserts it actually exhibits the
  * claimed deviation.
@@ -22,7 +22,7 @@
  * the parse result for attribution (`ix.profile`), and (c) partitions a
  * parse's warnings into expected-vs-unexpected via the union of each quirk's
  * `expectedWarnings` (see `partitionWarnings`). A profile NEVER silently
- * swallows data — that is the whole point of making the deviation explicit.
+ * swallows data - that is the whole point of making the deviation explicit.
  */
 
 import type { X12WarningCode } from "../parser/warnings.js";
@@ -32,12 +32,12 @@ import type { X12WarningCode } from "../parser/warnings.js";
  * Mirrors the roadmap's "what this profile relaxes / adds / requires"
  * framing.
  *
- * - `relaxes` — the partner tolerates / emits a structural variation the
+ * - `relaxes` - the partner tolerates / emits a structural variation the
  *   strict 005010 baseline would flag (e.g. an alternate component
  *   delimiter).
- * - `adds` — the partner emits extra spec-optional content (e.g. additional
+ * - `adds` - the partner emits extra spec-optional content (e.g. additional
  *   REF segments) a generic consumer might not expect.
- * - `requires` — the partner mandates a normally-situational element be
+ * - `requires` - the partner mandates a normally-situational element be
  *   present.
  *
  * @example
@@ -52,7 +52,7 @@ export type X12ProfileEffect = "relaxes" | "adds" | "requires";
  * A single trading-partner deviation captured by a profile. Every quirk is
  * fixture-grounded: `fixture` points at a real Tier-2 corpus file that
  * demonstrates the deviation, and `sourceCategory` records where the quirk
- * was observed. This is the locked hard rule — a quirk without a
+ * was observed. This is the locked hard rule - a quirk without a
  * demonstrating fixture is forbidden, enforced both by this required field
  * and by the accuracy test.
  *
@@ -64,20 +64,20 @@ export type X12ProfileEffect = "relaxes" | "adds" | "requires";
  *   effect: "adds",
  *   summary: "Payer Loop 1000A carries a REF*2U additional payer identifier.",
  *   fixture: "remit/835-availity-quirk.edi",
- *   sourceCategory: "Availity 835 ERA companion guide — payer-loop REF",
+ *   sourceCategory: "Availity 835 ERA companion guide - payer-loop REF",
  * };
  * ```
  */
 export interface X12ProfileQuirk {
-  /** Stable, kebab-case identifier — unique within a profile's quirk set. */
+  /** Stable, kebab-case identifier - unique within a profile's quirk set. */
   readonly id: string;
   /** Which `describe()` bucket this quirk renders into. */
   readonly effect: X12ProfileEffect;
-  /** One-line human summary. NEVER contains PHI — describes structure only. */
+  /** One-line human summary. NEVER contains PHI - describes structure only. */
   readonly summary: string;
   /**
    * Path to the Tier-2 fixture demonstrating the deviation, relative to
-   * `test/fixtures/` (e.g. `"remit/835-availity-quirk.edi"`). REQUIRED — the
+   * `test/fixtures/` (e.g. `"remit/835-availity-quirk.edi"`). REQUIRED - the
    * locked hard rule. The accuracy test parses this file and asserts the
    * claimed deviation is present.
    */
@@ -94,10 +94,10 @@ export interface X12ProfileQuirk {
 }
 
 /**
- * Structured `describe()` output — the "what this profile relaxes / adds /
+ * Structured `describe()` output - the "what this profile relaxes / adds /
  * requires" record published with the package. Returned as DATA (not a
- * formatted string, unlike hl7) so downstream tooling — docs generators,
- * the `pathways` engine — can consume it programmatically.
+ * formatted string, unlike hl7) so downstream tooling - docs generators,
+ * the `pathways` engine - can consume it programmatically.
  *
  * @example
  * ```ts

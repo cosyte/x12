@@ -1,7 +1,7 @@
 /**
  * Regenerate the Phase 8 serializer golden files. For each canonical fixture
- * this writes `serializeX12(parseX12(fixture))` — the byte-faithful,
- * newline-free spec-clean emit — to `test/fixtures/golden/<name>.edi`. The
+ * this writes `serializeX12(parseX12(fixture))` - the byte-faithful,
+ * newline-free spec-clean emit - to `test/fixtures/golden/<name>.edi`. The
  * committed goldens are the LOCK: `test/serialize.test.ts` asserts the
  * serializer still reproduces them byte-for-byte, so any change to the emit
  * surface is a failing test with a reviewable diff.
@@ -9,7 +9,7 @@
  * The goldens deliberately differ from their source fixtures: the canonical
  * fixtures are pretty-printed with `~\n` between segments and a trailing
  * newline, all of which the lenient parser silently normalizes away. The
- * golden is therefore the COMPACT canonical form — the idempotency fixed
+ * golden is therefore the COMPACT canonical form - the idempotency fixed
  * point `serialize(parse(s)) === s`.
  *
  * Run from the package root:

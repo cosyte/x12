@@ -152,7 +152,7 @@ describe("phi-scan: PHI-shape violators each exit 1", () => {
 
 describe("phi-scan: plain-text (non-X12) targets", () => {
   it("clean text exits 0", () => {
-    const p = write("notes.txt", "synthetic notes — member MEMBER001, dos 20260601");
+    const p = write("notes.txt", "synthetic notes - member MEMBER001, dos 20260601");
     const r = runScanner([p]);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
   });
@@ -178,7 +178,7 @@ describe("phi-scan: --allow-fixture override gate", () => {
     const rel = relative(REPO_ROOT, p).split(sep).join("/");
 
     // The fixture is a genuine violator: scanned on its own (no override) it
-    // must trip. This proves the override — not an empty target set — is what
+    // must trip. This proves the override - not an empty target set - is what
     // flips the next run to clean.
     expect(runScanner([p]).code).toBe(1);
 

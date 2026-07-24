@@ -1,5 +1,5 @@
 /**
- * Build-side TRN-echo round-trip property — the safety-critical
+ * Build-side TRN-echo round-trip property - the safety-critical
  * reassociation invariant for the `build271` / `build277` / `build277CA`
  * emit constructors. A builder MUST place the caller-supplied trace into
  * TRN-02 verbatim and NEVER fabricate, normalize, or mutate it: for any
@@ -93,7 +93,7 @@ function spec277(trace: string): Build277Spec {
   };
 }
 
-describe("build271 — TRN echo round-trip property", () => {
+describe("build271 - TRN echo round-trip property", () => {
   it("emits the caller's trace into TRN-02 verbatim", () => {
     fc.assert(
       fc.property(traceArb, (trace) => {
@@ -107,7 +107,7 @@ describe("build271 — TRN echo round-trip property", () => {
   });
 });
 
-describe("build277 / build277CA — TRN echo round-trip property", () => {
+describe("build277 / build277CA - TRN echo round-trip property", () => {
   it("emits the caller's trace into a 277 claim TRN-02 verbatim", () => {
     fc.assert(
       fc.property(traceArb, (trace) => {

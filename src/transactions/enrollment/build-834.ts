@@ -1,5 +1,5 @@
 /**
- * `build834` — pure-function builder for a 005010X220A1 Benefit Enrollment
+ * `build834` - pure-function builder for a 005010X220A1 Benefit Enrollment
  * and Maintenance transaction (834). NEVER auto-sends, NEVER opens a socket,
  * NEVER touches the filesystem. The library mechanically emits the
  * enrollment it is told; a spec that carries a maintenance type code the
@@ -7,10 +7,10 @@
  * REFUSED via {@link "./build-errors.js".Enrollment834BuildError}.
  *
  * Maintenance type (`INS-03` / `HD-01`, X12 Code Source 875) is the 834's
- * safety primitive — the builder emits the supplied code VERBATIM (never
+ * safety primitive - the builder emits the supplied code VERBATIM (never
  * inferred, never normalized) and REFUSES a code outside the validated
  * subset. The read side ({@link "./get-834.js".get834Enrollments}) is
- * lenient — an unknown code on a *received* 834 is WARNED, never rejected,
+ * lenient - an unknown code on a *received* 834 is WARNED, never rejected,
  * because the parser must surface what arrived. The builder is strict: it
  * will not WRITE an action a downstream enrollment system would mis-apply.
  *
@@ -39,23 +39,23 @@ import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
 
-/** GS-08 / ST-03 version + release emitted for every 834 — the WPC TR3 `005010X220A1`. @internal */
+/** GS-08 / ST-03 version + release emitted for every 834 - the WPC TR3 `005010X220A1`. @internal */
 const X220A1_VERSION_RELEASE = "005010X220A1";
 
 /** GS-01 functional identifier code for the 834. `BE` = Benefit Enrollment and Maintenance. @internal */
 const X12_834_FUNCTIONAL_ID = "BE";
 
-/** GS-07 standards agency code — `X` for ASC X12. @internal */
+/** GS-07 standards agency code - `X` for ASC X12. @internal */
 const X12_AGENCY_CODE = "X";
 
-/** Default NM1-01 for a member name — the read side captures only the insured. @internal */
+/** Default NM1-01 for a member name - the read side captures only the insured. @internal */
 const MEMBER_DEFAULT_ENTITY_ID = "IL";
 
-/** Default DTP-02 date/time format qualifier — single CCYYMMDD date. @internal */
+/** Default DTP-02 date/time format qualifier - single CCYYMMDD date. @internal */
 const DTP_DEFAULT_FORMAT = "D8";
 
 /**
- * `build834` — assemble a 005010X220A1 834 around the supplied spec.
+ * `build834` - assemble a 005010X220A1 834 around the supplied spec.
  *
  * Refused via {@link "./build-errors.js".Enrollment834BuildError}:
  * - an `INS-03` or `HD-01` maintenance type code outside the validated X12
@@ -134,8 +134,8 @@ export function build834(spec: Build834Spec): X12Interchange {
       pad(envelope.senderId, 15), // ISA-06
       pad(receiverQualifier, 2), // ISA-07
       pad(envelope.receiverId, 15), // ISA-08
-      pad(envelope.interchangeDate, 6), // ISA-09 — YYMMDD
-      pad(envelope.interchangeTime, 4), // ISA-10 — HHMM
+      pad(envelope.interchangeDate, 6), // ISA-09 - YYMMDD
+      pad(envelope.interchangeTime, 4), // ISA-10 - HHMM
       repetitionSeparator, // ISA-11
       "00501", // ISA-12
       interchangeControlNumber, // ISA-13
@@ -153,11 +153,11 @@ export function build834(spec: Build834Spec): X12Interchange {
 
   const gs = seg([
     "GS",
-    X12_834_FUNCTIONAL_ID, // GS-01 — "BE"
+    X12_834_FUNCTIONAL_ID, // GS-01 - "BE"
     esc(applicationSenderCode), // GS-02
     esc(applicationReceiverCode), // GS-03
-    groupDate, // GS-04 — CCYYMMDD
-    groupTime, // GS-05 — HHMM
+    groupDate, // GS-04 - CCYYMMDD
+    groupTime, // GS-05 - HHMM
     esc(envelope.groupControlNumber), // GS-06
     X12_AGENCY_CODE, // GS-07
     X220A1_VERSION_RELEASE, // GS-08
@@ -238,7 +238,7 @@ function enforceStructuralSpec(spec: Build834Spec): void {
 // TR3 005010X220A1 loop order so the result round-trips through `get834*`.
 // ---------------------------------------------------------------------------
 
-/** Emit the header — BGN + sponsor (N1*P5) + payer (N1*IN) + REF* + DTP*. @internal */
+/** Emit the header - BGN + sponsor (N1*P5) + payer (N1*IN) + REF* + DTP*. @internal */
 function emitHeader(
   header: Build834HeaderSpec,
   body: string[],
@@ -282,7 +282,7 @@ function emitParty(
 }
 
 /**
- * Emit a Loop 2000 member — INS + (NM1 + DMG + N3/N4) + REF* + DTP* + COB* +
+ * Emit a Loop 2000 member - INS + (NM1 + DMG + N3/N4) + REF* + DTP* + COB* +
  * Loop 2300 coverages. Member DTPs are emitted BEFORE the first HD so the
  * read side attaches them to the member (a DTP inside an open coverage loop
  * binds to that coverage). @internal
@@ -299,7 +299,7 @@ function emitMember(
       "INS",
       esc(member.subscriberIndicator ?? ""),
       esc(member.relationshipCode ?? ""),
-      esc(member.maintenanceTypeCode), // INS-03 — emitted verbatim
+      esc(member.maintenanceTypeCode), // INS-03 - emitted verbatim
       esc(member.maintenanceReasonCode ?? ""),
       esc(member.benefitStatusCode ?? ""),
       "", // INS-06 medicare plan code
@@ -324,7 +324,7 @@ function emitMember(
   for (const coverage of member.healthCoverages ?? []) emitCoverage(coverage, body, seg, esc);
 }
 
-/** Emit the member name — NM1*IL + DMG (when dob/gender present) + N3/N4. @internal */
+/** Emit the member name - NM1*IL + DMG (when dob/gender present) + N3/N4. @internal */
 function emitMemberName(
   name: Build834MemberNameSpec,
   body: string[],
@@ -335,7 +335,7 @@ function emitMemberName(
     seg([
       "NM1",
       esc(name.entityIdentifierCode ?? MEMBER_DEFAULT_ENTITY_ID),
-      "1", // NM1-02 entity type qualifier — person
+      "1", // NM1-02 entity type qualifier - person
       esc(name.lastName ?? ""),
       esc(name.firstName ?? ""),
       esc(name.middleName ?? ""),
@@ -380,7 +380,7 @@ function emitAddress(
   }
 }
 
-/** Emit a Loop 2300 coverage — HD + DTP* + AMT*. @internal */
+/** Emit a Loop 2300 coverage - HD + DTP* + AMT*. @internal */
 function emitCoverage(
   coverage: Build834CoverageSpec,
   body: string[],
@@ -390,7 +390,7 @@ function emitCoverage(
   body.push(
     seg([
       "HD",
-      esc(coverage.maintenanceTypeCode ?? ""), // HD-01 — emitted verbatim
+      esc(coverage.maintenanceTypeCode ?? ""), // HD-01 - emitted verbatim
       "", // HD-02 maintenance reason code
       esc(coverage.insuranceLineCode ?? ""),
       esc(coverage.planCoverageDescription ?? ""),
@@ -427,7 +427,7 @@ function emitDate(
 }
 
 // ---------------------------------------------------------------------------
-// String helpers — mirror the `build835` emit primitives.
+// String helpers - mirror the `build835` emit primitives.
 // ---------------------------------------------------------------------------
 
 /** @internal */
@@ -440,7 +440,7 @@ function pad(value: string, width: number): string {
 /**
  * Zero-pad a control number to `width` chars (ISA-13 / IEA-02 are always 9).
  * Throws {@link Enrollment834BuildError} if the value already exceeds the
- * width — a silently-truncated control number would break ISA-13↔IEA-02
+ * width - a silently-truncated control number would break ISA-13↔IEA-02
  * reconciliation. @internal
  */
 function padControl(value: string, width: number): string {
