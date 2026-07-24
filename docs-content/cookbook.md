@@ -7,11 +7,11 @@ sidebar_position: 2
 # Cookbook
 
 Task-oriented recipes for the transactions you actually get handed. Each one is: here's the problem,
-here's the code, here's what you get back. Every symbol below is a real `@cosyte/x12` export — no
+here's the code, here's what you get back. Every symbol below is a real `@cosyte/x12` export, no
 pseudo-API. All sample EDI is **synthetic** (fabricated names, obviously-fake ids, pre-2024 control
 numbers); never paste a real interchange into a doc.
 
-The parser is **lenient by default** — vendor deviations become warnings with a stable code, not
+The parser is **lenient by default**: vendor deviations become warnings with a stable code, not
 failures. Read [Getting started](intro) first for the envelope model; the recipes here assume you can
 already get a parsed interchange.
 
@@ -19,11 +19,11 @@ already get a parsed interchange.
 
 ## 1. Parse an 835 ERA and post payments
 
-**The problem:** you have a remittance advice (electronic EOB) and need to post the cash — walk each
+**The problem:** you have a remittance advice (electronic EOB) and need to post the cash. Walk each
 claim and service line, read the CARC/RARC adjustments, and refuse to post an out-of-balance remit.
 
 `get835(delimiters, tx)` returns a typed `X12Remittance`, or `undefined` if the transaction set isn't
-an 835. Money is `X12Decimal` throughout (BigInt-exact — **never `parseFloat` an EDI amount**).
+an 835. Money is `X12Decimal` throughout (BigInt-exact, **never `parseFloat` an EDI amount**).
 
 ```ts
 import { parseX12, get835, lookupCarc, lookupRarc, WARNING_CODES } from "@cosyte/x12";
@@ -49,14 +49,14 @@ const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "835");
 const remit = tx ? get835(ix.delimiters, tx) : undefined;
 if (remit === undefined) throw new Error("not an 835");
 
-// Payment header — the money movement primitive.
+// Payment header: the money movement primitive.
 remit.payment.totalActualPayment.toString(); // "450.00"
 remit.payment.creditDebitFlag; // "C"
 remit.payment.method; // "ACH"
-remit.traces[0]?.referenceId; // "0012345" — reassociation trace (EFT number)
+remit.traces[0]?.referenceId; // "0012345": reassociation trace (EFT number)
 
 for (const claim of remit.claims) {
-  claim.patientControlNumber; // "PT-ACCT-001" — your account number, echoed back
+  claim.patientControlNumber; // "PT-ACCT-001": your account number, echoed back
   claim.totalChargeAmount.toString(); // "500.00"
   claim.totalPaymentAmount.toString(); // "450.00"
   claim.patientResponsibilityAmount.toString(); // "50.00"
@@ -65,16 +65,16 @@ for (const claim of remit.claims) {
     line.productServiceId; // "99213"
     line.paymentAmount.toString(); // "450.00"
 
-    // CARC — Claim Adjustment Reason Code. `reasonDescription` is prefilled
+    // CARC: Claim Adjustment Reason Code. `reasonDescription` is prefilled
     // from the bundled snapshot; fall back to lookupCarc for the raw entry.
     for (const adj of line.adjustments) {
-      adj.groupCode; // "PR" — patient responsibility (the safety-critical field)
+      adj.groupCode; // "PR": patient responsibility (the safety-critical field)
       adj.reasonCode; // "1"
       adj.reasonDescription ?? lookupCarc(adj.reasonCode)?.description; // "Deductible..."
       adj.amount.toString(); // "50.00"
     }
 
-    // RARC — Remittance Advice Remark Code (LQ*HE), if present.
+    // RARC: Remittance Advice Remark Code (LQ*HE), if present.
     for (const remark of line.remarks) {
       remark.code; // "N4"
       remark.description ?? lookupRarc(remark.code)?.description;
@@ -86,14 +86,14 @@ for (const claim of remit.claims) {
 **Respect the balance warning.** The walker runs the TR3 X221A1 §1.10.2 balance invariants
 (`totalPaymentAmount + patientResponsibilityAmount + Σ(adjustments) === totalChargeAmount`, and the
 top-of-remit `BPR-02 == Σ(CLP-04) - Σ(PLB)`) and emits `X12_835_REMIT_BALANCE_MISMATCH` on a
-mismatch. It **never silently rebalances** — the inbound values stand. Gate your posting on it:
+mismatch. It **never silently rebalances**. The inbound values stand. Gate your posting on it:
 
 ```ts
 const outOfBalance = remit.warnings.some(
   (w) => w.code === WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
 );
 if (outOfBalance) {
-  // Do NOT auto-post. Route to a human — the payer's numbers don't add up.
+  // Do NOT auto-post. Route to a human. The payer's numbers don't add up.
 }
 ```
 
@@ -103,7 +103,7 @@ if (outOfBalance) {
 
 **The problem:** a clearinghouse sent back a 277CA claim acknowledgment for a batch you submitted. You
 need to know, per claim, whether it was **accepted** into adjudication or **rejected** at the front
-door — and route the rejects for rework.
+door, and route the rejects for rework.
 
 `get277CADisposition(delimiters, tx)` admits only the X214 convention and returns an
 `X12ClaimStatusResponse`. The status lives in STC triples: **CSCC** (category, source 507) +
@@ -119,7 +119,7 @@ if (ack === undefined) throw new Error("not a 277CA (005010X214)");
 
 const rejected: string[] = [];
 for (const claim of ack.claims) {
-  claim.traces[0]?.referenceId; // echoes your submitted TRN — reassociate here
+  claim.traces[0]?.referenceId; // echoes your submitted TRN, reassociate here
   const stc = claim.statuses[0]?.statuses[0];
   if (stc === undefined) continue;
 
@@ -139,11 +139,11 @@ for (const claim of ack.claims) {
 `get277Status` decodes the plain 277 (X212) response the same way; it admits either convention, while
 `get277CADisposition` refuses a non-X214 transaction (returns `undefined`). Unknown category/status
 codes are preserved verbatim and raise `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` /
-`X12_UNKNOWN_CLAIM_STATUS` — the code is never dropped.
+`X12_UNKNOWN_CLAIM_STATUS`. The code is never dropped.
 
 ---
 
-## 3. Build a 271, then parse it — the TRN-echo round-trip
+## 3. Build a 271, then parse it: the TRN-echo round-trip
 
 **The problem:** you're the payer side and need to emit an eligibility **response**, then prove the
 reassociation contract holds: the 271 echoes the requesting 270's TRN-02 **verbatim** so the provider
@@ -152,7 +152,7 @@ surface); the round-trip you can demonstrate today is `build271` → `get271Elig
 
 `build271(spec)` computes the HL spine for you (source → receiver → subscriber → dependent) and
 **refuses** a structurally impossible hierarchy via `Eligibility271BuildError`. It returns a frozen
-`X12Interchange` — it never auto-sends, opens a socket, or touches the filesystem.
+`X12Interchange`. It never auto-sends, opens a socket, or touches the filesystem.
 
 ```ts
 import { parseX12, build271, get271Eligibility, X12Decimal, type Build271Spec } from "@cosyte/x12";
@@ -211,7 +211,7 @@ The same pattern (`build277` / `build277CA` echoing the 276's trace) covers clai
 
 ---
 
-## 4. Parse an 837 claim — variant, hierarchy, diagnoses
+## 4. Parse an 837 claim: variant, hierarchy, diagnoses
 
 **The problem:** you received a claim and need to know which flavor it is (Professional / Institutional
 / Dental), walk the HL hierarchy (billing provider → subscriber → claim), and read the diagnosis codes
@@ -246,7 +246,7 @@ for (const claim of sub.claims) {
   claim.billingProvider?.idCode; // "1234567890" (NPI)
   claim.subscriber?.info.claimFilingIndicator; // "MB" (Medicare Part B)
 
-  // HI diagnoses — the qualifier tells you the code system AND the role.
+  // HI diagnoses: the qualifier tells you the code system AND the role.
   for (const dx of claim.diagnoses) {
     dx.qualifier; // "ABK" (principal ICD-10-CM), "ABF" (other), "ABJ" (admitting)...
     dx.codeSystem; // "ICD-10-CM" | "ICD-10-PCS" | ... | "unknown"
@@ -265,7 +265,7 @@ const unknownHi = sub.warnings.some((w) => w.code === WARNING_CODES.X12_UNKNOWN_
 
 ---
 
-## 5. Parse a 999 acknowledgment — disposition + segment errors
+## 5. Parse a 999 acknowledgment: disposition + segment errors
 
 **The problem:** you submitted an 837 and got a 999 back. Was the batch accepted? If not, which
 segments and elements failed, and where?
@@ -279,29 +279,29 @@ import { parse999, isAcceptDisposition, X12_ACK_DISPOSITION_CODES } from "@cosyt
 const ack = parse999(raw999);
 if (ack === undefined) throw new Error("no 999 in interchange");
 
-// AK9 — the functional-group disposition + counts.
+// AK9: the functional-group disposition + counts.
 ack.ak9.disposition; // "A" accepted | "E" accepted-with-errors | "R" rejected | ...
 ack.ak9.numberOfReceivedTransactionSets; // e.g. 1
 ack.ak9.numberOfAcceptedTransactionSets; // e.g. 0
 
 // One boolean for "did this pass?": accept dispositions are A / E / P.
 if (!isAcceptDisposition(ack.ak9.disposition)) {
-  // The group was rejected — dig into the per-transaction responses.
+  // The group was rejected. Dig into the per-transaction responses.
 }
 
 for (const response of ack.transactionResponses) {
   response.ak2.transactionSetIdCode; // "837"
-  response.ak2.transactionSetControlNumber; // "0001" — matches your ST-02
+  response.ak2.transactionSetControlNumber; // "0001": matches your ST-02
   response.ik5.disposition; // per-transaction disposition (=== X12_ACK_DISPOSITION_CODES.R?)
 
-  // IK3 — segment-level error notes.
+  // IK3: segment-level error notes.
   for (const segNote of response.segmentNotes) {
-    segNote.ik3.segmentIdCode; // "NM1" — which segment
+    segNote.ik3.segmentIdCode; // "NM1": which segment
     segNote.ik3.segmentPositionInTransactionSet; // 8
     segNote.ik3.loopIdentifier; // "2010BA"
     segNote.ik3.syntaxErrorCode; // "8" (segment has data element errors)
 
-    // IK4 — element-level notes nested under the segment.
+    // IK4: element-level notes nested under the segment.
     for (const elemNote of segNote.elementNotes) {
       elemNote.ik4.position.element; // 1
       elemNote.ik4.position.component; // 2 (composite subelement)
@@ -317,7 +317,7 @@ for (const response of ack.transactionResponses) {
 
 ---
 
-## 6. Handle warnings — the lenient, never-throw contract
+## 6. Handle warnings: the lenient, never-throw contract
 
 **The problem:** you want to log or triage every tolerated deviation without your pipeline throwing on
 a vendor quirk. `@cosyte/x12` is liberal on input: **only four Tier-3 structural errors ever throw**;
@@ -333,22 +333,22 @@ const seen: X12ParseWarning[] = [];
 const ix = parseX12(raw, {
   onWarning: (w) => {
     seen.push(w);
-    // w.code — a stable string from WARNING_CODES
-    // w.message — bounded, PHI-free (never echoes names/ids/dates)
-    // w.position — where in the interchange it occurred
+    // w.code: a stable string from WARNING_CODES
+    // w.message: bounded, PHI-free (never echoes names/ids/dates)
+    // w.position: where in the interchange it occurred
   },
 });
 
 // Or read them after the fact:
 for (const w of ix.warnings) {
   if (w.code === WARNING_CODES.X12_PRE_005010) {
-    // sender is on a pre-005010 version family — tolerated, not fatal
+    // sender is on a pre-005010 version family: tolerated, not fatal
   }
 }
 ```
 
 **Escalate when you want strictness.** Pass `{ strict: true }` to turn every tolerated deviation into
-a thrown `X12ParseError` carrying the same warning code — useful for a spec-conformance gate on a
+a thrown `X12ParseError` carrying the same warning code, useful for a spec-conformance gate on a
 trusted trading partner.
 
 **The four fatal codes.** These are unrecoverable structural corruption and always throw an
@@ -366,13 +366,13 @@ try {
       case FATAL_CODES.X12_NO_ISA_HEADER: // not an X12 interchange at all
       case FATAL_CODES.X12_ISA_TOO_SHORT: // ISA truncated below 106 bytes
       case FATAL_CODES.X12_INVALID_DELIMITERS: // delimiters unrecoverable from ISA
-        // A malformed interchange — the bytes aren't X12.
+        // A malformed interchange: the bytes aren't X12.
         break;
     }
   }
 }
 ```
 
-Everything a real-world payer or clearinghouse does short of that — miscounts, dangling release chars,
-unknown CARC/RARC/HI codes, HL parent mismatches, balance mismatches, pre-005010 versions — is a
+Everything a real-world payer or clearinghouse does short of that (miscounts, dangling release chars,
+unknown CARC/RARC/HI codes, HL parent mismatches, balance mismatches, pre-005010 versions) is a
 warning you triage, not an exception you catch.

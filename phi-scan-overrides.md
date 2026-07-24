@@ -6,6 +6,6 @@ matching `### <path>` subsection justifying why the fixture is safe despite
 tripping the scanner.
 
 Prefer extending `scripts/phi-allow-list.txt` (declaring the synthetic tokens)
-over a whole-file override — an override silences _every_ check for that file.
+over a whole-file override: an override silences _every_ check for that file.
 
 There are no overrides at this time.

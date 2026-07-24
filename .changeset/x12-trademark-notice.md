@@ -10,4 +10,4 @@ sponsored by any of them, that every reference is descriptive, and that the buil
 authored from public sources only.
 
 `TRADEMARKS.md` is added to `files` so the notice travels inside the published tarball rather than
-living only on GitHub. Documentation only — no runtime or API change.
+living only on GitHub. Documentation only, no runtime or API change.
