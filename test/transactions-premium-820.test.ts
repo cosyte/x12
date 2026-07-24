@@ -7,7 +7,7 @@
  *   the remitter's N3/N4 address, an organization-summary remittance
  *   (ENT) carrying a member NM1, two RMR open items, a DTM and an ADX
  *   adjustment, then a second bare-NM1 individual remittance.
- * - X12Decimal: every monetary field decodes as decimal, not float —
+ * - X12Decimal: every monetary field decodes as decimal, not float -
  *   cents survive on the premium total, amounts paid, and the signed
  *   adjustment.
  * - Mis-route guard: `get820Payments` returns `undefined` for a non-820
@@ -43,7 +43,7 @@ function readPremiumFixture(name: string): X12PremiumPayments {
   return prem;
 }
 
-describe("get820Payments — Tier-1 canonical (X218)", () => {
+describe("get820Payments - Tier-1 canonical (X218)", () => {
   it("decodes the payment header (BPR) and trace (TRN) with no warnings", () => {
     const prem = readPremiumFixture("820-canonical.edi");
     expect(prem.warnings).toHaveLength(0);
@@ -122,7 +122,7 @@ describe("get820Payments — Tier-1 canonical (X218)", () => {
   });
 });
 
-describe("get820Payments — edge cases (receiver address, RM remitter, skips)", () => {
+describe("get820Payments - edge cases (receiver address, RM remitter, skips)", () => {
   it("decodes a receiver (PE) address + REF and an RM-qualified remitter REF", () => {
     const prem = readPremiumFixture("820-edge.edi");
     expect(prem.warnings).toHaveLength(0);
@@ -157,16 +157,16 @@ describe("get820Payments — edge cases (receiver address, RM remitter, skips)",
   });
 });
 
-describe("get820Payments — loop-level segments + orphans", () => {
+describe("get820Payments - loop-level segments + orphans", () => {
   it("ignores RMR/ADX before any remittance and N1/N3/N4 inside an open loop", () => {
     const prem = readPremiumFixture("820-loop.edi");
 
-    // The RMR / ADX that precede the first ENT have no open remittance — dropped.
+    // The RMR / ADX that precede the first ENT have no open remittance - dropped.
     expect(prem.remittances).toHaveLength(1);
     const rem = prem.remittances[0];
     expect(rem?.entity?.idCode).toBe("GRP-LOOP");
     expect(rem?.individual?.lastName).toBe("DOE");
-    // The in-loop N1*PE / N3 / N4 belong to the loop's party id — they do NOT
+    // The in-loop N1*PE / N3 / N4 belong to the loop's party id - they do NOT
     // overwrite the header receiver, and only the one well-formed RMR survives.
     expect(rem?.openItems).toHaveLength(1);
     expect(rem?.openItems[0]?.referenceId).toBe("POL-LOOP");
@@ -204,7 +204,7 @@ describe("get820Payments — loop-level segments + orphans", () => {
   });
 });
 
-describe("get820Payments — guards + dogfooded specs", () => {
+describe("get820Payments - guards + dogfooded specs", () => {
   it("returns undefined for a non-820 transaction set", () => {
     const raw = readFileSync(join(FIXTURE_DIR, "820-canonical.edi"), "utf8").trimEnd();
     const ix = parseX12(raw);

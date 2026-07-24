@@ -9,7 +9,7 @@
  *   per-line TOO tooth info (D).
  * - HL parent-pointer integrity: a parent id that does not match an
  *   earlier HL emits `X12_HL_PARENT_MISMATCH` (Tier-2 quirk fixture);
- *   the parser NEVER silently re-numbers — the verbatim parent id is
+ *   the parser NEVER silently re-numbers - the verbatim parent id is
  *   preserved on the hierarchy entry.
  * - Patient HL (Loop 2000C) when patient ≠ subscriber: the walker pairs
  *   the patient NM1*QC with its enclosing HL and routes downstream
@@ -54,7 +54,7 @@ function readClaimFixture(name: string): X12_837Submission {
   return sub;
 }
 
-describe("get837Claims — Professional Tier-1 (X222A2)", () => {
+describe("get837Claims - Professional Tier-1 (X222A2)", () => {
   it("decodes the canonical 837P fixture end-to-end", () => {
     const sub = readClaimFixture("837p-canonical.edi");
     expect(sub.variant).toBe("P");
@@ -122,7 +122,7 @@ describe("get837Claims — Professional Tier-1 (X222A2)", () => {
   });
 });
 
-describe("get837Claims — Institutional Tier-1 (X223A3)", () => {
+describe("get837Claims - Institutional Tier-1 (X223A3)", () => {
   it("decodes the canonical 837I fixture with revenue codes + ICD-10-PCS procedure", () => {
     const sub = readClaimFixture("837i-canonical.edi");
     expect(sub.variant).toBe("I");
@@ -167,7 +167,7 @@ describe("get837Claims — Institutional Tier-1 (X223A3)", () => {
   });
 });
 
-describe("get837Claims — Dental Tier-1 (X224A2)", () => {
+describe("get837Claims - Dental Tier-1 (X224A2)", () => {
   it("decodes the canonical 837D fixture with TOO tooth info + ADA CDT codes", () => {
     const sub = readClaimFixture("837d-canonical.edi");
     expect(sub.variant).toBe("D");
@@ -190,12 +190,12 @@ describe("get837Claims — Dental Tier-1 (X224A2)", () => {
   });
 });
 
-describe("get837Claims — HL parent-pointer integrity", () => {
+describe("get837Claims - HL parent-pointer integrity", () => {
   it("emits X12_HL_PARENT_MISMATCH when HL-02 references a nonexistent prior HL; preserves verbatim", () => {
     const sub = readClaimFixture("837p-hl-orphan.edi");
     const orphans = sub.warnings.filter((w) => w.code === WARNING_CODES.X12_HL_PARENT_MISMATCH);
     expect(orphans).toHaveLength(1);
-    // The HL hierarchy is preserved verbatim — id "2" still carries parent
+    // The HL hierarchy is preserved verbatim - id "2" still carries parent
     // "9" (the off-by-one bug from the source), NOT silently rewritten to
     // "1".
     expect(sub.hierarchies[1]?.parentHlId).toBe("9");
@@ -208,7 +208,7 @@ describe("get837Claims — HL parent-pointer integrity", () => {
   });
 });
 
-describe("get837Claims — HI qualifier resolution", () => {
+describe("get837Claims - HI qualifier resolution", () => {
   it("emits X12_UNKNOWN_HI_QUALIFIER for an out-of-snapshot qualifier; verbatim code preserved with codeSystem='unknown'", () => {
     const sub = readClaimFixture("837p-unknown-hi.edi");
     const unknowns = sub.warnings.filter((w) => w.code === WARNING_CODES.X12_UNKNOWN_HI_QUALIFIER);
@@ -228,7 +228,7 @@ describe("get837Claims — HI qualifier resolution", () => {
   });
 });
 
-describe("get837Claims — Patient HL (Loop 2000C)", () => {
+describe("get837Claims - Patient HL (Loop 2000C)", () => {
   it("routes a claim under a 23-level Patient HL to the patient member (not the subscriber)", () => {
     const sub = readClaimFixture("837p-with-patient-hl.edi");
     expect(sub.hierarchies).toHaveLength(3);
@@ -250,7 +250,7 @@ describe("get837Claims — Patient HL (Loop 2000C)", () => {
   });
 });
 
-describe("get837Claims — variant resolution", () => {
+describe("get837Claims - variant resolution", () => {
   it("respects an explicit opts.type override", () => {
     const raw = readFileSync(join(FIXTURE_DIR, "837p-canonical.edi"), "utf8").trimEnd();
     const ix = parseX12(raw);
@@ -272,7 +272,7 @@ describe("get837Claims — variant resolution", () => {
   });
 });
 
-describe("public surface — dogfooded loop specs", () => {
+describe("public surface - dogfooded loop specs", () => {
   it("Loop 2300 → Loop 2400 nesting is wired for every variant", () => {
     expect(CLAIM_837P_LOOP_2300.trigger).toBe("CLM");
     expect(CLAIM_837P_LOOP_2300.children).toContain(CLAIM_837P_LOOP_2400);

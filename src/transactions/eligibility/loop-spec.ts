@@ -1,5 +1,5 @@
 /**
- * 271 TR3 `005010X279A1` loop specification — authored through the
+ * 271 TR3 `005010X279A1` loop specification - authored through the
  * **public** {@link "../../loops/define.js".defineLoopSpec} API. This is
  * the Phase 6 dogfooding gate: the built-in 271 loop hierarchy goes
  * through the SAME factory consumers use for payer-specific companion-
@@ -10,26 +10,26 @@
  *
  * ```text
  *  Header (ST, BHT)
- *  Loop 2000A — Information Source HL (HL*..*20)        — required, max >1
- *    Loop 2100A — Information Source Name (NM1*PR)       — required, max 1
- *  Loop 2000B — Information Receiver HL (HL*..*21)       — required, max >1
- *    Loop 2100B — Information Receiver Name (NM1*1P)      — required, max 1
- *  Loop 2000C — Subscriber HL (HL*..*22)                — required, max >1
- *    TRN  (Subscriber Trace — echoed verbatim from 270)  — situational, max >1
- *    Loop 2100C — Subscriber Name (NM1*IL) + REF/N3/N4/DMG/DTP
- *      Loop 2110C — Subscriber Eligibility / Benefit     — situational, max >1
+ *  Loop 2000A - Information Source HL (HL*..*20)        - required, max >1
+ *    Loop 2100A - Information Source Name (NM1*PR)       - required, max 1
+ *  Loop 2000B - Information Receiver HL (HL*..*21)       - required, max >1
+ *    Loop 2100B - Information Receiver Name (NM1*1P)      - required, max 1
+ *  Loop 2000C - Subscriber HL (HL*..*22)                - required, max >1
+ *    TRN  (Subscriber Trace - echoed verbatim from 270)  - situational, max >1
+ *    Loop 2100C - Subscriber Name (NM1*IL) + REF/N3/N4/DMG/DTP
+ *      Loop 2110C - Subscriber Eligibility / Benefit     - situational, max >1
  *        EB  HSD  REF  DTP  MSG  III  (Loop 2120C NM1)
- *  Loop 2000D — Dependent HL (HL*..*23)                 — situational, max >1
+ *  Loop 2000D - Dependent HL (HL*..*23)                 - situational, max >1
  *    TRN
- *    Loop 2100D — Dependent Name (NM1*03) + REF/N3/N4/DMG/DTP
- *      Loop 2110D — Dependent Eligibility / Benefit      — situational, max >1
+ *    Loop 2100D - Dependent Name (NM1*03) + REF/N3/N4/DMG/DTP
+ *      Loop 2110D - Dependent Eligibility / Benefit      - situational, max >1
  * ```
  *
  * @remarks
  * Phase 6 surfaces the loop spec as a frozen artifact (consumers can read
  * it and assert it matches their companion-guide expectations); the walker
  * in `./get-271.ts` consults the HL level codes to guide its state
- * machine. Loop 2110C and 2110D share the identical EB-anchored shape — a
+ * machine. Loop 2110C and 2110D share the identical EB-anchored shape - a
  * single {@link ELIGIBILITY_271_LOOP_2110} spec is reused under both the
  * subscriber and dependent name loops.
  */
@@ -38,9 +38,9 @@ import { defineLoopSpec } from "../../loops/define.js";
 import type { LoopSpec } from "../../loops/types.js";
 
 /**
- * 271 Loop 2110 — Eligibility or Benefit Information. Triggered by `EB`.
+ * 271 Loop 2110 - Eligibility or Benefit Information. Triggered by `EB`.
  * Reused under both the subscriber (2110C) and dependent (2110D) name
- * loops — the segment shape is identical.
+ * loops - the segment shape is identical.
  *
  * @example
  * ```ts
@@ -50,7 +50,7 @@ import type { LoopSpec } from "../../loops/types.js";
  */
 export const ELIGIBILITY_271_LOOP_2110: LoopSpec = defineLoopSpec({
   id: "2110",
-  description: "271 Loop 2110C/D — Eligibility or Benefit Information",
+  description: "271 Loop 2110C/D - Eligibility or Benefit Information",
   trigger: "EB",
   segments: [
     { id: "EB", usage: "required", max: 1 },
@@ -64,7 +64,7 @@ export const ELIGIBILITY_271_LOOP_2110: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 271 Loop 2100C — Subscriber Name. Triggered by `NM1` (`NM1-01 = "IL"`);
+ * 271 Loop 2100C - Subscriber Name. Triggered by `NM1` (`NM1-01 = "IL"`);
  * the qualifier check happens in the walker, not the spec. Nests
  * {@link ELIGIBILITY_271_LOOP_2110}.
  *
@@ -76,7 +76,7 @@ export const ELIGIBILITY_271_LOOP_2110: LoopSpec = defineLoopSpec({
  */
 export const ELIGIBILITY_271_LOOP_2100C: LoopSpec = defineLoopSpec({
   id: "2100C",
-  description: "271 Loop 2100C — Subscriber Name",
+  description: "271 Loop 2100C - Subscriber Name",
   trigger: "NM1",
   segments: [
     { id: "NM1", usage: "required", max: 1 },
@@ -90,7 +90,7 @@ export const ELIGIBILITY_271_LOOP_2100C: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 271 Loop 2100D — Dependent Name. Triggered by `NM1` (`NM1-01 = "03"`).
+ * 271 Loop 2100D - Dependent Name. Triggered by `NM1` (`NM1-01 = "03"`).
  * Same shape as 2100C; nests {@link ELIGIBILITY_271_LOOP_2110}.
  *
  * @example
@@ -101,7 +101,7 @@ export const ELIGIBILITY_271_LOOP_2100C: LoopSpec = defineLoopSpec({
  */
 export const ELIGIBILITY_271_LOOP_2100D: LoopSpec = defineLoopSpec({
   id: "2100D",
-  description: "271 Loop 2100D — Dependent Name",
+  description: "271 Loop 2100D - Dependent Name",
   trigger: "NM1",
   segments: [
     { id: "NM1", usage: "required", max: 1 },
@@ -115,7 +115,7 @@ export const ELIGIBILITY_271_LOOP_2100D: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 271 Loop 2000A — Information Source HL (payer). Triggered by `HL`
+ * 271 Loop 2000A - Information Source HL (payer). Triggered by `HL`
  * (`HL-03 = "20"`); the level-code check happens in the walker. Nests the
  * Loop 2100A payer name.
  *
@@ -127,7 +127,7 @@ export const ELIGIBILITY_271_LOOP_2100D: LoopSpec = defineLoopSpec({
  */
 export const ELIGIBILITY_271_LOOP_2000A: LoopSpec = defineLoopSpec({
   id: "2000A",
-  description: "271 Loop 2000A — Information Source HL",
+  description: "271 Loop 2000A - Information Source HL",
   trigger: "HL",
   segments: [
     { id: "HL", usage: "required", max: 1 },
@@ -138,7 +138,7 @@ export const ELIGIBILITY_271_LOOP_2000A: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 271 Loop 2000B — Information Receiver HL (provider). Triggered by `HL`
+ * 271 Loop 2000B - Information Receiver HL (provider). Triggered by `HL`
  * (`HL-03 = "21"`). Carries the receiver NM1 + optional REF/N3/N4/PER and
  * request-validation AAA segments.
  *
@@ -150,7 +150,7 @@ export const ELIGIBILITY_271_LOOP_2000A: LoopSpec = defineLoopSpec({
  */
 export const ELIGIBILITY_271_LOOP_2000B: LoopSpec = defineLoopSpec({
   id: "2000B",
-  description: "271 Loop 2000B — Information Receiver HL",
+  description: "271 Loop 2000B - Information Receiver HL",
   trigger: "HL",
   segments: [
     { id: "HL", usage: "required", max: 1 },
@@ -164,7 +164,7 @@ export const ELIGIBILITY_271_LOOP_2000B: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 271 Loop 2000C — Subscriber HL. Triggered by `HL` (`HL-03 = "22"`).
+ * 271 Loop 2000C - Subscriber HL. Triggered by `HL` (`HL-03 = "22"`).
  * Carries the echoed subscriber TRN traces and nests
  * {@link ELIGIBILITY_271_LOOP_2100C}.
  *
@@ -176,7 +176,7 @@ export const ELIGIBILITY_271_LOOP_2000B: LoopSpec = defineLoopSpec({
  */
 export const ELIGIBILITY_271_LOOP_2000C: LoopSpec = defineLoopSpec({
   id: "2000C",
-  description: "271 Loop 2000C — Subscriber HL",
+  description: "271 Loop 2000C - Subscriber HL",
   trigger: "HL",
   segments: [
     { id: "HL", usage: "required", max: 1 },
@@ -186,7 +186,7 @@ export const ELIGIBILITY_271_LOOP_2000C: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 271 Loop 2000D — Dependent HL. Triggered by `HL` (`HL-03 = "23"`).
+ * 271 Loop 2000D - Dependent HL. Triggered by `HL` (`HL-03 = "23"`).
  * Carries the echoed dependent TRN traces and nests
  * {@link ELIGIBILITY_271_LOOP_2100D}.
  *
@@ -198,7 +198,7 @@ export const ELIGIBILITY_271_LOOP_2000C: LoopSpec = defineLoopSpec({
  */
 export const ELIGIBILITY_271_LOOP_2000D: LoopSpec = defineLoopSpec({
   id: "2000D",
-  description: "271 Loop 2000D — Dependent HL",
+  description: "271 Loop 2000D - Dependent HL",
   trigger: "HL",
   segments: [
     { id: "HL", usage: "required", max: 1 },

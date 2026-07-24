@@ -3,14 +3,14 @@
  * "./build-834.js".build834}). Distinct from the general `X12BuildError` (a
  * structurally impossible envelope): {@link Enrollment834BuildError} is
  * raised when an enrollment spec cannot be emitted as a conformant,
- * self-consistent 834 — most importantly when a member or coverage carries a
+ * self-consistent 834 - most importantly when a member or coverage carries a
  * maintenance type code (`INS-03` / `HD-01`, X12 Code Source 875) the
  * builder cannot vouch for.
  *
  * Maintenance type is the safety-critical field of the 834: misreading a
  * termination (`024`) as a change (`001`) leaves a member enrolled who the
  * sponsor dropped, or drops a member the sponsor kept. The read side
- * ({@link "./get-834.js".get834Enrollments}) is lenient — an unknown
+ * ({@link "./get-834.js".get834Enrollments}) is lenient - an unknown
  * maintenance code on a *received* 834 is WARNED (the verbatim code is still
  * surfaced) so a consumer sees exactly what arrived. The builder takes the
  * opposite stance: it REFUSES to EMIT an action it cannot name, rather than
@@ -25,15 +25,15 @@
  * so consumers can narrow exhaustively on `err.code`; additions-only
  * thereafter (renaming any code is a breaking change).
  *
- * - `X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE` — an `INS-03` or `HD-01`
+ * - `X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE` - an `INS-03` or `HD-01`
  *   maintenance type code falls outside the X12 Code Source 875 subset the
  *   library validates against. The message carries the structural index of
  *   the affected member / coverage and the offending code (an X12 control
  *   code, never PHI).
- * - `X12_834_BUILD_INVALID_SPEC` — a non-maintenance precondition failed: no
+ * - `X12_834_BUILD_INVALID_SPEC` - a non-maintenance precondition failed: no
  *   member loop, an empty (required) `INS-03`, or an over-long ISA-13
  *   interchange control number. The message carries structural indices +
- *   counts only — never a member id / name (PHI discipline).
+ *   counts only - never a member id / name (PHI discipline).
  *
  * @example
  * ```ts
@@ -45,7 +45,7 @@
  *     err instanceof Enrollment834BuildError &&
  *     err.code === ENROLLMENT_834_BUILD_ERROR_CODES.X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE
  *   ) {
- *     // the maintenance action is unrecognized — fix the code, do not emit
+ *     // the maintenance action is unrecognized - fix the code, do not emit
  *   }
  * }
  * ```
@@ -64,10 +64,10 @@ export type Enrollment834BuildErrorCode =
 
 /**
  * Thrown by {@link "./build-834.js".build834} when the supplied enrollment
- * spec cannot be emitted as a conformant, self-consistent 834 — most
+ * spec cannot be emitted as a conformant, self-consistent 834 - most
  * importantly when a maintenance type code is outside the validated X12 875
  * subset. Carries a stable `code` for programmatic narrowing. Deliberately
- * does NOT extend `X12ParseError` or `X12BuildError` — the domain-refusal
+ * does NOT extend `X12ParseError` or `X12BuildError` - the domain-refusal
  * distinction matters at the type level.
  *
  * @example

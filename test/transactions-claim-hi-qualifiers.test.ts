@@ -1,6 +1,6 @@
 /**
  * Unit tests for the HI qualifier → code-system table. The table is the
- * safety primitive for the 837 diagnoses + procedures — misreading a
+ * safety primitive for the 837 diagnoses + procedures - misreading a
  * qualifier picks the wrong code system and corrupts the clinical
  * context. These tests lock the snapshot's known qualifiers and the
  * categorization invariants the `get837Claims` walker depends on.

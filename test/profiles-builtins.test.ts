@@ -1,12 +1,12 @@
 /**
- * Phase 9 accuracy gate — the locked HARD RULE, enforced in tests:
+ * Phase 9 accuracy gate - the locked HARD RULE, enforced in tests:
  *
  *   "A profile entry without a Tier-2 fixture demonstrating the deviation is
  *    forbidden. No invented quirks."
  *
  * For every shipped built-in profile, every quirk MUST (a) cite a fixture
  * file that EXISTS under `test/fixtures/`, (b) parse without throwing, and
- * (c) actually EXHIBIT the claimed deviation — verified by a per-quirk
+ * (c) actually EXHIBIT the claimed deviation - verified by a per-quirk
  * DEMONSTRATOR below. The demonstrator registry is keyed by
  * `${profile.name}/${quirk.id}`: a quirk with NO demonstrator entry fails the
  * suite, so a new built-in cannot ship a real-but-irrelevant fixture and slip
@@ -14,7 +14,7 @@
  * hold is a bug this suite catches before the profile ships.
  *
  * Also documents profile-on / profile-off divergence: a v1 profile attaches
- * attribution but NEVER silently swallows data — the parsed groups + warnings
+ * attribution but NEVER silently swallows data - the parsed groups + warnings
  * are byte-identical with and without the profile.
  */
 
@@ -36,7 +36,7 @@ const ALL_BUILTINS: readonly X12Profile[] = Object.values(profiles);
 
 /**
  * Per-quirk demonstrators, keyed by `${profile.name}/${quirk.id}`. Each
- * asserts — against the quirk's OWN cited fixture — that the deviation the
+ * asserts - against the quirk's OWN cited fixture - that the deviation the
  * quirk claims is actually present. Every shipped quirk MUST appear here
  * (enforced below), so the hard rule cannot be satisfied by a fixture that
  * merely exists and parses.
@@ -68,7 +68,7 @@ function read835(raw: string) {
   return remit;
 }
 
-describe("built-in profiles — hard rule: every quirk is fixture-grounded", () => {
+describe("built-in profiles - hard rule: every quirk is fixture-grounded", () => {
   it("ships at least one built-in profile", () => {
     expect(ALL_BUILTINS.length).toBeGreaterThan(0);
   });
@@ -101,7 +101,7 @@ describe("built-in profiles — hard rule: every quirk is fixture-grounded", () 
   });
 });
 
-describe("profile-on / profile-off divergence — attribution only, no data loss", () => {
+describe("profile-on / profile-off divergence - attribution only, no data loss", () => {
   it("parses identical groups + warnings with and without a profile", () => {
     const raw = readFixture("remit/835-availity-quirk.edi");
     const off = parseX12(raw);

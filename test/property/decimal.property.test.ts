@@ -1,5 +1,5 @@
 /**
- * Property tests for `X12Decimal` — Phase 4. Locks the arithmetic
+ * Property tests for `X12Decimal` - Phase 4. Locks the arithmetic
  * invariants that make this type safe for 835 balance checks:
  *
  * - Round-trip: `fromString(s).toString() === s` for every spec-shaped
@@ -45,7 +45,7 @@ const arbitraryX12Decimal: fc.Arbitrary<X12Decimal> = arbitraryDecimalString.map
   return d;
 });
 
-describe("X12Decimal — round-trip lexical preservation", () => {
+describe("X12Decimal - round-trip lexical preservation", () => {
   it("fromString(s).toString() === s for every spec-shaped decimal", () => {
     fc.assert(
       fc.property(arbitraryDecimalString, (s) => {
@@ -58,7 +58,7 @@ describe("X12Decimal — round-trip lexical preservation", () => {
   });
 });
 
-describe("X12Decimal — additive structure", () => {
+describe("X12Decimal - additive structure", () => {
   it("0 is the additive identity (math equality)", () => {
     fc.assert(
       fc.property(arbitraryX12Decimal, (x) => {
@@ -88,7 +88,7 @@ describe("X12Decimal — additive structure", () => {
   });
 });
 
-describe("X12Decimal — sign + negation", () => {
+describe("X12Decimal - sign + negation", () => {
   it("negate(negate(x)) === x (math equality)", () => {
     fc.assert(
       fc.property(arbitraryX12Decimal, (x) => {

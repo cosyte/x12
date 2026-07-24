@@ -1,19 +1,19 @@
 /**
  * Shared Hierarchical Level (HL) handling for the transaction families
- * that walk an HL tree — 271 eligibility (`005010X279A1`), 277 claim
+ * that walk an HL tree - 271 eligibility (`005010X279A1`), 277 claim
  * status (`005010X212`), and 277CA claim acknowledgment (`005010X214`).
  * The 837 claim helper carries its own copy (its level set + parent map
- * differ); this module factors the **identical safety primitive** —
- * HL-02 parent-pointer integrity — for the request/response pairs.
+ * differ); this module factors the **identical safety primitive** -
+ * HL-02 parent-pointer integrity - for the request/response pairs.
  *
  * **Parent-pointer integrity is the #1 structural safety property of an
  * HL transaction.** HL-01 is this level's sequential id; HL-02 names its
- * parent's id; HL-03 is the level code (X12 0735 — `20` Information
+ * parent's id; HL-03 is the level code (X12 0735 - `20` Information
  * Source, `21` Information Receiver, `19` Provider of Service, `22`
  * Subscriber, `23` Dependent). The walker validates that HL-02 references
  * an earlier-emitted HL-01 in the same transaction AND that the parent's
  * level matches the TR3-required parent for this level. Violations emit
- * `X12_HL_PARENT_MISMATCH` / `X12_HL_PARENT_LEVEL_INVALID` — the walker
+ * `X12_HL_PARENT_MISMATCH` / `X12_HL_PARENT_LEVEL_INVALID` - the walker
  * NEVER silently re-numbers the hierarchy; the verbatim declared pointer
  * stays on the captured level.
  */
@@ -49,7 +49,7 @@ export const HL_LEVEL_CODES = Object.freeze({
 
 /**
  * One HL segment captured during an eligibility / claim-status walk. The
- * hierarchy is the structural safety primitive — see the module doc. The
+ * hierarchy is the structural safety primitive - see the module doc. The
  * verbatim declared `parentHlId` is always preserved even when it fails
  * validation (the parser never re-numbers).
  *
@@ -93,7 +93,7 @@ export function decodeHl(seg: X12Segment, delimiters: Delimiters): X12Hl {
  * top-level code with no parent). Pushes `X12_HL_PARENT_MISMATCH` /
  * `X12_HL_PARENT_LEVEL_INVALID` on violation; never throws, never
  * re-numbers. A level code absent from the map is treated as an unknown
- * level — no synthesized expectation, only the absent-parent check is
+ * level - no synthesized expectation, only the absent-parent check is
  * skipped.
  *
  * @internal
@@ -109,7 +109,7 @@ export function validateHl(
   const expectedParent = hasExpectation ? expectedParentLevel[hl.levelCode] : undefined;
   if (expectedParent === undefined) {
     // Top-level code (parent must be absent) or an unknown level (no
-    // synthesized expectation — surfaced verbatim).
+    // synthesized expectation - surfaced verbatim).
     if (hasExpectation && hl.parentHlId !== undefined) {
       warnings.push(hlParentMismatch(position, hl.hlId, hl.parentHlId));
     }

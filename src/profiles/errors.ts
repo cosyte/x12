@@ -2,7 +2,7 @@
  * Error taxonomy for the `@cosyte/x12` profile subsystem (Phase 9).
  *
  * `X12ProfileError` is thrown by `defineProfile()` when a profile definition
- * is structurally invalid — a bad/missing name, an unknown option key, or a
+ * is structurally invalid - a bad/missing name, an unknown option key, or a
  * quirk that violates the locked hard rule (missing `fixture`, unknown
  * `effect`, an `expectedWarnings` code outside the Tier-2 registry). It is a
  * definition-time error (developer mistake), distinct from the Tier-3

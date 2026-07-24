@@ -1,7 +1,7 @@
 /**
  * Unit tests for {@link decodeSegment} + the dot-path resolvers
  * {@link getSegmentValue} / {@link getAllSegmentValues}. Phase 2's
- * structural-model surface — verified against hand-authored segments
+ * structural-model surface - verified against hand-authored segments
  * shaped like real X12 healthcare segments (NM1, HI, BPR, CLP, etc.) so a
  * downstream helper authored in Phases 4+ can rely on these primitives.
  */
@@ -24,7 +24,7 @@ function noop(_w: X12ParseWarning): void {
   /* intentionally empty */
 }
 
-describe("decodeSegment — structural decode", () => {
+describe("decodeSegment - structural decode", () => {
   it("decodes a simple segment into id + 1-indexed elements", () => {
     const seg = decodeSegment("NM1*IL*1*DOE*JANE", D, noop, POS);
     expect(seg.id).toBe("NM1");
@@ -51,7 +51,7 @@ describe("decodeSegment — structural decode", () => {
   });
   it("preserves `?<delim>` verbatim in the raw element text (decode is lazy)", () => {
     const seg = decodeSegment("REF*EA*ID?*WITH?*STAR", D, noop, POS);
-    // Element split honors the escape — the `?*` does not split.
+    // Element split honors the escape - the `?*` does not split.
     expect(seg.elements[2]).toBe("ID?*WITH?*STAR");
   });
   it("warns DANGLING_RELEASE_CHAR on a trailing bare `?` at the last element", () => {
@@ -69,7 +69,7 @@ describe("decodeSegment — structural decode", () => {
   });
 });
 
-describe("getSegmentValue — dot-path traversal", () => {
+describe("getSegmentValue - dot-path traversal", () => {
   it("resolves an element by 1-indexed position", () => {
     const seg = decodeSegment("NM1*IL*1*DOE*JANE*A", D, noop, POS);
     expect(getSegmentValue(seg, "01", D)).toBe("IL");
@@ -77,7 +77,7 @@ describe("getSegmentValue — dot-path traversal", () => {
     expect(getSegmentValue(seg, "05", D)).toBe("A");
   });
   it("resolves a composite sub-element with `-N`", () => {
-    // HI*ABK:J45.50*ABF:I10 — HI-01 composite carries qualifier + code.
+    // HI*ABK:J45.50*ABF:I10 - HI-01 composite carries qualifier + code.
     const seg = decodeSegment("HI*ABK:J45.50*ABF:I10", D, noop, POS);
     expect(getSegmentValue(seg, "01-1", D)).toBe("ABK");
     expect(getSegmentValue(seg, "01-2", D)).toBe("J45.50");
@@ -115,7 +115,7 @@ describe("getSegmentValue — dot-path traversal", () => {
     // forced to thread a warning handler through every call site.
     const seg = decodeSegment("NM1*IL*1*DOE?", D, noop, POS);
     expect(getSegmentValue(seg, "01", D)).toBe("IL");
-    // Element 3 ends in a bare `?` — the default emit silently swallows
+    // Element 3 ends in a bare `?` - the default emit silently swallows
     // the dangling-release warning emitted on read; the returned value
     // is byte-faithful (the unpaired `?` is preserved).
     expect(getSegmentValue(seg, "03", D)).toBe("DOE?");
@@ -132,7 +132,7 @@ describe("getSegmentValue — dot-path traversal", () => {
   });
 });
 
-describe("getAllSegmentValues — all repetitions / components", () => {
+describe("getAllSegmentValues - all repetitions / components", () => {
   it("returns every repetition's element text when no `-N` is given", () => {
     const seg = decodeSegment("EQ*30^35^88", D, noop, POS);
     expect(getAllSegmentValues(seg, "01", D)).toEqual(["30", "35", "88"]);

@@ -1,11 +1,11 @@
 /**
- * `get820Payments` — extract a typed {@link X12PremiumPayments} from a
+ * `get820Payments` - extract a typed {@link X12PremiumPayments} from a
  * parsed X12 `005010X218` transaction set (820 Payroll Deducted and Other
  * Group Premium Payment for Insurance Products). Walk the body segments via
  * a small state machine guided by the dogfooded loop spec (see
  * {@link "./loop-spec.js".PREMIUM_820_LOOP_2000A}). Lenient on parse: every
  * recoverable deviation is preserved verbatim, never thrown. Money is
- * decoded as {@link "../../decimal.js".X12Decimal} (never `parseFloat` —
+ * decoded as {@link "../../decimal.js".X12Decimal} (never `parseFloat` -
  * float arithmetic destroys cents on a real-world premium remittance).
  *
  * Spec source: WPC TR3 `005010X218`.
@@ -39,7 +39,7 @@ import type {
 
 /**
  * Extract a typed {@link X12PremiumPayments} from an 820 transaction set.
- * Pure function — no I/O, no global state. Returns `undefined` only if the
+ * Pure function - no I/O, no global state. Returns `undefined` only if the
  * input transaction's ST-01 is not `"820"` (mis-routed call); every other
  * deviation is recoverable and the verbatim segments remain on
  * `tx.segments`.
@@ -98,7 +98,7 @@ export function get820Payments(
       case "N1": {
         // A header-level party. Once a remittance loop is open, N1 belongs
         // to that loop's party identification (Loop 2100A) and is preserved
-        // verbatim only — the typed surface carries receiver / remitter at
+        // verbatim only - the typed surface carries receiver / remitter at
         // the header.
         if (current !== undefined) break;
         const qualifier = elementValue(seg, 1, delimiters);
@@ -383,7 +383,7 @@ function decodeAdx(seg: X12Segment, delimiters: Delimiters): X12PremiumAdjustmen
 }
 
 // ---------------------------------------------------------------------------
-// Party / address mutators (immutable — return a new party with the change).
+// Party / address mutators (immutable - return a new party with the change).
 // ---------------------------------------------------------------------------
 
 const EMPTY_ADDRESS: X12PremiumAddress = Object.freeze({

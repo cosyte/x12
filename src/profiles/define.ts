@@ -1,5 +1,5 @@
 /**
- * `defineProfile()` — public factory for building {@link
+ * `defineProfile()` - public factory for building {@link
  * "./types.js".X12Profile} objects with validation + a structured
  * `describe()` attached. Mirrors hl7's `defineProfile` flow: validate name →
  * validate keys → validate self quirks → merge `extends` → re-validate the
@@ -38,7 +38,7 @@ import { validateOptionKeys, validateProfileName, validateQuirks } from "./valid
  *       effect: "adds",
  *       summary: "Payer Loop 1000A carries a REF*2U additional payer identifier.",
  *       fixture: "remit/835-availity-quirk.edi",
- *       sourceCategory: "Availity 835 ERA companion guide — payer-loop REF",
+ *       sourceCategory: "Availity 835 ERA companion guide - payer-loop REF",
  *     },
  *   ],
  * });
@@ -63,7 +63,7 @@ export function defineProfile(opts: X12ProfileSpec): X12Profile {
   const quirks = mergeQuirks(parents, selfQuirks);
   const description = mergeDescription(parents, opts.description);
 
-  // Post-merge re-validation — catches a rogue parent (a hand-crafted
+  // Post-merge re-validation - catches a rogue parent (a hand-crafted
   // X12Profile bypassing defineProfile whose quirks violate the rules) and
   // id collisions introduced by the merge.
   validateQuirks(quirks, opts.name);

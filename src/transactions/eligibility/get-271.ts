@@ -1,12 +1,12 @@
 /**
- * `get271Eligibility` — extract a typed {@link X12Eligibility} from a
+ * `get271Eligibility` - extract a typed {@link X12Eligibility} from a
  * parsed X12 005010X279A1 271 Health Care Eligibility Benefit Response.
  * Walks the body via a small state machine guided by the HL tree (the
  * dogfooded loop spec lives in `./loop-spec.ts`). Lenient on parse: every
  * recoverable deviation surfaces as a warning, never a throw. Monetary +
  * quantity fields decode as {@link "../../decimal.js".X12Decimal} (never
  * `parseFloat`). HL parent-pointer integrity is enforced via the shared
- * {@link "../shared/hl.js".validateHl} — mismatches emit
+ * {@link "../shared/hl.js".validateHl} - mismatches emit
  * `X12_HL_PARENT_MISMATCH` / `X12_HL_PARENT_LEVEL_INVALID`; the walker
  * NEVER silently re-numbers the hierarchy.
  *
@@ -23,7 +23,7 @@
  * - **III injury/illness** + **LS/LE loop markers** are preserved verbatim,
  *   not typed.
  *
- * Spec source: WPC TR3 `005010X279A1` — Health Care Eligibility Benefit
+ * Spec source: WPC TR3 `005010X279A1` - Health Care Eligibility Benefit
  * Inquiry and Response (270/271).
  */
 
@@ -67,7 +67,7 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Obje
 
 /**
  * Extract a typed {@link X12Eligibility} from a 271 transaction set. Pure
- * function — no I/O, no global state. Returns `undefined` only when the
+ * function - no I/O, no global state. Returns `undefined` only when the
  * input transaction's ST-01 is not `"271"` (mis-routed call); every other
  * deviation is recoverable and surfaces on `result.warnings`.
  *
@@ -178,7 +178,7 @@ export function get271Eligibility(
       case "NM1": {
         const qualifier = elementValue(seg, 1, delimiters);
         if (currentBenefit !== undefined) {
-          // Loop 2120C/D — benefit-related entity (NM1 inside an EB line).
+          // Loop 2120C/D - benefit-related entity (NM1 inside an EB line).
           currentBenefit.relatedEntities.push(decodeEntity(seg, delimiters));
           break;
         }

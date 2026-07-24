@@ -3,17 +3,17 @@
  *
  * Two acks ship side-by-side:
  *
- * - **999** (Implementation Acknowledgment) — TR3 005010X231A1.
+ * - **999** (Implementation Acknowledgment) - TR3 005010X231A1.
  *   Transaction-set level; reports per-transaction structural disposition.
  *   Parse + build are pure functions; the builder REFUSES to fabricate an
  *   `A` against a non-empty error list.
- * - **TA1** (Interchange Acknowledgment) — ASC X12 standard, envelope
+ * - **TA1** (Interchange Acknowledgment) - ASC X12 standard, envelope
  *   level. Reports interchange-envelope structural disposition.
  *
  * Both acknowledgments carry NO PHI by design: control numbers, segment
  * IDs, position counters, and error-condition codes only. This is the
  * safety property that makes the "mechanically build the disposition you
- * are told" pattern safe — neither builder ever auto-sends, opens a
+ * are told" pattern safe - neither builder ever auto-sends, opens a
  * socket, or touches the filesystem.
  */
 

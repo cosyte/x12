@@ -5,7 +5,7 @@
  * so renaming or removing a code is a BREAKING change.
  *
  * Snapshotting the full sorted code set turns any such change into a failing
- * test with a readable diff — a deliberate tripwire. Updating the snapshot
+ * test with a readable diff - a deliberate tripwire. Updating the snapshot
  * (`vitest -u`) is the explicit acknowledgement that the public surface
  * changed and a changeset / breaking-change-tag is owed.
  *

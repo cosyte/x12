@@ -6,7 +6,7 @@
  * - Under normal `pnpm test` (and CI's `ci` job), `X12_FUZZ_RUNS` is unset,
  *   the multiplier is **1**, and every fuzz target runs its committed base
  *   iteration count against the pinned global seed
- *   (`test/setup.fast-check.ts`) — deterministic, coverage-stable.
+ *   (`test/setup.fast-check.ts`) - deterministic, coverage-stable.
  * - The nightly `fuzz.yml` workflow sets `X12_FUZZ_RUNS` (e.g. `20`) to run
  *   20× the base iterations, and rotates `X12_FUZZ_SEED` so each night
  *   explores a different slice of the input space. A failure prints the
@@ -14,7 +14,7 @@
  *   the same `X12_FUZZ_SEED`.
  *
  * Only the true fuzz targets (byte-flip / hostile-input never-throw
- * properties) read this — the round-trip / algebra property tests keep
+ * properties) read this - the round-trip / algebra property tests keep
  * their fixed counts because they assert exact equalities, not the absence
  * of unsanctioned throws, so more runs add cost without added assurance.
  */

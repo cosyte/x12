@@ -34,7 +34,7 @@ const TRAILER = (groupCN: string, txCN: string, controlNumber: string, segCount:
 // parse-999 lenient fallbacks.
 // ---------------------------------------------------------------------------
 
-describe("parse999 — lenient fallbacks", () => {
+describe("parse999 - lenient fallbacks", () => {
   it("falls back to reject on an unknown IK5 disposition", () => {
     const raw =
       ENVELOPE("000000030", "30", "0030") +
@@ -130,7 +130,7 @@ describe("parse999 — lenient fallbacks", () => {
       ENVELOPE("000000036", "36", "0036") +
       "AK1*HC*1*005010X222A2~" +
       "AK2*837*0001*005010X222A2~" +
-      "ZZZ*UNRECOGNIZED~" + // unknown body segment — silently skipped
+      "ZZZ*UNRECOGNIZED~" + // unknown body segment - silently skipped
       "IK5*A~" +
       "AK9*A*1*1*1~" +
       TRAILER("36", "0036", "000000036", 6);
@@ -144,7 +144,7 @@ describe("parse999 — lenient fallbacks", () => {
       ENVELOPE("000000037", "37", "0037") +
       "AK1*HC*1*005010X222A2~" +
       "AK2*837*0001*005010X222A2~" +
-      // no IK5 — next AK2 forces flushResponse(undefined) to synthesize a reject
+      // no IK5 - next AK2 forces flushResponse(undefined) to synthesize a reject
       "AK2*837*0002*005010X222A2~" +
       "IK5*A~" +
       "AK9*P*2*2*1~" +
@@ -156,7 +156,7 @@ describe("parse999 — lenient fallbacks", () => {
   });
 
   it("closes a 999 that hits EOF before AK9 with placeholder counts", () => {
-    // ST is opened but SE never reached — the envelope walker tolerates,
+    // ST is opened but SE never reached - the envelope walker tolerates,
     // and parse999's tail synthesizes a reject AK9 placeholder so the typed
     // model still resolves.
     const raw =
@@ -182,11 +182,11 @@ describe("parse999 — lenient fallbacks", () => {
     const raw =
       ENVELOPE("000000040", "40", "0040") +
       "AK1*HC*1*005010X222A2~" +
-      // IK3 with no preceding AK2 — silently dropped
+      // IK3 with no preceding AK2 - silently dropped
       "IK3*NM1*8*2010BA*8~" +
-      // IK4 with no preceding IK3 — silently dropped
+      // IK4 with no preceding IK3 - silently dropped
       "IK4*1:2*66*7~" +
-      // CTX with no IK3/IK4 in flight — silently dropped
+      // CTX with no IK3/IK4 in flight - silently dropped
       "CTX*ORPHAN CONTEXT~" +
       "AK9*A*0*0*0~" +
       TRAILER("40", "0040", "000000040", 5);
@@ -228,7 +228,7 @@ const BASE_ACCEPT: Build999Spec = {
   },
 };
 
-describe("build999 — branch coverage", () => {
+describe("build999 - branch coverage", () => {
   it("emits IK4 with component and repetition positions", () => {
     const ix = build999({
       ...BASE_ACCEPT,
@@ -272,7 +272,7 @@ describe("build999 — branch coverage", () => {
     expect(segIds).toEqual(["ST", "AK1", "AK2", "IK3", "CTX", "IK4", "CTX", "IK5", "AK9", "SE"]);
   });
 
-  it("emits IK4 with only repetition (no component) — empty component slot preserved", () => {
+  it("emits IK4 with only repetition (no component) - empty component slot preserved", () => {
     const ix = build999({
       ...BASE_ACCEPT,
       envelope: {
@@ -537,7 +537,7 @@ describe("build999 — branch coverage", () => {
 // parseTA1 / buildTA1 branch coverage.
 // ---------------------------------------------------------------------------
 
-describe("parseTA1 — branch coverage", () => {
+describe("parseTA1 - branch coverage", () => {
   it("falls back to reject on an unknown TA1 ack code", () => {
     const raw =
       "ISA*00*          *00*          *ZZ*RECEIVER       *ZZ*SENDER         *250101*1230*^*00501*000000080*0*P*:~" +
@@ -560,7 +560,7 @@ describe("parseTA1 — branch coverage", () => {
   });
 });
 
-describe("buildTA1 — branch coverage", () => {
+describe("buildTA1 - branch coverage", () => {
   it("honors a custom elementSeparator (companion-guide quirk)", () => {
     const ta1 = buildTA1(
       {
@@ -580,7 +580,7 @@ describe("buildTA1 — branch coverage", () => {
 // Public disposition predicate (called by consumers narrowing on the ack code).
 // ---------------------------------------------------------------------------
 
-describe("isAcceptDisposition — public surface", () => {
+describe("isAcceptDisposition - public surface", () => {
   it("returns true for the three accept dispositions (A, E, P)", () => {
     expect(isAcceptDisposition("A")).toBe(true);
     expect(isAcceptDisposition("E")).toBe(true);

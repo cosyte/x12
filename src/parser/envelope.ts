@@ -2,7 +2,7 @@
  * Envelope decoder for the `@cosyte/x12` parser pipeline. Consumes a raw
  * input string + the {@link Delimiters} detected by `./delimiters.ts` and
  * walks ISA → GS..GE+ → IEA, producing an {@link X12Interchange}. Phase 1
- * keeps ST..SE transaction bodies **opaque** — `transactions[].segments`
+ * keeps ST..SE transaction bodies **opaque** - `transactions[].segments`
  * carries raw segment strings (terminator stripped); Phase 2 adds segment
  * decode on top.
  *
@@ -47,7 +47,7 @@ import type { X12ParseWarning } from "./warnings.js";
  * normalization downstream. `elements[0]` is `"ISA"`; `elements[1..16]`
  * are the 16 fixed-width values, with leading/trailing element-separator-
  * adjacent padding preserved verbatim (X12 element widths are spec-fixed,
- * so consumers can trim if they wish — we never do, to keep round-trip
+ * so consumers can trim if they wish - we never do, to keep round-trip
  * byte-exact).
  *
  * @internal
@@ -56,7 +56,7 @@ function decodeIsa(raw: string, delimiters: Delimiters): IsaSegment {
   const isaRaw = raw.slice(0, ISA_MIN_LENGTH);
   // The terminator is at byte 105; the 105-byte head is the elements area.
   const isaHead = isaRaw.slice(0, ISA_MIN_LENGTH - 1);
-  // Split into ["ISA", e1, e2, …, e16] — exactly 17 entries by construction
+  // Split into ["ISA", e1, e2, …, e16] - exactly 17 entries by construction
   // because the element-separator-position guard in delimiters.ts already
   // verified the layout.
   const parts = isaHead.split(delimiters.element);
@@ -67,7 +67,7 @@ function decodeIsa(raw: string, delimiters: Delimiters): IsaSegment {
  * Strip a single optional CRLF / CR / LF sequence at the head of the
  * remaining input. Many real-world senders append CRLF after every segment
  * terminator for human readability; Phase 1 silently tolerates it (no
- * warning — matches the hl7 Tier-1 silent-normalize stance for line
+ * warning - matches the hl7 Tier-1 silent-normalize stance for line
  * endings).
  *
  * @internal
@@ -87,14 +87,14 @@ function stripLeadingNewlines(text: string, start: number): number {
  * literal `?` then a real terminator). Returns the index of the first
  * unescaped terminator, or `-1` if none remains. A naive `indexOf` would
  * split on an escaped terminator and corrupt any value carrying a literal
- * segment-terminator byte — the asymmetry the serializer's `escapeRelease`
+ * segment-terminator byte - the asymmetry the serializer's `escapeRelease`
  * is meant to prevent.
  *
  * @internal
  */
 function findUnescapedTerminator(text: string, from: number, term: string): number {
   // When the terminator IS the release character (a degenerate delimiter
-  // set), `?` cannot also escape — fall back to a literal scan so a `?`
+  // set), `?` cannot also escape - fall back to a literal scan so a `?`
   // terminator still splits, matching the historical behaviour.
   if (term.length !== 1 || term === RELEASE_CHAR) return text.indexOf(term, from);
   let i = from;
@@ -130,7 +130,7 @@ function splitSegments(
   while (cursor < text.length) {
     const termIdx = findUnescapedTerminator(text, cursor, term);
     if (termIdx === -1) {
-      // No further terminator — the trailing bytes are an unterminated
+      // No further terminator - the trailing bytes are an unterminated
       // segment. Preserve them as a final segment so they're visible to
       // the caller (the envelope walker will surface them as a missing
       // trailer warning if they were structural). If they're not a real
@@ -178,10 +178,10 @@ function el(elements: readonly string[], index: number): string {
 }
 
 /**
- * Decode an interchange body — everything past the ISA — into the typed
+ * Decode an interchange body - everything past the ISA - into the typed
  * `groups`/`iea`/`trailingBytes` shape and the warnings collected along
  * the way. Pure function with the caller-supplied delimiters; never
- * throws (lenient mode is the only mode at this layer — Tier-3 fatals
+ * throws (lenient mode is the only mode at this layer - Tier-3 fatals
  * arose earlier in `detectDelimiters`).
  *
  * @internal
@@ -202,7 +202,7 @@ export function decodeEnvelope(
    * Single chokepoint that collects every warning emitted from any sub-
    * pass (envelope walker + per-segment decode). Defined once here so the
    * three `decodeSegment` call sites (ST / SE / body) share one function
-   * identity — the alternative (inline arrows per call site) inflates
+   * identity - the alternative (inline arrows per call site) inflates
    * function count for the coverage gate without changing behavior.
    */
   const collectWarning = (w: X12ParseWarning): void => {
@@ -210,7 +210,7 @@ export function decodeEnvelope(
   };
   const isa = decodeIsa(raw, delimiters);
 
-  // Pre-005010 detection — ISA-12 != "00501" (Tier-2 warning, never refused).
+  // Pre-005010 detection - ISA-12 != "00501" (Tier-2 warning, never refused).
   const isa12 = el(isa.elements, 12);
   if (isa12 !== "00501") {
     warnings.push(pre005010({ segmentIndex: 0, interchangeIndex: 0, elementIndex: 12 }, isa12));
@@ -342,7 +342,7 @@ export function decodeEnvelope(
         // TA1 is an envelope-level Interchange Acknowledgment. Per the ASC
         // X12 standard it appears between ISA and the first GS, or between
         // groups, or alone in an ISA..IEA with no GS at all (TA1-only
-        // interchange). At envelope level it is structurally expected — no
+        // interchange). At envelope level it is structurally expected - no
         // unexpected-segment warning. Inside an open transaction the
         // default branch surfaces it as a body segment (see below). The
         // raw + elements pair mirrors ISA / GS / GE / IEA so consumers can
@@ -351,7 +351,7 @@ export function decodeEnvelope(
           ta1Segments.push({ raw: segmentText, elements });
           break;
         }
-        // TA1 inside an open group is non-spec — fall through to the
+        // TA1 inside an open group is non-spec - fall through to the
         // unexpected-segment path so the structural break is flagged.
         warnings.push(
           unexpectedSegment(
@@ -361,7 +361,7 @@ export function decodeEnvelope(
               groupIndex: groups.length,
             },
             "TA1",
-            "TA1 segment is envelope-level — appeared inside an open functional group",
+            "TA1 segment is envelope-level - appeared inside an open functional group",
           ),
         );
         break;
@@ -386,7 +386,7 @@ export function decodeEnvelope(
       }
       case "GE": {
         if (currentGroup === undefined) {
-          // Stray GE outside any open group — preserve lenient-never-
+          // Stray GE outside any open group - preserve lenient-never-
           // throw, but surface as `X12_UNEXPECTED_SEGMENT` so consumers
           // can flag the structural break.
           warnings.push(
@@ -492,7 +492,7 @@ export function decodeEnvelope(
           finalizeGroup(currentGroup, undefined);
         }
         // Currents are not reset here because the IEA branch returns
-        // immediately after the trailing-bytes block below — no further
+        // immediately after the trailing-bytes block below - no further
         // iteration will read them.
         iea = { raw: segmentText, elements };
         // IEA-01 group count vs actual.
@@ -519,7 +519,7 @@ export function decodeEnvelope(
             ),
           );
         }
-        // Trailing-bytes detection — anything past IEA is multi-ISA or
+        // Trailing-bytes detection - anything past IEA is multi-ISA or
         // garbage (multi-ISA support is out of v1 scope per roadmap §2).
         // Best-effort preservation: join the leftover segment slices
         // with the segment terminator and append a final terminator.
@@ -559,7 +559,7 @@ export function decodeEnvelope(
           // Outside any transaction, a body segment is structurally
           // unexpected. The empty-name guard skips the synthetic empty
           // "segment" the splitter produces after a trailing terminator
-          // (e.g. an interchange that ends `...IEA*1*1~\r\n` — the
+          // (e.g. an interchange that ends `...IEA*1*1~\r\n` - the
           // post-terminator newline-only chunk is not a real segment).
           warnings.push(
             unexpectedSegment(

@@ -10,7 +10,7 @@
  * - X12Decimal: the HD AMT premium decodes as decimal, not float.
  * - Safety-critical maintenance type: an unknown INS-03 raises
  *   `X12_834_UNKNOWN_MAINTENANCE_TYPE` on that member only and NEVER infers
- *   an action — the verbatim code is preserved.
+ *   an action - the verbatim code is preserved.
  * - **Streaming property**: a programmatically generated 10MB+ synthetic
  *   834 yields one `X12Enrollment` per INS without materializing the whole
  *   roster; early-break stops the walk.
@@ -52,7 +52,7 @@ async function collect834(raw: string): Promise<X12Enrollment[]> {
   return out;
 }
 
-describe("get834Header — Tier-1 canonical (X220A1)", () => {
+describe("get834Header - Tier-1 canonical (X220A1)", () => {
   it("decodes the BGN header and the sponsor + payer parties", () => {
     const raw = readFileSync(join(FIXTURE_DIR, "834-canonical.edi"), "utf8");
     const { delimiters, tx } = load834(raw);
@@ -67,7 +67,7 @@ describe("get834Header — Tier-1 canonical (X220A1)", () => {
   });
 });
 
-describe("get834Enrollments — Tier-1 canonical (X220A1)", () => {
+describe("get834Enrollments - Tier-1 canonical (X220A1)", () => {
   it("streams one member per INS loop with resolved maintenance types", async () => {
     const raw = readFileSync(join(FIXTURE_DIR, "834-canonical.edi"), "utf8");
     const members = await collect834(raw);
@@ -113,7 +113,7 @@ describe("get834Enrollments — Tier-1 canonical (X220A1)", () => {
   });
 });
 
-describe("get834Enrollments — safety-critical maintenance type", () => {
+describe("get834Enrollments - safety-critical maintenance type", () => {
   it("warns on an unknown INS-03 and never infers the action", async () => {
     const raw = [
       "ISA*00*          *00*          *ZZ*EMPLOYERCO     *ZZ*MEDPAY         *260601*1200*^*00501*000000001*0*P*:~",
@@ -137,31 +137,31 @@ describe("get834Enrollments — safety-critical maintenance type", () => {
   });
 });
 
-describe("get834Header — edge cases", () => {
+describe("get834Header - edge cases", () => {
   it("ignores a non-P5/IN header party and skips a valueless header DTP", () => {
     const raw = readFileSync(join(FIXTURE_DIR, "834-edge.edi"), "utf8");
     const { delimiters, tx } = load834(raw);
     const header = get834Header(delimiters, tx);
-    // N1*BO is neither sponsor (P5) nor payer (IN) — both stay undefined.
+    // N1*BO is neither sponsor (P5) nor payer (IN) - both stay undefined.
     expect(header?.sponsor).toBeUndefined();
     expect(header?.payer).toBeUndefined();
-    // DTP*007*D8 has no DTP-03 value — it produces no date.
+    // DTP*007*D8 has no DTP-03 value - it produces no date.
     expect(header?.dates).toHaveLength(0);
     expect(header?.references.map((r) => r.qualifier)).toEqual(["38"]);
   });
 });
 
-describe("get834Enrollments — edge cases", () => {
+describe("get834Enrollments - edge cases", () => {
   it("skips member-detail segments that precede the member NM1", async () => {
     const raw = readFileSync(join(FIXTURE_DIR, "834-edge.edi"), "utf8");
     const members = await collect834(raw);
     expect(members).toHaveLength(2);
 
     // Member A: DMG/N3/N4 arrive before any IL NM1, and the only NM1 is a
-    // non-IL custodial party (31) — so no member is ever attached.
+    // non-IL custodial party (31) - so no member is ever attached.
     const a = members[0];
     expect(a?.member).toBeUndefined();
-    // The AMT here has no open coverage (no HD) — it is dropped, not attached.
+    // The AMT here has no open coverage (no HD) - it is dropped, not attached.
     expect(a?.healthCoverages).toHaveLength(0);
   });
 
@@ -169,7 +169,7 @@ describe("get834Enrollments — edge cases", () => {
     const raw = readFileSync(join(FIXTURE_DIR, "834-edge.edi"), "utf8");
     const members = await collect834(raw);
     const b = members[1];
-    // INS-03 is empty — no maintenance type, no description, no warning.
+    // INS-03 is empty - no maintenance type, no description, no warning.
     expect(b?.maintenanceTypeCode).toBe("");
     expect(b?.maintenanceTypeDescription).toBeUndefined();
     expect(b?.warnings).toHaveLength(1); // the unknown HD maintenance code, below.
@@ -188,7 +188,7 @@ describe("get834Enrollments — edge cases", () => {
     const b = members[1];
     expect(b?.healthCoverages).toHaveLength(1);
     const cov = b?.healthCoverages[0];
-    // HD-01 "ZZ" is not in the X12 0875 snapshot — verbatim, with a warning.
+    // HD-01 "ZZ" is not in the X12 0875 snapshot - verbatim, with a warning.
     expect(cov?.maintenanceTypeCode).toBe("ZZ");
     expect(cov?.maintenanceTypeDescription).toBeUndefined();
     expect(b?.warnings[0]?.code).toBe(WARNING_CODES.X12_834_UNKNOWN_MAINTENANCE_TYPE);
@@ -217,7 +217,7 @@ describe("get834Enrollments — edge cases", () => {
   });
 });
 
-describe("get834Enrollments — streaming property (10MB+ synthetic file)", () => {
+describe("get834Enrollments - streaming property (10MB+ synthetic file)", () => {
   function buildLarge834(memberCount: number): string {
     const head = [
       "ISA*00*          *00*          *ZZ*EMPLOYERCO     *ZZ*MEDPAY         *260601*1200*^*00501*000000001*0*P*:~",
@@ -273,7 +273,7 @@ describe("get834Enrollments — streaming property (10MB+ synthetic file)", () =
   }, 120_000);
 });
 
-describe("get834 — guards + dogfooded specs", () => {
+describe("get834 - guards + dogfooded specs", () => {
   it("returns undefined / yields nothing for a non-834 transaction set", async () => {
     const raw = readFileSync(join(FIXTURE_DIR, "834-canonical.edi"), "utf8");
     const { delimiters, tx } = load834(raw);

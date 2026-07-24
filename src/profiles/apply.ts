@@ -1,10 +1,10 @@
 /**
- * `partitionWarnings()` — the one behavioural hook a v1 x12 profile carries.
+ * `partitionWarnings()` - the one behavioural hook a v1 x12 profile carries.
  *
  * The lenient parser absorbs most corpus deviations with zero warnings, so a
  * profile is primarily descriptive. Where a deviation DOES surface a warning,
  * a profile lets a consumer separate the warnings it expects (because a known
- * partner quirk produces them) from the ones it does not — so an integration
+ * partner quirk produces them) from the ones it does not - so an integration
  * can alert only on the genuinely unexpected. The split is driven by the
  * union of each quirk's `expectedWarnings` (see `describe().expectedWarnings`).
  *

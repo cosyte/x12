@@ -1,18 +1,18 @@
 #!/usr/bin/env tsx
 /**
- * `pnpm refresh:code-lists` — the release-event tool for the bundled X12
+ * `pnpm refresh:code-lists` - the release-event tool for the bundled X12
  * code-list snapshots (CARC / RARC / CSCC / CSC / CLP-status / maintenance
  * type / service type).
  *
  * Two modes:
  *
- *   (default)  VALIDATE + FRESHNESS AUDIT — offline, deterministic, CI-safe.
+ *   (default)  VALIDATE + FRESHNESS AUDIT - offline, deterministic, CI-safe.
  *              Loads every bundled `CodeListSnapshot` and asserts it is
  *              well-formed (meta present + ISO dates, non-empty unique codes,
  *              non-empty descriptions), then prints a freshness table (each
  *              list's snapshot date, the WPC/CMS/X12 publication date it
  *              reflects, its update cadence, and its bundled-code count). A
- *              malformed snapshot exits non-zero — this is a lint gate for the
+ *              malformed snapshot exits non-zero - this is a lint gate for the
  *              hand-maintained snapshots, and is exercised by
  *              `test/scripts/refresh-code-lists.test.ts` on every `pnpm test`.
  *
@@ -22,14 +22,14 @@
  *              redistribution-terms review (roadmap Phase 10 "O3") that has not
  *              cleared, and requires outbound network. This mode prints the
  *              per-list canonical source manifest a release engineer needs and
- *              exits 2 — it deliberately does NOT fabricate descriptions the
+ *              exits 2 - it deliberately does NOT fabricate descriptions the
  *              maintainers have not reviewed. See `KNOWN-LIMITATIONS.md`.
  *
- * Pure Node, zero runtime deps — mirrors `scripts/phi-scan.ts`. The library
+ * Pure Node, zero runtime deps - mirrors `scripts/phi-scan.ts`. The library
  * itself NEVER fetches a code list at runtime: snapshots are versioned data
  * artifacts refreshed on a release cadence, and an inbound code absent from a
  * snapshot still parses verbatim (only its human-readable description is
- * missing) — a stale snapshot never yields a wrong code.
+ * missing) - a stale snapshot never yields a wrong code.
  *
  * Exit codes: 0 (snapshots valid), 1 (a snapshot failed validation), 2
  * (--fetch requested, which is not available here).
@@ -58,44 +58,44 @@ interface RefreshTarget {
 /**
  * The seven {@link CodeListSnapshot}-shaped bundled lists. (The Claim
  * Adjustment Group codes and the HI-qualifier registry are frozen literal
- * unions / a spec-fixed registry — not WPC-refreshable snapshots — so they are
+ * unions / a spec-fixed registry - not WPC-refreshable snapshots - so they are
  * out of this tool's scope by design.)
  */
 const TARGETS: readonly RefreshTarget[] = [
   {
     snapshot: CARC,
-    cadence: "WPC — monthly",
+    cadence: "WPC - monthly",
     canonicalSource: "https://x12.org/codes/claim-adjustment-reason-codes",
   },
   {
     snapshot: RARC,
-    cadence: "WPC — monthly",
+    cadence: "WPC - monthly",
     canonicalSource: "https://x12.org/codes/remittance-advice-remark-codes",
   },
   {
     snapshot: CLAIM_STATUS_CATEGORY_CODES,
-    cadence: "WPC — monthly",
+    cadence: "WPC - monthly",
     canonicalSource: "https://x12.org/codes/claim-status-category-codes",
   },
   {
     snapshot: CLAIM_STATUS_CODES,
-    cadence: "WPC — monthly",
+    cadence: "WPC - monthly",
     canonicalSource: "https://x12.org/codes/claim-status-codes",
   },
   {
     snapshot: SERVICE_TYPE_CODES,
-    cadence: "X12 005010X279A1 — standard release cadence (rare)",
+    cadence: "X12 005010X279A1 - standard release cadence (rare)",
     canonicalSource:
       "ASC X12 005010X279A1 TR3 §EB Eligibility or Benefit Information (Code Source 411)",
   },
   {
     snapshot: CLP_STATUS,
-    cadence: "X12 005010X221A1 — standard release cadence (rare)",
+    cadence: "X12 005010X221A1 - standard release cadence (rare)",
     canonicalSource: "ASC X12 005010X221A1 TR3 §CLP Claim Payment Information (Code Source 65)",
   },
   {
     snapshot: MAINTENANCE_TYPE_CODES,
-    cadence: "X12 005010X220A1 — standard release cadence (rare)",
+    cadence: "X12 005010X220A1 - standard release cadence (rare)",
     canonicalSource: "ASC X12 005010X220A1 TR3 §INS Member Level Detail (Code Source 875)",
   },
 ] as const;
@@ -153,10 +153,10 @@ export function validateCodeLists(): string[] {
 
 /** Render the freshness audit table (stdout side of the default mode). */
 function printFreshnessReport(): void {
-  process.stdout.write("\nBundled X12 code-list snapshots — freshness audit\n");
+  process.stdout.write("\nBundled X12 code-list snapshots - freshness audit\n");
   process.stdout.write("(snapshots are versioned data artifacts; a stale one yields a missing\n");
   process.stdout.write(
-    " description, never a wrong code — refresh is a release event, not runtime)\n\n",
+    " description, never a wrong code - refresh is a release event, not runtime)\n\n",
   );
   for (const { snapshot, cadence } of TARGETS) {
     const { meta, codes } = snapshot;

@@ -3,7 +3,7 @@
  *
  * - All six 835 Tier-1 + Tier-2 fixtures: end-to-end extraction.
  * - Money discipline: every monetary field decodes as `X12Decimal`, never
- *   `number` — float arithmetic destroys cents at scale.
+ *   `number` - float arithmetic destroys cents at scale.
  * - Balance invariants per TR3 X221A1 §1.10.2: line + claim + top-of-remit
  *   warn loudly on mismatch, NEVER silently rebalance.
  * - CAS triple flattening: one CAS segment carrying multiple triples
@@ -46,7 +46,7 @@ function readRemitFixture(name: string): X12Remittance {
   return remit;
 }
 
-describe("get835 — Medicare canonical fixture", () => {
+describe("get835 - Medicare canonical fixture", () => {
   it("decodes BPR / TRN / payer / payee / one claim / one service line", () => {
     const remit = readRemitFixture("835-medicare-canonical.edi");
 
@@ -102,7 +102,7 @@ describe("get835 — Medicare canonical fixture", () => {
     expect(remit.warnings).toEqual([]);
   });
 
-  it("every monetary field decodes as X12Decimal — never a number", () => {
+  it("every monetary field decodes as X12Decimal - never a number", () => {
     const remit = readRemitFixture("835-medicare-canonical.edi");
     expect(remit.payment.totalActualPayment).toBeInstanceOf(X12Decimal);
     expect(remit.claims[0]?.totalChargeAmount).toBeInstanceOf(X12Decimal);
@@ -112,7 +112,7 @@ describe("get835 — Medicare canonical fixture", () => {
   });
 });
 
-describe("get835 — multi-claim with mixed CO/PR/OA/PI adjustments", () => {
+describe("get835 - multi-claim with mixed CO/PR/OA/PI adjustments", () => {
   it("decodes two claims and flattens the CAS triple into 2 line-level adjustments", () => {
     const remit = readRemitFixture("835-multi-claim.edi");
     expect(remit.claims).toHaveLength(2);
@@ -141,7 +141,7 @@ describe("get835 — multi-claim with mixed CO/PR/OA/PI adjustments", () => {
   });
 });
 
-describe("get835 — PLB take-back and top-of-remit balance", () => {
+describe("get835 - PLB take-back and top-of-remit balance", () => {
   it("PLB amount reduces BPR-02 (raw EDI sign convention)", () => {
     const remit = readRemitFixture("835-with-plb.edi");
     expect(remit.claims).toHaveLength(1);
@@ -158,7 +158,7 @@ describe("get835 — PLB take-back and top-of-remit balance", () => {
   });
 });
 
-describe("get835 — CARC / RARC integration", () => {
+describe("get835 - CARC / RARC integration", () => {
   it("looks up CARC descriptions for known codes; warns + preserves unknown verbatim", () => {
     const remit = readRemitFixture("835-carc-rarc-mix.edi");
     const claim = remit.claims[0];
@@ -176,7 +176,7 @@ describe("get835 — CARC / RARC integration", () => {
   it("looks up RARC descriptions on LQ*HE (service-line); warns on unknown RARC", () => {
     const remit = readRemitFixture("835-carc-rarc-mix.edi");
     // LQ in this fixture follows the SVC, so the remarks land on the
-    // service line (not the claim) — both placements are spec-valid per
+    // service line (not the claim) - both placements are spec-valid per
     // X221A1 §LQ.
     const remarks = remit.claims[0]?.serviceLines[0]?.remarks ?? [];
     expect(remarks).toHaveLength(2);
@@ -197,15 +197,15 @@ describe("get835 — CARC / RARC integration", () => {
   });
 });
 
-describe("get835 — balance invariants warn loudly, never silently rebalance", () => {
+describe("get835 - balance invariants warn loudly, never silently rebalance", () => {
   it("emits X12_835_REMIT_BALANCE_MISMATCH on the imbalanced fixture", () => {
     const remit = readRemitFixture("835-imbalance.edi");
-    // The 835-imbalance fixture under-adjusts by $10 — claim AND line both warn.
+    // The 835-imbalance fixture under-adjusts by $10 - claim AND line both warn.
     const balanceWarnings = remit.warnings.filter(
       (w) => w.code === WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
     );
     expect(balanceWarnings.length).toBeGreaterThanOrEqual(1);
-    // The model is NOT silently rebalanced — the inbound values stand.
+    // The model is NOT silently rebalanced - the inbound values stand.
     expect(remit.claims[0]?.totalChargeAmount.toString()).toBe("100.00");
     expect(remit.claims[0]?.totalPaymentAmount.toString()).toBe("80.00");
     expect(remit.claims[0]?.serviceLines[0]?.adjustments[0]?.amount.toString()).toBe("10.00");
@@ -226,7 +226,7 @@ describe("get835 — balance invariants warn loudly, never silently rebalance", 
   });
 });
 
-describe("get835 — Tier-2 Availity quirk", () => {
+describe("get835 - Tier-2 Availity quirk", () => {
   it("tolerates payer-loop REF*2U + REF*F8 mid-line and balances", () => {
     const remit = readRemitFixture("835-availity-quirk.edi");
     expect(remit.payer?.name).toBe("AVAILITY-ROUTED COMMERCIAL PAYER");
@@ -242,7 +242,7 @@ describe("get835 — Tier-2 Availity quirk", () => {
   });
 });
 
-describe("get835 — non-835 transaction returns undefined", () => {
+describe("get835 - non-835 transaction returns undefined", () => {
   it("returns undefined when called with a different transaction set id", () => {
     const raw = readFileSync(
       join(__dirname, "fixtures", "ack", "999-accept.edi"),
@@ -255,7 +255,7 @@ describe("get835 — non-835 transaction returns undefined", () => {
   });
 });
 
-describe("835 loop spec — dogfooded via defineLoopSpec", () => {
+describe("835 loop spec - dogfooded via defineLoopSpec", () => {
   it("Loop 2000 nests Loop 2100 which nests Loop 2110 (frozen, structurally valid)", () => {
     expect(REMIT_835_LOOP_2000.trigger).toBe("LX");
     expect(REMIT_835_LOOP_2100.trigger).toBe("CLP");

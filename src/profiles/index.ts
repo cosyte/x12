@@ -5,13 +5,13 @@
  * `partitionWarnings`, the `X12ProfileError` class, and the supporting types.
  *
  * Contract (mirrors hl7): individual built-ins are NOT top-level named
- * exports — consumers reach them via `profiles.availity`, `profiles.bcbsCommon`
+ * exports - consumers reach them via `profiles.availity`, `profiles.bcbsCommon`
  * ("availity" is too generic for a top-level export).
  *
  * **Shipped built-ins are intentionally few.** Per the locked hard rule, a
  * built-in profile may only ship quirks grounded in a real Tier-2 fixture
  * demonstrating the deviation. The roadmap's `changeHealthcare`, `medicareFFS`,
- * `waystar`, and `trizetto` are DEFERRED — the current corpus has no fixture
+ * `waystar`, and `trizetto` are DEFERRED - the current corpus has no fixture
  * exhibiting a parser-relevant deviation unique to them (the Medicare fixtures
  * are canonical `:` baselines, not deviations). They land as corpus accrues;
  * see KNOWN-LIMITATIONS.md.

@@ -1,6 +1,6 @@
 /**
  * Unit tests for the 005010X217 278 request / 005010X216 278 response emit
- * surface — `build278Request` / `build278Response`. Covers:
+ * surface - `build278Request` / `build278Response`. Covers:
  *
  * - Happy path: a built request round-trips through `get278Request`
  *   field-for-field (BHT header, UMO / requester entities, subscriber member
@@ -134,7 +134,7 @@ const CANONICAL_SPEC: Build278Spec = {
   },
 };
 
-describe("build278 — envelope identity", () => {
+describe("build278 - envelope identity", () => {
   it("emits GS-01 HI / ST-01 278 / ST-03 005010X217 for a request", () => {
     const ix = build278Request(CANONICAL_SPEC);
     const group = ix.groups[0];
@@ -162,7 +162,7 @@ describe("build278 — envelope identity", () => {
   });
 });
 
-describe("build278Request — round-trip fidelity", () => {
+describe("build278Request - round-trip fidelity", () => {
   it("reproduces the BHT header, parties, member, and review", () => {
     const review = requestOf(build278Request(CANONICAL_SPEC));
     expect(review.warnings).toHaveLength(0);
@@ -206,7 +206,7 @@ describe("build278Request — round-trip fidelity", () => {
   });
 });
 
-describe("build278Response — verbatim certification decision", () => {
+describe("build278Response - verbatim certification decision", () => {
   const RESPONSE_SPEC: Build278Spec = {
     ...CANONICAL_SPEC,
     header: { ...CANONICAL_SPEC.header, purposeCode: "11", referenceId: "AUTHRESP-202606" },
@@ -254,7 +254,7 @@ describe("build278Response — verbatim certification decision", () => {
   });
 });
 
-describe("build278 — HCR direction gate", () => {
+describe("build278 - HCR direction gate", () => {
   it("refuses a request review carrying an HCR decision (INVALID_SPEC)", () => {
     const spec: Build278Spec = {
       ...CANONICAL_SPEC,
@@ -293,7 +293,7 @@ describe("build278 — HCR direction gate", () => {
   });
 });
 
-describe("build278 — dependent hierarchy", () => {
+describe("build278 - dependent hierarchy", () => {
   const DEPENDENT_SPEC: Build278Spec = {
     ...CANONICAL_SPEC,
     subscriber: {
@@ -342,7 +342,7 @@ describe("build278 — dependent hierarchy", () => {
   });
 });
 
-describe("build278 — nested service review", () => {
+describe("build278 - nested service review", () => {
   it("parents an SS service HL to its EV event HL", () => {
     const spec: Build278Spec = {
       ...CANONICAL_SPEC,
@@ -369,7 +369,7 @@ describe("build278 — nested service review", () => {
   });
 });
 
-describe("build278 — structural refusals", () => {
+describe("build278 - structural refusals", () => {
   it("refuses a subscriber with neither review nor dependent (INVALID_HIERARCHY)", () => {
     const spec: Build278Spec = {
       ...CANONICAL_SPEC,
@@ -441,7 +441,7 @@ describe("build278 — structural refusals", () => {
   });
 });
 
-describe("build278 — PHI safety", () => {
+describe("build278 - PHI safety", () => {
   it("structural-error message carries indices only, never a name / member id", () => {
     const spec: Build278Spec = {
       ...CANONICAL_SPEC,
@@ -466,7 +466,7 @@ describe("build278 — PHI safety", () => {
   });
 });
 
-describe("build278 — optional-field defaults", () => {
+describe("build278 - optional-field defaults", () => {
   it("round-trips a spec that omits the optional member / review fields", () => {
     const spec: Build278Spec = {
       envelope: ENVELOPE,
@@ -489,7 +489,7 @@ describe("build278 — optional-field defaults", () => {
   });
 });
 
-describe("build278 — envelope control-number / date expansion", () => {
+describe("build278 - envelope control-number / date expansion", () => {
   it("zero-pads a short interchange control number to 9 chars", () => {
     const ix = build278Request({
       ...CANONICAL_SPEC,

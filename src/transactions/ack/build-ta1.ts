@@ -1,8 +1,8 @@
 /**
- * `buildTA1` — pure-function builder for an envelope-level TA1 Interchange
+ * `buildTA1` - pure-function builder for an envelope-level TA1 Interchange
  * Acknowledgment. PURE FUNCTION; NEVER auto-sends. The library mechanically
  * builds the disposition it is told; an `A` ack code paired with a note
- * other than `000` (no error) is REFUSED via `AckBuildError` — the same
+ * other than `000` (no error) is REFUSED via `AckBuildError` - the same
  * safety invariant as `build999`.
  *
  * Returns the typed {@link Ta1Segment} (matching the envelope-level shape
@@ -10,7 +10,7 @@
  * {@link "../../parser/types.js".X12Interchange.ta1Segments}). Callers that
  * want a complete on-the-wire byte stream concatenate `raw` + a segment
  * terminator, or wrap the segment inside their preferred envelope. The
- * library does NOT silently invent envelope bytes around it — the caller's
+ * library does NOT silently invent envelope bytes around it - the caller's
  * application boundary owns whether the TA1 is embedded in an outbound
  * interchange or sent as a standalone TA1-only interchange.
  */
@@ -22,11 +22,11 @@ import { ACK_BUILD_ERROR_CODES, AckBuildError } from "./errors.js";
 import type { BuildTA1Spec } from "./types.js";
 
 /**
- * `buildTA1` — assemble a TA1 Interchange Acknowledgment segment from the
+ * `buildTA1` - assemble a TA1 Interchange Acknowledgment segment from the
  * supplied spec. The returned {@link Ta1Segment} carries the 1-indexed
  * 5-element value array (`elements[0]` = `"TA1"`, `elements[1]` =
  * TA1-01, …, `elements[5]` = TA1-05) plus the verbatim wire text on `raw`
- * (no segment terminator appended — that's the envelope's job).
+ * (no segment terminator appended - that's the envelope's job).
  *
  * Safety guards (refused via {@link AckBuildError}):
  *
@@ -42,7 +42,7 @@ import type { BuildTA1Spec } from "./types.js";
  * @param options - Optional delimiter overrides for callers building TA1
  *                  segments embedded in non-default envelopes. The
  *                  defaults match the cosyte parser archetype (`*` element,
- *                  `~` segment) — override when wrapping a TA1 in an ISA
+ *                  `~` segment) - override when wrapping a TA1 in an ISA
  *                  envelope whose declared delimiters differ.
  *
  * @example
@@ -87,7 +87,7 @@ export function buildTA1(spec: BuildTA1Spec, options: BuildTA1Options = {}): Ta1
 }
 
 /**
- * Options accepted by {@link buildTA1}. Both fields are optional — pass
+ * Options accepted by {@link buildTA1}. Both fields are optional - pass
  * none for the cosyte default envelope (`*` element separator). Override
  * only when the TA1 is being embedded in an outer envelope whose declared
  * delimiters differ from the cosyte default.

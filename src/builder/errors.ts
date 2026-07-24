@@ -3,7 +3,7 @@
  * (`buildInterchange`). Distinct from `X12ParseError` (the parser stays
  * lenient and never throws on real-world input) and from `AckBuildError`
  * (the ack-specific disposition guard): `X12BuildError` is raised when the
- * caller hands the builder a structurally impossible envelope spec — an
+ * caller hands the builder a structurally impossible envelope spec - an
  * over-long ISA-13 control number, a malformed segment spec, and the like.
  * Surfacing these as a thrown, code-tagged error keeps the bug at the call
  * site rather than emitting a silently-malformed interchange.
@@ -14,7 +14,7 @@
  * consumers can narrow on `err.code` exhaustively; additions-only thereafter
  * (renaming any code is a breaking change).
  *
- * - `X12_BUILD_INVALID_SPEC` — a spec field violated a structural constraint
+ * - `X12_BUILD_INVALID_SPEC` - a spec field violated a structural constraint
  *   the builder cannot recover from (an ISA-13 / IEA-02 control number longer
  *   than the 9-char fixed width, a segment spec with no segment id, etc.).
  *
@@ -25,7 +25,7 @@
  *   buildInterchange(spec);
  * } catch (err) {
  *   if (err instanceof X12BuildError && err.code === X12_BUILD_ERROR_CODES.X12_BUILD_INVALID_SPEC) {
- *     // application bug — the envelope spec is structurally impossible
+ *     // application bug - the envelope spec is structurally impossible
  *   }
  * }
  * ```
@@ -44,7 +44,7 @@ export type X12BuildErrorCode = (typeof X12_BUILD_ERROR_CODES)[keyof typeof X12_
  * Thrown by {@link "./build-interchange.js".buildInterchange} when the
  * supplied envelope spec is structurally impossible. Carries a stable `code`
  * for programmatic narrowing. Deliberately does NOT extend `X12ParseError`
- * — the parser-vs-builder distinction matters at the type level.
+ * - the parser-vs-builder distinction matters at the type level.
  *
  * @example
  * ```ts

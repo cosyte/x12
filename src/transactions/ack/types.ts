@@ -1,14 +1,14 @@
 /**
  * Typed-model surface for the X12 acknowledgment transactions surfaced
- * by Phase 3 — `005010X231A1` 999 (Implementation Acknowledgment) and the
+ * by Phase 3 - `005010X231A1` 999 (Implementation Acknowledgment) and the
  * envelope-level TA1 (Interchange Acknowledgment).
  *
  * Two kinds of types live here:
  *
  * 1. **Parsed-model types** (`X12Ack999`, `X12AckTA1`, and their nested
- *    pieces) — the immutable result returned by `parse999` / `parseTA1`.
- * 2. **Build-spec types** (`Build999Spec`, `BuildTA1Spec`, …) — the input
- *    accepted by `build999` / `buildTA1`. Builds are PURE FUNCTIONS — they
+ *    pieces) - the immutable result returned by `parse999` / `parseTA1`.
+ * 2. **Build-spec types** (`Build999Spec`, `BuildTA1Spec`, …) - the input
+ *    accepted by `build999` / `buildTA1`. Builds are PURE FUNCTIONS - they
  *    never auto-send, never open sockets, never touch the filesystem.
  *
  * Per ASC X12 standard 999 + TR3 005010X231A1, the 999 hierarchy is:
@@ -37,10 +37,10 @@ import type {
 /**
  * The decoded AK1 functional group response header (loop 1).
  *
- * - `functionalIdCode` — AK1-01: echoes the inbound GS-01 (e.g. `HC` for a
+ * - `functionalIdCode` - AK1-01: echoes the inbound GS-01 (e.g. `HC` for a
  *   claim group).
- * - `groupControlNumber` — AK1-02: echoes the inbound GS-06.
- * - `versionRelease` — AK1-03: echoes the inbound GS-08 (e.g.
+ * - `groupControlNumber` - AK1-02: echoes the inbound GS-06.
+ * - `versionRelease` - AK1-03: echoes the inbound GS-08 (e.g.
  *   `005010X222A2`). Situational at the standard level, ALWAYS present in
  *   X231A1; surfaced as `string | undefined` to remain lenient on parse.
  *
@@ -61,10 +61,10 @@ export interface X12Ack999Ak1 {
 /**
  * The decoded AK2 transaction set response header (loop 2000).
  *
- * - `transactionSetIdCode` — AK2-01: echoes the inbound ST-01 (e.g. `837`,
+ * - `transactionSetIdCode` - AK2-01: echoes the inbound ST-01 (e.g. `837`,
  *   `270`).
- * - `transactionSetControlNumber` — AK2-02: echoes the inbound ST-02.
- * - `implementationConventionReference` — AK2-03: echoes the inbound ST-03
+ * - `transactionSetControlNumber` - AK2-02: echoes the inbound ST-02.
+ * - `implementationConventionReference` - AK2-03: echoes the inbound ST-03
  *   (the TR3 ID, e.g. `005010X222A2`); situational.
  *
  * @example
@@ -83,13 +83,13 @@ export interface X12Ack999Ak2 {
 /**
  * The decoded IK3 implementation data segment note (loop 2100).
  *
- * - `segmentIdCode` — IK3-01: the X12 segment identifier (e.g. `NM1`,
+ * - `segmentIdCode` - IK3-01: the X12 segment identifier (e.g. `NM1`,
  *   `CLP`, `HL`).
- * - `segmentPositionInTransactionSet` — IK3-02: 1-indexed position of the
+ * - `segmentPositionInTransactionSet` - IK3-02: 1-indexed position of the
  *   offending segment inside the inbound ST..SE.
- * - `loopIdentifier` — IK3-03: situational; the loop identifier
+ * - `loopIdentifier` - IK3-03: situational; the loop identifier
  *   (e.g. `2010BA`) where the offending segment lives.
- * - `syntaxErrorCode` — IK3-04: situational; one of
+ * - `syntaxErrorCode` - IK3-04: situational; one of
  *   {@link Ik304Code}. `undefined` when the parent IK3 is purely a
  *   context wrapper for nested IK4s (the per-element error path).
  *
@@ -112,7 +112,7 @@ export interface X12Ack999Ik3 {
  * Position of an element/component/repetition inside a parent segment for
  * an IK4 element note. Element is 1-indexed (the TR3 convention);
  * component and repetition are surfaced exactly as encoded in IK4-01's
- * composite — see TR3 `005010X231A1` §IK4.
+ * composite - see TR3 `005010X231A1` §IK4.
  *
  * @example
  * ```ts
@@ -129,12 +129,12 @@ export interface X12Ack999Ik4Position {
 /**
  * The decoded IK4 implementation data element note (loop 2110).
  *
- * - `position` — IK4-01: composite carrying element / component /
+ * - `position` - IK4-01: composite carrying element / component /
  *   repetition (1-indexed).
- * - `dataElementReferenceNumber` — IK4-02: situational; the ASC X12
+ * - `dataElementReferenceNumber` - IK4-02: situational; the ASC X12
  *   element reference number (e.g. `66` for NM1-08).
- * - `syntaxErrorCode` — IK4-03: required; one of {@link Ik403Code}.
- * - `copyOfBadDataElement` — IK4-04: situational; the verbatim offending
+ * - `syntaxErrorCode` - IK4-03: required; one of {@link Ik403Code}.
+ * - `copyOfBadDataElement` - IK4-04: situational; the verbatim offending
  *   element value. By spec it may be omitted entirely; callers building a
  *   999 SHOULD omit it whenever the offending bytes are PHI (medical IDs,
  *   names, dates). The library never auto-populates this field.
@@ -155,7 +155,7 @@ export interface X12Ack999Ik4 {
 
 /**
  * One IK4 element-level error wrapped with its (optional) IK3-paired CTX
- * context strings — surfaced verbatim because CTX uses a composite syntax
+ * context strings - surfaced verbatim because CTX uses a composite syntax
  * the X231A1 implementer typically writes as `ELEMENT*NM1*8*1`. The
  * library does not try to over-decompose the CTX value at this phase.
  */
@@ -179,8 +179,8 @@ export interface X12Ack999SegmentNote {
 /**
  * The decoded IK5 implementation transaction set response trailer.
  *
- * - `disposition` — IK5-01: one of {@link X12AckDispositionCode}.
- * - `syntaxErrorCodes` — IK5-02..IK5-06: situational; up to five
+ * - `disposition` - IK5-01: one of {@link X12AckDispositionCode}.
+ * - `syntaxErrorCodes` - IK5-02..IK5-06: situational; up to five
  *   transaction-set syntax error codes (code list 718).
  */
 export interface X12Ack999Ik5 {
@@ -198,13 +198,13 @@ export interface X12Ack999TransactionResponse {
 /**
  * The decoded AK9 functional group response trailer.
  *
- * - `disposition` — AK9-01: functional-group-level disposition.
- * - `numberOfTransactionSets` — AK9-02: echoes the inbound GE-01.
- * - `numberOfReceivedTransactionSets` — AK9-03: how many ST..SE pairs
+ * - `disposition` - AK9-01: functional-group-level disposition.
+ * - `numberOfTransactionSets` - AK9-02: echoes the inbound GE-01.
+ * - `numberOfReceivedTransactionSets` - AK9-03: how many ST..SE pairs
  *   actually arrived.
- * - `numberOfAcceptedTransactionSets` — AK9-04: how many were accepted.
+ * - `numberOfAcceptedTransactionSets` - AK9-04: how many were accepted.
  *   By construction `0 <= accepted <= received <= numberOfTransactionSets`.
- * - `syntaxErrorCodes` — AK9-05..AK9-09: situational; up to five
+ * - `syntaxErrorCodes` - AK9-05..AK9-09: situational; up to five
  *   functional-group syntax error codes (code list 716).
  */
 export interface X12Ack999Ak9 {
@@ -223,7 +223,7 @@ export interface X12Ack999Ak9 {
  *
  * `warnings` collects both envelope-level warnings (from `parseX12`) AND
  * any 999-specific warnings (e.g. an unknown disposition code, an AK9
- * count mismatch). The set is additive — never throws on a real-world
+ * count mismatch). The set is additive - never throws on a real-world
  * 999.
  */
 export interface X12Ack999 {
@@ -241,16 +241,16 @@ export interface X12Ack999 {
 /**
  * The decoded TA1 Interchange Acknowledgment.
  *
- * - `interchangeControlNumber` — TA1-01: echoes the inbound ISA-13.
- * - `interchangeDate` — TA1-02: YYMMDD (echoes inbound ISA-09).
- * - `interchangeTime` — TA1-03: HHMM (echoes inbound ISA-10).
- * - `ackCode` — TA1-04: {@link Ta1AckCode}.
- * - `noteCode` — TA1-05: typed when the value is a known I18 code
+ * - `interchangeControlNumber` - TA1-01: echoes the inbound ISA-13.
+ * - `interchangeDate` - TA1-02: YYMMDD (echoes inbound ISA-09).
+ * - `interchangeTime` - TA1-03: HHMM (echoes inbound ISA-10).
+ * - `ackCode` - TA1-04: {@link Ta1AckCode}.
+ * - `noteCode` - TA1-05: typed when the value is a known I18 code
  *   ({@link Ta1NoteCode}); the raw string is preserved verbatim alongside
  *   so unknown extensions round-trip.
- * - `noteCodeRaw` — verbatim TA1-05 string. Equal to `noteCode` when the
+ * - `noteCodeRaw` - verbatim TA1-05 string. Equal to `noteCode` when the
  *   value is a known I18 code; equal to the raw inbound text when not.
- * - `raw` — the underlying envelope-level {@link Ta1Segment}, for
+ * - `raw` - the underlying envelope-level {@link Ta1Segment}, for
  *   byte-exact round-trip.
  *
  * @example
@@ -276,7 +276,7 @@ export interface X12AckTA1 {
 // ---------------------------------------------------------------------------
 
 /**
- * Element-level error spec — the input shape for an IK4 the library will
+ * Element-level error spec - the input shape for an IK4 the library will
  * build. `copyOfBadDataElement` is OPTIONAL by design: when the offending
  * value is PHI (medical record number, name, date of birth), callers
  * SHOULD omit it. The library never auto-populates this field.
@@ -298,7 +298,7 @@ export interface Build999ElementErrorSpec {
   readonly contexts?: readonly string[];
 }
 
-/** Segment-level error spec — input for an IK3 (with optional nested IK4s). */
+/** Segment-level error spec - input for an IK3 (with optional nested IK4s). */
 export interface Build999SegmentErrorSpec {
   readonly segmentIdCode: string;
   readonly segmentPositionInTransactionSet: number;
@@ -314,7 +314,7 @@ export interface Build999SegmentErrorSpec {
   readonly elementErrors?: readonly Build999ElementErrorSpec[];
 }
 
-/** Transaction-set response spec — input for one AK2..IK5 block. */
+/** Transaction-set response spec - input for one AK2..IK5 block. */
 export interface Build999TransactionResponseSpec {
   readonly transactionSetIdCode: string;
   readonly transactionSetControlNumber: string;
@@ -324,7 +324,7 @@ export interface Build999TransactionResponseSpec {
   readonly segmentErrors?: readonly Build999SegmentErrorSpec[];
 }
 
-/** Functional-group response spec — input for the AK1 + AK9 pair. */
+/** Functional-group response spec - input for the AK1 + AK9 pair. */
 export interface Build999FunctionalGroupSpec {
   readonly functionalIdCode: string;
   readonly groupControlNumber: string;
@@ -338,7 +338,7 @@ export interface Build999FunctionalGroupSpec {
 }
 
 /**
- * Envelope spec for `build999` — the ISA + GS + ST + matching trailers
+ * Envelope spec for `build999` - the ISA + GS + ST + matching trailers
  * that wrap the 999 transaction set. Defaults are spec-conformant for a
  * minimal 999 envelope:
  *

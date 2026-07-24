@@ -4,12 +4,12 @@
  * The spec mirrors the {@link "./types.js".X12_837Submission} read model
  * field-for-field, MINUS the fields `get837Claims` *derives* (HI
  * `codeSystem` / `category`, the read-only `warnings` array) and minus the
- * HL spine itself — the builder COMPUTES the HL hierarchy from the nested
+ * HL spine itself - the builder COMPUTES the HL hierarchy from the nested
  * billing-provider → subscriber → patient tree, so a caller never hand-codes
  * HL-01 ids, HL-02 parent pointers, or HL-04 has-child flags. That makes a
  * structurally inconsistent spine unrepresentable.
  *
- * Money is {@link "../../decimal.js".X12Decimal} throughout — never `number`
+ * Money is {@link "../../decimal.js".X12Decimal} throughout - never `number`
  * (float arithmetic destroys cents). Construct with
  * `X12Decimal.fromString("150.00")`.
  *
@@ -38,41 +38,41 @@ import type { X12Decimal } from "../../decimal.js";
  * ```
  */
 export interface Build837EnvelopeSpec {
-  /** ISA-06 — interchange sender id (padded to 15 on emit). */
+  /** ISA-06 - interchange sender id (padded to 15 on emit). */
   readonly senderId: string;
-  /** ISA-08 — interchange receiver id (padded to 15 on emit). */
+  /** ISA-08 - interchange receiver id (padded to 15 on emit). */
   readonly receiverId: string;
-  /** ISA-09 — interchange date YYMMDD. */
+  /** ISA-09 - interchange date YYMMDD. */
   readonly interchangeDate: string;
-  /** ISA-10 — interchange time HHMM. */
+  /** ISA-10 - interchange time HHMM. */
   readonly interchangeTime: string;
-  /** ISA-13 / IEA-02 — interchange control number (zero-padded to 9 on emit). */
+  /** ISA-13 / IEA-02 - interchange control number (zero-padded to 9 on emit). */
   readonly interchangeControlNumber: string;
-  /** GS-06 / GE-02 — group control number. */
+  /** GS-06 / GE-02 - group control number. */
   readonly groupControlNumber: string;
-  /** ST-02 / SE-02 — transaction set control number. */
+  /** ST-02 / SE-02 - transaction set control number. */
   readonly transactionSetControlNumber: string;
-  /** ISA-05 — interchange sender qualifier. Default `"ZZ"`. */
+  /** ISA-05 - interchange sender qualifier. Default `"ZZ"`. */
   readonly senderQualifier?: string;
-  /** ISA-07 — interchange receiver qualifier. Default `"ZZ"`. */
+  /** ISA-07 - interchange receiver qualifier. Default `"ZZ"`. */
   readonly receiverQualifier?: string;
-  /** ISA-15 — usage indicator (`P` production, `T` test). Default `"P"`. */
+  /** ISA-15 - usage indicator (`P` production, `T` test). Default `"P"`. */
   readonly usageIndicator?: string;
-  /** GS-02 — application sender code. Default: the interchange sender id. */
+  /** GS-02 - application sender code. Default: the interchange sender id. */
   readonly applicationSenderCode?: string;
-  /** GS-03 — application receiver code. Default: the interchange receiver id. */
+  /** GS-03 - application receiver code. Default: the interchange receiver id. */
   readonly applicationReceiverCode?: string;
-  /** GS-04 — group date CCYYMMDD. Default: century-expanded ISA-09. */
+  /** GS-04 - group date CCYYMMDD. Default: century-expanded ISA-09. */
   readonly groupDate?: string;
-  /** GS-05 — group time HHMM. Default: the interchange time. */
+  /** GS-05 - group time HHMM. Default: the interchange time. */
   readonly groupTime?: string;
-  /** BHT-03 — originator application reference id. Default: the transaction set control number. */
+  /** BHT-03 - originator application reference id. Default: the transaction set control number. */
   readonly transactionReferenceId?: string;
-  /** BHT-04 — transaction creation date CCYYMMDD. Default: the group date. */
+  /** BHT-04 - transaction creation date CCYYMMDD. Default: the group date. */
   readonly transactionDate?: string;
-  /** BHT-05 — transaction creation time HHMM. Default: the group time. */
+  /** BHT-05 - transaction creation time HHMM. Default: the group time. */
   readonly transactionTime?: string;
-  /** BHT-06 — claim/encounter indicator (`CH` chargeable, `RP` reporting). Default `"CH"`. */
+  /** BHT-06 - claim/encounter indicator (`CH` chargeable, `RP` reporting). Default `"CH"`. */
   readonly claimOrEncounterIndicator?: string;
   /** Element separator (ISA byte 4). Default `"*"`. */
   readonly elementSeparator?: string;
@@ -99,13 +99,13 @@ export interface Build837EnvelopeSpec {
 export interface Build837AddressSpec {
   /** N3 address lines (1-2). */
   readonly lines: readonly string[];
-  /** N4-01 — city. */
+  /** N4-01 - city. */
   readonly city?: string;
-  /** N4-02 — state / province. */
+  /** N4-02 - state / province. */
   readonly state?: string;
-  /** N4-03 — postal code. */
+  /** N4-03 - postal code. */
   readonly postalCode?: string;
-  /** N4-04 — country code. */
+  /** N4-04 - country code. */
   readonly countryCode?: string;
 }
 
@@ -125,9 +125,9 @@ export interface Build837AddressSpec {
  * ```
  */
 export interface Build837ContactSpec {
-  /** PER-01 — contact function code (`IC` information contact, …). */
+  /** PER-01 - contact function code (`IC` information contact, …). */
   readonly contactFunctionCode: string;
-  /** PER-02 — contact name. */
+  /** PER-02 - contact name. */
   readonly name?: string;
   /** Up to 3 communication channels (PER-03/04, 05/06, 07/08). */
   readonly communications?: readonly { readonly qualifier: string; readonly value: string }[];
@@ -145,16 +145,16 @@ export interface Build837ContactSpec {
  * ```
  */
 export interface Build837ReferenceSpec {
-  /** REF-01 — reference identification qualifier. */
+  /** REF-01 - reference identification qualifier. */
   readonly qualifier: string;
-  /** REF-02 — reference identification value. */
+  /** REF-02 - reference identification value. */
   readonly value: string;
-  /** REF-03 — description (situational). */
+  /** REF-03 - description (situational). */
   readonly description?: string;
 }
 
 /**
- * NM1 entity used throughout the 837 — submitter (`41`), receiver (`40`),
+ * NM1 entity used throughout the 837 - submitter (`41`), receiver (`40`),
  * billing provider (`85`), subscriber (`IL`), payer (`PR`), patient (`QC`),
  * and the 2310x / 2420x provider roles. Mirrors {@link
  * "./types.js".X12ClaimEntity}.
@@ -176,21 +176,21 @@ export interface Build837ReferenceSpec {
  * ```
  */
 export interface Build837EntitySpec {
-  /** NM1-01 — entity identifier code. */
+  /** NM1-01 - entity identifier code. */
   readonly entityIdentifierCode: string;
-  /** NM1-02 — entity type qualifier (`1` person, `2` non-person). */
+  /** NM1-02 - entity type qualifier (`1` person, `2` non-person). */
   readonly entityTypeQualifier: string;
-  /** NM1-03 — last name / organization name. */
+  /** NM1-03 - last name / organization name. */
   readonly name: string;
-  /** NM1-04 — first name (person). */
+  /** NM1-04 - first name (person). */
   readonly firstName?: string;
-  /** NM1-05 — middle name (person). */
+  /** NM1-05 - middle name (person). */
   readonly middleName?: string;
-  /** NM1-07 — name suffix (person). */
+  /** NM1-07 - name suffix (person). */
   readonly suffix?: string;
-  /** NM1-08 — identification code qualifier (`XX` NPI, `MI` member id, …). */
+  /** NM1-08 - identification code qualifier (`XX` NPI, `MI` member id, …). */
   readonly idQualifier?: string;
-  /** NM1-09 — identification code. */
+  /** NM1-09 - identification code. */
   readonly idCode?: string;
   /** N3 + N4 address block. */
   readonly address?: Build837AddressSpec;
@@ -201,7 +201,7 @@ export interface Build837EntitySpec {
 }
 
 /**
- * DTP date — claim-level or service-line-level. Mirrors {@link
+ * DTP date - claim-level or service-line-level. Mirrors {@link
  * "./types.js".X12ClaimDate}.
  *
  * @example
@@ -211,11 +211,11 @@ export interface Build837EntitySpec {
  * ```
  */
 export interface Build837DateSpec {
-  /** DTP-01 — date/time qualifier (`472` service, `431` onset, …). */
+  /** DTP-01 - date/time qualifier (`472` service, `431` onset, …). */
   readonly qualifier: string;
-  /** DTP-02 — date/time format qualifier (`D8` CCYYMMDD, `RD8` range). */
+  /** DTP-02 - date/time format qualifier (`D8` CCYYMMDD, `RD8` range). */
   readonly formatQualifier: string;
-  /** DTP-03 — the date value verbatim. */
+  /** DTP-03 - the date value verbatim. */
   readonly value: string;
 }
 
@@ -231,27 +231,27 @@ export interface Build837DateSpec {
  * ```
  */
 export interface Build837HiCodeSpec {
-  /** Composite component 1 — code-list qualifier (`ABK`, `ABF`, `BBR`, …). */
+  /** Composite component 1 - code-list qualifier (`ABK`, `ABF`, `BBR`, …). */
   readonly qualifier: string;
-  /** Composite component 2 — the diagnosis / procedure code. */
+  /** Composite component 2 - the diagnosis / procedure code. */
   readonly code: string;
-  /** Composite component 3 — date/time format qualifier (situational). */
+  /** Composite component 3 - date/time format qualifier (situational). */
   readonly dateQualifier?: string;
-  /** Composite component 4 — date value (situational). */
+  /** Composite component 4 - date value (situational). */
   readonly date?: string;
-  /** Composite component 5 — monetary amount (situational). */
+  /** Composite component 5 - monetary amount (situational). */
   readonly monetaryAmount?: X12Decimal;
-  /** Composite component 6 — quantity (situational). */
+  /** Composite component 6 - quantity (situational). */
   readonly quantity?: X12Decimal;
-  /** Composite component 7 — version id (situational). */
+  /** Composite component 7 - version id (situational). */
   readonly versionId?: string;
-  /** Composite component 9 — present-on-admission indicator (837I). */
+  /** Composite component 9 - present-on-admission indicator (837I). */
   readonly poaIndicator?: string;
 }
 
 /**
  * NTE free-text note. Mirrors {@link "./types.js".X12ClaimNote}. NTE-02 may
- * carry incidental PHI — synthetic-only fixtures.
+ * carry incidental PHI - synthetic-only fixtures.
  *
  * @example
  * ```ts
@@ -260,9 +260,9 @@ export interface Build837HiCodeSpec {
  * ```
  */
 export interface Build837NoteSpec {
-  /** NTE-01 — note reference code (`ADD`, `CER`, …). */
+  /** NTE-01 - note reference code (`ADD`, `CER`, …). */
   readonly noteReferenceCode: string;
-  /** NTE-02 — free text. */
+  /** NTE-02 - free text. */
   readonly description: string;
 }
 
@@ -278,9 +278,9 @@ export interface Build837NoteSpec {
  * ```
  */
 export interface Build837AmountSpec {
-  /** AMT-01 — amount qualifier code. */
+  /** AMT-01 - amount qualifier code. */
   readonly qualifier: string;
-  /** AMT-02 — monetary amount. */
+  /** AMT-02 - monetary amount. */
   readonly amount: X12Decimal;
 }
 
@@ -296,7 +296,7 @@ export interface Build837AmountSpec {
  * ```
  */
 export interface Build837AdjustmentSpec {
-  /** CAS-01 — claim adjustment group code (`CO`, `PR`, `OA`, `PI`). */
+  /** CAS-01 - claim adjustment group code (`CO`, `PR`, `OA`, `PI`). */
   readonly groupCode: string;
   /** Adjustment reason code (CARC). */
   readonly reasonCode: string;
@@ -307,7 +307,7 @@ export interface Build837AdjustmentSpec {
 }
 
 /**
- * SVD + adjacent CAS / DTP — Loop 2430 Line Adjudication Information (a prior
+ * SVD + adjacent CAS / DTP - Loop 2430 Line Adjudication Information (a prior
  * payer's adjudication of this line, for COB). Mirrors {@link
  * "./types.js".X12LineAdjudication}.
  *
@@ -324,24 +324,24 @@ export interface Build837AdjustmentSpec {
  * ```
  */
 export interface Build837AdjudicationSpec {
-  /** SVD-01 — other payer identifier. */
+  /** SVD-01 - other payer identifier. */
   readonly otherPayerId: string;
-  /** SVD-02 — amount the other payer paid for this line. */
+  /** SVD-02 - amount the other payer paid for this line. */
   readonly amountPaid: X12Decimal;
-  /** SVD-03-1 — adjudicated procedure qualifier. */
+  /** SVD-03-1 - adjudicated procedure qualifier. */
   readonly procedureQualifier?: string;
-  /** SVD-03-2 — adjudicated procedure code. */
+  /** SVD-03-2 - adjudicated procedure code. */
   readonly procedureCode?: string;
-  /** SVD-05 — paid units of service. */
+  /** SVD-05 - paid units of service. */
   readonly paidUnits?: X12Decimal;
   /** CAS adjustments under this adjudication. */
   readonly adjustments?: readonly Build837AdjustmentSpec[];
-  /** DTP*573 — adjudication / payment date (CCYYMMDD). */
+  /** DTP*573 - adjudication / payment date (CCYYMMDD). */
   readonly dateAdjudicated?: string;
 }
 
 /**
- * LIN + CTP — Loop 2410 Drug Identification (837P). Mirrors {@link
+ * LIN + CTP - Loop 2410 Drug Identification (837P). Mirrors {@link
  * "./types.js".X12LineDrug}.
  *
  * @example
@@ -355,18 +355,18 @@ export interface Build837AdjudicationSpec {
  * ```
  */
 export interface Build837DrugSpec {
-  /** LIN-02 — product id qualifier (`N4` NDC, …). */
+  /** LIN-02 - product id qualifier (`N4` NDC, …). */
   readonly qualifier: string;
-  /** LIN-03 — the drug code (NDC). */
+  /** LIN-03 - the drug code (NDC). */
   readonly code: string;
-  /** CTP-04 — dispensed quantity (situational). */
+  /** CTP-04 - dispensed quantity (situational). */
   readonly quantity?: X12Decimal;
-  /** CTP-05-1 — UCUM unit of measure (situational). */
+  /** CTP-05-1 - UCUM unit of measure (situational). */
   readonly unitOfMeasure?: string;
 }
 
 /**
- * TOO — Tooth Information (837D Loop 2400). Mirrors {@link
+ * TOO - Tooth Information (837D Loop 2400). Mirrors {@link
  * "./types.js".X12ToothInformation}.
  *
  * @example
@@ -376,17 +376,17 @@ export interface Build837DrugSpec {
  * ```
  */
 export interface Build837ToothSpec {
-  /** TOO-01 — tooth-numbering code list qualifier (`JP` ADA universal, …). */
+  /** TOO-01 - tooth-numbering code list qualifier (`JP` ADA universal, …). */
   readonly qualifier: string;
-  /** TOO-02 — tooth identifier. */
+  /** TOO-02 - tooth identifier. */
   readonly toothCode: string;
-  /** TOO-03 — per-surface codes (`M`, `O`, `D`, …). */
+  /** TOO-03 - per-surface codes (`M`, `O`, `D`, …). */
   readonly surfaces?: readonly string[];
 }
 
 /** Fields shared across every service-line variant spec. */
 export interface Build837ServiceLineBaseSpec {
-  /** LX-01 — line number. Default: the 1-based index within the claim. */
+  /** LX-01 - line number. Default: the 1-based index within the claim. */
   readonly lineNumber?: string;
   /** SVx charge amount. */
   readonly charge: X12Decimal;
@@ -426,21 +426,21 @@ export interface Build837ServiceLineBaseSpec {
  */
 export interface Build837ServiceLineProfessionalSpec extends Build837ServiceLineBaseSpec {
   readonly variant: "P";
-  /** SV1-01-1 — procedure qualifier (`HC` HCPCS/CPT, …). */
+  /** SV1-01-1 - procedure qualifier (`HC` HCPCS/CPT, …). */
   readonly procedureQualifier: string;
-  /** SV1-01-2 — procedure code. */
+  /** SV1-01-2 - procedure code. */
   readonly procedureCode: string;
-  /** SV1-01-3..6 — procedure modifiers. */
+  /** SV1-01-3..6 - procedure modifiers. */
   readonly modifiers?: readonly string[];
-  /** SV1-05 — place of service (overrides claim-level). */
+  /** SV1-05 - place of service (overrides claim-level). */
   readonly placeOfServiceCode?: string;
-  /** SV1-07 — diagnosis code pointers (1-4). */
+  /** SV1-07 - diagnosis code pointers (1-4). */
   readonly diagnosisPointers?: readonly string[];
-  /** SV1-09 — emergency indicator. */
+  /** SV1-09 - emergency indicator. */
   readonly emergencyIndicator?: string;
-  /** SV1-11 — EPSDT indicator. */
+  /** SV1-11 - EPSDT indicator. */
   readonly epsdtIndicator?: string;
-  /** SV1-12 — family planning indicator. */
+  /** SV1-12 - family planning indicator. */
   readonly familyPlanningIndicator?: string;
   /** Loop 2410 drug identification. */
   readonly drug?: Build837DrugSpec;
@@ -462,17 +462,17 @@ export interface Build837ServiceLineProfessionalSpec extends Build837ServiceLine
  */
 export interface Build837ServiceLineInstitutionalSpec extends Build837ServiceLineBaseSpec {
   readonly variant: "I";
-  /** SV2-01 — NUBC revenue code. */
+  /** SV2-01 - NUBC revenue code. */
   readonly revenueCode: string;
-  /** SV2-02-1 — procedure qualifier (situational). */
+  /** SV2-02-1 - procedure qualifier (situational). */
   readonly procedureQualifier?: string;
-  /** SV2-02-2 — procedure code (situational). */
+  /** SV2-02-2 - procedure code (situational). */
   readonly procedureCode?: string;
-  /** SV2-02-3..6 — procedure modifiers. */
+  /** SV2-02-3..6 - procedure modifiers. */
   readonly modifiers?: readonly string[];
-  /** SV2-06 — line item rate. */
+  /** SV2-06 - line item rate. */
   readonly serviceLineRate?: X12Decimal;
-  /** SV2-07 — non-covered charge amount. */
+  /** SV2-07 - non-covered charge amount. */
   readonly nonCoveredCharge?: X12Decimal;
 }
 
@@ -493,24 +493,24 @@ export interface Build837ServiceLineInstitutionalSpec extends Build837ServiceLin
  */
 export interface Build837ServiceLineDentalSpec extends Build837ServiceLineBaseSpec {
   readonly variant: "D";
-  /** SV3-01-1 — procedure qualifier (`AD` ADA/CDT). */
+  /** SV3-01-1 - procedure qualifier (`AD` ADA/CDT). */
   readonly procedureQualifier: string;
-  /** SV3-01-2 — procedure code. */
+  /** SV3-01-2 - procedure code. */
   readonly procedureCode: string;
-  /** SV3-01-3..6 — procedure modifiers. */
+  /** SV3-01-3..6 - procedure modifiers. */
   readonly modifiers?: readonly string[];
-  /** SV3-03 — place of service. */
+  /** SV3-03 - place of service. */
   readonly placeOfServiceCode?: string;
-  /** SV3-04 — oral cavity area designation codes. */
+  /** SV3-04 - oral cavity area designation codes. */
   readonly oralCavityArea?: readonly string[];
-  /** SV3-05 — prosthesis / crown / inlay code. */
+  /** SV3-05 - prosthesis / crown / inlay code. */
   readonly prosthesisCrownInlayCode?: string;
   /** Loop 2400 TOO tooth information. */
   readonly toothInformation?: readonly Build837ToothSpec[];
 }
 
 /**
- * Service-line spec — discriminated union keyed by `variant`. Every line in
+ * Service-line spec - discriminated union keyed by `variant`. Every line in
  * a `build837P` spec must be `"P"`, etc.; a mismatch is REFUSED.
  *
  * @example
@@ -540,15 +540,15 @@ export type Build837ServiceLineSpec =
  * ```
  */
 export interface Build837OtherSubscriberSpec {
-  /** SBR-01 — payer responsibility code (`P`/`S`/`T`). */
+  /** SBR-01 - payer responsibility code (`P`/`S`/`T`). */
   readonly payerResponsibilityCode: string;
-  /** SBR-02 — individual relationship code. */
+  /** SBR-02 - individual relationship code. */
   readonly individualRelationshipCode?: string;
-  /** SBR-09 — claim filing indicator code. */
+  /** SBR-09 - claim filing indicator code. */
   readonly claimFilingIndicator?: string;
-  /** NM1*IL / NM1*QC — the other subscriber. */
+  /** NM1*IL / NM1*QC - the other subscriber. */
   readonly otherSubscriber?: Build837EntitySpec;
-  /** NM1*PR — the other payer. */
+  /** NM1*PR - the other payer. */
   readonly otherPayer?: Build837EntitySpec;
 }
 
@@ -576,23 +576,23 @@ export interface Build837OtherSubscriberSpec {
  * ```
  */
 export interface Build837ClaimSpec {
-  /** CLM-01 — patient account / claim id. */
+  /** CLM-01 - patient account / claim id. */
   readonly claimId: string;
-  /** CLM-02 — total claim charge amount. */
+  /** CLM-02 - total claim charge amount. */
   readonly totalCharge: X12Decimal;
-  /** CLM-05-1 — place of service code. */
+  /** CLM-05-1 - place of service code. */
   readonly placeOfServiceCode?: string;
-  /** CLM-05-2 — facility code qualifier. */
+  /** CLM-05-2 - facility code qualifier. */
   readonly facilityCodeQualifier?: string;
-  /** CLM-05-3 — claim frequency type code. */
+  /** CLM-05-3 - claim frequency type code. */
   readonly claimFrequencyCode?: string;
-  /** CLM-06 — provider/supplier signature on file. */
+  /** CLM-06 - provider/supplier signature on file. */
   readonly providerSignatureOnFile?: string;
-  /** CLM-07 — provider accept assignment code. */
+  /** CLM-07 - provider accept assignment code. */
   readonly providerAcceptAssignment?: string;
-  /** CLM-08 — benefits assignment certification indicator. */
+  /** CLM-08 - benefits assignment certification indicator. */
   readonly benefitsAssignment?: string;
-  /** CLM-09 — release of information code. */
+  /** CLM-09 - release of information code. */
   readonly releaseOfInformationCode?: string;
   /** DTP claim-level dates. */
   readonly dates?: readonly Build837DateSpec[];
@@ -617,7 +617,7 @@ export interface Build837ClaimSpec {
 }
 
 /**
- * SBR — Subscriber Information for a Loop 2000B subscriber. Mirrors {@link
+ * SBR - Subscriber Information for a Loop 2000B subscriber. Mirrors {@link
  * "./types.js".X12SubscriberInfo}.
  *
  * @example
@@ -630,15 +630,15 @@ export interface Build837ClaimSpec {
  * ```
  */
 export interface Build837SubscriberInfoSpec {
-  /** SBR-01 — payer responsibility code (`P`/`S`/`T`). */
+  /** SBR-01 - payer responsibility code (`P`/`S`/`T`). */
   readonly payerResponsibilityCode: string;
-  /** SBR-02 — individual relationship code (`18` self, …). */
+  /** SBR-02 - individual relationship code (`18` self, …). */
   readonly individualRelationshipCode?: string;
-  /** SBR-03 — group / policy number. */
+  /** SBR-03 - group / policy number. */
   readonly groupNumber?: string;
-  /** SBR-04 — group name. */
+  /** SBR-04 - group name. */
   readonly groupName?: string;
-  /** SBR-09 — claim filing indicator code. */
+  /** SBR-09 - claim filing indicator code. */
   readonly claimFilingIndicator?: string;
 }
 
@@ -659,9 +659,9 @@ export interface Build837SubscriberInfoSpec {
  * ```
  */
 export interface Build837PatientSpec {
-  /** PAT-01 — individual relationship code (`19` child, …). */
+  /** PAT-01 - individual relationship code (`19` child, …). */
   readonly individualRelationshipCode?: string;
-  /** NM1*QC — the patient. */
+  /** NM1*QC - the patient. */
   readonly patient: Build837EntitySpec;
   /** Loop 2300 claims under this patient. */
   readonly claims: readonly Build837ClaimSpec[];
@@ -687,9 +687,9 @@ export interface Build837PatientSpec {
 export interface Build837SubscriberSpec {
   /** SBR subscriber information. */
   readonly info: Build837SubscriberInfoSpec;
-  /** NM1*IL — the subscriber. */
+  /** NM1*IL - the subscriber. */
   readonly subscriber: Build837EntitySpec;
-  /** NM1*PR — the payer. */
+  /** NM1*PR - the payer. */
   readonly payer: Build837EntitySpec;
   /** Loop 2300 claims directly under the subscriber (patient = subscriber). */
   readonly claims?: readonly Build837ClaimSpec[];
@@ -717,11 +717,11 @@ export interface Build837SubscriberSpec {
  * ```
  */
 export interface Build837BillingProviderSpec {
-  /** NM1*85 — the billing provider. */
+  /** NM1*85 - the billing provider. */
   readonly provider: Build837EntitySpec;
-  /** NM1*87 — pay-to address (N3/N4 round-trip; the name is not re-surfaced). */
+  /** NM1*87 - pay-to address (N3/N4 round-trip; the name is not re-surfaced). */
   readonly payToAddress?: Build837AddressSpec;
-  /** NM1*PE — pay-to plan (837I only). */
+  /** NM1*PE - pay-to plan (837I only). */
   readonly payToPlan?: Build837EntitySpec;
   /** Loop 2000B subscribers (≥ 1 required). */
   readonly subscribers: readonly Build837SubscriberSpec[];

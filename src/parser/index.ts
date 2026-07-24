@@ -1,5 +1,5 @@
 /**
- * Public entry point for the `@cosyte/x12` parser — composes the Phase 1
+ * Public entry point for the `@cosyte/x12` parser - composes the Phase 1
  * delimiter-detection + envelope-decode stages and routes every Tier-2
  * warning through a single emission chokepoint. The four Tier-3 fatal codes
  * (`X12_EMPTY_INPUT`, `X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`,
@@ -32,7 +32,7 @@ import type { X12Interchange, X12ParseOptions } from "./types.js";
  *
  * Phase 1 decodes the envelope (ISA / GS / ST / SE / GE / IEA) and
  * detects the four delimiters from fixed ISA byte positions. Transaction-
- * set bodies inside each ST..SE are kept **opaque** at this phase —
+ * set bodies inside each ST..SE are kept **opaque** at this phase -
  * `tx.segments` carries the raw segment strings (terminator stripped).
  * Phase 2 adds segment/element/composite/repetition decode on top.
  *
@@ -55,7 +55,7 @@ import type { X12Interchange, X12ParseOptions } from "./types.js";
  */
 export function parseX12(raw: string | Buffer): X12Interchange;
 export function parseX12(raw: string | Buffer, options: X12ParseOptions): X12Interchange;
-/** @internal — implementation signature; overload signatures above carry the public JSDoc + @example. */
+/** @internal - implementation signature; overload signatures above carry the public JSDoc + @example. */
 export function parseX12(raw: string | Buffer, options: X12ParseOptions = {}): X12Interchange {
   // Step 1: Buffer → string (latin1 preserves bytes 1:1; ISA envelope is
   // ASCII-only by spec, so this is byte-faithful through the parser).
@@ -109,7 +109,7 @@ export function parseX12(raw: string | Buffer, options: X12ParseOptions = {}): X
       try {
         cb(w);
       } catch {
-        /* noisy handlers must not break the parser — silent swallow,
+        /* noisy handlers must not break the parser - silent swallow,
            mirroring hl7's onWarning contract. */
       }
     }
@@ -117,7 +117,7 @@ export function parseX12(raw: string | Buffer, options: X12ParseOptions = {}): X
 
   // Resolve the profile in effect: an explicit profile wins; `null` opts out
   // of the default for this call; otherwise fall back to the process-scoped
-  // default. v1 profiles are descriptive — the profile is attached for
+  // default. v1 profiles are descriptive - the profile is attached for
   // attribution (and `partitionWarnings`) but does not alter the parse above.
   const profile = options.profile === null ? undefined : (options.profile ?? getDefaultProfile());
 

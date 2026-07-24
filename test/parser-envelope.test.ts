@@ -1,10 +1,10 @@
 /**
- * Unit tests for `parseX12` — the high-level entry that composes
+ * Unit tests for `parseX12` - the high-level entry that composes
  * delimiter detection with envelope walking. Covers happy paths, the
  * empty-input fatal, and each Phase 1 Tier-2 warning's trigger condition.
  *
  * Round-trip ISA byte-exact preservation is asserted across all four
- * Tier-1 envelope shapes — the parser MUST NOT modify a single byte of
+ * Tier-1 envelope shapes - the parser MUST NOT modify a single byte of
  * the ISA segment regardless of any lenient normalization elsewhere.
  */
 
@@ -22,7 +22,7 @@ import {
 
 import { buildInterchange, buildIsa } from "./_helpers/envelope.js";
 
-describe("parseX12 — happy paths", () => {
+describe("parseX12 - happy paths", () => {
   it("parses the canonical Medicare envelope with `*^:~` delimiters", () => {
     const raw = buildInterchange();
     const ix = parseX12(raw);
@@ -91,13 +91,13 @@ describe("parseX12 — happy paths", () => {
     const ids = (tx?.segments ?? []).map((s) => s.id);
     expect(ids).toEqual(["ST", "REF", "SE"]);
     const ref = tx?.segments.find((s) => s.id === "REF");
-    // elements hold raw (pre-unescape) text — the escape sequence survives.
+    // elements hold raw (pre-unescape) text - the escape sequence survives.
     expect(ref?.elements[2]).toBe("AB?~CD");
     expect(ix.warnings).toHaveLength(0);
   });
 });
 
-describe("parseX12 — Tier-3 fatals", () => {
+describe("parseX12 - Tier-3 fatals", () => {
   it("throws X12_EMPTY_INPUT for an empty string", () => {
     try {
       parseX12("");
@@ -112,7 +112,7 @@ describe("parseX12 — Tier-3 fatals", () => {
   });
 });
 
-describe("parseX12 — Tier-2 warnings", () => {
+describe("parseX12 - Tier-2 warnings", () => {
   it("emits X12_PRE_005010 for a 00401 sender", () => {
     const raw = buildInterchange({ version: "00401" });
     const ix = parseX12(raw);
@@ -190,7 +190,7 @@ describe("parseX12 — Tier-2 warnings", () => {
   });
 
   it("emits X12_MISSING_GE when a second GS opens before the first GE", () => {
-    // Two GS segments with no GE between them — the parser must close the
+    // Two GS segments with no GE between them - the parser must close the
     // first group with a MISSING_GE warning rather than throw or fuse
     // the two groups.
     const raw = buildInterchange();
@@ -204,7 +204,7 @@ describe("parseX12 — Tier-2 warnings", () => {
   });
 
   it("emits X12_MISSING_SE when a second ST opens before the first SE", () => {
-    // Two ST segments with no SE between them — the parser must close
+    // Two ST segments with no SE between them - the parser must close
     // the first transaction with MISSING_SE rather than throw.
     const raw = buildInterchange();
     const tampered = raw.replace("ST*837*0001~", "ST*837*0001~ST*837*0002~");
@@ -224,13 +224,13 @@ describe("parseX12 — Tier-2 warnings", () => {
   });
 });
 
-describe("parseX12 — malformed-segment tolerance (Postel's-Law parse)", () => {
+describe("parseX12 - malformed-segment tolerance (Postel's-Law parse)", () => {
   it("survives a truncated IEA missing both IEA-01 and IEA-02", () => {
     const raw = buildInterchange();
     const tampered = raw.replace("IEA*1*000000001~", "IEA~");
     const ix = parseX12(tampered);
     // Both control-number mismatch (empty vs 000000001) and group-count
-    // mismatch (empty vs 1) should fire — without throwing.
+    // mismatch (empty vs 1) should fire - without throwing.
     const codes = ix.warnings.map((w) => w.code);
     expect(codes).toContain(WARNING_CODES.X12_CONTROL_NUMBER_MISMATCH);
     expect(codes).toContain(WARNING_CODES.X12_GROUP_COUNT_MISMATCH);
@@ -278,7 +278,7 @@ describe("parseX12 — malformed-segment tolerance (Postel's-Law parse)", () => 
     expect(decoded?.elements[4]).toBe("20250101");
   });
 
-  it("survives a second GS opening before the first GE — closes both tx and group", () => {
+  it("survives a second GS opening before the first GE - closes both tx and group", () => {
     // ISA → GS → ST → (no SE) → GS → ST → SE → GE → IEA
     // The second GS forces the first group to close while a tx is open.
     const raw = buildInterchange();
@@ -294,7 +294,7 @@ describe("parseX12 — malformed-segment tolerance (Postel's-Law parse)", () => 
     expect(codes).toContain(WARNING_CODES.X12_MISSING_GE);
   });
 
-  it("survives an IEA reached while a transaction is still open — closes tx with MISSING_SE", () => {
+  it("survives an IEA reached while a transaction is still open - closes tx with MISSING_SE", () => {
     // ISA → GS → ST → (no SE) → (no GE) → IEA
     const raw = buildInterchange();
     const tampered = raw.replace("SE*2*0001~", "").replace("GE*1*1~", "");
@@ -304,7 +304,7 @@ describe("parseX12 — malformed-segment tolerance (Postel's-Law parse)", () => 
     expect(codes).toContain(WARNING_CODES.X12_MISSING_GE);
   });
 
-  it("survives EOF mid-transaction (no SE, no GE, no IEA) — closes everything best-effort", () => {
+  it("survives EOF mid-transaction (no SE, no GE, no IEA) - closes everything best-effort", () => {
     const raw = buildInterchange();
     const tampered = raw
       .replace("SE*2*0001~", "")
@@ -322,7 +322,7 @@ describe("parseX12 — malformed-segment tolerance (Postel's-Law parse)", () => 
 
   it("flags body segments that appear outside any transaction as UNEXPECTED_SEGMENT", () => {
     const raw = buildInterchange();
-    // Insert a body segment between GE and IEA — there's no open
+    // Insert a body segment between GE and IEA - there's no open
     // transaction, so Phase 2 surfaces it as `X12_UNEXPECTED_SEGMENT`
     // (Phase 1 silently dropped it) and continues lenient-never-throw.
     const tampered = raw.replace("GE*1*1~", "GE*1*1~ZZZ*STRAY*BYTES~");
@@ -337,7 +337,7 @@ describe("parseX12 — malformed-segment tolerance (Postel's-Law parse)", () => 
     const raw = buildInterchange();
     // Hostile input: the "segment" outside any transaction has a name
     // that could carry PHI (a long alphanumeric blob). Phase 2's
-    // unexpected-segment warning MUST NOT echo it — `(non-spec)` is
+    // unexpected-segment warning MUST NOT echo it - `(non-spec)` is
     // substituted to keep the H-PHI invariant intact.
     const tampered = raw.replace("GE*1*1~", "GE*1*1~JOHNDOEMRN98765*STRAY*BYTES~");
     const ix = parseX12(tampered);
@@ -348,7 +348,7 @@ describe("parseX12 — malformed-segment tolerance (Postel's-Law parse)", () => 
   });
 });
 
-describe("parseX12 — strict mode", () => {
+describe("parseX12 - strict mode", () => {
   it("escalates the first Tier-2 warning into a thrown X12ParseError", () => {
     const raw = buildInterchange({ version: "00401" });
     try {
@@ -369,7 +369,7 @@ describe("parseX12 — strict mode", () => {
   });
 });
 
-describe("parseX12 — onWarning callback", () => {
+describe("parseX12 - onWarning callback", () => {
   it("invokes the callback once per warning, then accumulates on `warnings`", () => {
     const raw = buildInterchange({ version: "00401" });
     const seen: X12ParseWarning[] = [];
@@ -391,7 +391,7 @@ describe("parseX12 — onWarning callback", () => {
   });
 });
 
-describe("parseX12 — round-trip byte-exact ISA preservation", () => {
+describe("parseX12 - round-trip byte-exact ISA preservation", () => {
   it("preserves the canonical Medicare ISA verbatim", () => {
     const isa = buildIsa();
     const raw = buildInterchange();

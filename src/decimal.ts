@@ -1,6 +1,6 @@
 /**
- * `X12Decimal` — the string-backed decimal type for every X12 monetary,
- * quantity, or percentage field. **NEVER `parseFloat`** — float
+ * `X12Decimal` - the string-backed decimal type for every X12 monetary,
+ * quantity, or percentage field. **NEVER `parseFloat`** - float
  * representation silently destroys cents at scale (`0.1 + 0.2 !== 0.3`); on
  * an 835 claim, a dropped decimal is the wrong dollar amount in someone's
  * cash post. `X12Decimal` preserves the inbound lexical form verbatim for
@@ -10,26 +10,26 @@
  *
  * Internal representation:
  *
- * - `raw` — the verbatim inbound text (e.g. `"1234.56"`, `"-50"`, `"0.00"`).
+ * - `raw` - the verbatim inbound text (e.g. `"1234.56"`, `"-50"`, `"0.00"`).
  *   `toString()` returns this so a parse → serialize round-trip is byte-
  *   exact.
- * - `scaled` — unsigned `BigInt` of the digits with the decimal point
+ * - `scaled` - unsigned `BigInt` of the digits with the decimal point
  *   removed (e.g. `123456n` for `"1234.56"`). Combined with `scale` and
  *   `signum` this fully captures the numeric value.
- * - `scale` — count of fractional digits (the position of the decimal
+ * - `scale` - count of fractional digits (the position of the decimal
  *   point, from the right). `"1234.56"` → 2; `"-50"` → 0; `"0.00"` → 2.
- * - `signum` — `-1` / `0` / `1`; `0` for any zero value regardless of sign
+ * - `signum` - `-1` / `0` / `1`; `0` for any zero value regardless of sign
  *   in the inbound text (so `"0.00"`, `"-0.00"`, and `"0"` all expose
  *   `signum() === 0`).
  *
  * Arithmetic aligns scales by padding the lower-scale operand with zeros,
  * then performs `BigInt` add/subtract; the result's `scale` is `max(scaleA,
  * scaleB)` and its `raw` is reconstructed from the resulting scaled magnitude
- * (arithmetic results lose the inbound lexical form by design — only direct
+ * (arithmetic results lose the inbound lexical form by design - only direct
  * `fromString` preserves it).
  *
  * X12 R-type (real) elements use an EXPLICIT decimal point (per ASC X12
- * dictionary). Empty string → `undefined` (not zero) — "not supplied" and
+ * dictionary). Empty string → `undefined` (not zero) - "not supplied" and
  * "zero dollars" are spec-distinct.
  */
 
@@ -66,7 +66,7 @@ const STATE = new WeakMap<X12Decimal, DecimalState>();
 /**
  * String-backed decimal for X12 R-type elements. Immutable; arithmetic
  * returns a new {@link X12Decimal}. Equality is mathematical (`"0.00"`
- * equals `"0"`), not lexical — use `toString()` for byte-exact comparison.
+ * equals `"0"`), not lexical - use `toString()` for byte-exact comparison.
  *
  * @example
  * ```ts
@@ -80,7 +80,7 @@ const STATE = new WeakMap<X12Decimal, DecimalState>();
  */
 export class X12Decimal {
   /**
-   * Construct a new `X12Decimal` directly from state. Internal — call
+   * Construct a new `X12Decimal` directly from state. Internal - call
    * `fromString` / `fromBigInt` / `ZERO` instead from outside the module.
    * @internal
    */
@@ -93,7 +93,7 @@ export class X12Decimal {
    * Decode an X12 R-type decimal element into an `X12Decimal`, or
    * `undefined` when the input is empty or does not match the shape
    * `[+-]?digits(.digits?)?`. **Empty string returns `undefined`, never
-   * zero** — "not supplied" and "zero" are spec-distinct.
+   * zero** - "not supplied" and "zero" are spec-distinct.
    *
    * @example
    * ```ts
@@ -112,7 +112,7 @@ export class X12Decimal {
     const intPart = m[2] ?? "";
     const fracPart = m[3] ?? "";
     // Require at least one digit across the integer + fractional groups
-    // — `"."`, `"-"`, `"+"`, `"+."` are not valid decimals.
+    // - `"."`, `"-"`, `"+"`, `"+."` are not valid decimals.
     if (intPart.length === 0 && fracPart.length === 0) return undefined;
     const scale = fracPart.length;
     const digits = intPart + fracPart;
@@ -148,7 +148,7 @@ export class X12Decimal {
   }
 
   /**
-   * Canonical zero with `scale: 0` — `"0"`. Used as the additive identity
+   * Canonical zero with `scale: 0` - `"0"`. Used as the additive identity
    * for balance reductions. Use `X12Decimal.fromBigInt(0n, n)` for a zero
    * at a specific scale.
    *
@@ -188,7 +188,7 @@ export class X12Decimal {
    * Helpers return `X12Decimal`, not `number`; use this only for display
    * or when the loss is acceptable. Magnitudes large enough to lose
    * precision (> `Number.MAX_SAFE_INTEGER` after scaling) still convert
-   * without throwing — silently lossy.
+   * without throwing - silently lossy.
    *
    * @example
    * ```ts
@@ -273,7 +273,7 @@ export class X12Decimal {
    * import { X12Decimal } from "@cosyte/x12";
    * const a = X12Decimal.fromString("0.1")!;
    * const b = X12Decimal.fromString("0.2")!;
-   * a.add(b).toString();  // "0.3" — exact, never 0.30000000000000004
+   * a.add(b).toString();  // "0.3" - exact, never 0.30000000000000004
    * ```
    */
   public add(other: X12Decimal): X12Decimal {
@@ -345,7 +345,7 @@ export class X12Decimal {
 function state(d: X12Decimal): DecimalState {
   const s = STATE.get(d);
   if (s === undefined) {
-    throw new TypeError("X12Decimal instance has no internal state — was it tampered with?");
+    throw new TypeError("X12Decimal instance has no internal state - was it tampered with?");
   }
   return s;
 }
@@ -379,7 +379,7 @@ function powTen(n: number): bigint {
 
 /**
  * Render a `(signum, unsigned scaled, scale)` triple into the canonical
- * decimal text — sign + integer part + optional `.` + zero-padded fraction.
+ * decimal text - sign + integer part + optional `.` + zero-padded fraction.
  * Always renders the full fractional width so `(0n, 2)` → `"0.00"` (the
  * canonical X12 R-type "zero dollars at cent precision" shape).
  * @internal

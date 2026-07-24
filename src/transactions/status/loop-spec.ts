@@ -1,5 +1,5 @@
 /**
- * 277 / 277CA loop specification — authored through the **public**
+ * 277 / 277CA loop specification - authored through the **public**
  * {@link "../../loops/define.js".defineLoopSpec} API (the Phase 6
  * dogfooding gate). The 277 Claim Status Response (`005010X212`) and the
  * 277CA Claim Acknowledgment (`005010X214`) share the same HL spine
@@ -12,34 +12,34 @@
  *
  * ```text
  *  Header (ST, BHT)
- *  Loop 2000A — Information Source HL (HL*..*20)
- *    Loop 2100A — Payer Name (NM1*PR)
- *  Loop 2000B — Information Receiver HL (HL*..*21)
- *    Loop 2100B — Information Receiver Name (NM1*41)
- *  Loop 2000C — Service Provider HL (HL*..*19)
- *    Loop 2100C — Provider Name (NM1*1P)
- *    Loop 2200C — Claim Status Tracking (277CA batch ack)  [STC TRN REF DTP]
- *  Loop 2000D — Subscriber HL (HL*..*22)
- *    Loop 2100D — Subscriber Name (NM1*IL)
- *    Loop 2200D — Claim Status Tracking  [TRN STC REF DTP]
- *      Loop 2220D — Service Line Status  [SVC STC REF DTP]
- *  Loop 2000E — Dependent HL (HL*..*23)
- *    Loop 2100E — Dependent Name (NM1*QC)
- *    Loop 2200E — Claim Status Tracking + Loop 2220E Service Line Status
+ *  Loop 2000A - Information Source HL (HL*..*20)
+ *    Loop 2100A - Payer Name (NM1*PR)
+ *  Loop 2000B - Information Receiver HL (HL*..*21)
+ *    Loop 2100B - Information Receiver Name (NM1*41)
+ *  Loop 2000C - Service Provider HL (HL*..*19)
+ *    Loop 2100C - Provider Name (NM1*1P)
+ *    Loop 2200C - Claim Status Tracking (277CA batch ack)  [STC TRN REF DTP]
+ *  Loop 2000D - Subscriber HL (HL*..*22)
+ *    Loop 2100D - Subscriber Name (NM1*IL)
+ *    Loop 2200D - Claim Status Tracking  [TRN STC REF DTP]
+ *      Loop 2220D - Service Line Status  [SVC STC REF DTP]
+ *  Loop 2000E - Dependent HL (HL*..*23)
+ *    Loop 2100E - Dependent Name (NM1*QC)
+ *    Loop 2200E - Claim Status Tracking + Loop 2220E Service Line Status
  * ```
  *
  * @remarks
  * The loop spec is surfaced as a frozen artifact; the walker in
  * `./get-277.ts` keys off the HL level codes + the STC/TRN/SVC triggers.
  * Loop 2200 (claim status) and Loop 2220 (service-line status) are shared
- * across the subscriber and dependent branches — one spec each, reused.
+ * across the subscriber and dependent branches - one spec each, reused.
  */
 
 import { defineLoopSpec } from "../../loops/define.js";
 import type { LoopSpec } from "../../loops/types.js";
 
 /**
- * 277 Loop 2220 — Service Line Status Information. Triggered by `SVC`.
+ * 277 Loop 2220 - Service Line Status Information. Triggered by `SVC`.
  * Reused under both the subscriber (2220D) and dependent (2220E) claim
  * status loops.
  *
@@ -51,7 +51,7 @@ import type { LoopSpec } from "../../loops/types.js";
  */
 export const STATUS_277_LOOP_2220: LoopSpec = defineLoopSpec({
   id: "2220",
-  description: "277 Loop 2220 — Service Line Status Information",
+  description: "277 Loop 2220 - Service Line Status Information",
   trigger: "SVC",
   segments: [
     { id: "SVC", usage: "required", max: 1 },
@@ -62,8 +62,8 @@ export const STATUS_277_LOOP_2220: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 277 Loop 2200 — Claim Status Tracking. Triggered by `TRN` (a 277 claim
- * status) — in a 277CA provider-level batch acknowledgment the same loop
+ * 277 Loop 2200 - Claim Status Tracking. Triggered by `TRN` (a 277 claim
+ * status) - in a 277CA provider-level batch acknowledgment the same loop
  * may open on a standalone `STC`; the walker handles both. Nests
  * {@link STATUS_277_LOOP_2220}.
  *
@@ -75,7 +75,7 @@ export const STATUS_277_LOOP_2220: LoopSpec = defineLoopSpec({
  */
 export const STATUS_277_LOOP_2200: LoopSpec = defineLoopSpec({
   id: "2200",
-  description: "277 Loop 2200 — Claim Status Tracking",
+  description: "277 Loop 2200 - Claim Status Tracking",
   trigger: "TRN",
   segments: [
     { id: "TRN", usage: "situational", max: 1 },
@@ -87,7 +87,7 @@ export const STATUS_277_LOOP_2200: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 277 Loop 2000A — Information Source HL (payer). Triggered by `HL`
+ * 277 Loop 2000A - Information Source HL (payer). Triggered by `HL`
  * (`HL-03 = "20"`); the level-code check happens in the walker.
  *
  * @example
@@ -98,7 +98,7 @@ export const STATUS_277_LOOP_2200: LoopSpec = defineLoopSpec({
  */
 export const STATUS_277_LOOP_2000A: LoopSpec = defineLoopSpec({
   id: "2000A",
-  description: "277 Loop 2000A — Information Source HL",
+  description: "277 Loop 2000A - Information Source HL",
   trigger: "HL",
   segments: [
     { id: "HL", usage: "required", max: 1 },
@@ -108,7 +108,7 @@ export const STATUS_277_LOOP_2000A: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 277 Loop 2000B — Information Receiver HL. Triggered by `HL`
+ * 277 Loop 2000B - Information Receiver HL. Triggered by `HL`
  * (`HL-03 = "21"`).
  *
  * @example
@@ -119,7 +119,7 @@ export const STATUS_277_LOOP_2000A: LoopSpec = defineLoopSpec({
  */
 export const STATUS_277_LOOP_2000B: LoopSpec = defineLoopSpec({
   id: "2000B",
-  description: "277 Loop 2000B — Information Receiver HL",
+  description: "277 Loop 2000B - Information Receiver HL",
   trigger: "HL",
   segments: [
     { id: "HL", usage: "required", max: 1 },
@@ -128,9 +128,9 @@ export const STATUS_277_LOOP_2000B: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 277 Loop 2000C — Service Provider HL. Triggered by `HL` (`HL-03 = "19"`).
+ * 277 Loop 2000C - Service Provider HL. Triggered by `HL` (`HL-03 = "19"`).
  * In a 277CA this level can also carry a Loop 2200 batch acknowledgment
- * (provider-level STC) — nested here as {@link STATUS_277_LOOP_2200}.
+ * (provider-level STC) - nested here as {@link STATUS_277_LOOP_2200}.
  *
  * @example
  * ```ts
@@ -140,7 +140,7 @@ export const STATUS_277_LOOP_2000B: LoopSpec = defineLoopSpec({
  */
 export const STATUS_277_LOOP_2000C: LoopSpec = defineLoopSpec({
   id: "2000C",
-  description: "277 Loop 2000C — Service Provider HL",
+  description: "277 Loop 2000C - Service Provider HL",
   trigger: "HL",
   segments: [
     { id: "HL", usage: "required", max: 1 },
@@ -150,7 +150,7 @@ export const STATUS_277_LOOP_2000C: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 277 Loop 2000D — Subscriber HL. Triggered by `HL` (`HL-03 = "22"`).
+ * 277 Loop 2000D - Subscriber HL. Triggered by `HL` (`HL-03 = "22"`).
  * Carries the subscriber name (2100D) and its claim status tracking
  * (Loop 2200).
  *
@@ -162,7 +162,7 @@ export const STATUS_277_LOOP_2000C: LoopSpec = defineLoopSpec({
  */
 export const STATUS_277_LOOP_2000D: LoopSpec = defineLoopSpec({
   id: "2000D",
-  description: "277 Loop 2000D — Subscriber HL",
+  description: "277 Loop 2000D - Subscriber HL",
   trigger: "HL",
   segments: [
     { id: "HL", usage: "required", max: 1 },
@@ -172,7 +172,7 @@ export const STATUS_277_LOOP_2000D: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 277 Loop 2000E — Dependent HL. Triggered by `HL` (`HL-03 = "23"`).
+ * 277 Loop 2000E - Dependent HL. Triggered by `HL` (`HL-03 = "23"`).
  * Carries the dependent name (2100E) and its claim status tracking
  * (Loop 2200).
  *
@@ -184,7 +184,7 @@ export const STATUS_277_LOOP_2000D: LoopSpec = defineLoopSpec({
  */
 export const STATUS_277_LOOP_2000E: LoopSpec = defineLoopSpec({
   id: "2000E",
-  description: "277 Loop 2000E — Dependent HL",
+  description: "277 Loop 2000E - Dependent HL",
   trigger: "HL",
   segments: [
     { id: "HL", usage: "required", max: 1 },

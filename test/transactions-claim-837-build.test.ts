@@ -1,5 +1,5 @@
 /**
- * Unit tests for the 005010 837 emit surface — `build837P` / `build837I` /
+ * Unit tests for the 005010 837 emit surface - `build837P` / `build837I` /
  * `build837D`. Covers:
  *
  * - Envelope identity: GS-01 `HC`, ST-01 `837`, ST-03 per variant.
@@ -14,7 +14,7 @@
  *   provider, a subscriber with neither claim nor patient, a childless
  *   patient, an empty claimId, a claim with no service line, a variant
  *   mismatch, an empty procedure / revenue code → `Claim837BuildError`.
- * - PHI safety: a refusal message carries structural locators only — never
+ * - PHI safety: a refusal message carries structural locators only - never
  *   the claimId (patient-account number) or member id.
  * - Pure-function discipline: returns a frozen interchange; the spec is not
  *   mutated.
@@ -166,7 +166,7 @@ function pSpecWithClaim(claim: Build837ClaimSpec): Build837Spec {
   return pSpecWithSubscriber({ ...P_SUBSCRIBER, claims: [claim] });
 }
 
-describe("build837 — envelope identity", () => {
+describe("build837 - envelope identity", () => {
   it("emits GS-01 HC, ST-01 837, ST-03 per variant", () => {
     const ix = build837P(P_SPEC);
     expect(ix.groups).toHaveLength(1);
@@ -319,7 +319,7 @@ describe("build837P → get837Claims round-trip", () => {
   });
 });
 
-describe("build837P — maximal optional coverage", () => {
+describe("build837P - maximal optional coverage", () => {
   // A spec exercising pay-to address, contacts, claim notes/procedures/otherHi,
   // a dependent patient with PAT-01, COB, a drug, a >6-triple CAS group, line
   // notes/amounts/references/providers, and the institutional pay-to-plan branch
@@ -704,7 +704,7 @@ describe("build837D → get837Claims round-trip", () => {
   });
 });
 
-describe("build837 — structural refusals", () => {
+describe("build837 - structural refusals", () => {
   it("refuses a spec with no billing providers", () => {
     try {
       build837P({ ...P_SPEC, billingProviders: [] });
@@ -788,8 +788,8 @@ describe("build837 — structural refusals", () => {
   });
 });
 
-describe("build837 — PHI-clean refusal messages", () => {
-  it("a refusal message carries structural locators only — no claimId or member id", () => {
+describe("build837 - PHI-clean refusal messages", () => {
+  it("a refusal message carries structural locators only - no claimId or member id", () => {
     try {
       build837P(pSpecWithClaim({ ...P_CLAIM, serviceLines: [] }));
       throw new Error("expected build837P to throw");
@@ -802,7 +802,7 @@ describe("build837 — PHI-clean refusal messages", () => {
   });
 });
 
-describe("build837 — delimiter-bearing values round-trip losslessly", () => {
+describe("build837 - delimiter-bearing values round-trip losslessly", () => {
   it("escapes a claim reference carrying the active delimiters and parses it back", () => {
     const spec = pSpecWithClaim({
       ...P_CLAIM,

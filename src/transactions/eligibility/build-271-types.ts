@@ -4,13 +4,13 @@
  * "./types.js".X12Eligibility} read model, MINUS the fields
  * `get271Eligibility` *derives* (each service-type code's `description`,
  * resolved from the bundled snapshot) and minus the read-only `warnings` /
- * `hierarchies` arrays. The HL spine is NEVER caller-supplied — the builder
+ * `hierarchies` arrays. The HL spine is NEVER caller-supplied - the builder
  * computes every HL-01 id, HL-02 parent pointer, and HL-04 has-child flag
  * from the nested informationSources → receivers → subscribers →
  * (dependents) tree.
  *
  * Money + percent + quantity are {@link "../../decimal.js".X12Decimal}
- * throughout — never `number` (float arithmetic destroys cents on a benefit
+ * throughout - never `number` (float arithmetic destroys cents on a benefit
  * amount). Construct values with `X12Decimal.fromString("1000.00")`.
  *
  * Spec source: WPC TR3 `005010X279A1`. The builder emits segments in TR3
@@ -38,33 +38,33 @@ import type { X12Decimal } from "../../decimal.js";
  * ```
  */
 export interface Build271EnvelopeSpec {
-  /** ISA-06 — interchange sender id (padded to 15 on emit). */
+  /** ISA-06 - interchange sender id (padded to 15 on emit). */
   readonly senderId: string;
-  /** ISA-08 — interchange receiver id (padded to 15 on emit). */
+  /** ISA-08 - interchange receiver id (padded to 15 on emit). */
   readonly receiverId: string;
-  /** ISA-09 — interchange date YYMMDD. */
+  /** ISA-09 - interchange date YYMMDD. */
   readonly interchangeDate: string;
-  /** ISA-10 — interchange time HHMM. */
+  /** ISA-10 - interchange time HHMM. */
   readonly interchangeTime: string;
-  /** ISA-13 / IEA-02 — interchange control number (zero-padded to 9 on emit). */
+  /** ISA-13 / IEA-02 - interchange control number (zero-padded to 9 on emit). */
   readonly interchangeControlNumber: string;
-  /** GS-06 / GE-02 — group control number. */
+  /** GS-06 / GE-02 - group control number. */
   readonly groupControlNumber: string;
-  /** ST-02 / SE-02 — transaction set control number. */
+  /** ST-02 / SE-02 - transaction set control number. */
   readonly transactionSetControlNumber: string;
-  /** ISA-05 — interchange sender qualifier. Default `"ZZ"`. */
+  /** ISA-05 - interchange sender qualifier. Default `"ZZ"`. */
   readonly senderQualifier?: string;
-  /** ISA-07 — interchange receiver qualifier. Default `"ZZ"`. */
+  /** ISA-07 - interchange receiver qualifier. Default `"ZZ"`. */
   readonly receiverQualifier?: string;
-  /** ISA-15 — usage indicator (`P` production, `T` test). Default `"P"`. */
+  /** ISA-15 - usage indicator (`P` production, `T` test). Default `"P"`. */
   readonly usageIndicator?: string;
-  /** GS-02 — application sender code. Default: the interchange sender id. */
+  /** GS-02 - application sender code. Default: the interchange sender id. */
   readonly applicationSenderCode?: string;
-  /** GS-03 — application receiver code. Default: the interchange receiver id. */
+  /** GS-03 - application receiver code. Default: the interchange receiver id. */
   readonly applicationReceiverCode?: string;
-  /** GS-04 — group date CCYYMMDD. Default: century-expanded ISA-09. */
+  /** GS-04 - group date CCYYMMDD. Default: century-expanded ISA-09. */
   readonly groupDate?: string;
-  /** GS-05 — group time HHMM. Default: the interchange time. */
+  /** GS-05 - group time HHMM. Default: the interchange time. */
   readonly groupTime?: string;
   /** Element separator (ISA byte 4). Default `"*"`. */
   readonly elementSeparator?: string;
@@ -77,7 +77,7 @@ export interface Build271EnvelopeSpec {
 }
 
 /**
- * A non-person entity (NM1) — the information-source payer (Loop 2100A) or
+ * A non-person entity (NM1) - the information-source payer (Loop 2100A) or
  * information-receiver provider (Loop 2100B), or a benefit-related entity
  * (Loop 2120C). Mirrors {@link "./types.js".X12EligibilityEntity}.
  *
@@ -91,15 +91,15 @@ export interface Build271EnvelopeSpec {
  * ```
  */
 export interface Build271EntitySpec {
-  /** NM1-01 — entity identifier code (`PR` payer, `1P` provider, …). */
+  /** NM1-01 - entity identifier code (`PR` payer, `1P` provider, …). */
   readonly entityIdentifierCode: string;
-  /** NM1-02 — entity type qualifier (`1` person, `2` non-person). */
+  /** NM1-02 - entity type qualifier (`1` person, `2` non-person). */
   readonly entityTypeQualifier: string;
-  /** NM1-03 — organization / last name. */
+  /** NM1-03 - organization / last name. */
   readonly name: string;
-  /** NM1-08 — identification code qualifier. */
+  /** NM1-08 - identification code qualifier. */
   readonly idQualifier?: string;
-  /** NM1-09 — identification code. */
+  /** NM1-09 - identification code. */
   readonly idCode?: string;
 }
 
@@ -118,20 +118,20 @@ export interface Build271EntitySpec {
 export interface Build271AddressSpec {
   /** N3 address lines (1-2). */
   readonly lines: readonly string[];
-  /** N4-01 — city. */
+  /** N4-01 - city. */
   readonly city?: string;
-  /** N4-02 — state / province. */
+  /** N4-02 - state / province. */
   readonly state?: string;
-  /** N4-03 — postal code. */
+  /** N4-03 - postal code. */
   readonly postalCode?: string;
-  /** N4-04 — country code. */
+  /** N4-04 - country code. */
   readonly countryCode?: string;
 }
 
 /**
  * A person (subscriber Loop 2100C / dependent Loop 2100D) decoded from
  * NM1 + the optional DMG demographics + N3/N4 address. `idCode` is the
- * member identifier (NM1-09) — synthetic-only in fixtures. Mirrors {@link
+ * member identifier (NM1-09) - synthetic-only in fixtures. Mirrors {@link
  * "./types.js".X12EligibilityMember}.
  *
  * @example
@@ -145,33 +145,33 @@ export interface Build271AddressSpec {
  * ```
  */
 export interface Build271MemberSpec {
-  /** NM1-01 — entity identifier code (`IL` insured / subscriber, `03` dependent). */
+  /** NM1-01 - entity identifier code (`IL` insured / subscriber, `03` dependent). */
   readonly entityIdentifierCode: string;
-  /** NM1-02 — entity type qualifier (`1` person). */
+  /** NM1-02 - entity type qualifier (`1` person). */
   readonly entityTypeQualifier: string;
-  /** NM1-03 — last name. */
+  /** NM1-03 - last name. */
   readonly lastName?: string;
-  /** NM1-04 — first name. */
+  /** NM1-04 - first name. */
   readonly firstName?: string;
-  /** NM1-05 — middle name. */
+  /** NM1-05 - middle name. */
   readonly middleName?: string;
-  /** NM1-07 — name suffix. */
+  /** NM1-07 - name suffix. */
   readonly suffix?: string;
-  /** NM1-08 — identification code qualifier (`MI` member id). */
+  /** NM1-08 - identification code qualifier (`MI` member id). */
   readonly idQualifier?: string;
-  /** NM1-09 — identification code (the member id). */
+  /** NM1-09 - identification code (the member id). */
   readonly idCode?: string;
   /** N3 + N4 postal address. */
   readonly address?: Build271AddressSpec;
-  /** DMG-02 — date of birth (CCYYMMDD; emitted with DMG-01 = `D8`). */
+  /** DMG-02 - date of birth (CCYYMMDD; emitted with DMG-01 = `D8`). */
   readonly dateOfBirth?: string;
-  /** DMG-03 — gender code (`M` / `F` / `U`). */
+  /** DMG-03 - gender code (`M` / `F` / `U`). */
   readonly genderCode?: string;
 }
 
 /**
  * A reassociation trace (TRN). **The verbatim echo of the requesting 270's
- * trace number** — `referenceId` (TRN-02) is the value a provider matches
+ * trace number** - `referenceId` (TRN-02) is the value a provider matches
  * against the trace it sent. Mirrors {@link
  * "./types.js".X12EligibilityTrace}.
  *
@@ -182,13 +182,13 @@ export interface Build271MemberSpec {
  * ```
  */
 export interface Build271TraceSpec {
-  /** TRN-01 — trace type code (`2` referenced — added by the payer in the 271). */
+  /** TRN-01 - trace type code (`2` referenced - added by the payer in the 271). */
   readonly traceTypeCode: string;
-  /** TRN-02 — reference identification (echoed verbatim from the 270). */
+  /** TRN-02 - reference identification (echoed verbatim from the 270). */
   readonly referenceId: string;
-  /** TRN-03 — originating company identifier. */
+  /** TRN-03 - originating company identifier. */
   readonly originatingCompanyId?: string;
-  /** TRN-04 — supplemental reference identifier. */
+  /** TRN-04 - supplemental reference identifier. */
   readonly supplementalReferenceId?: string;
 }
 
@@ -203,11 +203,11 @@ export interface Build271TraceSpec {
  * ```
  */
 export interface Build271ReferenceSpec {
-  /** REF-01 — reference identification qualifier. */
+  /** REF-01 - reference identification qualifier. */
   readonly qualifier: string;
-  /** REF-02 — reference identification. */
+  /** REF-02 - reference identification. */
   readonly value: string;
-  /** REF-03 — description. */
+  /** REF-03 - description. */
   readonly description?: string;
 }
 
@@ -222,17 +222,17 @@ export interface Build271ReferenceSpec {
  * ```
  */
 export interface Build271DateSpec {
-  /** DTP-01 — date/time qualifier. */
+  /** DTP-01 - date/time qualifier. */
   readonly qualifier: string;
-  /** DTP-02 — date/time format qualifier (`D8` / `RD8`). */
+  /** DTP-02 - date/time format qualifier (`D8` / `RD8`). */
   readonly formatQualifier: string;
-  /** DTP-03 — date/time value. */
+  /** DTP-03 - date/time value. */
   readonly value: string;
 }
 
 /**
  * One Service Type Code (EB-03, X12 external code source 1365). Only the
- * verbatim `code` is supplied — the read side looks up its `description`
+ * verbatim `code` is supplied - the read side looks up its `description`
  * from the bundled snapshot, so the spec deliberately omits it.
  *
  * @example
@@ -242,7 +242,7 @@ export interface Build271DateSpec {
  * ```
  */
 export interface Build271ServiceTypeSpec {
-  /** EB-03 — a single Service Type Code. */
+  /** EB-03 - a single Service Type Code. */
   readonly code: string;
 }
 
@@ -265,29 +265,29 @@ export interface Build271ServiceTypeSpec {
  * ```
  */
 export interface Build271BenefitSpec {
-  /** EB-01 — eligibility or benefit information code. */
+  /** EB-01 - eligibility or benefit information code. */
   readonly eligibilityCode: string;
-  /** EB-02 — coverage level code (`IND`, `FAM`, …). */
+  /** EB-02 - coverage level code (`IND`, `FAM`, …). */
   readonly coverageLevelCode?: string;
-  /** EB-03 — one-or-more Service Type Codes (emitted as a repeating element). */
+  /** EB-03 - one-or-more Service Type Codes (emitted as a repeating element). */
   readonly serviceTypeCodes?: readonly Build271ServiceTypeSpec[];
-  /** EB-04 — insurance type code. */
+  /** EB-04 - insurance type code. */
   readonly insuranceTypeCode?: string;
-  /** EB-05 — plan coverage description. */
+  /** EB-05 - plan coverage description. */
   readonly planCoverageDescription?: string;
-  /** EB-06 — time period qualifier. */
+  /** EB-06 - time period qualifier. */
   readonly timePeriodQualifier?: string;
-  /** EB-07 — monetary amount. */
+  /** EB-07 - monetary amount. */
   readonly monetaryAmount?: X12Decimal;
-  /** EB-08 — percent. */
+  /** EB-08 - percent. */
   readonly percent?: X12Decimal;
-  /** EB-09 — quantity qualifier. */
+  /** EB-09 - quantity qualifier. */
   readonly quantityQualifier?: string;
-  /** EB-10 — quantity. */
+  /** EB-10 - quantity. */
   readonly quantity?: X12Decimal;
-  /** EB-11 — authorization / certification indicator. */
+  /** EB-11 - authorization / certification indicator. */
   readonly authorizationRequired?: string;
-  /** EB-12 — in-plan-network indicator (`Y` / `N` / `U` / `W`). */
+  /** EB-12 - in-plan-network indicator (`Y` / `N` / `U` / `W`). */
   readonly inPlanNetwork?: string;
   /** Loop 2120 benefit-related REF identifiers. */
   readonly references?: readonly Build271ReferenceSpec[];
@@ -300,7 +300,7 @@ export interface Build271BenefitSpec {
 }
 
 /**
- * One dependent (Loop 2000D / 2100D) — a patient who is not the subscriber.
+ * One dependent (Loop 2000D / 2100D) - a patient who is not the subscriber.
  * Same benefit-bearing shape as a subscriber minus the nested dependents.
  * Mirrors {@link "./types.js".X12EligibilityDependent}.
  *
@@ -358,7 +358,7 @@ export interface Build271SubscriberSpec {
 }
 
 /**
- * One information receiver (Loop 2000B / 2100B) — the provider that
+ * One information receiver (Loop 2000B / 2100B) - the provider that
  * requested eligibility. Carries the provider entity (NM1) and its
  * subscribers.
  *
@@ -374,12 +374,12 @@ export interface Build271SubscriberSpec {
 export interface Build271InformationReceiverSpec {
   /** Loop 2100B information-receiver provider entity (NM1). */
   readonly entity: Build271EntitySpec;
-  /** Loop 2000C subscribers (at least one required — a receiver with none is refused). */
+  /** Loop 2000C subscribers (at least one required - a receiver with none is refused). */
   readonly subscribers: readonly Build271SubscriberSpec[];
 }
 
 /**
- * One information source (Loop 2000A / 2100A) — the payer answering the
+ * One information source (Loop 2000A / 2100A) - the payer answering the
  * eligibility request. Carries the payer entity (NM1) and its receivers.
  *
  * @example
@@ -394,7 +394,7 @@ export interface Build271InformationReceiverSpec {
 export interface Build271InformationSourceSpec {
   /** Loop 2100A information-source payer entity (NM1). */
   readonly entity: Build271EntitySpec;
-  /** Loop 2000B receivers (at least one required — a source with none is refused). */
+  /** Loop 2000B receivers (at least one required - a source with none is refused). */
   readonly receivers: readonly Build271InformationReceiverSpec[];
 }
 

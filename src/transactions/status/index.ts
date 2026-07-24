@@ -1,5 +1,5 @@
 /**
- * Barrel for the 277 / 277CA claim-status family — TR3s `005010X212`
+ * Barrel for the 277 / 277CA claim-status family - TR3s `005010X212`
  * (277 Health Care Claim Status Response) and `005010X214` (277CA Claim
  * Acknowledgment). Both carry `ST-01 = "277"` and share the HL spine +
  * STC composite; they are disambiguated by `ST-03`. {@link get277Status}

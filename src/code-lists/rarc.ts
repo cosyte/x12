@@ -1,12 +1,12 @@
 /**
- * **RARC — Remittance Advice Remark Codes.** Lives on 835 `MIA-05/MIA-20`,
+ * **RARC - Remittance Advice Remark Codes.** Lives on 835 `MIA-05/MIA-20`,
  * `MOA-03..MOA-09`, `LQ-02` (when `LQ-01 = "HE"`), and `NTE` remittance
  * notes. Where CARC says *why* an adjustment was made, RARC adds *which
- * specific rule fired* — diagnostic granularity for appeals + cash-posting
+ * specific rule fired* - diagnostic granularity for appeals + cash-posting
  * triage. Misreading a code drives the wrong remediation path (appeal vs
  * write-off vs patient call).
  *
- * Source: **WPC (Washington Publishing Company)** — `x12.org/codes/
+ * Source: **WPC (Washington Publishing Company)** - `x12.org/codes/
  * remittance-advice-remark-codes`. WPC updates monthly. Two prefix
  * conventions: `M`-prefix (legacy / fee-schedule-related, e.g. `M1`) and
  * `N`-prefix (introduced 2003+, e.g. `N4`). Both shapes co-exist in real
@@ -36,7 +36,7 @@ export const RARC: CodeListSnapshot = Object.freeze({
   meta: Object.freeze({
     id: "RARC",
     description: "Remittance Advice Remark Codes",
-    source: "WPC (Washington Publishing Company) — x12.org/codes/remittance-advice-remark-codes",
+    source: "WPC (Washington Publishing Company) - x12.org/codes/remittance-advice-remark-codes",
     publishedDate: "2026-03-01",
     snapshotDate: "2026-06-27",
     note: "Pre-launch initial subset (~15 most commonly observed codes). Phase 10 ships a full-regen script.",

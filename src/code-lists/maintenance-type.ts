@@ -1,14 +1,14 @@
 /**
- * **INS-03 — Maintenance Type Code** (X12 Code Source 875). Lives on
+ * **INS-03 - Maintenance Type Code** (X12 Code Source 875). Lives on
  * `INS-03` of every 834 member-level detail loop (and is echoed on
  * `HD-01` for each health-coverage loop); identifies what the enrollment
- * transaction *does to the member* — add, change, terminate, reinstate,
+ * transaction *does to the member* - add, change, terminate, reinstate,
  * audit. This is the safety-critical field of the 834: misreading a
  * termination (`024`) as a change (`001`) leaves a member enrolled who the
  * sponsor dropped, or drops a member the sponsor kept. The verbatim code
  * is ALWAYS preserved; the bundled description is a convenience only.
  *
- * Spec source: WPC TR3 `005010X220A1` — Benefit Enrollment and Maintenance
+ * Spec source: WPC TR3 `005010X220A1` - Benefit Enrollment and Maintenance
  * (834), Element `INS-03` (Code Source 875). The HIPAA-relevant subset is
  * small and stable.
  */
@@ -35,7 +35,7 @@ export const MAINTENANCE_TYPE_CODES: CodeListSnapshot = Object.freeze({
     source: "WPC TR3 005010X220A1 §INS Member Level Detail, Element INS-03 (Code Source 875)",
     publishedDate: "2010-04-01",
     snapshotDate: "2026-06-28",
-    note: "HIPAA-relevant subset; X12-internal list — codes are stable.",
+    note: "HIPAA-relevant subset; X12-internal list - codes are stable.",
   }),
   codes: Object.freeze({
     "001": "Change",

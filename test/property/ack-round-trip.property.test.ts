@@ -105,7 +105,7 @@ const acceptResponseArb = fc.record({
 });
 
 /**
- * Generate a clean-accept ack spec — every transaction-response
+ * Generate a clean-accept ack spec - every transaction-response
  * disposition is `"A"`, no error payload anywhere. The round-trip
  * property uses this so it doesn't accidentally invoke the
  * accept-clean refusal.
@@ -135,7 +135,7 @@ function buildAcceptSpec(
 // Round-trip property.
 // ---------------------------------------------------------------------------
 
-describe("999 — round-trip property", () => {
+describe("999 - round-trip property", () => {
   it("parse999(build999(spec)) round-trips dispositions, counts, and version on every clean accept", () => {
     fc.assert(
       fc.property(
@@ -172,7 +172,7 @@ describe("999 — round-trip property", () => {
 // Accept-clean invariant.
 // ---------------------------------------------------------------------------
 
-describe("999 — accept-clean safety property", () => {
+describe("999 - accept-clean safety property", () => {
   it("functional A + any non-A per-transaction response throws AckBuildError", () => {
     const nonAcceptArb = fc.constantFrom<X12AckDispositionCode>("E", "R", "P", "M", "W", "X");
     fc.assert(

@@ -1,5 +1,5 @@
 /**
- * **CLP-02 — Claim Status Code** (X12 Code Source 65). Lives on `CLP-02`
+ * **CLP-02 - Claim Status Code** (X12 Code Source 65). Lives on `CLP-02`
  * of every 835 claim payment loop; identifies the **adjudication
  * disposition** of a single claim (paid as primary / secondary, denied,
  * reversed, predetermination). Misreading flips an accepted claim to a
@@ -7,13 +7,13 @@
  *
  * Spec source: X12 005010X221A1 TR3 §"CLP Claim Payment Information",
  * Element `CLP-02` (Code Source 65). The full code list is bounded
- * (~25 values) and X12-internal (not WPC) — it grows rarely.
+ * (~25 values) and X12-internal (not WPC) - it grows rarely.
  *
  * **Initial bundled subset** covers the ~10 most common dispositions.
  * Codes outside the subset still parse (verbatim code preserved on the
  * model); a `X12_UNKNOWN_CLP_STATUS` warning would be a Phase 5+ addition
  * (not bundled at Phase 4 to keep the additions-only warning registry
- * surgical — Phase 4 only adds the codes it actually uses).
+ * surgical - Phase 4 only adds the codes it actually uses).
  */
 
 import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js";
@@ -37,7 +37,7 @@ export const CLP_STATUS: CodeListSnapshot = Object.freeze({
     source: "X12 005010X221A1 TR3 §CLP Claim Payment Information, Element CLP-02 (Code Source 65)",
     publishedDate: "2010-04-01",
     snapshotDate: "2026-06-27",
-    note: "Initial subset; X12-internal list (not WPC) — codes are stable.",
+    note: "Initial subset; X12-internal list (not WPC) - codes are stable.",
   }),
   codes: Object.freeze({
     "1": "Processed as Primary",

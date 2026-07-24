@@ -1,5 +1,5 @@
 /**
- * Unit tests for `detectDelimiters` — Tier-3 fatal taxonomy + valid-input
+ * Unit tests for `detectDelimiters` - Tier-3 fatal taxonomy + valid-input
  * exhaustive checks. These pin the 4-code fatal taxonomy locked in
  * `src/parser/errors.ts`: any new fatal would break the snapshot test in
  * `warning-codes.snapshot.test.ts`, but these tests pin the
@@ -18,7 +18,7 @@ import {
 
 import { buildIsa } from "./_helpers/envelope.js";
 
-describe("detectDelimiters — happy paths", () => {
+describe("detectDelimiters - happy paths", () => {
   it("decodes the canonical Medicare `*^:~` envelope", () => {
     const isa = buildIsa();
     const d = detectDelimiters(isa);
@@ -44,7 +44,7 @@ describe("detectDelimiters — happy paths", () => {
   });
 });
 
-describe("detectDelimiters — Tier-3 fatals", () => {
+describe("detectDelimiters - Tier-3 fatals", () => {
   it("X12_NO_ISA_HEADER when input does not start with ISA", () => {
     expect(() => detectDelimiters("GSX*HC*S*R*250101*1200*1*X*005010X222A2~")).toThrow(
       X12ParseError,
@@ -145,7 +145,7 @@ describe("detectDelimiters — Tier-3 fatals", () => {
   });
 });
 
-describe("DELIMITER_POSITIONS — locked-by-spec layout", () => {
+describe("DELIMITER_POSITIONS - locked-by-spec layout", () => {
   it("matches the ASC X12 .5 fixed positions (zero-indexed)", () => {
     expect(DELIMITER_POSITIONS).toEqual({
       element: 3,

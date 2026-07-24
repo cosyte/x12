@@ -1,5 +1,5 @@
 /**
- * `build277` / `build277CA` — pure-function builders for a 005010 277 Claim
+ * `build277` / `build277CA` - pure-function builders for a 005010 277 Claim
  * Status Response (`005010X212`) and 277CA Claim Acknowledgment
  * (`005010X214`). NEVER auto-sends, NEVER opens a socket, NEVER touches the
  * filesystem. The library mechanically emits the response it is told; a
@@ -10,11 +10,11 @@
  * The HL spine is the 277's safety primitive, so the builder OWNS it: it
  * computes every HL-01 id (sequential within the transaction), HL-02 parent
  * pointer (20 → 21 → 19 → 22 → 23), and HL-04 has-child flag from the
- * nested tree. Callers never hand-code the spine — a structurally
+ * nested tree. Callers never hand-code the spine - a structurally
  * inconsistent hierarchy is therefore unrepresentable, and the SE-01
  * segment count is correct by construction.
  *
- * The read side ({@link "./get-277.js".get277Status}) is lenient — a real
+ * The read side ({@link "./get-277.js".get277Status}) is lenient - a real
  * 277 with a broken HL parent pointer is WARNED, never rejected. The builder
  * takes the opposite stance: it REFUSES rather than emit a hierarchy a
  * downstream consumer would have to repair. A caller that must reproduce a
@@ -52,7 +52,7 @@ import { escapeRelease } from "../../parser/release.js";
 /** GS-01 functional identifier code for the 277. `HN` = Health Care Claim Status Notification. @internal */
 const X12_277_FUNCTIONAL_ID = "HN";
 
-/** GS-07 standards agency code — `X` for ASC X12. @internal */
+/** GS-07 standards agency code - `X` for ASC X12. @internal */
 const X12_AGENCY_CODE = "X";
 
 /** ST-03 / GS-08 version + release for each builder entry point. @internal */
@@ -68,7 +68,7 @@ const HL_LEVEL = {
 } as const;
 
 /**
- * `build277` — assemble a 005010X212 277 Claim Status Response around the
+ * `build277` - assemble a 005010X212 277 Claim Status Response around the
  * supplied spec.
  *
  * @example
@@ -102,7 +102,7 @@ export function build277(spec: Build277Spec): X12Interchange {
 }
 
 /**
- * `build277CA` — assemble a 005010X214 277CA Claim Acknowledgment around the
+ * `build277CA` - assemble a 005010X214 277CA Claim Acknowledgment around the
  * supplied spec. Identical body to {@link build277}; only the ST-03 / GS-08
  * version differs (so the parsed result is admitted by
  * {@link "./get-277.js".get277CADisposition} and carries
@@ -209,7 +209,7 @@ function buildClaimStatus(version: ClaimStatusVersion, spec: Build277Spec): X12I
   const stControlNumber = envelope.transactionSetControlNumber;
   const st = seg(["ST", "277", esc(stControlNumber), version]);
 
-  // ---- Body segments — emit the computed HL spine depth-first -----------
+  // ---- Body segments - emit the computed HL spine depth-first -----------
 
   const body: string[] = [];
   const hlCounter: HlCounter = { next: 1 };
@@ -323,7 +323,7 @@ function enforceSubscriber(subscriber: Build277SubscriberSpec, locator: string):
  * Refuse a claim that would not materialize on read (no trace AND no
  * statuses AND no service lines) and any status whose first composite lacks
  * a category code. Only a TRN opens a new Loop 2200 on read, so every claim
- * past the first under a subscriber / dependent MUST carry a trace — without
+ * past the first under a subscriber / dependent MUST carry a trace - without
  * one its STC / REF / DTP would silently fold into the prior claim. @internal
  */
 function enforceClaim(claim: Build277ClaimSpec, locator: string, isFirst: boolean): void {
@@ -604,7 +604,7 @@ function emitDate(
 }
 
 // ---------------------------------------------------------------------------
-// String helpers — mirror the `build835` / `build837` emit primitives.
+// String helpers - mirror the `build835` / `build837` emit primitives.
 // ---------------------------------------------------------------------------
 
 /** @internal */

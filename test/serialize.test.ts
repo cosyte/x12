@@ -13,7 +13,7 @@
  *    the serializer warn.
  * 3. **Spec-clean reconciliation.** With `{ specClean: true }` the serializer
  *    flags stale SE-01 / GE-01 / IEA-01 counts and mismatched control-number
- *    pairs via `onWarning`, NEVER silently correcting them — corrected counts
+ *    pairs via `onWarning`, NEVER silently correcting them - corrected counts
  *    are emitted only with `{ recomputeCounts: true }`, and control NUMBERS are
  *    never rewritten.
  */
@@ -47,7 +47,7 @@ describe("serializeX12: round-trip goldens across all v1 transactions", () => {
       expect(serialized).toBe(readGolden(name));
     });
 
-    it(`${name}: idempotency fixed point — serialize(parse(golden)) === golden`, () => {
+    it(`${name}: idempotency fixed point - serialize(parse(golden)) === golden`, () => {
       const golden = readGolden(name);
       expect(serializeX12(parseX12(golden))).toBe(golden);
     });
@@ -109,7 +109,7 @@ describe("serializeX12: spec-clean reconciliation", () => {
     }
   });
 
-  it("does NOT correct counts without recomputeCounts — output keeps verbatim values", () => {
+  it("does NOT correct counts without recomputeCounts - output keeps verbatim values", () => {
     const ix = parseX12(mismatchedRaw());
     const out = serializeX12(ix, { specClean: true });
     expect(out).toContain("SE*9*0001~");
@@ -168,7 +168,7 @@ describe("serializeX12: spec-clean control-pair + trailing-byte edges", () => {
     const ix = parseX12(raw);
     const warnings: X12ParseWarning[] = [];
     // recomputeCounts must degrade gracefully when the SE has no element to
-    // substitute — the segment is emitted verbatim, not corrupted.
+    // substitute - the segment is emitted verbatim, not corrupted.
     const out = serializeX12(ix, {
       specClean: true,
       recomputeCounts: true,

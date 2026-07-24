@@ -1,12 +1,12 @@
 /**
- * The emit half of the `@cosyte/x12` parser — `serializeX12` turns any
+ * The emit half of the `@cosyte/x12` parser - `serializeX12` turns any
  * {@link X12Interchange} back into an X12 byte stream. Two modes:
  *
  * - **Byte-faithful (default).** Reconstructs the interchange purely from the
  *   verbatim `.raw` strings the parser preserved (ISA + terminator, then each
  *   GS / transaction segment / GE / IEA terminator-joined, then any
  *   `trailingBytes`). For a Tier-1 (spec-clean, no-CRLF) input this is exactly
- *   the source bytes — the idempotency fixed point `serialize(parse(s)) === s`.
+ *   the source bytes - the idempotency fixed point `serialize(parse(s)) === s`.
  *   Inter-segment CRLF and a trailing newline are NOT reproduced: the parser
  *   silently normalizes them away (they are not in the model), so a
  *   pretty-printed source round-trips to its compact spec-clean form.
@@ -17,11 +17,11 @@
  *   (transaction count) vs the actual ST count, IEA-01 (group count) vs the
  *   actual group count, plus the ISA-13↔IEA-02 / GS-06↔GE-02 / ST-02↔SE-02
  *   control-number pairs. A mismatch is surfaced via `opts.onWarning` and
- *   NEVER silently corrected — the output keeps the model's values unless the
+ *   NEVER silently corrected - the output keeps the model's values unless the
  *   caller ALSO opts in with `{ recomputeCounts: true }`, which substitutes
  *   the recomputed SE-01 / GE-01 / IEA-01 counts into the emitted control
  *   segments. Control numbers are identity, not derived, so they are NEVER
- *   rewritten — only flagged.
+ *   rewritten - only flagged.
  *
  * Warning messages carry positional context + bounded numeric metadata only;
  * they never echo element VALUES (the H-PHI invariant shared across the
@@ -44,7 +44,7 @@ import {
  *
  * @remarks
  * With `exactOptionalPropertyTypes: true`, do not pass `specClean: undefined`
- * explicitly — omit the key instead.
+ * explicitly - omit the key instead.
  *
  * @example
  * ```ts
@@ -68,7 +68,7 @@ export interface SerializeOptions {
   /**
    * Substitute the recomputed SE-01 / GE-01 / IEA-01 counts into the emitted
    * control segments (only meaningful with `specClean: true`). Default
-   * `false` — the serializer warns on a count mismatch but emits the model's
+   * `false` - the serializer warns on a count mismatch but emits the model's
    * verbatim value. Control NUMBERS are never rewritten regardless.
    */
   readonly recomputeCounts?: boolean;
@@ -78,7 +78,7 @@ export interface SerializeOptions {
 
 /**
  * Serialize an {@link X12Interchange} back to an X12 byte stream. Pure
- * function — never throws, never mutates the input, never performs I/O. See
+ * function - never throws, never mutates the input, never performs I/O. See
  * the module header for the two emit modes.
  *
  * @example
@@ -246,7 +246,7 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
 }
 
 /**
- * Read an element by index, defaulting to `""` for missing positions —
+ * Read an element by index, defaulting to `""` for missing positions -
  * mirrors the envelope walker's `el` narrowing so truncated control segments
  * reconcile against `""` rather than throwing.
  *
@@ -260,7 +260,7 @@ function elementAt(elements: readonly string[], index: number): string {
  * Rebuild a control segment's raw text with one element substituted. The
  * element arrays on ISA / GS / GE / IEA / ST / SE come from a plain
  * element-separator split, so `elements.join(elementSep)` is the exact
- * inverse — substituting an index and rejoining yields a spec-clean raw. The
+ * inverse - substituting an index and rejoining yields a spec-clean raw. The
  * substituted values here are always recomputed integer counts (SE-01 / GE-01
  * / IEA-01), never PHI. A missing index is a no-op (returns the verbatim
  * join) so truncated segments degrade gracefully.

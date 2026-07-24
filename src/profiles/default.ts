@@ -1,6 +1,6 @@
 /**
  * Process-scoped default profile management. A single mutable module-scoped
- * `let` — the only mutable state in the library — so `parseX12(raw)` (with no
+ * `let` - the only mutable state in the library - so `parseX12(raw)` (with no
  * explicit profile) can consult a registered default.
  *
  * `setDefaultProfile` EXISTS but is DISCOURAGED: it is scoped to the current
@@ -26,7 +26,7 @@ let _defaultProfile: X12Profile | undefined = undefined;
  * profile arg) consults `getDefaultProfile()` and attaches the returned
  * profile to the result. Pass `null` (or `undefined`) to clear.
  *
- * Explicit args ALWAYS win — `parseX12(raw, { profile: myProfile })` uses
+ * Explicit args ALWAYS win - `parseX12(raw, { profile: myProfile })` uses
  * `myProfile` regardless of the default; `parseX12(raw, { profile: null })`
  * opts out of the default for a single call without changing the registered
  * default.
@@ -44,7 +44,7 @@ let _defaultProfile: X12Profile | undefined = undefined;
  * ```
  */
 export function setDefaultProfile(profile: X12Profile | null): void {
-  // Accept `undefined` defensively for JS callers — treat it like null.
+  // Accept `undefined` defensively for JS callers - treat it like null.
   _defaultProfile = profile ?? undefined;
 }
 

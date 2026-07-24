@@ -1,15 +1,15 @@
 /**
- * `get835` — extract a typed {@link X12Remittance} from a parsed X12
+ * `get835` - extract a typed {@link X12Remittance} from a parsed X12
  * 005010X221A1 transaction set. Walk the body segments via a small
  * state machine guided by the dogfooded loop spec (see
  * {@link "./loop-spec.js".REMIT_835_LOOP_2000}). Lenient on parse: every
  * recoverable deviation surfaces as a warning, never a throw. Money is
  * decoded as {@link "../../decimal.js".X12Decimal} (never `parseFloat`).
  * Balance invariants run after the walk and emit
- * `X12_835_REMIT_BALANCE_MISMATCH` on mismatch — the model is NEVER
+ * `X12_835_REMIT_BALANCE_MISMATCH` on mismatch - the model is NEVER
  * silently rebalanced.
  *
- * Spec source: WPC TR3 `005010X221A1` — Health Care Claim Payment/Advice.
+ * Spec source: WPC TR3 `005010X221A1` - Health Care Claim Payment/Advice.
  */
 
 import { X12Decimal } from "../../decimal.js";
@@ -48,7 +48,7 @@ import type {
 
 /**
  * Extract a typed {@link X12Remittance} from an 835 transaction set.
- * Pure function — no I/O, no global state. Returns `undefined` only if
+ * Pure function - no I/O, no global state. Returns `undefined` only if
  * the input transaction's ST-01 is not `"835"` (mis-routed call); every
  * other deviation is recoverable and surfaces on `result.warnings`.
  *
@@ -74,7 +74,7 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
   const warnings: X12ParseWarning[] = [];
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
 
-  // Mutable accumulators — frozen into the returned model at the end.
+  // Mutable accumulators - frozen into the returned model at the end.
   let payment: X12RemitPaymentHeader = EMPTY_HEADER;
   const traces: X12RemitTrace[] = [];
   let payer: X12RemitParty | undefined;
@@ -125,7 +125,7 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
         } else if (seg.id === "DTM" && currentClaim !== undefined) {
           attachClaimDtm(currentClaim, seg, delimiters);
         }
-        // CUR / header DTM not surfaced on the v1 model — verbatim segment
+        // CUR / header DTM not surfaced on the v1 model - verbatim segment
         // remains on tx.segments for callers who need it.
         break;
       }
@@ -184,7 +184,7 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
         break;
       }
       case "LX": {
-        // Header number — opens Loop 2000. We don't surface LX itself
+        // Header number - opens Loop 2000. We don't surface LX itself
         // (header-grouping artifact). Flush any straggler.
         flushClaim();
         lastParty = undefined;
@@ -243,7 +243,7 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
           }
           default: {
             // Other NM1 qualifiers (TT crossover carrier, PR other payer,
-            // GB / GR / 77 — service location): verbatim segment stays on
+            // GB / GR / 77 - service location): verbatim segment stays on
             // tx.segments; the typed v1 surface does not enumerate them
             // (additive in later phases).
             currentNm1Person = undefined;
@@ -735,7 +735,7 @@ function decodePlb(seg: X12Segment, delimiters: Delimiters): readonly X12RemitPr
 }
 
 // ---------------------------------------------------------------------------
-// Address / party mutators (immutable — return a new party with the change).
+// Address / party mutators (immutable - return a new party with the change).
 // ---------------------------------------------------------------------------
 
 const EMPTY_ADDRESS: X12RemitAddress = Object.freeze({
@@ -816,7 +816,7 @@ function freezeServiceLine(acc: ServiceLineAccumulator): X12RemitServiceLine {
 
 /** @internal */
 function freezeClaim(acc: ClaimAccumulator): X12RemitClaim {
-  // Voiding the props on ClaimAccumulator we don't use yet — Phase 8 will
+  // Voiding the props on ClaimAccumulator we don't use yet - Phase 8 will
   // expose CLP segment position so balance-warning positions can point at
   // the exact claim.
   void acc.clpSegmentIndex;

@@ -1,5 +1,5 @@
 /**
- * Envelope-decoder fuzz target — Phase 1 acceptance gate.
+ * Envelope-decoder fuzz target - Phase 1 acceptance gate.
  *
  * Starts from a spec-clean interchange, flips a single byte at a uniformly
  * random position to one of a small set of printable chars, and feeds the

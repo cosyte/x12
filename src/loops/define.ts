@@ -1,6 +1,6 @@
 /**
  * Public `defineLoopSpec()` factory for the `@cosyte/x12` loop surface.
- * Returns a frozen {@link LoopSpec} after structural validation — no
+ * Returns a frozen {@link LoopSpec} after structural validation - no
  * runtime walker (Phase 3+ owns walking). The DOGFOODING gate: every
  * built-in transaction loop spec shipped in Phases 3+ is authored through
  * this same public API consumers use for payer-specific loops, so a
@@ -23,7 +23,7 @@
  * Invalid input throws {@link LoopSpecDefinitionError} (a typed Error
  * subclass) so consumer bugs surface at definition time, not at walk
  * time. The parser is **lenient on parse** but **strict on consumer-
- * authored specs** — bad spec data is a programming error, not a
+ * authored specs** - bad spec data is a programming error, not a
  * transmission deviation.
  */
 
@@ -33,7 +33,7 @@ import type { LoopSegmentSpec, LoopSpec } from "./types.js";
  * Permissible shape for an X12 segment id. Most segments are 2-3 chars,
  * starting with a letter, remaining chars uppercase letter or digit (the
  * TR3 grammar). Accepts 2 chars (NM, HL, HI, etc.) AND 3 chars (NM1, CLM,
- * BHT, etc.) — the X12 spec permits both lengths.
+ * BHT, etc.) - the X12 spec permits both lengths.
  *
  * @internal
  */
@@ -100,7 +100,7 @@ export interface DefineLoopSpecInput {
 /**
  * Define a TR3 loop specification. Validates structurally, freezes the
  * resulting {@link LoopSpec} (along with its `segments` and `children`
- * arrays), and returns it. Pure — no I/O, no global state.
+ * arrays), and returns it. Pure - no I/O, no global state.
  *
  * @example
  * ```ts

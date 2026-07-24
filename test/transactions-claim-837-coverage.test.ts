@@ -8,7 +8,7 @@
  *   trio in Loop 2320 (Other Subscriber); per-line NTE + AMT + REF + NM1
  *   line-level provider; LIN + CTP drug; SVD + CAS + DTP line
  *   adjudication.
- * - 837I: pay-to-plan (NM1*PE) — institutional-only Loop 2010AC.
+ * - 837I: pay-to-plan (NM1*PE) - institutional-only Loop 2010AC.
  * - Variant-fallback: an ST-03 implementation-convention reference outside
  *   the bundled snapshot emits `X12_837_UNKNOWN_VARIANT` and the walker
  *   still extracts what it can.
@@ -34,7 +34,7 @@ function readClaimFixture(name: string): X12_837Submission {
   return sub;
 }
 
-describe("get837Claims — comprehensive 837P (every walker branch)", () => {
+describe("get837Claims - comprehensive 837P (every walker branch)", () => {
   it("decodes pay-to-address (NM1*87) onto the claim.payToAddress field", () => {
     const sub = readClaimFixture("837p-comprehensive.edi");
     const claim = sub.claims[0];
@@ -137,7 +137,7 @@ describe("get837Claims — comprehensive 837P (every walker branch)", () => {
   });
 });
 
-describe("get837Claims — institutional pay-to-plan (NM1*PE)", () => {
+describe("get837Claims - institutional pay-to-plan (NM1*PE)", () => {
   it("decodes Loop 2010AC pay-to-plan onto claim.payToPlan", () => {
     const sub = readClaimFixture("837i-pay-to-plan.edi");
     const claim = sub.claims[0];
@@ -149,7 +149,7 @@ describe("get837Claims — institutional pay-to-plan (NM1*PE)", () => {
   });
 });
 
-describe("get837Claims — edge cases (empty optionals, unknown HL levels, subscriber-is-patient)", () => {
+describe("get837Claims - edge cases (empty optionals, unknown HL levels, subscriber-is-patient)", () => {
   it("PAT inside subscriber HL merges relationship onto subscriber info (patient = subscriber)", () => {
     const sub = readClaimFixture("837p-edge-cases.edi");
     const patientClaim = sub.claims.find((c) => c.claimId === "PT-ACCT-010");
@@ -182,7 +182,7 @@ describe("get837Claims — edge cases (empty optionals, unknown HL levels, subsc
     const sub = readClaimFixture("837p-edge-cases.edi");
     const informationReceiver = sub.hierarchies.find((h) => h.levelCode === "21");
     expect(informationReceiver).toBeDefined();
-    // No HL_PARENT_LEVEL_INVALID for unknown levels — only known levels
+    // No HL_PARENT_LEVEL_INVALID for unknown levels - only known levels
     // assert an expected parent.
     expect(
       sub.warnings.filter((w) => w.code === WARNING_CODES.X12_HL_PARENT_LEVEL_INVALID).length,
@@ -222,7 +222,7 @@ describe("get837Claims — edge cases (empty optionals, unknown HL levels, subsc
   });
 });
 
-describe("get837Claims — empty optional defensive paths", () => {
+describe("get837Claims - empty optional defensive paths", () => {
   it("Loop 2320 SBR with empty payer responsibility code falls back to '' (defensive)", () => {
     const sub = readClaimFixture("837p-empty-optionals.edi");
     const claim = sub.claims[0];
@@ -257,7 +257,7 @@ describe("get837Claims — empty optional defensive paths", () => {
   });
 });
 
-describe("get837Claims — variant fallback", () => {
+describe("get837Claims - variant fallback", () => {
   it("emits X12_837_UNKNOWN_VARIANT for a non-snapshot ST-03 reference; walks shared structure", () => {
     const sub = readClaimFixture("837p-unknown-variant.edi");
     expect(sub.variant).toBe("unknown");

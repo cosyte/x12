@@ -1,5 +1,5 @@
 /**
- * `parse999` — decode a 005010X231A1 Implementation Acknowledgment into the
+ * `parse999` - decode a 005010X231A1 Implementation Acknowledgment into the
  * typed {@link X12Ack999} model. PURE FUNCTION; never opens sockets, never
  * touches the filesystem.
  *
@@ -8,14 +8,14 @@
  * 1. Delegate envelope decode to `parseX12` (handles ISA / GS / ST / SE /
  *    GE / IEA + delimiter detection + envelope-level warnings).
  * 2. Find the first ST..SE whose ST-01 is `"999"` and walk its body
- *    segments — AK1 → AK2 → (IK3 [→ CTX] (IK4 [→ CTX])*)* → IK5 → AK9. As a
+ *    segments - AK1 → AK2 → (IK3 [→ CTX] (IK4 [→ CTX])*)* → IK5 → AK9. As a
  *    Postel's-Law lenient accommodation we also accept the legacy
  *    `AK3` / `AK4` / `AK5` segment IDs (some converters still emit them
  *    inside a 999 envelope) and normalize them onto the X231A1 model.
  *
  * Postel's Law: every recoverable deviation is a warning (Tier-2), never a
  * throw. If the input contains no 999 transaction set, `parse999` returns
- * `undefined` rather than throwing — consumers wanting to assert presence
+ * `undefined` rather than throwing - consumers wanting to assert presence
  * narrow on `!== undefined`.
  */
 
@@ -32,7 +32,7 @@ import type {
 import { splitWithRelease, unescapeRelease } from "../../parser/release.js";
 import type { X12ParseWarning } from "../../parser/warnings.js";
 // `warnings` is reserved for future 999-specific Tier-2 codes; the Phase 3
-// parser is silent + fail-safe — see fail-safe fallbacks below.
+// parser is silent + fail-safe - see fail-safe fallbacks below.
 
 import {
   IK3_SYNTAX_ERROR_CODES,
@@ -94,7 +94,7 @@ export function parse999(
 
 /**
  * Walk one ST..SE 999 transaction set's body segments and assemble the
- * typed {@link X12Ack999} model. Internal — invoked from {@link parse999}
+ * typed {@link X12Ack999} model. Internal - invoked from {@link parse999}
  * after `parseX12` resolved the envelope.
  *
  * @internal
@@ -109,7 +109,7 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
 
   // Skip the ST segment (always at index 0) and the trailing SE segment
   // when iterating body segments. When SE is missing (truncated tx) the
-  // envelope walker didn't append it to `segments` — slice from index 1
+  // envelope walker didn't append it to `segments` - slice from index 1
   // to the end instead so no body segment is dropped.
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
 
@@ -210,7 +210,7 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
       }
       case "AK2": {
         // Opening a new AK2 closes the prior one (if it had no IK5, the
-        // flush synthesizes a reject placeholder — the inbound was
+        // flush synthesizes a reject placeholder - the inbound was
         // structurally truncated).
         if (currentResponse !== undefined) flushResponse(undefined);
         currentResponse = {
@@ -225,7 +225,7 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
       }
       case "IK3": {
         flushSegmentNote();
-        if (currentResponse === undefined) break; // structurally lost — segment outside AK2
+        if (currentResponse === undefined) break; // structurally lost - segment outside AK2
         const positionRaw = getElement(seg, 2, delimiters);
         const position = parseNonNegativeInteger(positionRaw);
         currentSegmentNote = {
@@ -261,7 +261,7 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
       }
       case "CTX": {
         // CTX situates the prior IK3 or IK4. We surface the raw CTX-01
-        // composite value verbatim — the X231A1 CTX syntax is non-trivial
+        // composite value verbatim - the X231A1 CTX syntax is non-trivial
         // and the typed model deliberately stops at "preserve verbatim"
         // rather than over-decompose.
         const ctxValue = getElement(seg, 1, delimiters);
@@ -339,7 +339,7 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
 // ---------------------------------------------------------------------------
 
 /**
- * Read element `n` (1-indexed) of `seg`. Returns `""` when missing — the
+ * Read element `n` (1-indexed) of `seg`. Returns `""` when missing - the
  * lenient narrow consistent with the envelope walker's `el()` helper.
  *
  * @internal
@@ -370,7 +370,7 @@ function getOptionalElement(
  * Collect non-empty element strings between positions `start` and `end`
  * inclusive (1-indexed). Used for the trailing AK9-05..AK9-09 and
  * IK5-02..IK5-06 syntax-error code lists. Returns a frozen readonly
- * array — empty when no codes are present.
+ * array - empty when no codes are present.
  *
  * @internal
  */
@@ -390,7 +390,7 @@ function collectErrorCodes(
 
 /**
  * Parse a non-negative integer from an X12 numeric element. Returns `0`
- * for empty / unparseable input — the lenient narrow consistent with the
+ * for empty / unparseable input - the lenient narrow consistent with the
  * envelope walker's behavior on malformed-but-not-fatal counts.
  *
  * @internal

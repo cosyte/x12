@@ -3,7 +3,7 @@
  * codes cover every unrecoverable structural failure in Phase 1; anything
  * less severe is a Tier-2 warning (see `./warnings.ts`). `X12ParseError` is
  * thrown directly; consumers narrow via the `code` discriminant. The set is
- * locked at 4 and is additions-only thereafter — adding a code is a
+ * locked at 4 and is additions-only thereafter - adding a code is a
  * breaking-change tripwire (see `test/warning-codes.snapshot.test.ts`).
  */
 
@@ -60,7 +60,7 @@ export type X12FatalCode = (typeof FATAL_CODES)[keyof typeof FATAL_CODES];
 
 /**
  * Maximum chars retained on `X12ParseError.snippet`. The snippet may carry
- * PHI/PII when parsing real interchanges — keeping it bounded limits the
+ * PHI/PII when parsing real interchanges - keeping it bounded limits the
  * blast radius and pairs with the documented consumer-redaction boundary.
  * Roadmap §7 (PHI posture) sets the upper bound at ~64 chars; we cap at 63
  * + the 1-char Unicode ellipsis = 64 total.
@@ -88,7 +88,7 @@ export function snippet(input: string): string {
  *
  * @remarks
  * Snippets may contain PHI/PII when parsing real interchanges (member IDs
- * appear in ISA-06/08 only as trading-partner IDs, not patient identity —
+ * appear in ISA-06/08 only as trading-partner IDs, not patient identity -
  * but real claim/eligibility bodies elsewhere in the input can carry PHI).
  * Redact at the call site if required by your compliance posture. The
  * library does not redact snippets itself.
@@ -100,7 +100,7 @@ export function snippet(input: string): string {
  *   parseX12("");
  * } catch (err) {
  *   if (err instanceof X12ParseError && err.code === "X12_EMPTY_INPUT") {
- *     // handle empty input — err.position, err.snippet available
+ *     // handle empty input - err.position, err.snippet available
  *   }
  * }
  * ```

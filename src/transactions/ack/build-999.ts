@@ -1,9 +1,9 @@
 /**
- * `build999` — pure-function builder for a 005010X231A1 Implementation
+ * `build999` - pure-function builder for a 005010X231A1 Implementation
  * Acknowledgment. NEVER auto-sends, NEVER opens a socket, NEVER touches
  * the filesystem. The library mechanically builds the disposition it is
  * told; an inconsistent spec (an `Accept` paired with errors) is REFUSED
- * via {@link "./errors.js".AckBuildError} — the safety invariant the
+ * via {@link "./errors.js".AckBuildError} - the safety invariant the
  * cosyte ack archetype enforces (mirrors `@cosyte/hl7`'s `buildAck`
  * boundary and `@cosyte/mllp`'s commit-contract pattern).
  *
@@ -11,7 +11,7 @@
  * GS..GE functional group containing a single ST..SE 999 transaction set,
  * spec-clean and round-trippable through {@link parseX12}. Defaults match
  * the cosyte parser archetype (`*^:~` delimiters, `P` usage indicator,
- * `005010X231A1` ST-03) — every override is keyed by the spec field name
+ * `005010X231A1` ST-03) - every override is keyed by the spec field name
  * so the caller's intent reads off the spec at the call site.
  */
 
@@ -39,7 +39,7 @@ const X231A1_VERSION_RELEASE = "005010X231A1";
 
 /**
  * The single ASC X12 standard agency-code value the library emits at
- * GS-07 — `X` for ASC X12 itself. (TIBCO / vendor traffic occasionally
+ * GS-07 - `X` for ASC X12 itself. (TIBCO / vendor traffic occasionally
  * uses `T` but that is non-conformant for healthcare; the library refuses
  * to mirror that quirk on emit, per Postel's Law.)
  *
@@ -48,7 +48,7 @@ const X231A1_VERSION_RELEASE = "005010X231A1";
 const X12_AGENCY_CODE = "X";
 
 /**
- * `build999` — assemble a 005010X231A1 Implementation Acknowledgment
+ * `build999` - assemble a 005010X231A1 Implementation Acknowledgment
  * around the supplied envelope + functional-group spec.
  *
  * Safety guards (refused via {@link AckBuildError}):
@@ -125,22 +125,22 @@ export function build999(spec: Build999Spec): X12Interchange {
   const isa =
     [
       "ISA",
-      "00", // ISA-01 — Authorization Info Qualifier
-      pad(" ", 10), // ISA-02 — Authorization Info (blank when ISA-01 == "00")
-      "00", // ISA-03 — Security Info Qualifier
-      pad(" ", 10), // ISA-04 — Security Info (blank when ISA-03 == "00")
+      "00", // ISA-01 - Authorization Info Qualifier
+      pad(" ", 10), // ISA-02 - Authorization Info (blank when ISA-01 == "00")
+      "00", // ISA-03 - Security Info Qualifier
+      pad(" ", 10), // ISA-04 - Security Info (blank when ISA-03 == "00")
       pad(senderQualifier, 2), // ISA-05
       pad(envelope.senderId, 15), // ISA-06
       pad(receiverQualifier, 2), // ISA-07
       pad(envelope.receiverId, 15), // ISA-08
-      pad(envelope.interchangeDate, 6), // ISA-09 — YYMMDD
-      pad(envelope.interchangeTime, 4), // ISA-10 — HHMM
-      repetitionSeparator, // ISA-11 — repetition separator
-      "00501", // ISA-12 — interchange version
+      pad(envelope.interchangeDate, 6), // ISA-09 - YYMMDD
+      pad(envelope.interchangeTime, 4), // ISA-10 - HHMM
+      repetitionSeparator, // ISA-11 - repetition separator
+      "00501", // ISA-12 - interchange version
       interchangeControlNumber, // ISA-13
-      "0", // ISA-14 — ack requested (0 = no inbound TA1)
+      "0", // ISA-14 - ack requested (0 = no inbound TA1)
       usageIndicator, // ISA-15
-      componentSeparator, // ISA-16 — component separator
+      componentSeparator, // ISA-16 - component separator
     ].join(elementSeparator) + segmentTerminator;
 
   // ---- Body segments ----------------------------------------------------
@@ -154,14 +154,14 @@ export function build999(spec: Build999Spec): X12Interchange {
   const gs = joinSeg(
     [
       "GS",
-      "FA", // GS-01 — functional ID code "FA" for ack
+      "FA", // GS-01 - functional ID code "FA" for ack
       esc(envelope.senderId), // GS-02
       esc(envelope.receiverId), // GS-03
-      groupDate, // GS-04 — CCYYMMDD
-      groupTime, // GS-05 — HHMM
+      groupDate, // GS-04 - CCYYMMDD
+      groupTime, // GS-05 - HHMM
       envelope.groupControlNumber, // GS-06
       groupResponsibleAgency, // GS-07
-      X231A1_VERSION_RELEASE, // GS-08 — the 999 TR3
+      X231A1_VERSION_RELEASE, // GS-08 - the 999 TR3
     ],
     elementSeparator,
     segmentTerminator,
@@ -217,7 +217,7 @@ export function build999(spec: Build999Spec): X12Interchange {
 
   // Final round-trip through `parseX12` so the returned `X12Interchange`
   // is bit-identical with the parsed form the consumer's other helpers
-  // operate on — and so the build path inherits delimiter detection,
+  // operate on - and so the build path inherits delimiter detection,
   // envelope walking, and any future Phase-1+ refinements for free. This
   // also catches any internal builder bug at the call boundary (any
   // self-build-self-parse divergence surfaces as Tier-2 warnings on the
@@ -226,14 +226,14 @@ export function build999(spec: Build999Spec): X12Interchange {
 }
 
 // ---------------------------------------------------------------------------
-// Safety guards — refuse inconsistent dispositions.
+// Safety guards - refuse inconsistent dispositions.
 // ---------------------------------------------------------------------------
 
 /**
  * Refuse an `Accept` disposition paired with errors anywhere in the spec.
  * Enforces the cosyte ack archetype's safety invariant: a library that
  * silently fabricates an accept against a non-empty error list lies to the
- * inbound sender that their input passed when it did not — a real
+ * inbound sender that their input passed when it did not - a real
  * patient-safety hazard. Mirrors the hl7 `buildAck` boundary +
  * `@cosyte/mllp`'s commit contract.
  *
@@ -482,7 +482,7 @@ function padControl(value: string, width: number): string {
 /**
  * Expand a 6-digit YYMMDD into CCYYMMDD. GS-04 carries the 4-digit year
  * form even when ISA-09 carries the 2-digit form. Years `00`–`49` are
- * 21st century (e.g. `25` → `2025`); `50`–`99` are 20th century — the
+ * 21st century (e.g. `25` → `2025`); `50`–`99` are 20th century - the
  * conventional X12 century-expansion window.
  *
  * @internal

@@ -1,12 +1,12 @@
 /**
- * `get837Claims` — extract a typed {@link X12_837Submission} from a parsed
+ * `get837Claims` - extract a typed {@link X12_837Submission} from a parsed
  * X12 005010 837 transaction set (Professional `X222A2`, Institutional
  * `X223A3`, or Dental `X224A2`). Walks the body via a state machine
  * guided by the dogfooded loop spec (see
  * `./loop-spec.ts`). Lenient on parse: every recoverable deviation
  * surfaces as a warning, never a throw. Money is decoded as
  * {@link "../../decimal.js".X12Decimal} (never `parseFloat`). HL
- * parent-pointer integrity is enforced — mismatches emit
+ * parent-pointer integrity is enforced - mismatches emit
  * `X12_HL_PARENT_MISMATCH` and `X12_HL_PARENT_LEVEL_INVALID`; the
  * walker NEVER silently re-numbers the hierarchy.
  *
@@ -32,7 +32,7 @@
  *   the billing provider) deferred to Phase 9 (profile system).
  * - **Builder** (`build837P`/`I`/`D`) deferred to Phase 8.
  *
- * None of these are silent — verbatim segments remain on
+ * None of these are silent - verbatim segments remain on
  * `tx.segments` so a consumer can drop down to raw element access for
  * anything the typed surface does not yet expose.
  */
@@ -127,7 +127,7 @@ export const HL_LEVEL_CODES = Object.freeze({
  * onto the right entity slot. Curated to the qualifiers the v1 walker
  * recognizes; an NM1 with a qualifier outside this set falls into the
  * Loop 2310x / 2420x line-provider verbatim bucket. Frozen for type
- * safety + IntelliSense — consumers should rarely need these (they're a
+ * safety + IntelliSense - consumers should rarely need these (they're a
  * walker-internal vocabulary), but they're exported for tests + the
  * Phase 8 builder API. @example NM1_QUALIFIERS.BILLING_PROVIDER → "85".
  */
@@ -156,7 +156,7 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Obje
 
 /**
  * Extract a typed {@link X12_837Submission} from an 837 transaction set.
- * Pure function — no I/O, no global state. Returns `undefined` when the
+ * Pure function - no I/O, no global state. Returns `undefined` when the
  * input transaction's ST-01 is not `"837"` (mis-routed call); every other
  * deviation is recoverable and surfaces on `submission.warnings`.
  *
@@ -187,7 +187,7 @@ export function get837Claims(
   const warnings: X12ParseWarning[] = [];
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
 
-  // Variant detection — ST-03 first, then SVx fallback, then unknown.
+  // Variant detection - ST-03 first, then SVx fallback, then unknown.
   const implementationConventionReference = tx.st.elements[3];
   const explicitType: X12Claim837Variant | undefined = opts?.type;
   const variantFromIcr =
@@ -273,7 +273,7 @@ export function get837Claims(
     currentClaim = undefined;
   };
 
-  // Hoisted once — every N3/N4/PER/REF call shares the same mutator bag,
+  // Hoisted once - every N3/N4/PER/REF call shares the same mutator bag,
   // closing over the outer `let` bindings. Keeping the bag out of the loop
   // avoids re-allocating a dozen arrow functions per body segment and
   // collapses the long tail of branch-coverage "dead arrows" that would
@@ -293,7 +293,7 @@ export function get837Claims(
       payToPlan = next;
     },
     // Setters for `subscriber` / `patient` route through `withCurrent`,
-    // which short-circuits when the current value is undefined — so the
+    // which short-circuits when the current value is undefined - so the
     // cast inside the spread is sound. Setters for `otherSubscriber` /
     // `otherPayer` are only reached after an SBR in Loop 2320 opened
     // `currentOtherSubscriber`, and the `activeEntity.kind` discriminator
@@ -337,7 +337,7 @@ export function get837Claims(
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
     switch (seg.id) {
       case "HL": {
-        // Hierarchy boundary — flush any in-flight claim/line.
+        // Hierarchy boundary - flush any in-flight claim/line.
         flushClaim();
         const hl = decodeHl(seg, delimiters);
         hierarchies.push(hl);
@@ -347,7 +347,7 @@ export function get837Claims(
           currentBillingHl = hl;
           currentSubscriberHl = undefined;
           currentPatientHl = undefined;
-          // Entering a new billing provider — reset billing-only state but
+          // Entering a new billing provider - reset billing-only state but
           // hold submitter/receiver (header scope) across HLs.
           billingProvider = undefined;
           payToAddress = undefined;
@@ -377,7 +377,7 @@ export function get837Claims(
         if (context.kind === "loop2000B") {
           pendingSubscriberInfo = info;
         } else if (currentClaim !== undefined) {
-          // Loop 2320 — other subscriber. Open accumulator; payer follows
+          // Loop 2320 - other subscriber. Open accumulator; payer follows
           // via NM1*IL / NM1*PR.
           flushOtherSubscriber();
           currentOtherSubscriber = {
@@ -446,7 +446,7 @@ export function get837Claims(
           currentOtherSubscriber.otherPayer = entity;
           activeEntity = { kind: "otherPayer" };
         } else if (currentClaim !== undefined) {
-          // Loop 2310x — provider role at claim level (rendering /
+          // Loop 2310x - provider role at claim level (rendering /
           // referring / supervising / service facility / attending /
           // operating / other operating, etc.). Surface on
           // claim.providers verbatim; the qualifier discriminates the
@@ -498,7 +498,7 @@ export function get837Claims(
           currentPayer === undefined
         ) {
           // A claim with no enclosing hierarchy is structurally
-          // illegal — flag with X12_MISSING_REQUIRED_LOOP. The walker
+          // illegal - flag with X12_MISSING_REQUIRED_LOOP. The walker
           // still attempts to extract the claim header.
           if (currentBillingHl === undefined) {
             warnings.push(
@@ -719,7 +719,7 @@ function validateHl(
 ): void {
   const expectedParent: string | undefined = EXPECTED_PARENT_LEVEL[hl.levelCode];
   if (expectedParent === undefined) {
-    // Top-level (info-source) or unknown level — only parent-mismatch
+    // Top-level (info-source) or unknown level - only parent-mismatch
     // check applies (parent must be absent for "20"; an unknown level is
     // surfaced verbatim, no synthesized expectation).
     if (hl.levelCode === HL_LEVEL_CODES.INFORMATION_SOURCE && hl.parentHlId !== undefined) {
@@ -1262,7 +1262,7 @@ function openAdjudication(seg: X12Segment, delimiters: Delimiters): Adjudication
  * {@link attachReference} call. Closes over the outer `let` bindings, so
  * the getters read live values. Reusing a single bag (vs. constructing
  * one per segment) is both cheaper at runtime and produces a smaller
- * branch-coverage surface — see the `entityMutators` declaration in
+ * branch-coverage surface - see the `entityMutators` declaration in
  * `get837Claims` for the closure rationale.
  *
  * @internal
@@ -1412,7 +1412,7 @@ function attachContact(
     case "otherSubscriber":
     case "otherPayer":
     case "lineProvider":
-      // PER is not surfaced on these entities in Phase 5 — verbatim
+      // PER is not surfaced on these entities in Phase 5 - verbatim
       // segment is preserved on tx.segments for callers who need it.
       // (v8-ignored: structurally unreachable in v1; exists for switch
       // exhaustiveness on ActiveEntity.)

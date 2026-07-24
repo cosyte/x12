@@ -5,14 +5,14 @@
  * raised when an eligibility-response spec cannot form a valid HL
  * hierarchy, or a per-level structural precondition fails.
  *
- * The HL spine is the 271's safety primitive — the builder OWNS it,
+ * The HL spine is the 271's safety primitive - the builder OWNS it,
  * computing every HL-01 id, HL-02 parent pointer (20 → 21 → 22 → 23), and
  * HL-04 has-child flag from the nested
  * informationSources → receivers → subscribers → (dependents) tree, so a
  * structurally inconsistent hierarchy is *unrepresentable* and SE-01 is
  * correct by construction.
  *
- * The read side ({@link "./get-271.js".get271Eligibility}) is lenient — a
+ * The read side ({@link "./get-271.js".get271Eligibility}) is lenient - a
  * real 271 with a broken HL parent pointer is WARNED, never rejected. The
  * builder takes the opposite stance: it REFUSES rather than emit a
  * hierarchy a downstream consumer would have to repair. A caller that must
@@ -25,11 +25,11 @@
  * here so consumers can narrow exhaustively on `err.code`; additions-only
  * thereafter (renaming any code is a breaking change).
  *
- * - `X12_271_BUILD_INVALID_HIERARCHY` — the nested tree cannot form a valid
+ * - `X12_271_BUILD_INVALID_HIERARCHY` - the nested tree cannot form a valid
  *   271 HL spine (no information sources, a source with no receiver, a
  *   receiver with no subscriber). The message carries structural indices +
- *   counts only — never a member id / name (PHI discipline).
- * - `X12_271_BUILD_INVALID_SPEC` — a non-hierarchy precondition failed (an
+ *   counts only - never a member id / name (PHI discipline).
+ * - `X12_271_BUILD_INVALID_SPEC` - a non-hierarchy precondition failed (an
  *   over-long ISA-13 interchange control number).
  *
  * @example
@@ -42,7 +42,7 @@
  *     err instanceof Eligibility271BuildError &&
  *     err.code === ELIGIBILITY_271_BUILD_ERROR_CODES.X12_271_BUILD_INVALID_HIERARCHY
  *   ) {
- *     // the hierarchy is impossible — fix the tree, do not emit
+ *     // the hierarchy is impossible - fix the tree, do not emit
  *   }
  * }
  * ```
@@ -61,10 +61,10 @@ export type Eligibility271BuildErrorCode =
 
 /**
  * Thrown by {@link "./build-271.js".build271} when the supplied eligibility
- * spec cannot be emitted as a conformant, self-consistent 271 — most
+ * spec cannot be emitted as a conformant, self-consistent 271 - most
  * importantly when its nested tree cannot form a valid HL hierarchy. Carries
  * a stable `code` for programmatic narrowing. Deliberately does NOT extend
- * `X12ParseError` or `X12BuildError` — the domain-refusal distinction
+ * `X12ParseError` or `X12BuildError` - the domain-refusal distinction
  * matters at the type level.
  *
  * @example

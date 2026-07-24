@@ -1,5 +1,5 @@
 /**
- * Typed model for the X12 278 Health Care Services Review — Request for
+ * Typed model for the X12 278 Health Care Services Review - Request for
  * Review (TR3 `005010X217`) and Response (TR3 `005010X216`). Both directions
  * share one structural shape: {@link X12ServicesReview} is returned by both
  * {@link "./get-278.js".get278Request} and {@link
@@ -11,7 +11,7 @@
  * **The certification decision is the safety-critical surface of a 278
  * response.** `HCR-01` (action code: `A1` certified, `A3` not certified,
  * `A4` pended, `A6` modified, …) is captured verbatim onto
- * {@link X12ReviewDecision} — the parser NEVER infers a certification
+ * {@link X12ReviewDecision} - the parser NEVER infers a certification
  * outcome and NEVER normalizes the code. A request echoes its `TRN` trace so
  * the response can be re-associated, exactly as 270/271 and 276/277 do.
  *
@@ -79,7 +79,7 @@ export interface X12AuthHeader {
 
 /**
  * A non-person entity (UMO in Loop 2010A, requester in Loop 2010B, or a
- * provider attached to a review). Decoded from an NM1 — name + identifier,
+ * provider attached to a review). Decoded from an NM1 - name + identifier,
  * no demographics.
  *
  * @example
@@ -101,7 +101,7 @@ export interface X12AuthEntity {
 /**
  * A person (subscriber Loop 2010C / dependent Loop 2010D) decoded from NM1 +
  * the optional DMG demographics. `idCode` (NM1-09) is the member identifier
- * — synthetic-only in fixtures.
+ * - synthetic-only in fixtures.
  *
  * @example
  * ```ts
@@ -125,7 +125,7 @@ export interface X12AuthMember {
 }
 
 /**
- * One services-review item — a patient-event HL (`EV`, Loop 2000E) or a
+ * One services-review item - a patient-event HL (`EV`, Loop 2000E) or a
  * service HL (`SS`, Loop 2000F). Carries the `UM` review information, the
  * optional `HCR` decision (response only), echoed `TRN` traces, `HI`
  * diagnoses, attached provider NM1s, and the supplemental REF/DTP/MSG.
@@ -136,7 +136,7 @@ export interface X12AuthMember {
  * declare const r: X12ServiceReview;
  * r.requestCategoryCode;        // "HS" (health services review) / "AR" (admission review)
  * r.certificationTypeCode;      // "I" (initial) / "R" (renewal)
- * r.decision?.actionCode;       // "A1" (certified) — response only
+ * r.decision?.actionCode;       // "A1" (certified) - response only
  * ```
  */
 export interface X12ServiceReview {
@@ -157,7 +157,7 @@ export interface X12ServiceReview {
 /**
  * The HCR Health Care Services Review decision (response only, Loop 2000E /
  * 2000F). **`actionCode` (HCR-01) is the certification outcome and is
- * preserved verbatim** — the parser never infers an outcome.
+ * preserved verbatim** - the parser never infers an outcome.
  * `reviewIdentificationNumber` (HCR-02) is the authorization / certification
  * number a provider quotes back to the payer.
  *
@@ -180,7 +180,7 @@ export interface X12ReviewDecision {
 /**
  * A reassociation trace (TRN). A 278 request carries a trace the response
  * echoes verbatim so the requester can re-associate the certification
- * outcome with the request it sent — the walker NEVER mutates it.
+ * outcome with the request it sent - the walker NEVER mutates it.
  *
  * @example
  * ```ts
@@ -201,7 +201,7 @@ export interface X12AuthTrace {
  * One diagnosis from an HI segment (Loop 2000E). `qualifier` (HI-0x-01) is
  * the X12 code-source qualifier (e.g. `ABK` ICD-10-CM principal); `code`
  * (HI-0x-02) is the diagnosis code. `codeSystem` resolves the qualifier
- * against the bundled `HI_QUALIFIERS` snapshot — `"unknown"` (with an
+ * against the bundled `HI_QUALIFIERS` snapshot - `"unknown"` (with an
  * `X12_UNKNOWN_HI_QUALIFIER` warning) when the qualifier is outside it. The
  * verbatim qualifier + code are always preserved.
  *

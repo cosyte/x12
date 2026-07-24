@@ -1,6 +1,6 @@
 /**
  * Thrown errors emitted by the X12 acknowledgment builders (`build999`,
- * `buildTA1`). Distinct from `X12ParseError` — the parsers stay lenient
+ * `buildTA1`). Distinct from `X12ParseError` - the parsers stay lenient
  * (Postel's Law) and never throw on a real-world acknowledgment, but the
  * builders DO throw when the caller asks the library to fabricate an
  * inconsistent disposition. The safety invariant the library enforces:
@@ -8,7 +8,7 @@
  * > A library can mechanically build the disposition it is told. It MUST
  * > NOT silently fabricate an `Accept` against a non-empty error list,
  * > because doing so would lie to the inbound sender that their input
- * > passed when it did not — a real downstream patient-safety hazard.
+ * > passed when it did not - a real downstream patient-safety hazard.
  *
  * This file is the chokepoint for that refusal.
  */
@@ -19,21 +19,21 @@
  * `err.code` exhaustively. Additions-only thereafter; renaming any of
  * these codes is a breaking change.
  *
- * - `X12_ACK_INVALID_DISPOSITION` — A disposition was supplied that does
+ * - `X12_ACK_INVALID_DISPOSITION` - A disposition was supplied that does
  *   not match {@link "./codes.js".X12AckDispositionCode} (or
  *   {@link "./codes.js".Ta1AckCode} for `buildTA1`).
- * - `X12_ACK_INVALID_SPEC` — A spec field violated a structural constraint
+ * - `X12_ACK_INVALID_SPEC` - A spec field violated a structural constraint
  *   the builder cannot recover from (e.g., an ISA-13 control number longer
  *   than the spec's 9-char limit).
- * - `X12_ACK_ACCEPT_WITH_ERRORS` — An `A` disposition was supplied
+ * - `X12_ACK_ACCEPT_WITH_ERRORS` - An `A` disposition was supplied
  *   alongside non-empty per-transaction errors or a transaction-set whose
- *   own disposition is not `A`. Refused — accept must mean accept. Use
+ *   own disposition is not `A`. Refused - accept must mean accept. Use
  *   `E` for "accepted, errors noted" or `R` for "rejected" instead.
- * - `X12_ACK_COUNT_MISMATCH` — The functional-level
+ * - `X12_ACK_COUNT_MISMATCH` - The functional-level
  *   `numberOfTransactionSets` / `numberReceived` / `numberAccepted` are
  *   internally inconsistent (e.g., accepted > received) or do not match
  *   the supplied `transactionResponses` list.
- * - `X12_TA1_ACCEPT_WITH_NOTE` — A TA1 `A` ack code was supplied with a
+ * - `X12_TA1_ACCEPT_WITH_NOTE` - A TA1 `A` ack code was supplied with a
  *   note code other than `000` (no error). Refused for the same safety
  *   reason: an accept cannot cite a non-zero note.
  *
@@ -44,7 +44,7 @@
  *   buildSomeAck();
  * } catch (err) {
  *   if (err instanceof AckBuildError && err.code === ACK_BUILD_ERROR_CODES.X12_ACK_ACCEPT_WITH_ERRORS) {
- *     // application bug — never silently accept with errors
+ *     // application bug - never silently accept with errors
  *   }
  * }
  * ```
@@ -73,7 +73,7 @@ export type AckBuildErrorCode = (typeof ACK_BUILD_ERROR_CODES)[keyof typeof ACK_
  * disposition is internally inconsistent it refuses, surfacing the bug at
  * the call site rather than silently lying to the inbound sender.
  *
- * `AckBuildError` deliberately does NOT extend `X12ParseError` — the
+ * `AckBuildError` deliberately does NOT extend `X12ParseError` - the
  * parser-vs-builder distinction matters at the type level (a parser catch
  * should never catch a builder bug, and vice versa).
  *

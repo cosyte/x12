@@ -1,5 +1,5 @@
 /**
- * Unit tests for the 005010X279A1 271 emit surface — `build271`. Covers:
+ * Unit tests for the 005010X279A1 271 emit surface - `build271`. Covers:
  *
  * - Happy path: a built 271 round-trips through `get271Eligibility`
  *   field-for-field (TRN echo, subscriber name, EB benefit, EB-03 repeating
@@ -12,7 +12,7 @@
  *   over-long control number → `X12_271_BUILD_INVALID_SPEC`.
  * - Envelope identity: GS-01 `HB`, ST-01 `271`, ST-03 `005010X279A1`.
  * - Pure-function discipline: returns a frozen interchange.
- * - PHI safety: a thrown structural error's message carries indices only —
+ * - PHI safety: a thrown structural error's message carries indices only -
  *   no member name / member id.
  *
  * Synthetic-only fixtures: names `DOE` / `JANE` / `JUNIOR`, obviously-fake
@@ -117,7 +117,7 @@ const CANONICAL_SPEC: Build271Spec = {
   ],
 };
 
-describe("build271 — envelope identity", () => {
+describe("build271 - envelope identity", () => {
   it("emits GS-01 HB / ST-01 271 / ST-03 005010X279A1", () => {
     const ix = build271(CANONICAL_SPEC);
     const group = ix.groups[0];
@@ -134,7 +134,7 @@ describe("build271 — envelope identity", () => {
   });
 });
 
-describe("build271 — round-trip fidelity", () => {
+describe("build271 - round-trip fidelity", () => {
   it("reproduces the subscriber, TRN echo, name, address, demographics", () => {
     const elig = eligOf(build271(CANONICAL_SPEC));
     expect(elig.warnings).toHaveLength(0);
@@ -243,7 +243,7 @@ describe("build271 — round-trip fidelity", () => {
   });
 });
 
-describe("build271 — dependent hierarchy", () => {
+describe("build271 - dependent hierarchy", () => {
   const DEPENDENT_SPEC: Build271Spec = {
     envelope: ENVELOPE,
     informationSources: [
@@ -308,7 +308,7 @@ describe("build271 — dependent hierarchy", () => {
   });
 });
 
-describe("build271 — structural refusals", () => {
+describe("build271 - structural refusals", () => {
   it("refuses an empty information-source list (INVALID_HIERARCHY)", () => {
     expect(() => build271({ envelope: ENVELOPE, informationSources: [] })).toThrow(
       Eligibility271BuildError,
@@ -371,7 +371,7 @@ describe("build271 — structural refusals", () => {
   });
 });
 
-describe("build271 — PHI safety", () => {
+describe("build271 - PHI safety", () => {
   it("structural-error message carries indices only, never a member id / name", () => {
     const spec: Build271Spec = {
       envelope: ENVELOPE,
@@ -407,7 +407,7 @@ describe("build271 — PHI safety", () => {
   });
 });
 
-describe("build271 — optional-field defaults", () => {
+describe("build271 - optional-field defaults", () => {
   it("round-trips a spec that omits the optional subscriber / benefit / member fields", () => {
     const spec: Build271Spec = {
       envelope: ENVELOPE,
@@ -447,7 +447,7 @@ describe("build271 — optional-field defaults", () => {
   });
 });
 
-describe("build271 — envelope control-number / date expansion", () => {
+describe("build271 - envelope control-number / date expansion", () => {
   it("zero-pads a short interchange control number to 9 chars", () => {
     const ix = build271({
       ...CANONICAL_SPEC,

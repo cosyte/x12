@@ -25,13 +25,13 @@ jobs:
   # Prove the publish pipeline on every push/PR WITHOUT burning a version or needing registry auth
   # (X12-10, mirroring config's REL-PIPE). Two auth-free proofs:
   #   1. `pnpm publish --dry-run` exercises the real publish command path (manifest, `files` set,
-  #      access, tag) — the release itself publishes via `changeset publish`, so this is a faithful
+  #      access, tag), the release itself publishes via `changeset publish`, so this is a faithful
   #      proxy. It runs `--ignore-scripts` because the `prepublishOnly` gates (typecheck/lint/test/
-  #      build/attw) already run in the `ci` job above on this same commit — re-running them here is
+  #      build/attw) already run in the `ci` job above on this same commit, re-running them here is
   #      redundant, and `attw --pack .` inside `prepublishOnly` breaks under `pnpm publish` (it can't
   #      find its own packed tarball). We build explicitly first so a real `dist/` is present.
   #   2. `npm pack --dry-run` asserts the publishable tarball actually assembles with the right file
-  #      set + built `dist/` — independent of what's already on npm (`publish --dry-run` skips an
+  #      set + built `dist/`, independent of what's already on npm (`publish --dry-run` skips an
   #      already-published version; `pack` never does). A red in either step means a real release
   #      would fail. The real provenance publish stays gated on the public flip (PUB-FLIP / X12-PUB).
   release-dry-run:
@@ -51,6 +51,6 @@ jobs:
       - name: Publish dry-run
         run: pnpm publish --dry-run --no-git-checks --ignore-scripts
       # Assert the publishable tarball assembles (catches missing files/dist/exports) even when the
-      # current version is already on npm — which `publish --dry-run` skips.
+      # current version is already on npm, which `publish --dry-run` skips.
       - name: Pack integrity
         run: npm pack --dry-run --ignore-scripts

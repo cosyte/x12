@@ -1,5 +1,5 @@
 /**
- * Barrel for the 278 Health Care Services Review surface — request TR3
+ * Barrel for the 278 Health Care Services Review surface - request TR3
  * `005010X217` (via {@link get278Request}) and response TR3 `005010X216`
  * (via {@link get278Response}). Both return the same {@link X12ServicesReview}
  * shape; `direction` records which entry point produced it. The loop specs

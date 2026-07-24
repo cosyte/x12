@@ -1,5 +1,5 @@
 /**
- * 834 TR3 `005010X220A1` loop specification — authored through the
+ * 834 TR3 `005010X220A1` loop specification - authored through the
  * **public** {@link "../../loops/define.js".defineLoopSpec} API, the same
  * dogfooding gate every other built-in transaction spec goes through.
  *
@@ -7,23 +7,23 @@
  *
  * ```text
  *  Header (transaction set, ST..SE)
- *    BGN  (Beginning Segment)                  — required, max 1
- *    REF  (Transaction Set Policy Number)      — situational, max >1
- *    DTP  (File Effective Date)                — situational, max >1
- *    QTY  (Transaction Set Control Totals)     — situational, max >1
- *  Loop 1000A — Sponsor Name (N1*P5)           — required, max 1
- *  Loop 1000B — Payer (N1*IN)                  — required, max 1
- *  Loop 1000C — TPA / Broker (N1*BO / N1*TV)   — situational, max >1
- *  Loop 2000 — Member Level Detail (INS)       — required, max >1
+ *    BGN  (Beginning Segment)                  - required, max 1
+ *    REF  (Transaction Set Policy Number)      - situational, max >1
+ *    DTP  (File Effective Date)                - situational, max >1
+ *    QTY  (Transaction Set Control Totals)     - situational, max >1
+ *  Loop 1000A - Sponsor Name (N1*P5)           - required, max 1
+ *  Loop 1000B - Payer (N1*IN)                  - required, max 1
+ *  Loop 1000C - TPA / Broker (N1*BO / N1*TV)   - situational, max >1
+ *  Loop 2000 - Member Level Detail (INS)       - required, max >1
  *    INS  REF  DTP
- *    Loop 2100A — Member Name (NM1*IL)         — required, max 1
+ *    Loop 2100A - Member Name (NM1*IL)         - required, max 1
  *      NM1  N3  N4  DMG
- *    Loop 2300 — Health Coverage (HD)          — situational, max >1
+ *    Loop 2300 - Health Coverage (HD)          - situational, max >1
  *      HD  DTP  AMT
- *      Loop 2320 — Coordination of Benefits    — situational, max >1
+ *      Loop 2320 - Coordination of Benefits    - situational, max >1
  *        COB
  *  Trailer
- *    SE   (Transaction Set Trailer)            — required, max 1
+ *    SE   (Transaction Set Trailer)            - required, max 1
  * ```
  *
  * @remarks
@@ -37,7 +37,7 @@ import { defineLoopSpec } from "../../loops/define.js";
 import type { LoopSpec } from "../../loops/types.js";
 
 /**
- * 834 Loop 2320 — Coordination of Benefits. Triggered by `COB`.
+ * 834 Loop 2320 - Coordination of Benefits. Triggered by `COB`.
  *
  * @example
  * ```ts
@@ -47,13 +47,13 @@ import type { LoopSpec } from "../../loops/types.js";
  */
 export const ENROLLMENT_834_LOOP_2320: LoopSpec = defineLoopSpec({
   id: "2320",
-  description: "834 Loop 2320 — Coordination of Benefits",
+  description: "834 Loop 2320 - Coordination of Benefits",
   trigger: "COB",
   segments: [{ id: "COB", usage: "situational", max: 1 }],
 });
 
 /**
- * 834 Loop 2300 — Health Coverage. Triggered by `HD`. Nests Loop 2320.
+ * 834 Loop 2300 - Health Coverage. Triggered by `HD`. Nests Loop 2320.
  *
  * @example
  * ```ts
@@ -64,7 +64,7 @@ export const ENROLLMENT_834_LOOP_2320: LoopSpec = defineLoopSpec({
  */
 export const ENROLLMENT_834_LOOP_2300: LoopSpec = defineLoopSpec({
   id: "2300",
-  description: "834 Loop 2300 — Health Coverage",
+  description: "834 Loop 2300 - Health Coverage",
   trigger: "HD",
   segments: [
     { id: "HD", usage: "situational", max: 1 },
@@ -75,7 +75,7 @@ export const ENROLLMENT_834_LOOP_2300: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 834 Loop 2100A — Member Name. Triggered by `NM1` with `NM1-01 = "IL"`.
+ * 834 Loop 2100A - Member Name. Triggered by `NM1` with `NM1-01 = "IL"`.
  *
  * @example
  * ```ts
@@ -85,7 +85,7 @@ export const ENROLLMENT_834_LOOP_2300: LoopSpec = defineLoopSpec({
  */
 export const ENROLLMENT_834_LOOP_2100A: LoopSpec = defineLoopSpec({
   id: "2100A",
-  description: "834 Loop 2100A — Member Name",
+  description: "834 Loop 2100A - Member Name",
   trigger: "NM1",
   segments: [
     { id: "NM1", usage: "required", max: 1 },
@@ -96,8 +96,8 @@ export const ENROLLMENT_834_LOOP_2100A: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 834 Loop 2000 — Member Level Detail. Triggered by `INS`. The streaming
- * unit of {@link "./get-834.js".get834Enrollments} — one yielded
+ * 834 Loop 2000 - Member Level Detail. Triggered by `INS`. The streaming
+ * unit of {@link "./get-834.js".get834Enrollments} - one yielded
  * `X12Enrollment` per `INS`. Nests Loop 2100A (member name) and Loop 2300
  * (health coverage).
  *
@@ -110,7 +110,7 @@ export const ENROLLMENT_834_LOOP_2100A: LoopSpec = defineLoopSpec({
  */
 export const ENROLLMENT_834_LOOP_2000: LoopSpec = defineLoopSpec({
   id: "2000",
-  description: "834 Loop 2000 — Member Level Detail",
+  description: "834 Loop 2000 - Member Level Detail",
   trigger: "INS",
   segments: [
     { id: "INS", usage: "required", max: 1 },
@@ -121,7 +121,7 @@ export const ENROLLMENT_834_LOOP_2000: LoopSpec = defineLoopSpec({
 });
 
 /**
- * 834 Loop 1000A — Sponsor Name. Triggered by `N1` with `N1-01 = "P5"`.
+ * 834 Loop 1000A - Sponsor Name. Triggered by `N1` with `N1-01 = "P5"`.
  *
  * @example
  * ```ts
@@ -131,13 +131,13 @@ export const ENROLLMENT_834_LOOP_2000: LoopSpec = defineLoopSpec({
  */
 export const ENROLLMENT_834_LOOP_1000A: LoopSpec = defineLoopSpec({
   id: "1000A",
-  description: "834 Loop 1000A — Sponsor Name",
+  description: "834 Loop 1000A - Sponsor Name",
   trigger: "N1",
   segments: [{ id: "N1", usage: "required", max: 1 }],
 });
 
 /**
- * 834 Loop 1000B — Payer. Triggered by `N1` with `N1-01 = "IN"`.
+ * 834 Loop 1000B - Payer. Triggered by `N1` with `N1-01 = "IN"`.
  *
  * @example
  * ```ts
@@ -147,7 +147,7 @@ export const ENROLLMENT_834_LOOP_1000A: LoopSpec = defineLoopSpec({
  */
 export const ENROLLMENT_834_LOOP_1000B: LoopSpec = defineLoopSpec({
   id: "1000B",
-  description: "834 Loop 1000B — Payer",
+  description: "834 Loop 1000B - Payer",
   trigger: "N1",
   segments: [{ id: "N1", usage: "required", max: 1 }],
 });

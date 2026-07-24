@@ -1,5 +1,5 @@
 /**
- * `build278Request` / `build278Response` — pure-function builders for a
+ * `build278Request` / `build278Response` - pure-function builders for a
  * 005010 278 Health Care Services Review: Request for Review (`005010X217`)
  * and Response (`005010X216`). NEVER auto-sends, NEVER opens a socket, NEVER
  * touches the filesystem. The library mechanically emits the review it is
@@ -10,18 +10,18 @@
  * The HL spine is the 278's safety primitive, so the builder OWNS it: it
  * computes every HL-01 id (sequential within the transaction), HL-02 parent
  * pointer (20 → 21 → 22 → 23 → EV/SS), and HL-04 has-child flag from the
- * nested tree. Callers never hand-code the spine — a structurally
+ * nested tree. Callers never hand-code the spine - a structurally
  * inconsistent hierarchy is therefore unrepresentable, and the SE-01 segment
  * count is correct by construction.
  *
  * **The certification decision is response-only and safety-critical.**
  * {@link build278Request} REFUSES a review carrying a `decision`; {@link
- * build278Response} emits the supplied HCR-01 `actionCode` VERBATIM — never
- * inferred, never upgraded — so the response round-trips the exact outcome
+ * build278Response} emits the supplied HCR-01 `actionCode` VERBATIM - never
+ * inferred, never upgraded - so the response round-trips the exact outcome
  * the caller supplied through {@link "./get-278.js".get278Response}.
  *
  * The read side ({@link "./get-278.js".get278Request} / {@link
- * "./get-278.js".get278Response}) is lenient — a real 278 with a broken HL
+ * "./get-278.js".get278Response}) is lenient - a real 278 with a broken HL
  * parent pointer is WARNED, never rejected. The builder takes the opposite
  * stance: it REFUSES rather than emit a hierarchy a downstream consumer would
  * have to repair. A caller that must reproduce a knowingly-malformed payer
@@ -51,7 +51,7 @@ import { escapeRelease } from "../../parser/release.js";
 /** GS-01 functional identifier code for the 278. `HI` = Health Care Services Review Information. @internal */
 const X12_278_FUNCTIONAL_ID = "HI";
 
-/** GS-07 standards agency code — `X` for ASC X12. @internal */
+/** GS-07 standards agency code - `X` for ASC X12. @internal */
 const X12_AGENCY_CODE = "X";
 
 /** ST-03 / GS-08 version + release for each builder entry point. @internal */
@@ -69,7 +69,7 @@ const HL_LEVEL = {
 const DEFAULT_REVIEW_LEVEL = "EV";
 
 /**
- * `build278Request` — assemble a 005010X217 278 Request for Review around the
+ * `build278Request` - assemble a 005010X217 278 Request for Review around the
  * supplied spec. Refuses any review carrying an HCR `decision` (HCR is
  * response-only).
  *
@@ -98,7 +98,7 @@ export function build278Request(spec: Build278Spec): X12Interchange {
 }
 
 /**
- * `build278Response` — assemble a 005010X216 278 Response around the supplied
+ * `build278Response` - assemble a 005010X216 278 Response around the supplied
  * spec. The HCR `actionCode` on each review's `decision` is emitted VERBATIM
  * (never inferred), so the response round-trips the exact certification
  * outcome through {@link "./get-278.js".get278Response}.
@@ -228,7 +228,7 @@ function buildServicesReview(
     esc(header.transactionTypeCode ?? ""),
   ]);
 
-  // ---- Body segments — emit the computed HL spine depth-first -----------
+  // ---- Body segments - emit the computed HL spine depth-first -----------
 
   const body: string[] = [bht];
   const hlCounter: HlCounter = { next: 1 };
@@ -520,7 +520,7 @@ function emitMember(member: Build278MemberSpec, body: string[], ctx: EmitContext
 }
 
 // ---------------------------------------------------------------------------
-// String helpers — mirror the `build277` emit primitives.
+// String helpers - mirror the `build277` emit primitives.
 // ---------------------------------------------------------------------------
 
 /** @internal */

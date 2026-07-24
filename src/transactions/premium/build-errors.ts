@@ -3,11 +3,11 @@
  * "./build-820.js".build820}). Distinct from the general `X12BuildError` (a
  * structurally impossible envelope): {@link Premium820BuildError} is raised
  * when a premium-payment spec cannot be emitted as a conformant,
- * self-consistent 820 — most importantly when a remittance loop has no
+ * self-consistent 820 - most importantly when a remittance loop has no
  * segment that can open it (neither an `ENT` organization summary nor an
  * `NM1` individual), or carries no `RMR` open item.
  *
- * The read side ({@link "./get-820.js".get820Payments}) is lenient — a real
+ * The read side ({@link "./get-820.js".get820Payments}) is lenient - a real
  * 820 with a stray, un-openable RMR / DTM is preserved verbatim, never
  * rejected. The builder takes the opposite stance: it REFUSES rather than
  * emit a remittance a downstream cash-poster would silently drop. A caller
@@ -25,12 +25,12 @@
  * consumers can narrow exhaustively on `err.code`; additions-only thereafter
  * (renaming any code is a breaking change).
  *
- * - `X12_820_BUILD_INVALID_SPEC` — a structural precondition failed: no TRN
+ * - `X12_820_BUILD_INVALID_SPEC` - a structural precondition failed: no TRN
  *   trace, no remittance loop, a remittance with neither an `ENT` entity nor
  *   an `NM1` individual to open it, a remittance with no `RMR` open item, an
  *   open item with no identity (empty qualifier + reference id), or an
  *   over-long ISA-13 interchange control number. The message carries
- *   structural indices + counts only — never a member id / name (PHI
+ *   structural indices + counts only - never a member id / name (PHI
  *   discipline).
  *
  * @example
@@ -43,7 +43,7 @@
  *     err instanceof Premium820BuildError &&
  *     err.code === PREMIUM_820_BUILD_ERROR_CODES.X12_820_BUILD_INVALID_SPEC
  *   ) {
- *     // the remittance structure is impossible — fix the spec, do not emit
+ *     // the remittance structure is impossible - fix the spec, do not emit
  *   }
  * }
  * ```
@@ -63,7 +63,7 @@ export type Premium820BuildErrorCode =
  * Thrown by {@link "./build-820.js".build820} when the supplied premium
  * spec cannot be emitted as a conformant, self-consistent 820. Carries a
  * stable `code` for programmatic narrowing. Deliberately does NOT extend
- * `X12ParseError` or `X12BuildError` — the domain-refusal distinction
+ * `X12ParseError` or `X12BuildError` - the domain-refusal distinction
  * matters at the type level.
  *
  * @example

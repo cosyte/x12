@@ -1,7 +1,7 @@
 /**
  * Deterministic branch exercises for the 837 walker. These complement the
  * fixture-driven Tier-1/Tier-2 suites by driving the long-tail branches with
- * small inline synthetic 837s — the cross-variant SVx guards, the merge
+ * small inline synthetic 837s - the cross-variant SVx guards, the merge
  * fallbacks (a second N4/SBR that omits a field the first supplied), the
  * in-adjudication REF/AMT short-circuits, the empty-CAS / empty-tooth guards,
  * and the info-source-HL-with-parent warning. Inline EDI keeps each branch's
@@ -55,7 +55,7 @@ function claimBody(trailing: readonly string[]): readonly string[] {
   ];
 }
 
-describe("get837Claims — info-source HL declaring a parent", () => {
+describe("get837Claims - info-source HL declaring a parent", () => {
   it("emits X12_HL_PARENT_MISMATCH when a level-20 HL carries an HL-02", () => {
     const sub = build837("005010X222A2", [
       "HL*1*9*20*1~",
@@ -66,7 +66,7 @@ describe("get837Claims — info-source HL declaring a parent", () => {
   });
 });
 
-describe("get837Claims — cross-variant SVx segments are ignored, not misread", () => {
+describe("get837Claims - cross-variant SVx segments are ignored, not misread", () => {
   it("837P line ignores an SV2 segment (institutional revenue code)", () => {
     const sub = build837("005010X222A2", claimBody(["SV2*0300*HC:99213*150*UN*1~"]));
     const line = sub.claims[0]?.serviceLines[0];
@@ -87,7 +87,7 @@ describe("get837Claims — cross-variant SVx segments are ignored, not misread",
   });
 });
 
-describe("get837Claims — entity address/subscriber merge fallbacks", () => {
+describe("get837Claims - entity address/subscriber merge fallbacks", () => {
   it("a second N4 omitting city keeps the first N4's city (base fallback)", () => {
     const sub = build837("005010X222A2", [
       "HL*1**20*1~",
@@ -128,7 +128,7 @@ describe("get837Claims — entity address/subscriber merge fallbacks", () => {
   });
 });
 
-describe("get837Claims — Loop 2430 adjudication short-circuits", () => {
+describe("get837Claims - Loop 2430 adjudication short-circuits", () => {
   it("REF and AMT after an SVD are ignored while in adjudication context", () => {
     const sub = build837(
       "005010X222A2",
@@ -158,7 +158,7 @@ describe("get837Claims — Loop 2430 adjudication short-circuits", () => {
   });
 });
 
-describe("get837Claims — dental tooth guards", () => {
+describe("get837Claims - dental tooth guards", () => {
   it("a TOO with an empty tooth code is dropped (no tooth entry)", () => {
     const sub = build837("005010X224A2", [
       "HL*1**20*1~",

@@ -4,8 +4,8 @@
  * Contract (parser/index.ts + errors.ts): in lenient mode `parseX12` may
  * throw ONLY an `X12ParseError` carrying one of the four Tier-3 fatal codes
  * (`X12_EMPTY_INPUT`, `X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`,
- * `X12_INVALID_DELIMITERS`). Every other deviation — vendor quirks,
- * truncation, weird delimiters, unknown segments, extra fields, random bytes —
+ * `X12_INVALID_DELIMITERS`). Every other deviation - vendor quirks,
+ * truncation, weird delimiters, unknown segments, extra fields, random bytes -
  * must be recovered into `ix.warnings`, never thrown.
  *
  * Additional invariants on the warnings themselves:

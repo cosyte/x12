@@ -1,7 +1,7 @@
 /**
  * Byte-flip fuzz property for the Phase 6 eligibility + claim-status
  * walkers. Real-world 271 / 277 / 277CA EDI arrives malformed in creative
- * ways; the walkers must stay lenient — every byte-flipped fixture must
+ * ways; the walkers must stay lenient - every byte-flipped fixture must
  * still walk without throwing. Only the 4 Tier-3 envelope fatals are
  * permitted to throw; everything else degrades to Tier-2 warnings.
  *

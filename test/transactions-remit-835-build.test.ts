@@ -1,5 +1,5 @@
 /**
- * Unit tests for the 005010X221A1 835 emit surface — `build835`. Covers:
+ * Unit tests for the 005010X221A1 835 emit surface - `build835`. Covers:
  *
  * - Happy path: a balanced remit round-trips through `get835`
  *   field-for-field with zero balance-mismatch warnings.
@@ -14,7 +14,7 @@
  * - Envelope identity: GS-01 `HP`, ST-01 `835`, ST-03 `005010X221A1`.
  * - Pure-function discipline: returns a frozen interchange.
  * - PHI safety: a thrown balance error's message carries numeric totals
- *   only — no patient-control number / member id.
+ *   only - no patient-control number / member id.
  */
 
 import { describe, expect, it } from "vitest";
@@ -135,7 +135,7 @@ const BALANCED_SPEC: Build835Spec = {
   claims: [BASE_CLAIM],
 };
 
-describe("build835 — envelope identity", () => {
+describe("build835 - envelope identity", () => {
   it("emits GS-01 HP, ST-01 835, ST-03 005010X221A1", () => {
     const ix = build835(BALANCED_SPEC);
     expect(ix.groups).toHaveLength(1);
@@ -232,7 +232,7 @@ describe("build835 → get835 round-trip", () => {
   });
 });
 
-describe("build835 — PLB provider-level adjustment", () => {
+describe("build835 - PLB provider-level adjustment", () => {
   // Take-back: a positive PLB reduces the payment. Σ(CLP-04)=450, PLB=+50,
   // so BPR-02 must be 450 − 50 = 400.
   const PLB_SPEC: Build835Spec = {
@@ -270,7 +270,7 @@ describe("build835 — PLB provider-level adjustment", () => {
   });
 });
 
-describe("build835 — balance refusals", () => {
+describe("build835 - balance refusals", () => {
   it("refuses an out-of-balance service line", () => {
     const broken: Build835Spec = {
       ...BALANCED_SPEC,
@@ -298,7 +298,7 @@ describe("build835 — balance refusals", () => {
   });
 
   // A header-only claim (no service lines, no adjustments) whose CLP-04
-  // does not equal CLP-03 — 400 paid against a 500 charge with nothing to
+  // does not equal CLP-03 - 400 paid against a 500 charge with nothing to
   // absorb the 100 delta.
   const UNBALANCED_CLAIM_SPEC: Build835Spec = {
     ...BALANCED_SPEC,
@@ -324,7 +324,7 @@ describe("build835 — balance refusals", () => {
     expect(() => build835(UNBALANCED_CLAIM_SPEC)).toThrow(/out-of-balance claim/);
   });
 
-  it("a balance error message carries numeric totals only — no PHI", () => {
+  it("a balance error message carries numeric totals only - no PHI", () => {
     try {
       build835(UNBALANCED_CLAIM_SPEC);
       throw new Error("expected build835 to throw");
@@ -336,7 +336,7 @@ describe("build835 — balance refusals", () => {
   });
 });
 
-describe("build835 — structural refusals", () => {
+describe("build835 - structural refusals", () => {
   it("refuses a spec with no trace", () => {
     const broken: Build835Spec = { ...BALANCED_SPEC, traces: [] };
     try {
@@ -367,7 +367,7 @@ describe("build835 — structural refusals", () => {
   });
 });
 
-describe("build835 — minimal spec (no parties, no claims)", () => {
+describe("build835 - minimal spec (no parties, no claims)", () => {
   // A zero-dollar remit with no payer / payee / claims and a bare trace.
   // Remit balance: BPR-02 0 == Σ(CLP-04) 0 − Σ(PLB) 0.
   const MINIMAL_SPEC: Build835Spec = {
@@ -393,7 +393,7 @@ describe("build835 — minimal spec (no parties, no claims)", () => {
   });
 });
 
-describe("build835 — envelope + payment overrides", () => {
+describe("build835 - envelope + payment overrides", () => {
   it("honours explicit delimiters, qualifiers, group fields, and BPR format code", () => {
     const spec: Build835Spec = {
       ...BALANCED_SPEC,
@@ -450,7 +450,7 @@ describe("build835 — envelope + payment overrides", () => {
   });
 });
 
-describe("build835 — maximal claim coverage", () => {
+describe("build835 - maximal claim coverage", () => {
   // A single claim exercising every optional emit branch while staying in
   // balance. Claim: CLP-03 1000 == CLP-04 600 + Σ(CAS) 400 (350 claim-level
   // + 50 line-level). Line: SVC-02 600 == SVC-03 550 + 50 line CAS. Remit:
@@ -538,7 +538,7 @@ describe("build835 — maximal claim coverage", () => {
   });
 });
 
-describe("build835 — service-line date variants", () => {
+describe("build835 - service-line date variants", () => {
   // Two zero-CAS lines: one start-only, one end-only. Claim: 200 == 200 + 0.
   const DTM_SPEC: Build835Spec = {
     envelope: ENVELOPE,
@@ -588,7 +588,7 @@ describe("build835 — service-line date variants", () => {
   });
 });
 
-describe("build835 — multi-PLB chunking", () => {
+describe("build835 - multi-PLB chunking", () => {
   // PROV1/20261231 carries 7 take-back pairs (chunk 6+1); PROV2/20261231 is
   // a fresh PLB. Σ(PLB) 100, so BPR-02 350 == Σ(CLP-04) 450 − 100.
   const PLB_MULTI_SPEC: Build835Spec = {
@@ -624,7 +624,7 @@ describe("build835 — multi-PLB chunking", () => {
   });
 });
 
-describe("build835 — delimiter-bearing values round-trip losslessly", () => {
+describe("build835 - delimiter-bearing values round-trip losslessly", () => {
   it("escapes a value carrying the segment terminator and parses it back", () => {
     // A trace reference id containing the active delimiters. `escapeRelease`
     // emits `?~` / `?*` / `?:`; the round-trip must reproduce the value, not

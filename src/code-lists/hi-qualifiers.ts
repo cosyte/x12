@@ -2,7 +2,7 @@
  * HI (Health Care Code Information) segment qualifier → code-system
  * provenance table. The 837 family uses HI to carry diagnoses, principal
  * procedures, external cause of injury, condition codes, occurrence codes,
- * value codes, and DRG / patient-related groupings — all under one segment
+ * value codes, and DRG / patient-related groupings - all under one segment
  * id, with the first component of each composite (HI-NN-1) acting as a
  * code-list qualifier that governs how HI-NN-2 should be interpreted.
  *
@@ -18,12 +18,12 @@
  * Source: CMS NUBC / WPC TR3 references for 005010X222A2 (837P),
  * 005010X223A3 (837I), and 005010X224A2 (837D); the qualifier list is
  * cross-referenced with X12 External Code List 1270 (Code List Qualifier
- * Code) — the values that appear specifically on HI in HIPAA healthcare
- * claims. Listed verbatim from the TR3 cross-references — no inference;
+ * Code) - the values that appear specifically on HI in HIPAA healthcare
+ * claims. Listed verbatim from the TR3 cross-references - no inference;
  * unknown qualifiers map to `"unknown"` and the verbatim code is still
  * preserved on the parsed diagnosis / procedure.
  *
- * Snapshot date 2026-06-27. This is a curated read-only table — Phase 9
+ * Snapshot date 2026-06-27. This is a curated read-only table - Phase 9
  * (vendor profiles) may LAYER additional qualifiers per payer, but the
  * BASE mapping ships as a frozen artifact so a single CMS change isn't a
  * silent semantic drift.
@@ -32,7 +32,7 @@
 /**
  * Discriminant for the code system referenced by a single HI composite. The
  * `"unknown"` member is the catch-all for qualifiers outside the TR3-cited
- * set — verbatim code is preserved on the parsed structure and an
+ * set - verbatim code is preserved on the parsed structure and an
  * `X12_UNKNOWN_HI_QUALIFIER` warning is emitted.
  *
  * @example
@@ -56,7 +56,7 @@ export type X12HiCodeSystem =
   | "unknown";
 
 /**
- * Category of an HI qualifier — separates diagnoses from procedures from
+ * Category of an HI qualifier - separates diagnoses from procedures from
  * the institutional NUBC code families. Consumers branching on the
  * category get exhaustiveness; the variant-specific helpers
  * (`getDiagnoses` / `getProcedures`) filter on it.
@@ -85,7 +85,7 @@ export type X12HiCategory =
 /**
  * One row of the HI-qualifier table. `system` answers "what code list is
  * HI-NN-2 from?"; `category` answers "what role does this qualifier play
- * in the claim?". Frozen by construction — the registry below is `as
+ * in the claim?". Frozen by construction - the registry below is `as
  * const`, so this interface is the read shape and is not exported as a
  * widened type.
  *
@@ -198,7 +198,7 @@ export const HI_QUALIFIERS = {
   DR: {
     system: "DRG",
     category: "drg",
-    description: "Diagnosis Related Group (DRG) — payment-grouping code.",
+    description: "Diagnosis Related Group (DRG) - payment-grouping code.",
   },
 
   // ---------------- NUBC institutional code sets (837I) ----------------
@@ -210,17 +210,17 @@ export const HI_QUALIFIERS = {
   BH: {
     system: "NUBC-OCCURRENCE",
     category: "occurrence",
-    description: "Occurrence code (NUBC FL 31-34) — date paired in HI-NN-4.",
+    description: "Occurrence code (NUBC FL 31-34) - date paired in HI-NN-4.",
   },
   BI: {
     system: "NUBC-OCCURRENCE-SPAN",
     category: "occurrence-span",
-    description: "Occurrence span code (NUBC FL 35-36) — date range in HI-NN-5/6.",
+    description: "Occurrence span code (NUBC FL 35-36) - date range in HI-NN-5/6.",
   },
   BE: {
     system: "NUBC-VALUE",
     category: "value",
-    description: "Value code (NUBC FL 39-41) — paired amount in HI-NN-5 as decimal.",
+    description: "Value code (NUBC FL 39-41) - paired amount in HI-NN-5 as decimal.",
   },
   PR: {
     system: "NUBC-PATIENT-REASON",
@@ -244,7 +244,7 @@ export type X12HiQualifier = keyof typeof HI_QUALIFIERS;
 /**
  * Resolve an HI qualifier string into a {@link HiQualifierEntry}, or
  * `undefined` if the qualifier is outside the bundled snapshot. Unknown
- * qualifiers still parse — the parser preserves the verbatim qualifier on
+ * qualifiers still parse - the parser preserves the verbatim qualifier on
  * the diagnosis/procedure and emits `X12_UNKNOWN_HI_QUALIFIER`. The lookup
  * is case-sensitive (TR3 qualifiers are uppercase).
  *
@@ -298,7 +298,7 @@ export function isDiagnosisQualifier(qualifier: string): boolean {
 
 /**
  * Decide whether an HI qualifier represents a procedure (principal or
- * other) — current ICD-10-PCS or legacy ICD-9-PCS.
+ * other) - current ICD-10-PCS or legacy ICD-9-PCS.
  *
  * @example
  * ```ts

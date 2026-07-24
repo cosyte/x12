@@ -1,5 +1,5 @@
 /**
- * TRN-echo round-trip property — the safety-critical reassociation
+ * TRN-echo round-trip property - the safety-critical reassociation
  * invariant for the 270/271 and 276/277 exchanges. A 271 MUST echo the
  * requesting 270's TRN-02 trace number verbatim, and a 277 MUST echo the
  * 276's, so the provider can re-associate the response with the request it
@@ -60,7 +60,7 @@ function build277(trace: string): string {
   ].join("\n");
 }
 
-describe("TRN echo — 271 reassociation", () => {
+describe("TRN echo - 271 reassociation", () => {
   it("echoes the requesting 270 trace verbatim onto the subscriber", () => {
     fc.assert(
       fc.property(traceArb, (trace) => {
@@ -74,7 +74,7 @@ describe("TRN echo — 271 reassociation", () => {
   });
 });
 
-describe("TRN echo — 277 reassociation", () => {
+describe("TRN echo - 277 reassociation", () => {
   it("echoes the requesting 276 trace verbatim onto the claim", () => {
     fc.assert(
       fc.property(traceArb, (trace) => {
@@ -87,7 +87,7 @@ describe("TRN echo — 277 reassociation", () => {
     );
   });
 
-  it("is a fixed point — a known trace survives the walk unchanged", () => {
+  it("is a fixed point - a known trace survives the walk unchanged", () => {
     const ix = parseX12(build277("CLAIM-20260627-001"));
     const tx = ix.groups[0]?.transactions[0];
     expect(tx).toBeDefined();

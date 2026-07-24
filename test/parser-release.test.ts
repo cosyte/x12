@@ -1,5 +1,5 @@
 /**
- * Unit tests for the X12 release-character (`?`) escape pair —
+ * Unit tests for the X12 release-character (`?`) escape pair -
  * `unescapeRelease` / `escapeRelease` / `splitWithRelease`. The pair is
  * the byte-level core of Phase 2's lossless round-trip property; if these
  * mis-handle a delimiter byte sequence, every downstream layer mis-reads
@@ -34,7 +34,7 @@ describe("RELEASE_CHAR is the X12 convention", () => {
   });
 });
 
-describe("unescapeRelease — release character semantics", () => {
+describe("unescapeRelease - release character semantics", () => {
   it("decodes ?<delim> → literal delimiter for all four delimiters", () => {
     const { emit, warnings } = emitter();
     expect(unescapeRelease("a?*b", D, emit, POS)).toBe("a*b");
@@ -81,7 +81,7 @@ describe("unescapeRelease — release character semantics", () => {
   });
 });
 
-describe("escapeRelease — emit-side spec-clean escaping", () => {
+describe("escapeRelease - emit-side spec-clean escaping", () => {
   it("escapes the four delimiters and the release character", () => {
     expect(escapeRelease("a*b^c:d~e?f", D)).toBe("a?*b?^c?:d?~e??f");
   });
@@ -93,7 +93,7 @@ describe("escapeRelease — emit-side spec-clean escaping", () => {
   });
 });
 
-describe("escape/unescape round-trip — lossless for any value", () => {
+describe("escape/unescape round-trip - lossless for any value", () => {
   it("round-trips a mix of delimiters and release characters", () => {
     const original = "patient*Doe^Jane:1980~?escape?";
     const { emit } = emitter();
@@ -102,7 +102,7 @@ describe("escape/unescape round-trip — lossless for any value", () => {
   });
 });
 
-describe("splitWithRelease — single-byte delimiter split honors `?<delim>`", () => {
+describe("splitWithRelease - single-byte delimiter split honors `?<delim>`", () => {
   it("does not split on an escaped delimiter", () => {
     expect(splitWithRelease("a*b?*c*d", "*")).toEqual(["a", "b?*c", "d"]);
   });

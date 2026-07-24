@@ -1,5 +1,5 @@
 /**
- * `get278Request` / `get278Response` — extract a typed
+ * `get278Request` / `get278Response` - extract a typed
  * {@link X12ServicesReview} from a parsed X12 278 Health Care Services
  * Review transaction set (request TR3 `005010X217`, response TR3
  * `005010X216`). Both directions share one lenient HL-tree walk; the entry
@@ -8,7 +8,7 @@
  *
  * **The certification decision is the safety-critical surface.** In a
  * response the `HCR-01` action code (certified / not-certified / pended /
- * modified) is captured verbatim onto the review item — the walker NEVER
+ * modified) is captured verbatim onto the review item - the walker NEVER
  * infers a certification outcome. The HL spine `20 → 21 → 22 → 23` is
  * validated for parent-pointer integrity via the shared
  * {@link "../shared/hl.js".validateHl}; the `EV` / `SS` event + service
@@ -57,9 +57,9 @@ const HL_LEVEL_SERVICE = "SS";
  * Per-level expected parent level for the 278 HL spine. UMO (`20`) has no
  * parent; requester (`21`) parents to UMO; subscriber (`22`) parents to
  * requester; dependent (`23`) parents to subscriber. The `EV` / `SS` event +
- * service levels are deliberately ABSENT — they attach under a subscriber OR
+ * service levels are deliberately ABSENT - they attach under a subscriber OR
  * a dependent and clearinghouses vary, so the walker stays tolerant there
- * (an absent key means "unknown level — no synthesized expectation"). @internal
+ * (an absent key means "unknown level - no synthesized expectation"). @internal
  */
 const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Object.freeze({
   [HL_LEVEL_CODES.INFORMATION_SOURCE]: undefined,
@@ -70,7 +70,7 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Obje
 
 /**
  * Extract a typed {@link X12ServicesReview} from a 278 **request**
- * (`005010X217`). Pure function — no I/O. Returns `undefined` only when the
+ * (`005010X217`). Pure function - no I/O. Returns `undefined` only when the
  * transaction's ST-01 is not `"278"` (mis-routed call); every other
  * deviation is recoverable and surfaces on `result.warnings`.
  *
@@ -118,7 +118,7 @@ export function get278Response(
   return walk278(delimiters, tx, "response");
 }
 
-/** @internal — the shared request/response HL walk. */
+/** @internal - the shared request/response HL walk. */
 function walk278(
   delimiters: Delimiters,
   tx: X12TransactionSet,
@@ -415,7 +415,7 @@ function decodeDtp(seg: X12Segment, delimiters: Delimiters): X12AuthDate | undef
   });
 }
 
-/** @internal — decode the HI diagnosis composites (up to 12). */
+/** @internal - decode the HI diagnosis composites (up to 12). */
 function decodeHiDiagnoses(
   seg: X12Segment,
   delimiters: Delimiters,

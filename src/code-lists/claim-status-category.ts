@@ -1,16 +1,16 @@
 /**
- * **Claim Status Category Code (CSCC)** — X12 external code source 507.
+ * **Claim Status Category Code (CSCC)** - X12 external code source 507.
  * The first component of an `STC-01` (and `STC-10` / `STC-11`) composite
  * in a 277 Claim Status Response (`005010X212`) or 277CA Claim
  * Acknowledgment (`005010X214`). The CSCC is the *category* of a claim's
- * status — acknowledged, pending, finalized, returned, error. Paired with
+ * status - acknowledged, pending, finalized, returned, error. Paired with
  * a {@link "./claim-status.js".CLAIM_STATUS_CODES} (CSC) that carries the
  * specific status detail.
  *
  * **Safety:** the CSCC `A`-family (`A1`..`A8`) distinguishes *accepted into
  * adjudication* (`A2`) from *rejected / returned unprocessable* (`A3`,
  * `A6`, `A7`, `A8`). Misreading a category flips a rejected claim to an
- * accepted one in a provider's follow-up workflow — a real
+ * accepted one in a provider's follow-up workflow - a real
  * cash-flow / timely-filing hazard. The parser surfaces the verbatim CSCC
  * and never derives an accept/reject boolean (that interpretation belongs
  * to the consumer's business rules).

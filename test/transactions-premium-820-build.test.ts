@@ -1,12 +1,12 @@
 /**
- * Unit tests for the 005010X218 820 emit surface — `build820`. Covers:
+ * Unit tests for the 005010X218 820 emit surface - `build820`. Covers:
  *
  * - Happy path: a premium payment round-trips through `get820Payments`
  *   field-for-field with zero warnings (BPR header, TRN traces, receiver +
  *   remitter parties, both organization-summary `ENT` and individual `NM1`
  *   remittance loops with RMR open items, DTM dates, ADX adjustments).
  * - Verbatim money: BPR-02 and every RMR amount emit as the supplied
- *   `X12Decimal` cents-exact — the 820 carries no balance equation, so the
+ *   `X12Decimal` cents-exact - the 820 carries no balance equation, so the
  *   total is never reconciled against the open items.
  * - Structural refusals: no trace / no remittance / a remittance with
  *   neither entity nor individual / a remittance with no open items / an
@@ -15,7 +15,7 @@
  * - Envelope identity: GS-01 `RA`, ST-01 `820`, ST-03 `005010X218`.
  * - Pure-function discipline: returns a frozen interchange.
  * - PHI safety: a thrown structural error's message carries indices /
- *   counts only — no member id / name.
+ *   counts only - no member id / name.
  */
 
 import { describe, expect, it } from "vitest";
@@ -130,7 +130,7 @@ const CANONICAL_SPEC: Build820Spec = {
   ],
 };
 
-describe("build820 — envelope identity", () => {
+describe("build820 - envelope identity", () => {
   it("emits GS-01 RA, ST-01 820, ST-03 005010X218", () => {
     const ix = build820(CANONICAL_SPEC);
     expect(ix.groups).toHaveLength(1);
@@ -175,7 +175,7 @@ describe("build820 → get820Payments round-trip", () => {
     expect(prem.remitter?.address?.postalCode).toBe("43017");
   });
 
-  it("reproduces the individual remittance — NM1, RMR, DTM", () => {
+  it("reproduces the individual remittance - NM1, RMR, DTM", () => {
     const prem = premiumOf(build820(CANONICAL_SPEC));
     expect(prem.remittances).toHaveLength(2);
 
@@ -193,7 +193,7 @@ describe("build820 → get820Payments round-trip", () => {
     expect(individual?.openItems[0]?.amountDue?.toString()).toBe("250.00");
   });
 
-  it("reproduces the organization-summary remittance — ENT, NM1, RMR, ADX", () => {
+  it("reproduces the organization-summary remittance - ENT, NM1, RMR, ADX", () => {
     const prem = premiumOf(build820(CANONICAL_SPEC));
     const summary = prem.remittances[1];
     expect(summary?.entity?.assignedNumber).toBe("1");
@@ -202,14 +202,14 @@ describe("build820 → get820Payments round-trip", () => {
     expect(summary?.individual?.lastName).toBe("SMITH");
     expect(summary?.individual?.idCode).toBe("MBR0002");
     expect(summary?.openItems[0]?.amountPaid.toString()).toBe("12250.00");
-    // The 820 has no balance equation — RMR-05 amount due omitted stays undefined.
+    // The 820 has no balance equation - RMR-05 amount due omitted stays undefined.
     expect(summary?.openItems[0]?.amountDue).toBeUndefined();
     expect(summary?.adjustments).toHaveLength(1);
     expect(summary?.adjustments[0]?.amount.toString()).toBe("-25.00");
     expect(summary?.adjustments[0]?.reasonCode).toBe("53");
   });
 
-  it("emits the BPR total verbatim — no reconciliation against the open items", () => {
+  it("emits the BPR total verbatim - no reconciliation against the open items", () => {
     // BPR-02 (12500) deliberately does NOT equal Σ RMR (250 + 12250 = 12500
     // here, but the builder makes no such check); use a spec whose total is
     // intentionally unrelated to prove the builder never balances.
@@ -223,7 +223,7 @@ describe("build820 → get820Payments round-trip", () => {
   });
 });
 
-describe("build820 — structural refusals", () => {
+describe("build820 - structural refusals", () => {
   it("refuses a spec with no TRN trace", () => {
     const spec: Build820Spec = { ...CANONICAL_SPEC, traces: [] };
     expect(() => build820(spec)).toThrow(Premium820BuildError);
@@ -282,8 +282,8 @@ describe("build820 — structural refusals", () => {
   });
 });
 
-describe("build820 — PHI safety", () => {
-  it("a thrown structural error carries indices / counts only — no member id or name", () => {
+describe("build820 - PHI safety", () => {
+  it("a thrown structural error carries indices / counts only - no member id or name", () => {
     const spec: Build820Spec = {
       ...CANONICAL_SPEC,
       remittances: [

@@ -1,6 +1,6 @@
 /**
  * Unit tests for the 005010X231A1 Implementation Acknowledgment (999)
- * Phase 3 surface — `parse999` + `build999`. Covers:
+ * Phase 3 surface - `parse999` + `build999`. Covers:
  *
  * - Three Tier-1 fixtures (accept; accept-with-errors; reject-on-
  *   transaction-control-number-mismatch).
@@ -10,7 +10,7 @@
  * - Pure-function discipline: build never opens a socket, never logs
  *   through `console.*`, returns a frozen interchange.
  * - PHI safety: every 999 the builder produces carries no PHI by design
- *   (control numbers, segment IDs, error codes — structural only).
+ *   (control numbers, segment IDs, error codes - structural only).
  */
 
 import { readFileSync } from "node:fs";
@@ -37,7 +37,7 @@ function readFixture(name: string): string {
 // Tier-1 fixtures.
 // ---------------------------------------------------------------------------
 
-describe("parse999 — Tier-1 fixtures", () => {
+describe("parse999 - Tier-1 fixtures", () => {
   it("decodes a clean accept (IK5=A, AK9=A)", () => {
     const raw = readFixture("999-accept.edi");
     const ack = parse999(raw);
@@ -94,14 +94,14 @@ describe("parse999 — Tier-1 fixtures", () => {
     expect(ack.transactionResponses).toHaveLength(1);
     const response = ack.transactionResponses[0];
     expect(response?.ik5.disposition).toBe(X12_ACK_DISPOSITION_CODES.R);
-    // IK5-02 = "3" — "Transaction Set Control Number in Header and Trailer Do Not Match" (code list 718).
+    // IK5-02 = "3" - "Transaction Set Control Number in Header and Trailer Do Not Match" (code list 718).
     expect(response?.ik5.syntaxErrorCodes).toEqual(["3"]);
     expect(ack.ak9.disposition).toBe(X12_ACK_DISPOSITION_CODES.R);
     expect(ack.ak9.numberOfAcceptedTransactionSets).toBe(0);
   });
 
   it("returns undefined when the input contains no 999 transaction set", () => {
-    // A minimal 837P envelope — no 999 inside.
+    // A minimal 837P envelope - no 999 inside.
     const raw =
       "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       *250101*1200*^*00501*000000099*0*P*:~" +
       "GS*HC*S*R*20250101*1200*1*X*005010X222A2~" +
@@ -143,7 +143,7 @@ const ACCEPT_SPEC: Build999Spec = {
   },
 };
 
-describe("build999 — happy paths", () => {
+describe("build999 - happy paths", () => {
   it("emits a spec-clean accept that parse999 round-trips identically", () => {
     const ix = build999(ACCEPT_SPEC);
     expect(ix.warnings).toHaveLength(0);
@@ -156,7 +156,7 @@ describe("build999 — happy paths", () => {
     );
     // Round-trip via build-then-parse the raw bytes (simulating wire).
     // The simpler check: parse999 of the same logical input via parse999
-    // directly off the build output's reconstructed bytes — we already
+    // directly off the build output's reconstructed bytes - we already
     // have a parsed interchange on `ix`, so check the parsed shape.
     expect(ix.groups[0]?.transactions[0]?.segments.map((s) => s.id)).toEqual([
       "ST",
@@ -233,7 +233,7 @@ describe("build999 — happy paths", () => {
   });
 });
 
-/** @internal — only used to suppress unused-variable lint in the test above. */
+/** @internal - only used to suppress unused-variable lint in the test above. */
 function serializeForCheck(_: unknown): string {
   return "";
 }
@@ -246,7 +246,7 @@ describe("build999 → parse999 round-trip", () => {
   it("a built accept parses back to deep-equal dispositions and counts", () => {
     const ix = build999(ACCEPT_SPEC);
     // Reconstruct the raw bytes from the parsed interchange and feed them
-    // back to parse999 — this proves the build path round-trips through
+    // back to parse999 - this proves the build path round-trips through
     // the public parser surface, not just internal builders.
     const raw = reconstructRaw(ix);
     const ack = parse999(raw);
@@ -285,10 +285,10 @@ function reconstructRaw(ix: ReturnType<typeof build999>): string {
 }
 
 // ---------------------------------------------------------------------------
-// Safety guards — refuse inconsistent dispositions.
+// Safety guards - refuse inconsistent dispositions.
 // ---------------------------------------------------------------------------
 
-describe("build999 — safety guards", () => {
+describe("build999 - safety guards", () => {
   it("refuses functional A paired with a per-transaction E", () => {
     expect(() =>
       build999({
@@ -411,10 +411,10 @@ describe("build999 — safety guards", () => {
 });
 
 // ---------------------------------------------------------------------------
-// PHI safety — acks carry no PHI by construction.
+// PHI safety - acks carry no PHI by construction.
 // ---------------------------------------------------------------------------
 
-describe("999 — PHI safety", () => {
+describe("999 - PHI safety", () => {
   it("an emitted 999 contains only structural fields (no PHI shapes)", () => {
     const ix = build999(ACCEPT_SPEC);
     const raw = reconstructRaw(ix);
@@ -426,7 +426,7 @@ describe("999 — PHI safety", () => {
     // ISO-date-shape sequences leaked into the wire output.
     expect(raw).not.toMatch(/\d{3}-\d{2}-\d{4}/u); // SSN shape
     expect(raw).not.toMatch(/\d{4}-\d{2}-\d{2}/u); // ISO-date shape
-    // Bound the total digit run-length anywhere in the wire — 9 digits is
+    // Bound the total digit run-length anywhere in the wire - 9 digits is
     // the longest spec-conformant span (ISA-13 / IEA-02 control number).
     // A longer run signals a PHI-adjacent leak (medical record numbers,
     // 10-digit phone, NPI, etc.).
