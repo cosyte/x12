@@ -15,16 +15,16 @@ whether a library works with it.
 ## Where the profiles come from
 
 The built-in profiles are authored through this package's own public `defineProfile()` API and are
-grounded in **synthetic** fixtures written from scratch — no real payer or clearinghouse file was
+grounded in **synthetic** fixtures written from scratch. No real payer or clearinghouse file was
 used to produce them. They are descriptive only: selecting a profile never changes a correct
 parse. They embed no privileged, confidential, or reverse-engineered material.
 
 ## Names referenced
 
-| Name                          | Where it appears                                                                               |
-| ----------------------------- | ---------------------------------------------------------------------------------------------- |
-| Availity                      | `profiles.availity` — a built-in profile name                                                  |
-| Blue Cross Blue Shield (BCBS) | `profiles.bcbsCommon` — a built-in profile name, and descriptive use in documentation examples |
+| Name                          | Where it appears                                                                              |
+| ----------------------------- | --------------------------------------------------------------------------------------------- |
+| Availity                      | `profiles.availity`: a built-in profile name                                                  |
+| Blue Cross Blue Shield (BCBS) | `profiles.bcbsCommon`: a built-in profile name, and descriptive use in documentation examples |
 
 All product names, logos, and brands are the property of their respective owners. Use of a name here
 does not imply any affiliation with, or endorsement by, its owner. If you own one of these marks and

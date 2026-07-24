@@ -10,4 +10,4 @@ Follow-up hardening on the VERSION-SYNC script; ported byte-identically across `
 - **Decoy-declaration match.** The declaration regex was non-global, so `.replace` silently rewrote the _first_ match; a column-0 decoy (e.g. inside a comment) ahead of the real declaration could be edited instead. Fixed by matching globally, asserting exactly one declaration, and exiting non-zero (loudly) otherwise.
 - **CI gate.** The `format`/`format:check` globs now cover `scripts/**/*.mjs`, so the script is prettier-gated in CI (the `.mjs` scripts were matched by no format glob before; `scripts/**/*.ts` was already gated).
 
-Neither defect is reachable through Changesets today and both previously failed loud rather than shipping a lying `VERSION` — this is hardening. Build tooling only; no runtime or public-API change.
+Neither defect is reachable through Changesets today and both previously failed loud rather than shipping a lying `VERSION`. This is hardening. Build tooling only; no runtime or public-API change.

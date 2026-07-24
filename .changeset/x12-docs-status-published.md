@@ -10,4 +10,4 @@ docs.cosyte.com (`docs-content/intro.md`, `docs-content/installation.md`,
 to npm" / "gated on the coordinated public launch" (and `KNOWN-LIMITATIONS.md` still said `0.0.0`).
 Rewritten to state it is published at `0.0.1`, public, still pre-alpha on the `0.0.x`-until-first-alpha
 ladder; `installation.md` now describes the `npm install` line as live rather than aspirational. The
-read/emit scope claims are unchanged. Docs only — no runtime or public-API change.
+read/emit scope claims are unchanged. Docs only, no runtime or public-API change.

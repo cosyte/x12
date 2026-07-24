@@ -7,8 +7,8 @@ sidebar_position: 1
 
 # The envelope & loop model
 
-Every X12 interchange is a set of **nested envelopes**. Understanding the four levels — and the loop
-structure inside a transaction — is the whole mental model; once you have it, every reader in this
+Every X12 interchange is a set of **nested envelopes**. Understanding the four levels (and the loop
+structure inside a transaction) is the whole mental model; once you have it, every reader in this
 library reads the same way.
 
 ## The four envelope levels
@@ -25,9 +25,9 @@ IEA ─ interchange trailer (group count + control number)
 
 `parseX12` decodes this whole tree into an immutable `X12Interchange`:
 
-- `ix.isa` / `ix.iea` — the interchange envelope (`IsaSegment` / `IeaSegment`).
-- `ix.groups[]` — one `X12FunctionalGroup` per GS..GE, each with `.gs` / `.ge`.
-- `ix.groups[i].transactions[]` — one `X12TransactionSet` per ST..SE, each with `.st` / `.se` and the
+- `ix.isa` / `ix.iea`: the interchange envelope (`IsaSegment` / `IeaSegment`).
+- `ix.groups[]`: one `X12FunctionalGroup` per GS..GE, each with `.gs` / `.ge`.
+- `ix.groups[i].transactions[]`: one `X12TransactionSet` per ST..SE, each with `.st` / `.se` and the
   decoded body `.segments`.
 
 ```ts runnable
@@ -50,14 +50,14 @@ ix.groups[0]?.transactions[0]?.st.elements[1]; // => "835"
 
 ## Delimiters are detected, never assumed
 
-X12 does not fix its delimiters — the sender declares them, and clearinghouses vary. `@cosyte/x12`
+X12 does not fix its delimiters. The sender declares them, and clearinghouses vary. `@cosyte/x12`
 detects all four from fixed byte positions in the ISA, so you never configure them:
 
-- **Element separator** — ISA byte 3 (classically `*`).
-- **Repetition separator** — ISA-11 (position 82; classically `^` in 005010).
-- **Component (sub-element) separator** — ISA-16 (the byte before the segment terminator; classically
+- **Element separator**: ISA byte 3 (classically `*`).
+- **Repetition separator**: ISA-11 (position 82; classically `^` in 005010).
+- **Component (sub-element) separator**: ISA-16 (the byte before the segment terminator; classically
   `:`, but Medicare and some BCBS plans use others).
-- **Segment terminator** — the byte immediately after ISA-16 (classically `~`).
+- **Segment terminator**: the byte immediately after ISA-16 (classically `~`).
 
 `ix.delimiters` carries the detected set; every reader and the `getSegmentValue` dot-path resolver use
 it, so a partner who ships `|` elements and `\` components parses with no special handling.
@@ -70,9 +70,9 @@ Inside a transaction, every body segment is an immutable `X12Segment`: a segment
 
 The `getSegmentValue(seg, path, delimiters)` dot-path resolver walks the three axes:
 
-- **Elements** — `"03"` is the third element.
-- **Composites** — `"03-1"` is the first sub-element of element 3 (`-N` is 1-indexed).
-- **Repetitions** — `"03[0]"` is the first repetition of element 3 (`[N]` is 0-indexed).
+- **Elements**: `"03"` is the third element.
+- **Composites**: `"03-1"` is the first sub-element of element 3 (`-N` is 1-indexed).
+- **Repetitions**: `"03[0]"` is the first repetition of element 3 (`[N]` is 0-indexed).
 
 ```ts runnable
 import { parseX12, getSegmentValue } from "@cosyte/x12";
@@ -95,12 +95,12 @@ getSegmentValue(hi!, "02-1", ix.delimiters); // => "ABF"
 
 ## Loops: the repeating sub-structures
 
-Above the segment sits the **loop** — a repeating group of segments that models a business entity (a
+Above the segment sits the **loop**: a repeating group of segments that models a business entity (a
 claim, a service line, a subscriber). The TR3 implementation guides define each transaction's loop
 hierarchy; the per-transaction readers (`get835`, `get837Claims`, …) walk those loops for you and hand
 back a typed tree, so you rarely touch raw segments.
 
-When you *do* need to describe a loop yourself — or understand how the built-ins are authored — the
+When you *do* need to describe a loop yourself, or understand how the built-ins are authored, the
 public `defineLoopSpec()` API is the same one the library uses internally (a dogfooding gate: the
 built-in specs like `REMIT_835_LOOP_2100` are authored through it):
 
@@ -122,7 +122,7 @@ Loop2300.trigger; // => "CLM"
 Loop2300.id; // => "2300"
 ```
 
-Many claims transactions (837, 271, 277, 278) also nest an **HL hierarchy** — an explicit
+Many claims transactions (837, 271, 277, 278) also nest an **HL hierarchy**: an explicit
 parent-pointer tree (`HL` segments) layered on top of the loops. The readers validate those pointers
 for integrity and **never silently re-number** a broken one; see
 [The tolerance tiers](./spec-notes-tolerance).

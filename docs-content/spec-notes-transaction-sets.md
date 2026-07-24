@@ -9,8 +9,8 @@ sidebar_position: 2
 
 X12 defines hundreds of transaction sets; HIPAA mandates a small handful for healthcare, and a smaller
 handful again carry the overwhelming majority of real integration traffic. `@cosyte/x12` v1 covers
-exactly the HIPAA **005010** healthcare sets — each with a lenient **reader** and a spec-clean domain
-**builder** — and nothing else. This page is the map: what each set is, which function reads it, which
+exactly the HIPAA **005010** healthcare sets (each with a lenient **reader** and a spec-clean domain
+**builder**) and nothing else. This page is the map: what each set is, which function reads it, which
 builds it, and the one field each one preserves *verbatim* because getting it wrong causes harm.
 
 > **Depth tracks the code.** Every function named below is a shipped export. Where a set has a
@@ -24,7 +24,7 @@ builds it, and the one field each one preserves *verbatim* because getting it wr
 | **270 / 271** | Eligibility inquiry / response | `get271Eligibility` | `build271` | the 270's `TRN-02` trace, echoed onto the 271 (reassociation) |
 | **276 / 277** | Claim status inquiry / response | `get277Status` | `build277` | the 276's trace; the STC category/status/entity triple |
 | **277CA** | Claim acknowledgment | `get277CADisposition` | `build277CA` | per-claim accept/reject disposition + your submitted trace |
-| **278** | Services review request / response | `get278Request` / `get278Response` | `build278Request` / `build278Response` | the `HCR-01` certification action (response) — never inferred |
+| **278** | Services review request / response | `get278Request` / `get278Response` | `build278Request` / `build278Response` | the `HCR-01` certification action (response), never inferred |
 | **820** | Premium payment | `get820Payments` | `build820` | monetary amounts (emitted as-is; no balance equation) |
 | **834** | Benefit enrollment & maintenance | `get834Header` / `get834Enrollments` | `build834` | the `INS-03` / `HD-01` maintenance-type code (X12 0875) |
 | **835** | Claim payment / advice (ERA) | `get835` | `build835` | every monetary field; the balance is checked, never rebalanced |
@@ -66,16 +66,16 @@ remit?.traces[0]?.referenceId; // => "0012345"
 ## The reader/builder symmetry
 
 Every builder round-trips through its reader: `get835(parseX12(serializeX12(build835(spec))))`
-reproduces the spec field-for-field. That symmetry is the correctness contract — a builder that
+reproduces the spec field-for-field. That symmetry is the correctness contract: a builder that
 emitted something its own reader could not read back would be caught by the round-trip property tests.
 The builders are **pure functions**: they never auto-send, open a socket, or touch the filesystem, and
 they **refuse** a structurally impossible spec with a typed error rather than emitting corruption.
 
 ## What is out of scope (v1)
 
-- **Non-healthcare sets** — 850 (purchase order), 856 (ASN), 810 (invoice), 204 (load tender), etc.
-- **The EDIFACT syntax family** — a different standard entirely.
-- **Transport** — AS2, SFTP, MLLP-style delivery. This is a parser/serializer, not a comms stack.
+- **Non-healthcare sets**: 850 (purchase order), 856 (ASN), 810 (invoice), 204 (load tender), etc.
+- **The EDIFACT syntax family**: a different standard entirely.
+- **Transport**: AS2, SFTP, MLLP-style delivery. This is a parser/serializer, not a comms stack.
 - **Pre-005010 field maps.** Pre-005010 input is *tolerated and flagged* (`X12_PRE_005010`), not
   decoded against those older guides.
 

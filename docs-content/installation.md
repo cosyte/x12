@@ -8,7 +8,7 @@ sidebar_position: 1
 
 `@cosyte/x12` is a TypeScript ASC X12 toolkit for Node.js. It ships dual **ESM + CJS** builds with
 per-condition type declarations, so it works from either module system without configuration, and it
-has **zero runtime dependencies** — Node stdlib only.
+has **zero runtime dependencies**: Node stdlib only.
 
 > **Status:** published on npm at `0.0.1` and public, still pre-alpha on the
 > `0.0.x`-until-first-alpha ladder. The `npm install` below is live; pin the exact version and treat
@@ -17,9 +17,9 @@ has **zero runtime dependencies** — Node stdlib only.
 ## Prerequisites
 
 - **Node.js >= 22.** The whole `@cosyte/*` suite targets ES2023 / Node 22+.
-- A package manager — `pnpm`, `npm`, or `yarn`.
+- A package manager: `pnpm`, `npm`, or `yarn`.
 - **No runtime dependencies.** The parser, serializer, builders, and bundled HIPAA code-list
-  snapshots are all Node stdlib only. The zero-dep rule is a release gate, not a preference — a new
+  snapshots are all Node stdlib only. The zero-dep rule is a release gate, not a preference. A new
   runtime dep needs an ADR and a changelog entry.
 
 ## Install
@@ -30,7 +30,7 @@ npm install @cosyte/x12
 
 ## Smoke test
 
-Confirm the package resolves and a real entry point is callable — decode the smallest valid
+Confirm the package resolves and a real entry point is callable. Decode the smallest valid
 interchange envelope and read its detected delimiters back:
 
 ```ts runnable
@@ -49,7 +49,7 @@ ix.isa.elements[16]; // => ":"
 Array.isArray(ix.warnings); // => true
 ```
 
-If that resolves and returns, the install is good — head to the [Quickstart](./quickstart).
+If that resolves and returns, the install is good. Head to the [Quickstart](./quickstart).
 
 ## Module systems
 
@@ -72,7 +72,7 @@ The single top-level entry point (`@cosyte/x12`) publishes per-condition types (
 
 ## PHI discipline
 
-Every example in this documentation uses **synthetic** fixtures — fabricated names, obviously-fake IDs,
+Every example in this documentation uses **synthetic** fixtures: fabricated names, obviously-fake IDs,
 pre-2024 control numbers. Do the same in your own tests: X12 healthcare interchanges carry PHI, and a
 real interchange committed to a repository is a leak the moment it publishes. See
 [Troubleshooting](./troubleshooting) for how the parser keeps field content out of its warnings and
