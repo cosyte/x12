@@ -559,6 +559,7 @@ the published `@cosyte/*` config packages, not by copying files. The source of t
 - Built-in loop specs + profiles must be authored through the same public API (`defineLoopSpec()`, `defineProfile()`): dogfooding gate.
 - HIPAA code lists ship as versioned data snapshots. Code-list updates are a release event, not a runtime fetch. `codeLists.meta.snapshotDate` is the runtime surface for snapshot-freshness checks.
 - Acknowledgments (`build999`, `buildTA1`, `parse999`) are pure functions: they never auto-send, never open sockets, never touch the filesystem.
+- **No em dashes (`U+2014`). Ever.** Founder directive, `knowledgebase/06-brand/voice-and-tone.md`. Gated by `pnpm check:no-emdash` (`scripts/check-no-emdash.sh`) and by `.github/workflows/no-emdash.yml`, which checks the tracked files **and your PR title, PR body, and commit messages**, because this repo squash-merges and those become the message that lands on `main`. The fix is never to re-encode the character: rewrite with a period, a colon, a comma, or parentheses.
 
 ## Sibling Project
 

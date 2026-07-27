@@ -1,0 +1,107 @@
+name: Em-dash gate
+
+# The brand rule (founder directive 2026-07-24, knowledgebase 06-brand/voice-and-tone.md)
+# bans U+2014 outright across every cosyte surface, and names commit messages
+# explicitly. The meta-repo's `documentation/conventions.md` has claimed the rule is
+# CI-gated since it was written; x12 was one of the repos where it was not. x12 was
+# already clean when this landed (0 of 21 markdown files, 0 of 264 tracked files, and
+# every tracked file decodes as us-ascii or utf-8 with no NUL byte), so this gate exists
+# purely to keep it that way. A green run on a clean tree proves nothing on its own,
+# which is why the script it calls refuses to print OK from a scan that did not read
+# everything it was given.
+#
+# WHAT THIS DOES NOT DO YET, checked rather than assumed (2026-07-27). The org ruleset
+# `parser-ci-required-checks` requires exactly three contexts on this repo:
+# `ci / verify (22, ubuntu-latest)`, `ci / verify (24, ubuntu-latest)`, and `ci / actionlint`.
+# `Em-dash gate / no-emdash` is NOT among them, so a PR carrying an em dash reds this check
+# VISIBLY but is still mergeable. Making it required is an org-level ruleset change, outside
+# this repo and outside this unit. Until that happens the gate informs a human; it does not
+# stop one.
+#
+# WHY A SEPARATE WORKFLOW, and not a job in ci.yml:
+#
+#   The reusable pipeline is not an option. x12's `ci` job calls
+#   cosyte/.github/.github/workflows/ci.yml@main, which runs a fixed ladder and no arbitrary
+#   repo script, so there is nowhere in it to hang this. Adding a step to it is an org-repo
+#   change that lands the gate on all 13 callers at once, and six of them violate the ban
+#   wholesale today (counted 2026-07-27, tracked files carrying U+2014 or an encoded form:
+#   synth 143, deid 118, astm 103, cli 88, terminology 85, transform 77). Remediating those
+#   is separate, deliberate work. A shared pipeline is the wrong place to land a rule half
+#   its callers cannot yet satisfy.
+#
+#   Stated because the version this was ported from got it wrong and the error travelled:
+#   the repos usually named here as the blocked ones (crew, config, iac, assets) do violate
+#   the ban, but NONE of them calls the shared pipeline, so they were never the reason.
+#
+#   Within x12, the deciding factor is the trigger. The PR-text half below needs the
+#   `edited` activity type, which is not a default: without it, a title or body edited
+#   after the last push is never re-checked, and since this repo squash-merges, the PR
+#   title and body ARE the commit message that lands on main. But ci.yml's triggers drive
+#   the full Node 22 + 24 matrix (typecheck, lint, format, PHI scan, test, coverage,
+#   build, attw, dual ESM/CJS smoke, actionlint) plus the `release-dry-run` job (a pnpm
+#   install, a build, a publish dry run, and a pack-integrity check). Re-running all of
+#   that every time someone fixes a typo in a PR description is a large cost for no extra
+#   safety. Same call hl7 (235ff46) and website (website#52) made, for the same reason.
+#
+#   Both halves live here rather than splitting the file scan back into ci.yml (which is
+#   how website ended up): the file scan is a checkout and one grep, so it costs nothing
+#   to re-run on `edited`, and one file is one thing to read. knowledgebase runs the two
+#   halves as two steps of one job for the same reason (knowledgebase#12).
+#
+# Run it locally with `pnpm check:no-emdash`, which is also on `scripts/verify.sh x12`'s
+# ladder in the meta-repo.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    # `edited` is deliberate and load-bearing. See the note above.
+    types: [opened, synchronize, reopened, edited]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  no-emdash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Full history: the commit-message step below reads the PR's commit range,
+          # and the default shallow clone does not contain the base commit.
+          fetch-depth: 0
+
+      - name: Check tracked files
+        run: bash scripts/check-no-emdash.sh
+
+      # The rule names commit messages explicitly, and a squash merge composes its
+      # message from the PR title, the PR body, and the branch commits, so all three are
+      # checked. Pull requests only: on a push to main the message is already written,
+      # and this gate exists to stop it landing.
+      - name: Check PR title, body, and commit messages
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Collect first, scan second, and set the shell options here rather than trust
+          # the runner's default: piping the collection straight into the scanner would
+          # hide a failed `git log` (a rewritten base commit, or a future edit that drops
+          # fetch-depth) behind a clean title and body, and the gate would print OK over
+          # commits it never read. The title and body arrive through env and are never
+          # interpolated into the script, so a PR description cannot inject shell.
+          set -euo pipefail
+          {
+            printf '%s\n' "$PR_TITLE"
+            printf '%s\n' "$PR_BODY"
+            git log --format=%B "$BASE_SHA..$HEAD_SHA"
+          } > "$RUNNER_TEMP/pr-messages.txt"
+          bash scripts/check-no-emdash.sh --stdin "the PR title, body, or commit messages" \
+            < "$RUNNER_TEMP/pr-messages.txt"
