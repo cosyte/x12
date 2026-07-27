@@ -26,6 +26,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Em-dash brand gate in CI (`scripts/check-no-emdash.sh`, `pnpm check:no-emdash`,
+  `.github/workflows/no-emdash.yml`; `EMDASH-CONFORMANCE`).** The founder directive of 2026-07-24
+  (`knowledgebase/06-brand/voice-and-tone.md`) bans `U+2014` outright across every cosyte surface
+  and names commit messages explicitly, and the meta-repo's `documentation/conventions.md` has
+  described the rule as CI-gated; x12 was one of the repos where it was not. This ports
+  `knowledgebase`'s scanner (the text-only variant, correct here because x12 tracks no binaries:
+  all 264 tracked files decode as us-ascii or utf-8 and none holds a NUL byte, measured byte-level
+  2026-07-27) and wires it to a dedicated workflow that checks **both** the tracked files and the
+  **PR title, body, and branch commit messages**, the last of these on the non-default `edited`
+  activity type so a description retitled after the final push is re-checked before a squash merge
+  turns it into the commit message. It is a separate workflow rather than a job in `ci.yml` because
+  `ci.yml` calls the shared reusable pipeline (which runs no arbitrary repo script) and its triggers
+  drive the Node 22 + 24 matrix plus the `release-dry-run` job. x12 was already clean (0 of 21
+  markdown files carried an em dash), so **no content changed**: this is regression prevention only.
+  Dev tooling, no change to the published package surface, parser behavior, or warning codes.
+  **Two limits stated rather than claimed away.** The new check is not yet one of the org ruleset's
+  required contexts (`parser-ci-required-checks` requires `ci / verify (22|24, ubuntu-latest)` and
+  `ci / actionlint`), so today it reds visibly but does not itself block a merge; making it required
+  is an org-level change outside this repo. And a tracked text file holding a NUL byte **and a
+  pattern match** fails this shape closed: grep 3.8 reports `binary file matches` on stderr and the
+  scan refuses. The NUL alone does not trigger it, and the red is remediable by the same rewrite
+  the brand rule already demands. x12 has no NUL-bearing tracked file at all today (zero of 264,
+  measured byte-level).
 - **`docs-content/` now ships the full canonical Diátaxis spine (DOCS-CONTENT-P4).** The sidebar was
   Overview-only, with `cookbook.md` authored but orphaned (invisible to every reader). This wires the
   cookbook into **Guides** and adds the rest of the spine every `@cosyte/*` package shares: four new
