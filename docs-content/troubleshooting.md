@@ -68,6 +68,12 @@ without leaking. The builders' refusal errors carry structural locators and nume
 a `claimId`, member ID, or trace. Keep the same discipline in your own code: log the code and position,
 not the field content.
 
+**`X12ParseError.snippet` is the one exception, and it is deliberate.** A thrown `X12ParseError`
+carries a bounded (≤ 64 character) copy of the offending input so the error is actionable, and on
+real traffic those bytes can be patient data. It is attached to each of the four fatal codes, and
+under `{ strict: true }` to the first escalated Tier-2 warning as well. The library does **not**
+redact it. Redact at your call site, or log `err.code` and `err.position` and drop `err.snippet`.
+
 ## Known limitations & non-goals
 
 ### Data / decode boundaries
@@ -105,9 +111,14 @@ not the field content.
   (`X12_PRE_005010`), not decoded to older field maps.
 - **No transport.** AS2, SFTP, and MLLP-style delivery are out of scope. This is a parser/serializer,
   not a communications stack.
-- **Published, still pre-alpha.** The package is published on npm as `@cosyte/x12` at `0.0.1` and is
-  public, but it stays on the `0.0.x`-until-first-alpha ladder. Treat the API as pre-alpha and pin
-  the exact version until the first alpha.
+- **Published, still pre-alpha.** The package is published on npm as `@cosyte/x12` from a public
+  repo, but it stays on the `0.0.x`-until-first-alpha ladder. `npm view @cosyte/x12 version` is the
+  only source of truth for the current version, so this page does not restate one. Treat the API as
+  pre-alpha and pin the exact version until the first alpha.
+- **No typed model for the 270 and 276 inquiries.** Every other v1 transaction has both a
+  per-transaction reader and a domain builder. The 270 eligibility inquiry and the 276 claim-status
+  inquiry have neither: they parse into segments, composites, and dot-paths like any other X12 input,
+  and the responses (271, 277) decode fully, but the inquiry directions have no typed surface yet.
 
 For the phase-by-phase surface and the exact fields each helper decodes, see the package's
 `CLAUDE.md` status section and the [Cookbook](./cookbook).

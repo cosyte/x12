@@ -498,11 +498,19 @@ opts?)` reconstructs an `X12Interchange` back to bytes from the
   `phi-scan-overrides.md`. Runs at pre-commit (`simple-git-hooks
 --staged`) and in CI (`run-phi-scan: true`); the `verify.sh` summary
   now shows `phi-scan ✓`.
-- Pre-alpha `0.0.x`, not published to npm. The full v1 **read** scope is
-  now decoded (270/271, 276/277/277CA, 278, 820, 834, 835, 837P/I/D, 999,
-  TA1), the general **emit** surface (`serializeX12` + `buildInterchange`)
-  shipped in Phase 8, and (with Phase 8f) the full v1 **domain emit**
-  scope is complete: every v1 transaction has a per-TR3 domain builder
+- Pre-alpha `0.0.x`, **published** to npm from a public repo. Never quote a
+  version here: `npm view @cosyte/x12 version` is the only source of truth.
+  The **read** scope is decoded for 271, 277/277CA, 278, 820, 834, 835,
+  837P/I/D, 999, and TA1. **The 270 and 276 inquiry directions have NO typed
+  model on either side**: no `get270` / `get276` reader, no `build270` /
+  `build276` builder, and no 270 or 276 dispatch anywhere in `src/`. They
+  parse into segments and dot-paths like any other X12 input and nothing
+  decodes them further, so do not describe the v1 read or emit scope as
+  "270/271" or "276/277" complete: that claim was on the README and the
+  docs site until ASSETS-P8 corrected it. The general **emit** surface
+  (`serializeX12` + `buildInterchange`)
+  shipped in Phase 8, and (with Phase 8f) the **domain emit**
+  scope is complete for every transaction that has a reader: a per-TR3 domain builder
   (`build835` / `build837P/I/D` / `build271` / `build277` / `277CA` /
   `build278Request` / `build278Response` / `build820` / `build834`, plus
   the pure-function `build999` / `buildTA1` acknowledgments) layering the
@@ -512,7 +520,7 @@ opts?)` reconstructs an `X12Interchange` back to bytes from the
 
 ## v1 Scope Snapshot
 
-HIPAA healthcare transaction sets at version **005010** (with errata hooks for `005010X279A1`, `005010X221A1`, etc.):
+HIPAA healthcare transaction sets at version **005010** (with errata hooks for `005010X279A1`, `005010X221A1`, etc.). **This is the v1 SCOPE declaration, not a list of what has SHIPPED** (see the Status section above: the 270 and 276 inquiry directions have no typed model on either side):
 
 - **270 / 271** Eligibility Inquiry / Response
 - **276 / 277** Claim Status Inquiry / Response (incl. 277CA)
@@ -553,7 +561,7 @@ the published `@cosyte/*` config packages, not by copying files. The source of t
 - Immutable by default. Mutation only via explicit methods (`setElement`, `addSegment`, `addLoopIteration`, `removeSegment`).
 - No `console.*` in library code. Throw typed errors or return results.
 - Short, testable functions over big parsing blobs.
-- Postel's Law: parser is liberal (lenient default + warnings with stable codes and positional context); serializer is conservative (always emits spec-clean X12 with recomputed envelope counts where requested).
+- Postel's Law: parser is liberal (lenient default + warnings with stable codes and positional context); serializer is conservative. Be exact about what that means, because the README said it loosely until ASSETS-P8: the domain builders emit spec-clean X12 by construction, but `serializeX12` is **byte-faithful by default**. `{ specClean: true }` reconciles the envelope and warns; `{ specClean: true, recomputeCounts: true }` also emits the corrected counts. `recomputeCounts` is inert without `specClean`. Nothing is ever silently corrected.
 - Fatal errors only for unrecoverable structural corruption (4 Tier-3 codes: `X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`, `X12_INVALID_DELIMITERS`, `X12_EMPTY_INPUT`). Everything else is a warning.
 - Coverage target: ≥ 90% on `src/parser/`, `src/envelope/`, `src/transactions/`, `src/helpers/`.
 - Built-in loop specs + profiles must be authored through the same public API (`defineLoopSpec()`, `defineProfile()`): dogfooding gate.

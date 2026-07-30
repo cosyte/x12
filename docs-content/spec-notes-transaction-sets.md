@@ -8,10 +8,16 @@ sidebar_position: 2
 # The 80/20 transaction sets
 
 X12 defines hundreds of transaction sets; HIPAA mandates a small handful for healthcare, and a smaller
-handful again carry the overwhelming majority of real integration traffic. `@cosyte/x12` v1 covers
-exactly the HIPAA **005010** healthcare sets (each with a lenient **reader** and a spec-clean domain
-**builder**) and nothing else. This page is the map: what each set is, which function reads it, which
-builds it, and the one field each one preserves *verbatim* because getting it wrong causes harm.
+handful again carry the overwhelming majority of real integration traffic. `@cosyte/x12` covers the
+HIPAA **005010** healthcare sets and nothing else. Every set in the map below ships a lenient
+**reader** and a spec-clean domain **builder**. This page is the map: what each set is, which
+function reads it, which builds it, and the one field each one preserves *verbatim* because getting
+it wrong causes harm.
+
+> **The 270 and 276 inquiries are not in the map, and that is not an omission.** There is no
+> `get270` / `get276` reader and no `build270` / `build276` builder. Both parse into segments,
+> composites, and dot-paths like any other X12 input, but neither decodes into a typed model on
+> either side. Only their responses (271, 277) do.
 
 > **Depth tracks the code.** Every function named below is a shipped export. Where a set has a
 > read-side limitation (e.g. 837 claim-/line-level provider addresses), it is called out in
@@ -21,8 +27,8 @@ builds it, and the one field each one preserves *verbatim* because getting it wr
 
 | Set | What it is | Read | Build | Preserved verbatim |
 |---|---|---|---|---|
-| **270 / 271** | Eligibility inquiry / response | `get271Eligibility` | `build271` | the 270's `TRN-02` trace, echoed onto the 271 (reassociation) |
-| **276 / 277** | Claim status inquiry / response | `get277Status` | `build277` | the 276's trace; the STC category/status/entity triple |
+| **271** | Eligibility response | `get271Eligibility` | `build271` | the 270's `TRN-02` trace, echoed onto the 271 (reassociation) |
+| **277** | Claim status response | `get277Status` | `build277` | the 276's trace; the STC category/status/entity triple |
 | **277CA** | Claim acknowledgment | `get277CADisposition` | `build277CA` | per-claim accept/reject disposition + your submitted trace |
 | **278** | Services review request / response | `get278Request` / `get278Response` | `build278Request` / `build278Response` | the `HCR-01` certification action (response), never inferred |
 | **820** | Premium payment | `get820Payments` | `build820` | monetary amounts (emitted as-is; no balance equation) |
