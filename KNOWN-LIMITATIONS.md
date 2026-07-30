@@ -28,6 +28,13 @@ further decoded.
   interchange is fully parsed into `tx.segments` before iteration begins. It is not a byte-streaming
   reader for arbitrarily large files.
 
+- **`X12ParseError.snippet` can carry PHI, by design, and the library does not redact it.** Warning
+  messages and builder refusals are PHI-free by construction, but a thrown `X12ParseError` carries a
+  bounded (≤ 64 character) copy of the offending input so the error is actionable. On real traffic
+  those bytes can be patient data. It is attached to each of the four fatal codes, and under
+  `{ strict: true }` to the first escalated Tier-2 warning as well. Redact at your call site, or log
+  `err.code` and `err.position` and drop `err.snippet`.
+
 - **Balance and integrity checks warn; they never rebalance or renumber.** The 835 TR3 §1.10.2 balance
   invariants, 837 HL parent-pointer integrity, and envelope-count reconciliation surface a warning on
   mismatch and preserve the inbound values verbatim. The library will not "fix" a payer artifact for
@@ -49,9 +56,14 @@ further decoded.
   and flagged (`X12_PRE_005010`), not decoded to those older field maps.
 - **No transport.** AS2, SFTP, and MLLP-style delivery are out of scope. This is a parser/serializer,
   not a communications stack.
-- **Published, still pre-alpha.** The package is published on npm as `@cosyte/x12` at `0.0.1` and is
-  public, but it stays on the `0.0.x`-until-first-alpha ladder. Treat the API as pre-alpha and pin
-  the exact version until the first alpha.
+- **Published, still pre-alpha.** The package is published on npm as `@cosyte/x12` from a public
+  repo, but it stays on the `0.0.x`-until-first-alpha ladder. `npm view @cosyte/x12 version` is the
+  only source of truth for the current version, so this page does not restate one. Treat the API as
+  pre-alpha and pin the exact version until the first alpha.
+- **No typed model for the 270 and 276 inquiries.** Every other v1 transaction has both a
+  per-transaction reader and a domain builder. The 270 eligibility inquiry and the 276 claim-status
+  inquiry have neither: they parse into segments, composites, and dot-paths like any other X12 input,
+  and the responses (271, 277) decode fully, but the inquiry directions have no typed surface yet.
 
 ## Code-list `--fetch` regeneration
 

@@ -7,8 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Package banner on the README (ASSETS-P8).** The README now opens with the `@cosyte/x12` brand
+  banner, a plain markdown image pointing at the absolute HTTPS URL published by the `assets` repo
+  (`https://cosyte.com/social/cosyte-banner-x12-1200x300.png`, verified `200` / `image/png` before
+  landing). It is a self-grounded PNG rather than an `<img>` or a `<picture>` pair, because a
+  markdown image with an absolute URL is the construct we are willing to assert renders on both npm
+  and GitHub; whether npm's markdown sanitizer preserves `<picture>` is unverified. The alt text
+  names the package and what it does, since it is what a screen reader on the npm page reads.
+
 ### Fixed
 
+- **Stale version claim removed from five public pages (ASSETS-P8).** `README.md`,
+  `KNOWN-LIMITATIONS.md`, `docs-content/intro.md`, `docs-content/installation.md`, and
+  `docs-content/troubleshooting.md` all asserted the package was "published on npm at `0.0.1`". The registry says
+  `0.0.2`. The literal was pinned by a previous docs sweep and went stale on the very next release,
+  so it is now removed rather than re-pinned: the npm badge renders the live version on the README,
+  and each page points at `npm view @cosyte/x12 version` as the source of truth. Docs only, no
+  runtime or public-API change.
+- **Scope claim corrected: the 270 and 276 inquiries have no typed model (ASSETS-P8).** The README
+  status line and "What's inside" list, and `docs-content/intro.md`, claimed "the full v1 read scope
+  (270/271, 276/277/277CA, …) and emit scope … are complete". There is no `get270` / `get276` reader
+  and no `build270` / `build276` builder, and no 270 or 276 dispatch anywhere in `src/`;
+  `get271Eligibility` and `get277Status` return `undefined` for any other `ST-01`. The inquiry
+  directions parse into segments and dot-paths like any other X12 input but decode into no typed
+  model. The claim is now stated per transaction on every page that made it: the README status line
+  and "What's inside" list, `docs-content/intro.md` (both the status block **and** the "transaction
+  sets it covers" list under it), `docs-content/spec-notes-transaction-sets.md` (the lead-in and the
+  `270 / 271` + `276 / 277` rows of the reader/builder map), and `docs-content/cookbook.md`, which
+  said the 270 was "a read-only surface" when it has no reader either. The gap is recorded in
+  `KNOWN-LIMITATIONS.md`, `docs-content/troubleshooting.md`, and this repo's `CLAUDE.md`. Docs only,
+  no runtime or public-API change.
+- **Serializer description corrected to its actual defaults (ASSETS-P8).** The README described "a
+  strict, spec-clean serializer with recomputed envelope counts", which reads as default behaviour,
+  and `CLAUDE.md` said the serializer "always emits spec-clean X12". `serializeX12` is byte-faithful
+  by default; `{ specClean: true }` reconciles the envelope, and the corrected counts need
+  `{ specClean: true, recomputeCounts: true }` together, because `recomputeCounts` is inert on its
+  own (`const recompute = specClean && opts.recomputeCounts === true`). A mismatch is always warned
+  and never silently corrected. Docs only, no runtime or public-API change.
+- **PHI claim narrowed to what the library actually guarantees (ASSETS-P8).** The README said
+  "warnings/errors that carry codes and positions but never patient data". Warning messages and
+  builder refusals are PHI-free by construction, but `X12ParseError.snippet` is a bounded (≤ 64
+  character) copy of the offending input, so on real traffic it can carry PHI, and the library does
+  not redact it. That was documented in the source JSDoc and nowhere a consumer reads. The README now
+  states the exception, and it is written up in `KNOWN-LIMITATIONS.md` and
+  `docs-content/troubleshooting.md`. Docs only, no runtime or public-API change.
 - **Developer-docs publish status corrected to the published reality (README-ORG-SWEEP).** The
   docs.cosyte.com pages (`docs-content/intro.md`, `installation.md`, `troubleshooting.md`) and
   `KNOWN-LIMITATIONS.md` still said "not yet published to npm" / "gated on the coordinated public

@@ -10,9 +10,10 @@ sidebar_position: 1
 per-condition type declarations, so it works from either module system without configuration, and it
 has **zero runtime dependencies**: Node stdlib only.
 
-> **Status:** published on npm at `0.0.1` and public, still pre-alpha on the
+> **Status:** published on npm and public, still pre-alpha on the
 > `0.0.x`-until-first-alpha ladder. The `npm install` below is live; pin the exact version and treat
-> the API as pre-alpha until the first alpha.
+> the API as pre-alpha until the first alpha. Run `npm view @cosyte/x12 version` for the version to
+> pin: it is the source of truth, and this page deliberately does not restate one.
 
 ## Prerequisites
 
