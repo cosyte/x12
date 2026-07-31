@@ -278,15 +278,15 @@ const WARNING_MESSAGES = {
   X12_DANGLING_RELEASE_CHAR:
     "Release character (`?`) appears at end of element/segment with no following byte to escape - preserved verbatim.",
   X12_UNEXPECTED_SEGMENT_TA1_INSIDE_GROUP:
-    "Unexpected segment: TA1 is envelope-level per ASC X12 .5 but appeared inside an open functional group. The segment is preserved on the prior open container if any.",
+    "Unexpected segment: TA1 is envelope-level but appeared inside an open functional group, so it is NOT captured on `ta1Segments`. Locate it in the input via `position.segmentIndex`.",
   X12_UNEXPECTED_SEGMENT_GE_WITHOUT_GS:
-    "Unexpected segment: a GE appeared with no open functional group. The segment is preserved on the prior open container if any.",
+    "Unexpected segment: a GE appeared with no open functional group, so it closes nothing and is NOT retained on the model. Locate it in the input via `position.segmentIndex`.",
   X12_UNEXPECTED_SEGMENT_ST_WITHOUT_GS:
-    "Unexpected segment: an ST appeared with no open functional group (missing GS). The segment is preserved on the prior open container if any.",
+    "Unexpected segment: an ST appeared with no open functional group (missing GS), so no transaction set is opened and it is NOT retained on the model. Locate it in the input via `position.segmentIndex`.",
   X12_UNEXPECTED_SEGMENT_SE_WITHOUT_ST:
-    "Unexpected segment: an SE appeared with no open transaction set. The segment is preserved on the prior open container if any.",
+    "Unexpected segment: an SE appeared with no open transaction set, so it closes nothing and is NOT retained on the model. Locate it in the input via `position.segmentIndex`.",
   X12_UNEXPECTED_SEGMENT_BODY_OUTSIDE_TRANSACTION:
-    "Unexpected segment: a body segment appeared outside any open transaction set. The segment is preserved on the prior open container if any; its bytes are on `seg.raw`.",
+    "Unexpected segment: a body segment appeared outside any open transaction set, so it is NOT retained on the model. Locate it in the input via `position.segmentIndex`.",
   X12_835_REMIT_BALANCE_MISMATCH_CLAIM:
     "835 balance invariant violated [CLP-04 + Σ(claim CAS + line CAS) == CLP-03]: the claim does not balance. Every amount is preserved verbatim on the model as an X12Decimal and is NEVER silently rebalanced.",
   X12_835_REMIT_BALANCE_MISMATCH_SERVICE_LINE:
@@ -431,8 +431,10 @@ export function controlNumberMismatch(
 }
 
 /**
- * Build an `X12_PRE_005010` warning. Emitted when ISA-12 declares a version
- * earlier than `00501`, the HIPAA-mandated baseline. The parser still
+ * Build an `X12_PRE_005010` warning. Emitted when ISA-12 declares any version
+ * other than `00501`, the HIPAA-mandated baseline. The code name reads as a
+ * "pre-005010" test and the guard is an inequality, so a LATER family
+ * (`00602`, `00700`) raises it too. The parser still
  * accepts the input (Postel's Law: lenient on parse) but flags the
  * mismatch so consumers know the input may diverge from 005010 semantics.
  * The declared version stays on `isa.elements[12]`.
@@ -627,10 +629,13 @@ export function danglingReleaseChar(position: X12Position): X12ParseWarning {
  * continues; `context` names which structural rule broke and `position`
  * locates the segment.
  *
- * The segment's own id is deliberately not a parameter. Its bytes are on
- * `seg.raw` and `seg.elements[0]`, and the `X12Segment.id` a consumer reads
- * is bounded to the ASC X12 .5 segment-id grammar (see
- * {@link "./segment.js".decodeSegment}).
+ * The segment's own id is deliberately not a parameter. Note that a segment
+ * in one of these positions is NOT retained on the model at all (it has no
+ * open container to belong to), so `position.segmentIndex` against the input
+ * is the only way back to its bytes. For a segment that IS retained, the
+ * `X12Segment.id` a consumer reads is bounded to the X12 segment-id grammar
+ * (see {@link "./segment.js".decodeSegment}) while `seg.raw` and
+ * `seg.elements[0]` stay verbatim.
  *
  * @example
  * ```ts

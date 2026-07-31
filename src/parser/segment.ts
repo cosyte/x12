@@ -59,8 +59,10 @@ export interface X12Segment {
 }
 
 /**
- * X12 segment-id grammar per ASC X12 .5: two or three characters, leading
- * uppercase letter, remaining uppercase letter or digit.
+ * The X12 segment-id grammar: two or three characters, leading uppercase
+ * letter, remaining uppercase letter or digit. Identical to the regex
+ * `defineLoopSpec` already enforces on an authored loop's segment ids, so the
+ * bound and the loop specs agree by construction.
  *
  * @internal
  */
@@ -68,7 +70,7 @@ const SEGMENT_ID_SHAPE_RE = /^[A-Z][A-Z0-9]{1,2}$/u;
 
 /**
  * The value {@link X12Segment.id} takes when the first element does not
- * match the ASC X12 .5 segment-id grammar. Not a valid segment id, so it can
+ * match the X12 segment-id grammar. Not a valid segment id, so it can
  * never collide with a real one in a `seg.id === "NM1"` comparison.
  *
  * @example

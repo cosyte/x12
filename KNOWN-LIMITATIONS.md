@@ -28,6 +28,19 @@ further decoded.
   interchange is fully parsed into `tx.segments` before iteration begins. It is not a byte-streaming
   reader for arbitrarily large files.
 
+- **Builder refusal messages are NOT registry-bound, and eleven of them echo a caller-supplied value
+  unbounded.** The parse side is closed: no warning factory takes a value parameter and every
+  `message` is a frozen-registry lookup. The emit side is not. The
+  `control number "${value}"` template in `X12_*_BUILD_INVALID_SPEC` repeats across
+  `build-interchange.ts`, `build-999.ts`, `build-835.ts`, `build-837.ts`, `build-271.ts`,
+  `build-277.ts`, `build-278.ts`, `build-820.ts` and `build-834.ts`, and it fires **precisely because
+  the value is over-long**; `build-834.ts` echoes an unrecognized INS-03 / HD-01 maintenance type and
+  `build-ta1.ts` an unrecognized TA1-05 note code. Measured: a 120,000-byte caller value produces a
+  120,190-byte `Error.message`. These are values **you** supplied rather than bytes off an inbound
+  interchange, which is why this is a limitation rather than a parse-side leak, but a spec assembled
+  from an inbound document carries inbound values. **Log `err.code` from a builder, not
+  `err.message`.**
+
 - **`X12ParseError.snippet` on a Tier-3 fatal can carry PHI, by design, and the library does not
   redact it.** Warning messages come from a frozen registry and no factory takes a value parameter, so
   they cannot echo an element; the four structural fatals are different, because they are raised
@@ -44,7 +57,7 @@ further decoded.
   hierarchy; a wrong hierarchy is worse than a wide locator. `X12Ack999Ik3.segmentIdCode` /
   `.loopIdentifier` and `X12Ack999Ik4.dataElementReferenceNumber` are the trading partner's report of
   where **they** found a problem, which is the content a 999 exists to deliver. `X12Segment.id` is
-  bounded to the ASC X12 .5 segment-id grammar (a non-conformant first element yields
+  bounded to the X12 segment-id grammar (a non-conformant first element yields
   `NON_SPEC_SEGMENT_ID`) precisely because it is a derived locator with no such argument; the bytes
   stay on `seg.raw` and `seg.elements[0]`.
 

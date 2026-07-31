@@ -220,6 +220,33 @@ describe("get835 - balance invariants warn loudly, never silently rebalance", ()
     expect(remit.claims[0]?.serviceLines[0]?.adjustments[0]?.amount.toString()).toBe("10.00");
   });
 
+  it("gives every out-of-balance claim and service line a distinct position", () => {
+    // The message no longer carries the amounts, so `position` is now the only
+    // thing that tells two failing claims apart. `clpSegmentIndex` was
+    // hard-coded to 0 while the amounts were in the message, which made every
+    // claim-level warning in a remit byte-identical once they were removed.
+    const raw = readFileSync(join(FIXTURE_DIR, "835-multi-claim.edi"), "utf8")
+      .trimEnd()
+      // Push every service line one dollar out of balance so both claims warn.
+      .replace(/SVC\*([^*~]+)\*([0-9.]+)\*/gu, (_m, code: string, amount: string) => {
+        return `SVC*${code}*${(Number(amount) + 1).toFixed(2)}*`;
+      });
+    const ix = parseX12(raw);
+    const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "835");
+    if (tx === undefined) throw new Error("fixture has no 835 transaction set");
+    const remit = get835(ix.delimiters, tx);
+    const balance = (remit?.warnings ?? []).filter(
+      (w) => w.code === WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
+    );
+    expect(balance.length).toBeGreaterThanOrEqual(2);
+    const positions = balance.map((w) => JSON.stringify(w.position));
+    expect(new Set(positions).size).toBe(positions.length);
+    // Each position points at a real segment in the transaction body.
+    for (const w of balance) {
+      expect(tx.segments[w.position.segmentIndex]).toBeDefined();
+    }
+  });
+
   it("balance-mismatch warning names the invariant and no value, not even an amount", () => {
     // This assertion previously REQUIRED the leak: it matched /spec="\d/ and
     // /computed=/, which is to say it required three consumer-controlled

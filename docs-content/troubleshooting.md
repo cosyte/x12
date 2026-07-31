@@ -75,6 +75,15 @@ own code: the values are one dereference away on the model (`isa.elements`, `seg
 `adjustment.reasonCode`), and putting them in a log line is your decision to make, not one the library
 makes for you.
 
+**The builders are a different surface, and it is weaker.** A `build*` function that refuses a spec
+throws a typed error, and while most of those messages carry structural locators and numeric totals
+only, nine of them interpolate an over-long control number into the message **verbatim and
+unbounded** (that branch fires precisely because the value is over-long), and `build834` and
+`buildTA1` do the same with an unrecognized maintenance type and TA1 note code. Those are values you
+supplied, so a 120,000-byte one gives you a 120,000-byte `Error.message`. **Log `err.code` from a
+builder, not `err.message`.** This is measured and tracked in `KNOWN-LIMITATIONS.md`; the parse side
+above is unaffected.
+
 > **This page previously said the opposite of what the code did.** Until `0.0.4` it read "warning
 > messages are bounded and PHI-free by construction … you can log the full `.warnings` array
 > without leaking", and named `.snippet` as the one exception. `X12_CONTROL_NUMBER_MISMATCH` echoed

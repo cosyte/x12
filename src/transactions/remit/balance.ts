@@ -37,11 +37,20 @@
  * > slice with a forward-pointer to this module so the contract stays
  * > consistent.
  *
- * **PHI discipline:** mismatch messages echo only the invariant label +
- * the X12Decimal text values (numeric - no PHI by shape). Patient
- * control numbers / member ids are NOT in the message - consumers
- * locate the offending claim via the warning's `position` + the claim's
- * sequence in `remit.claims`.
+ * **PHI discipline: the message names the equation and carries no value at
+ * all**, not even an amount. An EDI amount is a consumer-controlled element
+ * like any other: `CLP-03` is whatever the payer sent, so the spec'd /
+ * computed / delta trio these messages used to interpolate was an unbounded
+ * echo of sender bytes. Recompute the numbers from the model, which carries
+ * every one of them as an `X12Decimal`.
+ *
+ * **Which claim, then?** The warning's `position.segmentIndex` is the CLP
+ * segment's own 1-based index inside the transaction body, and a service-line
+ * warning's is that index plus the line's ordinal. Those cannot collide
+ * across claims: a claim with `n` service lines spans at least `n + 1` body
+ * segments, so the next CLP always sits past the previous claim's last line
+ * position. Match `position.segmentIndex` against `tx.segments` to reach the
+ * exact CLP, and `remit.claims` for the decoded model.
  */
 
 import { X12Decimal } from "../../decimal.js";
@@ -69,7 +78,8 @@ import type {
  * declare const claim: X12RemitClaim;
  * const w = checkClaimBalance(claim, { segmentIndex: 12 });
  * if (w !== undefined) {
- *   // not balanced - w.message names the TR3 equation; the amounts are on `claim`
+ *   // not balanced - w.message names the TR3 equation; the amounts are on `claim`,
+ *   // and w.position.segmentIndex is the CLP's own index in the transaction body
  * }
  * ```
  */

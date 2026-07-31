@@ -152,7 +152,7 @@ describe("get278Response - comprehensive (dependent, event + service, edge segme
     expect(event?.messages).toEqual(["Outpatient services certified"]);
     expect(event?.providers.map((p) => p.entityIdentifierCode)).toEqual(["71"]);
 
-    // One warning only - the unknown HI qualifier, shape-valid (never PHI).
+    // One warning only - the unknown HI qualifier. The message names no value.
     expect(resp?.warnings).toHaveLength(1);
     expect(resp?.warnings[0]?.code).toBe(WARNING_CODES.X12_UNKNOWN_HI_QUALIFIER);
   });

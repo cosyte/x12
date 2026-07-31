@@ -26,7 +26,7 @@
   escalation carried 64 bytes of the interchange as `snippet` (now `""`;
   `snippet` stays on the four Tier-3 fatals, the one deliberate exception),
   `X12Segment.id` was an unbounded copy of the segment's first element (now
-  bounded to the ASC X12 .5 grammar with a `NON_SPEC_SEGMENT_ID` sentinel,
+  bounded to the X12 segment-id grammar with a `NON_SPEC_SEGMENT_ID` sentinel,
   the `hl7`-to-`deid` layering lesson applied here), and
   `X12_INVALID_DELIMITERS` echoed the detected separator byte.
   **The deliverable is the slot table, not the fix**:

@@ -23,9 +23,12 @@
  *   segments. Control numbers are identity, not derived, so they are NEVER
  *   rewritten - only flagged.
  *
- * Warning messages carry positional context + bounded numeric metadata only;
- * they never echo element VALUES (the H-PHI invariant shared across the
- * `@cosyte/x12` warning factories).
+ * Every warning it emits is built by the same value-free factories the parser
+ * uses: `message` is a frozen-registry lookup and `position` locates the
+ * control segment, so a declared count or control number can never reach a
+ * diagnostic. Read the declared and actual values off the model
+ * (`se.elements[1]` against `tx.rawSegments.length`, `ge.elements[1]` against
+ * `group.transactions.length`, `iea.elements[1]` against `ix.groups.length`).
  */
 
 import type { OnWarningCallback, X12Interchange } from "../parser/types.js";

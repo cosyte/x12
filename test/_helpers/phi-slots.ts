@@ -31,6 +31,20 @@
  *   than an own-slot, and it is written down here rather than hidden behind
  *   `expectCode: null`, which proves nothing at all.
  *
+ * **A third case, and the one a reviewer should distrust most.** The six
+ * monetary slots (`CLP-03`, `CLP-04`, `SVC-02`, `SVC-03`, `CAS-03`, `BPR-02`)
+ * are marked own, and they do reach the balance branch: an unparseable amount
+ * collapses to zero and the invariant then fails. But `X12Decimal` normalizes
+ * the marker away **before** the message is built, so those six were GREEN at
+ * the base commit while that very message was rendering three amounts
+ * verbatim. They cannot detect the leak they name, and none of them is among
+ * the 13 base reds. What actually covers an unbounded amount is the numeric
+ * measurement in `test/phi-diagnostic-surface.test.ts` ("bounds the 835
+ * balance-mismatch message against a 100,000-digit amount"), because the
+ * runner matches text and a leak carried only as a number is outside its
+ * scope. The slots are kept because they prove the branch stays value-free
+ * going forward; they are not evidence that it ever was.
+ *
  * ## What cannot be a slot, and why
  *
  * The shared marker unit is 8 bytes and the sweep matches any 4-byte run of
@@ -91,7 +105,7 @@ function swap(source: string, from: string, to: string): string {
 
 /**
  * Overwrite a fixed-width ISA element in place. The ISA is byte-positional
- * (ASC X12 .5), so a marker written into it must be padded or truncated to
+ * (ASC X12.5 fixes the ISA layout), so a marker written into it must be padded or truncated to
  * the element's exact width or the layout breaks and the parser raises
  * `X12_INVALID_DELIMITERS` before reaching any branch under test. An 8-byte
  * marker in the 9-byte ISA-13 still contains a full marker unit, so the
@@ -102,7 +116,7 @@ function isaElement(raw: string, start: number, width: number, value: string): s
   return raw.slice(0, start) + fitted + raw.slice(start + width);
 }
 
-/** Zero-indexed ISA byte offsets and widths, per ASC X12 .5. */
+/** Zero-indexed ISA byte offsets and widths, per the fixed ISA layout. */
 const ISA = {
   senderId: [35, 15],
   receiverId: [54, 15],
@@ -300,10 +314,15 @@ export function phiParseStrict(raw: string): PhiParsed {
  *   hierarchy. HL parent-pointer integrity is the 837's safety primitive and
  *   a wrong hierarchy is a worse outcome than a wide locator. Recorded in
  *   `KNOWN-LIMITATIONS.md` so a downstream knows not to interpolate them.
- * - `X12Ack999Ik3.segmentIdCode` / `.loopIdentifier` and
- *   `X12Ack999Ik4.dataElementReferenceNumber`. These are the trading
- *   partner's report of where *they* found a problem; bounding them would
- *   discard the forensic content the 999 exists to deliver.
+ * - `X12Ack999Ik3.segmentIdCode` / `.loopIdentifier`,
+ *   `X12Ack999Ik4.dataElementReferenceNumber`, and the same class one level
+ *   up: `X12Ack999Ak1.functionalIdCode` and
+ *   `X12Ack999Ak2.transactionSetIdCode`. These are the trading partner's
+ *   report of where *they* found a problem; bounding them would discard the
+ *   forensic content the 999 exists to deliver.
+ * - `X12HierarchicalLevel.hasChild` (HL-04), the fourth field on the type
+ *   whose other three are argued above. Same reasoning: the HL spine is
+ *   preserved byte-verbatim end to end rather than partly bounded.
  * - `X12Ack999Ik4.copyOfBadDataElement`. Literally a copy of the offending
  *   bytes, documented since Phase 3 as a caller-supplied surface that
  *   senders SHOULD omit when the bytes are PHI. It is data, not a locator,

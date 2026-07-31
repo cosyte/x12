@@ -61,8 +61,12 @@ describe("PHI: no consumer-controlled input reaches a diagnostic surface", () =>
       }
     }
     // Guard against the corpus going quiet: the assertion above means nothing
-    // if the slot table stops producing warnings.
-    expect(seen.size).toBeGreaterThanOrEqual(12);
+    // if the slot table stops producing warnings. The table exercises 21 of
+    // the 22 registered codes, so the floor is set just under that rather
+    // than at a number a halved corpus would still clear. The one code no
+    // slot reaches is `X12_MISSING_GE`, whose message is a literal with no
+    // parameter to leak through.
+    expect(seen.size).toBeGreaterThanOrEqual(20);
   });
 });
 

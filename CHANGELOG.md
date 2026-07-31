@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   locates it. `snippet` remains on the four Tier-3 structural fatals, which are raised before the
   envelope is readable, and remains the library's one deliberate exception.
 
-- **`X12Segment.id` is bounded to the ASC X12 .5 segment-id grammar.** It is a derived structural
+- **`X12Segment.id` is bounded to the X12 segment-id grammar.** It is a derived structural
   identifier, the field a downstream package interpolates to say where something is, and it was a
   verbatim copy of the segment's first element. A sender that put a 300,000-byte value there had it
   copied into any locus built from `seg.id`. A first element outside the grammar now yields the
@@ -76,6 +76,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   information is one dereference away rather than rendered into a string a consumer logs by default.
 
 ### Fixed
+
+- **Every out-of-balance claim and service line now gets a distinct warning position.** `CLP`
+  segment positions were hard-coded to `0` (`clpSegmentIndex: 0, // populated in the future`), which
+  was harmless while the message rendered the amounts and is not once the message names only the
+  equation: two claims failing the same invariant produced byte-identical warnings at byte-identical
+  positions. `position.segmentIndex` is now the CLP's own 1-based index in the transaction body, and
+  a service-line warning's is that index plus the line's ordinal. Those cannot collide across claims:
+  a claim with `n` service lines spans at least `n + 1` body segments.
+
+- **Five `X12_UNEXPECTED_SEGMENT` messages claimed the segment was preserved; it is not.** A `GE`
+  with no open `GS`, an `ST` with no open group, an `SE` with no open transaction set, a `TA1` inside
+  a group, and a body segment outside any transaction set are all warned about and then dropped, so
+  "preserved on the prior open container" (and, in the last case, "its bytes are on `seg.raw`") named
+  a field that does not exist. Each message now says the segment is not retained and points at
+  `position.segmentIndex` in the input.
+
+- **The corrected disclosure overclaimed on the builders.** It said builder refusals carry structural
+  locators and numeric totals only. Nine `build*` functions interpolate an over-long control number
+  into the thrown message verbatim (the branch fires **because** it is over-long), and `build834` /
+  `buildTA1` do the same with an unrecognized maintenance type / TA1 note code: a 120,000-byte caller
+  value gives a 120,190-byte `Error.message`, measured. The README, `docs-content/troubleshooting.md`
+  and `KNOWN-LIMITATIONS.md` now name the surface and say to log `err.code` from a builder. Bounding
+  the builders is a separate change.
 
 - **The shipped PHI disclosure said the opposite of what the code did, in five places.**
   `README.md`, `docs-content/troubleshooting.md`, `docs-content/spec-notes-tolerance.md`,
