@@ -266,7 +266,7 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
             : collectMoaRemarks(seg, delimiters);
         for (const code of remarks) {
           const entry = lookupRarc(code);
-          if (entry === undefined) warnings.push(unknownRarc(position, code));
+          if (entry === undefined) warnings.push(unknownRarc(position));
           currentClaim.remarks.push({ system: "HE", code, description: entry?.description });
         }
         break;
@@ -506,7 +506,7 @@ function decodeLq(
   let description: string | undefined;
   if (system === "HE") {
     const entry = lookupRarc(code);
-    if (entry === undefined) warnings.push(unknownRarc(position, code));
+    if (entry === undefined) warnings.push(unknownRarc(position));
     description = entry?.description;
   }
   return Object.freeze({ system, code, description });
@@ -557,7 +557,7 @@ function decodeCasAdjustments(
     if (reasonCode === undefined && amount === undefined) continue;
     const code = reasonCode ?? "";
     const entry = code === "" ? undefined : lookupCarc(code);
-    if (entry === undefined && code !== "") warnings.push(unknownCarc(position, code));
+    if (entry === undefined && code !== "") warnings.push(unknownCarc(position));
     out.push(
       Object.freeze({
         groupCode,

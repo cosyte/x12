@@ -4,8 +4,12 @@
  * cash to the wrong dollar. These checks NEVER silently rebalance: a
  * failed invariant emits an {@link
  * "../../parser/warnings.js".WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH}
- * carrying the side-by-side spec'd vs computed values + delta, and the
- * model still resolves with the verbatim inbound amounts.
+ * naming which TR3 equation broke, and the model still resolves with the
+ * verbatim inbound amounts. The amounts themselves are NOT rendered into
+ * the message: an EDI amount is a consumer-controlled element like any
+ * other, and the spec'd / computed / delta trio used to be interpolated
+ * unbounded. Recompute them from the model, which carries every one of
+ * them as an `X12Decimal`.
  *
  * Three invariants per TR3 005010X221A1 §1.10.2 ("Balancing"):
  *
@@ -41,7 +45,11 @@
  */
 
 import { X12Decimal } from "../../decimal.js";
-import { remitBalanceMismatch, type X12ParseWarning } from "../../parser/warnings.js";
+import {
+  BALANCE_INVARIANTS,
+  remitBalanceMismatch,
+  type X12ParseWarning,
+} from "../../parser/warnings.js";
 import type { X12Position } from "../../parser/types.js";
 import type {
   X12RemitAdjustment,
@@ -61,7 +69,7 @@ import type {
  * declare const claim: X12RemitClaim;
  * const w = checkClaimBalance(claim, { segmentIndex: 12 });
  * if (w !== undefined) {
- *   // not balanced - w.message names invariant + spec + computed + delta
+ *   // not balanced - w.message names the TR3 equation; the amounts are on `claim`
  * }
  * ```
  */
@@ -76,14 +84,7 @@ export function checkClaimBalance(
   );
   const computed = claim.totalPaymentAmount.add(claimCasSum).add(lineCasSum);
   if (computed.equals(claim.totalChargeAmount)) return undefined;
-  const delta = computed.subtract(claim.totalChargeAmount);
-  return remitBalanceMismatch(
-    position,
-    "CLP-04 + Σ(claim CAS + line CAS) == CLP-03",
-    claim.totalChargeAmount.toString(),
-    computed.toString(),
-    delta.toString(),
-  );
+  return remitBalanceMismatch(position, BALANCE_INVARIANTS.CLAIM);
 }
 
 /**
@@ -110,14 +111,10 @@ export function checkServiceLineBalance(
     const lineCasSum = sumAmounts(line.adjustments);
     const computed = line.paymentAmount.add(lineCasSum);
     if (computed.equals(line.chargeAmount)) continue;
-    const delta = computed.subtract(line.chargeAmount);
     out.push(
       remitBalanceMismatch(
         { ...position, segmentIndex: position.segmentIndex + i + 1 },
-        "SVC-03 + Σ(line CAS) == SVC-02",
-        line.chargeAmount.toString(),
-        computed.toString(),
-        delta.toString(),
+        BALANCE_INVARIANTS.SERVICE_LINE,
       ),
     );
   }
@@ -160,14 +157,7 @@ export function checkRemitTotalBalance(
   );
   const computed = claimSum.subtract(plbSum);
   if (computed.equals(bpr02)) return undefined;
-  const delta = computed.subtract(bpr02);
-  return remitBalanceMismatch(
-    position,
-    "Σ(CLP-04) - Σ(PLB amounts) == BPR-02",
-    bpr02.toString(),
-    computed.toString(),
-    delta.toString(),
-  );
+  return remitBalanceMismatch(position, BALANCE_INVARIANTS.REMIT_TOTAL);
 }
 
 /**

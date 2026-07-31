@@ -1,0 +1,15 @@
+---
+"@cosyte/x12": patch
+---
+
+Warning messages now come from a frozen registry instead of from the parsed document, closing a PHI leak on every envelope control number and declared count.
+
+`X12_CONTROL_NUMBER_MISMATCH` used to render **both** sides of the disagreeing pair into `message` verbatim and unbounded, on all six slots (`ISA-13`/`IEA-02`, `GS-06`/`GE-02`, `ST-02`/`SE-02`); a 300,000-byte trailer control number produced a 300,062-byte `message`. `X12_GROUP_COUNT_MISMATCH`, `X12_TRANSACTION_COUNT_MISMATCH`, `X12_SEGMENT_COUNT_MISMATCH` and `X12_PRE_005010` did the same with `IEA-01`, `GE-01`, `SE-01` and `ISA-12`, and `X12_835_REMIT_BALANCE_MISMATCH` rendered three monetary amounts. Five of the six control-number slots are variable width, so "it is only a control number" was never a bound: it is free-form trading-partner text.
+
+No warning factory takes a value parameter any more. Each takes an `X12Position` plus, where one code covers several situations, a library-owned discriminant, and `message` is a lookup into a frozen table, so an element cannot reach a diagnostic whatever the input contains. Every value is still preserved verbatim on the model.
+
+**Breaking, pre-alpha:** every exported warning factory changed signature. `controlNumberMismatch(position, pair)`, `unexpectedSegment(position, context)`, `remitBalanceMismatch(position, invariant)` and `missingRequiredLoop(position, loop)` take a discriminant from the new `CONTROL_NUMBER_PAIRS` / `UNEXPECTED_SEGMENT_CONTEXTS` / `BALANCE_INVARIANTS` / `REQUIRED_LOOPS` constants; the other fourteen take a `position` only. Messages no longer carry the declared-versus-actual counts or the balance amounts, both of which are on the model.
+
+Also in this release: a strict-mode escalation carries `snippet: ""` rather than 64 bytes of the interchange (`snippet` stays on the four Tier-3 structural fatals, the library's one deliberate exception); `X12Segment.id` is bounded to the ASC X12 .5 segment-id grammar and yields the new `NON_SPEC_SEGMENT_ID` sentinel otherwise, with the bytes still on `seg.raw` and `seg.elements[0]`; `X12_INVALID_DELIMITERS` no longer echoes the detected separator byte; and `ALL_WARNING_MESSAGES` is exported so a consumer can assert every emitted message is a registry member.
+
+The shipped PHI disclosure said the opposite of what the code did, in five places. The README, `docs-content/troubleshooting.md`, `docs-content/spec-notes-tolerance.md`, `docs-content/cookbook.md` and `KNOWN-LIMITATIONS.md` called warning messages "bounded and PHI-free by construction" and told readers they could log the whole `.warnings` array, naming `.snippet` as the one exception. The leak was in `.message`, and `.snippet` is not a field on a warning. Each page now describes the registry, and the troubleshooting page states what `0.0.3` and earlier actually did.

@@ -16,7 +16,7 @@ import type { Buffer } from "node:buffer";
 import { getDefaultProfile } from "../profiles/default.js";
 
 import { detectDelimiters } from "./delimiters.js";
-import { FATAL_CODES, X12ParseError, snippet } from "./errors.js";
+import { FATAL_CODES, X12ParseError } from "./errors.js";
 import { decodeEnvelope } from "./envelope.js";
 import type { X12Interchange, X12ParseOptions } from "./types.js";
 
@@ -28,7 +28,9 @@ import type { X12Interchange, X12ParseOptions } from "./types.js";
  * throw {@link X12ParseError}: `X12_EMPTY_INPUT`, `X12_NO_ISA_HEADER`,
  * `X12_ISA_TOO_SHORT`, `X12_INVALID_DELIMITERS`. Opt into strict mode with
  * `{ strict: true }` to escalate every Tier-2 warning into an
- * `X12ParseError` carrying the warning's code.
+ * `X12ParseError` carrying the warning's code. A strict-mode escalation
+ * carries an empty `snippet`: the warning it wraps is registry-built and
+ * fully located by `position`, so there is nothing to redact.
  *
  * Phase 1 decodes the envelope (ISA / GS / ST / SE / GE / IEA) and
  * detects the four delimiters from fixed ISA byte positions. Transaction-
@@ -94,11 +96,19 @@ export function parseX12(raw: string | Buffer, options: X12ParseOptions = {}): X
       // exhaustive-switch checks on `X12FatalCode`; strict-mode
       // consumers narrow on the runtime string. Mirrors the hl7
       // strict-escalation pattern (Plan 06 decision (b)).
+      // The escalated error carries NO snippet. `snippet` is the library's
+      // one deliberate PHI exception and it exists for the Tier-3 structural
+      // fatals, which are raised before the envelope is readable and are
+      // undebuggable without a few bytes of context. A Tier-2 warning is
+      // already fully located by `position`, and attaching 64 bytes of the
+      // interchange to it would put document bytes back onto a diagnostic
+      // surface that strict-mode consumers routinely ship to an error
+      // reporter.
       throw new X12ParseError(
         first.code as unknown as (typeof FATAL_CODES)[keyof typeof FATAL_CODES],
         first.message,
         first.position,
-        snippet(text),
+        "",
       );
     }
   }

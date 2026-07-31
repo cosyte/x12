@@ -62,17 +62,38 @@ Tier-2 warning you triage, not an exception you catch. See [Tolerance tiers](./s
 
 ## Keeping PHI out of logs
 
-Every warning `message` is **bounded and PHI-free by construction**. It carries the stable code and a
-position, never a patient name, member ID, or date. That means you can log the full `.warnings` array
-without leaking. The builders' refusal errors carry structural locators and numeric totals only, never
-a `claimId`, member ID, or trace. Keep the same discipline in your own code: log the code and position,
-not the field content.
+A warning `message` is a **lookup into a frozen registry**, never anything built from your document.
+No warning factory in the library takes a value parameter at all, so a `message` cannot interpolate an
+element no matter what an interchange contains: it names the deviation, `position` says where to look,
+and the bytes stay on the model. `ALL_WARNING_MESSAGES` is exported so you can assert that yourself:
+`ix.warnings.every((w) => ALL_WARNING_MESSAGES.has(w.message))` is true for every input. The builders'
+refusal errors carry structural locators and numeric totals only, never a `claimId`, member ID, or
+trace.
 
-**`X12ParseError.snippet` is the one exception, and it is deliberate.** A thrown `X12ParseError`
-carries a bounded (≤ 64 character) copy of the offending input so the error is actionable, and on
-real traffic those bytes can be patient data. It is attached to each of the four fatal codes, and
-under `{ strict: true }` to the first escalated Tier-2 warning as well. The library does **not**
-redact it. Redact at your call site, or log `err.code` and `err.position` and drop `err.snippet`.
+That means logging `w.code`, `w.position` and `w.message` is safe. Keep the same discipline in your
+own code: the values are one dereference away on the model (`isa.elements`, `seg.raw`,
+`adjustment.reasonCode`), and putting them in a log line is your decision to make, not one the library
+makes for you.
+
+> **This page previously said the opposite of what the code did.** Until `0.0.4` it read "warning
+> messages are bounded and PHI-free by construction … you can log the full `.warnings` array
+> without leaking", and named `.snippet` as the one exception. `X12_CONTROL_NUMBER_MISMATCH` echoed
+> **both** control numbers verbatim and unbounded, on all six ISA-13 / IEA-02 / GS-06 / GE-02 / ST-02
+> / SE-02 slots, and the three declared counts and ISA-12 did the same. `.snippet` is not even a field
+> on a warning. If you are on `0.0.3` or earlier, treat `w.message` as untrusted.
+
+**`X12ParseError.snippet` on a Tier-3 fatal is the one exception, and it is deliberate.** The four
+structural fatals (`X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`, `X12_INVALID_DELIMITERS`,
+`X12_EMPTY_INPUT`) are raised before the envelope is readable and are undebuggable without a few bytes
+of context, so each carries a bounded (≤ 64 character) copy of the start of the input. On real
+traffic those bytes can be patient data. The library does **not** redact it. Redact at your call site,
+or log `err.code` and `err.position` and drop `err.snippet`.
+
+A **strict-mode escalation carries no snippet** (`err.snippet` is `""`). `{ strict: true }` turns the
+first Tier-2 warning into a thrown error, and that error's `message` is the same registry entry the
+warning carried, so there is nothing to redact. Until `0.0.4` it attached 64 bytes of the interchange,
+which put document bytes into `err.stack` and from there into whatever an error reporter ships to a
+third party.
 
 ## Known limitations & non-goals
 

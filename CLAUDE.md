@@ -8,6 +8,45 @@
 
 ## Status
 
+- **PHI diagnostic surface closed: warning messages come from a frozen
+  registry (2026-07-31, `PHI-WARNING-MESSAGE-LEAK`).** The single
+  distinguishing property from the ecosystem audit
+  (`documentation/repos/phi-audit.md`) now holds here: **no warning factory
+  takes a value parameter.** Each takes an `X12Position` plus, where one code
+  covers several situations, a library-owned discriminant
+  (`CONTROL_NUMBER_PAIRS` / `UNEXPECTED_SEGMENT_CONTEXTS` /
+  `BALANCE_INVARIANTS` / `REQUIRED_LOOPS`), and `message` is a lookup into a
+  frozen table exported as `ALL_WARNING_MESSAGES`. **The previous posture,
+  shape-validate-then-echo with a `(non-spec)` fallback, held for the
+  code-list slots and could not hold for a control number**, whose grammar is
+  whatever the trading partner sent: `X12_CONTROL_NUMBER_MISMATCH` rendered
+  BOTH sides verbatim and unbounded on all six ISA-13 / IEA-02 / GS-06 /
+  GE-02 / ST-02 / SE-02 slots, and `IEA-01` / `GE-01` / `SE-01` / `ISA-12` /
+  the three 835 balance amounts did the same. Also fixed: a strict-mode
+  escalation carried 64 bytes of the interchange as `snippet` (now `""`;
+  `snippet` stays on the four Tier-3 fatals, the one deliberate exception),
+  `X12Segment.id` was an unbounded copy of the segment's first element (now
+  bounded to the ASC X12 .5 grammar with a `NON_SPEC_SEGMENT_ID` sentinel,
+  the `hl7`-to-`deid` layering lesson applied here), and
+  `X12_INVALID_DELIMITERS` echoed the detected separator byte.
+  **The deliverable is the slot table, not the fix**:
+  `test/_helpers/phi-slots.ts` declares **81 consumer-controlled slots**
+  across the envelope, all six control numbers, the counts, every code-list
+  slot, the 835 / 837 / 271 / 277 / 277CA / 278 / 820 / 999 / TA1 bodies, and
+  the model identifiers, driven by `assertNoDiagnosticPhiLeak` from
+  `@cosyte/test-utils@0.0.2` (the manifest pin had to move off `^0.0.1`,
+  which resolves EXACTLY on npm for a `0.0.x`). Measured one slot at a time
+  against the base commit: **13 of 81 red**, and the 68 green ones are the
+  point of writing it before the fix. Registry membership is asserted
+  separately so a factory that starts interpolating again fails without
+  anyone extending the table. **The shipped disclosure was wrong in five
+  places** (README, `docs-content/troubleshooting.md`,
+  `spec-notes-tolerance.md`, `cookbook.md`, `KNOWN-LIMITATIONS.md`): it
+  called messages PHI-free by construction and told consumers to log the
+  whole `.warnings` array, naming `.snippet` (not a field on a warning) as
+  the exception. Corrected in the same commit as the fix that makes the new
+  wording true. Warning registry unchanged at 22 codes; fatals at 4.
+
 - **Phase 9: profile system + clearinghouse/payer companion-guide quirk
   attribution shipped (2026-06-28).** A `defineProfile()` API mirroring
   the sibling `@cosyte/hl7` profile shape, plus a `profiles` namespace of

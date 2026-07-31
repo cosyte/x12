@@ -22,6 +22,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  ALL_WARNING_MESSAGES,
   CLAIM_ADJUSTMENT_GROUP_CODES,
   REMIT_835_LOOP_1000A,
   REMIT_835_LOOP_2000,
@@ -187,12 +188,20 @@ describe("get835 - CARC / RARC integration", () => {
     expect(remit.warnings.some((w) => w.code === WARNING_CODES.X12_UNKNOWN_RARC)).toBe(true);
   });
 
-  it("warnings on unknown CARC / RARC never echo PHI-shape values", () => {
+  it("warnings on unknown CARC / RARC carry no value at all", () => {
+    // The previous version of this assertion swept a fixture whose CARC and
+    // RARC values were CLEAN, so no shape it forbade could ever have appeared.
+    // Plant the values the warning is actually about and assert the message is
+    // a member of the frozen registry, which no interpolation can satisfy.
     const remit = readRemitFixture("835-carc-rarc-mix.edi");
+    expect(
+      remit.warnings.some(
+        (w) =>
+          w.code === WARNING_CODES.X12_UNKNOWN_CARC || w.code === WARNING_CODES.X12_UNKNOWN_RARC,
+      ),
+    ).toBe(true);
     for (const w of remit.warnings) {
-      // No long digit runs / no ISO-date / no NPI-shape echoes in messages.
-      expect(w.message).not.toMatch(/\b\d{9,}\b/u);
-      expect(w.message).not.toMatch(/\b\d{4}-\d{2}-\d{2}\b/u);
+      expect(ALL_WARNING_MESSAGES.has(w.message)).toBe(true);
     }
   });
 });
@@ -211,17 +220,21 @@ describe("get835 - balance invariants warn loudly, never silently rebalance", ()
     expect(remit.claims[0]?.serviceLines[0]?.adjustments[0]?.amount.toString()).toBe("10.00");
   });
 
-  it("balance-mismatch warning message echoes only invariant + decimal values, never PHI", () => {
+  it("balance-mismatch warning names the invariant and no value, not even an amount", () => {
+    // This assertion previously REQUIRED the leak: it matched /spec="\d/ and
+    // /computed=/, which is to say it required three consumer-controlled
+    // amounts to be rendered into the message. An EDI amount is an element a
+    // sender controls, so an unbounded one was an unbounded diagnostic.
     const remit = readRemitFixture("835-imbalance.edi");
     const balanceWarnings = remit.warnings.filter(
       (w) => w.code === WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
     );
+    expect(balanceWarnings.length).toBeGreaterThanOrEqual(1);
     for (const w of balanceWarnings) {
-      expect(w.message).not.toContain("EPSILON");
-      expect(w.message).not.toContain("MEMBER-E");
-      expect(w.message).not.toContain("PAYER-CLAIM-E");
-      expect(w.message).toMatch(/spec="\d/u);
-      expect(w.message).toMatch(/computed=/u);
+      expect(ALL_WARNING_MESSAGES.has(w.message)).toBe(true);
+      // The TR3 equation is named; the two sides of it are on the model.
+      expect(w.message).toContain("balance invariant violated");
+      expect(w.message).not.toMatch(/\d+\.\d\d/u);
     }
   });
 });

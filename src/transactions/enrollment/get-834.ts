@@ -304,7 +304,7 @@ function openEnrollment(
   const entry = maintenanceTypeCode === "" ? undefined : lookupMaintenanceType(maintenanceTypeCode);
   const warnings: X12ParseWarning[] = [];
   if (maintenanceTypeCode !== "" && entry === undefined) {
-    warnings.push(unknownMaintenanceType(position, maintenanceTypeCode));
+    warnings.push(unknownMaintenanceType(position));
   }
   return {
     subscriberIndicator: elementOptional(seg, 1, delimiters),
@@ -353,7 +353,7 @@ function openCoverage(
   let maintenanceTypeDescription: string | undefined;
   if (maintenanceTypeCode !== undefined) {
     const entry = lookupMaintenanceType(maintenanceTypeCode);
-    if (entry === undefined) warnings.push(unknownMaintenanceType(position, maintenanceTypeCode));
+    if (entry === undefined) warnings.push(unknownMaintenanceType(position));
     maintenanceTypeDescription = entry?.description;
   }
   return {

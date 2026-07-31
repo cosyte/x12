@@ -26,6 +26,11 @@ export { detectDelimiters, DELIMITER_POSITIONS, ISA_MIN_LENGTH } from "./parser/
 export { FATAL_CODES, X12ParseError } from "./parser/errors.js";
 export type { X12FatalCode } from "./parser/errors.js";
 export {
+  ALL_WARNING_MESSAGES,
+  BALANCE_INVARIANTS,
+  CONTROL_NUMBER_PAIRS,
+  REQUIRED_LOOPS,
+  UNEXPECTED_SEGMENT_CONTEXTS,
   WARNING_CODES,
   controlNumberMismatch,
   danglingReleaseChar,
@@ -50,7 +55,14 @@ export {
   unknownMaintenanceType,
   unknownRarc,
 } from "./parser/warnings.js";
-export type { X12ParseWarning, X12WarningCode } from "./parser/warnings.js";
+export type {
+  X12BalanceInvariant,
+  X12ControlNumberPair,
+  X12ParseWarning,
+  X12RequiredLoop,
+  X12UnexpectedSegmentContext,
+  X12WarningCode,
+} from "./parser/warnings.js";
 export type {
   Delimiters,
   GeSegment,
@@ -69,6 +81,7 @@ export type {
 // Phase 2 - segment / element / composite / repetition decode surface.
 export { escapeRelease, RELEASE_CHAR, unescapeRelease } from "./parser/release.js";
 export {
+  NON_SPEC_SEGMENT_ID,
   collectElementValues,
   componentOptional,
   decodeSegment,

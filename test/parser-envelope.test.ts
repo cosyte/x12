@@ -13,6 +13,7 @@ import { Buffer } from "node:buffer";
 import { describe, expect, it } from "vitest";
 
 import {
+  ALL_WARNING_MESSAGES,
   FATAL_CODES,
   parseX12,
   WARNING_CODES,
@@ -330,21 +331,28 @@ describe("parseX12 - malformed-segment tolerance (Postel's-Law parse)", () => {
     expect(ix.iea?.elements[0]).toBe("IEA");
     const unexpected = ix.warnings.filter((w) => w.code === WARNING_CODES.X12_UNEXPECTED_SEGMENT);
     expect(unexpected).toHaveLength(1);
-    expect(unexpected[0]?.message).toContain("ZZZ");
+    // The message names the structural rule that broke and the position
+    // locates the segment; the segment's own id is not echoed. The bytes are
+    // in the input and, when the segment sits inside an open transaction, on
+    // `seg.raw`.
+    expect(ALL_WARNING_MESSAGES.has(unexpected[0]?.message ?? "")).toBe(true);
+    expect(unexpected[0]?.message).toContain("outside any open transaction set");
+    expect(unexpected[0]?.position.segmentIndex).toBe(5);
   });
 
-  it("never echoes a non-spec-shape segment id in UNEXPECTED_SEGMENT messages (PHI safety)", () => {
-    const raw = buildInterchange();
-    // Hostile input: the "segment" outside any transaction has a name
-    // that could carry PHI (a long alphanumeric blob). Phase 2's
-    // unexpected-segment warning MUST NOT echo it - `(non-spec)` is
-    // substituted to keep the H-PHI invariant intact.
-    const tampered = raw.replace("GE*1*1~", "GE*1*1~JOHNDOEMRN98765*STRAY*BYTES~");
-    const ix = parseX12(tampered);
-    const unexpected = ix.warnings.filter((w) => w.code === WARNING_CODES.X12_UNEXPECTED_SEGMENT);
-    expect(unexpected).toHaveLength(1);
-    expect(unexpected[0]?.message).toContain("(non-spec)");
-    expect(unexpected[0]?.message).not.toContain("JOHNDOEMRN98765");
+  it("never echoes a segment id in UNEXPECTED_SEGMENT messages, spec-shaped or not", () => {
+    // Both halves matter, and only the second used to hold. A shape test
+    // filtered the hostile id and let the spec-shaped one straight through,
+    // which is exactly the posture that failed on the control numbers: the
+    // grammar of a slot a sender controls is "whatever the sender sent".
+    for (const id of ["SYNTHETICBLOB0001", "ZZZ"]) {
+      const tampered = buildInterchange().replace("GE*1*1~", `GE*1*1~${id}*STRAY*BYTES~`);
+      const ix = parseX12(tampered);
+      const unexpected = ix.warnings.filter((w) => w.code === WARNING_CODES.X12_UNEXPECTED_SEGMENT);
+      expect(unexpected).toHaveLength(1);
+      expect(unexpected[0]?.message).not.toContain(id);
+      expect(ALL_WARNING_MESSAGES.has(unexpected[0]?.message ?? "")).toBe(true);
+    }
   });
 });
 

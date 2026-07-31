@@ -27,6 +27,8 @@ import type {
   X12TransactionSet,
 } from "./types.js";
 import {
+  CONTROL_NUMBER_PAIRS,
+  UNEXPECTED_SEGMENT_CONTEXTS,
   controlNumberMismatch,
   groupCountMismatch,
   missingGe,
@@ -213,7 +215,7 @@ export function decodeEnvelope(
   // Pre-005010 detection - ISA-12 != "00501" (Tier-2 warning, never refused).
   const isa12 = el(isa.elements, 12);
   if (isa12 !== "00501") {
-    warnings.push(pre005010({ segmentIndex: 0, interchangeIndex: 0, elementIndex: 12 }, isa12));
+    warnings.push(pre005010({ segmentIndex: 0, interchangeIndex: 0, elementIndex: 12 }));
   }
 
   const { segments } = splitSegments(raw, ISA_MIN_LENGTH, delimiters);
@@ -292,16 +294,12 @@ export function decodeEnvelope(
       const actual = group.transactions.length;
       if (declared !== String(actual)) {
         warnings.push(
-          transactionCountMismatch(
-            {
-              segmentIndex: group.startSegIdx,
-              interchangeIndex: 0,
-              groupIndex: groups.length,
-              elementIndex: 1,
-            },
-            declared,
-            actual,
-          ),
+          transactionCountMismatch({
+            segmentIndex: group.startSegIdx,
+            interchangeIndex: 0,
+            groupIndex: groups.length,
+            elementIndex: 1,
+          }),
         );
       }
       // GS-06 ↔ GE-02 control number reconciliation.
@@ -316,9 +314,7 @@ export function decodeEnvelope(
               groupIndex: groups.length,
               elementIndex: 2,
             },
-            "GS-06/GE-02",
-            gsControl,
-            geControl,
+            CONTROL_NUMBER_PAIRS.GROUP,
           ),
         );
       }
@@ -360,8 +356,7 @@ export function decodeEnvelope(
               interchangeIndex: 0,
               groupIndex: groups.length,
             },
-            "TA1",
-            "TA1 segment is envelope-level - appeared inside an open functional group",
+            UNEXPECTED_SEGMENT_CONTEXTS.TA1_INSIDE_GROUP,
           ),
         );
         break;
@@ -392,8 +387,7 @@ export function decodeEnvelope(
           warnings.push(
             unexpectedSegment(
               { segmentIndex: segIdx, interchangeIndex: 0 },
-              "GE",
-              "no open functional group",
+              UNEXPECTED_SEGMENT_CONTEXTS.GE_WITHOUT_GS,
             ),
           );
           break;
@@ -413,8 +407,7 @@ export function decodeEnvelope(
           warnings.push(
             unexpectedSegment(
               { segmentIndex: segIdx, interchangeIndex: 0 },
-              "ST",
-              "no open functional group (missing GS)",
+              UNEXPECTED_SEGMENT_CONTEXTS.ST_WITHOUT_GS,
             ),
           );
           break;
@@ -445,8 +438,7 @@ export function decodeEnvelope(
           warnings.push(
             unexpectedSegment(
               { segmentIndex: segIdx, interchangeIndex: 0 },
-              "SE",
-              "no open transaction set",
+              UNEXPECTED_SEGMENT_CONTEXTS.SE_WITHOUT_ST,
             ),
           );
           break;
@@ -473,9 +465,7 @@ export function decodeEnvelope(
                 transactionIndex: currentGroup.transactions.length,
                 elementIndex: 2,
               },
-              "ST-02/SE-02",
-              stControl,
-              seControl,
+              CONTROL_NUMBER_PAIRS.TRANSACTION,
             ),
           );
         }
@@ -499,11 +489,7 @@ export function decodeEnvelope(
         const declared = el(elements, 1);
         if (declared !== String(groups.length)) {
           warnings.push(
-            groupCountMismatch(
-              { segmentIndex: segIdx, interchangeIndex: 0, elementIndex: 1 },
-              declared,
-              groups.length,
-            ),
+            groupCountMismatch({ segmentIndex: segIdx, interchangeIndex: 0, elementIndex: 1 }),
           );
         }
         // ISA-13 ↔ IEA-02 control number reconciliation.
@@ -513,9 +499,7 @@ export function decodeEnvelope(
           warnings.push(
             controlNumberMismatch(
               { segmentIndex: segIdx, interchangeIndex: 0, elementIndex: 2 },
-              "ISA-13/IEA-02",
-              isaControl,
-              ieaControl,
+              CONTROL_NUMBER_PAIRS.INTERCHANGE,
             ),
           );
         }
@@ -529,9 +513,7 @@ export function decodeEnvelope(
         if (tail.length > 0) {
           const joined = tail + delimiters.segment;
           trailingBytes = joined;
-          warnings.push(
-            trailingGarbage({ segmentIndex: segIdx + 1, interchangeIndex: 0 }, joined.length),
-          );
+          warnings.push(trailingGarbage({ segmentIndex: segIdx + 1, interchangeIndex: 0 }));
         }
         // Stop walking once IEA is consumed (multi-ISA support is out
         // of v1 scope per roadmap §2 non-goals).
@@ -564,8 +546,7 @@ export function decodeEnvelope(
           warnings.push(
             unexpectedSegment(
               { segmentIndex: segIdx, interchangeIndex: 0 },
-              name,
-              "body segment outside any open transaction set",
+              UNEXPECTED_SEGMENT_CONTEXTS.BODY_OUTSIDE_TRANSACTION,
             ),
           );
         }

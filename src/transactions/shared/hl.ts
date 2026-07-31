@@ -111,29 +111,20 @@ export function validateHl(
     // Top-level code (parent must be absent) or an unknown level (no
     // synthesized expectation - surfaced verbatim).
     if (hasExpectation && hl.parentHlId !== undefined) {
-      warnings.push(hlParentMismatch(position, hl.hlId, hl.parentHlId));
+      warnings.push(hlParentMismatch(position));
     }
     return;
   }
   if (hl.parentHlId === undefined) {
-    warnings.push(hlParentMismatch(position, hl.hlId, ""));
+    warnings.push(hlParentMismatch(position));
     return;
   }
   const parent = index.get(hl.parentHlId);
   if (parent === undefined) {
-    warnings.push(hlParentMismatch(position, hl.hlId, hl.parentHlId));
+    warnings.push(hlParentMismatch(position));
     return;
   }
   if (parent.levelCode !== expectedParent) {
-    warnings.push(
-      hlParentLevelInvalid(
-        position,
-        hl.hlId,
-        hl.levelCode,
-        parent.hlId,
-        parent.levelCode,
-        expectedParent,
-      ),
-    );
+    warnings.push(hlParentLevelInvalid(position));
   }
 }

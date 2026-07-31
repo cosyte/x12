@@ -28,12 +28,29 @@ further decoded.
   interchange is fully parsed into `tx.segments` before iteration begins. It is not a byte-streaming
   reader for arbitrarily large files.
 
-- **`X12ParseError.snippet` can carry PHI, by design, and the library does not redact it.** Warning
-  messages and builder refusals are PHI-free by construction, but a thrown `X12ParseError` carries a
-  bounded (≤ 64 character) copy of the offending input so the error is actionable. On real traffic
-  those bytes can be patient data. It is attached to each of the four fatal codes, and under
-  `{ strict: true }` to the first escalated Tier-2 warning as well. Redact at your call site, or log
-  `err.code` and `err.position` and drop `err.snippet`.
+- **`X12ParseError.snippet` on a Tier-3 fatal can carry PHI, by design, and the library does not
+  redact it.** Warning messages come from a frozen registry and no factory takes a value parameter, so
+  they cannot echo an element; the four structural fatals are different, because they are raised
+  before the envelope is readable and each carries a bounded (≤ 64 character) copy of the start of
+  the input so the error is actionable. On real traffic those bytes can be patient data. Redact at
+  your call site, or log `err.code` and `err.position` and drop `err.snippet`. A **strict-mode
+  escalation carries no snippet**: the error it raises wraps a registry-built warning, so `err.snippet`
+  is `""`.
+
+- **Three locator-flavoured model fields are left unbounded on purpose, and a downstream package
+  should not interpolate them.** `X12HierarchicalLevel.hlId` / `.parentHlId` / `.levelCode` (and the
+  shared `X12Hl`) stay byte-verbatim because collapsing two distinct non-conformant HL ids to one
+  sentinel would make them compare equal and silently merge two subscribers' claims into one
+  hierarchy; a wrong hierarchy is worse than a wide locator. `X12Ack999Ik3.segmentIdCode` /
+  `.loopIdentifier` and `X12Ack999Ik4.dataElementReferenceNumber` are the trading partner's report of
+  where **they** found a problem, which is the content a 999 exists to deliver. `X12Segment.id` is
+  bounded to the ASC X12 .5 segment-id grammar (a non-conformant first element yields
+  `NON_SPEC_SEGMENT_ID`) precisely because it is a derived locator with no such argument; the bytes
+  stay on `seg.raw` and `seg.elements[0]`.
+
+- **`X12Ack999Ik4.copyOfBadDataElement` is a copy of the offending bytes and can carry PHI.** It is
+  whatever the sender put in IK4-04; the library never auto-populates it, and senders SHOULD omit it
+  when the bytes are PHI.
 
 - **Balance and integrity checks warn; they never rebalance or renumber.** The 835 TR3 §1.10.2 balance
   invariants, 837 HL parent-pointer integrity, and envelope-count reconciliation surface a warning on

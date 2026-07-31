@@ -7,6 +7,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Warning messages are built from a frozen registry instead of from the document, closing a PHI
+  leak in every envelope control number and declared count.** Before this change
+  `X12_CONTROL_NUMBER_MISMATCH` rendered **both** sides of the disagreeing pair into `message`
+  verbatim and unbounded, on all six slots (`ISA-13`/`IEA-02`, `GS-06`/`GE-02`, `ST-02`/`SE-02`); a
+  300,000-byte trailer control number produced a 300,062-byte `message`. `X12_GROUP_COUNT_MISMATCH`,
+  `X12_TRANSACTION_COUNT_MISMATCH`, `X12_SEGMENT_COUNT_MISMATCH` and `X12_PRE_005010` did the same
+  with `IEA-01`, `GE-01`, `SE-01` and `ISA-12`, and `X12_835_REMIT_BALANCE_MISMATCH` rendered three
+  monetary amounts. Five of those six control-number slots are variable-width, so "it is only a
+  control number" was never a bound: it is free-form trading-partner text that routinely carries a
+  batch or patient-account identifier.
+
+  **No warning factory takes a value parameter any more.** Each takes a `X12Position` plus, where one
+  code covers several situations, a library-owned discriminant (`CONTROL_NUMBER_PAIRS`,
+  `UNEXPECTED_SEGMENT_CONTEXTS`, `BALANCE_INVARIANTS`, `REQUIRED_LOOPS`), and `message` is a lookup
+  into a frozen table. That replaces the previous posture, which shape-validated an echoed value
+  against a spec grammar and substituted `(non-spec)` when it did not match. The shape test held for
+  the code-list slots (CARC, RARC, HI qualifier, CSCC, CSC, maintenance type, 837 variant, segment
+  id) and could not hold for a control number, whose grammar is whatever the sender sent. Taking no
+  value at all is a property of the signature rather than a filter someone has to remember to apply.
+
+  Nothing is discarded: every value is still preserved verbatim on the model, which is where a
+  consumer that has decided it may handle PHI reads it.
+
+- **A strict-mode escalation no longer carries a snippet.** `parseX12(raw, { strict: true })` turned
+  the first Tier-2 warning into an `X12ParseError` carrying 64 bytes of the interchange, which put
+  document bytes into `err.stack` and from there into any error reporter. The escalated error now
+  carries `snippet: ""`; its `message` is the registry entry the warning carried and `position`
+  locates it. `snippet` remains on the four Tier-3 structural fatals, which are raised before the
+  envelope is readable, and remains the library's one deliberate exception.
+
+- **`X12Segment.id` is bounded to the ASC X12 .5 segment-id grammar.** It is a derived structural
+  identifier, the field a downstream package interpolates to say where something is, and it was a
+  verbatim copy of the segment's first element. A sender that put a 300,000-byte value there had it
+  copied into any locus built from `seg.id`. A first element outside the grammar now yields the
+  exported `NON_SPEC_SEGMENT_ID` sentinel; `seg.raw` and `seg.elements[0]` keep the bytes, so
+  round-trip stays byte-exact.
+
+- **`X12_INVALID_DELIMITERS` no longer echoes the detected element separator byte.** The message names
+  the fixed ISA position that broke instead.
+
+### Added
+
+- **`ALL_WARNING_MESSAGES`**, the frozen set of every message string the library can emit, so a
+  consumer or a conformance gate can assert `ix.warnings.every((w) => ALL_WARNING_MESSAGES.has(w.message))`.
+- **`CONTROL_NUMBER_PAIRS`, `UNEXPECTED_SEGMENT_CONTEXTS`, `BALANCE_INVARIANTS`, `REQUIRED_LOOPS`**
+  and their `X12ControlNumberPair` / `X12UnexpectedSegmentContext` / `X12BalanceInvariant` /
+  `X12RequiredLoop` types: the library-owned discriminants the warning factories now take in place of
+  a value.
+- **`NON_SPEC_SEGMENT_ID`**, the sentinel `X12Segment.id` takes when the first element is not a spec
+  segment id.
+
+### Changed
+
+- **BREAKING (pre-alpha): every exported warning factory changed signature.**
+  `controlNumberMismatch(position, pair)`, `unexpectedSegment(position, context)`,
+  `remitBalanceMismatch(position, invariant)` and `missingRequiredLoop(position, loop)` now take a
+  discriminant from the constants above; `pre005010`, `groupCountMismatch`,
+  `transactionCountMismatch`, `segmentCountMismatch`, `trailingGarbage`, `unknownCarc`,
+  `unknownRarc`, `hlParentMismatch`, `hlParentLevelInvalid`, `unknownHiQualifier`,
+  `unknown837Variant`, `unknownClaimStatusCategory`, `unknownClaimStatus` and
+  `unknownMaintenanceType` now take a `position` only.
+- **Warning messages no longer carry the declared-versus-actual counts or the balance amounts.** Both
+  sides of each are on the model (`iea.elements[1]` against `ix.groups.length`,
+  `claim.totalChargeAmount` against `claim.totalPaymentAmount` and the CAS adjustments), so the
+  information is one dereference away rather than rendered into a string a consumer logs by default.
+
+### Fixed
+
+- **The shipped PHI disclosure said the opposite of what the code did, in five places.**
+  `README.md`, `docs-content/troubleshooting.md`, `docs-content/spec-notes-tolerance.md`,
+  `docs-content/cookbook.md` and `KNOWN-LIMITATIONS.md` described warning messages as "bounded and
+  PHI-free by construction" and told consumers "you can log the full `.warnings` array without
+  leaking", naming `.snippet` as the one exception. The leak was in `.message`, and `.snippet` is not
+  a field on a warning at all, so the disclosure was actively green-lighting bulk logging of the
+  field that leaked. Each now describes the frozen registry, and `troubleshooting.md` states plainly
+  what `0.0.3` and earlier did so a reader on an older version is not misled.
+- **The PHI tests were green over unreachable space.** `test/transactions-remit-835.test.ts` swept a
+  fixture whose CARC and RARC values were clean for shapes that could never have appeared there, and
+  its balance-mismatch assertion **required** the leak (it matched `/spec="\d/` and `/computed=/`).
+  `test/parser-envelope.test.ts` proved the hostile segment id was filtered and said nothing about
+  the spec-shaped one. All three are replaced.
+
 ### Added
 
 - **Brand lockup on the README, following the reader's colour scheme (ASSETS-P8).** The README now

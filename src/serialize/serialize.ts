@@ -30,6 +30,7 @@
 
 import type { OnWarningCallback, X12Interchange } from "../parser/types.js";
 import {
+  CONTROL_NUMBER_PAIRS,
   controlNumberMismatch,
   groupCountMismatch,
   segmentCountMismatch,
@@ -135,17 +136,13 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
         const declaredSe = elementAt(tx.se.elements, 1);
         if (declaredSe !== String(segCount)) {
           emit(
-            segmentCountMismatch(
-              {
-                segmentIndex: stSegIdx,
-                interchangeIndex: 0,
-                groupIndex: g,
-                transactionIndex: t,
-                elementIndex: 1,
-              },
-              declaredSe,
-              segCount,
-            ),
+            segmentCountMismatch({
+              segmentIndex: stSegIdx,
+              interchangeIndex: 0,
+              groupIndex: g,
+              transactionIndex: t,
+              elementIndex: 1,
+            }),
           );
         }
         const st02 = elementAt(tx.st.elements, 2);
@@ -160,9 +157,7 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
                 transactionIndex: t,
                 elementIndex: 2,
               },
-              "ST-02/SE-02",
-              st02,
-              se02,
+              CONTROL_NUMBER_PAIRS.TRANSACTION,
             ),
           );
         }
@@ -181,11 +176,12 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
         const declaredGe = elementAt(group.ge.elements, 1);
         if (declaredGe !== String(txCount)) {
           emit(
-            transactionCountMismatch(
-              { segmentIndex: gsSegIdx, interchangeIndex: 0, groupIndex: g, elementIndex: 1 },
-              declaredGe,
-              txCount,
-            ),
+            transactionCountMismatch({
+              segmentIndex: gsSegIdx,
+              interchangeIndex: 0,
+              groupIndex: g,
+              elementIndex: 1,
+            }),
           );
         }
         const gs06 = elementAt(group.gs.elements, 6);
@@ -194,9 +190,7 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
           emit(
             controlNumberMismatch(
               { segmentIndex: gsSegIdx, interchangeIndex: 0, groupIndex: g, elementIndex: 2 },
-              "GS-06/GE-02",
-              gs06,
-              ge02,
+              CONTROL_NUMBER_PAIRS.GROUP,
             ),
           );
         }
@@ -215,13 +209,7 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
     if (specClean) {
       const declaredIea = elementAt(interchange.iea.elements, 1);
       if (declaredIea !== String(groupCount)) {
-        emit(
-          groupCountMismatch(
-            { segmentIndex: segIdx, interchangeIndex: 0, elementIndex: 1 },
-            declaredIea,
-            groupCount,
-          ),
-        );
+        emit(groupCountMismatch({ segmentIndex: segIdx, interchangeIndex: 0, elementIndex: 1 }));
       }
       const isa13 = elementAt(interchange.isa.elements, 13);
       const iea02 = elementAt(interchange.iea.elements, 2);
@@ -229,9 +217,7 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
         emit(
           controlNumberMismatch(
             { segmentIndex: segIdx, interchangeIndex: 0, elementIndex: 2 },
-            "ISA-13/IEA-02",
-            isa13,
-            iea02,
+            CONTROL_NUMBER_PAIRS.INTERCHANGE,
           ),
         );
       }
