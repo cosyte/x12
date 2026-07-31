@@ -9,29 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Package banner on the README (ASSETS-P8).** The README now opens with the `@cosyte/x12` brand
-  banner, a plain markdown image pointing at the absolute HTTPS URL published by the `assets` repo
-  (`https://cosyte.com/social/cosyte-banner-x12-1200x300.png`, verified `200` / `image/png` before
-  landing). It is a self-grounded PNG rather than an `<img>` or a `<picture>` pair, because a
-  markdown image with an absolute URL is the construct we are willing to assert renders on both npm
-  and GitHub; whether npm's markdown sanitizer preserves `<picture>` is unverified. The alt text
-  names the package and what it does, since it is what a screen reader on the npm page reads.
-
-### Changed
-
-- **The README banner is now the shared Cosyte lockup, theme-aware.** The per-package banner image
-  above is replaced, before it ever reached the registry, by a `<picture>` element: a `<source>`
-  carrying the on-dark cut for `prefers-color-scheme: dark`
+- **Brand lockup on the README, following the reader's colour scheme (ASSETS-P8).** The README now
+  opens with the shared Cosyte lockup, above the `# @cosyte/x12` heading. It is a `<picture>`
+  element: a `<source>` carrying the on-dark cut for `prefers-color-scheme: dark`
   (`https://cosyte.com/tile/cosyte-lockup-tile-on-dark-1200x300.png`) and an `<img>` carrying the
   on-light cut as the fallback (`https://cosyte.com/tile/cosyte-lockup-tile-on-light-1200x300.png`).
   Both were verified `200` / `image/png` before landing. On GitHub a dark-mode reader gets the dark
   cut; on npm the `<img>` is lifted out of the `<picture>` by the surrounding anchor so the light cut
-  renders, which is correct there because npmjs.com has no dark mode. The old banner baked the
-  package name and the tagline into pixels and the two lines beneath it repeated both; the shared
-  lockup reads "Cosyte" while the heading still reads `@cosyte/x12`, so the duplication goes and the
-  `# @cosyte/x12` heading and the blockquote under it are unchanged. The alt text describes the
-  artwork rather than the package, since that is what a screen reader announces on the npm page and
-  what a reader gets if the image fails to load.
+  renders, which is correct there because npmjs.com has no dark mode. The heading and the blockquote
+  under it are unchanged: the lockup reads "Cosyte" while the heading reads `@cosyte/x12`, so the two
+  strings do not collide and nothing is duplicated. The alt text describes the artwork rather than
+  the package, since that is what a screen reader announces on the npm page and what a reader gets if
+  the image fails to load.
+
+  **Recorded because it changed inside the unreleased window rather than after it.** This entry first
+  landed describing a _per-package_ banner (`cosyte-banner-x12-1200x300.png`), which baked the
+  package name and the tagline into pixels and duplicated the two lines beneath it. It explicitly
+  chose a plain markdown image over an `<img>` or a `<picture>` pair, on the ground that whether
+  npm's markdown sanitizer preserves `<picture>` was unverified. That was an accurate statement of
+  what was known at the time. It has since been measured on a published package page: the sanitizer
+  keeps the `<picture>`, and the anchor wrapper hoists the `<img>` out of it, so the light cut
+  renders. The per-package banner was replaced before any release carried it, so no published
+  version of this package ever had it, and this is written as one change rather than an addition
+  followed by a replacement. The superseded reason is kept here rather than removed, because a
+  record that quietly flips a stated reason is worse than one that shows the correction.
 
 ### Fixed
 

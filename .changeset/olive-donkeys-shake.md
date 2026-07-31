@@ -2,11 +2,11 @@
 "@cosyte/x12": patch
 ---
 
-Put the brand banner at the top of the README, and correct four claims on the package pages that were no longer true (ASSETS-P8).
+Correct four claims on the package pages that were no longer true: the published version, which transactions have a typed model, the serializer's defaults, and what a parse error can carry.
 
-The README now opens with the `@cosyte/x12` banner: a plain markdown image pointing at the absolute HTTPS URL published by the `assets` repo (`https://cosyte.com/social/cosyte-banner-x12-1200x300.png`, verified `200` and `image/png` before landing). It is a self-grounded PNG rather than an `<img>` or a `<picture>` pair, because a markdown image with an absolute URL is the construct we are willing to assert renders on both npm and GitHub, and whether npm's markdown sanitizer preserves `<picture>` is unverified. The alt text names the package and what it does, since it is what a screen reader on the npm page reads out.
+All four are on public pages. Tracked as ASSETS-P8.
 
-Four corrections came with it, all on public pages.
+This changeset originally also announced a per-package banner image at the top of the README, and chose a plain markdown image over an `<img>` or a `<picture>` pair on the stated ground that npm's handling of `<picture>` was unverified. That reasoning was sound when it was written. It has since been measured, and the banner was replaced by the shared Cosyte lockup in the same unreleased window, so no consumer ever saw the intermediate image. The announcement is therefore withdrawn from this entry rather than published and immediately contradicted; the lockup that did ship is described in the other changeset in this release, which records what the earlier measurement found.
 
 The version was wrong. `README.md`, `KNOWN-LIMITATIONS.md`, and the `docs-content` pages said the package was published at `0.0.1`. It is at `0.0.2`. That literal was pinned by an earlier documentation pass and went stale on the very next release, so it is removed rather than re-pinned: the npm badge renders the live version on the README, and each page now points at `npm view @cosyte/x12 version` as the source of truth.
 
