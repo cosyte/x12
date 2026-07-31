@@ -17,6 +17,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and GitHub; whether npm's markdown sanitizer preserves `<picture>` is unverified. The alt text
   names the package and what it does, since it is what a screen reader on the npm page reads.
 
+### Changed
+
+- **The README banner is now the shared Cosyte lockup, theme-aware.** The per-package banner image
+  above is replaced, before it ever reached the registry, by a `<picture>` element: a `<source>`
+  carrying the on-dark cut for `prefers-color-scheme: dark`
+  (`https://cosyte.com/tile/cosyte-lockup-tile-on-dark-1200x300.png`) and an `<img>` carrying the
+  on-light cut as the fallback (`https://cosyte.com/tile/cosyte-lockup-tile-on-light-1200x300.png`).
+  Both were verified `200` / `image/png` before landing. On GitHub a dark-mode reader gets the dark
+  cut; on npm the `<img>` is lifted out of the `<picture>` by the surrounding anchor so the light cut
+  renders, which is correct there because npmjs.com has no dark mode. The old banner baked the
+  package name and the tagline into pixels and the two lines beneath it repeated both; the shared
+  lockup reads "Cosyte" while the heading still reads `@cosyte/x12`, so the duplication goes and the
+  `# @cosyte/x12` heading and the blockquote under it are unchanged. The alt text describes the
+  artwork rather than the package, since that is what a screen reader announces on the npm page and
+  what a reader gets if the image fails to load.
+
 ### Fixed
 
 - **Stale version claim removed from five public pages (ASSETS-P8).** `README.md`,
