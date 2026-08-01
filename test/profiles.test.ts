@@ -11,6 +11,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  CONTROL_NUMBER_PAIRS,
   WARNING_CODES,
   X12ProfileError,
   controlNumberMismatch,
@@ -295,12 +296,10 @@ describe("partitionWarnings", () => {
       quirks: [quirk({ expectedWarnings: [WARNING_CODES.X12_TRAILING_GARBAGE] })],
     });
     const warnings = [
-      trailingGarbage({ segmentIndex: 6, interchangeIndex: 0 }, 12),
+      trailingGarbage({ segmentIndex: 6, interchangeIndex: 0 }),
       controlNumberMismatch(
         { segmentIndex: 1, interchangeIndex: 0, elementIndex: 2 },
-        "ISA-13/IEA-02",
-        "000000001",
-        "000000002",
+        CONTROL_NUMBER_PAIRS.INTERCHANGE,
       ),
     ];
     const { expected, unexpected } = partitionWarnings(warnings, tolerant);
@@ -309,7 +308,7 @@ describe("partitionWarnings", () => {
   });
 
   it("treats every warning as unexpected when the profile expects none", () => {
-    const w = [trailingGarbage({ segmentIndex: 6, interchangeIndex: 0 }, 12)];
+    const w = [trailingGarbage({ segmentIndex: 6, interchangeIndex: 0 })];
     const { expected, unexpected } = partitionWarnings(w, profiles.availity);
     expect(expected).toHaveLength(0);
     expect(unexpected).toHaveLength(1);

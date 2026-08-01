@@ -167,7 +167,10 @@ export function detectDelimiters(raw: string): Delimiters {
     if (raw.charAt(pos) !== element) {
       throw new X12ParseError(
         FATAL_CODES.X12_INVALID_DELIMITERS,
-        `Element separator "${element}" was detected at ISA byte 4 but is missing at fixed ISA byte ${String(pos + 1)} - ISA element layout is not 005010-conformant.`,
+        // The detected separator is a single byte read out of the input, so
+        // it is not echoed: the diagnostic is which fixed ISA position broke,
+        // and the byte itself is at `raw[3]` for anyone who needs it.
+        `The element separator detected at ISA byte 4 is missing at fixed ISA byte ${String(pos + 1)} - ISA element layout is not 005010-conformant.`,
         fatalPosition,
         snip,
       );

@@ -193,7 +193,7 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
       case "CLP": {
         flushClaim();
         lastParty = undefined;
-        currentClaim = openClaim(seg, delimiters);
+        currentClaim = openClaim(seg, delimiters, position.segmentIndex);
         currentNm1Provider = undefined;
         currentNm1Person = undefined;
         break;
@@ -266,7 +266,7 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
             : collectMoaRemarks(seg, delimiters);
         for (const code of remarks) {
           const entry = lookupRarc(code);
-          if (entry === undefined) warnings.push(unknownRarc(position, code));
+          if (entry === undefined) warnings.push(unknownRarc(position));
           currentClaim.remarks.push({ system: "HE", code, description: entry?.description });
         }
         break;
@@ -506,7 +506,7 @@ function decodeLq(
   let description: string | undefined;
   if (system === "HE") {
     const entry = lookupRarc(code);
-    if (entry === undefined) warnings.push(unknownRarc(position, code));
+    if (entry === undefined) warnings.push(unknownRarc(position));
     description = entry?.description;
   }
   return Object.freeze({ system, code, description });
@@ -557,7 +557,7 @@ function decodeCasAdjustments(
     if (reasonCode === undefined && amount === undefined) continue;
     const code = reasonCode ?? "";
     const entry = code === "" ? undefined : lookupCarc(code);
-    if (entry === undefined && code !== "") warnings.push(unknownCarc(position, code));
+    if (entry === undefined && code !== "") warnings.push(unknownCarc(position));
     out.push(
       Object.freeze({
         groupCode,
@@ -607,16 +607,27 @@ function decodeNm1(
 /**
  * Open a fresh Loop 2100 accumulator from a CLP segment. CLP-02 status
  * code description comes from the bundled snapshot (or `undefined`); the
- * verbatim status code is always preserved. @internal
+ * verbatim status code is always preserved.
+ *
+ * `clpSegmentIndex` is the CLP's own 1-based position inside the transaction
+ * body, and it is what makes a balance warning attributable. It used to be
+ * hard-coded to `0`, which was harmless while the message rendered the
+ * amounts and is not once the message names only the equation: two claims
+ * failing the same invariant would otherwise produce byte-identical
+ * warnings at byte-identical positions. @internal
  */
-function openClaim(seg: X12Segment, delimiters: Delimiters): ClaimAccumulator {
+function openClaim(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  clpSegmentIndex: number,
+): ClaimAccumulator {
   const claimStatusCode = elementValue(seg, 2, delimiters);
   const claimStatusDescription = lookupClpStatus(claimStatusCode)?.description;
   const facilityTypeCode =
     componentOptional(seg, 8, 1, delimiters) ?? elementOptional(seg, 8, delimiters);
   const claimFrequencyCode = componentOptional(seg, 8, 3, delimiters);
   return {
-    clpSegmentIndex: 0, // populated in the future when we surface positions
+    clpSegmentIndex,
     patientControlNumber: elementValue(seg, 1, delimiters),
     claimStatusCode,
     claimStatusDescription,
@@ -816,9 +827,9 @@ function freezeServiceLine(acc: ServiceLineAccumulator): X12RemitServiceLine {
 
 /** @internal */
 function freezeClaim(acc: ClaimAccumulator): X12RemitClaim {
-  // Voiding the props on ClaimAccumulator we don't use yet - Phase 8 will
-  // expose CLP segment position so balance-warning positions can point at
-  // the exact claim.
+  // `clpSegmentIndex` lives on the accumulator, not the frozen claim: it is
+  // the position the balance warnings are raised at, not a field a consumer
+  // reads off the model.
   void acc.clpSegmentIndex;
   return Object.freeze({
     patientControlNumber: acc.patientControlNumber,

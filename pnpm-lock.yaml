@@ -25,8 +25,8 @@ importers:
         specifier: ^0.0.2
         version: 0.0.2
       '@cosyte/test-utils':
-        specifier: ^0.0.1
-        version: 0.0.1(fast-check@3.23.2)
+        specifier: ^0.0.2
+        version: 0.0.2(fast-check@3.23.2)
       '@cosyte/tsconfig':
         specifier: ^0.0.2
         version: 0.0.2
@@ -180,8 +180,8 @@ packages:
   '@cosyte/prettier-config@0.0.2':
     resolution: {integrity: sha512-nmplXQKNq5DZ+Su/tCUF6m9UJ9MOArhw5NG0X9yqi6B5zvxmVXtKMAX1N2bKkqpKhZqyQOR9ALGYVpTx022R/g==}
 
-  '@cosyte/test-utils@0.0.1':
-    resolution: {integrity: sha512-WnRVpWb6mucn8lFbTGA19rH4sjUrvOWdQBUb4YNrywXRi26cfZIcoHyb4x2TxmIoNGPW6EqtSfpUp6nQcYvRgA==}
+  '@cosyte/test-utils@0.0.2':
+    resolution: {integrity: sha512-sBH+Z/YnOX/vLEsJMc2EpP7EHpLvh0/CuL1+5sBtoy/oppIsvL/0AiZMa0dwv2P6lfxvHwja59qTbHHANixslQ==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       fast-check: ^3.0.0
@@ -2071,7 +2071,7 @@ snapshots:
 
   '@cosyte/prettier-config@0.0.2': {}
 
-  '@cosyte/test-utils@0.0.1(fast-check@3.23.2)':
+  '@cosyte/test-utils@0.0.2(fast-check@3.23.2)':
     dependencies:
       fast-check: 3.23.2
 

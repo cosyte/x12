@@ -29,8 +29,10 @@ catch.
 ## Warnings collect on the model, and stream
 
 Every warning lands on the returned model's `.warnings` array (`ix.warnings`, `remit.warnings`,
-`sub.warnings`, …), each carrying a stable `code` (from `WARNING_CODES`), a **bounded, PHI-free**
-`message` (it never echoes names, IDs, or dates), and a `position`. You can also stream them live via
+`sub.warnings`, …), each carrying a stable `code` (from `WARNING_CODES`), a `message` that is a
+**lookup into a frozen registry** rather than anything built from your document, and a `position`.
+No warning factory takes a value parameter, so no element can reach a `message`; the values stay on
+the model. See [Keeping PHI out of logs](./troubleshooting). You can also stream them live via
 the `onWarning` callback:
 
 ```ts runnable

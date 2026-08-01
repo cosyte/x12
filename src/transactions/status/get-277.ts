@@ -443,11 +443,11 @@ function decodeStatusComposite(
   if (categoryCode === undefined && statusCode === undefined) return undefined;
   const category = categoryCode === undefined ? undefined : lookupClaimStatusCategory(categoryCode);
   if (categoryCode !== undefined && category === undefined) {
-    warnings.push(unknownClaimStatusCategory(position, categoryCode));
+    warnings.push(unknownClaimStatusCategory(position));
   }
   const status = statusCode === undefined ? undefined : lookupClaimStatus(statusCode);
   if (statusCode !== undefined && status === undefined) {
-    warnings.push(unknownClaimStatus(position, statusCode));
+    warnings.push(unknownClaimStatus(position));
   }
   return Object.freeze({
     categoryCode: categoryCode ?? "",

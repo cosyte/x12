@@ -50,6 +50,7 @@ import {
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
 import {
+  REQUIRED_LOOPS,
   hlParentLevelInvalid,
   hlParentMismatch,
   missingRequiredLoop,
@@ -206,12 +207,7 @@ export function get837Claims(
     explicitType ?? variantFromIcr ?? variantFromSegment ?? "unknown";
 
   if (variant === "unknown") {
-    warnings.push(
-      unknown837Variant(
-        { segmentIndex: 1, transactionIndex: 0 },
-        implementationConventionReference,
-      ),
-    );
+    warnings.push(unknown837Variant({ segmentIndex: 1, transactionIndex: 0 }));
   }
 
   // Hierarchy + entity accumulators.
@@ -501,28 +497,16 @@ export function get837Claims(
           // illegal - flag with X12_MISSING_REQUIRED_LOOP. The walker
           // still attempts to extract the claim header.
           if (currentBillingHl === undefined) {
-            warnings.push(
-              missingRequiredLoop(position, "2000A", "no Billing Provider HL precedes the CLM"),
-            );
+            warnings.push(missingRequiredLoop(position, REQUIRED_LOOPS.BILLING_PROVIDER_2000A));
           }
           if (currentSubscriberHl === undefined) {
-            warnings.push(
-              missingRequiredLoop(position, "2000B", "no Subscriber HL precedes the CLM"),
-            );
+            warnings.push(missingRequiredLoop(position, REQUIRED_LOOPS.SUBSCRIBER_2000B));
           }
           if (currentSubscriberMember === undefined && currentSubscriberHl !== undefined) {
-            warnings.push(
-              missingRequiredLoop(
-                position,
-                "2010BA",
-                "no Subscriber Name follows the Subscriber HL",
-              ),
-            );
+            warnings.push(missingRequiredLoop(position, REQUIRED_LOOPS.SUBSCRIBER_NAME_2010BA));
           }
           if (currentPayer === undefined && currentSubscriberHl !== undefined) {
-            warnings.push(
-              missingRequiredLoop(position, "2010BB", "no Payer Name follows the Subscriber HL"),
-            );
+            warnings.push(missingRequiredLoop(position, REQUIRED_LOOPS.PAYER_NAME_2010BB));
           }
         }
         currentClaim = openClaim(seg, delimiters, {
@@ -723,30 +707,21 @@ function validateHl(
     // check applies (parent must be absent for "20"; an unknown level is
     // surfaced verbatim, no synthesized expectation).
     if (hl.levelCode === HL_LEVEL_CODES.INFORMATION_SOURCE && hl.parentHlId !== undefined) {
-      warnings.push(hlParentMismatch(position, hl.hlId, hl.parentHlId));
+      warnings.push(hlParentMismatch(position));
     }
     return;
   }
   if (hl.parentHlId === undefined) {
-    warnings.push(hlParentMismatch(position, hl.hlId, ""));
+    warnings.push(hlParentMismatch(position));
     return;
   }
   const parent = index.get(hl.parentHlId);
   if (parent === undefined) {
-    warnings.push(hlParentMismatch(position, hl.hlId, hl.parentHlId));
+    warnings.push(hlParentMismatch(position));
     return;
   }
   if (parent.levelCode !== expectedParent) {
-    warnings.push(
-      hlParentLevelInvalid(
-        position,
-        hl.hlId,
-        hl.levelCode,
-        parent.hlId,
-        parent.levelCode,
-        expectedParent,
-      ),
-    );
+    warnings.push(hlParentLevelInvalid(position));
   }
 }
 
@@ -861,7 +836,7 @@ function decodeHi(
     const codeSystem: X12HiCodeSystem = resolved?.system ?? "unknown";
     const category: X12HiCategory = resolved?.category ?? "unknown";
     if (qualifier !== undefined && resolved === undefined) {
-      warnings.push(unknownHiQualifier(position, qualifier));
+      warnings.push(unknownHiQualifier(position));
     }
     out.push(
       Object.freeze({
@@ -912,7 +887,7 @@ function decodeCas(
     if (reasonCode === undefined && amount === undefined) continue;
     const code = reasonCode ?? "";
     const entry = code === "" ? undefined : lookupCarc(code);
-    if (entry === undefined && code !== "") warnings.push(unknownCarc(position, code));
+    if (entry === undefined && code !== "") warnings.push(unknownCarc(position));
     out.push(
       Object.freeze({
         groupCode,

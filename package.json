@@ -94,7 +94,7 @@
     "@changesets/cli": "2.31.0",
     "@cosyte/eslint-config": "^0.0.3",
     "@cosyte/prettier-config": "^0.0.2",
-    "@cosyte/test-utils": "^0.0.1",
+    "@cosyte/test-utils": "^0.0.2",
     "@cosyte/tsconfig": "^0.0.2",
     "@cosyte/tsup-config": "^0.0.1",
     "@cosyte/vitest-config": "^0.0.2",

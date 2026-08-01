@@ -335,7 +335,7 @@ const ix = parseX12(raw, {
   onWarning: (w) => {
     seen.push(w);
     // w.code: a stable string from WARNING_CODES
-    // w.message: bounded, PHI-free (never echoes names/ids/dates)
+    // w.message: a frozen-registry entry, never built from your document
     // w.position: where in the interchange it occurred
   },
 });

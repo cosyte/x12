@@ -132,7 +132,8 @@ describe("get834Enrollments - safety-critical maintenance type", () => {
     expect(members[0]?.maintenanceTypeDescription).toBeUndefined();
     expect(members[0]?.warnings).toHaveLength(1);
     expect(members[0]?.warnings[0]?.code).toBe(WARNING_CODES.X12_834_UNKNOWN_MAINTENANCE_TYPE);
-    // The H-PHI invariant: the message echoes the shape-valid code, never PHI.
+    // The message is a frozen-registry lookup and echoes no code at all; the
+    // verbatim INS-03 stays on the model, which is the safety-critical part.
     expect(members[0]?.warnings[0]?.message).not.toContain("MEMBER-1");
   });
 });

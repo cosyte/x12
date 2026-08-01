@@ -430,7 +430,7 @@ function decodeHiDiagnoses(
     const resolved = qualifier === undefined ? undefined : resolveHiQualifier(qualifier);
     const codeSystem: X12HiCodeSystem | "unknown" = resolved?.system ?? "unknown";
     if (qualifier !== undefined && resolved === undefined) {
-      warnings.push(unknownHiQualifier(position, qualifier));
+      warnings.push(unknownHiQualifier(position));
     }
     out.push(Object.freeze({ qualifier: qualifier ?? "", code: code ?? "", codeSystem }));
   }

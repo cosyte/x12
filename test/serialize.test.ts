@@ -139,7 +139,9 @@ describe("serializeX12: spec-clean control-pair + trailing-byte edges", () => {
     const warnings: X12ParseWarning[] = [];
     serializeX12(parseX12(raw), { specClean: true, onWarning: (w) => warnings.push(w) });
     expect(warnings.map((w) => w.code)).toContain(WARNING_CODES.X12_CONTROL_NUMBER_MISMATCH);
-    expect(warnings.some((w) => w.message.includes("ST-02/SE-02"))).toBe(true);
+    expect(warnings.some((w) => w.message.includes("ST-02") && w.message.includes("SE-02"))).toBe(
+      true,
+    );
   });
 
   it("flags a GS-06/GE-02 control mismatch (counts otherwise clean)", () => {
@@ -153,7 +155,9 @@ describe("serializeX12: spec-clean control-pair + trailing-byte edges", () => {
       "IEA*1*000000001~";
     const warnings: X12ParseWarning[] = [];
     serializeX12(parseX12(raw), { specClean: true, onWarning: (w) => warnings.push(w) });
-    expect(warnings.some((w) => w.message.includes("GS-06/GE-02"))).toBe(true);
+    expect(warnings.some((w) => w.message.includes("GS-06") && w.message.includes("GE-02"))).toBe(
+      true,
+    );
   });
 
   it("reconciles a truncated SE (no SE-01/SE-02) without throwing, even with recomputeCounts", () => {

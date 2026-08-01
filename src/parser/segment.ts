@@ -59,6 +59,53 @@ export interface X12Segment {
 }
 
 /**
+ * The X12 segment-id grammar: two or three characters, leading uppercase
+ * letter, remaining uppercase letter or digit. Identical to the regex
+ * `defineLoopSpec` already enforces on an authored loop's segment ids, so the
+ * bound and the loop specs agree by construction.
+ *
+ * @internal
+ */
+const SEGMENT_ID_SHAPE_RE = /^[A-Z][A-Z0-9]{1,2}$/u;
+
+/**
+ * The value {@link X12Segment.id} takes when the first element does not
+ * match the X12 segment-id grammar. Not a valid segment id, so it can
+ * never collide with a real one in a `seg.id === "NM1"` comparison.
+ *
+ * @example
+ * ```ts
+ * import { parseX12, NON_SPEC_SEGMENT_ID } from "@cosyte/x12";
+ * const seg = parseX12(raw).groups[0]?.transactions[0]?.segments[1];
+ * if (seg?.id === NON_SPEC_SEGMENT_ID) {
+ *   // the sender's "segment" name is not a spec segment id; its bytes are on seg.raw
+ * }
+ * ```
+ */
+export const NON_SPEC_SEGMENT_ID = "(non-spec)";
+
+/**
+ * Bound the derived {@link X12Segment.id} to the segment-id grammar.
+ *
+ * `id` is the library's own **structural identifier**: the field a
+ * downstream package interpolates to say where something is, exactly like
+ * `segment.type` in `@cosyte/hl7`. Left unbounded it re-creates the leak
+ * this library's warning messages no longer have, one layer out: a sender
+ * that puts 300 KB of a clinical narrative in a "segment name" would have
+ * that string copied into whatever locus a consumer builds from `seg.id`.
+ *
+ * The bytes are not lost. `seg.raw` and `seg.elements[0]` carry them
+ * verbatim, which keeps round-trip byte-exact; only the *derived locator*
+ * is bounded.
+ *
+ * @internal
+ */
+function boundSegmentId(first: string): string {
+  if (first.length === 0) return "";
+  return SEGMENT_ID_SHAPE_RE.test(first) ? first : NON_SPEC_SEGMENT_ID;
+}
+
+/**
  * Decode a raw segment string into an {@link X12Segment}. Splits on the
  * detected element separator (honouring the `?`-release-character escape),
  * preserves the verbatim raw text, and surfaces dangling-release warnings
@@ -98,8 +145,7 @@ export function decodeSegment(
       emit(danglingReleaseChar({ ...position, elementIndex: elements.length - 1 }));
     }
   }
-  const id = elements[0] ?? "";
-  return Object.freeze({ id, raw, elements });
+  return Object.freeze({ id: boundSegmentId(elements[0] ?? ""), raw, elements });
 }
 
 /**

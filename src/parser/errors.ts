@@ -61,7 +61,8 @@ export type X12FatalCode = (typeof FATAL_CODES)[keyof typeof FATAL_CODES];
 /**
  * Maximum chars retained on `X12ParseError.snippet`. The snippet may carry
  * PHI/PII when parsing real interchanges - keeping it bounded limits the
- * blast radius and pairs with the documented consumer-redaction boundary.
+ * blast radius and pairs with the documented consumer-redaction boundary
+ * (see the `@remarks` on {@link X12ParseError}: Tier-3 fatals only).
  * Roadmap §7 (PHI posture) sets the upper bound at ~64 chars; we cap at 63
  * + the 1-char Unicode ellipsis = 64 total.
  *
@@ -87,11 +88,19 @@ export function snippet(input: string): string {
  * snippet of the offending input so consumers can log actionable errors.
  *
  * @remarks
- * Snippets may contain PHI/PII when parsing real interchanges (member IDs
- * appear in ISA-06/08 only as trading-partner IDs, not patient identity -
- * but real claim/eligibility bodies elsewhere in the input can carry PHI).
- * Redact at the call site if required by your compliance posture. The
- * library does not redact snippets itself.
+ * `snippet` is the library's ONE deliberate PHI exception, and it exists for
+ * the four Tier-3 structural fatals only. Those are raised before the
+ * envelope is readable and are undebuggable without a few bytes of context.
+ * It may contain PHI/PII when parsing real interchanges (member IDs appear in
+ * ISA-06/08 only as trading-partner IDs, not patient identity, but a real
+ * claim / eligibility body elsewhere in the input can carry PHI). Redact at
+ * the call site if required by your compliance posture; the library does not
+ * redact snippets itself.
+ *
+ * A strict-mode escalation of a Tier-2 warning carries `snippet: ""`. That
+ * error's `message` is the same frozen-registry entry the warning carried and
+ * `position` locates it, so there is nothing to attach and nothing to
+ * redact.
  *
  * @example
  * ```ts

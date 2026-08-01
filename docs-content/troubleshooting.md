@@ -24,12 +24,12 @@ import { parseX12 } from "@cosyte/x12";
 parseX12(""); // throws X12ParseError (X12_EMPTY_INPUT)
 ```
 
-| Fatal code (throws) | Meaning |
-|---|---|
-| `X12_EMPTY_INPUT` | Nothing to parse. |
-| `X12_NO_ISA_HEADER` | Input does not begin with an ISA. It is not an X12 interchange. |
-| `X12_ISA_TOO_SHORT` | ISA truncated below its fixed 106 bytes; delimiters unreadable. |
-| `X12_INVALID_DELIMITERS` | Delimiters can't be recovered from the ISA. |
+| Fatal code (throws)      | Meaning                                                         |
+| ------------------------ | --------------------------------------------------------------- |
+| `X12_EMPTY_INPUT`        | Nothing to parse.                                               |
+| `X12_NO_ISA_HEADER`      | Input does not begin with an ISA. It is not an X12 interchange. |
+| `X12_ISA_TOO_SHORT`      | ISA truncated below its fixed 106 bytes; delimiters unreadable. |
+| `X12_INVALID_DELIMITERS` | Delimiters can't be recovered from the ISA.                     |
 
 Catch them by narrowing on `X12ParseError`:
 
@@ -51,28 +51,62 @@ Tier-2 warning you triage, not an exception you catch. See [Tolerance tiers](./s
 
 ## Common symptoms
 
-| Symptom | Likely cause | What to do |
-|---|---|---|
-| `get835` / `get837Claims` returns `undefined` | The transaction set isn't the one that reader decodes (wrong `ST-01`, or `get277CADisposition` on a non-`X214` message) | Route on `tx.st.elements[1]` (and GS-01) first; hand each transaction to the matching reader. |
-| An adjustment's `reasonDescription` is `undefined` | The CARC/RARC code is outside the bundled snapshot | The verbatim code is still on the model; an `X12_UNKNOWN_CARC` / `X12_UNKNOWN_RARC` warning is raised. A stale snapshot yields a missing description, never a wrong code. |
-| A `X12_835_REMIT_BALANCE_MISMATCH` warning | The payer's numbers don't add up under the §1.10.2 invariants | Do **not** auto-post; the library preserves the inbound values and will not rebalance. Route to a human. |
-| A `X12_HL_PARENT_MISMATCH` warning on an 837/271/277 | A broken HL parent pointer in the hierarchy | The pointer is preserved verbatim, never re-numbered; decide whether to trust the loop nesting. |
-| Fields parse but `parseFloat` gives odd totals | You called `parseFloat` on an EDI amount | Read the `X12Decimal` and do exact arithmetic on it; never `parseFloat`. See [Decimal-exact money](./spec-notes-money). |
-| A `X12_PRE_005010` warning | ISA-12 declares a version family other than `00501` | Tolerated and flagged, not decoded against older field maps. Pass `{ strict: true }` to make it a hard failure for a trusted partner. |
+| Symptom                                              | Likely cause                                                                                                            | What to do                                                                                                                                                                |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get835` / `get837Claims` returns `undefined`        | The transaction set isn't the one that reader decodes (wrong `ST-01`, or `get277CADisposition` on a non-`X214` message) | Route on `tx.st.elements[1]` (and GS-01) first; hand each transaction to the matching reader.                                                                             |
+| An adjustment's `reasonDescription` is `undefined`   | The CARC/RARC code is outside the bundled snapshot                                                                      | The verbatim code is still on the model; an `X12_UNKNOWN_CARC` / `X12_UNKNOWN_RARC` warning is raised. A stale snapshot yields a missing description, never a wrong code. |
+| A `X12_835_REMIT_BALANCE_MISMATCH` warning           | The payer's numbers don't add up under the §1.10.2 invariants                                                           | Do **not** auto-post; the library preserves the inbound values and will not rebalance. Route to a human.                                                                  |
+| A `X12_HL_PARENT_MISMATCH` warning on an 837/271/277 | A broken HL parent pointer in the hierarchy                                                                             | The pointer is preserved verbatim, never re-numbered; decide whether to trust the loop nesting.                                                                           |
+| Fields parse but `parseFloat` gives odd totals       | You called `parseFloat` on an EDI amount                                                                                | Read the `X12Decimal` and do exact arithmetic on it; never `parseFloat`. See [Decimal-exact money](./spec-notes-money).                                                   |
+| A `X12_PRE_005010` warning                           | ISA-12 declares a version family other than `00501`                                                                     | Tolerated and flagged, not decoded against older field maps. Pass `{ strict: true }` to make it a hard failure for a trusted partner.                                     |
 
 ## Keeping PHI out of logs
 
-Every warning `message` is **bounded and PHI-free by construction**. It carries the stable code and a
-position, never a patient name, member ID, or date. That means you can log the full `.warnings` array
-without leaking. The builders' refusal errors carry structural locators and numeric totals only, never
-a `claimId`, member ID, or trace. Keep the same discipline in your own code: log the code and position,
-not the field content.
+A warning `message` is a **lookup into a frozen registry**, never anything built from your document.
+No warning factory in the library takes a value parameter at all, so a `message` cannot interpolate an
+element no matter what an interchange contains: it names the deviation, `position` says where to look,
+and the bytes stay on the model. `ALL_WARNING_MESSAGES` is exported so you can assert that yourself:
+`ix.warnings.every((w) => ALL_WARNING_MESSAGES.has(w.message))` is true for every input.
 
-**`X12ParseError.snippet` is the one exception, and it is deliberate.** A thrown `X12ParseError`
-carries a bounded (≤ 64 character) copy of the offending input so the error is actionable, and on
-real traffic those bytes can be patient data. It is attached to each of the four fatal codes, and
-under `{ strict: true }` to the first escalated Tier-2 warning as well. The library does **not**
-redact it. Redact at your call site, or log `err.code` and `err.position` and drop `err.snippet`.
+That means logging `w.code`, `w.position` and `w.message` is safe. Keep the same discipline in your
+own code: the values are one dereference away on the model (`isa.elements`, `seg.raw`,
+`adjustment.reasonCode`), and putting them in a log line is your decision to make, not one the library
+makes for you.
+
+**The builders are a different surface, and it is weaker.** A `build*` function that refuses a spec
+throws a typed error, and most of those messages carry structural locators and numeric totals only.
+Some do not. Nine builder modules share a `control number "…" exceeds the N-char spec limit` refusal
+that interpolates the value **verbatim and unbounded**, and that branch fires precisely because the
+value is over-long. Seven more sites are not gated on length at all: `build999` echoes the ST-02
+transaction-set control number you supplied, in two of its refusals; `buildInterchange` echoes the
+transaction-set id code you supplied; `build837` echoes a service line's `variant`; `build834` echoes
+an unrecognized INS-03 and an unrecognized HD-01 maintenance type; and `buildTA1` echoes an
+unrecognized TA1-05 note code. Sixteen sites across ten builder modules in total. Every one of those
+is a value **you** passed in, but a spec assembled from an inbound document
+carries inbound values. Measured: a 120,000-byte value produces a 120,155-byte `AckBuildError.message`
+from `build999` and a 120,069-byte `X12BuildError.message` from `buildInterchange`. **Log `err.code`
+from a builder, not `err.message`.** Tracked in `KNOWN-LIMITATIONS.md`; the parse side above is
+unaffected.
+
+> **This page previously said the opposite of what the code did.** Until `0.0.4` it read "warning
+> messages are bounded and PHI-free by construction … you can log the full `.warnings` array
+> without leaking", and named `.snippet` as the one exception. `X12_CONTROL_NUMBER_MISMATCH` echoed
+> **both** control numbers verbatim and unbounded, on all six ISA-13 / IEA-02 / GS-06 / GE-02 / ST-02
+> / SE-02 slots, and the three declared counts and ISA-12 did the same. `.snippet` is not even a field
+> on a warning. If you are on `0.0.3` or earlier, treat `w.message` as untrusted.
+
+**`X12ParseError.snippet` on a Tier-3 fatal is the one exception, and it is deliberate.** The four
+structural fatals (`X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`, `X12_INVALID_DELIMITERS`,
+`X12_EMPTY_INPUT`) are raised before the envelope is readable and are undebuggable without a few bytes
+of context, so each carries a bounded (≤ 64 character) copy of the start of the input. On real
+traffic those bytes can be patient data. The library does **not** redact it. Redact at your call site,
+or log `err.code` and `err.position` and drop `err.snippet`.
+
+A **strict-mode escalation carries no snippet** (`err.snippet` is `""`). `{ strict: true }` turns the
+first Tier-2 warning into a thrown error, and that error's `message` is the same registry entry the
+warning carried, so there is nothing to redact. Until `0.0.4` it attached 64 bytes of the interchange,
+which put document bytes into `err.stack` and from there into whatever an error reporter ships to a
+third party.
 
 ## Known limitations & non-goals
 
