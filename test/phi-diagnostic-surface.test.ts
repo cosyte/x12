@@ -40,8 +40,9 @@ describe("PHI: no consumer-controlled input reaches a diagnostic surface", () =>
   /**
    * The suite-wide `testTimeout` is 10s and this one sweep does not fit in it:
    * 81 slots, each planted at several marker lengths, each a full parse of a
-   * golden interchange. Measured: ~1.6s warm and uninstrumented, but ~15s in
-   * this repo's `test:coverage` run, which is the gate. The ceiling is set
+   * golden interchange. Measured: a few seconds uninstrumented, varying with
+   * the box, but ~15s in this repo's `test:coverage` run, which is the gate
+   * and is what the 10s default failed. The ceiling is set
    * here rather than by raising the global timeout, so a slot table that
    * starts genuinely hanging still fails somewhere, and so no other suite
    * silently gets a longer leash.

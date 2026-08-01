@@ -46,7 +46,8 @@ further decoded.
   unrecognized TA1-05 note code. Any of these renders a value of any size.
 
   Measured with a 120,000-byte caller value: `build999` throws a **120,155-byte** `message` with a
-  120,670-byte `stack`, and `buildInterchange` throws a **120,069-byte** `message`. These are values
+  `stack` a little longer still (the frame text is environment-dependent, so only the `message`
+  figures are exact), and `buildInterchange` throws a **120,069-byte** `message`. These are values
   **you** supplied rather than bytes off an inbound interchange, which is why this is a limitation
   rather than a parse-side leak, but a spec assembled from an inbound document carries inbound values.
   **Log `err.code` from a builder, not `err.message`.**

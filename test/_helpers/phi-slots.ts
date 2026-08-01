@@ -4,17 +4,20 @@
  *
  * **The slot table is the deliverable.** {@link PHI_SLOTS} names sender-
  * controlled positions that can carry four or more bytes, chosen structurally
- * rather than by which ones look like PHI. It is **not** every such position:
- * it covers the whole envelope and every element that reaches a diagnostic
- * branch, plus a sample of the co-located body elements, and it leaves out
- * repeated or purely-numeric body elements that reach no branch of their own
- * (`PLB-*`, `MIA-*`, `AMT-02`, `QTY-02`, `LX-01`, `SVC-04..07`, CAS triples
- * 2..6, `BPR-03..21`, `N1-03/04`, `PER-*`, most of `CLP`, `TRN-03/04`,
- * `REF-03`, `DTM-01`). Those are covered by construction instead, by the
- * registry-membership assertion in
- * `test/phi-diagnostic-surface.test.ts`, which holds for every message the
- * library emits from any input rather than only for a declared slot. The
- * audited leak in this
+ * rather than by which ones look like PHI. **It is not every such position,
+ * and it is not even every element that reaches a diagnostic branch.** It
+ * covers the whole envelope, every control number and count, every code-list
+ * slot, and a sample of the co-located body elements. It leaves out repeated
+ * or purely-numeric body elements (`PLB-*`, `AMT-02`, `QTY-02`, `LX-01`,
+ * `SVC-04..07`, CAS triples 2..6, `BPR-03..21`, `N1-03/04`, `PER-*`, most of
+ * `CLP`, `TRN-03/04`, `REF-03`, `DTM-01`), and it leaves out `MIA-*` and
+ * `MOA-*`, which **do** reach a branch of their own: `get835` reads MIA-05 /
+ * MIA-20 and MOA-03..07 as RARC remark codes and raises
+ * `X12_UNKNOWN_RARC` on an unrecognized one. What covers all of those is the
+ * registry-membership assertion in `test/phi-diagnostic-surface.test.ts`,
+ * which holds for every message the library emits from any input rather than
+ * only for a declared slot, and which is why an omitted slot is a gap in the
+ * evidence rather than a gap in the guarantee. The audited leak in this
  * library was in the six envelope **control numbers** and the three
  * **declared counts**: slots nobody thinks of as PHI-bearing, whose values a
  * trading partner nevertheless fills with whatever their billing system
@@ -344,7 +347,11 @@ export function phiParseStrict(raw: string): PhiParsed {
  *   up: `X12Ack999Ak1.functionalIdCode` and
  *   `X12Ack999Ak2.transactionSetIdCode`. These are the trading partner's
  *   report of where *they* found a problem; bounding them would discard the
- *   forensic content the 999 exists to deliver.
+ *   forensic content the 999 exists to deliver. The same argument, and the
+ *   same classification, covers the rest of the 999's report fields:
+ *   `X12Ack999Ak1.groupControlNumber` / `.versionRelease` and
+ *   `X12Ack999Ak2.transactionSetControlNumber` /
+ *   `.implementationConventionReference`.
  * - `X12HierarchicalLevel.hasChild` (HL-04), the fourth field on the type
  *   whose other three are argued above. Same reasoning: the HL spine is
  *   preserved byte-verbatim end to end rather than partly bounded.

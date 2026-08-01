@@ -104,7 +104,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `buildInterchange` the supplied transaction-set id code, `build837` a service line's `variant`,
   `build834` an unrecognized INS-03 and an unrecognized HD-01 maintenance type, and `buildTA1` an
   unrecognized TA1-05 note code. Measured with a 120,000-byte value: a 120,155-byte
-  `AckBuildError.message` (120,670-byte `stack`) from `build999`, and a 120,069-byte
+  `AckBuildError.message` from `build999` (with a longer `stack` still, whose exact size depends on
+  the frame text and so is not quoted), and a 120,069-byte
   `X12BuildError.message` from `buildInterchange`. The README, `docs-content/troubleshooting.md` and
   `KNOWN-LIMITATIONS.md` now name the whole surface, including the ungated sites, and say to log
   `err.code` from a builder. Bounding the builders is a separate change.
