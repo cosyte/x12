@@ -26,6 +26,19 @@ the library throwing your pipeline off the rails on a vendor quirk.
 Only Tier 3 throws by default. Everything in Tier 2 is a warning you triage, not an exception you
 catch.
 
+**One thing sits outside the tiers: line breaks between segments are silently normalized.** A line
+break after a segment terminator (one optional CR then one optional LF) is absorbed with no warning,
+so a pretty-printed file is Tier 1. That is the footnote "the parser never silently drops anything"
+needs: it drops inter-segment whitespace, never a decoded element value. The practical consequence is
+that `serializeX12(parseX12(file))` returns the compact form rather than your original bytes.
+
+It is not, however, the only thing the round trip does not reproduce. A **segment outside a
+transaction** is a Tier-2 deviation (`X12_UNEXPECTED_SEGMENT`) that is warned about but **not kept on
+the model**, so it is missing from the emit and its warning does not recur when the emit is re-parsed.
+See [Line endings between segments](./spec-notes-envelope) for the full list, and
+[KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md) for the data-loss
+boundary that follows from it.
+
 ## Warnings collect on the model, and stream
 
 Every warning lands on the returned model's `.warnings` array (`ix.warnings`, `remit.warnings`,

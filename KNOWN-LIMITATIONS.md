@@ -3,9 +3,12 @@
 `@cosyte/x12` is built to be **correct and honest about its edges** rather than to claim more than it
 delivers. Misreading a payer's remittance, a claim's diagnosis, or a member's coverage can cause real
 financial or clinical harm, so this is the deliberate "do not over-trust" list. Everything here is a
-documented, intentional boundary, not a bug. The lenient parser never silently drops or garbles data:
-where a limitation applies, the raw value is preserved (often with a warning), it is simply not
-further decoded.
+documented, intentional boundary, not a bug. The lenient parser never silently drops or garbles a
+**decoded value**: where a limitation applies, the raw value is preserved (often with a warning), it
+is simply not further decoded. Three things it does discard are worth reading before you rely on a
+round trip, two of them silently: **line breaks between segments**, **a doubled segment terminator**
+outside a transaction (both silent), and **segments that fall outside a transaction** (warned, but
+gone from the model). All three are in the first two entries below.
 
 ## Data / decode boundaries
 
@@ -18,6 +21,52 @@ further decoded.
   a missing description, **never a wrong code**. Run `pnpm refresh:code-lists` to audit snapshot
   freshness; regenerating the full lists (`--fetch`) is a redistribution-terms-gated release step (see
   below), not a runtime fetch.
+
+- **`serialize(parse(s)) === s` is NOT guaranteed.** `serializeX12` rebuilds the interchange from the
+  model, so every segment the parser recorded comes back verbatim (element padding, composites, and
+  `?`-release escapes included), in the order the model holds it. Six constructs are known not to
+  survive:
+  1. **Line breaks between segments.** Most senders write one after each terminator; the parser
+     absorbs it (one optional CR then one optional LF), so a pretty-printed file emits compact.
+     **Silent.**
+  2. **Segments outside a transaction**, such as a stray segment between `GE` and `IEA`. These raise
+     `X12_UNEXPECTED_SEGMENT` on the first parse but are not kept, so the segment is absent from the
+     emit **and the warning does not recur when the emit is re-parsed**.
+  3. **A doubled segment terminator** outside a transaction. **Silent.**
+  4. **A missing final segment terminator.** The emit supplies one. **Silent.**
+  5. **Post-IEA `trailingBytes`**, re-joined from segment slices rather than preserved verbatim.
+  6. **TA1 position.** A TA1 that appeared **after** a functional group is collected onto
+     `ix.ta1Segments` and emitted immediately after the ISA, so the emit **reorders** it. **Silent**,
+     and unlike 1 to 5 nothing is lost: the model and the warning stream both round-trip identically.
+     This library takes no position on where ASC X12 requires a TA1 to sit.
+
+  **Cases 2 to 6 break the round trip on inputs containing no line breaks**, so "my file is compact"
+  is not sufficient grounds to expect byte equality. **Four of the six (1, 3, 4, 6) produce no warning
+  at all**, so a clean `ix.warnings` is not evidence that a round trip will be byte-exact. Case 2 is
+  the one to be careful with in the other direction: do not use `serializeX12(parseX12(source))` as a
+  normalization step before comparing warnings, because it discards a warning along with its segment.
+  Treat the first parse's warnings as the authority.
+
+  What is **measured**, across the 56 committed fixtures: every emit is a fixed point (serializing it
+  again is a byte-level no-op) and re-parses to an identical model with an identical warning stream;
+  the 14 fixtures with no line breaks return byte-identical; and the other 42 differ from their source
+  by **line breaks and nothing else**, with no element value lost, altered, reordered, or re-escaped.
+  Two caveats on that corpus, both of which limit how far the sweep can be pushed: it contains **no
+  instance of cases 2 to 6**, and **13 of the 14 byte-identical fixtures are `golden/*.edi`**, which
+  are serializer output by construction, leaving `envelope/no-trailing-crlf.edi` as the only
+  independent witness. Preserving the original framing byte-for-byte would need the model to carry
+  per-segment framing and TA1 position it does not have today; that is a tracked model change, not a
+  behaviour to assume.
+
+- **A segment that falls outside a transaction is dropped from the model, and its warning does not
+  survive a round trip.** This is the read-side half of case 2 above and it is a data-loss boundary,
+  not just an emit quirk. The envelope walker keeps body segments only while an ST..SE transaction is
+  open; anything else (a stray segment between `GE` and `IEA`, or every segment displaced by a blank
+  line in a double-spaced file) raises `X12_UNEXPECTED_SEGMENT` and is then discarded. On a uniformly
+  double-spaced file the entire interchange body is lost this way, leaving `groups: []`. The first
+  parse does warn, so this is detectable rather than silent, but **the warning is the only signal and
+  it is not reproducible from the emit**. Check `ix.warnings` on the original parse before trusting
+  that a file decoded completely.
 
 - **837 claim-/line-level provider addresses (Loop 2310 / 2420 `N3`/`N4`) are not surfaced.** The
   provider **identities** (`NM1`) round-trip, but the street-address lines do not decode onto the

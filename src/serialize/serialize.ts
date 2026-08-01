@@ -5,11 +5,51 @@
  * - **Byte-faithful (default).** Reconstructs the interchange purely from the
  *   verbatim `.raw` strings the parser preserved (ISA + terminator, then each
  *   GS / transaction segment / GE / IEA terminator-joined, then any
- *   `trailingBytes`). For a Tier-1 (spec-clean, no-CRLF) input this is exactly
- *   the source bytes - the idempotency fixed point `serialize(parse(s)) === s`.
- *   Inter-segment CRLF and a trailing newline are NOT reproduced: the parser
- *   silently normalizes them away (they are not in the model), so a
- *   pretty-printed source round-trips to its compact spec-clean form.
+ *   `trailingBytes`). "Byte-faithful" is a statement about SEGMENTS ON THE
+ *   MODEL, and the distinction matters to anyone diffing output against input.
+ *
+ *   Every segment the parser recorded comes back verbatim, including element
+ *   padding, composite structure and `?`-release escapes, but it comes back in
+ *   the ORDER the model holds it, which is not always the input order. Six
+ *   constructs are known not to survive, and line breaks are only the most
+ *   common:
+ *
+ *   1. **Line breaks between segments.** The parser absorbs an optional CR
+ *      then an optional LF after each terminator and the model has nowhere to
+ *      record it, so a pretty-printed source emits as its compact form.
+ *      Silent.
+ *   2. **Segments outside a transaction** (a stray segment between GE and IEA,
+ *      say). These raise `X12_UNEXPECTED_SEGMENT` on the first parse but are
+ *      not kept, so they are absent from the emit AND the warning does not
+ *      recur when the emit is re-parsed.
+ *   3. **A doubled segment terminator** outside a transaction. Silent.
+ *   4. **A missing final terminator**, which the emit supplies. Silent.
+ *   5. **Post-IEA `trailingBytes`**, re-joined from segment slices rather than
+ *      preserved verbatim.
+ *   6. **TA1 position.** A TA1 that appeared AFTER a functional group is
+ *      collected onto `ix.ta1Segments` and emitted immediately after the ISA,
+ *      so the emit reorders it. Silent, and unlike 1 to 5 nothing is dropped:
+ *      the model and the warning stream both round-trip identically. This
+ *      library takes no position here on where ASC X12 requires a TA1 to sit.
+ *
+ *   So `serialize(parse(s)) === s` is NOT guaranteed in general, and the
+ *   absence of line breaks is not sufficient to make it hold: cases 2 to 6 all
+ *   break it on inputs that contain none. Four of the six (1, 3, 4, 6) produce
+ *   no warning at all, so the warning stream is not a reliable signal that a
+ *   round trip will be byte-exact. Do not use `serialize(parse(s))` as a
+ *   normalization step before comparing warnings, because case 2 discards a
+ *   warning along with its segment.
+ *
+ *   What IS measured, across the 56 committed fixtures: all 56 emits are fixed
+ *   points (serializing again is a byte-level no-op), all 56 re-parse to an
+ *   identical model with an identical warning stream, the 14 fixtures carrying
+ *   no line breaks return byte-identical, and the 42 that are pretty-printed
+ *   differ from their source by line breaks and nothing else. Two caveats on
+ *   that corpus: it contains no instance of cases 2 to 6, and 13 of the 14
+ *   byte-identical fixtures are `golden/*.edi`, which are serializer output by
+ *   construction, so `envelope/no-trailing-crlf.edi` is the only independent
+ *   witness. `test/serialize.test.ts` covers the corpus sweep and cases 2 to 6
+ *   separately.
  *
  * - **Spec-clean (`{ specClean: true }`).** Same byte-faithful structure, but
  *   the serializer ALSO reconciles the envelope counts and control numbers:
@@ -89,7 +129,10 @@ export interface SerializeOptions {
  * ```ts
  * import { parseX12, serializeX12 } from "@cosyte/x12";
  * const ix = parseX12(raw);
- * const bytes = serializeX12(ix); // byte-faithful for a Tier-1 input
+ * // Segments on the model come back verbatim. Anything the parser did not
+ * // record (line breaks, segments outside a transaction, ...) does not, so
+ * // this is not guaranteed to equal `raw`. See the module header.
+ * const bytes = serializeX12(ix);
  * ```
  */
 export function serializeX12(interchange: X12Interchange, opts: SerializeOptions = {}): string {

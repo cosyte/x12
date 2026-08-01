@@ -62,6 +62,80 @@ detects all four from fixed byte positions in the ISA, so you never configure th
 `ix.delimiters` carries the detected set; every reader and the `getSegmentValue` dot-path resolver use
 it, so a partner who ships `|` elements and `\` components parses with no special handling.
 
+## Line endings between segments
+
+X12 is a single-line format, but most senders write a line break after every segment terminator so the
+file is readable. `parseX12` absorbs it: **one optional CR followed by one optional LF** after each
+terminator, so `~\r\n`, `~\r` and `~\n` all parse to the same interchange. You never configure this,
+and it never warns.
+
+The break is discarded rather than recorded, and that has one consequence worth knowing before you
+diff an emit against its input:
+
+```ts runnable
+import { parseX12, serializeX12 } from "@cosyte/x12";
+
+const prettyPrinted =
+  "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       " +
+  "*260601*1200*^*00501*000000001*0*P*:~\n" +
+  "GS*HC*SENDER*RECEIVER*20260601*1200*1*X*005010X222A2~\n" +
+  "ST*837*0001~\nSE*1*0001~\nGE*1*1~\nIEA*1*000000001~\n";
+
+const emitted = serializeX12(parseX12(prettyPrinted));
+
+// The line breaks are gone, so the emit is the compact form:
+emitted === prettyPrinted; // => false
+emitted.includes("\n"); // => false
+
+// What DOES hold, and is what the round trip is for. The emit is a fixed
+// point, so serializing it again is a byte-level no-op:
+emitted === serializeX12(parseX12(emitted)); // => true
+```
+
+`serializeX12` is **byte-faithful for the segments on the model**: each of those comes back verbatim,
+including element padding, composite structure, and `?`-release escapes. Anything the parser did not
+record does not come back, and line breaks are only the most common of several such things.
+
+**`serialize(parse(s)) === s` is not guaranteed in general**, and having no line breaks is not enough
+to make it hold. Six constructs are known not to survive:
+
+1. **Line breaks between segments**, as above. Silent.
+2. **Segments outside a transaction** (a stray segment between `GE` and `IEA`, say). These raise
+   `X12_UNEXPECTED_SEGMENT` on the first parse but are not kept, so they are absent from the emit, and
+   **the warning does not recur when the emit is re-parsed**.
+3. **A doubled segment terminator** outside a transaction. Silent.
+4. **A missing final terminator**, which the emit supplies. Silent.
+5. **Post-IEA `trailingBytes`**, re-joined from segment slices rather than preserved verbatim.
+6. **TA1 position.** A TA1 that appeared **after** a functional group is collected onto
+   `ix.ta1Segments` and emitted immediately after the ISA, so the emit **reorders** it. Silent, and
+   unlike 1 to 5 nothing is lost: the model and the warning stream both round-trip identically. This
+   library takes no position on where ASC X12 requires a TA1 to sit.
+
+Cases 2 to 6 all break the round trip on inputs containing no line breaks at all, and **four of the
+six (1, 3, 4, 6) produce no warning**, so a clean `ix.warnings` does not tell you a round trip will be
+byte-exact. In the other direction, **do not use `serializeX12(parseX12(source))` as a normalization
+step before comparing warnings**, because case 2 discards a warning along with its segment.
+
+What is **measured**, across the 56 fixtures committed to this repository: every emit is a fixed point
+and re-parses to an identical model with an identical warning stream; the 14 fixtures carrying no line
+breaks return byte-identical; and the 42 pretty-printed ones differ from their source by **line breaks
+and nothing else** (no element value lost, altered, reordered, or re-escaped). Two caveats bound how
+far that sweep can be pushed: the corpus contains **no instance of cases 2 to 6**, and **13 of the 14
+byte-identical fixtures are `golden/*.edi`**, which are serializer output by construction, so
+`envelope/no-trailing-crlf.edi` is the only independent witness. That is why the six cases are
+enumerated here rather than left to the sweep.
+
+So for a file whose only irregularity is pretty-printing, the round trip is safe to build on for data
+and not for a byte-level diff, and diffing your emit against `serializeX12(parseX12(source))` is the
+way to ignore the line-break noise. For a file that raises `X12_UNEXPECTED_SEGMENT`, treat the first
+parse's warnings as the authority and do not re-derive them from the emit.
+
+One edge worth stating plainly, because the tolerance is one CR plus one LF: a **blank line** between
+segments (`~\n\n`) exceeds it. The stray break opens a segment whose name is unrecognized, so it is
+**reported** as `X12_UNEXPECTED_SEGMENT`, but it is not recovered, and by case 2 everything it
+displaced is dropped as well. On a uniformly double-spaced file that is the entire interchange body.
+The warning is the only signal you get, so do not ignore it.
+
 ## Segments, elements, composites, repetitions
 
 Inside a transaction, every body segment is an immutable `X12Segment`: a segment `id` (`BPR`, `CLP`,

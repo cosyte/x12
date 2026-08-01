@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- **Corrected the round-trip claim: `serialize(parse(s)) === s` is NOT guaranteed, and the emit is
+  byte-faithful only for the segments the parser recorded on the model.** The README described the
+  default emit mode as "byte-faithful by default" with no qualification, and line-ending handling was
+  absent from the entire consumer surface (zero mentions across the README, all nine `docs-content/`
+  pages, and `KNOWN-LIMITATIONS.md`). Meanwhile the parser absorbs an optional CR then an optional LF
+  after every segment terminator and the model has nowhere to record it. Re-measured against the
+  committed corpus: **42 of the 56 fixtures do not return byte-identical, and all 42 differ from their
+  source by line breaks and nothing else**; the remaining 14 carry no line breaks and do return
+  byte-identical.
+
+  Nothing about the emit changed. What changed is the claim. Line breaks turned out to be only the
+  most common of **six** constructs the emit does not reproduce, and the other five fire on inputs
+  containing no line breaks at all, so "my file is compact" is not sufficient grounds to expect byte
+  equality: segments outside a transaction (raised as `X12_UNEXPECTED_SEGMENT` on the first parse, then
+  discarded, so the segment **and its warning** are absent from the emit), a doubled segment terminator
+  outside a transaction, a missing final terminator (the emit supplies one), post-IEA `trailingBytes`
+  (re-joined from segment slices rather than preserved verbatim), and a **TA1 that followed a
+  functional group**, which is collected onto `ix.ta1Segments` and emitted immediately after the ISA,
+  so the emit **reorders** it (nothing is lost there: the model and warning stream round-trip
+  identically, and no position is taken on where ASC X12 requires a TA1 to sit). **Four of the six are
+  silent**, so a clean `ix.warnings` is not evidence that a round trip will be byte-exact.
+  `KNOWN-LIMITATIONS.md` now holds the canonical list, and the other sites link to it and carry the
+  load-bearing warnings rather than restating a count: `serialize(parse(s)) === s` is not guaranteed,
+  the absence of line breaks is not sufficient, and `serializeX12(parseX12(source))` must not be used
+  as a normalization step before comparing warnings.
+
+  The properties that hold are now stated **as measured over the committed corpus** rather than as
+  universals: every emit is a fixed point and re-parses to an identical model with an identical warning
+  stream, the 14 line-break-free fixtures return byte-identical, and the other 42 differ by line breaks
+  and nothing else. Two caveats bound that sweep and are stated with it: the corpus contains no
+  instance of the five non-line-break cases, and 13 of the 14 byte-identical fixtures are
+  `golden/*.edi`, which are serializer output by construction, leaving `envelope/no-trailing-crlf.edi`
+  as the only independent witness.
+
+  Also corrected: `KNOWN-LIMITATIONS.md` and `troubleshooting.md` both opened by promising the lenient
+  parser "never silently drops or garbles data". Both now scope that to a **decoded value** and name
+  the two things that are discarded. `spec-notes-tolerance.md` presented a three-tier taxonomy with no
+  slot for a silent normalization; the tiers now name it, and note that a Tier-2 unexpected segment is
+  warned about but not kept.
+
+### Documented, not fixed
+
+- **A segment that falls outside a transaction is dropped from the model, and its warning does not
+  survive a round trip.** The envelope walker keeps body segments only while an ST..SE transaction is
+  open; anything else raises `X12_UNEXPECTED_SEGMENT` and is then discarded. A **blank** line between
+  segments (`~\n\n`) exceeds the one-CR-plus-one-LF tolerance and triggers exactly this, so a uniformly
+  double-spaced file loses its **entire interchange body** and parses to `groups: []`. The first parse
+  does warn, so it is detectable rather than silent, but the warning is the only signal and it cannot
+  be recovered from the emit. Long-standing behaviour, unchanged here and reproducing on the previous
+  release; now disclosed in `README`, `KNOWN-LIMITATIONS.md`, `troubleshooting.md` and
+  `spec-notes-envelope.md` rather than latent, and pinned by tests, while the fix is scoped as its own
+  item.
+
+### Tests
+
+- **The default emit mode's guarantees are locked against the whole committed corpus, not just the 13
+  goldens.** The goldens are already in the serializer's image, so they could only ever demonstrate
+  the easy half of the round trip. `test/serialize.test.ts` now discovers every `.edi` fixture from
+  disk (so a fixture added later is covered without anyone remembering) and asserts four properties per
+  fixture: the emit differs from its source by line breaks and nothing else, it re-parses to an
+  identical model with an identical warning stream, it is a fixed point, and it is byte-identical to
+  its source exactly when the source has no line breaks. A guard test asserts the corpus really
+  contains both pretty-printed and compact fixtures, so the sweep cannot pass vacuously. Separate cases
+  lock that LF, CRLF, and bare CR all normalize to one identical compact form.
+
+- **A `round-trip escape hatches` suite pins the five inputs that falsify the corpus sweep's
+  biconditional**, none of which contains a line break: a segment outside a transaction (asserting
+  both that the value is gone from the emit and that its warning does not recur on re-parse), a
+  doubled terminator, a missing final terminator, post-IEA trailing bytes, and a TA1 following a
+  functional group (asserting it is reordered ahead of the GS but not lost, and still a fixed point).
+  Each case asserts its own warning count rather than describing it, so the fact that three of them
+  are silent is pinned rather than claimed. The committed corpus contains no instance of any of them,
+  so without these the sweep would stay green while the prose around it claimed more than the sweep
+  could see. The blank-line case now asserts the actual outcome (`groups: []` and an empty emit body)
+  instead of only the warning; an earlier revision described that input as "reported not swallowed",
+  which is exactly backwards.
+
 ### Security
 
 - **Warning messages are built from a frozen registry instead of from the document, closing a PHI
@@ -657,9 +736,12 @@ EV/SS`), and HL-04 has-child flag from the nested input tree, so an
     byte-faithful: reconstructed purely from the verbatim `.raw`
     strings the parser preserved (ISA + terminator, then each
     TA1 / GS / segment / GE / IEA terminator-joined, then any
-    `trailingBytes`), so for a Tier-1 input it reproduces the source
-    bytes exactly: the idempotency fixed point
-    `serialize(parse(s)) === s`. With `{ specClean: true }` it ALSO
+    `trailingBytes`), so for an input carrying none of the known
+    unrecorded constructs catalogued in `KNOWN-LIMITATIONS.md` it
+    reproduces the source bytes exactly. (As shipped, this
+    entry said "for a Tier-1 input", which later proved too weak: a
+    pretty-printed file is Tier 1 and does NOT reproduce exactly.)
+    With `{ specClean: true }` it ALSO
     reconciles the envelope (SE-01 / GE-01 / IEA-01 counts + the
     ISA-13↔IEA-02 / GS-06↔GE-02 / ST-02↔SE-02 control pairs),
     surfacing every mismatch via `opts.onWarning` and NEVER silently
