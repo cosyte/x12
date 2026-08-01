@@ -37,9 +37,17 @@ import { PHI_RUNNER, PHI_SLOTS, phiParse } from "./_helpers/phi-slots.js";
 const LONG_MARKER = PHI_MARKER_UNIT.repeat(64);
 
 describe("PHI: no consumer-controlled input reaches a diagnostic surface", () => {
+  /**
+   * The suite-wide `testTimeout` is 10s and this one sweep does not fit in it:
+   * 81 slots, each planted at several marker lengths, each a full parse of a
+   * golden interchange, and under v8 coverage instrumentation it measures
+   * ~15s on a warm box. An explicit ceiling is set here rather than raising
+   * the global timeout, so a slot table that starts genuinely hanging still
+   * fails somewhere, and so no other suite silently gets a longer leash.
+   */
   it("holds for every consumer-controlled slot in the X12 envelope and body", () => {
     assertNoDiagnosticPhiLeak({ ...PHI_RUNNER, slots: PHI_SLOTS });
-  });
+  }, 120_000);
 
   it("emits only messages that are members of the frozen registry", () => {
     const seen = new Set<string>();
