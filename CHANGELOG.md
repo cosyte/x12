@@ -81,9 +81,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   segment positions were hard-coded to `0` (`clpSegmentIndex: 0, // populated in the future`), which
   was harmless while the message rendered the amounts and is not once the message names only the
   equation: two claims failing the same invariant produced byte-identical warnings at byte-identical
-  positions. `position.segmentIndex` is now the CLP's own 1-based index in the transaction body, and
-  a service-line warning's is that index plus the line's ordinal. Those cannot collide across claims:
-  a claim with `n` service lines spans at least `n + 1` body segments.
+  positions. `position.segmentIndex` is now the CLP's own 1-based index in the transaction body, so
+  `tx.segments[position.segmentIndex]` is that exact CLP. A service-line warning's is that index plus
+  the line's zero-based ordinal plus one, which is a **unique locator rather than a pointer at the
+  SVC**: read it as "the claim whose CLP is at `segmentIndex - (ordinal + 1)`, service line
+  `ordinal`". Those cannot collide across claims: a claim with `n` service lines spans at least
+  `n + 1` body segments.
 
 - **Five `X12_UNEXPECTED_SEGMENT` messages claimed the segment was preserved; it is not.** A `GE`
   with no open `GS`, an `ST` with no open group, an `SE` with no open transaction set, a `TA1` inside
@@ -92,13 +95,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a field that does not exist. Each message now says the segment is not retained and points at
   `position.segmentIndex` in the input.
 
-- **The corrected disclosure overclaimed on the builders.** It said builder refusals carry structural
-  locators and numeric totals only. Nine `build*` functions interpolate an over-long control number
-  into the thrown message verbatim (the branch fires **because** it is over-long), and `build834` /
-  `buildTA1` do the same with an unrecognized maintenance type / TA1 note code: a 120,000-byte caller
-  value gives a 120,190-byte `Error.message`, measured. The README, `docs-content/troubleshooting.md`
-  and `KNOWN-LIMITATIONS.md` now name the surface and say to log `err.code` from a builder. Bounding
-  the builders is a separate change.
+- **The disclosure overclaimed on the builders, and the first correction of it still did.** It said
+  builder refusals carry structural locators and numeric totals only. Measured against the source:
+  at least **sixteen** refusal sites across **ten** `build*` modules interpolate a caller-supplied
+  value verbatim and unbounded. Nine are the shared over-long-control-number template, where the
+  branch fires **because** the value is over-long. Seven are not gated on length at all:
+  `build999` echoes the supplied ST-02 transaction-set control number in two refusals,
+  `buildInterchange` the supplied transaction-set id code, `build837` a service line's `variant`,
+  `build834` an unrecognized INS-03 and an unrecognized HD-01 maintenance type, and `buildTA1` an
+  unrecognized TA1-05 note code. Measured with a 120,000-byte value: a 120,155-byte
+  `AckBuildError.message` (120,670-byte `stack`) from `build999`, and a 120,069-byte
+  `X12BuildError.message` from `buildInterchange`. The README, `docs-content/troubleshooting.md` and
+  `KNOWN-LIMITATIONS.md` now name the whole surface, including the ungated sites, and say to log
+  `err.code` from a builder. Bounding the builders is a separate change.
 
 - **The shipped PHI disclosure said the opposite of what the code did, in five places.**
   `README.md`, `docs-content/troubleshooting.md`, `docs-content/spec-notes-tolerance.md`,

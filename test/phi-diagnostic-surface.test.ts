@@ -40,10 +40,11 @@ describe("PHI: no consumer-controlled input reaches a diagnostic surface", () =>
   /**
    * The suite-wide `testTimeout` is 10s and this one sweep does not fit in it:
    * 81 slots, each planted at several marker lengths, each a full parse of a
-   * golden interchange, and under v8 coverage instrumentation it measures
-   * ~15s on a warm box. An explicit ceiling is set here rather than raising
-   * the global timeout, so a slot table that starts genuinely hanging still
-   * fails somewhere, and so no other suite silently gets a longer leash.
+   * golden interchange. Measured: ~1.6s warm and uninstrumented, but ~15s in
+   * this repo's `test:coverage` run, which is the gate. The ceiling is set
+   * here rather than by raising the global timeout, so a slot table that
+   * starts genuinely hanging still fails somewhere, and so no other suite
+   * silently gets a longer leash.
    */
   it("holds for every consumer-controlled slot in the X12 envelope and body", () => {
     assertNoDiagnosticPhiLeak({ ...PHI_RUNNER, slots: PHI_SLOTS });
@@ -69,11 +70,12 @@ describe("PHI: no consumer-controlled input reaches a diagnostic surface", () =>
       }
     }
     // Guard against the corpus going quiet: the assertion above means nothing
-    // if the slot table stops producing warnings. The table exercises 21 of
-    // the 22 registered codes, so the floor is set just under that rather
-    // than at a number a halved corpus would still clear. The one code no
-    // slot reaches is `X12_MISSING_GE`, whose message is a literal with no
-    // parameter to leak through.
+    // if the slot table stops producing warnings. Measured, the table
+    // exercises 21 of the 22 registered codes, so the floor is set just under
+    // that rather than at a number a halved corpus would still clear. The one
+    // code no synchronous slot reaches is `X12_834_UNKNOWN_MAINTENANCE_TYPE`,
+    // which is emitted per member by the `AsyncIterable` enrollment reader and
+    // is covered by the 834 stream test at the end of this file instead.
     expect(seen.size).toBeGreaterThanOrEqual(20);
   });
 });

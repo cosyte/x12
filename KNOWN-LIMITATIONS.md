@@ -28,18 +28,28 @@ further decoded.
   interchange is fully parsed into `tx.segments` before iteration begins. It is not a byte-streaming
   reader for arbitrarily large files.
 
-- **Builder refusal messages are NOT registry-bound, and eleven of them echo a caller-supplied value
-  unbounded.** The parse side is closed: no warning factory takes a value parameter and every
-  `message` is a frozen-registry lookup. The emit side is not. The
-  `control number "${value}"` template in `X12_*_BUILD_INVALID_SPEC` repeats across
-  `build-interchange.ts`, `build-999.ts`, `build-835.ts`, `build-837.ts`, `build-271.ts`,
-  `build-277.ts`, `build-278.ts`, `build-820.ts` and `build-834.ts`, and it fires **precisely because
-  the value is over-long**; `build-834.ts` echoes an unrecognized INS-03 / HD-01 maintenance type and
-  `build-ta1.ts` an unrecognized TA1-05 note code. Measured: a 120,000-byte caller value produces a
-  120,190-byte `Error.message`. These are values **you** supplied rather than bytes off an inbound
-  interchange, which is why this is a limitation rather than a parse-side leak, but a spec assembled
-  from an inbound document carries inbound values. **Log `err.code` from a builder, not
-  `err.message`.**
+- **Builder refusal messages are NOT registry-bound, and at least sixteen sites across ten builder
+  modules echo a caller-supplied value unbounded.** The parse side is closed: no warning factory takes
+  a value parameter and every `message` is a frozen-registry lookup. The emit side is not, and the
+  sites divide into two kinds.
+
+  **Gated on length (nine sites).** The `control number "${value}"` template in
+  `X12_*_BUILD_INVALID_SPEC` repeats across `build-interchange.ts`, `build-999.ts`, `build-835.ts`,
+  `build-837.ts`, `build-271.ts`, `build-277.ts`, `build-278.ts`, `build-820.ts` and `build-834.ts`,
+  and it fires **precisely because the value is over-long**.
+
+  **Not gated on length at all (seven sites).** `build-999.ts` interpolates the supplied ST-02
+  transaction-set control number into two of its `X12_ACK_ACCEPT_WITH_ERRORS` refusals;
+  `build-interchange.ts` interpolates the supplied transaction-set id code into its empty-segment-id
+  refusal; `build-837.ts` interpolates a service line's `variant`; `build-834.ts` interpolates an
+  unrecognized INS-03 and an unrecognized HD-01 maintenance type; and `build-ta1.ts` interpolates an
+  unrecognized TA1-05 note code. Any of these renders a value of any size.
+
+  Measured with a 120,000-byte caller value: `build999` throws a **120,155-byte** `message` with a
+  120,670-byte `stack`, and `buildInterchange` throws a **120,069-byte** `message`. These are values
+  **you** supplied rather than bytes off an inbound interchange, which is why this is a limitation
+  rather than a parse-side leak, but a spec assembled from an inbound document carries inbound values.
+  **Log `err.code` from a builder, not `err.message`.**
 
 - **`X12ParseError.snippet` on a Tier-3 fatal can carry PHI, by design, and the library does not
   redact it.** Warning messages come from a frozen registry and no factory takes a value parameter, so
@@ -50,16 +60,23 @@ further decoded.
   escalation carries no snippet**: the error it raises wraps a registry-built warning, so `err.snippet`
   is `""`.
 
-- **Three locator-flavoured model fields are left unbounded on purpose, and a downstream package
-  should not interpolate them.** `X12HierarchicalLevel.hlId` / `.parentHlId` / `.levelCode` (and the
-  shared `X12Hl`) stay byte-verbatim because collapsing two distinct non-conformant HL ids to one
-  sentinel would make them compare equal and silently merge two subscribers' claims into one
-  hierarchy; a wrong hierarchy is worse than a wide locator. `X12Ack999Ik3.segmentIdCode` /
-  `.loopIdentifier` and `X12Ack999Ik4.dataElementReferenceNumber` are the trading partner's report of
+- **Two classes of locator-flavoured model field are left unbounded on purpose, and a downstream
+  package should not interpolate them.** `X12HierarchicalLevel.hlId` / `.parentHlId` / `.levelCode` /
+  `.hasChild` (and the shared `X12Hl`) stay byte-verbatim because collapsing two distinct
+  non-conformant HL ids to one sentinel would make them compare equal and silently merge two
+  subscribers' claims into one hierarchy; a wrong hierarchy is worse than a wide locator. The 999's
+  error report is the other class: `X12Ack999Ak1.functionalIdCode`,
+  `X12Ack999Ak2.transactionSetIdCode`, `X12Ack999Ik3.segmentIdCode` / `.loopIdentifier` and
+  `X12Ack999Ik4.dataElementReferenceNumber` are the trading partner's report of
   where **they** found a problem, which is the content a 999 exists to deliver. `X12Segment.id` is
   bounded to the X12 segment-id grammar (a non-conformant first element yields
   `NON_SPEC_SEGMENT_ID`) precisely because it is a derived locator with no such argument; the bytes
-  stay on `seg.raw` and `seg.elements[0]`.
+  stay on `seg.raw` and `seg.elements[0]`. **No warning code is raised for that substitution, and no
+  code distinguishes two different non-conformant ids through `seg.id`.** That is deliberate rather
+  than an oversight: it bounds a derived field, it is not a parse deviation, and every walker
+  dispatches on an exact segment-id match, so a first element outside the grammar could never have
+  matched a walker in the first place. Compare `seg.id === NON_SPEC_SEGMENT_ID` when you need to
+  detect one, and read `seg.elements[0]` for which one it was.
 
 - **`X12Ack999Ik4.copyOfBadDataElement` is a copy of the offending bytes and can carry PHI.** It is
   whatever the sender put in IK4-04; the library never auto-populates it, and senders SHOULD omit it

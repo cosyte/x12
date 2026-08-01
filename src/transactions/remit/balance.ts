@@ -44,13 +44,19 @@
  * echo of sender bytes. Recompute the numbers from the model, which carries
  * every one of them as an `X12Decimal`.
  *
- * **Which claim, then?** The warning's `position.segmentIndex` is the CLP
- * segment's own 1-based index inside the transaction body, and a service-line
- * warning's is that index plus the line's ordinal. Those cannot collide
- * across claims: a claim with `n` service lines spans at least `n + 1` body
- * segments, so the next CLP always sits past the previous claim's last line
- * position. Match `position.segmentIndex` against `tx.segments` to reach the
- * exact CLP, and `remit.claims` for the decoded model.
+ * **Which claim, then?** For a claim-level or remit-level warning,
+ * `position.segmentIndex` is the CLP segment's own 1-based index inside the
+ * transaction body, so `tx.segments[position.segmentIndex]` is that exact
+ * CLP. For a **service-line** warning it is that CLP index plus the line's
+ * zero-based ordinal plus one, which is a **unique locator, not a pointer at
+ * the SVC**: the segment sitting at that index is usually something else in
+ * the claim's loop. Read it as "the claim whose CLP is at
+ * `segmentIndex - (ordinal + 1)`, service line `ordinal`", or match against
+ * `remit.claims` and `claim.serviceLines`, which carry the decoded model.
+ * What the offset does guarantee is non-collision across claims: a claim with
+ * `n` service lines spans at least `n + 1` body segments, so the next CLP
+ * always sits past the previous claim's last line position and no two
+ * warnings share an index.
  */
 
 import { X12Decimal } from "../../decimal.js";

@@ -2,9 +2,19 @@
  * The PHI gate for `@cosyte/x12`'s diagnostic surfaces, driven by the shared
  * `assertNoDiagnosticPhiLeak` runner from `@cosyte/test-utils`.
  *
- * **The slot table is the deliverable.** {@link PHI_SLOTS} names every
- * position a *sender* controls in an X12 interchange that can carry four or
- * more bytes, not the ones that look like PHI. The audited leak in this
+ * **The slot table is the deliverable.** {@link PHI_SLOTS} names sender-
+ * controlled positions that can carry four or more bytes, chosen structurally
+ * rather than by which ones look like PHI. It is **not** every such position:
+ * it covers the whole envelope and every element that reaches a diagnostic
+ * branch, plus a sample of the co-located body elements, and it leaves out
+ * repeated or purely-numeric body elements that reach no branch of their own
+ * (`PLB-*`, `MIA-*`, `AMT-02`, `QTY-02`, `LX-01`, `SVC-04..07`, CAS triples
+ * 2..6, `BPR-03..21`, `N1-03/04`, `PER-*`, most of `CLP`, `TRN-03/04`,
+ * `REF-03`, `DTM-01`). Those are covered by construction instead, by the
+ * registry-membership assertion in
+ * `test/phi-diagnostic-surface.test.ts`, which holds for every message the
+ * library emits from any input rather than only for a declared slot. The
+ * audited leak in this
  * library was in the six envelope **control numbers** and the three
  * **declared counts**: slots nobody thinks of as PHI-bearing, whose values a
  * trading partner nevertheless fills with whatever their billing system
@@ -233,11 +243,17 @@ function runHelpers(
         default:
           break;
       }
-      // `parseTA1` produces no warnings of its own; it is run so its model
-      // fields are constructed and reachable by the model sweep below.
-      parseTA1(ix);
     }
   }
+  // `parseTA1` is interchange-level, not transaction-level, and the TA1
+  // golden is a zero-group interchange, so calling it inside the loops above
+  // never ran it at all. It produces no warnings of its own and its model
+  // fields are classified as data rather than as structural identifiers (see
+  // `phiModelIdentifiers`), so nothing it returns feeds either selector. It
+  // is called here for the one thing it does prove: that constructing the
+  // TA1 model over a hostile interchange does not itself throw or build a
+  // diagnostic.
+  parseTA1(ix);
 }
 
 function compose(ix: X12Interchange, raw: string): PhiParsed {
@@ -281,14 +297,18 @@ export function phiParseStrict(raw: string): PhiParsed {
  * `src/parser/types.ts`, `src/parser/segment.ts` and
  * `src/transactions/*&#47;types.ts` and accounting for **every** string-valued
  * field, not by recalling which ones looked risky. The rule applied, and the
- * results, so that the classification can be argued with rather than trusted:
+ * results, so that the classification can be argued with rather than trusted.
+ * **The completeness of this walk is a discipline, not a property**: nothing
+ * fails when a model gains a field, so re-run the walk whenever one does.
  *
  * **Structural identifiers (returned here, and bounded in `src/`):**
  * - `X12Segment.id` on every decoded body segment. This is x12's
  *   `segment.type`: derived, purely a locator, and the exact field whose
  *   unbounded twin in `@cosyte/hl7` still leaks through `@cosyte/deid`'s
- *   manifest after `hl7` fixed its messages. It is bounded to the ASC X12 .5
- *   segment-id grammar by `decodeSegment`.
+ *   manifest after `hl7` fixed its messages. `decodeSegment` bounds it to the
+ *   two-or-three-character uppercase segment-id shape, which is the same
+ *   regex `defineLoopSpec` already enforces on an authored loop's segment
+ *   ids rather than a citation to a clause of the standard.
  * - `Delimiters.element` / `.repetition` / `.component` / `.segment`. One
  *   byte each and structurally bounded by `detectDelimiters`, which refuses
  *   whitespace, control characters and duplicates. Included because they are
@@ -297,7 +317,11 @@ export function phiParseStrict(raw: string): PhiParsed {
  * **Data the model exists to carry (deliberately NOT returned):**
  * `isa/gs/ge/iea/ta1.raw` and `.elements`, `tx.rawSegments`, `seg.raw`,
  * `seg.elements`, `trailingBytes` - the verbatim document, whose whole
- * purpose is to be verbatim; every party name, address line, contact, member
+ * purpose is to be verbatim; every field on `X12AckTA1`
+ * (`interchangeControlNumber`, `interchangeDate`, `interchangeTime`,
+ * `ackCode`, `noteCode`, `noteCodeRaw`, `raw`), which is the ack's report of
+ * the inbound envelope and is the content a TA1 exists to deliver; every
+ * party name, address line, contact, member
  * id, NPI, claim id, patient control number, trace, group number, date,
  * amount and free-form description on the 835 / 837 / 271 / 277 / 278 / 820
  * / 834 models; and every X12 code-list value (`reasonCode`, `qualifier`,
@@ -305,8 +329,9 @@ export function phiParseStrict(raw: string): PhiParsed {
  * `actionCode`, …), which is preserved verbatim on purpose so that an
  * unrecognized safety-critical code is never silently coerced.
  *
- * **Three locator-flavoured fields that are deliberately left verbatim**,
- * called out because they are the ones a reviewer should push on:
+ * **The locator-flavoured fields that are deliberately left verbatim**,
+ * called out because they are the ones a reviewer should push on. Four
+ * bullets, more than four fields:
  * - `X12HierarchicalLevel.hlId` / `.parentHlId` / `.levelCode` and the shared
  *   `X12Hl`. These *are* locators, and they are still verbatim, because
  *   collapsing two distinct non-conformant HL ids to one sentinel would make
