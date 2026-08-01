@@ -67,10 +67,29 @@ function decodeIsa(raw: string, delimiters: Delimiters): IsaSegment {
 
 /**
  * Strip a single optional CRLF / CR / LF sequence at the head of the
- * remaining input. Many real-world senders append CRLF after every segment
- * terminator for human readability; Phase 1 silently tolerates it (no
- * warning - matches the hl7 Tier-1 silent-normalize stance for line
+ * remaining input. Many real-world senders append a line break after every
+ * segment terminator for human readability; the parser silently tolerates it
+ * (no warning - matches the hl7 Tier-1 silent-normalize stance for line
  * endings).
+ *
+ * **The tolerance is exactly one optional CR followed by one optional LF**, so
+ * `~\r\n`, `~\r` and `~\n` are each absorbed. A blank line (`~\n\n`) exceeds
+ * it: the second break stays in the stream and opens a segment whose name is
+ * unrecognized. That is REPORTED (`X12_UNEXPECTED_SEGMENT`) but it is not
+ * recovered, and because an unexpected segment outside a transaction is not
+ * kept, everything the stray break displaced is dropped from the model too. On
+ * a uniformly double-spaced file that means the whole interchange body. The
+ * warning is the only signal, and it does not survive a re-parse of the emit.
+ *
+ * **What is absorbed here is not recorded anywhere on the model**, so
+ * `serializeX12` cannot reproduce it and a pretty-printed source does not
+ * round-trip byte-identically. Line breaks are not the only such thing (see
+ * the `../serialize/serialize.ts` module header for the full list), but they
+ * are the one this function is responsible for, and the only one that is
+ * purely cosmetic: across the 56 committed fixtures the emit differs from a
+ * pretty-printed source by line breaks and nothing else, and re-parses to an
+ * identical model with an identical warning stream. See
+ * `docs-content/spec-notes-envelope.md` for the consumer-facing statement.
  *
  * @internal
  */

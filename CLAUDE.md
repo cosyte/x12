@@ -326,8 +326,13 @@
 - **Phase 8: spec-clean serializer + general interchange builder
   shipped (2026-06-28).** The emit half of the parser. `serializeX12(ix,
 opts?)` reconstructs an `X12Interchange` back to bytes from the
-  verbatim `.raw` strings: byte-faithful by default (the idempotency
-  fixed point `serialize(parse(s)) === s` for a Tier-1 input), and with
+  verbatim `.raw` strings: byte-faithful for the segments ON THE MODEL
+  by default (`serialize(parse(s)) === s` is NOT guaranteed in general;
+  line breaks, segments outside a transaction, a doubled terminator, a
+  missing final terminator, and post-IEA trailing bytes are each not
+  reproduced, and all but the line breaks fire on inputs with no line
+  breaks at all; `KNOWN-LIMITATIONS.md` holds the canonical list), and
+  with
   `{ specClean: true }` it reconciles the envelope (SE-01 / GE-01 /
   IEA-01 counts + the ISA-13↔IEA-02 / GS-06↔GE-02 / ST-02↔SE-02 control
   pairs), surfacing every mismatch via `onWarning` and NEVER silently
@@ -600,7 +605,7 @@ the published `@cosyte/*` config packages, not by copying files. The source of t
 - Immutable by default. Mutation only via explicit methods (`setElement`, `addSegment`, `addLoopIteration`, `removeSegment`).
 - No `console.*` in library code. Throw typed errors or return results.
 - Short, testable functions over big parsing blobs.
-- Postel's Law: parser is liberal (lenient default + warnings with stable codes and positional context); serializer is conservative. Be exact about what that means, because the README said it loosely until ASSETS-P8: the domain builders emit spec-clean X12 by construction, but `serializeX12` is **byte-faithful by default**. `{ specClean: true }` reconciles the envelope and warns; `{ specClean: true, recomputeCounts: true }` also emits the corrected counts. `recomputeCounts` is inert without `specClean`. Nothing is ever silently corrected.
+- Postel's Law: parser is liberal (lenient default + warnings with stable codes and positional context); serializer is conservative. Be exact about what that means, because the README said it loosely until ASSETS-P8: the domain builders emit spec-clean X12 by construction, but `serializeX12` is **byte-faithful by default only for the segments the parser recorded on the model**, which is narrower than it sounds: `serialize(parse(s)) === s` is NOT guaranteed, and "my file has no line breaks" is not sufficient to make it hold (see `KNOWN-LIMITATIONS.md`, which holds the canonical list of what is not reproduced; most of it needs no line break, and most of it is silent). `{ specClean: true }` reconciles the envelope and warns; `{ specClean: true, recomputeCounts: true }` also emits the corrected counts. `recomputeCounts` is inert without `specClean`. Nothing is ever silently corrected.
 - Fatal errors only for unrecoverable structural corruption (4 Tier-3 codes: `X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`, `X12_INVALID_DELIMITERS`, `X12_EMPTY_INPUT`). Everything else is a warning.
 - Coverage target: ≥ 90% on `src/parser/`, `src/envelope/`, `src/transactions/`, `src/helpers/`.
 - Built-in loop specs + profiles must be authored through the same public API (`defineLoopSpec()`, `defineProfile()`): dogfooding gate.

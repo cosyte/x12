@@ -11,8 +11,12 @@ sidebar_position: 1
 delivers. Mis-reading a payer's remittance, a claim's diagnosis, or a member's coverage can cause real
 financial or clinical harm, so this page is the deliberate "do not over-trust" list: the error model,
 the common symptoms, and the intentional boundaries. Everything here is a documented boundary, not a
-bug. The lenient parser never silently drops or garbles data; where a limitation applies, the raw
-value is preserved (often with a warning), it is simply not further decoded.
+bug. The lenient parser never silently drops or garbles a **decoded value**; where a limitation
+applies, the raw value is preserved (often with a warning), it is simply not further decoded. Three
+things it does discard are worth knowing before you rely on a round trip, two of them silently:
+**line breaks between segments**, **a doubled segment terminator** outside a transaction (both
+silent), and **segments outside a transaction** (warned, but gone from the model). All three are in
+the symptoms table below.
 
 ## When does it throw vs warn?
 
@@ -51,14 +55,17 @@ Tier-2 warning you triage, not an exception you catch. See [Tolerance tiers](./s
 
 ## Common symptoms
 
-| Symptom                                              | Likely cause                                                                                                            | What to do                                                                                                                                                                |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get835` / `get837Claims` returns `undefined`        | The transaction set isn't the one that reader decodes (wrong `ST-01`, or `get277CADisposition` on a non-`X214` message) | Route on `tx.st.elements[1]` (and GS-01) first; hand each transaction to the matching reader.                                                                             |
-| An adjustment's `reasonDescription` is `undefined`   | The CARC/RARC code is outside the bundled snapshot                                                                      | The verbatim code is still on the model; an `X12_UNKNOWN_CARC` / `X12_UNKNOWN_RARC` warning is raised. A stale snapshot yields a missing description, never a wrong code. |
-| A `X12_835_REMIT_BALANCE_MISMATCH` warning           | The payer's numbers don't add up under the §1.10.2 invariants                                                           | Do **not** auto-post; the library preserves the inbound values and will not rebalance. Route to a human.                                                                  |
-| A `X12_HL_PARENT_MISMATCH` warning on an 837/271/277 | A broken HL parent pointer in the hierarchy                                                                             | The pointer is preserved verbatim, never re-numbered; decide whether to trust the loop nesting.                                                                           |
-| Fields parse but `parseFloat` gives odd totals       | You called `parseFloat` on an EDI amount                                                                                | Read the `X12Decimal` and do exact arithmetic on it; never `parseFloat`. See [Decimal-exact money](./spec-notes-money).                                                   |
-| A `X12_PRE_005010` warning                           | ISA-12 declares a version family other than `00501`                                                                     | Tolerated and flagged, not decoded against older field maps. Pass `{ strict: true }` to make it a hard failure for a trusted partner.                                     |
+| Symptom                                                 | Likely cause                                                                                                                                                                                                                          | What to do                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `get835` / `get837Claims` returns `undefined`           | The transaction set isn't the one that reader decodes (wrong `ST-01`, or `get277CADisposition` on a non-`X214` message)                                                                                                               | Route on `tx.st.elements[1]` (and GS-01) first; hand each transaction to the matching reader.                                                                                                                                                                                        |
+| An adjustment's `reasonDescription` is `undefined`      | The CARC/RARC code is outside the bundled snapshot                                                                                                                                                                                    | The verbatim code is still on the model; an `X12_UNKNOWN_CARC` / `X12_UNKNOWN_RARC` warning is raised. A stale snapshot yields a missing description, never a wrong code.                                                                                                            |
+| A `X12_835_REMIT_BALANCE_MISMATCH` warning              | The payer's numbers don't add up under the §1.10.2 invariants                                                                                                                                                                         | Do **not** auto-post; the library preserves the inbound values and will not rebalance. Route to a human.                                                                                                                                                                             |
+| A `X12_HL_PARENT_MISMATCH` warning on an 837/271/277    | A broken HL parent pointer in the hierarchy                                                                                                                                                                                           | The pointer is preserved verbatim, never re-numbered; decide whether to trust the loop nesting.                                                                                                                                                                                      |
+| Fields parse but `parseFloat` gives odd totals          | You called `parseFloat` on an EDI amount                                                                                                                                                                                              | Read the `X12Decimal` and do exact arithmetic on it; never `parseFloat`. See [Decimal-exact money](./spec-notes-money).                                                                                                                                                              |
+| A `X12_PRE_005010` warning                              | ISA-12 declares a version family other than `00501`                                                                                                                                                                                   | Tolerated and flagged, not decoded against older field maps. Pass `{ strict: true }` to make it a hard failure for a trusted partner.                                                                                                                                                |
+| `serializeX12(parseX12(file)) !== file`                 | Usually pretty-printing: the parser absorbs the line break after each terminator and the model does not record it, so the emit is compact. But it is **not** the only cause, and the others fire on files with no line breaks at all. | If the file is merely pretty-printed the difference is line breaks only, and diffing your emit against `serializeX12(parseX12(source))` ignores that noise. Otherwise see [Line endings between segments](./spec-notes-envelope) for everything the emit does not reproduce.         |
+| A warning appears on the first parse but not the second | The warning was `X12_UNEXPECTED_SEGMENT`. The segment sits outside any transaction, so it is **not kept on the model**: it is absent from the emit, and re-parsing the emit cannot raise the warning again.                           | Treat the **first** parse's `ix.warnings` as the authority, and never re-derive warnings from a serialized copy. This is a data-loss boundary, not just a diagnostic quirk: the segment itself is gone.                                                                              |
+| `X12_UNEXPECTED_SEGMENT` on a readable-looking file     | A **blank** line between segments (`~\n\n`). The tolerance is one optional CR then one optional LF, so the second break opens an unrecognized segment.                                                                                | Strip blank lines before parsing. The parser reports this rather than mangling a value, but it does **not** recover: everything the stray break displaced is dropped too, and on a uniformly double-spaced file that is the whole interchange body (`groups: []`). Do not ignore it. |
 
 ## Keeping PHI out of logs
 
@@ -118,6 +125,22 @@ third party.
   the verbatim code is preserved and an `X12_UNKNOWN_*` warning is raised. Only the human-readable
   **description** is absent. A stale or partial snapshot yields a missing description, **never a wrong
   code**.
+- **`serialize(parse(s)) === s` is not guaranteed.** Every segment on the model comes back verbatim,
+  in the order the model holds it. Six constructs are known not to survive: line breaks between
+  segments, segments outside a transaction (warned, then discarded, and the warning does not recur),
+  a doubled terminator outside a transaction, a missing final terminator, post-IEA `trailingBytes`,
+  and a TA1 that followed a functional group (emitted right after the ISA, so reordered, though
+  nothing is lost). The last five fire on inputs with no line breaks, so a compact file is not
+  guaranteed to round-trip either, and four of the six are silent, so a clean warnings list is not
+  evidence of byte-exactness. Measured across the 56 committed fixtures: every emit is a fixed point
+  and re-parses to an identical model with an identical warning stream, the 14 with no line breaks
+  return byte-identical (13 of those are `golden/*.edi`, serializer output by construction), and the
+  other 42 differ by line breaks and nothing else. See
+  [Line endings between segments](./spec-notes-envelope).
+- **A segment outside a transaction is dropped from the model.** The envelope walker keeps body
+  segments only while an ST..SE transaction is open. Anything else raises `X12_UNEXPECTED_SEGMENT` and
+  is discarded, so a double-spaced file can lose its entire interchange body. Detectable on the first
+  parse, but only there.
 - **837 claim-/line-level provider addresses (Loop 2310 / 2420 `N3`/`N4`) are not surfaced.** The
   provider **identities** (`NM1`) round-trip; the street-address lines do not decode onto the model.
   Read them from the raw segments if you need them.

@@ -18,7 +18,7 @@
  *    never rewritten.
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -197,6 +197,251 @@ describe("serializeX12: spec-clean control-pair + trailing-byte edges", () => {
     const ix = parseX12(raw);
     expect(ix.trailingBytes).toBe("ZZ*TAIL~");
     expect(serializeX12(ix)).toBe(raw);
+  });
+});
+
+/**
+ * Every committed `.edi` fixture, discovered from disk rather than listed, so
+ * a fixture added later is covered without anyone remembering to add it here.
+ */
+function allFixtures(): readonly string[] {
+  return readdirSync(fixturesRoot, { recursive: true, encoding: "utf8" })
+    .filter((p) => p.endsWith(".edi"))
+    .sort();
+}
+
+/** Strip every CR / LF so two texts can be compared modulo line breaks. */
+function withoutLineBreaks(text: string): string {
+  return text.replace(/\r\n|\r|\n/g, "");
+}
+
+/**
+ * Everything semantically meaningful the parser decoded, deliberately EXCLUDING
+ * the verbatim `.raw` framing. Two interchanges with the same shape carry the
+ * same values in the same places, whatever whitespace separated them on the
+ * wire.
+ */
+function modelShape(ix: ReturnType<typeof parseX12>): string {
+  return JSON.stringify({
+    isa: ix.isa.elements,
+    iea: ix.iea?.elements,
+    ta1: ix.ta1Segments.map((t) => t.elements),
+    trailing: ix.trailingBytes,
+    groups: ix.groups.map((g) => ({
+      gs: g.gs.elements,
+      ge: g.ge?.elements,
+      tx: g.transactions.map((t) => ({
+        st: t.st.elements,
+        se: t.se?.elements,
+        segments: t.segments.map((s) => [s.id, s.elements]),
+      })),
+    })),
+  });
+}
+
+/**
+ * What the default emit mode preserves ACROSS THIS CORPUS, locked against every
+ * committed fixture rather than against the 13 goldens (which are already in the
+ * serializer's image, so they can only ever demonstrate the easy half).
+ *
+ * **Read the scope before quoting these.** They are measured over the committed
+ * fixtures, which are all well-formed enough that every segment lands inside a
+ * transaction. They are NOT universal properties of `serializeX12`: the
+ * `round-trip escape hatches` suite below exhibits several inputs, none
+ * containing a line break, for which the emit differs from its source, and one
+ * where a warning does not survive the round trip. `KNOWN-LIMITATIONS.md` holds
+ * the canonical list for consumers.
+ */
+describe("serializeX12: what the default mode preserves across the whole corpus", () => {
+  const fixtures = allFixtures();
+
+  // Guard against a vacuous suite: these properties are only interesting
+  // because the corpus really does contain pretty-printed sources. If a future
+  // change compacted every fixture, the sweep below would still pass while
+  // testing nothing, so assert the mix is present.
+  it("the corpus contains both pretty-printed and compact fixtures", () => {
+    const prettyPrinted = fixtures.filter((f) => /[\r\n]/.test(readFixture(f)));
+    expect(fixtures.length).toBeGreaterThanOrEqual(56);
+    expect(prettyPrinted.length).toBeGreaterThan(0);
+    expect(prettyPrinted.length).toBeLessThan(fixtures.length);
+  });
+
+  for (const fixture of fixtures) {
+    describe(fixture, () => {
+      it("differs from its source by line breaks and nothing else", () => {
+        const raw = readFixture(fixture);
+        const out = serializeX12(parseX12(raw));
+        expect(withoutLineBreaks(out)).toBe(withoutLineBreaks(raw));
+      });
+
+      it("re-parses to an identical model with an identical warning stream", () => {
+        const raw = readFixture(fixture);
+        const before = parseX12(raw);
+        const after = parseX12(serializeX12(before));
+        expect(modelShape(after)).toBe(modelShape(before));
+        expect(after.warnings.map((w) => w.code)).toEqual(before.warnings.map((w) => w.code));
+      });
+
+      it("is a fixed point: serializing the emit again is a byte-level no-op", () => {
+        const out = serializeX12(parseX12(readFixture(fixture)));
+        expect(serializeX12(parseX12(out))).toBe(out);
+      });
+
+      // Scoped deliberately: across THIS corpus, line breaks are the only
+      // reason an emit differs from its source, so the biconditional holds
+      // here. It does not hold in general (see `round-trip escape hatches`).
+      it("is byte-identical to its source exactly when the source has no line breaks", () => {
+        const raw = readFixture(fixture);
+        const out = serializeX12(parseX12(raw));
+        expect(out === raw).toBe(!/[\r\n]/.test(raw));
+      });
+    });
+  }
+});
+
+describe("serializeX12: the line-break normalization is uniform across EOL styles", () => {
+  const compact =
+    buildIsa({ controlNumber: "000000001" }) +
+    "GS*HC*S*R*20250101*1200*1*X*005010X222A2~" +
+    "ST*837*0001~" +
+    "BHT*0019*00*REF*20250101*1200*CH~" +
+    "SE*3*0001~" +
+    "GE*1*1~" +
+    "IEA*1*000000001~";
+
+  // A single CR, a single LF, or one CRLF pair after a terminator is absorbed.
+  for (const [label, eol] of [
+    ["LF", "\n"],
+    ["CRLF", "\r\n"],
+    ["bare CR", "\r"],
+  ] as const) {
+    it(`${label}-delimited input emits the identical compact form`, () => {
+      const decorated = compact.split("~").join(`~${eol}`).slice(0, -eol.length);
+      expect(serializeX12(parseX12(decorated))).toBe(compact);
+    });
+  }
+
+  // The tolerance is exactly one optional CR then one optional LF, so a blank
+  // line between segments is NOT absorbed. It is REPORTED, and it is ALSO
+  // swallowed: the stray break opens a segment whose name is unrecognized, and
+  // an unexpected segment outside a transaction is not kept, so everything the
+  // break displaced goes with it. On a uniformly double-spaced file that is the
+  // entire interchange body. Asserted in full here because an earlier revision
+  // of this test checked only the warning and described the input as "reported
+  // not swallowed", which is exactly backwards.
+  it("a blank line between segments is reported AND swallows the interchange body", () => {
+    const decorated = compact.split("~").join("~\n\n").slice(0, -2);
+    const ix = parseX12(decorated);
+    expect(ix.warnings.map((w) => w.code)).toContain(WARNING_CODES.X12_UNEXPECTED_SEGMENT);
+    // The loss, stated rather than implied:
+    expect(ix.groups).toHaveLength(0);
+    expect(ix.iea).toBeUndefined();
+    expect(serializeX12(ix).slice(buildIsa({ controlNumber: "000000001" }).length)).toBe("");
+  });
+});
+
+/**
+ * The five inputs that falsify "no line breaks implies a byte-exact round
+ * trip". None of these contains a line break, and every one of them emits
+ * something other than its source, so the corpus sweep's biconditional is a
+ * property of THIS CORPUS and not of `serializeX12`.
+ *
+ * Note which ones are SILENT: only the stray segment and the trailing bytes
+ * warn at all. The doubled terminator, the missing final terminator and the
+ * TA1 reorder each produce an empty `warnings` array, as does the line-break
+ * normalization itself, so a clean warning stream is NOT evidence that a round
+ * trip will be byte-exact. Asserted per case below rather than described, since
+ * an earlier revision of this file called the doubled terminator "the one
+ * genuinely silent case" when four of the six are silent.
+ *
+ * Every case here reproduces on the base commit: this suite documents
+ * long-standing behaviour rather than locking anything this slice changed. The
+ * point is that the committed fixtures contain no instance of any of them, so
+ * without these cases the sweep above would stay green while the prose around
+ * it claimed more than the sweep could see.
+ */
+describe("serializeX12: round-trip escape hatches that do not involve line breaks", () => {
+  const head =
+    buildIsa({ controlNumber: "000000001" }) +
+    "GS*HC*S*R*20250101*1200*1*X*005010X222A2~" +
+    "ST*837*0001~" +
+    "SE*2*0001~" +
+    "GE*1*1~";
+
+  it("drops a segment sitting outside any transaction, and its warning does not recur", () => {
+    const raw = `${head}REF*ZZ*VENDORTAG~IEA*1*000000001~`;
+    expect(/[\r\n]/.test(raw)).toBe(false);
+
+    const first = parseX12(raw);
+    expect(first.warnings.map((w) => w.code)).toContain(WARNING_CODES.X12_UNEXPECTED_SEGMENT);
+
+    const out = serializeX12(first);
+    expect(out).not.toBe(raw);
+    // The segment is gone from the emit entirely, value and all.
+    expect(out).not.toContain("VENDORTAG");
+    // And the warning cannot be recovered from the emit: a consumer who
+    // re-derives warnings from a serialized copy silently loses this one.
+    expect(parseX12(out).warnings.map((w) => w.code)).not.toContain(
+      WARNING_CODES.X12_UNEXPECTED_SEGMENT,
+    );
+  });
+
+  it("absorbs a doubled segment terminator outside a transaction with NO warning", () => {
+    const raw = `${head}~IEA*1*000000001~`;
+    const ix = parseX12(raw);
+    expect(serializeX12(ix)).not.toBe(raw);
+    expect(ix.warnings).toHaveLength(0); // silent
+  });
+
+  it("supplies a missing final segment terminator, with NO warning", () => {
+    const raw = `${head}IEA*1*000000001`;
+    const ix = parseX12(raw);
+    const out = serializeX12(ix);
+    expect(out).not.toBe(raw);
+    expect(out).toBe(`${raw}~`);
+    expect(ix.warnings).toHaveLength(0); // silent
+  });
+
+  // Unlike the others this one loses nothing: the TA1 is on the model, the
+  // warning stream is identical both ways, and only its POSITION moves. It
+  // still falsifies a byte-exact round trip. No claim is made here about where
+  // ASC X12 requires a TA1 to sit; this asserts what the library does.
+  it("reorders a TA1 that followed a functional group, with NO warning", () => {
+    const raw = `${head}TA1*000000001*250101*1200*A*000~IEA*1*000000001~`;
+    const ix = parseX12(raw);
+    const out = serializeX12(ix);
+    expect(out).not.toBe(raw);
+    expect(ix.warnings).toHaveLength(0); // silent
+    // Reordered, not dropped: the TA1 leads the body in the emit.
+    expect(ix.ta1Segments).toHaveLength(1);
+    expect(out).toContain("TA1*000000001*250101*1200*A*000~");
+    expect(out.indexOf("TA1*")).toBeLessThan(out.indexOf("GS*"));
+    expect(raw.indexOf("TA1*")).toBeGreaterThan(raw.indexOf("GS*"));
+    // Nothing semantic moved: same warnings, and it is still a fixed point.
+    expect(parseX12(out).warnings).toHaveLength(0);
+    expect(serializeX12(parseX12(out))).toBe(out);
+  });
+
+  it("re-joins post-IEA trailing bytes rather than preserving them verbatim", () => {
+    // Two trailing segments, the second unterminated: the walker joins the
+    // leftover slices and appends one terminator, so the bytes shift.
+    const raw = `${head}IEA*1*000000001~ZZ*TAIL~ZZ*NOTERM`;
+    const out = serializeX12(parseX12(raw));
+    expect(out).not.toBe(raw);
+    expect(out).toBe(`${raw}~`);
+  });
+
+  it("each escape-hatch input is itself line-break free, and none round-trips", () => {
+    for (const raw of [
+      `${head}REF*ZZ*VENDORTAG~IEA*1*000000001~`,
+      `${head}~IEA*1*000000001~`,
+      `${head}IEA*1*000000001`,
+      `${head}IEA*1*000000001~ZZ*TAIL~ZZ*NOTERM`,
+      `${head}TA1*000000001*250101*1200*A*000~IEA*1*000000001~`,
+    ]) {
+      expect(/[\r\n]/.test(raw)).toBe(false);
+      expect(serializeX12(parseX12(raw))).not.toBe(raw);
+    }
   });
 });
 
