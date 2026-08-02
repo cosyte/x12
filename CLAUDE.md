@@ -8,6 +8,115 @@
 
 ## Status
 
+- **Builder refusal messages are BOUNDED, and the 835 remit-total warning
+  points at the BPR (2026-08-02, `X12-BUILDER-BOUNDS`).** Two parts.
+  **(1)** Caller-supplied values reached `build*` refusal messages verbatim.
+  Every route now goes through `renderCallerValue`
+  (`src/builder/caller-value.ts`), capping the rendered **fragment** at
+  `BUILD_REFUSAL_VALUE_MAX_RENDERED` = **90**; all three names are public so a
+  consumer can assert the ceiling.
+
+  **▶ THE CENSUS IN THE ITEM WAS SIXTEEN AND THE TRUE NUMBER IS TWENTY-THREE.**
+  Re-derived here: 59 `throw` sites across 10 modules. Sixteen carry a
+  caller-supplied **string** (nine over-long control numbers, one per emitting
+  module, where the branch fires BECAUSE the value is over-long; seven with no
+  length gate at all: `build999`'s ST-02 trace twice, `buildInterchange`'s
+  ST-01, `build837`'s line variant, `build834`'s INS-03 + HD-01, `buildTA1`'s
+  note code). **SEVEN more are in `build999`, found only by adversarial review,
+  over two passes.** Four are the AK9-02 / AK9-03 / AK9-04 counts: typed
+  `number`, which is exactly why a census of string-typed slots missed them, and
+  the type is not a runtime guarantee, so a `JSON.parse`d spec reached a
+  **120,063-character** `AckBuildError.message`. Three are `.length` reads on
+  caller-supplied arrays, which a forged `{ length: "9".repeat(120000) }` drove
+  to **120,152 characters**, larger than the figure the item was filed on.
+  **23 sites, 28 holes** (one refusal names all three counts).
+
+  **▶ THREE PUBLISHED FIGURES WERE WRONG IN THE FIRST DRAFT OF THIS SLICE, IN
+  THE SAME RUN THAT WAS TOLD TO RE-DERIVE THEM.** `BUILD_REFUSAL_VALUE_MAX_RENDERED`
+  was published as 92 in seven places and evaluates to **90** (63 + 2 quotes +
+  1 ellipsis + 14 + 10). And "now produces a 90-byte message" was a **category
+  error**: 90 is the ceiling on the interpolated FRAGMENT, while the message is
+  the fragment plus the site's own template text. Measured on this tree, the
+  `buildInterchange` control-number refusal against a 120,000-character value
+  is **120,066 characters at base and 150 now**; the fragment is 86. The filed
+  figures of 120,155 / 120,069 did not reproduce at all: they depend on the
+  probe payload and which site was hit. **State a ceiling as a ceiling and a
+  measurement as a measurement.**
+
+  **▶ MAKE THE CLAIM YOU CAN SUPPORT. This is NOT
+  `PHI-WARNING-MESSAGE-LEAK` on the emit side.** There the value was the
+  DOCUMENT's, so bounding it was redaction. Here the caller passed it in and
+  still holds it, so bounding redacts nothing; what it buys is a fixed ceiling
+  on anything reaching a log line, a crash report or a JSON error envelope.
+  Escaping was considered and **deliberately not done**, so a refusal message
+  is bounded but **not** guaranteed to be one log line. **And the caller-vs-
+  document dichotomy is NOT categorical, which the first draft got wrong:** TR3
+  005010X231A1 requires AK2-02 to be a verbatim copy of the acknowledged ST-02
+  and `buildTA1` echoes an inbound ISA-13, so on the ack path a DOCUMENT's
+  control numbers reach a refusal by the standard's own design. Envelope
+  control numbers, not clinical content, bounded like the rest, and now said
+  out loud in all four docs.
+
+  **The deliverable is the source gate**, `test/builder-refusal-bounds.test.ts`:
+  it walks every `throw new *BuildError` in every builder module, extracts every
+  interpolation hole, and requires each to be library-computed or wrapped.
+  **Its first allowlist was itself the defect it exists to catch** - it admitted
+  any `String(...)` on the stated ground that such a hole is a library-computed
+  index, while inspecting nothing about the argument, which is precisely how
+  the four AK9 counts passed clean. **Its SECOND allowlist was the same mistake
+  again:** it admitted `String(<expr>.length)` as "an array length", which
+  inspects the property NAME and not the operand, so a forged `{length}` sailed
+  through. The `.length` escape is gone and those holes are bounded too; what
+  remains allowed is only a single-letter loop index and the `width` literal,
+  where no caller expression appears in the hole at all. **Negative controls run
+  both ways:** reintroducing an interpolation into `buildTA1` reds three tests
+  naming file and line, and reverting one AK9 count reds two. All 23 slots also
+  carry a behavioural 120,000-character probe.
+  **Known and NOT claimed away:** the gate keys on `throw new *BuildError(` and
+  on template holes, so a message composed in a helper, built by `+`
+  concatenation, or thrown via a local binding would slip past it. It is a
+  strong tripwire for the shape this library actually uses, not a proof. The
+  bound is also on UTF-16 **code units**, not bytes (an all-astral value is 86
+  units and 152 bytes, and a slice at the bound can split a surrogate pair), so
+  every published figure says "characters" deliberately.
+
+  **(2)** The remit-total balance warning's `position.segmentIndex` was a
+  literal `0`. **`0` is NOT a neutral sentinel here: `tx.segments[0]` is the
+  `ST`**, so a consumer resolving the position landed on the ST. It is now the
+  BPR's own 1-based body index (`tx.segments[idx].id === "BPR"`), matching what
+  claims and service lines already had; the only remaining `0` is a transaction
+  with no BPR at all. **`balance.ts` had documented the old `0` as deliberate**
+  ("not a CLP and not the BPR"), so that doc was corrected with the code.
+
+  **▶ THE BUILD-SIDE HALF WAS FILED AS THE SAME DEFECT AND IS NOT ONE.**
+  `build-835.ts` also passed `segmentIndex: 0`, but measured: the builder has no
+  parsed segment stream to index into (the segments do not exist until after the
+  guard has passed), and it consumes only the warning's `.message`, which since
+  `#46` is a registry lookup keyed by the invariant and therefore
+  position-independent. The position is **inert by construction**, not merely
+  unused. Fabricating a plausible index would have named a segment no consumer
+  can resolve. It is now `UNANCHORED_BUILD_POSITION`, named and documented, and
+  the stale "messages are numeric-only" JSDoc `#46` left there is corrected.
+
+  **A REGRESSION THE BOUND CAUSED AND THE REFUTER CAUGHT:** reading `.length`
+  where the base interpolated into a template literal turned a typed,
+  code-tagged refusal into an uncaught `TypeError` with no `code`, for any
+  JS/JSON caller passing a number where the types say string (`@cosyte/cli` is
+  such a caller). `renderCallerValue` now coerces and never throws.
+
+  **SE-01 asserted outright rather than trusted**, per the tripwire this repo
+  has hit three times: SE-01 recomputed from the emitted segments, GE-01 and
+  IEA-01 from the group and transaction counts, no
+  `X12_SEGMENT_COUNT_MISMATCH` under `specClean`, and recomputed counts
+  byte-identical to the plain emit. The refuter independently confirmed
+  `serializeX12(parseX12(f))` byte-identical at base and head across all 56
+  fixtures.
+
+  **PRE-EXISTING, filed not fixed:** `src/profiles/validate.ts` interpolates
+  caller values unbounded into `X12ProfileError` (measured 120,093 characters,
+  identical at base). Same class, outside this item's `build*` scope, and named
+  in no public doc yet.
+
 - **The round-trip half is closed too: an orphan is re-emitted at a
   STRUCTURAL ANCHOR (2026-08-02, `X12-ORPHAN-REEMIT`).** The bullet below
   closed the model half and deliberately left this open, because the

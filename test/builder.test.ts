@@ -11,6 +11,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BUILD_REFUSAL_VALUE_MAX_RENDERED,
   buildInterchange,
   parseX12,
   serializeX12,
@@ -124,6 +125,26 @@ describe("buildInterchange: refusals", () => {
     } catch (err) {
       expect(err).toBeInstanceOf(X12BuildError);
       expect((err as X12BuildError).code).toBe(X12_BUILD_ERROR_CODES.X12_BUILD_INVALID_SPEC);
+    }
+  });
+
+  // X12-BUILDER-BOUNDS. The branch fires BECAUSE the value is over-long, so
+  // this site echoed the whole thing: measured at 120,066 bytes on the base
+  // commit. Every caller value now goes through `renderCallerValue`, whose
+  // rendered fragment is capped at BUILD_REFUSAL_VALUE_MAX_RENDERED; 500
+  // leaves room for the site's own fixed template text and nothing else.
+  it("bounds its refusal message against a 120,000-character control number", () => {
+    const huge = "9".repeat(120_000);
+    try {
+      buildInterchange(minimalSpec({ interchangeControlNumber: huge }));
+      throw new Error("expected buildInterchange to refuse an over-long control number");
+    } catch (err) {
+      expect(err).toBeInstanceOf(X12BuildError);
+      const { message } = err as Error;
+      expect(message).not.toContain(huge);
+      expect(message).toContain("(120000 characters)");
+      expect(message.length).toBeLessThan(500);
+      expect(message.length).toBeLessThan(BUILD_REFUSAL_VALUE_MAX_RENDERED + 500);
     }
   });
 

@@ -22,6 +22,7 @@ import type { FunctionalGroupSpec, InterchangeSpec, TransactionSetSpec } from ".
 import { parseX12 } from "../parser/index.js";
 import { escapeRelease } from "../parser/release.js";
 import type { X12Interchange } from "../parser/types.js";
+import { renderCallerValue } from "./caller-value.js";
 
 /**
  * Assemble a complete {@link X12Interchange} from a segment-level
@@ -169,7 +170,11 @@ function buildTransaction(
     if (segment.length === 0 || (segment[0] ?? "") === "") {
       throw new X12BuildError(
         X12_BUILD_ERROR_CODES.X12_BUILD_INVALID_SPEC,
-        `buildInterchange: a segment spec in transaction "${esc(tx.transactionSetIdCode)}" has no segment id.`,
+        // Rendered from the RAW id, not the `?`-escaped one. `esc` can double
+        // the length, so escaping first made the reported "(N characters)" the
+        // escaped length rather than the caller's: a 100-character all-`?` id
+        // reported 200. The escape exists for the wire, and this is a message.
+        `buildInterchange: a segment spec in transaction ${renderCallerValue(tx.transactionSetIdCode)} has no segment id.`,
       );
     }
     bodySegments += joinSeg(segment.map(esc), elementSeparator, segmentTerminator);
@@ -218,7 +223,7 @@ function padControl(value: string, width: number): string {
   if (value.length < width) return "0".repeat(width - value.length) + value;
   throw new X12BuildError(
     X12_BUILD_ERROR_CODES.X12_BUILD_INVALID_SPEC,
-    `buildInterchange: control number "${value}" exceeds the ${String(width)}-char spec limit.`,
+    `buildInterchange: control number ${renderCallerValue(value)} exceeds the ${String(width)}-char spec limit.`,
   );
 }
 

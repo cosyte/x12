@@ -44,6 +44,7 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange, X12Position } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { renderCallerValue } from "../../builder/caller-value.js";
 
 /**
  * GS-08 / ST-03 version + release emitted for every 835 the library builds
@@ -65,6 +66,20 @@ const X12_835_FUNCTIONAL_ID = "HP";
  * @internal
  */
 const X12_AGENCY_CODE = "X";
+
+/**
+ * The position handed to the read-side balance validators from the BUILD path,
+ * where no segment stream exists yet. Named rather than written as a literal
+ * `{ segmentIndex: 0 }` so it reads as "deliberately not anchored" instead of
+ * as an index that someone forgot to populate - which is exactly how the
+ * literal read, and what got it filed as a defect. See `enforceBalance` for
+ * why an inert position is the correct answer here and a real one is not.
+ * @internal
+ */
+const UNANCHORED_BUILD_POSITION: X12Position = Object.freeze({
+  segmentIndex: 0,
+  transactionIndex: 0,
+});
 
 /**
  * `build835` - assemble a 005010X221A1 835 around the supplied spec.
@@ -309,11 +324,30 @@ function enforceStructuralSpec(spec: Build835Spec): void {
  * first violation. Reuses the authoritative read-side validators
  * ({@link checkClaimBalance} / {@link checkServiceLineBalance} /
  * {@link checkRemitTotalBalance}) against a materialized read model so the
- * emit guard and the parse warning share one source of truth. The
- * validators' messages are numeric-only (no PHI). @internal
+ * emit guard and the parse warning share one source of truth.
+ *
+ * **The validators' messages name the equation and carry no value at all** -
+ * not an amount, not an identifier, not even a number. Since
+ * `PHI-WARNING-MESSAGE-LEAK` each is a lookup into the frozen
+ * `BALANCE_INVARIANT_MESSAGES` table keyed by the invariant, so what gets
+ * interpolated into the thrown `Remit835BuildError` below is bounded registry
+ * text. (The JSDoc here said "numeric-only" through that change; it was stale
+ * from the shape that preceded it.)
+ *
+ * **Why the position is synthetic, and why that is not the defect it looks
+ * like.** The validators take an `X12Position` but do not derive one: they
+ * forward it onto a warning. On the read side that position is load-bearing -
+ * `get835` anchors the claim invariant at the CLP and the remit-total
+ * invariant at the BPR. Here there is no parsed segment stream to index into:
+ * the spec is a domain model, and the segments do not exist until after this
+ * guard has already run and passed. Fabricating a plausible index would name a
+ * segment no consumer can resolve. Instead the warning is consumed for
+ * `.message` **only**, which the paragraph above establishes is
+ * position-independent, so the position is inert by construction rather than
+ * merely unused today. @internal
  */
 function enforceBalance(spec: Build835Spec): void {
-  const position: X12Position = { segmentIndex: 0, transactionIndex: 0 };
+  const position: X12Position = UNANCHORED_BUILD_POSITION;
   const claims = spec.claims.map(materializeClaim);
   for (const claim of claims) {
     const claimWarn = checkClaimBalance(claim, position);
@@ -742,7 +776,7 @@ function padControl(value: string, width: number): string {
   if (value.length < width) return "0".repeat(width - value.length) + value;
   throw new Remit835BuildError(
     REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_INVALID_SPEC,
-    `build835: control number "${value}" exceeds the ${String(width)}-char spec limit.`,
+    `build835: control number ${renderCallerValue(value)} exceeds the ${String(width)}-char spec limit.`,
   );
 }
 

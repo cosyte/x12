@@ -27,6 +27,7 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { renderCallerValue } from "../../builder/caller-value.js";
 
 /**
  * The version string emitted at GS-08 and ST-03 for every 999 the library
@@ -245,7 +246,7 @@ function enforceAcceptIsClean(group: Build999FunctionalGroupSpec): void {
   if (functionalIsAccept && functionalHasErrorCodes) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_ACCEPT_WITH_ERRORS,
-      `build999: AK9-01 was 'A' (Accept) but AK9-05..AK9-09 carried ${String(
+      `build999: AK9-01 was 'A' (Accept) but AK9-05..AK9-09 carried ${renderCallerValue(
         (group.syntaxErrorCodes ?? []).length,
       )} syntax error code(s). Use 'E' (Accept, with errors noted) or a reject disposition instead.`,
     );
@@ -256,13 +257,13 @@ function enforceAcceptIsClean(group: Build999FunctionalGroupSpec): void {
     if (responseIsAccept && responseHasErrors) {
       throw new AckBuildError(
         ACK_BUILD_ERROR_CODES.X12_ACK_ACCEPT_WITH_ERRORS,
-        `build999: AK2 (ST-02 ${response.transactionSetControlNumber}) IK5-01 was 'A' (Accept) but the response carried error payload. Use 'E' (Accept, with errors noted) or a reject disposition instead.`,
+        `build999: AK2 (ST-02 ${renderCallerValue(response.transactionSetControlNumber)}) IK5-01 was 'A' (Accept) but the response carried error payload. Use 'E' (Accept, with errors noted) or a reject disposition instead.`,
       );
     }
     if (functionalIsAccept && (!responseIsAccept || responseHasErrors)) {
       throw new AckBuildError(
         ACK_BUILD_ERROR_CODES.X12_ACK_ACCEPT_WITH_ERRORS,
-        `build999: AK9-01 was 'A' (Accept) but transaction response (ST-02 ${response.transactionSetControlNumber}) reported a non-accept disposition or carried errors. Lift the functional disposition to 'P' (Partial), 'E' (Accept, errors noted), or a reject.`,
+        `build999: AK9-01 was 'A' (Accept) but transaction response (ST-02 ${renderCallerValue(response.transactionSetControlNumber)}) reported a non-accept disposition or carried errors. Lift the functional disposition to 'P' (Partial), 'E' (Accept, errors noted), or a reject.`,
       );
     }
   }
@@ -281,25 +282,25 @@ function enforceCountInvariants(group: Build999FunctionalGroupSpec): void {
   if (declared < 0 || received < 0 || accepted < 0) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_COUNT_MISMATCH,
-      `build999: AK9 counts must be non-negative (declared=${String(declared)}, received=${String(received)}, accepted=${String(accepted)}).`,
+      `build999: AK9 counts must be non-negative (declared=${renderCallerValue(declared)}, received=${renderCallerValue(received)}, accepted=${renderCallerValue(accepted)}).`,
     );
   }
   if (accepted > received) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_COUNT_MISMATCH,
-      `build999: AK9-04 accepted (${String(accepted)}) cannot exceed AK9-03 received (${String(received)}).`,
+      `build999: AK9-04 accepted (${renderCallerValue(accepted)}) cannot exceed AK9-03 received (${renderCallerValue(received)}).`,
     );
   }
   if (received > declared) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_COUNT_MISMATCH,
-      `build999: AK9-03 received (${String(received)}) cannot exceed AK9-02 declared (${String(declared)}).`,
+      `build999: AK9-03 received (${renderCallerValue(received)}) cannot exceed AK9-02 declared (${renderCallerValue(declared)}).`,
     );
   }
   if (group.transactionResponses.length !== received) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_COUNT_MISMATCH,
-      `build999: AK9-03 received (${String(received)}) must equal the number of supplied transaction responses (${String(group.transactionResponses.length)}).`,
+      `build999: AK9-03 received (${renderCallerValue(received)}) must equal the number of supplied transaction responses (${renderCallerValue(group.transactionResponses.length)}).`,
     );
   }
   // No cross-check of AK9-04 vs the count of IK5-01='A' responses: TR3
@@ -412,7 +413,7 @@ function buildIk5(
   if (codes.length > 5) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_COUNT_MISMATCH,
-      `build999: IK5 accepts up to 5 syntax error codes (IK5-02..IK5-06); ${String(codes.length)} supplied.`,
+      `build999: IK5 accepts up to 5 syntax error codes (IK5-02..IK5-06); ${renderCallerValue(codes.length)} supplied.`,
     );
   }
   for (const code of codes) parts.push(esc(code));
@@ -437,7 +438,7 @@ function buildAk9(
   if (codes.length > 5) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_COUNT_MISMATCH,
-      `build999: AK9 accepts up to 5 syntax error codes (AK9-05..AK9-09); ${String(codes.length)} supplied.`,
+      `build999: AK9 accepts up to 5 syntax error codes (AK9-05..AK9-09); ${renderCallerValue(codes.length)} supplied.`,
     );
   }
   for (const code of codes) parts.push(esc(code));
@@ -475,7 +476,7 @@ function padControl(value: string, width: number): string {
   if (value.length < width) return "0".repeat(width - value.length) + value;
   throw new AckBuildError(
     ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC,
-    `build999: control number "${value}" exceeds the ${String(width)}-char spec limit.`,
+    `build999: control number ${renderCallerValue(value)} exceeds the ${String(width)}-char spec limit.`,
   );
 }
 

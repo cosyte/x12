@@ -5,6 +5,11 @@
  */
 
 export { buildInterchange } from "./build-interchange.js";
+export {
+  BUILD_REFUSAL_VALUE_MAX_LENGTH,
+  BUILD_REFUSAL_VALUE_MAX_RENDERED,
+  renderCallerValue,
+} from "./caller-value.js";
 export { X12_BUILD_ERROR_CODES, X12BuildError } from "./errors.js";
 export type { X12BuildErrorCode } from "./errors.js";
 export type {

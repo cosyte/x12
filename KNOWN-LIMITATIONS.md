@@ -148,29 +148,46 @@ model.
   interchange is fully parsed into `tx.segments` before iteration begins. It is not a byte-streaming
   reader for arbitrarily large files.
 
-- **Builder refusal messages are NOT registry-bound, and at least sixteen sites across ten builder
-  modules echo a caller-supplied value unbounded.** The parse side is closed: no warning factory takes
-  a value parameter and every `message` is a frozen-registry lookup. The emit side is not, and the
-  sites divide into two kinds.
+- **A builder refusal message shows at most 63 characters of a value you passed in, and it is bounded
+  but not escaped.** Twenty-three sites across ten builder modules interpolate such a value into the
+  thrown message. Every one routes through `renderCallerValue`, so the rendered **fragment** never exceeds
+  `BUILD_REFUSAL_VALUE_MAX_RENDERED` (**90** characters: 63 of your value, two quotes, an ellipsis, and
+  the ` (N characters)` suffix at its widest). Both constants and the function are exported, so you can
+  assert the ceiling rather than take it on trust.
 
-  **Gated on length (nine sites).** The `control number "${value}"` template in
-  `X12_*_BUILD_INVALID_SPEC` repeats across `build-interchange.ts`, `build-999.ts`, `build-835.ts`,
-  `build-837.ts`, `build-271.ts`, `build-277.ts`, `build-278.ts`, `build-820.ts` and `build-834.ts`,
-  and it fires **precisely because the value is over-long**.
+  **The ceiling is on the fragment, not on the message.** A refusal message is that fragment plus the
+  site's own fixed template text, which differs per site, so every message is bounded by a constant but
+  not by _that_ constant. Measured: a 120,000-character control number produced a **120,066-character**
+  `X12BuildError.message` from `buildInterchange` before this change and produces a **150-character**
+  one now. Do not read 90 as a message length.
 
-  **Not gated on length at all (seven sites).** `build-999.ts` interpolates the supplied ST-02
-  transaction-set control number into two of its `X12_ACK_ACCEPT_WITH_ERRORS` refusals;
-  `build-interchange.ts` interpolates the supplied transaction-set id code into its empty-segment-id
-  refusal; `build-837.ts` interpolates a service line's `variant`; `build-834.ts` interpolates an
-  unrecognized INS-03 and an unrecognized HD-01 maintenance type; and `build-ta1.ts` interpolates an
-  unrecognized TA1-05 note code. Any of these renders a value of any size.
+  Over-long values are the point of nine of the twenty-three sites (the `control number "…" exceeds the
+N-char spec limit` refusal, one per emitting module, where the branch fires **because** the value is
+  over-long). Seven more had no length gate at all: `build999`'s ST-02 trace twice, `buildInterchange`'s
+  transaction-set id, `build837`'s service-line variant, `build834`'s INS-03 and HD-01 maintenance
+  types, and `buildTA1`'s note code. The last seven are all in `build999` and were found by adversarial
+  review rather than by the original census. Four are the AK9-02 / AK9-03 / AK9-04 counts, typed
+  `number` and so missed by a census of string-typed fields, though a spec built from `JSON.parse` can
+  still carry a string there (measured at 120,063 characters). Three read `.length` off a
+  caller-supplied array, which a forged `{ length: … }` drove to 120,152 characters.
 
-  Measured with a 120,000-byte caller value: `build999` throws a **120,155-byte** `message` with a
-  `stack` a little longer still (the frame text is environment-dependent, so only the `message`
-  figures are exact), and `buildInterchange` throws a **120,069-byte** `message`. These are values
-  **you** supplied rather than bytes off an inbound interchange, which is why this is a limitation
-  rather than a parse-side leak, but a spec assembled from an inbound document carries inbound values.
-  **Log `err.code` from a builder, not `err.message`.**
+  **What this is and is not.** These are values **you** passed in, so bounding them redacts nothing:
+  you already hold the value, and if you put patient data in a control number the refusal will show up
+  to 63 characters of it. What the bound buys is that `Error.message` from a builder has a fixed
+  ceiling instead of growing with your input, which matters for log lines, crash reports, and JSON
+  error envelopes. The surviving characters are **not escaped** either: they are whatever you supplied,
+  including a newline or a segment terminator, so a refusal message is bounded but not guaranteed to be
+  a single log line.
+
+  **One qualification worth stating precisely: on the acknowledgment path the value is not always
+  strictly your own.** TR3 005010X231A1 requires AK2-02 to be a verbatim copy of the acknowledged
+  transaction set's ST-02, and `buildTA1` exists to echo an inbound ISA-13, so a _document's_ control
+  numbers reach those refusals by the standard's own design. They are envelope control numbers rather
+  than clinical content, and they are bounded like everything else, but "the value is always the
+  caller's own" would be false and this library does not claim it.
+
+  Logging `err.code` rather than `err.message` remains the safest habit, and the parse side is stronger
+  still, where no factory takes a value parameter at all.
 
 - **`X12ParseError.snippet` on a Tier-3 fatal can carry PHI, by design, and the library does not
   redact it.** Warning messages come from a frozen registry and no factory takes a value parameter, so

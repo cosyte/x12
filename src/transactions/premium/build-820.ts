@@ -39,6 +39,7 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { renderCallerValue } from "../../builder/caller-value.js";
 
 /** GS-08 / ST-03 version + release emitted for every 820 - the WPC TR3 `005010X218`. @internal */
 const X218_VERSION_RELEASE = "005010X218";
@@ -445,7 +446,7 @@ function padControl(value: string, width: number): string {
   if (value.length < width) return "0".repeat(width - value.length) + value;
   throw new Premium820BuildError(
     PREMIUM_820_BUILD_ERROR_CODES.X12_820_BUILD_INVALID_SPEC,
-    `build820: control number "${value}" exceeds the ${String(width)}-char spec limit.`,
+    `build820: control number ${renderCallerValue(value)} exceeds the ${String(width)}-char spec limit.`,
   );
 }
 

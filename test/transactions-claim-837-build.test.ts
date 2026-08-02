@@ -23,6 +23,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BUILD_REFUSAL_VALUE_MAX_RENDERED,
   build837D,
   build837I,
   build837P,
@@ -786,6 +787,26 @@ describe("build837 - structural refusals", () => {
       build837P({ ...P_SPEC, envelope: { ...ENVELOPE, interchangeControlNumber: "0123456789" } }),
     ).toThrow(Claim837BuildError);
   });
+
+  // X12-BUILDER-BOUNDS. The branch fires BECAUSE the value is over-long, so
+  // this site echoed the whole thing: measured at 120,066 bytes on the base
+  // commit. Every caller value now goes through `renderCallerValue`, whose
+  // rendered fragment is capped at BUILD_REFUSAL_VALUE_MAX_RENDERED; 500
+  // leaves room for the site's own fixed template text and nothing else.
+  it("bounds its refusal message against a 120,000-character control number", () => {
+    const huge = "9".repeat(120_000);
+    try {
+      build837P({ ...P_SPEC, envelope: { ...ENVELOPE, interchangeControlNumber: huge } });
+      throw new Error("expected build837P to refuse an over-long control number");
+    } catch (err) {
+      expect(err).toBeInstanceOf(Claim837BuildError);
+      const { message } = err as Error;
+      expect(message).not.toContain(huge);
+      expect(message).toContain("(120000 characters)");
+      expect(message.length).toBeLessThan(500);
+      expect(message.length).toBeLessThan(BUILD_REFUSAL_VALUE_MAX_RENDERED + 500);
+    }
+  });
 });
 
 describe("build837 - PHI-clean refusal messages", () => {
@@ -811,5 +832,34 @@ describe("build837 - delimiter-bearing values round-trip losslessly", () => {
     const sub = submissionOf(build837P(spec));
     expect(sub.warnings).toHaveLength(0);
     expect(sub.claims[0]?.references[0]?.value).toBe("AB~CD*EF:GH");
+  });
+});
+
+describe("build837 - refusal-message bounds (X12-BUILDER-BOUNDS)", () => {
+  // The service-line variant is one of the SEVEN slots with no length gate.
+  // Note the asymmetry the source gate encodes: the builder-fixed `variant`
+  // ("P" here, chosen by the entry point) is library-computed and stays
+  // verbatim; the caller-supplied `line.variant` in the same template is the
+  // one that had to be bounded.
+  const HUGE = "9".repeat(120_000);
+
+  it("bounds the variant-mismatch refusal against a 120,000-character line variant", () => {
+    const spec = pSpecWithClaim({
+      ...P_CLAIM,
+      serviceLines: [{ ...P_LINE, variant: HUGE as unknown as "P" }],
+    });
+    try {
+      build837P(spec);
+      throw new Error("expected build837P to refuse a mismatched service-line variant");
+    } catch (err) {
+      expect(err).toBeInstanceOf(Claim837BuildError);
+      const { message } = err as Error;
+      expect(message).not.toContain(HUGE);
+      expect(message).toContain("(120000 characters)");
+      // The builder-fixed variant is still rendered in full at both ends.
+      expect(message).toContain("build837P:");
+      expect(message).toContain('every line must be "P"');
+      expect(message.length).toBeLessThan(500);
+    }
   });
 });

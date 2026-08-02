@@ -38,6 +38,7 @@ import { lookupMaintenanceType } from "../../code-lists/maintenance-type.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { renderCallerValue } from "../../builder/caller-value.js";
 
 /** GS-08 / ST-03 version + release emitted for every 834 - the WPC TR3 `005010X220A1`. @internal */
 const X220A1_VERSION_RELEASE = "005010X220A1";
@@ -216,7 +217,7 @@ function enforceStructuralSpec(spec: Build834Spec): void {
     if (lookupMaintenanceType(member.maintenanceTypeCode) === undefined) {
       throw new Enrollment834BuildError(
         ENROLLMENT_834_BUILD_ERROR_CODES.X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE,
-        `build834: member at index ${String(m)} has an unknown INS-03 maintenance type code "${member.maintenanceTypeCode}" (outside X12 Code Source 875).`,
+        `build834: member at index ${String(m)} has an unknown INS-03 maintenance type code ${renderCallerValue(member.maintenanceTypeCode)} (outside X12 Code Source 875).`,
       );
     }
     for (let c = 0; c < (member.healthCoverages ?? []).length; c += 1) {
@@ -226,7 +227,7 @@ function enforceStructuralSpec(spec: Build834Spec): void {
       if (hd01 !== undefined && hd01 !== "" && lookupMaintenanceType(hd01) === undefined) {
         throw new Enrollment834BuildError(
           ENROLLMENT_834_BUILD_ERROR_CODES.X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE,
-          `build834: coverage at member[${String(m)}].healthCoverages[${String(c)}] has an unknown HD-01 maintenance type code "${hd01}" (outside X12 Code Source 875).`,
+          `build834: coverage at member[${String(m)}].healthCoverages[${String(c)}] has an unknown HD-01 maintenance type code ${renderCallerValue(hd01)} (outside X12 Code Source 875).`,
         );
       }
     }
@@ -448,7 +449,7 @@ function padControl(value: string, width: number): string {
   if (value.length < width) return "0".repeat(width - value.length) + value;
   throw new Enrollment834BuildError(
     ENROLLMENT_834_BUILD_ERROR_CODES.X12_834_BUILD_INVALID_SPEC,
-    `build834: control number "${value}" exceeds the ${String(width)}-char spec limit.`,
+    `build834: control number ${renderCallerValue(value)} exceeds the ${String(width)}-char spec limit.`,
   );
 }
 

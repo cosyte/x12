@@ -48,6 +48,7 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { renderCallerValue } from "../../builder/caller-value.js";
 
 /** GS-01 functional identifier code for the 277. `HN` = Health Care Claim Status Notification. @internal */
 const X12_277_FUNCTIONAL_ID = "HN";
@@ -624,7 +625,7 @@ function padControl(value: string, width: number): string {
   if (value.length < width) return "0".repeat(width - value.length) + value;
   throw new ClaimStatus277BuildError(
     CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_SPEC,
-    `build277: control number "${value}" exceeds the ${String(width)}-char spec limit.`,
+    `build277: control number ${renderCallerValue(value)} exceeds the ${String(width)}-char spec limit.`,
   );
 }
 
