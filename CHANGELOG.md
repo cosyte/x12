@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`X12OrphanSegment.anchor`**, plus the `X12OrphanAnchor` / `X12OrphanAnchorKind` types. Every
+  retained orphan now records **where it sat in the structure** rather than only where it sat in the
+  byte stream: `{ kind: "interchange", groupIndex }` for a segment outside every functional group,
+  `{ kind: "group", groupIndex, transactionIndex }` for one inside a group but outside every
+  transaction set, and `{ kind: "transaction", groupIndex, transactionIndex, segmentOffset }` for one
+  inside an open `ST..SE` - which only a `TA1` can be, since anything else arriving there is body
+  content. An index equal to the eventual length means "after the last one" (immediately before the
+  `GE` or the `IEA`), and `segmentOffset` is never `0` because `rawSegments[0]` is always the `ST`.
 - **`X12Interchange.orphanSegments`** and the `X12OrphanSegment` type. Every segment that falls
   outside an `ST..SE` transaction set is now retained verbatim (`raw`, the decoded `segment`, its
   `segmentIndex`, and the library-owned `context` discriminant) instead of being discarded.
@@ -19,6 +27,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   document content, verbatim, exactly like `tx.rawSegments`. Log `context` and `segmentIndex`.
 
 ### Fixed
+
+- **A segment outside a transaction now survives a round trip, and so does its warning.**
+  `serializeX12` re-emits every entry of `ix.orphanSegments` at its structural `anchor`, so a
+  consumer who serializes an interchange and re-derives warnings from the copy no longer loses the
+  segment or the `X12_UNEXPECTED_SEGMENT` that described it. Placement is **by the anchor and never
+  by `segmentIndex`** - that index addresses the _input_ stream, which the emit does not follow, and
+  a replay keyed on it was measured splicing a stray segment into an 835's `ST..SE` body with no
+  warning on the re-parse. An anchor names a slot in the typed tree, which is invariant under both
+  the `ta1Segments` hoist and the skipped zero-length segment. Use `segmentIndex` to join an orphan
+  to its warning, never to place it.
+
+  Measured on a stray segment inserted at every position of a two-group, three-transaction
+  interchange, over five segment ids (`ZZ`, `SE`, `GE`, `ST`, `TA1`) covering all five orphan
+  `context` values and all three anchor kinds: **50 of the 50 insertions that produce an orphan
+  round-trip byte-exactly** on a base with no envelope-level `TA1`. On the same base _with_ one, all
+  **54** differ - and all 54 are byte-identical once the `TA1` is removed from both sides, so the
+  only thing that moved is the `TA1`, which moves on that base with no orphan present at all. Across
+  all 104: transaction bodies, `orphanSegments` (raw, context, anchor), `ta1Segments`,
+  `trailingBytes` and the warning multiset are unchanged by the round trip, and every emit is a fixed
+  point.
+
+  **SE-01 now counts an orphan re-emitted between the `ST` and the `SE`.** A `TA1` that arrived
+  inside an open transaction set is lifted off `tx.rawSegments` by the walker but is re-emitted
+  where it came from, so it is a segment of that transaction set for SE-01 purposes ("segments
+  included in the transaction set, including ST and SE", X12.6). Reconciling against the model alone
+  would describe bytes the serializer did not write: `{ specClean: true, recomputeCounts: true }`
+  would shrink a **correct** `SE*4*` to `SE*3*` over four emitted segments, and the inverse input
+  would draw no mismatch warning at all. Both counts now come from the emitted range, so recompute
+  is idempotent under the library's own reconciliation. An orphan emitted before the `ST` or after
+  the `SE` is outside the range and is not counted, and GE-01 / IEA-01 are unaffected because an
+  orphan is never a `GS` and never opens a transaction set.
+
+  **`KNOWN-LIMITATIONS.md` is therefore down from seven constructs to six**, and the remaining five
+  silent ones no longer include anything that loses a warning: line breaks, a doubled terminator, a
+  missing final terminator, the `TA1` reorder, and a segment whose first element is empty outside a
+  transaction (still the one construct that loses a value with no diagnostic at all - it is skipped
+  by the walker, so there is nothing on the model to re-emit, and it is deliberately unchanged here).
+  Retention and placement are still **not** promotion: no `get*` reader sees an orphan, and a `TA1`
+  inside a group still does not join `ta1Segments`. No new warning code (registry unchanged at 22
+  codes, 4 fatals), and no construct became fatal.
 
 - **Silent data loss: a segment outside a transaction was dropped from the model, and a
   double-spaced file lost its entire interchange body.** Two defects with one cause. The envelope
@@ -39,19 +87,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   56 committed fixtures nothing changed: zero model divergences, zero warning divergences, zero
   fixed-point failures, and no fixture produces an orphan.
 
-  **This fixes the model, not the emit.** `serializeX12` still does not reproduce an orphan, so
-  neither the segment nor its warning survives a round trip, and `KNOWN-LIMITATIONS.md` still lists
-  **seven** constructs the default emit does not reproduce. Re-emitting an orphan needs the model to
-  carry a **structural anchor** (which group and transaction it followed) rather than the raw input
-  index it carries today, and that is tracked separately. A positional replay keyed on
-  `segmentIndex` was built and then removed during this change because it was unsound: the emit is
-  not in input order (it hoists `ta1Segments`) and skips the zero-length segment a doubled terminator
-  produces, so replaying by input index spliced the orphan into whatever occupied that slot. Measured
-  on a two-group interchange with a TA1 after the first group, that put a stray segment inside an
-  835's `ST..SE` body between `CLP` and `SE` with **no warning at all** on the re-parse, made a stray
-  `SE` close the transaction early and corrupt SE-01, and carried an orphan across the IEA into
-  `trailingBytes`. A documented omission is preferable to silent structural corruption, and there are
-  now regression tests fencing each of those.
+  **This fixed the model; the emit was closed separately, by anchor.** See the round-trip entry
+  below. A positional replay keyed on `segmentIndex` was built and then removed during _this_ change
+  because it was unsound: the emit is not in input order (it hoists `ta1Segments`) and skips the
+  zero-length segment a doubled terminator produces, so replaying by input index spliced the orphan
+  into whatever occupied that slot. Measured on a two-group interchange with a TA1 after the first
+  group, that put a stray segment inside an 835's `ST..SE` body between `CLP` and `SE` with **no
+  warning at all** on the re-parse, made a stray `SE` close the transaction early and corrupt SE-01,
+  and carried an orphan across the IEA into `trailingBytes`. A documented omission was preferable to
+  silent structural corruption, and there are regression tests fencing each of those shapes.
 
   **Retention is not placement.** An orphan is not decoded by any `get*` reader, and a `TA1` inside
   an open group is not added to `ta1Segments` (that surface means "envelope-level TA1", and is what

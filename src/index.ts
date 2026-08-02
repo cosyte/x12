@@ -73,6 +73,8 @@ export type {
   Ta1Segment,
   X12FunctionalGroup,
   X12Interchange,
+  X12OrphanAnchor,
+  X12OrphanAnchorKind,
   X12OrphanSegment,
   X12ParseOptions,
   X12Position,
