@@ -89,22 +89,34 @@ library-owned discriminant and an integer), not `o.raw` or `o.segment.elements`.
 
 **The builders are a different surface, and the guarantee there is weaker on purpose.** A `build*`
 function that refuses a spec throws a typed error. Most of those messages carry structural locators
-and numeric totals only; sixteen sites across ten builder modules also name a value **you** supplied,
-so you can tell which control number, maintenance code or note code was refused.
+and numeric totals only; twenty sites across ten builder modules also name a value you passed in, so
+you can tell which control number, count, maintenance code or note code was refused.
 
-Since `0.0.4` every one of those sixteen goes through `renderCallerValue`, and the fragment it
-produces is capped at `BUILD_REFUSAL_VALUE_MAX_RENDERED` (92 characters: up to
+Since `0.0.4` every one of those twenty goes through `renderCallerValue`, and the fragment it produces
+is capped at `BUILD_REFUSAL_VALUE_MAX_RENDERED` (90 characters: up to
 `BUILD_REFUSAL_VALUE_MAX_LENGTH` = 63 of your value, then an ellipsis and the true length). All three
-are exported, so you can assert the ceiling instead of trusting it. Before that, a 120,000-character
-control number produced a 120,066-byte `X12BuildError.message` from `buildInterchange`; it is now 90.
+are exported, so you can assert the ceiling instead of trusting it.
 
-Be exact about what that buys, because it is not what the parse-side registry buys. **These are your
-own values.** You passed them in, you still have them, and bounding them redacts nothing: put patient
-data in a control number and the refusal shows up to 63 characters of it. The bound is there so
-`Error.message` has a fixed size rather than growing with your input, which is what makes it safe to
-put in a log line or a JSON error envelope. It is also **not escaped** - the surviving characters are
-whatever you supplied, newline included. **`err.code` is still the thing to branch on and the safest
-thing to log.** Tracked in `KNOWN-LIMITATIONS.md`; the parse side above is unaffected and stronger.
+**That ceiling is on the fragment, not on the whole message.** A message is the fragment plus the
+site's own fixed text, so it is bounded by a constant but a larger one. Measured: a 120,000-character
+control number produced a 120,066-character `X12BuildError.message` from `buildInterchange` before the
+change and produces a 150-character one now.
+
+Be exact about what that buys, because it is not what the parse-side registry buys. **These are values
+you passed in.** You handed them to the builder, you still have them, and bounding them redacts
+nothing: put patient data in a control number and the refusal shows up to 63 characters of it. The
+bound is there so `Error.message` has a fixed size rather than growing with your input, which is what
+makes it safe to put in a log line or a JSON error envelope. It is also **not escaped** - the
+surviving characters are whatever you supplied, newline included.
+
+One qualification, stated precisely because the categorical version would be false: **on the ack path
+the value is not always strictly your own.** TR3 005010X231A1 requires AK2-02 to be a verbatim copy of
+the acknowledged transaction set's ST-02, and `buildTA1` echoes an inbound ISA-13, so a document's
+control numbers reach those refusals by design. They are envelope control numbers, not clinical
+content, and they are bounded like the rest.
+
+**`err.code` is still the thing to branch on and the safest thing to log.** Tracked in
+`KNOWN-LIMITATIONS.md`; the parse side above is unaffected and stronger.
 
 > **This page previously said the opposite of what the code did.** Until `0.0.4` it read "warning
 > messages are bounded and PHI-free by construction … you can log the full `.warnings` array

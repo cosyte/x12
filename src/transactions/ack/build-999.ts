@@ -282,25 +282,25 @@ function enforceCountInvariants(group: Build999FunctionalGroupSpec): void {
   if (declared < 0 || received < 0 || accepted < 0) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_COUNT_MISMATCH,
-      `build999: AK9 counts must be non-negative (declared=${String(declared)}, received=${String(received)}, accepted=${String(accepted)}).`,
+      `build999: AK9 counts must be non-negative (declared=${renderCallerValue(declared)}, received=${renderCallerValue(received)}, accepted=${renderCallerValue(accepted)}).`,
     );
   }
   if (accepted > received) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_COUNT_MISMATCH,
-      `build999: AK9-04 accepted (${String(accepted)}) cannot exceed AK9-03 received (${String(received)}).`,
+      `build999: AK9-04 accepted (${renderCallerValue(accepted)}) cannot exceed AK9-03 received (${renderCallerValue(received)}).`,
     );
   }
   if (received > declared) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_COUNT_MISMATCH,
-      `build999: AK9-03 received (${String(received)}) cannot exceed AK9-02 declared (${String(declared)}).`,
+      `build999: AK9-03 received (${renderCallerValue(received)}) cannot exceed AK9-02 declared (${renderCallerValue(declared)}).`,
     );
   }
   if (group.transactionResponses.length !== received) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_COUNT_MISMATCH,
-      `build999: AK9-03 received (${String(received)}) must equal the number of supplied transaction responses (${String(group.transactionResponses.length)}).`,
+      `build999: AK9-03 received (${renderCallerValue(received)}) must equal the number of supplied transaction responses (${String(group.transactionResponses.length)}).`,
     );
   }
   // No cross-check of AK9-04 vs the count of IK5-01='A' responses: TR3

@@ -510,3 +510,49 @@ describe("build999 - refusal-message bounds (X12-BUILDER-BOUNDS)", () => {
     );
   });
 });
+
+describe("build999 - the AK9 count slots (adversarial review, pass 1)", () => {
+  // These four refusals were NOT in the item's census of sixteen, because that
+  // census counted string-typed fields and AK9-02/03/04 are typed `number`.
+  // The type is not a runtime guarantee: a spec off `JSON.parse` can carry a
+  // string, and one did - measured at a 120,063-character `AckBuildError`
+  // message. The source gate green-lit them because its allowlist admitted any
+  // `String(...)` hole without inspecting the argument.
+  const HUGE = "9".repeat(120_000);
+
+  it("bounds a count-mismatch refusal handed a 120,000-character count", () => {
+    try {
+      build999({
+        ...ACCEPT_SPEC,
+        functionalGroup: {
+          ...ACCEPT_SPEC.functionalGroup,
+          disposition: "P",
+          numberOfReceivedTransactionSets: HUGE as unknown as number,
+        },
+      });
+      throw new Error("expected build999 to refuse an inconsistent AK9 count");
+    } catch (err) {
+      expect(err).toBeInstanceOf(AckBuildError);
+      const { message } = err as Error;
+      expect(message).not.toContain(HUGE);
+      expect(message).toContain("(120000 characters)");
+      expect(message.length).toBeLessThan(500);
+    }
+  });
+
+  it("still renders a real count in full", () => {
+    try {
+      build999({
+        ...ACCEPT_SPEC,
+        functionalGroup: {
+          ...ACCEPT_SPEC.functionalGroup,
+          disposition: "P",
+          numberOfReceivedTransactionSets: 7,
+        },
+      });
+      throw new Error("expected build999 to refuse an inconsistent AK9 count");
+    } catch (err) {
+      expect((err as Error).message).toContain('"7"');
+    }
+  });
+});

@@ -114,9 +114,22 @@ function throwSites(file: string): ThrowSite[] {
  * The interpolation forms allowed in a refusal message, each with the reason
  * it is bounded. Anything else is a finding.
  *
- * - `String(...)` - a library-computed count, index or ordinal. Bounded by the
- *   size of the caller's own arrays, not by the length of any value they
- *   supplied.
+ * **`String(...)` is NOT blanket-allowed, and an earlier revision of this file
+ * made exactly that mistake.** It admitted any `String(...)` on the stated
+ * ground that such a hole is "a library-computed count, index or ordinal" -
+ * while inspecting nothing about the argument. Four live sites in
+ * `build-999.ts` passed `group.numberOfTransactionSets` and its two siblings,
+ * which are **caller-supplied**: typed `number`, but a JSON-driven caller can
+ * hand over a string, and one did in testing, producing a 120,063-character
+ * `AckBuildError.message` while this gate reported clean. A syntactic
+ * allowlist that green-lights the very thing it exists to catch is worse than
+ * no allowlist, because it tells the next author their site is safe. The three
+ * forms below check the argument instead:
+ *
+ * - `String(<single letter>)` - a loop index (`i`, `b`, `s`, `p`, `l`, `m`,
+ *   `c`, `r`, `o`, `u`). Bounded by the caller's array sizes.
+ * - `String(<expr>.length)` - an array length, same argument.
+ * - `String(width)` - a library literal (9, the ISA-13 fixed width).
  * - `renderCallerValue(...)` - the one sanctioned route for a caller value.
  * - `locator` / `depLocator` / `variant` - library-computed. The first two are
  *   structural paths assembled in-function out of loop indices
@@ -130,7 +143,9 @@ function throwSites(file: string): ThrowSite[] {
  * - a ternary over string literals - both branches are literals in this file.
  */
 const SANCTIONED_HOLES: readonly RegExp[] = [
-  /^String\(/,
+  /^String\([a-z]\)$/,
+  /^String\([\s\S]*\.length,?\s*\)$/,
+  /^String\(width\)$/,
   /^renderCallerValue\(/,
   /^(locator|depLocator|variant)$/,
   /^[A-Za-z0-9_]*Warn\.message$/,
@@ -162,13 +177,28 @@ describe("builder refusal messages: the source gate", () => {
     expect(findings).toEqual([]);
   });
 
-  it("counts sixteen caller-value slots, the number the item named", () => {
-    // Nine over-long control numbers (one per emitting module) plus seven that
-    // were not gated on length at all: `build999`'s ST-02 trace twice,
+  it("counts twenty caller-value slots: the item's sixteen plus four it missed", () => {
+    // The item named SIXTEEN, and sixteen is the count of caller-supplied
+    // STRING slots: nine over-long control numbers (one per emitting module)
+    // plus seven with no length gate at all (`build999`'s ST-02 trace twice,
     // `buildInterchange`'s transaction-set id, `build837`'s line variant,
-    // `build834`'s two maintenance types, and `buildTA1`'s note code.
-    const bounded = sites.flatMap((s) => s.holes).filter((h) => h.startsWith("renderCallerValue("));
-    expect(bounded.length).toBe(16);
+    // `build834`'s two maintenance types, `buildTA1`'s note code).
+    //
+    // Four more were found by adversarial review and are NOT in the item: the
+    // AK9-02 / AK9-03 / AK9-04 counts across `build-999.ts`'s four
+    // count-mismatch refusals. They are typed `number`, which is why a census
+    // of string-typed slots missed them, and a JSON-driven caller can hand
+    // over a string regardless: measured at 120,063 characters before this.
+    // Count SITES and HOLES separately, because they are not the same number
+    // and conflating them is how the item's census went wrong in the first
+    // place. Twenty sites carry a caller value; they hold 24 holes between
+    // them, because the AK9 non-negative refusal names all three counts in one
+    // message and two more name two each.
+    const isBounded = (h: string): boolean => h.startsWith("renderCallerValue(");
+    const boundedSites = sites.filter((s) => s.holes.some(isBounded));
+    const boundedHoles = sites.flatMap((s) => s.holes).filter(isBounded);
+    expect(boundedSites.length).toBe(20);
+    expect(boundedHoles.length).toBe(24);
   });
 });
 
@@ -198,6 +228,29 @@ describe("renderCallerValue", () => {
     }
     expect(renderCallerValue(HUGE)).toContain("(120000 characters)");
     expect(renderCallerValue(HUGE)).not.toContain(HUGE);
+  });
+
+  it("coerces a non-string rather than throwing, which it regressed once", () => {
+    // Adversarial review, pass 1: reading `.length` where the base used a
+    // template literal turned a typed refusal into an uncaught `TypeError`
+    // with no `code`, for any JS/JSON caller passing a number where the types
+    // say string. The bound must never cost the caller the typed error.
+    expect(renderCallerValue(1234567890123)).toBe('"1234567890123"');
+    for (const rogue of [undefined, null, 42, {}, [], Symbol("x"), Object.create(null)]) {
+      expect(() => renderCallerValue(rogue as unknown as string)).not.toThrow();
+      expect(renderCallerValue(rogue as unknown as string).length).toBeLessThanOrEqual(
+        BUILD_REFUSAL_VALUE_MAX_RENDERED,
+      );
+    }
+  });
+
+  it("bounds a numeric slot handed a string, the case a `number` type did not stop", () => {
+    // The signature is `string | number` precisely so the AK9 count slots can
+    // use it; a `number`-typed field arriving as a string is the runtime case
+    // that produced a 120,063-character message and that the type did not stop.
+    expect(renderCallerValue(HUGE)).not.toContain(HUGE);
+    expect(renderCallerValue(HUGE).length).toBeLessThanOrEqual(BUILD_REFUSAL_VALUE_MAX_RENDERED);
+    expect(renderCallerValue(12345)).toBe('"12345"');
   });
 
   it("is bounded but NOT escaped, which is the documented non-claim", () => {

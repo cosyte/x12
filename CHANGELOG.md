@@ -10,10 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`renderCallerValue`**, plus the `BUILD_REFUSAL_VALUE_MAX_LENGTH` (63) and
-  `BUILD_REFUSAL_VALUE_MAX_RENDERED` (92) bounds. This is the single sanctioned route a
+  `BUILD_REFUSAL_VALUE_MAX_RENDERED` (90) bounds. This is the single sanctioned route a
   caller-supplied value takes into a `build*` refusal message, and both ceilings are exported so a
   consumer can assert them rather than take them on trust - the builder-side counterpart to
-  `ALL_WARNING_MESSAGES` on the parse side.
+  `ALL_WARNING_MESSAGES` on the parse side. `BUILD_REFUSAL_VALUE_MAX_RENDERED` bounds the rendered
+  **fragment**, not the whole message: a message is that plus the site's own fixed template text.
 - **`X12OrphanSegment.anchor`**, plus the `X12OrphanAnchor` / `X12OrphanAnchorKind` types. Every
   retained orphan now records **where it sat in the structure** rather than only where it sat in the
   byte stream: `{ kind: "interchange", groupIndex }` for a segment outside every functional group,
@@ -33,17 +34,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **A `build*` refusal message no longer grows with the value you passed in.** All sixteen
+- **A `build*` refusal message no longer grows with the value you passed in.** All twenty
   caller-value slots across the ten builder modules route through `renderCallerValue`, capping the
-  rendered fragment at 92 characters. Nine are the `control number "…" exceeds the N-char spec limit`
-  refusal, where the branch fires _because_ the value is over-long; the other seven had no length gate
-  at all (`build999`'s ST-02 trace twice, `buildInterchange`'s transaction-set id, `build837`'s
-  service-line variant, `build834`'s INS-03 and HD-01 maintenance types, `buildTA1`'s note code).
-  Measured: a 120,000-character control number produced a **120,066-byte** `X12BuildError.message`
-  from `buildInterchange` and now produces a 90-byte one. **This is robustness and log hygiene, not
-  redaction, and the docs now say so** - the value is your own, so bounding it hides nothing from you;
-  what it buys is a fixed ceiling on anything that reaches a log line or a JSON error envelope. The
-  surviving characters are bounded but **not escaped**. `err.code` remains the thing to branch on.
+  rendered fragment at 90 characters. Nine are the `control number "…" exceeds the N-char spec limit`
+  refusal, where the branch fires _because_ the value is over-long; seven had no length gate at all
+  (`build999`'s ST-02 trace twice, `buildInterchange`'s transaction-set id, `build837`'s service-line
+  variant, `build834`'s INS-03 and HD-01 maintenance types, `buildTA1`'s note code); and four are
+  `build999`'s AK9-02 / AK9-03 / AK9-04 counts, typed `number` and so missed by a census of
+  string-typed fields, but reachable with a string from a `JSON.parse`d spec at 120,063 characters.
+  Measured: a 120,000-character control number produced a **120,066-character**
+  `X12BuildError.message` from `buildInterchange` and now produces a **150-character** one. (150, not
+  90: the 90 is the ceiling on the interpolated fragment, not on the message.) **This is robustness
+  and log hygiene, not redaction, and the docs now say so** - you passed the value in and still hold
+  it, so bounding it hides nothing from you; what it buys is a fixed ceiling on anything that reaches
+  a log line or a JSON error envelope. The surviving characters are bounded but **not escaped**, and
+  on the ack path the value is not always strictly your own (TR3 005010X231A1 has AK2-02 echo the
+  acknowledged ST-02 verbatim). `err.code` remains the thing to branch on.
+- **A builder refusal handed a non-string where the types say `string` stays a typed error.**
+  `renderCallerValue` coerces rather than reading `.length` off whatever it is given, so a spec built
+  from `JSON.parse` that carries a numeric control number still raises `X12BuildError` with its
+  `code`, instead of an uncaught `TypeError` with none.
 - **The 835 remit-total balance warning points at the BPR instead of at the ST.** Its
   `position.segmentIndex` was a literal `0`, which reads like "no segment" but is not one:
   `tx.segments[0]` is the `ST`, so a consumer resolving the position landed on a segment with nothing

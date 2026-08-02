@@ -170,7 +170,11 @@ function buildTransaction(
     if (segment.length === 0 || (segment[0] ?? "") === "") {
       throw new X12BuildError(
         X12_BUILD_ERROR_CODES.X12_BUILD_INVALID_SPEC,
-        `buildInterchange: a segment spec in transaction ${renderCallerValue(esc(tx.transactionSetIdCode))} has no segment id.`,
+        // Rendered from the RAW id, not the `?`-escaped one. `esc` can double
+        // the length, so escaping first made the reported "(N characters)" the
+        // escaped length rather than the caller's: a 100-character all-`?` id
+        // reported 200. The escape exists for the wire, and this is a message.
+        `buildInterchange: a segment spec in transaction ${renderCallerValue(tx.transactionSetIdCode)} has no segment id.`,
       );
     }
     bodySegments += joinSeg(segment.map(esc), elementSeparator, segmentTerminator);
