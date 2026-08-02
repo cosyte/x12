@@ -4,7 +4,7 @@
 
 Profile definition errors no longer grow with the value you passed in, and a builder handed something that is not an array now refuses instead of hanging.
 
-- A bad profile name, quirk id, effect or fixture path used to be echoed whole: one `defineProfile()` call measured a 240,092-character error message. The longest is now 431.
+- A bad profile name, quirk id, effect or fixture path used to be echoed whole: the worst error message measured 360,181 characters. The same refusal now measures 431.
 - Every value a profile refusal names is capped at 63 characters, the same cap builder refusals already had. Both ceilings are exported, so you can assert them rather than trust them.
 - Values whose type is the mistake stay readable as what they were: a `null` name still reports as `null`, not as the string `"null"`.
 - Passing a builder a fake list, which a JSON-driven caller can do by accident, used to loop forever with no error at all. It now returns that builder's own typed, coded refusal.

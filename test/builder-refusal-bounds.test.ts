@@ -290,12 +290,19 @@ describe("refusal messages: the source gate", () => {
   it("counts the profile subsystem's twelve refusal sites and twenty-three holes", () => {
     // `X12-BUILDER-BOUNDS` filed this half as PRE-EXISTING and measured it at
     // 120,093 characters. **That figure did not reproduce**, the same way its
-    // own filed figures did not: re-derived here, the largest single
-    // `X12ProfileError.message` at base is 240,092 characters, because the
-    // sourceCategory refusal names BOTH the profile name and the quirk id and a
-    // 120,000-digit quirk id passes `QUIRK_ID_RE` (which carries no length
-    // bound, whatever its comment used to say). A `JSON.stringify`d array
-    // reached 160,078. Nothing here is 120,093.
+    // own filed figures did not. Re-derived by driving PROFILE_REFUSALS below
+    // against base `55ebc66`, the largest `X12ProfileError.message` is 360,181
+    // characters, at the `fixture` refusal. THREE of the thirteen exceed
+    // 360,000 (`fixture` 360,181, `expectedWarnings` 360,090, `effect`
+    // 360,085), and they are exactly the three that name THREE caller values
+    // rather than two - the profile name, the quirk id, and a
+    // `JSON.stringify`d value. A 120,000-digit quirk id reaches them because
+    // `QUIRK_ID_RE` carries no length bound, whatever its comment used to say.
+    //
+    // **The first draft of this slice published 240,092 here, and that is the
+    // sourceCategory site, not the maximum.** It was measured with a weaker
+    // probe set than the one this file ships, which is the same error class the
+    // item was filed to correct. Drive the shipped table, not a side probe.
     //
     // Sites and holes are counted separately, because they are not the same
     // number: all twelve sites name at least one caller value, and they hold
@@ -615,15 +622,15 @@ describe("defineProfile: caller values in X12ProfileError", () => {
     // BUILD_REFUSAL_VALUE_MAX_RENDERED, which bounds the FRAGMENT - the
     // category error `X12-BUILDER-BOUNDS` shipped and had to correct. Measured
     // on this tree the longest of the thirteen is the fixture refusal at 431
-    // characters, whose fixed template is the longest in the module; the base
-    // it replaces measured 240,092 at its worst.
+    // characters, whose fixed template is the longest in the module and which
+    // names three caller values; the same case measured 360,181 at base.
     expect(message.length).toBeLessThan(500);
   });
 
-  it("has a measured maximum of 431 characters across every refusal site", () => {
-    // Pinned as a MEASUREMENT, not a ceiling: the ceiling is the 500 above.
-    // A site that starts saying more should move this number visibly rather
-    // than drift under a round threshold.
+  it("measures 431 characters at a 120,000-character value, which is NOT the maximum", () => {
+    // Pinned as a MEASUREMENT, not a ceiling: the ceiling is the 500 above. A
+    // site that starts saying more should move this number visibly rather than
+    // drift under a round threshold.
     let longest = 0;
     for (const [, run] of PROFILE_REFUSALS) {
       try {
@@ -633,6 +640,35 @@ describe("defineProfile: caller values in X12ProfileError", () => {
       }
     }
     expect(longest).toBe(431);
+  });
+
+  it("grows with the DECIMAL WIDTH of the length, so 431 must not be published as a maximum", () => {
+    // Adversarial review caught the docs calling 431 "the longest message any
+    // of the twelve can produce". It is not: the ` (N characters)` suffix
+    // widens with N, so the same refusal is longer for a longer value. The
+    // ceiling is the site's fixed text plus its three fragment ceilings, and
+    // BUILD_REFUSAL_VALUE_MAX_RENDERED already carries a digit of headroom for
+    // exactly this.
+    const fixtureMessage = (n: number): number => {
+      const big = "9".repeat(n);
+      try {
+        defineProfile(
+          asJsCaller({ name: big, quirks: [{ ...QUIRK, id: "a".repeat(n), fixture: big }] }),
+        );
+      } catch (err) {
+        return (err as Error).message.length;
+      }
+      throw new Error("expected defineProfile to refuse an ill-formed fixture");
+    };
+    expect(fixtureMessage(120_000)).toBe(431);
+    expect(fixtureMessage(1_000_000)).toBe(434);
+    expect(fixtureMessage(10_000_000)).toBe(437);
+    // 175 of fixed text, two renderCallerValue ceilings and one
+    // renderCallerJson ceiling (which is two under, since JSON brings its own
+    // quotes). Still comfortably inside the 500 asserted per site.
+    expect(
+      175 + BUILD_REFUSAL_VALUE_MAX_RENDERED * 2 + (BUILD_REFUSAL_VALUE_MAX_RENDERED - 2),
+    ).toBe(443);
   });
 
   it("reports the true length of what it truncated", () => {

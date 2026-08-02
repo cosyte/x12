@@ -20,10 +20,17 @@
  * typed, code-tagged error the caller can branch on, while a hang takes the
  * worker with it and never reaches a `catch`.
  *
- * **Measured at base commit `55ebc66`, not assumed:** 14 of the 16 probed entry
- * paths hung with no refusal (verified against a 20-second wall-clock timeout
- * in a child process, because a hang cannot be observed in-process). The other
- * two threw an untyped `TypeError`; see the limits below.
+ * **Measured at base commit `55ebc66`, not assumed:** driving the nineteen
+ * probes this file ships (the seventeen `FORGED_ARRAY_CASES` plus the two
+ * `RESIDUAL_CASES`), each in its own child process under a 20-second wall-clock
+ * timeout because a hang cannot be observed in-process, **16 hung with no
+ * refusal** and **3 threw an untyped `TypeError`**. At head the same nineteen
+ * give **17 typed, code-tagged refusals** and **2 untyped `TypeError`s**.
+ *
+ * **The first draft of this file said "14 of 16", and adversarial review was
+ * right to reject it.** No shipped table yields sixteen probes; the figure came
+ * from a side probe rather than from the cases the suite actually runs. Drive
+ * the shipped table.
  *
  * **State the class correctly.** This is a forged NON-ARRAY input, not a
  * mis-read clinical value. Nothing here decodes a document and no dose,
@@ -60,6 +67,19 @@
  * 3. **It proves refusal, not termination in general.** A real array with
  *    120,000 real elements still takes as long as it takes. The bound removed
  *    is the FORGED one.
+ * 4. **{@link isGuardedBinding} is file-scoped by NAME.** It admits a bound
+ *    `x.length` when *anywhere* in the module a `const x = requireCallerArray(`
+ *    appears, so a second function in the same file declaring
+ *    `const claims = spec.claims ?? []` and looping on `claims.length` would
+ *    pass clean. That is the same name-based judgement the sibling gate is on
+ *    record for getting wrong twice, and it is written down here rather than
+ *    argued away. It is not scope-aware because a scope-aware check means
+ *    parsing TypeScript, and this file is a tripwire, not a compiler.
+ * 5. **Only `src/builder/*.ts` and `src/transactions/&#42;/build-*.ts` are
+ *    scanned**, which is the item's `build*` scope. Indexed loops elsewhere
+ *    (`src/loops/define.ts`, `src/profiles/validate.ts`, the `get-*.ts`
+ *    readers, `src/parser/envelope.ts`) are outside it and unmeasured here.
+ *    Naming the scope gap, not asserting those are safe.
  *
  * ## The source scan is load-bearing, and the negative control is why
  *
@@ -255,11 +275,60 @@ describe("requireCallerArray", () => {
   });
 
   it("refuses every non-array a JSON caller can produce", () => {
-    for (const rogue of [FORGED, null, 0, "", "abc", {}, { length: 3 }, true]) {
+    for (const rogue of [FORGED, 0, "", "abc", {}, { length: 3 }, true]) {
       expect(() =>
         requireCallerArray(asJsCaller<readonly unknown[]>(rogue), "spec.members", refuse),
       ).toThrow(/spec\.members must be an array/u);
     }
+  });
+
+  it("treats null as ABSENT, not forged, because `?? []` did", () => {
+    // A regression the first draft of this slice caused and adversarial review
+    // caught. Every site this chokepoint replaced read its optional field as
+    // `x.dates ?? []`, and `??` treats null and undefined alike. Refusing only
+    // `undefined` broke specs that built cleanly at base - and did it
+    // INCONSISTENTLY, since a `for...of` field on the same spec still accepted
+    // null. `null` is what a JSON payload carries for an absent list.
+    expect(requireCallerArray(null, "at", refuse)).toEqual([]);
+    expect(Object.isFrozen(requireCallerArray(null, "at", refuse))).toBe(true);
+  });
+
+  it("keeps base behaviour for a null optional array, and stays consistent across read styles", () => {
+    // `healthCoverages` is read by an indexed loop and moved onto the
+    // chokepoint; `references` is read with `for...of` and did not. Both built
+    // at base `55ebc66` with null, so both must still build.
+    const member = {
+      subscriberIndicator: "Y",
+      relationshipCode: "18",
+      maintenanceTypeCode: "021",
+      member: { lastName: "DOE", firstName: "JANE", idQualifier: "34", idCode: "MBR0001" },
+    };
+    const header = {
+      transactionSetPurposeCode: "00",
+      referenceId: "F1",
+      date: "20260601",
+      time: "1200",
+      actionCode: "2",
+      sponsor: { entityIdentifierCode: "P5", name: "EMP", idQualifier: "FI", idCode: "F1" },
+      payer: { entityIdentifierCode: "IN", name: "PAY", idQualifier: "FI", idCode: "F2" },
+    };
+    for (const members of [
+      [member],
+      [{ ...member, healthCoverages: null }],
+      [{ ...member, references: null }],
+    ]) {
+      expect(() => build834(asJsCaller({ envelope: ENVELOPE, header, members }))).not.toThrow();
+    }
+    // And a REQUIRED array handed null gets the site's own typed refusal,
+    // where base threw an untyped TypeError.
+    let thrown: unknown;
+    try {
+      build834(asJsCaller({ envelope: ENVELOPE, header, members: null }));
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown).toBeInstanceOf(Enrollment834BuildError);
+    expect((thrown as Error).message).toContain("at least one member loop");
   });
 
   it("bounds what it says about the forged value", () => {
@@ -308,9 +377,15 @@ describe("requireCallerArray", () => {
 // ---------------------------------------------------------------------------
 // Behavioural: a forged array refuses instead of hanging.
 //
-// Every case here HUNG at base commit `55ebc66`. If one regresses, this file
-// does not fail fast - it stops, and vitest's own timeout reds it. That is the
-// correct signal for a liveness defect and there is no cheaper one.
+// SIXTEEN of these seventeen HUNG at base commit `55ebc66`. The exception is
+// `build835 spec.traces`, which threw an untyped `TypeError` at base because it
+// is read with `for...of` and its guard only compared `.length` - it is an
+// instance of the residual below that this slice happens to close, and an
+// earlier draft of this comment wrongly claimed every case here hung.
+//
+// If one regresses, this file does not fail fast - a synchronous infinite loop
+// never yields, so vitest cannot interrupt it and the worker has to be killed
+// from outside. The source scan above is the half that reports cleanly.
 // ---------------------------------------------------------------------------
 
 const ENVELOPE = {

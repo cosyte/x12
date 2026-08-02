@@ -12,13 +12,15 @@
  * ## Every caller value in a refusal here is bounded
  *
  * `X12-BUILDER-BOUNDS` closed this hole on the `build*` side and filed it open
- * here; `X12-CALLER-VALUE-RESIDUALS` closed it. Measured on this tree before
- * the fix, a single `defineProfile()` call produced an `X12ProfileError.message`
- * of **240,092 characters** (a 120,000-character profile name and a
- * 120,000-character quirk id land in one message), and it grew linearly with
- * whatever the caller passed. Every caller value now goes through
- * `renderCallerValue` or `renderCallerJson`, so the fragment is capped at
- * `BUILD_REFUSAL_VALUE_MAX_RENDERED`.
+ * here; `X12-CALLER-VALUE-RESIDUALS` closed it. Measured on this tree before the
+ * fix, the worst `X12ProfileError.message` was **360,181 characters**, at the
+ * `fixture` refusal, which names THREE caller values (the profile name, the
+ * quirk id, and the `JSON.stringify`d fixture path); the `effect` and
+ * `expectedWarnings` refusals name three as well and measured 360,085 and
+ * 360,090. It grew linearly with whatever the caller passed. Every caller value
+ * now goes through `renderCallerValue` or `renderCallerJson`, so each fragment
+ * is capped at `BUILD_REFUSAL_VALUE_MAX_RENDERED` and the same `fixture`
+ * refusal measures **431**.
  *
  * **Say what that buys and no more.** The caller passed these values in and
  * still holds them, so bounding them redacts nothing and this is NOT

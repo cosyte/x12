@@ -117,9 +117,11 @@ content, and they are bounded like the rest.
 
 **`defineProfile()` follows the same rule, since `0.0.6`.** An `X12ProfileError` naming a bad profile
 name, quirk id, effect, fixture path or expected-warning code used to interpolate it verbatim: one call
-measured a **240,092-character** message. Twelve refusal sites now route all twenty-three of their
-caller values through the same bound, and the longest message any of them produces is 431 characters.
-Where the value's **type** is the mistake, the rendering keeps `null` distinguishable from `"null"`.
+measured a **360,181-character** message. Twelve refusal sites now route all twenty-three of their
+caller values through the same bound, and that same refusal now measures 431 characters. Read 431 as
+a measurement at a 120,000-character value rather than a maximum: the reported length widens with its
+own decimal width, so that site's ceiling is 443, and every site is asserted under 500. Where the
+value's **type** is the mistake, the rendering keeps `null` distinguishable from `"null"`.
 One asymmetry worth knowing: **`X12ProfileError.profileName` is not bounded**, on purpose, so it still
 matches the name you passed. Log `err.message`, not the whole error object.
 
@@ -127,7 +129,9 @@ matches the name you passed. Log `err.message`, not the whole error object.
 `readonly T[]`, but a JSON-driven caller can pass anything. As of `0.0.6` every indexed loop in every
 builder takes its bound from a checked array, so `{ length: "9".repeat(120000) }` draws that builder's
 own typed refusal - before this the length coerced to `Infinity` and the builder **looped forever
-instead of refusing.** The places a builder reads a caller array with `for…of` are not covered:
+instead of refusing** (measured across nineteen probes: 16 hung at base, 17 refuse cleanly now). A
+list you send as `null` is still treated as absent, exactly as before. The places a builder reads a
+caller array with `for…of` are not covered:
 `buildInterchange`'s `spec.groups`, `build999`'s `functionalGroup.transactionResponses` and every
 optional leaf array such as `claim.dates` throw `TypeError: … is not iterable`, which terminates but
 carries **no `code`**. Validate the shape at your own boundary if the spec comes from JSON.

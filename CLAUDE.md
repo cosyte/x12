@@ -18,10 +18,20 @@
   caller-value holes**, and all twenty-three now route through
   `renderCallerValue` or the new `renderCallerJson`. **THE FILED FIGURE OF
   120,093 DID NOT REPRODUCE**, exactly as `#51`'s own filed figures did not:
-  re-derived at base `55ebc66`, the worst single message is **240,092
-  characters**, because the `sourceCategory` refusal names BOTH the profile name
-  and the quirk id; a `JSON.stringify`d array reached **160,078**. Head: **431
-  at most**, across all twelve. `renderCallerJson` exists because the value's
+  re-derived by driving the thirteen cases the suite ships against base
+  `55ebc66`, the worst message is **360,181 characters**, at the `fixture`
+  refusal. **THREE of the thirteen exceed 360,000**, and they are exactly the
+  three that name THREE caller values rather than two (profile name + quirk id +
+  a `JSON.stringify`d value). Head: the same case measures **431**.
+
+  **▶ AND THE FIRST DRAFT OF THIS SLICE PUBLISHED 240,092, WHICH IS THE
+  `sourceCategory` SITE AND NOT THE MAXIMUM.** It came from a side probe rather
+  than from the table the suite runs, which is the same error class the item was
+  filed to correct, one item later. **Drive the shipped table.** And **431 is a
+  measurement at a 120,000-character value, not a maximum**: the
+  ` (N characters)` suffix widens with the decimal width of the length, so the
+  same refusal measures 434 at 1,000,000 and 437 at 10,000,000. That site's
+  derived ceiling is **443**, and the suite asserts every site under 500. `renderCallerJson` exists because the value's
   TYPE is what is wrong at those sites - `null` and `"null"` are different
   mistakes and a coercing renderer flattens them - so it keeps `JSON.stringify`
   and bounds its OUTPUT; it never throws (circular, `BigInt`, hostile `toJSON`)
@@ -42,14 +52,32 @@
   in `m < spec.members.length`, every element read is `undefined`, every guard
   `continue`s, and the builder **spins forever instead of refusing**. Measured
   at base with a 20-second wall-clock timeout in a child process (a hang cannot
-  be observed in-process): **14 of 16 probed entry paths HUNG**. All **32
-  indexed loops across 7 builder modules** now take their bound from a
-  `requireCallerArray` binding, and all 14 return that module's own typed,
-  code-tagged error with a bounded message (169-194 characters).
+  be observed in-process), over the **nineteen** probes the suite ships:
+  **16 HUNG** and 3 threw an untyped `TypeError`. All **32 indexed loops across
+  7 builder modules** now take their bound from a `requireCallerArray` binding,
+  and at head the same nineteen give **17 typed, code-tagged refusals** (169-194
+  characters) and 2 untyped `TypeError`s. **`build835`'s `spec.traces` never
+  hung** - it is a `for...of` residual this slice happens to close - and the
+  first draft of the gate file claimed it did. **"14 of 16" was wrong too**: no
+  shipped table yields sixteen probes.
   **`requireCallerArray` takes the module's `refuse` callback rather than
   throwing a shared error**, because each builder owns a distinct error class
   and code that consumers branch on, and a shared throw would quietly widen all
   nine contracts.
+
+  **▶ A REGRESSION THE FIRST DRAFT CAUSED AND THE REFUTER CAUGHT, AND IT IS
+  `#51`'s SHAPE AGAIN: THE FIX WAS WIDER THAN THE CLAIM.** Every site this
+  replaced read its optional field as `x.dates ?? []`, and `??` treats `null`
+  and `undefined` alike; guarding only `undefined` made `null` a refusal.
+  Measured: `build834({ members: [{ ..., healthCoverages: null }] })` **emitted a
+  valid 834 at base and drew `X12_834_BUILD_INVALID_SPEC` at the first head** -
+  and _inconsistently_, since the same spec still accepted `references: null`,
+  which is read with `for...of` and never moved onto the chokepoint. `null` is
+  what a `JSON.parse`d payload carries for an absent list, from the exact caller
+  class this module exists for. `requireCallerArray` now answers `null` as
+  absent and base behaviour is restored; on a REQUIRED array it becomes the
+  site's own "at least one X is required" refusal instead of base's untyped
+  `TypeError`.
 
   **▶ SCOPE THE CLAIM. This is a forged NON-ARRAY input, not a mis-read
   clinical value**, so it is not `STOP-THE-LINE`: nothing decodes a document
@@ -92,6 +120,28 @@
   characters are **not escaped**; the bound is on UTF-16 **code units, not
   bytes**; and both scans are syntactic tripwires for the shape this library
   uses, not proofs.
+
+  **▶ TWO `PRE-EXISTING` FINDINGS THE REFUTER RAISED, MEASURED, FILED, NOT
+  FIXED HERE.**
+  **(a) 🩺 `escapeRelease` EMPTIES A NUMERIC CALLER VALUE SILENTLY, AND ONE OF
+  THE SLOTS IS THE PATIENT CONTROL NUMBER.** `src/parser/release.ts` reads
+  `value.length`; for a `number` that is `undefined`, `i < undefined` is false,
+  the loop never runs, and it returns `""`. Reproduced **identically at base
+  `55ebc66` and at head**: a `build835` spec with a numeric
+  `patientControlNumber` and `payerClaimControlNumber` emits
+  `CLP**1*500.00*450.00*50.00*MB**11::1` with **`warnings.length === 0`** and a
+  frozen, "successful" interchange. CLP-01 is required by TR3 005010X221A1 Loop
+  2100 and is the reassociation key back to the 837's CLM-01, so this is a
+  **silently dropped patient identifier on the emit path**. The
+  `claim.patientControlNumber === ""` guard does not catch a number. It is the
+  same JS/JSON caller `renderCallerValue`'s own `coerce()` JSDoc names as real
+  and reachable: `#51` coerced the **renderer** for that caller and left the
+  **emitter** dropping the value. **Outside this item and NOT fixed here** - the
+  remedy is a decision (coerce like the renderer, or refuse) across every
+  `esc()` slot in nine builders, which is its own slice.
+  **(b)** Neither new gate scans indexed loops outside the `build*` scope
+  (`src/loops/define.ts`, `src/profiles/validate.ts`, the `get-*.ts` readers,
+  `src/parser/envelope.ts`). Scope gap named, not a measured hang.
 
 - **Builder refusal messages are BOUNDED, and the 835 remit-total warning
   points at the BPR (2026-08-02, `X12-BUILDER-BOUNDS`).** Two parts.
@@ -201,7 +251,7 @@
   `X12-CALLER-VALUE-RESIDUALS` (see the entry above):**
   `src/profiles/validate.ts` interpolated caller values unbounded into
   `X12ProfileError`. **The 120,093 figure filed here did not reproduce** on
-  re-derivation; the worst measured at base is 240,092.
+  re-derivation; the worst measured at base is 360,181.
 
 - **The round-trip half is closed too: an orphan is re-emitted at a
   STRUCTURAL ANCHOR (2026-08-02, `X12-ORPHAN-REEMIT`).** The bullet below

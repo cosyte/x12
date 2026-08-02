@@ -181,14 +181,19 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
 
 - **`defineProfile()` refusals are bounded on the same terms, since `0.0.6`.** `X12ProfileError.message`
   used to interpolate your profile name, quirk id, effect, fixture path and expected-warning codes
-  verbatim. Measured before the fix, one `defineProfile()` call produced a **240,092-character**
-  message, because the `sourceCategory` refusal names both the profile name and the quirk id and the
-  quirk-id pattern carries no length bound (its comment claimed "2-64 characters"; the regex never
-  said so, and the comment was corrected to the code rather than the grammar tightened). Twelve
-  refusal sites hold twenty-three such holes between them; all twenty-three now route through
-  `renderCallerValue` or, where the value's **type** is what is wrong, `renderCallerJson`, which keeps
-  `null` distinguishable from `"null"` and bounds the JSON text. The longest message any of the twelve
-  can now produce is **431 characters**.
+  verbatim. Measured before the fix, the worst message was **360,181 characters**, at the `fixture`
+  refusal, which names three caller values (the profile name, the quirk id, and the `JSON.stringify`d
+  path). It reaches that size because the quirk-id pattern carries no length bound (its comment
+  claimed "2-64 characters"; the regex never said so, and the comment was corrected to the code rather
+  than the grammar tightened). Twelve refusal sites hold twenty-three such holes between them; all
+  twenty-three now route through `renderCallerValue` or, where the value's **type** is what is wrong,
+  `renderCallerJson`, which keeps `null` distinguishable from `"null"` and bounds the JSON text. The
+  same `fixture` refusal now measures **431 characters**.
+
+  **431 is a measurement at a 120,000-character value, not a maximum.** The ` (N characters)` suffix
+  widens with the decimal width of the length, so the same refusal measures 434 at 1,000,000 and 437
+  at 10,000,000 characters. That site's ceiling, derived from its fixed text plus its three fragment
+  ceilings, is **443**, and the suite asserts every one of the twelve under 500.
 
   Everything the builder paragraph says about scope applies here unchanged: it redacts nothing (you
   passed the value in), the surviving characters are **not escaped**, and the bound is on UTF-16 code
@@ -204,7 +209,13 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   of `0.0.6` every indexed loop in every builder takes its bound from a checked array (32 loops across
   7 modules), so an object like `{ length: "9".repeat(120000) }` draws that builder's own typed
   refusal - previously the length coerced to `Infinity` and the builder **looped forever instead of
-  refusing**, which was measured on 14 of 16 probed entry paths.
+  refusing**. Measured across the nineteen probes the suite ships: at base **16 hung** and 3 threw an
+  untyped `TypeError`; at head **17 refuse with a typed, coded error** and 2 still throw the untyped
+  `TypeError`.
+
+  **`null` is treated as absent, not forged**, exactly as the `?? []` this replaced did, so an
+  optional list you send as `null` still builds. On a required list `null` now draws that builder's
+  own "at least one X is required" refusal instead of an untyped `TypeError`.
 
   Not covered, and disclosed rather than fixed: the places a builder reads a caller array with
   `for…of` - `buildInterchange`'s `spec.groups`, `build999`'s `functionalGroup.transactionResponses`,

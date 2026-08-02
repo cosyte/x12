@@ -76,7 +76,10 @@ const NONE: readonly never[] = Object.freeze([]);
  * @internal
  */
 function describeShape(value: unknown): string {
-  if (value === null) return "null";
+  // `null` never reaches here: `requireCallerArray` answers it as absent,
+  // exactly as the `?? []` it replaced did. A `if (value === null)` arm would
+  // be unreachable, and an unreachable arm in a guard is a small lie about
+  // what the guard does.
   if (typeof value !== "object") {
     return `a ${typeof value} (${renderCallerValue(value as string)})`;
   }
@@ -109,10 +112,22 @@ function describeShape(value: unknown): string {
  * every one of those contracts. Its return type is `never`, so a caller that
  * forgets to throw is a type error rather than a fall-through.
  *
- * `undefined` is accepted and answered with a frozen empty array: the optional
- * spec fields are read as `x.dates ?? []` throughout, and turning an absent
- * field into a refusal would be a behaviour change with nothing to do with
- * this defect.
+ * **`null` is absent, not forged, and getting that wrong was a real regression
+ * in the first draft of this module.** Every site this replaced read its
+ * optional field as `x.dates ?? []`, and `??` treats `null` and `undefined`
+ * alike. Refusing only `undefined` therefore quietly broke specs that built
+ * cleanly before: measured, `build834({ members: [{ …, healthCoverages: null }] })`
+ * emitted a valid 834 at `55ebc66` and drew `X12_834_BUILD_INVALID_SPEC` at the
+ * first head. Worse, it was *inconsistent* - the same spec still accepted
+ * `references: null`, because that field is read with `for…of` and never moved
+ * onto this chokepoint. `null` is the shape a `JSON.parse`d payload most often
+ * carries for an absent list, from the exact caller class this module exists
+ * for, so both are answered with the frozen empty array and the behaviour is
+ * unchanged from base.
+ *
+ * On a REQUIRED array that turns `null` into the site's own "at least one X is
+ * required" refusal rather than the untyped `TypeError` base threw, which is
+ * the direction this module is going anyway.
  *
  * @param value the caller-supplied field, typed as an array and not trusted to
  * be one
@@ -123,11 +138,11 @@ function describeShape(value: unknown): string {
  * @internal
  */
 export function requireCallerArray<T>(
-  value: readonly T[] | undefined,
+  value: readonly T[] | null | undefined,
   at: string,
   refuse: (message: string) => never,
 ): readonly T[] {
-  if (value === undefined) return NONE;
+  if (value === undefined || value === null) return NONE;
   if (!isRealArray(value)) {
     refuse(`${at} must be an array. Received ${describeShape(value)}.`);
   }

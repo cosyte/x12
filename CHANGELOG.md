@@ -47,10 +47,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A `defineProfile()` refusal message no longer grows with the value you passed in.** Twelve
   refusal sites in `src/profiles/validate.ts` hold twenty-three caller-value holes between them, and
   every one now routes through `renderCallerValue` or `renderCallerJson`. Re-derived on this tree
-  before the fix: a single `defineProfile()` call produced a **240,092-character**
-  `X12ProfileError.message`, because the `sourceCategory` refusal names both the profile name and the
-  quirk id and a 120,000-digit quirk id passes `QUIRK_ID_RE`. A `JSON.stringify`d array reached
-  160,078. The longest message any of the twelve can now produce is **431 characters**.
+  before the fix, driving the same thirteen cases the suite ships: the worst `X12ProfileError.message`
+  was **360,181 characters**, at the `fixture` refusal. Three of the thirteen exceed 360,000, and they
+  are the three that name **three** caller values (profile name + quirk id + a `JSON.stringify`d
+  value) rather than two; a 120,000-digit quirk id reaches them because `QUIRK_ID_RE` carries no
+  length bound. The same `fixture` refusal now measures **431 characters**.
+
+  **431 is a measurement, not a maximum.** The ` (N characters)` suffix widens with the decimal width
+  of the value's length, so the same refusal measures 434 at a 1,000,000-character value and 437 at
+  10,000,000. The site's ceiling, derived from its fixed text plus its three fragment ceilings, is
+  **443**; the suite asserts every one of the twelve under 500.
 
   **The figure this was filed on, 120,093, did not reproduce**, the same way `X12-BUILDER-BOUNDS`'s
   own filed figures did not: it depends on which site is hit and what the probe passes.
@@ -65,10 +71,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A builder handed a forged non-array now refuses instead of hanging.** Every domain builder took
   its loop bound from a caller-supplied `.length`, so `{ length: "9".repeat(120000) }` coerced to
   `Infinity`, every element read `undefined`, every guard `continue`d, and the builder **spun forever
-  rather than refusing**. Measured at base: **14 of 16 probed entry paths hung** with no refusal, over
-  a 20-second wall-clock timeout in a child process. All **32 indexed loops across 7 builder modules**
-  now take their bound from a `requireCallerArray` binding, and each of the 14 returns that builder's
-  own typed, code-tagged error with a bounded message (169 to 194 characters).
+  rather than refusing**. Measured at base over the nineteen probes the suite ships, each in a child
+  process under a 20-second wall-clock timeout because a hang cannot be observed in-process:
+  **16 of 19 hung** with no refusal and the other **3 threw an untyped `TypeError`**. All **32 indexed
+  loops across 7 builder modules** now take their bound from a `requireCallerArray` binding, and at
+  head the same nineteen give **17 typed, code-tagged refusals** (messages 169 to 194 characters) and
+  **2 untyped `TypeError`s**. `build835`'s `spec.traces` is the one that moved from the untyped group
+  to the typed one, because its guard reads the list; it never hung, and this changelog does not claim
+  it did.
 
   A hang is a worse failure than a refusal: a refusal hands control back with something to branch on,
   a hang takes the worker with it. But state the class correctly. This is a **forged non-array input,
