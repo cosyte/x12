@@ -7,8 +7,10 @@ documented, intentional boundary, not a bug. The lenient parser never silently d
 **decoded value**: where a limitation applies, the raw value is preserved (often with a warning), it
 is simply not further decoded. Three things it does discard are worth reading before you rely on a
 round trip, two of them silently: **line breaks between segments**, **a doubled segment terminator**
-outside a transaction (both silent), and **segments that fall outside a transaction** (warned, but
-gone from the model). All three are in the first two entries below.
+outside a transaction (both silent), and **segments outside a transaction** (warned, kept on the
+model at `ix.orphanSegments`, but not re-emitted). All three are in the first two entries below. The
+third used to be worse than the other two, because the segment left the model as well; that half is
+fixed.
 
 ## Data / decode boundaries
 
@@ -27,12 +29,15 @@ gone from the model). All three are in the first two entries below.
   `?`-release escapes included), in the order the model holds it. Six constructs are known not to
   survive:
   1. **Line breaks between segments.** Most senders write one after each terminator; the parser
-     absorbs it (one optional CR then one optional LF), so a pretty-printed file emits compact.
-     **Silent.**
+     absorbs any run of CR / LF bytes between segments, so a pretty-printed, double-spaced, or
+     mixed-ending file all emit the same compact form. **Silent.**
   2. **Segments outside a transaction**, such as a stray segment between `GE` and `IEA`. These raise
-     `X12_UNEXPECTED_SEGMENT` on the first parse but are not kept, so the segment is absent from the
-     emit **and the warning does not recur when the emit is re-parsed**.
-  3. **A doubled segment terminator** outside a transaction. **Silent.**
+     `X12_UNEXPECTED_SEGMENT` and **are** retained on the model at `ix.orphanSegments`, so the
+     decoded value is not lost, but the emit does not reproduce them: the segment is absent from the
+     output **and the warning does not recur when the emit is re-parsed**. Read them from
+     `ix.orphanSegments` and treat the first parse's warnings as the authority.
+  3. **A doubled segment terminator** outside a transaction. It delimits a zero-length segment
+     carrying no elements, so there is nothing to retain. **Silent.**
   4. **A missing final segment terminator.** The emit supplies one. **Silent.**
   5. **Post-IEA `trailingBytes`**, re-joined from segment slices rather than preserved verbatim.
   6. **TA1 position.** A TA1 that appeared **after** a functional group is collected onto
@@ -41,32 +46,62 @@ gone from the model). All three are in the first two entries below.
      This library takes no position on where ASC X12 requires a TA1 to sit.
 
   **Cases 2 to 6 break the round trip on inputs containing no line breaks**, so "my file is compact"
-  is not sufficient grounds to expect byte equality. **Four of the six (1, 3, 4, 6) produce no warning
-  at all**, so a clean `ix.warnings` is not evidence that a round trip will be byte-exact. Case 2 is
-  the one to be careful with in the other direction: do not use `serializeX12(parseX12(source))` as a
-  normalization step before comparing warnings, because it discards a warning along with its segment.
-  Treat the first parse's warnings as the authority.
+  is not sufficient grounds to expect byte equality. **Four of the six (1, 3, 4, 6) produce no
+  warning at all**, so a clean `ix.warnings` is not evidence that a round trip will be byte-exact.
+  Case 2 is the one to be careful with in the other direction: do not use
+  `serializeX12(parseX12(source))` as a normalization step before comparing warnings, because it
+  drops a warning. Treat the first parse's warnings as the authority.
+
+  **What changed in case 2 is the model, not the emit.** The segment used to be discarded outright,
+  so it was gone from the model as well; it is now on `ix.orphanSegments`. Re-emitting it in the
+  right place is a separate, tracked change, because it needs the model to carry a **structural
+  anchor** (which group and transaction the segment followed) rather than the raw input index it
+  carries today: the emit is not in input order (see case 6), so replaying an orphan by input index
+  can splice it into a transaction body, where a re-parse reports nothing at all. Measured on a
+  two-group interchange with a TA1 after the first group, an earlier attempt at positional re-emit
+  landed a stray segment inside an 835's `ST..SE` body between `CLP` and `SE`, with no warning on
+  the re-parse. A documented omission is preferable to that, so the emit leaves orphans out.
 
   What is **measured**, across the 56 committed fixtures: every emit is a fixed point (serializing it
   again is a byte-level no-op) and re-parses to an identical model with an identical warning stream;
   the 14 fixtures with no line breaks return byte-identical; and the other 42 differ from their source
   by **line breaks and nothing else**, with no element value lost, altered, reordered, or re-escaped.
   Two caveats on that corpus, both of which limit how far the sweep can be pushed: it contains **no
-  instance of cases 2 to 6**, and **13 of the 14 byte-identical fixtures are `golden/*.edi`**, which
+  instance of cases 2 to 6** (zero fixtures produce an `orphanSegments` entry), and **13 of the 14
+  byte-identical fixtures are `golden/*.edi`**, which
   are serializer output by construction, leaving `envelope/no-trailing-crlf.edi` as the only
   independent witness. Preserving the original framing byte-for-byte would need the model to carry
   per-segment framing and TA1 position it does not have today; that is a tracked model change, not a
   behaviour to assume.
 
-- **A segment that falls outside a transaction is dropped from the model, and its warning does not
-  survive a round trip.** This is the read-side half of case 2 above and it is a data-loss boundary,
-  not just an emit quirk. The envelope walker keeps body segments only while an ST..SE transaction is
-  open; anything else (a stray segment between `GE` and `IEA`, or every segment displaced by a blank
-  line in a double-spaced file) raises `X12_UNEXPECTED_SEGMENT` and is then discarded. On a uniformly
-  double-spaced file the entire interchange body is lost this way, leaving `groups: []`. The first
-  parse does warn, so this is detectable rather than silent, but **the warning is the only signal and
-  it is not reproducible from the emit**. Check `ix.warnings` on the original parse before trusting
-  that a file decoded completely.
+- **A segment that falls outside a transaction is not decoded into the typed tree, and is not
+  re-emitted, but it is no longer dropped from the model.** The envelope walker binds body segments
+  to an ST..SE transaction and has nowhere in `groups` to put one that arrives outside: a stray
+  segment between `GE` and `IEA`, a body segment between an `SE` and its group's `GE`, a body segment
+  between `GS` and the first `ST`, an `ST` with no open group, an `SE` or `GE` that closes nothing,
+  or a `TA1` inside an open group. Each raises `X12_UNEXPECTED_SEGMENT` **and** is retained verbatim
+  on `ix.orphanSegments`, whose `segmentIndex` is the join key back to the warning's
+  `position.segmentIndex`.
+
+  **Two limitations remain, and they are decoding and re-emission, not retention.** No `get*` reader
+  will see an orphan, because none of them is inside a transaction; `ix.groups` is still the whole
+  typed model. And `serializeX12` does not reproduce an orphan, so it does not survive a round trip
+  (case 2 above). Read these segments from `ix.orphanSegments`. That array is empty for a well-formed
+  interchange, so a non-empty one is itself the signal that the sender's framing did not match the
+  envelope grammar. **It carries the sender's bytes verbatim, so treat it as PHI**: unlike
+  `ix.warnings`, whose messages come from a frozen registry and whose metadata is positional, an
+  orphan is document content. Log `context` and `segmentIndex`, not the whole entry.
+
+  Two related shapes are **not** captured here, both long-standing: a doubled segment terminator
+  (a zero-length segment with no elements, so there is nothing to retain) and a segment whose first
+  element is empty (`*A*B~`), which has no id for the walker to dispatch on and is skipped with no
+  warning.
+
+  This entry previously documented real silent data loss: the segment was discarded from the model
+  entirely, and because a blank line between segments exceeded the old one-CR-plus-one-LF tolerance,
+  a uniformly double-spaced file lost its **entire interchange body** and returned `groups: []`. Both
+  of those are fixed. The tolerance now absorbs any run of CR / LF bytes between segments, so all 15
+  CR/LF sequences of length 0 to 3 frame identically (the old bound admitted 4 of those 15).
 
 - **837 claim-/line-level provider addresses (Loop 2310 / 2420 `N3`/`N4`) are not surfaced.** The
   provider **identities** (`NM1`) round-trip, but the street-address lines do not decode onto the

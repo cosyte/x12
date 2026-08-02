@@ -361,9 +361,23 @@ export function phiParseStrict(raw: string): PhiParsed {
  *   and the library never auto-populates it.
  */
 export function phiModelIdentifiers(parsed: PhiParsed): readonly string[] {
-  const { delimiters } = parsed.interchange;
+  const { delimiters, orphanSegments } = parsed.interchange;
   return [
     ...parsed.segments.map((s) => s.id),
+    // `X12OrphanSegment.segment` is an `X12Segment` the helpers above never
+    // reach, because an orphan is by definition outside every transaction set
+    // and no `get*` reader walks one. Its `id` is still a bounded identifier
+    // on the model and is still consumer-controlled, so it belongs in this
+    // walk: this file's standing rule is to re-run it whenever the model gains
+    // a field, and `orphanSegments` is a new one.
+    //
+    // `orphanSegments[].raw` and `.segment.elements` are deliberately NOT
+    // here. They are verbatim document content, exactly like
+    // `X12TransactionSet.rawSegments` and `isa.raw`, and this walk covers
+    // BOUNDED IDENTIFIERS - the things that must not become an unbounded copy
+    // of the input. `.context` is a library-owned literal and `.segmentIndex`
+    // is a number, so neither is a slot.
+    ...orphanSegments.map((o) => o.segment.id),
     delimiters.element,
     delimiters.repetition,
     delimiters.component,

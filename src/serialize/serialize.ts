@@ -19,9 +19,12 @@
  *      record it, so a pretty-printed source emits as its compact form.
  *      Silent.
  *   2. **Segments outside a transaction** (a stray segment between GE and IEA,
- *      say). These raise `X12_UNEXPECTED_SEGMENT` on the first parse but are
- *      not kept, so they are absent from the emit AND the warning does not
- *      recur when the emit is re-parsed.
+ *      say). These raise `X12_UNEXPECTED_SEGMENT` and ARE retained on the
+ *      model, at `ix.orphanSegments`, so the decoded value is not lost. The
+ *      emit does not reproduce them, though, so they are absent from the
+ *      output AND the warning does not recur when the emit is re-parsed. Read
+ *      them from `ix.orphanSegments` and treat the FIRST parse's warnings as
+ *      the authority.
  *   3. **A doubled segment terminator** outside a transaction. Silent.
  *   4. **A missing final terminator**, which the emit supplies. Silent.
  *   5. **Post-IEA `trailingBytes`**, re-joined from segment slices rather than
@@ -152,6 +155,33 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
 
   // Running global segment index for warning positions. ISA occupies index 0.
   let segIdx = 0;
+
+  // `ix.orphanSegments` is deliberately NOT re-emitted. See the note on
+  // `X12OrphanSegment` and `KNOWN-LIMITATIONS.md`: an orphan is retained on
+  // the model so nothing the parser decoded is lost, but the emit does not
+  // reproduce it, and that is a correctness decision rather than an omission.
+  //
+  // An earlier revision of this slice DID replay each orphan at its recorded
+  // `segmentIndex`, which made the round trip byte-exact for every position
+  // the tests enumerated and was nonetheless unsound. `segmentIndex` is an
+  // index into the INPUT stream, and this function does not emit in input
+  // order: `ta1Segments` are hoisted ahead of the groups (the documented TA1
+  // reordering), and a zero-length segment from a doubled terminator occupies
+  // an input index that is never emitted. Either one shifts the output's
+  // indices away from the input's, so replaying by index splices the orphan
+  // into whatever happens to occupy that slot in the emit. Measured on a
+  // 2-group interchange with a TA1 after the first group: a stray `ZZ`
+  // segment landed INSIDE the 835's ST..SE body, between `CLP` and `SE`,
+  // where a re-parse produced NO warning at all and `get835` would have
+  // walked it as claim content. With a stray `SE` it was worse, closing the
+  // transaction early and corrupting SE-01. That trades a warned, documented
+  // omission for silent structural corruption of a transaction body, which
+  // is the wrong direction under this library's own invariant.
+  //
+  // Placing an orphan correctly needs the model to carry a STRUCTURAL anchor
+  // (which group and transaction it followed) rather than a raw input index,
+  // because only a structural anchor survives the reordering the emit already
+  // performs. That is a model change, tracked separately.
 
   for (const ta1 of interchange.ta1Segments) {
     out += ta1.raw + term;

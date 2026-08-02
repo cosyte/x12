@@ -8,6 +8,60 @@
 
 ## Status
 
+- **Silent data loss closed at the MODEL: a segment outside a transaction
+  is retained, though still not re-emitted (2026-08-02,
+  `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED`).** Two defects, one cause.
+  **(1) The envelope walker raised `X12_UNEXPECTED_SEGMENT` for a segment
+  it could not place and then DISCARDED it**, so the segment left the
+  model, left the emit, and its warning did not recur on a re-parse of
+  the emit: a consumer who serialized and re-derived warnings lost both
+  the data and the signal. **(2) The line-break tolerance was exactly one
+  optional CR then one optional LF**, which admitted **4 of the 15 CR/LF
+  sequences of length 0 to 3**; the other 11 left a break in the stream
+  that opened an unrecognized segment, so via defect (1) a uniformly
+  **double-spaced file lost its ENTIRE interchange body** and returned
+  `groups: []`. Measured on base `3017d88`: **4 of 15** sequences framed,
+  and **0 of 9** orphan positions retained anything. After: **15/15 and
+  9/9.** The fix is a new public surface,
+  `X12Interchange.orphanSegments` (`X12OrphanSegment`: `raw`, decoded
+  `segment`, `segmentIndex`, and the library-owned `context`
+  discriminant), populated through a single `recordOrphan` chokepoint so
+  the warning and the retained segment can never disagree.
+  **`segmentIndex` is the documented join key** back to the warning's
+  `position.segmentIndex`.
+
+  **▶ THE REFUTER KILLED THE RE-EMIT HALF, AND IT WAS RIGHT.** Pass 1
+  shipped a `serializeX12` that replayed each orphan at its recorded
+  `segmentIndex`, making all 8 enumerated positions round-trip byte-exact
+  with the warning surviving. **It was unsound.** `segmentIndex` indexes
+  the INPUT stream, and the emit is NOT in input order: `ta1Segments` are
+  hoisted ahead of the groups, and a doubled terminator's zero-length
+  segment occupies an input index that is never emitted. Either shifts
+  the output's indices, so replaying by index splices the orphan into
+  whatever occupies that slot. **Measured:** on a two-group interchange
+  with a TA1 after the first group, a stray `ZZ` landed INSIDE the 835's
+  `ST..SE` body between `CLP` and `SE`, and the re-parse raised **no
+  warning at all** (`get835` would walk it as claim content); a stray
+  `SE` closed the transaction early and corrupted SE-01; with a doubled
+  terminator ahead of it the orphan crossed the IEA and became
+  `trailingBytes`. **Base merely dropped it.** Trading a warned,
+  documented omission for silent structural corruption of a transaction
+  body is the wrong direction under this repo's own invariant, so the
+  replay was REMOVED rather than patched. Correct placement needs a
+  STRUCTURAL anchor on the model (which group and transaction the segment
+  followed), not a raw input index. **Filed, not shipped.**
+  `KNOWN-LIMITATIONS.md` therefore stays at **six** constructs.
+
+  **This does NOT turn anything into a fatal and adds no warning code**
+  (registry still 22 + 4 fatals); it removes warnings from double-spaced
+  traffic, which previously produced 7 per file. **The five
+  `X12_UNEXPECTED_SEGMENT` messages were corrected** - they said the
+  segment was not retained, which is now false. Orphans are deliberately
+  NOT decoded by any `get*` reader and a TA1 inside a group is
+  deliberately NOT added to `ta1Segments`: retention is not placement.
+  Neither a doubled terminator nor a segment with an empty first element
+  is recorded, both long-standing and now stated rather than implied.
+
 - **PHI diagnostic surface closed: warning messages come from a frozen
   registry (2026-07-31, `PHI-WARNING-MESSAGE-LEAK`).** The single
   distinguishing property from the ecosystem audit
@@ -329,9 +383,12 @@ opts?)` reconstructs an `X12Interchange` back to bytes from the
   verbatim `.raw` strings: byte-faithful for the segments ON THE MODEL
   by default (`serialize(parse(s)) === s` is NOT guaranteed in general;
   line breaks, segments outside a transaction, a doubled terminator, a
-  missing final terminator, and post-IEA trailing bytes are each not
-  reproduced, and all but the line breaks fire on inputs with no line
-  breaks at all; `KNOWN-LIMITATIONS.md` holds the canonical list), and
+  missing final terminator, post-IEA trailing bytes, and TA1 position are
+  each not reproduced, and all but the line breaks fire on inputs with no
+  line breaks at all; `KNOWN-LIMITATIONS.md` holds the canonical list.
+  Segments outside a transaction are still not RE-EMITTED, but as of
+  `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` they are no longer dropped
+  from the MODEL; see the Status entry above), and
   with
   `{ specClean: true }` it reconciles the envelope (SE-01 / GE-01 /
   IEA-01 counts + the ISA-13↔IEA-02 / GS-06↔GE-02 / ST-02↔SE-02 control

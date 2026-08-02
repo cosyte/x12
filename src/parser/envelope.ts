@@ -24,6 +24,8 @@ import type {
   IsaSegment,
   Ta1Segment,
   X12FunctionalGroup,
+  X12OrphanSegment,
+  X12Position,
   X12TransactionSet,
 } from "./types.js";
 import {
@@ -39,7 +41,7 @@ import {
   transactionCountMismatch,
   unexpectedSegment,
 } from "./warnings.js";
-import type { X12ParseWarning } from "./warnings.js";
+import type { X12ParseWarning, X12UnexpectedSegmentContext } from "./warnings.js";
 
 /**
  * Slice the ISA from the input and decode its 16 elements. `raw` is the
@@ -66,20 +68,26 @@ function decodeIsa(raw: string, delimiters: Delimiters): IsaSegment {
 }
 
 /**
- * Strip a single optional CRLF / CR / LF sequence at the head of the
- * remaining input. Many real-world senders append a line break after every
- * segment terminator for human readability; the parser silently tolerates it
- * (no warning - matches the hl7 Tier-1 silent-normalize stance for line
- * endings).
+ * Strip the run of CR / LF bytes at the head of the remaining input. Many
+ * real-world senders append a line break after every segment terminator for
+ * human readability; the parser silently tolerates it (no warning - matches
+ * the hl7 Tier-1 silent-normalize stance for line endings).
  *
- * **The tolerance is exactly one optional CR followed by one optional LF**, so
- * `~\r\n`, `~\r` and `~\n` are each absorbed. A blank line (`~\n\n`) exceeds
- * it: the second break stays in the stream and opens a segment whose name is
- * unrecognized. That is REPORTED (`X12_UNEXPECTED_SEGMENT`) but it is not
- * recovered, and because an unexpected segment outside a transaction is not
- * kept, everything the stray break displaced is dropped from the model too. On
- * a uniformly double-spaced file that means the whole interchange body. The
- * warning is the only signal, and it does not survive a re-parse of the emit.
+ * **The tolerance is any number of CR and LF bytes in any order**, so a
+ * pretty-printed file (`~\r\n`, `~\r`, `~\n`), a double-spaced one (`~\n\n`),
+ * a file whose endings were doubled in transit (`~\r\r\n`) and a
+ * reversed-order pair (`~\n\r`) all frame identically. It used to be exactly
+ * one optional CR followed by one optional LF, which admitted only 4 of the
+ * 15 CR/LF sequences up to length three; the other 11 left a break in the
+ * stream that opened a segment whose name began with it, so every subsequent
+ * segment was unrecognized and the whole interchange body was lost. Nothing
+ * about that loss was recoverable from the emit, which is why the bound is
+ * gone rather than merely widened by one.
+ *
+ * This cannot swallow a segment terminator: `detectDelimiters` rejects a CR
+ * or LF in the ISA-16 terminator position as the Tier-3 fatal
+ * `X12_INVALID_DELIMITERS`, so a run of CR / LF between segments is never
+ * itself structural.
  *
  * **What is absorbed here is not recorded anywhere on the model**, so
  * `serializeX12` cannot reproduce it and a pretty-printed source does not
@@ -95,8 +103,11 @@ function decodeIsa(raw: string, delimiters: Delimiters): IsaSegment {
  */
 function stripLeadingNewlines(text: string, start: number): number {
   let i = start;
-  if (text.charCodeAt(i) === 0x0d) i++;
-  if (text.charCodeAt(i) === 0x0a) i++;
+  while (i < text.length) {
+    const code = text.charCodeAt(i);
+    if (code !== 0x0d && code !== 0x0a) break;
+    i++;
+  }
   return i;
 }
 
@@ -215,6 +226,7 @@ export function decodeEnvelope(
   groups: readonly X12FunctionalGroup[];
   iea: IeaSegment | undefined;
   ta1Segments: readonly Ta1Segment[];
+  orphanSegments: readonly X12OrphanSegment[];
   trailingBytes: string | undefined;
   warnings: readonly X12ParseWarning[];
 } {
@@ -245,8 +257,33 @@ export function decodeEnvelope(
   // positional context.
   const groups: X12FunctionalGroup[] = [];
   const ta1Segments: Ta1Segment[] = [];
+  const orphanSegments: X12OrphanSegment[] = [];
   let iea: IeaSegment | undefined;
   let trailingBytes: string | undefined;
+
+  /**
+   * Single chokepoint for a segment the envelope grammar has nowhere to put.
+   * Raises the one `X12_UNEXPECTED_SEGMENT` warning for it AND retains it
+   * verbatim on `orphanSegments`, so the two surfaces always agree and the
+   * segment is never dropped. The parser is lenient, and dropping a segment
+   * a sender transmitted is the one thing leniency must not cost: a
+   * consumer's only prior signal was the warning, which does not survive
+   * `parseX12(serializeX12(ix))`. `segmentIndex` on the warning position is
+   * the join key back to the retained segment.
+   */
+  const recordOrphan = (
+    segmentText: string,
+    position: X12Position,
+    context: X12UnexpectedSegmentContext,
+  ): void => {
+    warnings.push(unexpectedSegment(position, context));
+    orphanSegments.push({
+      raw: segmentText,
+      segment: decodeSegment(segmentText, delimiters, collectWarning, position),
+      segmentIndex: position.segmentIndex,
+      context,
+    });
+  };
 
   type OpenTx = {
     st: { raw: string; elements: readonly string[] };
@@ -367,16 +404,18 @@ export function decodeEnvelope(
           break;
         }
         // TA1 inside an open group is non-spec - fall through to the
-        // unexpected-segment path so the structural break is flagged.
-        warnings.push(
-          unexpectedSegment(
-            {
-              segmentIndex: segIdx,
-              interchangeIndex: 0,
-              groupIndex: groups.length,
-            },
-            UNEXPECTED_SEGMENT_CONTEXTS.TA1_INSIDE_GROUP,
-          ),
+        // unexpected-segment path so the structural break is flagged. It is
+        // NOT added to `ta1Segments` (that surface means "envelope-level
+        // TA1", and `parseTA1` reads it), but it is retained verbatim on
+        // `orphanSegments` so the segment itself is not lost.
+        recordOrphan(
+          segmentText,
+          {
+            segmentIndex: segIdx,
+            interchangeIndex: 0,
+            groupIndex: groups.length,
+          },
+          UNEXPECTED_SEGMENT_CONTEXTS.TA1_INSIDE_GROUP,
         );
         break;
       }
@@ -402,12 +441,12 @@ export function decodeEnvelope(
         if (currentGroup === undefined) {
           // Stray GE outside any open group - preserve lenient-never-
           // throw, but surface as `X12_UNEXPECTED_SEGMENT` so consumers
-          // can flag the structural break.
-          warnings.push(
-            unexpectedSegment(
-              { segmentIndex: segIdx, interchangeIndex: 0 },
-              UNEXPECTED_SEGMENT_CONTEXTS.GE_WITHOUT_GS,
-            ),
+          // can flag the structural break. It closes nothing, so it has no
+          // place in the typed tree; it is retained on `orphanSegments`.
+          recordOrphan(
+            segmentText,
+            { segmentIndex: segIdx, interchangeIndex: 0 },
+            UNEXPECTED_SEGMENT_CONTEXTS.GE_WITHOUT_GS,
           );
           break;
         }
@@ -422,12 +461,13 @@ export function decodeEnvelope(
       case "ST": {
         if (currentGroup === undefined) {
           // ST outside any group is structurally wrong; preserve
-          // lenient and surface as `X12_UNEXPECTED_SEGMENT`.
-          warnings.push(
-            unexpectedSegment(
-              { segmentIndex: segIdx, interchangeIndex: 0 },
-              UNEXPECTED_SEGMENT_CONTEXTS.ST_WITHOUT_GS,
-            ),
+          // lenient and surface as `X12_UNEXPECTED_SEGMENT`. No transaction
+          // set is opened (there is no group to hold it), so the segment is
+          // retained on `orphanSegments` rather than dropped.
+          recordOrphan(
+            segmentText,
+            { segmentIndex: segIdx, interchangeIndex: 0 },
+            UNEXPECTED_SEGMENT_CONTEXTS.ST_WITHOUT_GS,
           );
           break;
         }
@@ -454,11 +494,10 @@ export function decodeEnvelope(
         // SE outside any open tx is structurally wrong; preserve lenient
         // and surface as `X12_UNEXPECTED_SEGMENT`.
         if (currentTx === undefined || currentGroup === undefined) {
-          warnings.push(
-            unexpectedSegment(
-              { segmentIndex: segIdx, interchangeIndex: 0 },
-              UNEXPECTED_SEGMENT_CONTEXTS.SE_WITHOUT_ST,
-            ),
+          recordOrphan(
+            segmentText,
+            { segmentIndex: segIdx, interchangeIndex: 0 },
+            UNEXPECTED_SEGMENT_CONTEXTS.SE_WITHOUT_ST,
           );
           break;
         }
@@ -541,6 +580,7 @@ export function decodeEnvelope(
           groups: Object.freeze(groups.slice()),
           iea,
           ta1Segments: Object.freeze(ta1Segments.slice()),
+          orphanSegments: Object.freeze(orphanSegments.slice()),
           trailingBytes,
           warnings: Object.freeze(warnings.slice()),
         };
@@ -562,11 +602,10 @@ export function decodeEnvelope(
           // "segment" the splitter produces after a trailing terminator
           // (e.g. an interchange that ends `...IEA*1*1~\r\n` - the
           // post-terminator newline-only chunk is not a real segment).
-          warnings.push(
-            unexpectedSegment(
-              { segmentIndex: segIdx, interchangeIndex: 0 },
-              UNEXPECTED_SEGMENT_CONTEXTS.BODY_OUTSIDE_TRANSACTION,
-            ),
+          recordOrphan(
+            segmentText,
+            { segmentIndex: segIdx, interchangeIndex: 0 },
+            UNEXPECTED_SEGMENT_CONTEXTS.BODY_OUTSIDE_TRANSACTION,
           );
         }
         break;
@@ -589,6 +628,7 @@ export function decodeEnvelope(
     groups: Object.freeze(groups.slice()),
     iea,
     ta1Segments: Object.freeze(ta1Segments.slice()),
+    orphanSegments: Object.freeze(orphanSegments.slice()),
     trailingBytes,
     warnings: Object.freeze(warnings.slice()),
   };
