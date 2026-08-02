@@ -5,12 +5,14 @@
 Bound the caller-supplied values that reach a `build*` refusal message, and anchor the 835
 remit-total balance warning at the BPR.
 
-All twenty caller-value slots across the ten builder modules now route through the new
+All twenty-three caller-value slots across the ten builder modules now route through the new
 `renderCallerValue`, capping the rendered fragment at `BUILD_REFUSAL_VALUE_MAX_RENDERED` (90
 characters, of which up to `BUILD_REFUSAL_VALUE_MAX_LENGTH` = 63 are your value). All three are
 exported so the ceiling can be asserted rather than trusted. Nine are the over-long control number,
-where the branch fires because the value is over-long; seven had no length gate at all; four are the
-AK9 counts, typed `number` and reachable with a string from a `JSON.parse`d spec. Measured: a
+where the branch fires because the value is over-long; seven had no length gate at all; and seven more
+in `build999` were found by adversarial review rather than by the census, the AK9 counts (typed
+`number`, reachable with a string from a `JSON.parse`d spec) and three `.length` reads on
+caller-supplied arrays. Measured: a
 120,000-character control number produced a 120,066-character `X12BuildError.message` and now
 produces a 150-character one. The 90 is the ceiling on the interpolated fragment, not on the message.
 

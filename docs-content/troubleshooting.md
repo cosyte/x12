@@ -89,10 +89,10 @@ library-owned discriminant and an integer), not `o.raw` or `o.segment.elements`.
 
 **The builders are a different surface, and the guarantee there is weaker on purpose.** A `build*`
 function that refuses a spec throws a typed error. Most of those messages carry structural locators
-and numeric totals only; twenty sites across ten builder modules also name a value you passed in, so
-you can tell which control number, count, maintenance code or note code was refused.
+and numeric totals only; twenty-three sites across ten builder modules also name a value you passed in,
+so you can tell which control number, count, maintenance code or note code was refused.
 
-Since `0.0.4` every one of those twenty goes through `renderCallerValue`, and the fragment it produces
+Since `0.0.4` every one of those twenty-three goes through `renderCallerValue`, and the fragment it produces
 is capped at `BUILD_REFUSAL_VALUE_MAX_RENDERED` (90 characters: up to
 `BUILD_REFUSAL_VALUE_MAX_LENGTH` = 63 of your value, then an ellipsis and the true length). All three
 are exported, so you can assert the ceiling instead of trusting it.

@@ -29,17 +29,22 @@
  * say it.
  *
  * What it does guarantee is that `Error.message` from a `build*` refusal has a
- * **fixed ceiling**. Before this, sixteen refusal sites across ten builder
+ * **fixed ceiling**. Before this, **twenty** refusal sites across ten builder
  * modules interpolated a caller value verbatim, so a 120,000-character control
- * number produced a 120,066-byte `X12BuildError.message` - measured on this
- * tree, and the length grows without limit with the input. An unbounded
+ * number produced a 120,066-**character** `X12BuildError.message` - measured on
+ * this tree, and the length grew without limit with the input. An unbounded
  * `Error.message` is a real operational hazard independent of PHI: it is what
  * gets serialized into a log line, a crash report, or a JSON error envelope.
  *
  * ## What is bounded and what is not
  *
- * - **Bounded:** the number of characters. The rendered fragment never exceeds
- *   {@link BUILD_REFUSAL_VALUE_MAX_RENDERED}.
+ * - **Bounded:** the number of UTF-16 code units. The rendered fragment never
+ *   exceeds {@link BUILD_REFUSAL_VALUE_MAX_RENDERED}. **Code units, not bytes** -
+ *   an all-astral value renders 86 units but 152 UTF-8 bytes, and a CJK one
+ *   around 216. Every figure this package publishes says "characters" for that
+ *   reason. A slice at the bound can also split a surrogate pair, leaving a lone
+ *   surrogate that becomes U+FFFD once the message is UTF-8 encoded; the bound
+ *   holds regardless, and the fragment is diagnostic text, not data.
  * - **NOT escaped, and this is not an oversight.** The surviving characters are
  *   whatever the caller supplied, including a segment terminator, a quote, or a
  *   newline. A refusal message is therefore bounded but not guaranteed to be a
@@ -107,8 +112,10 @@ export const BUILD_REFUSAL_VALUE_MAX_RENDERED =
  * Render a caller-supplied value as a bounded, quoted fragment for a `build*`
  * refusal message. **This is the only sanctioned route a caller value takes
  * into a thrown message**, and `test/builder-refusal-bounds.test.ts` scans
- * `src/` to prove no other route exists - a seventeenth refusal site that
- * interpolates a value directly reds that test.
+ * `src/` for any other route - a twenty-first refusal site that interpolates a
+ * value directly reds that test. That scan keys on `throw new *BuildError(` and
+ * on template-literal holes, so it is a strong tripwire for the shape this
+ * library uses rather than a proof over every shape one could write.
  *
  * Returns the value quoted when it fits, and otherwise the first
  * {@link BUILD_REFUSAL_VALUE_MAX_LENGTH} characters, an ellipsis, and the true

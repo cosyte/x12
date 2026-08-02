@@ -246,7 +246,7 @@ function enforceAcceptIsClean(group: Build999FunctionalGroupSpec): void {
   if (functionalIsAccept && functionalHasErrorCodes) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_ACCEPT_WITH_ERRORS,
-      `build999: AK9-01 was 'A' (Accept) but AK9-05..AK9-09 carried ${String(
+      `build999: AK9-01 was 'A' (Accept) but AK9-05..AK9-09 carried ${renderCallerValue(
         (group.syntaxErrorCodes ?? []).length,
       )} syntax error code(s). Use 'E' (Accept, with errors noted) or a reject disposition instead.`,
     );
@@ -300,7 +300,7 @@ function enforceCountInvariants(group: Build999FunctionalGroupSpec): void {
   if (group.transactionResponses.length !== received) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_COUNT_MISMATCH,
-      `build999: AK9-03 received (${renderCallerValue(received)}) must equal the number of supplied transaction responses (${String(group.transactionResponses.length)}).`,
+      `build999: AK9-03 received (${renderCallerValue(received)}) must equal the number of supplied transaction responses (${renderCallerValue(group.transactionResponses.length)}).`,
     );
   }
   // No cross-check of AK9-04 vs the count of IK5-01='A' responses: TR3
@@ -413,7 +413,7 @@ function buildIk5(
   if (codes.length > 5) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_COUNT_MISMATCH,
-      `build999: IK5 accepts up to 5 syntax error codes (IK5-02..IK5-06); ${String(codes.length)} supplied.`,
+      `build999: IK5 accepts up to 5 syntax error codes (IK5-02..IK5-06); ${renderCallerValue(codes.length)} supplied.`,
     );
   }
   for (const code of codes) parts.push(esc(code));
@@ -438,7 +438,7 @@ function buildAk9(
   if (codes.length > 5) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_COUNT_MISMATCH,
-      `build999: AK9 accepts up to 5 syntax error codes (AK9-05..AK9-09); ${String(codes.length)} supplied.`,
+      `build999: AK9 accepts up to 5 syntax error codes (AK9-05..AK9-09); ${renderCallerValue(codes.length)} supplied.`,
     );
   }
   for (const code of codes) parts.push(esc(code));

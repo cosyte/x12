@@ -149,8 +149,8 @@ model.
   reader for arbitrarily large files.
 
 - **A builder refusal message shows at most 63 characters of a value you passed in, and it is bounded
-  but not escaped.** Twenty sites across ten builder modules interpolate such a value into the thrown
-  message. Every one routes through `renderCallerValue`, so the rendered **fragment** never exceeds
+  but not escaped.** Twenty-three sites across ten builder modules interpolate such a value into the
+  thrown message. Every one routes through `renderCallerValue`, so the rendered **fragment** never exceeds
   `BUILD_REFUSAL_VALUE_MAX_RENDERED` (**90** characters: 63 of your value, two quotes, an ellipsis, and
   the ` (N characters)` suffix at its widest). Both constants and the function are exported, so you can
   assert the ceiling rather than take it on trust.
@@ -161,13 +161,15 @@ model.
   `X12BuildError.message` from `buildInterchange` before this change and produces a **150-character**
   one now. Do not read 90 as a message length.
 
-  Over-long values are the point of nine of the twenty sites (the `control number "…" exceeds the
+  Over-long values are the point of nine of the twenty-three sites (the `control number "…" exceeds the
 N-char spec limit` refusal, one per emitting module, where the branch fires **because** the value is
   over-long). Seven more had no length gate at all: `build999`'s ST-02 trace twice, `buildInterchange`'s
   transaction-set id, `build837`'s service-line variant, `build834`'s INS-03 and HD-01 maintenance
-  types, and `buildTA1`'s note code. The last four are `build999`'s AK9-02 / AK9-03 / AK9-04 counts,
-  which are typed `number` and therefore missed by a census of string-typed fields: a caller building a
-  spec from `JSON.parse` can still hand over a string, measured at 120,063 characters.
+  types, and `buildTA1`'s note code. The last seven are all in `build999` and were found by adversarial
+  review rather than by the original census. Four are the AK9-02 / AK9-03 / AK9-04 counts, typed
+  `number` and so missed by a census of string-typed fields, though a spec built from `JSON.parse` can
+  still carry a string there (measured at 120,063 characters). Three read `.length` off a
+  caller-supplied array, which a forged `{ length: … }` drove to 120,152 characters.
 
   **What this is and is not.** These are values **you** passed in, so bounding them redacts nothing:
   you already hold the value, and if you put patient data in a control number the refusal will show up

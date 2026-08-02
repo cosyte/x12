@@ -34,14 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **A `build*` refusal message no longer grows with the value you passed in.** All twenty
+- **A `build*` refusal message no longer grows with the value you passed in.** All twenty-three
   caller-value slots across the ten builder modules route through `renderCallerValue`, capping the
   rendered fragment at 90 characters. Nine are the `control number "…" exceeds the N-char spec limit`
   refusal, where the branch fires _because_ the value is over-long; seven had no length gate at all
   (`build999`'s ST-02 trace twice, `buildInterchange`'s transaction-set id, `build837`'s service-line
-  variant, `build834`'s INS-03 and HD-01 maintenance types, `buildTA1`'s note code); and four are
-  `build999`'s AK9-02 / AK9-03 / AK9-04 counts, typed `number` and so missed by a census of
-  string-typed fields, but reachable with a string from a `JSON.parse`d spec at 120,063 characters.
+  variant, `build834`'s INS-03 and HD-01 maintenance types, `buildTA1`'s note code); and seven are in
+  `build999`, found by adversarial review rather than by the census - the AK9-02 / AK9-03 / AK9-04
+  counts, typed `number` but reachable with a string from a `JSON.parse`d spec at 120,063 characters,
+  and three `.length` reads on caller-supplied arrays that a forged `{ length: … }` drove to 120,152.
   Measured: a 120,000-character control number produced a **120,066-character**
   `X12BuildError.message` from `buildInterchange` and now produces a **150-character** one. (150, not
   90: the 90 is the ceiling on the interpolated fragment, not on the message.) **This is robustness

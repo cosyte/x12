@@ -16,18 +16,20 @@
   `BUILD_REFUSAL_VALUE_MAX_RENDERED` = **90**; all three names are public so a
   consumer can assert the ceiling.
 
-  **▶ THE CENSUS IN THE ITEM WAS SIXTEEN AND THE TRUE NUMBER IS TWENTY.**
+  **▶ THE CENSUS IN THE ITEM WAS SIXTEEN AND THE TRUE NUMBER IS TWENTY-THREE.**
   Re-derived here: 59 `throw` sites across 10 modules. Sixteen carry a
   caller-supplied **string** (nine over-long control numbers, one per emitting
   module, where the branch fires BECAUSE the value is over-long; seven with no
   length gate at all: `build999`'s ST-02 trace twice, `buildInterchange`'s
   ST-01, `build837`'s line variant, `build834`'s INS-03 + HD-01, `buildTA1`'s
-  note code). **Four more are `build999`'s AK9-02 / AK9-03 / AK9-04 counts,
-  found only by adversarial review.** They are typed `number`, which is exactly
-  why a census of string-typed slots missed them, and the type is not a runtime
-  guarantee: a `JSON.parse`d spec reached a **120,063-character**
-  `AckBuildError.message`. Twenty sites, 24 holes (one refusal names all three
-  counts).
+  note code). **SEVEN more are in `build999`, found only by adversarial review,
+  over two passes.** Four are the AK9-02 / AK9-03 / AK9-04 counts: typed
+  `number`, which is exactly why a census of string-typed slots missed them, and
+  the type is not a runtime guarantee, so a `JSON.parse`d spec reached a
+  **120,063-character** `AckBuildError.message`. Three are `.length` reads on
+  caller-supplied arrays, which a forged `{ length: "9".repeat(120000) }` drove
+  to **120,152 characters**, larger than the figure the item was filed on.
+  **23 sites, 28 holes** (one refusal names all three counts).
 
   **▶ THREE PUBLISHED FIGURES WERE WRONG IN THE FIRST DRAFT OF THIS SLICE, IN
   THE SAME RUN THAT WAS TOLD TO RE-DERIVE THEM.** `BUILD_REFUSAL_VALUE_MAX_RENDERED`
@@ -61,16 +63,22 @@
   **Its first allowlist was itself the defect it exists to catch** - it admitted
   any `String(...)` on the stated ground that such a hole is a library-computed
   index, while inspecting nothing about the argument, which is precisely how
-  the four AK9 counts passed clean. It now checks the argument: `String(<single
-letter>)` for a loop index, `String(<expr>.length)`, `String(width)`, and
-  nothing else. **Negative controls run both ways:** reintroducing an
-  interpolation into `buildTA1` reds three tests naming file and line, and
-  reverting one AK9 count to `String(...)` reds two. All 20 slots also carry a
-  behavioural 120,000-character probe.
+  the four AK9 counts passed clean. **Its SECOND allowlist was the same mistake
+  again:** it admitted `String(<expr>.length)` as "an array length", which
+  inspects the property NAME and not the operand, so a forged `{length}` sailed
+  through. The `.length` escape is gone and those holes are bounded too; what
+  remains allowed is only a single-letter loop index and the `width` literal,
+  where no caller expression appears in the hole at all. **Negative controls run
+  both ways:** reintroducing an interpolation into `buildTA1` reds three tests
+  naming file and line, and reverting one AK9 count reds two. All 23 slots also
+  carry a behavioural 120,000-character probe.
   **Known and NOT claimed away:** the gate keys on `throw new *BuildError(` and
   on template holes, so a message composed in a helper, built by `+`
   concatenation, or thrown via a local binding would slip past it. It is a
-  strong tripwire for the shape this library actually uses, not a proof.
+  strong tripwire for the shape this library actually uses, not a proof. The
+  bound is also on UTF-16 **code units**, not bytes (an all-astral value is 86
+  units and 152 bytes, and a slice at the bound can split a surrogate pair), so
+  every published figure says "characters" deliberately.
 
   **(2)** The remit-total balance warning's `position.segmentIndex` was a
   literal `0`. **`0` is NOT a neutral sentinel here: `tx.segments[0]` is the
