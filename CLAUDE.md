@@ -8,6 +8,73 @@
 
 ## Status
 
+- **The round-trip half is closed too: an orphan is re-emitted at a
+  STRUCTURAL ANCHOR (2026-08-02, `X12-ORPHAN-REEMIT`).** The bullet below
+  closed the model half and deliberately left this open, because the
+  obvious remedy was refuted. **The fix is the anchor, not the
+  re-emission.** `X12OrphanSegment.anchor` records which slot of the typed
+  tree the segment sat in - `{kind:"interchange",groupIndex}`,
+  `{kind:"group",groupIndex,transactionIndex}`, or
+  `{kind:"transaction",groupIndex,transactionIndex,segmentOffset}` - and
+  `serializeX12` places every orphan by that and **never** by
+  `segmentIndex`. An index equal to the eventual length means "after the
+  last one" (just before the `GE` or `IEA`); `segmentOffset` is never `0`
+  because `rawSegments[0]` is the `ST`; and the `transaction` kind is
+  reachable **only by a `TA1`**, since anything else arriving inside an
+  open `ST..SE` is body content. An anchor survives both reorderings the
+  emit performs (the `ta1Segments` hoist, the skipped zero-length segment)
+  because it names a slot rather than a byte offset - which is exactly
+  what a raw index could not do.
+  **Measured, not asserted:** a stray segment inserted at every position
+  of a two-group / three-transaction interchange, five segment ids (`ZZ`,
+  `SE`, `GE`, `ST`, `TA1`) covering all five orphan `context` values and
+  all three anchor kinds. **50 of 50** orphan-producing insertions
+  round-trip **byte-exactly** on a base with no envelope `TA1`; on the same
+  base _with_ one, **0 of 54** are byte-exact but **54 of 54** are
+  byte-identical once the `TA1` is deleted from both sides - the only thing
+  that moved is the `TA1`, which moves on that base with no orphan at all.
+  Across all 104: transaction bodies, `orphanSegments` (raw + context +
+  anchor), `ta1Segments`, `trailingBytes` and the warning multiset are
+  unchanged by the round trip, and every emit is a fixed point.
+  **The canonical list drops from SEVEN to SIX**, and the count of silent
+  constructs stays five - because the construct that left the list is the
+  one that _warned_. Only post-IEA `trailingBytes` warns now.
+  **DELIBERATELY NOT IN SCOPE, and still on the list as case 6:** the
+  empty-first-element segment (`*A*B~`) outside a transaction. It is
+  skipped by the walker, so there is nothing on the model to re-emit;
+  closing it is a RETENTION change to the `name.length > 0` guard, not a
+  round-trip one, and it would mint `X12_UNEXPECTED_SEGMENT` warnings where
+  there are none today. Unchanged and byte-identical on base.
+  Retention and placement are still **not promotion**: no `get*` reader
+  sees an orphan, and a `TA1` inside a group still does not join
+  `ta1Segments`. Registry unchanged at 22 codes + 4 fatals; nothing became
+  fatal. **The four regression tests from the refuted replay were kept
+  verbatim and are green** - they assert an orphan never becomes
+  transaction CONTENT (never joins `rawSegments`, which is what every
+  `get*` reader walks), never corrupts SE-01 or SE-02, never fabricates or
+  truncates a transaction, and never crosses the IEA into `trailingBytes`.
+  **State that at the MODEL level, not the byte level:** a
+  `ta1-inside-group` orphan IS written back between the `ST` and the `SE`,
+  because that is where it came from, so "never lands inside a transaction"
+  would be simply false.
+
+  **▶ THE REFUTER FOUND ONE INTRODUCED DEFECT HERE, AND IT WAS SE-01
+  AGAIN.** Pass 1 emitted the `TA1` back inside the `ST..SE` while
+  `segCount` still counted only `tx.rawSegments`, which excludes the lifted
+  `TA1`. So spec-clean mode described bytes it had not written: measured,
+  `{specClean, recomputeCounts}` **rewrote a CORRECT `SE*4*` down to
+  `SE*3*` over four emitted segments**, and the inverse input (`SE*3*`)
+  drew no mismatch warning at all. Base was safe only because it dropped
+  the segment, so the model count and the emitted count agreed by
+  accident. **SE-01 is "segments included in the transaction set,
+  including ST and SE" (X12.6), so it must count the bytes the serializer
+  writes, not the model rows** - `segCount` now adds every orphan flushed
+  between the `ST` and the `SE`, and an orphan flushed before the `ST` or
+  after the `SE` is correctly not counted. Now idempotent under the
+  library's own gate: recompute, re-parse, re-reconcile raises nothing and
+  is byte-stable. GE-01 and IEA-01 are unaffected, because an orphan is
+  never a `GS` and never opens a transaction set.
+
 - **Silent data loss closed at the MODEL: a segment outside a transaction
   is retained, though still not re-emitted (2026-08-02,
   `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED`).** Two defects, one cause.
@@ -50,12 +117,15 @@
   body is the wrong direction under this repo's own invariant, so the
   replay was REMOVED rather than patched. Correct placement needs a
   STRUCTURAL anchor on the model (which group and transaction the segment
-  followed), not a raw input index. **Filed, not shipped.**
-  `KNOWN-LIMITATIONS.md` therefore keeps "segments outside a transaction" as
-  a construct the emit does not reproduce.
+  followed), not a raw input index. **Filed, not shipped - and shipped in
+  the bullet above, as an anchor.** Read the refutation before touching the
+  emit again: the defect it names is in the _addressing scheme_, and it
+  comes straight back if anyone reaches for `segmentIndex`.
 
   **▶ PASS 2 (NOT REFUTED) STILL MOVED THE CANONICAL COUNT, from six to
-  SEVEN.** A segment whose first element is empty (`*A*B~`), **outside** a
+  SEVEN** (and `X12-ORPHAN-REEMIT` then took it back to six by removing a
+  _different_ entry - this one stayed). A segment whose first element is
+  empty (`*A*B~`), **outside** a
   transaction, has no id for the walker to dispatch on and is dropped from
   the model AND the emit with **no warning at all** - the only construct on
   the list with no diagnostic whatsoever. Long-standing and byte-identical on

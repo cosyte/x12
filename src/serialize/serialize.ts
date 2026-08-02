@@ -10,7 +10,7 @@
  *
  *   Every segment the parser recorded comes back verbatim, including element
  *   padding, composite structure and `?`-release escapes, but it comes back in
- *   the ORDER the model holds it, which is not always the input order. Seven
+ *   the ORDER the model holds it, which is not always the input order. SIX
  *   constructs are known not to survive, and line breaks are only the most
  *   common:
  *
@@ -18,50 +18,58 @@
  *      LF bytes between segments and the model has nowhere to record it, so a
  *      pretty-printed or double-spaced source emits as its compact form.
  *      Silent.
- *   2. **Segments outside a transaction** (a stray segment between GE and IEA,
- *      say). These raise `X12_UNEXPECTED_SEGMENT` and ARE retained on the
- *      model, at `ix.orphanSegments`, so the decoded value is not lost. The
- *      emit does not reproduce them, though, so they are absent from the
- *      output AND the warning does not recur when the emit is re-parsed. Read
- *      them from `ix.orphanSegments` and treat the FIRST parse's warnings as
- *      the authority.
- *   3. **A doubled segment terminator** outside a transaction. Silent.
- *   4. **A missing final terminator**, which the emit supplies. Silent.
- *   5. **Post-IEA `trailingBytes`**, re-joined from segment slices rather than
+ *   2. **A doubled segment terminator** outside a transaction. It delimits a
+ *      zero-length segment carrying no elements, so there is nothing to
+ *      retain. Silent.
+ *   3. **A missing final terminator**, which the emit supplies. Silent.
+ *   4. **Post-IEA `trailingBytes`**, re-joined from segment slices rather than
  *      preserved verbatim.
- *   6. **TA1 position.** A TA1 that appeared AFTER a functional group is
+ *   5. **TA1 position.** A TA1 that appeared AFTER a functional group is
  *      collected onto `ix.ta1Segments` and emitted immediately after the ISA,
- *      so the emit reorders it. Silent, and unlike 1 to 5 nothing is dropped:
- *      the model and the warning stream both round-trip identically. This
- *      library takes no position here on where ASC X12 requires a TA1 to sit.
- *   7. **A segment whose first element is empty** (`*A*B~`), outside a
+ *      so the emit reorders it. Silent, and unlike the others nothing is
+ *      dropped: the model and the warning stream both round-trip identically.
+ *      This is also the only construct that can move something ELSE - a
+ *      segment outside a transaction is placed correctly relative to the
+ *      groups but not relative to a TA1 that was hoisted past it. This library
+ *      takes no position here on where ASC X12 requires a TA1 to sit.
+ *   6. **A segment whose first element is empty** (`*A*B~`), outside a
  *      transaction. It has no id for the envelope walker to dispatch on, so it
  *      is skipped: absent from the model, absent from the emit, and it does
  *      not even raise `X12_UNEXPECTED_SEGMENT`. Silent, and the only case here
  *      that loses a value with no diagnostic at all. Inside an open
  *      transaction the same segment is kept and re-emitted normally.
  *
- *   So `serialize(parse(s)) === s` is NOT guaranteed in general, and the
- *   absence of line breaks is not sufficient to make it hold: cases 2 to 7 all
- *   break it on inputs that contain none. Five of the seven (1, 3, 4, 6, 7)
- *   produce no warning at all, so the warning stream is not a reliable signal that a
- *   round trip will be byte-exact. Do not use `serialize(parse(s))` as a
- *   normalization step before comparing warnings, because case 2 discards a
- *   warning along with its segment.
+ *   **A segment outside a transaction is no longer on that list.** It is
+ *   retained on `ix.orphanSegments` with a structural `anchor`, and this
+ *   function re-emits it at that anchor, so the segment, its value and its
+ *   `X12_UNEXPECTED_SEGMENT` warning all survive the round trip. See the
+ *   `orphans` block below for why placement is by anchor and never by
+ *   `segmentIndex`.
+ *
+ *   So `serialize(parse(s)) === s` is still NOT guaranteed in general, and the
+ *   absence of line breaks is still not sufficient to make it hold: cases 2 to
+ *   6 all break it on inputs that contain none. Five of the six (1, 2, 3, 5, 6)
+ *   produce no warning at all, so the warning stream is not a reliable signal
+ *   that a round trip will be byte-exact - only case 4 warns.
  *
  *   What IS measured, across the 56 committed fixtures: all 56 emits are fixed
  *   points (serializing again is a byte-level no-op), all 56 re-parse to an
  *   identical model with an identical warning stream, the 14 fixtures carrying
  *   no line breaks return byte-identical, and the 42 that are pretty-printed
  *   differ from their source by line breaks and nothing else. Two caveats on
- *   that corpus: it contains no instance of cases 2 to 7, and 13 of the 14
- *   byte-identical fixtures are `golden/*.edi`, which are serializer output by
- *   construction, so `envelope/no-trailing-crlf.edi` is the only independent
- *   witness. `test/serialize.test.ts` covers the corpus sweep and cases 2 to 7
- *   separately.
+ *   that corpus: it contains no instance of cases 2 to 6 and no orphan at all,
+ *   and 13 of the 14 byte-identical fixtures are `golden/*.edi`, which are
+ *   serializer output by construction, so `envelope/no-trailing-crlf.edi` is
+ *   the only independent witness. `test/serialize.test.ts` covers the corpus
+ *   sweep, the orphan round trip, and cases 1 to 6 separately.
  *
  * - **Spec-clean (`{ specClean: true }`).** Same byte-faithful structure, but
- *   the serializer ALSO reconciles the envelope counts and control numbers:
+ *   the serializer ALSO reconciles the envelope counts and control numbers.
+ *   Every count is taken from the bytes this function WRITES, which for SE-01
+ *   is `tx.rawSegments` PLUS any orphan re-emitted between the `ST` and the
+ *   `SE` - a lifted `TA1` is off the model's transaction but is still a
+ *   segment of that transaction set per X12.6, and counting the model alone
+ *   made `recomputeCounts` shrink a correct SE-01. The pairs reconciled are
  *   SE-01 (segment count) vs the actual ST..SE segment count, GE-01
  *   (transaction count) vs the actual ST count, IEA-01 (group count) vs the
  *   actual group count, plus the ISA-13↔IEA-02 / GS-06↔GE-02 / ST-02↔SE-02
@@ -80,7 +88,12 @@
  * `group.transactions.length`, `iea.elements[1]` against `ix.groups.length`).
  */
 
-import type { OnWarningCallback, X12Interchange } from "../parser/types.js";
+import type {
+  OnWarningCallback,
+  X12Interchange,
+  X12OrphanAnchor,
+  X12OrphanSegment,
+} from "../parser/types.js";
 import {
   CONTROL_NUMBER_PAIRS,
   controlNumberMismatch,
@@ -138,9 +151,9 @@ export interface SerializeOptions {
  * ```ts
  * import { parseX12, serializeX12 } from "@cosyte/x12";
  * const ix = parseX12(raw);
- * // Segments on the model come back verbatim. Anything the parser did not
- * // record (line breaks, segments outside a transaction, ...) does not, so
- * // this is not guaranteed to equal `raw`. See the module header.
+ * // Segments on the model come back verbatim, orphans included. Anything the
+ * // parser did not record (line breaks, a doubled terminator, ...) does not,
+ * // so this is not guaranteed to equal `raw`. See the module header.
  * const bytes = serializeX12(ix);
  * ```
  */
@@ -162,32 +175,52 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
   // Running global segment index for warning positions. ISA occupies index 0.
   let segIdx = 0;
 
-  // `ix.orphanSegments` is deliberately NOT re-emitted. See the note on
-  // `X12OrphanSegment` and `KNOWN-LIMITATIONS.md`: an orphan is retained on
-  // the model so nothing the parser decoded is lost, but the emit does not
-  // reproduce it, and that is a correctness decision rather than an omission.
+  // `ix.orphanSegments` IS re-emitted, and every orphan is placed by its
+  // `anchor` - the structural slot the walker recorded - never by its
+  // `segmentIndex`.
   //
-  // An earlier revision of this slice DID replay each orphan at its recorded
-  // `segmentIndex`, which made the round trip byte-exact for every position
-  // the tests enumerated and was nonetheless unsound. `segmentIndex` is an
+  // That distinction is the whole correctness argument. `segmentIndex` is an
   // index into the INPUT stream, and this function does not emit in input
   // order: `ta1Segments` are hoisted ahead of the groups (the documented TA1
   // reordering), and a zero-length segment from a doubled terminator occupies
   // an input index that is never emitted. Either one shifts the output's
   // indices away from the input's, so replaying by index splices the orphan
   // into whatever happens to occupy that slot in the emit. Measured on a
-  // 2-group interchange with a TA1 after the first group: a stray `ZZ`
-  // segment landed INSIDE the 835's ST..SE body, between `CLP` and `SE`,
-  // where a re-parse produced NO warning at all and `get835` would have
-  // walked it as claim content. With a stray `SE` it was worse, closing the
-  // transaction early and corrupting SE-01. That trades a warned, documented
-  // omission for silent structural corruption of a transaction body, which
-  // is the wrong direction under this library's own invariant.
+  // 2-group interchange with a TA1 after the first group, an earlier revision
+  // that did exactly that put a stray `ZZ` segment INSIDE the 835's ST..SE
+  // body, between `CLP` and `SE`, where a re-parse produced NO warning at all
+  // and `get835` would have walked it as claim content; with a stray `SE` it
+  // closed the transaction early and corrupted SE-01. An anchor names a slot
+  // in the typed tree ("before group 1", "before transaction 0 of group 0",
+  // "before raw segment 2 of that transaction"), and a slot in the tree is
+  // invariant under both reorderings, because it does not mention bytes.
   //
-  // Placing an orphan correctly needs the model to carry a STRUCTURAL anchor
-  // (which group and transaction it followed) rather than a raw input index,
-  // because only a structural anchor survives the reordering the emit already
-  // performs. That is a model change, tracked separately.
+  // The consequence a caller can rely on: a re-parse of the emit raises the
+  // SAME `X12_UNEXPECTED_SEGMENT` warning, with the same `context`, for the
+  // same segment, and the emit is a fixed point.
+  const orphans: readonly X12OrphanSegment[] = interchange.orphanSegments ?? [];
+  const placed = new Set<number>();
+
+  /**
+   * Emit, in input order, every not-yet-emitted orphan whose anchor matches
+   * `slot`, and advance the running segment index for each so the spec-clean
+   * warning positions keep naming the segment they describe. Returns how many
+   * were written, which the SE-01 reconciliation needs: an orphan flushed
+   * between the `ST` and the `SE` is a segment of that transaction set as far
+   * as X12.6 is concerned, however the model files it.
+   */
+  const flushOrphans = (slot: (anchor: X12OrphanAnchor | undefined) => boolean): number => {
+    let written = 0;
+    for (const [i, orphan] of orphans.entries()) {
+      if (placed.has(i)) continue;
+      if (!slot(orphan.anchor)) continue;
+      placed.add(i);
+      out += orphan.raw + term;
+      segIdx++;
+      written++;
+    }
+    return written;
+  };
 
   for (const ta1 of interchange.ta1Segments) {
     out += ta1.raw + term;
@@ -195,24 +228,64 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
   }
 
   for (const [g, group] of interchange.groups.entries()) {
+    flushOrphans((a) => a?.kind === "interchange" && a.groupIndex === g);
     const gsSegIdx = ++segIdx;
     out += group.gs.raw + term;
 
     for (const [t, tx] of group.transactions.entries()) {
-      const stSegIdx = segIdx + 1;
-      const segCount = tx.rawSegments.length;
+      flushOrphans((a) => a?.kind === "group" && a.groupIndex === g && a.transactionIndex === t);
       const lastIdx = tx.rawSegments.length - 1;
+      // SE-01 is "number of segments included in the transaction set, including
+      // ST and SE" (X12.6). It must therefore describe the bytes THIS function
+      // writes between the ST and the SE, not `rawSegments.length` alone: a
+      // `TA1` that arrived inside an open ST..SE is lifted off the transaction
+      // by the walker (it is envelope-level by spec) but is re-emitted where it
+      // came from, so it is one of those segments. Counting only the model
+      // would make `recomputeCounts` write a count one short per such orphan -
+      // measured rewriting a correct `SE*4*` down to `SE*3*` over four emitted
+      // segments, which is a safety-critical count the library corrupted rather
+      // than corrected. An orphan flushed BEFORE the ST or AFTER the SE is
+      // outside the range and is deliberately not counted.
+      let segCount = tx.rawSegments.length;
+      // Provisional until the ST is actually written: an orphan anchored ahead
+      // of it (only reachable from a hand-assembled model, since the walker
+      // never records `segmentOffset: 0`) would otherwise shift it.
+      let stSegIdx = segIdx + 1;
 
       for (const [k, raw] of tx.rawSegments.entries()) {
+        const inside = flushOrphans(
+          (a) =>
+            a?.kind === "transaction" &&
+            a.groupIndex === g &&
+            a.transactionIndex === t &&
+            a.segmentOffset === k,
+        );
+        if (k === 0) stSegIdx = segIdx + 1;
+        else segCount += inside;
         segIdx++;
         // The final raw segment is the SE (when the transaction is not
-        // truncated). In recompute mode, substitute the corrected SE-01.
+        // truncated). In recompute mode, substitute the corrected SE-01. Every
+        // orphan inside the range has been flushed by now: the `k === lastIdx`
+        // flush above runs before this write.
         if (recompute && tx.se !== undefined && k === lastIdx) {
           out += substituteElement(tx.se.elements, 1, String(segCount), elementSep) + term;
         } else {
           out += raw + term;
         }
       }
+
+      // A transaction that never saw its SE can carry an orphan anchored past
+      // its last raw segment (`GS ... ST ... TA1 GE`), so drain that slot too.
+      // Keyed on the MODEL's length, not the adjusted `segCount`, because the
+      // anchor was recorded against the model. Such an orphan lands after the
+      // last raw segment, so it is outside any ST..SE range and is not counted.
+      flushOrphans(
+        (a) =>
+          a?.kind === "transaction" &&
+          a.groupIndex === g &&
+          a.transactionIndex === t &&
+          a.segmentOffset === tx.rawSegments.length,
+      );
 
       if (specClean && tx.se !== undefined) {
         const declaredSe = elementAt(tx.se.elements, 1);
@@ -245,6 +318,16 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
         }
       }
     }
+
+    // Anything anchored after the group's last transaction sits between it and
+    // the GE, which is where `se-without-st`, `ta1-inside-group` and a body
+    // segment between an SE and its group's GE all land.
+    flushOrphans(
+      (a) =>
+        a?.kind === "group" &&
+        a.groupIndex === g &&
+        a.transactionIndex === group.transactions.length,
+    );
 
     if (group.ge !== undefined) {
       const txCount = group.transactions.length;
@@ -279,6 +362,18 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
       }
     }
   }
+
+  // Everything left goes here, immediately before the IEA: the orphans that
+  // genuinely sat after the last group, and - defensively - any orphan whose
+  // anchor names a slot this model does not have, which only a hand-assembled
+  // interchange can produce. Emitting an unplaceable orphan at interchange
+  // level re-parses as an orphan again rather than corrupting anything, and it
+  // is preferable to dropping a segment the caller put on the model. The one
+  // caveat is a `TA1`: at interchange level it is a well-formed envelope
+  // acknowledgment, so a misanchored one re-parses onto `ta1Segments` instead
+  // of `orphanSegments`.
+  flushOrphans((a) => a?.kind === "interchange" && a.groupIndex === interchange.groups.length);
+  flushOrphans(() => true);
 
   if (interchange.iea !== undefined) {
     const groupCount = interchange.groups.length;

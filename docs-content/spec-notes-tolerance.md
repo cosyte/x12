@@ -33,10 +33,10 @@ needs: it drops inter-segment whitespace, never a decoded element value. The pra
 that `serializeX12(parseX12(file))` returns the compact form rather than your original bytes.
 
 It is not, however, the only thing the round trip does not reproduce. A **segment outside a
-transaction** is a Tier-2 deviation (`X12_UNEXPECTED_SEGMENT`): it is warned about, and it is kept
-verbatim on `ix.orphanSegments`, so the value is not lost. What it is not is **decoded** (no `get*`
-reader will see it) or **re-emitted**, so it does not survive the round trip and neither does its
-warning. Treat the first parse's warnings as the authority. See
+transaction** is a Tier-2 deviation (`X12_UNEXPECTED_SEGMENT`): it is warned about, kept verbatim on
+`ix.orphanSegments`, and re-emitted at the structural `anchor` recorded with it, so both the value and
+the warning do survive the round trip. What it is not is **decoded** - no `get*` reader will see it,
+because retention and placement are not promotion into the typed tree. See
 [Line endings between segments](./spec-notes-envelope) for the full list of what the emit does not
 reproduce, and
 [KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md) for the canonical

@@ -12,12 +12,12 @@ delivers. Mis-reading a payer's remittance, a claim's diagnosis, or a member's c
 financial or clinical harm, so this page is the deliberate "do not over-trust" list: the error model,
 the common symptoms, and the intentional boundaries. Everything here is a documented boundary, not a
 bug. The lenient parser never silently drops or garbles a **decoded value**; where a limitation
-applies, the raw value is preserved (often with a warning), it is simply not further decoded. Three
-things the **emit** does not reproduce are worth knowing before you rely on a round trip, two of them
-silently: **line breaks between segments**, **a doubled segment terminator** outside a transaction
-(both silent), and **segments outside a transaction** (warned, kept on the model at
-`ix.orphanSegments`, but not re-emitted). All three are in the symptoms table below. The third used to
-be worse, because the segment left the model as well; that half is fixed.
+applies, the raw value is preserved (often with a warning), it is simply not further decoded. Two
+things the **emit** does not reproduce are worth knowing before you rely on a round trip, and both are
+silent: **line breaks between segments** and **a doubled segment terminator** outside a transaction.
+Both are in the symptoms table below. **Segments outside a transaction** used to be a third: they are
+now warned, kept on the model at `ix.orphanSegments`, and re-emitted at the structural anchor recorded
+with them, so both the bytes and the warning survive a round trip.
 
 ## When does it throw vs warn?
 
@@ -65,7 +65,7 @@ Tier-2 warning you triage, not an exception you catch. See [Tolerance tiers](./s
 | Fields parse but `parseFloat` gives odd totals          | You called `parseFloat` on an EDI amount                                                                                                                                                                                              | Read the `X12Decimal` and do exact arithmetic on it; never `parseFloat`. See [Decimal-exact money](./spec-notes-money).                                                                                                                                                              |
 | A `X12_PRE_005010` warning                              | ISA-12 declares a version family other than `00501`                                                                                                                                                                                   | Tolerated and flagged, not decoded against older field maps. Pass `{ strict: true }` to make it a hard failure for a trusted partner.                                                                                                                                                |
 | `serializeX12(parseX12(file)) !== file`                 | Usually pretty-printing: the parser absorbs the line break after each terminator and the model does not record it, so the emit is compact. But it is **not** the only cause, and the others fire on files with no line breaks at all. | If the file is merely pretty-printed the difference is line breaks only, and diffing your emit against `serializeX12(parseX12(source))` ignores that noise. Otherwise see [Line endings between segments](./spec-notes-envelope) for everything the emit does not reproduce.         |
-| An `X12_UNEXPECTED_SEGMENT` warning                     | A segment arrived where the envelope grammar has no place for it: outside any open `ST..SE` transaction set, such as a stray segment between `GE` and `IEA` or a `TA1` inside an open group.                                           | The segment is **kept**, verbatim, on `ix.orphanSegments`, and its `segmentIndex` matches the warning's `position.segmentIndex`. No `get*` reader will see it, so read it there. `serializeX12` does **not** re-emit it, so treat this first parse's warnings as the authority. See [Segments outside a transaction](./spec-notes-envelope). |
+| An `X12_UNEXPECTED_SEGMENT` warning                     | A segment arrived where the envelope grammar has no place for it: outside any open `ST..SE` transaction set, such as a stray segment between `GE` and `IEA` or a `TA1` inside an open group.                                           | The segment is **kept**, verbatim, on `ix.orphanSegments`, and its `segmentIndex` matches the warning's `position.segmentIndex`. No `get*` reader will see it, so read it there. `serializeX12` **does** re-emit it, at the structural `anchor` recorded with it, so the segment and this warning both survive a round trip. See [Segments outside a transaction](./spec-notes-envelope). |
 | A segment is missing from `ix.groups`                   | It fell outside every transaction set, so the typed tree has nowhere for it                                                                                                                                                          | Check `ix.orphanSegments` before concluding the sender omitted it. That array is empty for a well-formed interchange, so a non-empty one tells you the framing did not match the envelope grammar.                                                                                    |
 
 ## Keeping PHI out of logs
@@ -133,24 +133,23 @@ third party.
   **description** is absent. A stale or partial snapshot yields a missing description, **never a wrong
   code**.
 - **`serialize(parse(s)) === s` is not guaranteed.** Every segment on the model comes back verbatim,
-  in the order the model holds it. Seven constructs are known not to survive: line breaks between
-  segments, segments outside a transaction (warned and kept on the model, but not re-emitted, so the
-  warning does not recur), a doubled terminator outside a transaction, a missing final terminator,
-  post-IEA `trailingBytes`, and a TA1 that followed a functional group (emitted right after the ISA,
+  in the order the model holds it. Six constructs are known not to survive: line breaks between
+  segments, a doubled terminator outside a transaction, a missing final terminator,
+  post-IEA `trailingBytes`, a TA1 that followed a functional group (emitted right after the ISA,
   so reordered, though nothing is lost), and a segment whose first element is empty outside a
-  transaction (skipped entirely, with no warning at all). The last six fire on inputs with no line
-  breaks, so a compact file is not guaranteed to round-trip either, and five of the seven are silent, so a clean
+  transaction (skipped entirely, with no warning at all). The last five fire on inputs with no line
+  breaks, so a compact file is not guaranteed to round-trip either, and five of the six are silent, so a clean
   warnings list is not evidence of byte-exactness. Measured across the 56 committed fixtures: every emit is a fixed point
   and re-parses to an identical model with an identical warning stream, the 14 with no line breaks
   return byte-identical (13 of those are `golden/*.edi`, serializer output by construction), and the
   other 42 differ by line breaks and nothing else. See
   [Line endings between segments](./spec-notes-envelope).
-- **A segment outside a transaction is retained, but neither decoded nor re-emitted.** The envelope
+- **A segment outside a transaction is retained and re-emitted, but never decoded.** The envelope
   walker binds body segments to an open ST..SE transaction. Anything else raises
   `X12_UNEXPECTED_SEGMENT` and is kept verbatim on `ix.orphanSegments`, joinable to the warning by
-  `segmentIndex`. Two boundaries remain: no `get*` reader sees an orphan, so read them from
-  `ix.orphanSegments` yourself, and `serializeX12` does not reproduce one, so it does not survive a
-  round trip and neither does its warning.
+  `segmentIndex` and carrying the structural `anchor` `serializeX12` puts it back at, so it survives
+  a round trip along with its warning. One boundary remains: no `get*` reader sees an orphan, so read
+  them from `ix.orphanSegments` yourself.
 - **837 claim-/line-level provider addresses (Loop 2310 / 2420 `N3`/`N4`) are not surfaced.** The
   provider **identities** (`NM1`) round-trip; the street-address lines do not decode onto the model.
   Read them from the raw segments if you need them.

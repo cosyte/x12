@@ -24,6 +24,7 @@ import type {
   IsaSegment,
   Ta1Segment,
   X12FunctionalGroup,
+  X12OrphanAnchor,
   X12OrphanSegment,
   X12Position,
   X12TransactionSet,
@@ -263,30 +264,6 @@ export function decodeEnvelope(
   let iea: IeaSegment | undefined;
   let trailingBytes: string | undefined;
 
-  /**
-   * Single chokepoint for a segment the envelope grammar has nowhere to put.
-   * Raises the one `X12_UNEXPECTED_SEGMENT` warning for it AND retains it
-   * verbatim on `orphanSegments`, so the two surfaces always agree and the
-   * segment is never dropped. The parser is lenient, and dropping a segment
-   * a sender transmitted is the one thing leniency must not cost: a
-   * consumer's only prior signal was the warning, which does not survive
-   * `parseX12(serializeX12(ix))`. `segmentIndex` on the warning position is
-   * the join key back to the retained segment.
-   */
-  const recordOrphan = (
-    segmentText: string,
-    position: X12Position,
-    context: X12UnexpectedSegmentContext,
-  ): void => {
-    warnings.push(unexpectedSegment(position, context));
-    orphanSegments.push({
-      raw: segmentText,
-      segment: decodeSegment(segmentText, delimiters, collectWarning, position),
-      segmentIndex: position.segmentIndex,
-      context,
-    });
-  };
-
   type OpenTx = {
     st: { raw: string; elements: readonly string[] };
     segments: X12Segment[];
@@ -301,6 +278,74 @@ export function decodeEnvelope(
 
   let currentGroup: OpenGroup | undefined;
   let currentTx: OpenTx | undefined;
+
+  /**
+   * Describe the walker's CURRENT structural position as an
+   * {@link X12OrphanAnchor}. Derived from the open-group / open-transaction
+   * state rather than from `segIdx`, and that is the whole point: the emit
+   * reorders segments relative to the input (it hoists `ta1Segments`) and
+   * skips input positions that were never segments (the zero-length segment a
+   * doubled terminator delimits), so an input index does not name a slot in
+   * the output. A slot in the typed tree does.
+   *
+   * Every index it produces is guaranteed to exist by the time the walk ends:
+   * `groups.length` is the index the currently open group will be pushed at
+   * (`finalizeGroup` always runs, at `IEA` or at EOF), and
+   * `currentGroup.transactions.length` likewise for the open transaction. An
+   * index EQUAL to the eventual length is meaningful, not out of range - it
+   * means "after the last one", i.e. immediately before the `GE` or the `IEA`.
+   *
+   * `segmentOffset` is never `0`: `rawSegments` opens with the `ST`, so a
+   * segment arriving inside an open transaction always follows at least one.
+   *
+   * @internal
+   */
+  const currentAnchor = (): X12OrphanAnchor => {
+    if (currentGroup === undefined) {
+      return { kind: "interchange", groupIndex: groups.length };
+    }
+    if (currentTx === undefined) {
+      return {
+        kind: "group",
+        groupIndex: groups.length,
+        transactionIndex: currentGroup.transactions.length,
+      };
+    }
+    return {
+      kind: "transaction",
+      groupIndex: groups.length,
+      transactionIndex: currentGroup.transactions.length,
+      segmentOffset: currentTx.rawSegments.length,
+    };
+  };
+
+  /**
+   * Single chokepoint for a segment the envelope grammar has nowhere to put.
+   * Raises the one `X12_UNEXPECTED_SEGMENT` warning for it AND retains it
+   * verbatim on `orphanSegments`, so the two surfaces always agree and the
+   * segment is never dropped. The parser is lenient, and dropping a segment
+   * a sender transmitted is the one thing leniency must not cost. Each entry
+   * also carries the structural `anchor` the serializer puts it back at, taken
+   * here rather than reconstructed later so retention, the warning and the
+   * re-emission can never disagree about where the segment was.
+   * `segmentIndex` on the warning position is the join key back to the
+   * retained segment - a join key, never a placement.
+   */
+  const recordOrphan = (
+    segmentText: string,
+    position: X12Position,
+    context: X12UnexpectedSegmentContext,
+  ): void => {
+    const anchor = currentAnchor();
+    warnings.push(unexpectedSegment(position, context));
+    orphanSegments.push({
+      raw: segmentText,
+      segment: decodeSegment(segmentText, delimiters, collectWarning, position),
+      segmentIndex: position.segmentIndex,
+      context,
+      anchor,
+    });
+  };
 
   /**
    * Finalize an open transaction and push it onto its parent group.

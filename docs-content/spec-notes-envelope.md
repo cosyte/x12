@@ -105,41 +105,42 @@ including element padding, composite structure, and `?`-release escapes. Anythin
 record does not come back, and line breaks are only the most common of several such things.
 
 **`serialize(parse(s)) === s` is not guaranteed in general**, and having no line breaks is not enough
-to make it hold. Seven constructs are known not to survive:
+to make it hold. Six constructs are known not to survive:
 
 1. **Line breaks between segments**, as above. Silent.
-2. **Segments outside a transaction** (a stray segment between `GE` and `IEA`, say). These raise
-   `X12_UNEXPECTED_SEGMENT` and **are** kept on the model at `ix.orphanSegments`, so the value is not
-   lost, but the emit does not reproduce them: they are absent from the output, and **the warning does
-   not recur when the emit is re-parsed**. See
-   [Segments outside a transaction](#segments-outside-a-transaction) below.
-3. **A doubled segment terminator** outside a transaction. It delimits a zero-length segment carrying
+2. **A doubled segment terminator** outside a transaction. It delimits a zero-length segment carrying
    no elements, so there is nothing to retain. Silent.
-4. **A missing final terminator**, which the emit supplies. Silent.
-5. **Post-IEA `trailingBytes`**, re-joined from segment slices rather than preserved verbatim.
-6. **TA1 position.** A TA1 that appeared **after** a functional group is collected onto
+3. **A missing final terminator**, which the emit supplies. Silent.
+4. **Post-IEA `trailingBytes`**, re-joined from segment slices rather than preserved verbatim.
+5. **TA1 position.** A TA1 that appeared **after** a functional group is collected onto
    `ix.ta1Segments` and emitted immediately after the ISA, so the emit **reorders** it. Silent, and
-   unlike 1 to 5 nothing is lost: the model and the warning stream both round-trip identically. This
-   library takes no position on where ASC X12 requires a TA1 to sit.
-7. **A segment whose first element is empty (`*A*B~`), outside a transaction.** It has no id for the
+   unlike the others nothing is lost: the model and the warning stream both round-trip identically.
+   It is also the only construct that moves something *else* - a segment outside a transaction is
+   placed correctly relative to the groups but not relative to a TA1 hoisted past it. This library
+   takes no position on where ASC X12 requires a TA1 to sit.
+6. **A segment whose first element is empty (`*A*B~`), outside a transaction.** It has no id for the
    envelope walker to dispatch on, so it is skipped entirely: absent from the model, absent from the
    emit, and it does not even raise `X12_UNEXPECTED_SEGMENT`. Silent, and the only case here that
    loses a value with no diagnostic at all. Inside an open transaction the same segment is kept and
    re-emitted normally.
 
-Cases 2 to 7 all break the round trip on inputs containing no line breaks at all, and **five of the
-seven (1, 3, 4, 6, 7) produce no warning**, so a clean `ix.warnings` does not tell you a round trip
-will be byte-exact. In the other direction, **do not use `serializeX12(parseX12(source))` as a
-normalization step before comparing warnings**, because case 2 drops a warning.
+**A segment outside a transaction is not on that list.** It is kept on `ix.orphanSegments` and
+re-emitted at its structural anchor, so the segment, its value and its `X12_UNEXPECTED_SEGMENT`
+warning all survive the round trip. See
+[Segments outside a transaction](#segments-outside-a-transaction) below.
+
+Cases 2 to 6 all break the round trip on inputs containing no line breaks at all, and **five of the
+six (1, 2, 3, 5, 6) produce no warning**, so a clean `ix.warnings` does not tell you a round trip
+will be byte-exact; only case 4 warns.
 
 What is **measured**, across the 56 fixtures committed to this repository: every emit is a fixed point
 and re-parses to an identical model with an identical warning stream; the 14 fixtures carrying no line
 breaks return byte-identical; and the 42 pretty-printed ones differ from their source by **line breaks
 and nothing else** (no element value lost, altered, reordered, or re-escaped). Two caveats bound how
-far that sweep can be pushed: the corpus contains **no instance of cases 2 to 7**, and **13 of the 14
-byte-identical fixtures are `golden/*.edi`**, which are serializer output by construction, so
-`envelope/no-trailing-crlf.edi` is the only independent witness. That is why the seven cases are
-enumerated here rather than left to the sweep.
+far that sweep can be pushed: the corpus contains **no instance of cases 2 to 6** and no orphan at
+all, and **13 of the 14 byte-identical fixtures are `golden/*.edi`**, which are serializer output by
+construction, so `envelope/no-trailing-crlf.edi` is the only independent witness. That is why the six
+cases are enumerated here rather than left to the sweep.
 
 So for a file whose only irregularity is pretty-printing, the round trip is safe to build on for data
 and not for a byte-level diff, and diffing your emit against `serializeX12(parseX12(source))` is the
@@ -157,9 +158,12 @@ That last one is the exception to this section's title. `TA1` is envelope-level 
 inside an open group lands on `ix.orphanSegments` even when it arrived **between an `ST` and its
 `SE`** - and it is lifted out of that transaction's `segments` and `rawSegments`. For a document
 containing such a `TA1`, `ix.groups` is not the whole typed model. That is long-standing behaviour;
-what changed is only that the segment is retained rather than discarded.
+what changed is that the segment is retained and re-emitted rather than discarded. It is also the one
+orphan that is anchored *inside* a transaction, so it is the case any re-emission design has to get
+right - see the second example below.
 
-Each raises `X12_UNEXPECTED_SEGMENT` **and** is retained verbatim on `ix.orphanSegments`:
+Each raises `X12_UNEXPECTED_SEGMENT`, is retained verbatim on `ix.orphanSegments`, and is re-emitted
+at the structural `anchor` recorded alongside it:
 
 ```ts runnable
 import { parseX12, serializeX12 } from "@cosyte/x12";
@@ -183,26 +187,59 @@ ix.orphanSegments[0]?.context; // => "body-outside-transaction"
 const warning = ix.warnings.find((w) => w.code === "X12_UNEXPECTED_SEGMENT");
 warning?.position.segmentIndex === ix.orphanSegments[0]?.segmentIndex; // => true
 
-// It does NOT come back in the emit, though (case 2 above):
-serializeX12(ix).includes("VENDORTAG"); // => false
+// And it comes back in the emit, byte for byte, with its warning:
+const round = serializeX12(ix);
+round === withStray; // => true
+parseX12(round).orphanSegments.length; // => 1
+
+// `anchor` is the structural slot it goes back into - after the one group
+// that closed, before the IEA.
+ix.orphanSegments[0]?.anchor.kind; // => "interchange"
 ```
 
-Three things this deliberately does **not** do. An orphan is not decoded by any `get*` reader. A `TA1`
-inside an open group is **not** added to `ix.ta1Segments` (that surface means "envelope-level TA1",
-and `parseTA1` reads it). And `serializeX12` does **not** re-emit an orphan.
+Two things this deliberately does **not** do. An orphan is not decoded by any `get*` reader. And a
+`TA1` inside an open group is **not** added to `ix.ta1Segments` (that surface means "envelope-level
+TA1", and `parseTA1` reads it). Retention and re-emission are not promotion: the segment is kept and
+put back where it was, not moved into a position the grammar says it does not occupy.
 
-That last one is a deliberate limitation, not an oversight. `segmentIndex` is an index into the
-**input** stream, and the emit is not in input order: it hoists `ta1Segments` ahead of the groups
-(case 6 above), and a doubled terminator's zero-length segment occupies an input index that is never
-emitted. Replaying an orphan by input index therefore splices it into whatever occupies that slot in
-the output. Measured on a two-group interchange with a `TA1` after the first group, that put a stray
-segment **inside** an 835's `ST..SE` body between `CLP` and `SE`, where re-parsing raised no warning
-at all and `get835` would have walked it as claim content. Emitting nothing and saying so is the safer
-of the two. Placing an orphan correctly needs the model to carry a structural anchor (which group and
-transaction it followed) rather than a raw index, which is a tracked change.
+**Placement is by `anchor`, never by `segmentIndex`, and the difference is the whole correctness
+argument.** `segmentIndex` is an index into the **input** stream, and the emit is not in input order:
+it hoists `ta1Segments` ahead of the groups (case 5 above), and a doubled terminator's zero-length
+segment occupies an input index that is never emitted. Replaying an orphan by input index therefore
+splices it into whatever occupies that slot in the output. Measured on a two-group interchange with a
+`TA1` after the first group, that put a stray segment **inside** an 835's `ST..SE` body between `CLP`
+and `SE`, where re-parsing raised no warning at all and `get835` would have walked it as claim
+content; a stray `SE` closed the transaction early and corrupted SE-01. An `anchor` names a slot in
+the typed tree instead - which group, which transaction, which offset inside it - and a slot in the
+tree is invariant under both reorderings, because it does not mention bytes. Use `segmentIndex` to
+join an orphan to its warning; never use it to place one.
 
-Retention is not placement: the segment is kept so it stays readable, not promoted into a position the
-grammar says it does not occupy.
+```ts runnable
+import { parseX12, serializeX12 } from "@cosyte/x12";
+
+// A TA1 *between* an ST and its SE: the one orphan that is anchored inside an
+// open transaction rather than beside one.
+const inTx =
+  "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       " +
+  "*260601*1200*^*00501*000000001*0*P*:~" +
+  "GS*HP*SENDER*RECEIVER*20260601*1200*1*X*005010X221A1~" +
+  // SE-01 is 4: four physical segments sit between the ST and the SE.
+  "ST*835*0001~CLP*ACCT1*1*100*0~TA1*000000001*260601*1200*A*000~SE*4*0001~" +
+  "GE*1*1~IEA*1*000000001~";
+
+const lifted = parseX12(inTx);
+lifted.orphanSegments[0]?.anchor.kind; // => "transaction"
+
+// It is lifted OUT of the transaction body, and stays out on the round trip:
+lifted.groups[0]?.transactions[0]?.rawSegments.length; // => 3
+serializeX12(lifted) === inTx; // => true
+```
+
+Those last two numbers are both right, and the gap between them is the point. `rawSegments` is **3**
+because the walker lifted the `TA1` off the transaction, while SE-01 is **4** because four segments
+are physically present between the `ST` and the `SE`, which is what X12.6 counts. `{ specClean: true }`
+reconciles against the emitted bytes, so it counts the re-emitted orphan and agrees with the `4`;
+reconciling against `rawSegments` alone would "correct" a right count into a wrong one.
 
 `orphanSegments` is empty for a well-formed interchange, so a non-empty one is itself the signal that
 the sender's framing did not match the envelope grammar. Check it alongside `ix.warnings`.

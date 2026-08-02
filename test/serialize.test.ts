@@ -403,26 +403,25 @@ describe("serializeX12: the line-break normalization is uniform across EOL style
 });
 
 /**
- * The four inputs that falsify "no line breaks implies a byte-exact round
- * trip". None of these contains a line break, and every one of them emits
- * something other than its source, so the corpus sweep's biconditional is a
- * property of THIS CORPUS and not of `serializeX12`.
+ * The inputs that falsify "no line breaks implies a byte-exact round trip".
+ * None of these contains a line break, and every one of them emits something
+ * other than its source, so the corpus sweep's biconditional is a property of
+ * THIS CORPUS and not of `serializeX12`.
  *
- * **The stray segment is STILL one of these**, and that is worth stating
- * because this slice changed the model half of it. A segment outside a
- * transaction is now retained on `ix.orphanSegments` rather than discarded, so
- * the decoded value survives; the EMIT still does not reproduce it, so it and
- * its warning are still absent from a round trip. Counting the line-break
- * normalization, `KNOWN-LIMITATIONS.md` lists SEVEN constructs the default
- * emit does not reproduce, six of which need no line break.
+ * **The stray segment is no longer one of them.** A segment outside a
+ * transaction is retained on `ix.orphanSegments` with a structural `anchor`,
+ * and the emit now puts it back at that anchor, so it round-trips - measured
+ * below and, at every structural position, in the orphan suite that follows.
+ * Counting the line-break normalization, `KNOWN-LIMITATIONS.md` is therefore
+ * down to SIX constructs the default emit does not reproduce, five of which
+ * need no line break.
  *
- * Note which ones are SILENT: of the seven, only the stray segment and the
- * trailing bytes warn at all. The doubled terminator, the missing final
- * terminator, the TA1 reorder and the empty-first-element segment each produce
- * an empty `warnings` array, as does the line-break normalization itself, so
- * five of the seven are silent and a clean warning stream is NOT evidence that
- * a round trip will be byte-exact. Asserted per case below rather than
- * described.
+ * Note which ones are SILENT: of the six, only the trailing bytes warn at all.
+ * The doubled terminator, the missing final terminator, the TA1 reorder and the
+ * empty-first-element segment each produce an empty `warnings` array, as does
+ * the line-break normalization itself, so five of the six are silent and a
+ * clean warning stream is NOT evidence that a round trip will be byte-exact.
+ * Asserted per case below rather than described.
  *
  * Every case that remains here reproduces on the base commit: this suite
  * documents long-standing behaviour rather than locking anything this slice
@@ -483,31 +482,30 @@ describe("serializeX12: round-trip escape hatches that do not involve line break
     expect(out).toBe(`${raw}~`);
   });
 
-  it("drops a segment sitting outside any transaction from the EMIT, warning included", () => {
-    // The model half of this changed (see the `orphanSegments` suite); the
-    // emit half did not, and this is where that is pinned.
+  it("no longer drops a segment sitting outside any transaction, warning included", () => {
+    // This case used to be on the list above, and this is where its departure
+    // is pinned. Both halves survive now: the bytes AND the diagnostic.
     const raw = `${head}REF*ZZ*VENDORTAG~IEA*1*000000001~`;
     expect(/[\r\n]/.test(raw)).toBe(false);
 
     const first = parseX12(raw);
     expect(first.warnings.map((w) => w.code)).toContain(WARNING_CODES.X12_UNEXPECTED_SEGMENT);
-    // Retained on the model, which is what this slice fixed:
     expect(first.orphanSegments).toHaveLength(1);
 
     const out = serializeX12(first);
-    expect(out).not.toBe(raw);
-    // But absent from the emit, value and all.
-    expect(out).not.toContain("VENDORTAG");
-    // And the warning cannot be recovered from the emit: a consumer who
-    // re-derives warnings from a serialized copy still loses this one.
-    expect(parseX12(out).warnings.map((w) => w.code)).not.toContain(
+    // Byte-exact, with no line break anywhere in the input to hide behind.
+    expect(out).toBe(raw);
+    expect(out).toContain("VENDORTAG");
+    // And a consumer who re-derives warnings from a serialized copy gets the
+    // same one back, which is the half a retained-but-unemitted segment could
+    // never give them.
+    expect(parseX12(out).warnings.map((w) => w.code)).toContain(
       WARNING_CODES.X12_UNEXPECTED_SEGMENT,
     );
   });
 
   it("each escape-hatch input is itself line-break free, and none round-trips", () => {
     for (const raw of [
-      `${head}REF*ZZ*VENDORTAG~IEA*1*000000001~`,
       `${head}~IEA*1*000000001~`,
       `${head}IEA*1*000000001`,
       `${head}IEA*1*000000001~ZZ*TAIL~ZZ*NOTERM`,
@@ -528,13 +526,14 @@ describe("serializeX12: round-trip escape hatches that do not involve line break
  * model as well as the emit, so its bytes were unrecoverable. Measured on the
  * base commit, none of the nine positions below retained anything.
  *
- * **The emit half is deliberately NOT fixed here**, and the "escape hatches"
- * suite above still pins the stray segment as a construct the emit does not
- * reproduce. See `KNOWN-LIMITATIONS.md` case 2: `segmentIndex` indexes the
- * INPUT stream, the emit is not in input order (it hoists `ta1Segments`), and
- * replaying by index therefore splices the orphan into whatever occupies that
- * slot in the output. The `never corrupts a transaction` suite below is the
- * regression test for the version of this slice that tried it.
+ * **The emit half is closed too, by `anchor` rather than by `segmentIndex`.**
+ * `segmentIndex` indexes the INPUT stream, the emit is not in input order (it
+ * hoists `ta1Segments` and skips the zero-length segment a doubled terminator
+ * delimits), and replaying by index therefore splices the orphan into whatever
+ * occupies that slot in the output. `anchor` names a slot in the typed tree,
+ * which survives both reorderings. The `never spliced into a transaction`
+ * suite below is the regression test for the version that replayed by index,
+ * and it is what separates this fix from that one.
  *
  * Every position is enumerated because the drop was in a shared fall-through,
  * so a fix that covered only the case that was reported would leave the rest.
@@ -625,18 +624,57 @@ describe("parseX12: segments outside a transaction are retained on the model", (
         );
       });
 
-      it("is NOT re-emitted, and the emit is still a fixed point", () => {
-        // The documented limitation, pinned rather than left to prose. The
-        // orphan does not come back, so neither does its warning.
+      it("is re-emitted at its anchor, byte-exactly, and the emit is a fixed point", () => {
+        // None of these inputs contains a line break, so byte equality is the
+        // honest bar here rather than "contains the bytes somewhere".
+        expect(/[\r\n]/.test(raw)).toBe(false);
         const before = parseX12(raw);
         const out = serializeX12(before);
-        const after = parseX12(out);
-        expect(after.orphanSegments).toEqual([]);
-        expect(after.warnings.map((w) => w.code)).not.toContain(
-          WARNING_CODES.X12_UNEXPECTED_SEGMENT,
+        expect(out).toBe(raw);
+        // Stable under a second pass.
+        expect(serializeX12(parseX12(out))).toBe(out);
+      });
+
+      it("brings the segment, its warning and its anchor back on a re-parse", () => {
+        // The join between the two surfaces has to survive the round trip, not
+        // just the bytes: a consumer who re-derives warnings from a serialized
+        // copy must see the same structural break in the same place.
+        const before = parseX12(raw);
+        const after = parseX12(serializeX12(before));
+        expect(after.orphanSegments.map((o) => [o.raw, o.context, o.anchor])).toEqual(
+          before.orphanSegments.map((o) => [o.raw, o.context, o.anchor]),
         );
-        // Whatever it does emit must be stable under a second pass.
-        expect(serializeX12(after)).toBe(out);
+        expect(
+          after.warnings.filter((w) => w.code === WARNING_CODES.X12_UNEXPECTED_SEGMENT),
+        ).toHaveLength(expectedCount);
+        // And nothing was smuggled into the typed tree on the way.
+        expect(after.groups.map((g) => g.transactions.map((t) => t.rawSegments))).toEqual(
+          before.groups.map((g) => g.transactions.map((t) => t.rawSegments)),
+        );
+        expect(after.ta1Segments).toEqual(before.ta1Segments);
+        expect(after.trailingBytes).toBe(before.trailingBytes);
+      });
+
+      it("anchors at a slot the model actually has", () => {
+        const ix = parseX12(raw);
+        for (const { anchor } of ix.orphanSegments) {
+          if (anchor.kind === "interchange") {
+            expect(anchor.groupIndex).toBeLessThanOrEqual(ix.groups.length);
+            continue;
+          }
+          const group = ix.groups[anchor.groupIndex];
+          expect(group).toBeDefined();
+          const txs = group?.transactions ?? [];
+          if (anchor.kind === "group") {
+            expect(anchor.transactionIndex).toBeLessThanOrEqual(txs.length);
+            continue;
+          }
+          const tx = txs[anchor.transactionIndex];
+          expect(tx).toBeDefined();
+          // Never 0 - `rawSegments[0]` is always the ST - and never past the end.
+          expect(anchor.segmentOffset).toBeGreaterThan(0);
+          expect(anchor.segmentOffset).toBeLessThanOrEqual(tx?.rawSegments.length ?? 0);
+        }
       });
 
       it("keeps the orphan's element values, not just its id", () => {
@@ -706,6 +744,128 @@ describe("parseX12: segments outside a transaction are retained on the model", (
 });
 
 /**
+ * The anchor is what makes re-emission sound, so it is swept rather than
+ * spot-checked: a stray segment is inserted at EVERY position of a two-group
+ * interchange, five different segment ids, and every insertion that produces an
+ * orphan is checked end to end.
+ *
+ * The case-by-case suite above proves each named position. This proves the
+ * property the named positions are supposed to be instances of, which is the
+ * thing a table of examples cannot do - the replay-by-index version passed a
+ * table of examples.
+ */
+describe("serializeX12: an orphan round-trips from every structural position", () => {
+  const isa = buildIsa({ controlNumber: "000000001" });
+  const TA1 = "TA1*000000001*250101*1200*A*000~";
+  /** Two groups, three transactions, no line break and no doubled terminator. */
+  const cleanBase = [
+    "GS*HP*S*R*20250101*1200*1*X*005010X221A1~",
+    "ST*835*0001~",
+    "CLP*ACCT1*1*100*0~",
+    "SE*3*0001~",
+    "ST*835*0002~",
+    "CLP*ACCT2*1*200*0~",
+    "SE*3*0002~",
+    "GE*2*1~",
+    "GS*HC*S*R*20250101*1200*2*X*005010X222A2~",
+    "ST*837*0003~",
+    "CLP*ACCT3*1*300*0~",
+    "SE*3*0003~",
+    "GE*1*2~",
+    "IEA*2*000000001~",
+  ];
+  /** The same interchange with an envelope-level TA1 the emit hoists. */
+  const hoistedBase = [...cleanBase.slice(0, 8), TA1, ...cleanBase.slice(8)];
+  /** Ids chosen to hit every orphan `context`, not just the body one. */
+  const strays = [
+    "ZZ*STRAY~",
+    "SE*9*9999~",
+    "GE*9*9~",
+    "ST*835*9999~",
+    "TA1*000000009*250101*1200*R*001~",
+  ];
+
+  /** Every insertion of `stray` into `base` that the walker treats as an orphan. */
+  function orphanPositions(base: readonly string[], stray: string): string[] {
+    const found: string[] = [];
+    for (let pos = 0; pos <= base.length; pos++) {
+      const raw = isa + base.slice(0, pos).join("") + stray + base.slice(pos).join("");
+      if (parseX12(raw).orphanSegments.length > 0) found.push(raw);
+    }
+    return found;
+  }
+
+  const cleanCases = strays.flatMap((s) => orphanPositions(cleanBase, s));
+  const hoistedCases = strays.flatMap((s) => orphanPositions(hoistedBase, s));
+
+  it("finds enough orphan-producing positions for the sweep to mean something", () => {
+    // A guard against the sweep silently emptying out (an `orphanSegments`
+    // regression would make every case below vacuous rather than red).
+    expect(cleanCases).toHaveLength(50);
+    expect(hoistedCases).toHaveLength(54);
+  });
+
+  it("round-trips byte-exactly at all 50 positions when no TA1 is hoisted", () => {
+    const exact = cleanCases.filter((raw) => serializeX12(parseX12(raw)) === raw);
+    expect(exact).toHaveLength(cleanCases.length);
+  });
+
+  it("differs at all 54 hoisted-TA1 positions ONLY by the TA1 move", () => {
+    // The orphan is still placed correctly relative to the groups; what moved
+    // is the TA1, which moves on this base with no orphan present at all. That
+    // is `KNOWN-LIMITATIONS.md` case 5, not a defect in orphan placement.
+    for (const raw of hoistedCases) {
+      const out = serializeX12(parseX12(raw));
+      expect(out).not.toBe(raw);
+      expect(out.split(TA1).join("")).toBe(raw.split(TA1).join(""));
+    }
+  });
+
+  it("never lets an orphan reach a transaction body, a TA1 list, or the trailing bytes", () => {
+    for (const raw of [...cleanCases, ...hoistedCases]) {
+      const before = parseX12(raw);
+      const out = serializeX12(before);
+      const after = parseX12(out);
+      // The typed tree is the safety-critical surface: an orphan that lands in
+      // an ST..SE body is read by `get835` as claim content, silently.
+      expect(after.groups.map((g) => g.transactions.map((t) => t.rawSegments))).toEqual(
+        before.groups.map((g) => g.transactions.map((t) => t.rawSegments)),
+      );
+      expect(after.orphanSegments.map((o) => [o.raw, o.context, o.anchor])).toEqual(
+        before.orphanSegments.map((o) => [o.raw, o.context, o.anchor]),
+      );
+      expect(after.ta1Segments).toEqual(before.ta1Segments);
+      expect(after.trailingBytes).toBe(before.trailingBytes);
+      expect([...after.warnings].map((w) => w.code).sort()).toEqual(
+        [...before.warnings].map((w) => w.code).sort(),
+      );
+      expect(serializeX12(after)).toBe(out);
+    }
+  });
+
+  it("exercises all three anchor kinds and all five orphan contexts", () => {
+    // Otherwise the sweep could be green while a whole branch of the placement
+    // logic is never reached.
+    const anchors = new Set<string>();
+    const contexts = new Set<string>();
+    for (const raw of [...cleanCases, ...hoistedCases]) {
+      for (const o of parseX12(raw).orphanSegments) {
+        anchors.add(o.anchor.kind);
+        contexts.add(o.context);
+      }
+    }
+    expect([...anchors].sort()).toEqual(["group", "interchange", "transaction"]);
+    expect([...contexts].sort()).toEqual([
+      "body-outside-transaction",
+      "ge-without-gs",
+      "se-without-st",
+      "st-without-gs",
+      "ta1-inside-group",
+    ]);
+  });
+});
+
+/**
  * Regression suite for the version of this slice that DID replay orphans at
  * their recorded `segmentIndex`.
  *
@@ -722,9 +882,18 @@ describe("parseX12: segments outside a transaction are retained on the model", (
  * carried across the IEA into `trailingBytes`. Base merely dropped the segment
  * and stayed structurally clean.
  *
- * These assertions hold on the base commit too. They are not a claim that this
- * slice improved the emit; they are a fence around the emit so a future attempt
- * at positional re-emission cannot reintroduce the corruption silently.
+ * These assertions held on the base commit, which emitted no orphan at all, and
+ * they hold now that the emit places every orphan by its structural `anchor`.
+ * That is exactly what makes them worth keeping: they do not care HOW an orphan
+ * is placed, only that it never joins a transaction's `rawSegments` on the
+ * re-parse, never corrupts SE-01 or SE-02, and never crosses the IEA. A future
+ * change that reaches for `segmentIndex` again reds them.
+ *
+ * Note the model-level wording. A `ta1-inside-group` orphan IS written back
+ * between the `ST` and the `SE`, because that is where it came from, so "never
+ * lands inside a transaction" would be false at the byte level. What must hold
+ * is that it never becomes transaction CONTENT: `get835` and its siblings walk
+ * `rawSegments`, and that is the surface a stray segment must stay off.
  */
 describe("serializeX12: an orphan is never spliced into a transaction", () => {
   const isa = buildIsa({ controlNumber: "000000001" });
@@ -782,6 +951,77 @@ describe("serializeX12: an orphan is never spliced into a transaction", () => {
     const after = parseX12(serializeX12(parseX12(raw)));
     expect(after.trailingBytes).toBeUndefined();
     expect(after.warnings.map((w) => w.code)).not.toContain(WARNING_CODES.X12_TRAILING_GARBAGE);
+  });
+
+  it("counts an orphan re-emitted inside an ST..SE toward SE-01", () => {
+    // The defect this pins: the walker lifts a `TA1` off `tx.rawSegments`, but
+    // the emit puts it back between the ST and the SE, so a `segCount` taken
+    // from the model alone describes bytes the serializer did not write.
+    // Measured before the fix: `{ recomputeCounts: true }` rewrote a CORRECT
+    // `SE*4*` down to `SE*3*` over four emitted segments. SE-01 is "segments
+    // included in the transaction set, including ST and SE" (X12.6), and
+    // silently shrinking one is a safety-critical count corruption, not a
+    // cosmetic one.
+    const isa2 = buildIsa({ controlNumber: "000000001" });
+    const withTa1 = (se: string): string =>
+      `${isa2}${gs}ST*835*0001~CLP*ACCT1*1*100*0~TA1*000000001*250101*1200*A*000~SE*${se}*0001~GE*1*1~IEA*1*000000001~`;
+
+    /** Physical segment count from ST to SE inclusive, read off the bytes. */
+    const physical = (out: string): number => {
+      const body = out.slice(isa2.length).split("~").filter(Boolean);
+      return body.findIndex((s) => s.startsWith("SE*")) - body.indexOf("ST*835*0001") + 1;
+    };
+
+    // A sender who counted the TA1 was right, and must not be "corrected".
+    const seen4: X12ParseWarning[] = [];
+    const out4 = serializeX12(parseX12(withTa1("4")), {
+      specClean: true,
+      recomputeCounts: true,
+      onWarning: (w) => seen4.push(w),
+    });
+    expect(physical(out4)).toBe(4);
+    expect(out4).toContain("SE*4*0001~");
+    expect(seen4.map((w) => w.code)).not.toContain(WARNING_CODES.X12_SEGMENT_COUNT_MISMATCH);
+
+    // A sender who did not count it is flagged, and recompute writes the count
+    // that matches the emitted bytes.
+    const seen3: X12ParseWarning[] = [];
+    const out3 = serializeX12(parseX12(withTa1("3")), {
+      specClean: true,
+      recomputeCounts: true,
+      onWarning: (w) => seen3.push(w),
+    });
+    expect(seen3.map((w) => w.code)).toContain(WARNING_CODES.X12_SEGMENT_COUNT_MISMATCH);
+    expect(physical(out3)).toBe(4);
+    expect(out3).toContain("SE*4*0001~");
+
+    // Idempotent under the library's own gate: reconciling the recomputed
+    // output raises nothing and changes nothing.
+    const again: X12ParseWarning[] = [];
+    const out3b = serializeX12(parseX12(out3), {
+      specClean: true,
+      recomputeCounts: true,
+      onWarning: (w) => again.push(w),
+    });
+    expect(again).toEqual([]);
+    expect(out3b).toBe(out3);
+  });
+
+  it("does not count an orphan sitting OUTSIDE the ST..SE toward SE-01", () => {
+    // The counterpart bound: only the range between ST and SE counts. A
+    // group-anchored orphan after the SE must leave SE-01 alone, or the fix
+    // above would over-count as readily as the defect under-counted.
+    const isa2 = buildIsa({ controlNumber: "000000001" });
+    const raw = `${isa2}${gs}ST*835*0001~CLP*ACCT1*1*100*0~SE*3*0001~ZZ*STRAY~GE*1*1~IEA*1*000000001~`;
+    const seen: X12ParseWarning[] = [];
+    const out = serializeX12(parseX12(raw), {
+      specClean: true,
+      recomputeCounts: true,
+      onWarning: (w) => seen.push(w),
+    });
+    expect(seen).toEqual([]);
+    expect(out).toContain("SE*3*0001~");
+    expect(out).toBe(raw);
   });
 
   it("keeps spec-clean warning positions pointing at the segment they describe", () => {

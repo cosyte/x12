@@ -282,6 +282,92 @@ export interface X12FunctionalGroup {
 }
 
 /**
+ * Where an orphan sat in the STRUCTURE of the interchange, as opposed to
+ * where it sat in the input byte stream. This is what lets `serializeX12`
+ * put an orphan back without guessing.
+ *
+ * `X12OrphanSegment.segmentIndex` cannot do that job. It indexes the INPUT
+ * stream, and the emit is not in input order: `ta1Segments` are hoisted ahead
+ * of the groups, and a doubled terminator's zero-length segment occupies an
+ * input index that is never emitted. Either one shifts the output's indices
+ * away from the input's, so replaying by index splices the orphan into
+ * whatever occupies that slot - measurably, into an 835's `ST..SE` body,
+ * where a re-parse reports nothing. An anchor names a slot in the typed tree
+ * instead, which survives both reorderings because it does not mention bytes.
+ *
+ * Three kinds, one per structural level:
+ *
+ * - **`"interchange"`** - between the ISA and the IEA but outside every
+ *   functional group. `groupIndex` is the number of groups that had already
+ *   closed, so the orphan is emitted immediately before `ix.groups[groupIndex]`
+ *   (or before the IEA when `groupIndex === ix.groups.length`).
+ * - **`"group"`** - inside `ix.groups[groupIndex]` but outside every
+ *   transaction set in it. `transactionIndex` is the number of transactions
+ *   that had already closed, so the orphan is emitted immediately before that
+ *   group's `transactions[transactionIndex]` (or before its `GE` when
+ *   `transactionIndex === transactions.length`).
+ * - **`"transaction"`** - inside an open `ST..SE`, which only a `TA1` can be,
+ *   since every other segment arriving there is body content. `segmentOffset`
+ *   is the number of `rawSegments` already collected, so the orphan is emitted
+ *   immediately before `rawSegments[segmentOffset]`. It is never `0` (the `ST`
+ *   is always `rawSegments[0]`) and never exceeds `rawSegments.length`. Such an
+ *   orphan is written back BETWEEN the `ST` and the `SE`, so `serializeX12`
+ *   counts it toward SE-01 in spec-clean mode even though it is not on
+ *   `tx.rawSegments` - it is a segment of that transaction set per X12.6.
+ *
+ * **An anchor is a POSITION, so reshaping the model invalidates it.** The
+ * indices address `ix.groups`, that group's `transactions`, and that
+ * transaction's `rawSegments` as they stand on the interchange you pass to
+ * `serializeX12`. Filter or reorder any of those and an orphan's anchor may
+ * still resolve while naming a different slot, and it will be emitted there
+ * with no warning. An anchor that resolves to nothing is emitted at
+ * interchange level before the IEA rather than dropped. Re-parse rather than
+ * hand-edit if you need anchors to stay meaningful.
+ *
+ * @example
+ * ```ts
+ * import { parseX12 } from "@cosyte/x12";
+ * const ix = parseX12(raw);
+ * for (const o of ix.orphanSegments) {
+ *   if (o.anchor.kind === "group") console.warn(o.anchor.groupIndex);
+ * }
+ * ```
+ */
+export type X12OrphanAnchor =
+  | {
+      readonly kind: "interchange";
+      /** How many functional groups had closed before this segment arrived. */
+      readonly groupIndex: number;
+    }
+  | {
+      readonly kind: "group";
+      /** Index into `ix.groups` of the group that was open. */
+      readonly groupIndex: number;
+      /** How many transaction sets in that group had closed. */
+      readonly transactionIndex: number;
+    }
+  | {
+      readonly kind: "transaction";
+      /** Index into `ix.groups` of the group that was open. */
+      readonly groupIndex: number;
+      /** Index into that group's `transactions` of the set that was open. */
+      readonly transactionIndex: number;
+      /** How many of that set's `rawSegments` had been collected. */
+      readonly segmentOffset: number;
+    };
+
+/**
+ * String-literal union over the `kind` discriminant of {@link X12OrphanAnchor}.
+ *
+ * @example
+ * ```ts
+ * import type { X12OrphanAnchorKind } from "@cosyte/x12";
+ * const kind: X12OrphanAnchorKind = "transaction";
+ * ```
+ */
+export type X12OrphanAnchorKind = X12OrphanAnchor["kind"];
+
+/**
  * A segment the envelope grammar has no place for, captured verbatim rather
  * than discarded. Every segment recorded here also raised exactly one
  * `X12_UNEXPECTED_SEGMENT` warning whose `position.segmentIndex` equals
@@ -305,15 +391,15 @@ export interface X12FunctionalGroup {
  * to be discarded), and it is the one case where `ix.groups` is not the whole
  * typed model.
  *
- * **`serializeX12` does NOT re-emit these**, so an orphan does not survive a
- * round trip and neither does its warning. That is a deliberate limitation
- * rather than an oversight: {@link segmentIndex} indexes the INPUT stream,
- * and the emit is not in input order (it hoists `ta1Segments` ahead of the
- * groups), so replaying an orphan by index can splice it into a transaction
- * body, where a re-parse reports nothing at all. Placing one correctly needs
- * a structural anchor on the model, not a raw index. Read orphans from this
- * array and treat the FIRST parse's warnings as the authority. See
- * `KNOWN-LIMITATIONS.md`.
+ * **`serializeX12` re-emits these, at {@link anchor}**, so an orphan and its
+ * `X12_UNEXPECTED_SEGMENT` warning both survive a round trip. Placement is by
+ * the structural anchor and NEVER by {@link segmentIndex}: that index is an
+ * index into the INPUT stream, and the emit is not in input order (it hoists
+ * `ta1Segments` ahead of the groups and skips the zero-length segment a
+ * doubled terminator produces), so replaying by index splices an orphan into
+ * whatever occupies that slot - measurably, into an 835's `ST..SE` body,
+ * where a re-parse reports nothing at all. Use {@link segmentIndex} to join
+ * back to the warning, not to place the segment. See `KNOWN-LIMITATIONS.md`.
  *
  * Two things are NOT recorded here. A doubled segment terminator delimits a
  * zero-length segment carrying no elements, so there is nothing to retain.
@@ -351,6 +437,12 @@ export interface X12OrphanSegment {
   readonly segmentIndex: number;
   /** Which structural rule the segment broke. */
   readonly context: X12UnexpectedSegmentContext;
+  /**
+   * Where the segment sat in the typed tree - the slot `serializeX12` puts it
+   * back into. See {@link X12OrphanAnchor} for why a structural anchor and not
+   * {@link segmentIndex} is what makes re-emission sound.
+   */
+  readonly anchor: X12OrphanAnchor;
 }
 
 /**
