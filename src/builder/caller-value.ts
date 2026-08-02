@@ -29,7 +29,7 @@
  * say it.
  *
  * What it does guarantee is that `Error.message` from a `build*` refusal has a
- * **fixed ceiling**. Before this, **twenty** refusal sites across ten builder
+ * **fixed ceiling**. Before this, **twenty-three** refusal sites across ten builder
  * modules interpolated a caller value verbatim, so a 120,000-character control
  * number produced a 120,066-**character** `X12BuildError.message` - measured on
  * this tree, and the length grew without limit with the input. An unbounded
@@ -112,7 +112,7 @@ export const BUILD_REFUSAL_VALUE_MAX_RENDERED =
  * Render a caller-supplied value as a bounded, quoted fragment for a `build*`
  * refusal message. **This is the only sanctioned route a caller value takes
  * into a thrown message**, and `test/builder-refusal-bounds.test.ts` scans
- * `src/` for any other route - a twenty-first refusal site that interpolates a
+ * `src/` for any other route - a twenty-fourth refusal site that interpolates a
  * value directly reds that test. That scan keys on `throw new *BuildError(` and
  * on template-literal holes, so it is a strong tripwire for the shape this
  * library uses rather than a proof over every shape one could write.
