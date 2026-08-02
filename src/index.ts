@@ -18,7 +18,7 @@
  * console.log(VERSION);
  * ```
  */
-export const VERSION: string = "0.0.4";
+export const VERSION: string = "0.0.5";
 
 // Phase 1 - envelope parser surface.
 export { parseX12 } from "./parser/index.js";
