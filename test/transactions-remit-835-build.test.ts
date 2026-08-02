@@ -20,10 +20,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BUILD_REFUSAL_VALUE_MAX_RENDERED,
   build835,
   get835,
+  parseX12,
   REMIT_835_BUILD_ERROR_CODES,
   Remit835BuildError,
+  serializeX12,
+  WARNING_CODES,
   X12Decimal,
   type Build835ClaimSpec,
   type Build835ServiceLineSpec,
@@ -365,6 +369,26 @@ describe("build835 - structural refusals", () => {
     };
     expect(() => build835(broken)).toThrow(Remit835BuildError);
   });
+
+  // X12-BUILDER-BOUNDS. The branch fires BECAUSE the value is over-long, so
+  // this site echoed the whole thing: measured at 120,066 bytes on the base
+  // commit. Every caller value now goes through `renderCallerValue`, whose
+  // rendered fragment is capped at BUILD_REFUSAL_VALUE_MAX_RENDERED; 500
+  // leaves room for the site's own fixed template text and nothing else.
+  it("bounds its refusal message against a 120,000-character control number", () => {
+    const huge = "9".repeat(120_000);
+    try {
+      build835({ ...BALANCED_SPEC, envelope: { ...ENVELOPE, interchangeControlNumber: huge } });
+      throw new Error("expected build835 to refuse an over-long control number");
+    } catch (err) {
+      expect(err).toBeInstanceOf(Remit835BuildError);
+      const { message } = err as Error;
+      expect(message).not.toContain(huge);
+      expect(message).toContain("(120000 characters)");
+      expect(message.length).toBeLessThan(500);
+      expect(message.length).toBeLessThan(BUILD_REFUSAL_VALUE_MAX_RENDERED + 500);
+    }
+  });
 });
 
 describe("build835 - minimal spec (no parties, no claims)", () => {
@@ -641,5 +665,71 @@ describe("build835 - delimiter-bearing values round-trip losslessly", () => {
     const remit = remitOf(ix);
     expect(remit.warnings).toHaveLength(0);
     expect(remit.traces[0]?.referenceId).toBe("AB~CD*EF:GH");
+  });
+});
+
+describe("build835 - envelope counts (SE-01 / GE-01 / IEA-01 tripwire)", () => {
+  // ▶ THIS REPO HAS MISCOUNTED SE-01 THREE TIMES, most recently in
+  // `X12-ORPHAN-REEMIT` (#49), where `{specClean, recomputeCounts}` rewrote a
+  // CORRECT `SE*4*` down to `SE*3*` and the base was safe only by accident.
+  // This slice touches `build-835.ts` (the balance guard) and the `padControl`
+  // throw in all nine emitting modules, so the counts are asserted here
+  // outright rather than trusted to the existing suite. Every number below is
+  // recomputed from the emitted segments, never copied from the model.
+
+  function envelopeOf(ix: X12Interchange): {
+    readonly se: string | undefined;
+    readonly emitted: number;
+    readonly ge: string | undefined;
+    readonly iea: string | undefined;
+  } {
+    const group = ix.groups[0];
+    const tx = group?.transactions[0];
+    return {
+      se: tx?.se?.elements[1],
+      // `tx.segments` spans ST..SE inclusive, which is exactly SE-01's
+      // definition per X12.6: "segments included in the transaction set,
+      // including ST and SE".
+      emitted: tx?.segments.length ?? -1,
+      ge: group?.ge?.elements[1],
+      iea: ix.iea?.elements[1],
+    };
+  }
+
+  it("SE-01 counts the segments actually emitted, ST and SE inclusive", () => {
+    const { se, emitted } = envelopeOf(build835(BALANCED_SPEC));
+    expect(se).toBe(String(emitted));
+  });
+
+  it("GE-01 is the transaction count and IEA-01 the group count", () => {
+    const ix = build835(BALANCED_SPEC);
+    expect(ix.groups).toHaveLength(1);
+    expect(ix.groups[0]?.transactions).toHaveLength(1);
+    const { ge, iea } = envelopeOf(ix);
+    expect(ge).toBe("1");
+    expect(iea).toBe("1");
+  });
+
+  it("a built 835 draws no count-mismatch warning under specClean", () => {
+    // The reconciliation gate is the library's own judge of its counts, so a
+    // silent miscount cannot hide behind a hand-written expectation.
+    const ix = build835(BALANCED_SPEC);
+    const seen: string[] = [];
+    serializeX12(ix, {
+      specClean: true,
+      onWarning: (w) => seen.push(w.code),
+    });
+    expect(seen).not.toContain(WARNING_CODES.X12_SEGMENT_COUNT_MISMATCH);
+    expect(seen).toEqual([]);
+  });
+
+  it("recomputeCounts is a no-op on a built 835, and the emit is a fixed point", () => {
+    const ix = build835(BALANCED_SPEC);
+    const plain = serializeX12(ix);
+    const recomputed = serializeX12(ix, { specClean: true, recomputeCounts: true });
+    // If SE-01 were wrong in either direction, recompute would rewrite it and
+    // these two would diverge. That divergence is precisely what #49 shipped.
+    expect(recomputed).toBe(plain);
+    expect(serializeX12(parseX12(plain))).toBe(plain);
   });
 });

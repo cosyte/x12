@@ -433,3 +433,80 @@ describe("999 - PHI safety", () => {
     expect(raw).not.toMatch(/\d{10,}/u);
   });
 });
+
+describe("build999 - refusal-message bounds (X12-BUILDER-BOUNDS)", () => {
+  // Three of the sixteen caller-value slots live in this module, and two of
+  // them - the ST-02 trace, echoed by both accept-clean guards - were among
+  // the SEVEN that had no length gate at all. Nothing about either branch
+  // requires the control number to be long: it is echoed for traceability, so
+  // the message grew with whatever the caller passed.
+  const HUGE = "9".repeat(120_000);
+
+  function expectBounded(fn: () => unknown, expected: string): void {
+    try {
+      fn();
+      throw new Error("expected build999 to refuse");
+    } catch (err) {
+      expect(err).toBeInstanceOf(AckBuildError);
+      const { message } = err as Error;
+      expect(message).toContain(expected);
+      expect(message).not.toContain(HUGE);
+      expect(message).toContain("(120000 characters)");
+      expect(message.length).toBeLessThan(500);
+    }
+  }
+
+  it("bounds the AK2 accept-with-error-payload refusal (ST-02 slot)", () => {
+    expectBounded(
+      () =>
+        build999({
+          ...ACCEPT_SPEC,
+          functionalGroup: {
+            ...ACCEPT_SPEC.functionalGroup,
+            disposition: "P",
+            transactionResponses: [
+              {
+                transactionSetIdCode: "837",
+                transactionSetControlNumber: HUGE,
+                disposition: "A",
+                syntaxErrorCodes: ["1"],
+              },
+            ],
+          },
+        }),
+      "IK5-01 was 'A'",
+    );
+  });
+
+  it("bounds the AK9 accept-against-non-accept refusal (ST-02 slot)", () => {
+    expectBounded(
+      () =>
+        build999({
+          ...ACCEPT_SPEC,
+          functionalGroup: {
+            ...ACCEPT_SPEC.functionalGroup,
+            disposition: "A",
+            transactionResponses: [
+              {
+                transactionSetIdCode: "837",
+                transactionSetControlNumber: HUGE,
+                disposition: "E",
+              },
+            ],
+          },
+        }),
+      "AK9-01 was 'A'",
+    );
+  });
+
+  it("bounds the over-long control number refusal", () => {
+    expectBounded(
+      () =>
+        build999({
+          ...ACCEPT_SPEC,
+          envelope: { ...ACCEPT_SPEC.envelope, interchangeControlNumber: HUGE },
+        }),
+      "control number",
+    );
+  });
+});

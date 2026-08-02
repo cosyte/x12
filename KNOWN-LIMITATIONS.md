@@ -148,29 +148,27 @@ model.
   interchange is fully parsed into `tx.segments` before iteration begins. It is not a byte-streaming
   reader for arbitrarily large files.
 
-- **Builder refusal messages are NOT registry-bound, and at least sixteen sites across ten builder
-  modules echo a caller-supplied value unbounded.** The parse side is closed: no warning factory takes
-  a value parameter and every `message` is a frozen-registry lookup. The emit side is not, and the
-  sites divide into two kinds.
+- **A builder refusal message shows at most 63 characters of a value you supplied, and it is bounded
+  but not escaped.** Sixteen sites across ten builder modules interpolate a caller-supplied value into
+  the thrown message. Every one now routes through `renderCallerValue`, so the rendered fragment never
+  exceeds `BUILD_REFUSAL_VALUE_MAX_RENDERED` (92 characters: 63 of your value, quotes, an ellipsis,
+  and the true length). Both constants and the function are exported, so you can assert the ceiling
+  rather than take it on trust.
 
-  **Gated on length (nine sites).** The `control number "${value}"` template in
-  `X12_*_BUILD_INVALID_SPEC` repeats across `build-interchange.ts`, `build-999.ts`, `build-835.ts`,
-  `build-837.ts`, `build-271.ts`, `build-277.ts`, `build-278.ts`, `build-820.ts` and `build-834.ts`,
-  and it fires **precisely because the value is over-long**.
+  Over-long values are the point of nine of those sites (`control number "…" exceeds the N-char spec
+limit`, one per emitting module, where the branch fires **because** the value is over-long); the
+  other seven had no length gate at all. Before `0.0.4` all sixteen echoed the value verbatim: a
+  120,000-character control number produced a **120,066-byte** `X12BuildError.message` from
+  `buildInterchange`, measured. It is now 90.
 
-  **Not gated on length at all (seven sites).** `build-999.ts` interpolates the supplied ST-02
-  transaction-set control number into two of its `X12_ACK_ACCEPT_WITH_ERRORS` refusals;
-  `build-interchange.ts` interpolates the supplied transaction-set id code into its empty-segment-id
-  refusal; `build-837.ts` interpolates a service line's `variant`; `build-834.ts` interpolates an
-  unrecognized INS-03 and an unrecognized HD-01 maintenance type; and `build-ta1.ts` interpolates an
-  unrecognized TA1-05 note code. Any of these renders a value of any size.
-
-  Measured with a 120,000-byte caller value: `build999` throws a **120,155-byte** `message` with a
-  `stack` a little longer still (the frame text is environment-dependent, so only the `message`
-  figures are exact), and `buildInterchange` throws a **120,069-byte** `message`. These are values
-  **you** supplied rather than bytes off an inbound interchange, which is why this is a limitation
-  rather than a parse-side leak, but a spec assembled from an inbound document carries inbound values.
-  **Log `err.code` from a builder, not `err.message`.**
+  **What this is and is not.** These are values **you** passed in, so bounding them redacts nothing:
+  you already hold the value, and if you put patient data in a control number the refusal will show up
+  to 63 characters of it. What the bound buys is that `Error.message` from a builder has a fixed
+  ceiling instead of growing with your input, which matters for log lines, crash reports, and JSON
+  error envelopes. The surviving characters are **not escaped** either: they are whatever you supplied,
+  including a newline or a segment terminator, so a refusal message is bounded but not guaranteed to
+  be a single log line. Logging `err.code` rather than `err.message` remains the safest habit, and the
+  parse side is stronger still, where no factory takes a value parameter at all.
 
 - **`X12ParseError.snippet` on a Tier-3 fatal can carry PHI, by design, and the library does not
   redact it.** Warning messages come from a frozen registry and no factory takes a value parameter, so

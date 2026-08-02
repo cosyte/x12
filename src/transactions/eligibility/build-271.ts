@@ -45,6 +45,7 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { renderCallerValue } from "../../builder/caller-value.js";
 
 /** GS-08 / ST-03 version + release emitted for every 271 - the WPC TR3 `005010X279A1`. @internal */
 const X279A1_VERSION_RELEASE = "005010X279A1";
@@ -485,7 +486,7 @@ function padControl(value: string, width: number): string {
   if (value.length < width) return "0".repeat(width - value.length) + value;
   throw new Eligibility271BuildError(
     ELIGIBILITY_271_BUILD_ERROR_CODES.X12_271_BUILD_INVALID_SPEC,
-    `build271: control number "${value}" exceeds the ${String(width)}-char spec limit.`,
+    `build271: control number ${renderCallerValue(value)} exceeds the ${String(width)}-char spec limit.`,
   );
 }
 

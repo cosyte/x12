@@ -58,12 +58,25 @@
  *   What the offset guarantees is non-collision across claims: a claim with
  *   `n` service lines spans at least `n + 1` body segments, so the next CLP
  *   always sits past the previous claim's last line position.
- * - **Remit-level** ({@link checkRemitTotalBalance}): `segmentIndex` is
- *   **`0`**, not a CLP and not the BPR. The top-of-remit equation spans the
- *   whole transaction set and has no single offending segment, and there is
- *   at most one such warning per transaction, so it needs no locator to stay
- *   distinct. Read it as "this transaction set", and take the amounts from
- *   `remit.paymentAmount` and `remit.claims`.
+ * - **Remit-level** ({@link checkRemitTotalBalance}): `segmentIndex` is the
+ *   **BPR's** own 1-based body index, so `tx.segments[position.segmentIndex]`
+ *   is that exact BPR. The equation spans the whole transaction set, so no
+ *   single segment is uniquely "at fault" - but BPR-02 is the one element the
+ *   invariant compares against, and the BPR is the only segment a reader can
+ *   act on. `get835` was passing a literal `0` here, and `0` is not a neutral
+ *   sentinel: `tx.segments[0]` is the ST, so a consumer resolving the position
+ *   landed on the ST. The one remaining `0` is the transaction that carries no
+ *   BPR at all (malformed - TR3 005010X221A1 makes BPR mandatory - but
+ *   reachable, since the check still runs against an all-zero payment header).
+ *   Take the amounts from `remit.payment.totalActualPayment` and
+ *   `remit.claims`; the message names the equation and carries no value.
+ *
+ * **A caller that constructs the position itself gets whatever it passes.**
+ * These three functions are exported, and they do not derive a position - they
+ * forward one. `build835` exploits that: it hands in a synthetic position
+ * because it has no parsed segment stream to index into, and it uses only
+ * `.message`, which is a registry lookup keyed by the invariant and therefore
+ * position-independent.
  */
 
 import { X12Decimal } from "../../decimal.js";

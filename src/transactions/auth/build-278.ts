@@ -47,6 +47,7 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { renderCallerValue } from "../../builder/caller-value.js";
 
 /** GS-01 functional identifier code for the 278. `HI` = Health Care Services Review Information. @internal */
 const X12_278_FUNCTIONAL_ID = "HI";
@@ -540,7 +541,7 @@ function padControl(value: string, width: number): string {
   if (value.length < width) return "0".repeat(width - value.length) + value;
   throw new ServicesReview278BuildError(
     AUTH_278_BUILD_ERROR_CODES.X12_278_BUILD_INVALID_SPEC,
-    `build278: control number "${value}" exceeds the ${String(width)}-char spec limit.`,
+    `build278: control number ${renderCallerValue(value)} exceeds the ${String(width)}-char spec limit.`,
   );
 }
 

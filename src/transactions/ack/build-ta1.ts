@@ -20,6 +20,7 @@ import type { Ta1Segment } from "../../parser/types.js";
 import { TA1_ACK_CODES, type Ta1AckCode, type Ta1NoteCode } from "./codes.js";
 import { ACK_BUILD_ERROR_CODES, AckBuildError } from "./errors.js";
 import type { BuildTA1Spec } from "./types.js";
+import { renderCallerValue } from "../../builder/caller-value.js";
 
 /**
  * `buildTA1` - assemble a TA1 Interchange Acknowledgment segment from the
@@ -105,7 +106,7 @@ function enforceAcceptIsClean(spec: BuildTA1Spec): void {
   if (spec.ackCode === TA1_ACK_CODES.A && spec.noteCode !== "000") {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_TA1_ACCEPT_WITH_NOTE,
-      `buildTA1: TA1-04 was "A" (Accept) but TA1-05 carried note "${spec.noteCode}". An accept must cite "000" (no error). Use ackCode "E" (accept, errors noted) when the inbound had defects you elected to ignore.`,
+      `buildTA1: TA1-04 was "A" (Accept) but TA1-05 carried note ${renderCallerValue(spec.noteCode)}. An accept must cite "000" (no error). Use ackCode "E" (accept, errors noted) when the inbound had defects you elected to ignore.`,
     );
   }
 }

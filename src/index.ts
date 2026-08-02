@@ -518,6 +518,15 @@ export type { SerializeOptions } from "./serialize/index.js";
 // Phase 8 - general-purpose, segment-level interchange builder. The
 // domain-specific builders (build835, build837P, …) layer on top of this.
 export { buildInterchange, X12_BUILD_ERROR_CODES, X12BuildError } from "./builder/index.js";
+// The single sanctioned route a caller-supplied value takes into a `build*`
+// refusal message, plus its two bounds. Exported so a consumer can assert the
+// ceiling rather than take it on trust - the builder-side counterpart to
+// `ALL_WARNING_MESSAGES` on the parse side.
+export {
+  BUILD_REFUSAL_VALUE_MAX_LENGTH,
+  BUILD_REFUSAL_VALUE_MAX_RENDERED,
+  renderCallerValue,
+} from "./builder/index.js";
 export type {
   FunctionalGroupSpec,
   InterchangeSpec,

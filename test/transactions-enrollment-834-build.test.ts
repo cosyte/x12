@@ -21,6 +21,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BUILD_REFUSAL_VALUE_MAX_RENDERED,
   build834,
   ENROLLMENT_834_BUILD_ERROR_CODES,
   Enrollment834BuildError,
@@ -274,6 +275,26 @@ describe("build834 - maintenance-type refusals", () => {
     };
     expect(() => build834(spec)).toThrow(Enrollment834BuildError);
   });
+
+  // X12-BUILDER-BOUNDS. The branch fires BECAUSE the value is over-long, so
+  // this site echoed the whole thing: measured at 120,066 bytes on the base
+  // commit. Every caller value now goes through `renderCallerValue`, whose
+  // rendered fragment is capped at BUILD_REFUSAL_VALUE_MAX_RENDERED; 500
+  // leaves room for the site's own fixed template text and nothing else.
+  it("bounds its refusal message against a 120,000-character control number", () => {
+    const huge = "9".repeat(120_000);
+    try {
+      build834({ ...CANONICAL_SPEC, envelope: { ...ENVELOPE, interchangeControlNumber: huge } });
+      throw new Error("expected build834 to refuse an over-long control number");
+    } catch (err) {
+      expect(err).toBeInstanceOf(Enrollment834BuildError);
+      const { message } = err as Error;
+      expect(message).not.toContain(huge);
+      expect(message).toContain("(120000 characters)");
+      expect(message.length).toBeLessThan(500);
+      expect(message.length).toBeLessThan(BUILD_REFUSAL_VALUE_MAX_RENDERED + 500);
+    }
+  });
 });
 
 describe("build834 - PHI safety", () => {
@@ -295,6 +316,60 @@ describe("build834 - PHI safety", () => {
       // The member id / name are PHI - they are NEVER named.
       expect(message).not.toContain("MBR-SECRET");
       expect(message).not.toContain("SECRETNAME");
+    }
+  });
+});
+
+describe("build834 - refusal-message bounds (X12-BUILDER-BOUNDS)", () => {
+  // Two of the SEVEN slots that had no length gate at all. INS-03 and HD-01
+  // are 2-3 character X12 Code Source 875 values; the refusal echoed whatever
+  // arrived, so an unknown code of any size became the message.
+  const HUGE = "9".repeat(120_000);
+
+  function expectBounded(spec: Build834Spec): void {
+    try {
+      build834(spec);
+      throw new Error("expected build834 to refuse an unknown maintenance type");
+    } catch (err) {
+      expect(err).toBeInstanceOf(Enrollment834BuildError);
+      expect((err as Enrollment834BuildError).code).toBe(
+        ENROLLMENT_834_BUILD_ERROR_CODES.X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE,
+      );
+      const { message } = err as Error;
+      expect(message).not.toContain(HUGE);
+      expect(message).toContain("(120000 characters)");
+      expect(message.length).toBeLessThan(500);
+    }
+  }
+
+  it("bounds the unknown INS-03 refusal", () => {
+    expectBounded({
+      ...CANONICAL_SPEC,
+      members: [{ maintenanceTypeCode: HUGE, member: { lastName: "DOE" } }],
+    });
+  });
+
+  it("bounds the unknown HD-01 refusal", () => {
+    expectBounded({
+      ...CANONICAL_SPEC,
+      members: [
+        {
+          maintenanceTypeCode: "021",
+          member: { lastName: "DOE" },
+          healthCoverages: [{ maintenanceTypeCode: HUGE, insuranceLineCode: "HLT" }],
+        },
+      ],
+    });
+  });
+
+  it("still names a real maintenance code in full - the bound is generous", () => {
+    try {
+      build834({
+        ...CANONICAL_SPEC,
+        members: [{ maintenanceTypeCode: "999", member: { lastName: "DOE" } }],
+      });
+    } catch (err) {
+      expect((err as Error).message).toContain('code "999"');
     }
   });
 });

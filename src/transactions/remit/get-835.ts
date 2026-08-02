@@ -76,6 +76,17 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
 
   // Mutable accumulators - frozen into the returned model at the end.
   let payment: X12RemitPaymentHeader = EMPTY_HEADER;
+  /**
+   * 1-based body index of the BPR, for the remit-total balance warning's
+   * `position`. Stays `0` when the transaction carries no BPR at all - a
+   * malformed 835, since TR3 005010X221A1 makes BPR mandatory, but a reachable
+   * one because the balance check still runs against an all-zero payment
+   * header. Body indices are 1-based, so `0` is never a body segment - but be
+   * exact about what it is: `tx.segments[0]` is the ST, so a consumer that
+   * indexes blindly lands on the ST rather than on nothing. That is why `0` is
+   * now the no-BPR case only, and no longer the every-time value.
+   */
+  let bprSegmentIndex = 0;
   const traces: X12RemitTrace[] = [];
   let payer: X12RemitParty | undefined;
   let payee: X12RemitParty | undefined;
@@ -112,6 +123,11 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
     switch (seg.id) {
       case "BPR": {
         payment = decodeBpr(seg, delimiters);
+        // The remit-total invariant compares BPR-02 against the claims, so the
+        // BPR is the segment its warning should point at. Recorded on the last
+        // BPR seen, matching `payment` itself, which the same assignment
+        // overwrites if a malformed transaction carries more than one.
+        bprSegmentIndex = position.segmentIndex;
         break;
       }
       case "TRN": {
@@ -329,7 +345,7 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
     payment.totalActualPayment,
     finalClaims,
     providerAdjustments,
-    { segmentIndex: 0, transactionIndex: 0 },
+    { segmentIndex: bprSegmentIndex, transactionIndex: 0 },
   );
   if (remitTotalWarn !== undefined) warnings.push(remitTotalWarn);
 

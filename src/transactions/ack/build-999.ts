@@ -27,6 +27,7 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { renderCallerValue } from "../../builder/caller-value.js";
 
 /**
  * The version string emitted at GS-08 and ST-03 for every 999 the library
@@ -256,13 +257,13 @@ function enforceAcceptIsClean(group: Build999FunctionalGroupSpec): void {
     if (responseIsAccept && responseHasErrors) {
       throw new AckBuildError(
         ACK_BUILD_ERROR_CODES.X12_ACK_ACCEPT_WITH_ERRORS,
-        `build999: AK2 (ST-02 ${response.transactionSetControlNumber}) IK5-01 was 'A' (Accept) but the response carried error payload. Use 'E' (Accept, with errors noted) or a reject disposition instead.`,
+        `build999: AK2 (ST-02 ${renderCallerValue(response.transactionSetControlNumber)}) IK5-01 was 'A' (Accept) but the response carried error payload. Use 'E' (Accept, with errors noted) or a reject disposition instead.`,
       );
     }
     if (functionalIsAccept && (!responseIsAccept || responseHasErrors)) {
       throw new AckBuildError(
         ACK_BUILD_ERROR_CODES.X12_ACK_ACCEPT_WITH_ERRORS,
-        `build999: AK9-01 was 'A' (Accept) but transaction response (ST-02 ${response.transactionSetControlNumber}) reported a non-accept disposition or carried errors. Lift the functional disposition to 'P' (Partial), 'E' (Accept, errors noted), or a reject.`,
+        `build999: AK9-01 was 'A' (Accept) but transaction response (ST-02 ${renderCallerValue(response.transactionSetControlNumber)}) reported a non-accept disposition or carried errors. Lift the functional disposition to 'P' (Partial), 'E' (Accept, errors noted), or a reject.`,
       );
     }
   }
@@ -475,7 +476,7 @@ function padControl(value: string, width: number): string {
   if (value.length < width) return "0".repeat(width - value.length) + value;
   throw new AckBuildError(
     ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC,
-    `build999: control number "${value}" exceeds the ${String(width)}-char spec limit.`,
+    `build999: control number ${renderCallerValue(value)} exceeds the ${String(width)}-char spec limit.`,
   );
 }
 

@@ -52,6 +52,7 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { renderCallerValue } from "../../builder/caller-value.js";
 
 /**
  * GS-08 / ST-03 version + release emitted per variant - the WPC TR3
@@ -365,7 +366,7 @@ function enforceClaim(variant: "P" | "I" | "D", claim: Build837ClaimSpec, locato
     if (line.variant !== variant) {
       throw new Claim837BuildError(
         CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_SPEC,
-        `build837${variant}: claim at ${locator} has a "${line.variant}" service line at index ${String(l)}; every line must be "${variant}".`,
+        `build837${variant}: claim at ${locator} has a ${renderCallerValue(line.variant)} service line at index ${String(l)}; every line must be "${variant}".`,
       );
     }
     const code = line.variant === "I" ? line.revenueCode : line.procedureCode;
@@ -829,7 +830,7 @@ function padControl(value: string, width: number): string {
   if (value.length < width) return "0".repeat(width - value.length) + value;
   throw new Claim837BuildError(
     CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_SPEC,
-    `build837: control number "${value}" exceeds the ${String(width)}-char spec limit.`,
+    `build837: control number ${renderCallerValue(value)} exceeds the ${String(width)}-char spec limit.`,
   );
 }
 

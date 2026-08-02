@@ -8,6 +8,76 @@
 
 ## Status
 
+- **Builder refusal messages are BOUNDED, and the 835 remit-total warning
+  points at the BPR (2026-08-02, `X12-BUILDER-BOUNDS`).** Two parts.
+  **(1)** Sixteen caller-value slots across ten `build*` modules
+  interpolated a caller-supplied value verbatim. Every one now routes
+  through `renderCallerValue` (`src/builder/caller-value.ts`), capped at
+  `BUILD_REFUSAL_VALUE_MAX_RENDERED` = 92 characters; all three names are
+  public so a consumer can assert the ceiling. **Re-derived on this tree,
+  not inherited:** 59 `throw` sites across 10 modules, of which 16 carry a
+  caller value. Nine are the uniform over-long control number (one per
+  emitting module, where the branch fires BECAUSE the value is over-long)
+  and seven had no length gate at all (`build999`'s ST-02 trace twice,
+  `buildInterchange`'s ST-01, `build837`'s line variant, `build834`'s
+  INS-03 + HD-01, `buildTA1`'s note code). A 120,000-character control
+  number gave a **120,066-byte** `X12BuildError.message` on base and gives
+  90 now. **The filed figures of 120,155 / 120,069 did not reproduce:**
+  they depend on the probe payload and on which site was hit, and the
+  load-bearing fact is that the length was `value.length + O(1)`, not any
+  particular byte count.
+
+  **▶ MAKE THE CLAIM YOU CAN SUPPORT. This is NOT
+  `PHI-WARNING-MESSAGE-LEAK` on the emit side.** There the value was the
+  DOCUMENT's, so bounding it was redaction. Here it is the CALLER's: they
+  passed it in and still hold it, so bounding redacts nothing. What it buys
+  is a fixed ceiling on anything reaching a log line, a crash report, or a
+  JSON error envelope. Escaping was considered and **deliberately not
+  done** (it would expand the rendering up to 6x per character against a
+  hazard the caller creates in their own data), so a refusal message is
+  bounded but **not** guaranteed to be one log line. All three public docs
+  were rewritten to say exactly that and no more.
+
+  **The deliverable is the source gate, not the fix.**
+  `test/builder-refusal-bounds.test.ts` walks every `throw new *BuildError`
+  in every builder module, extracts every interpolation hole, and requires
+  each to be library-computed (`String(...)`, a `locator`, the
+  builder-fixed `variant`, a frozen `*Warn.message`) or wrapped in
+  `renderCallerValue`. A seventeenth site reds it with nobody remembering
+  to add a case. **Negative control run:** reintroducing one interpolation
+  into `buildTA1` reds three tests and names the file and line. All 16
+  slots ALSO carry a behavioural 120,000-character probe, so coverage is
+  exhaustive both ways, which is stronger than `#46`'s slot table (explicit
+  that an omitted slot was a gap in the evidence).
+
+  **(2)** The remit-total balance warning's `position.segmentIndex` was a
+  literal `0`. **`0` is NOT a neutral sentinel here: `tx.segments[0]` is
+  the `ST`**, so a consumer resolving the position landed on the ST. It is
+  now the BPR's own 1-based body index (`tx.segments[idx].id === "BPR"`),
+  matching what claims and service lines already had; the only remaining
+  `0` is a transaction with no BPR at all. **`balance.ts` had documented
+  the old `0` as deliberate** ("not a CLP and not the BPR"), so that doc
+  was corrected alongside the code rather than left to contradict it.
+
+  **▶ THE BUILD-SIDE HALF WAS FILED AS THE SAME DEFECT AND IS NOT ONE.**
+  `build-835.ts` also passed `segmentIndex: 0`, but measured: the builder
+  has no parsed segment stream to index into (the segments do not exist
+  until after the guard has passed), and it consumes only the warning's
+  `.message`, which since `#46` is a registry lookup keyed by the invariant
+  and therefore position-independent. The position is **inert by
+  construction**, not merely unused. Fabricating a plausible index would
+  have named a segment no consumer can resolve. It is now
+  `UNANCHORED_BUILD_POSITION`, named and documented, and the stale
+  "messages are numeric-only" JSDoc that `#46` left at that spot is
+  corrected in the same place.
+
+  **SE-01 asserted outright rather than trusted**, per the tripwire this
+  repo has now hit three times: SE-01 recomputed from the emitted segments,
+  GE-01 and IEA-01 from the group and transaction counts, no
+  `X12_SEGMENT_COUNT_MISMATCH` under `specClean`, and recomputed counts
+  byte-identical to the plain emit (a rewrite in either direction diverges
+  those two, which is exactly what `#49` shipped).
+
 - **The round-trip half is closed too: an orphan is re-emitted at a
   STRUCTURAL ANCHOR (2026-08-02, `X12-ORPHAN-REEMIT`).** The bullet below
   closed the model half and deliberately left this open, because the

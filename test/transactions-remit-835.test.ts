@@ -33,7 +33,7 @@ import {
   get835,
   parseX12,
 } from "../src/index.js";
-import type { X12Remittance } from "../src/index.js";
+import type { X12Remittance, X12TransactionSet } from "../src/index.js";
 
 const FIXTURE_DIR = join(__dirname, "fixtures", "remit");
 
@@ -309,5 +309,69 @@ describe("835 loop spec - dogfooded via defineLoopSpec", () => {
 
   it("Loop 1000A and 1000B both trigger on N1 (qualifier validation is in the walker)", () => {
     expect(REMIT_835_LOOP_1000A.trigger).toBe("N1");
+  });
+});
+
+describe("get835 - the remit-total warning is anchored at the BPR (X12-BUILDER-BOUNDS part 2)", () => {
+  const REMIT_TOTAL_MESSAGE =
+    "835 balance invariant violated [Σ(CLP-04) - Σ(PLB amounts) == BPR-02]:" +
+    " the remittance total does not balance." +
+    " Every amount is preserved verbatim on the model as an X12Decimal and is NEVER silently rebalanced.";
+
+  /** Parse a fixture whose BPR-02 has been moved off the claim total. */
+  function imbalancedAtTheTop(fixture: string): {
+    readonly tx: X12TransactionSet;
+    readonly remit: X12Remittance;
+  } {
+    const raw = readFileSync(join(FIXTURE_DIR, fixture), "utf8")
+      .trimEnd()
+      // BPR-02 is the second element of the BPR. Move it, and only it.
+      .replace(/BPR\*([^*]*)\*[0-9.]+\*/u, "BPR*$1*999999.00*");
+    const ix = parseX12(raw);
+    const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "835");
+    if (tx === undefined) throw new Error("fixture has no 835 transaction set");
+    const remit = get835(ix.delimiters, tx);
+    if (remit === undefined) throw new Error("get835 declined the transaction");
+    return { tx, remit };
+  }
+
+  it("resolves position.segmentIndex to the BPR itself, not to the ST", () => {
+    // The literal `0` this replaced was NOT a neutral sentinel. Body indices
+    // are 1-based, so `0` looked like "no segment" - but `tx.segments[0]` is
+    // the ST, so a consumer resolving the position landed on the ST, which
+    // has nothing to do with the invariant. BPR-02 is the element the
+    // equation compares against, so the BPR is what it now points at.
+    const { tx, remit } = imbalancedAtTheTop("835-medicare-canonical.edi");
+    const totals = remit.warnings.filter((w) => w.message === REMIT_TOTAL_MESSAGE);
+    expect(totals).toHaveLength(1);
+    const at = totals[0]?.position.segmentIndex ?? -1;
+    expect(at).toBeGreaterThan(0);
+    expect(tx.segments[at]?.id).toBe("BPR");
+    // The regression this pins, stated as the thing it is not:
+    expect(tx.segments[at]?.id).not.toBe("ST");
+  });
+
+  it("holds on a remit carrying PLB provider adjustments too", () => {
+    const { tx, remit } = imbalancedAtTheTop("835-with-plb.edi");
+    const totals = remit.warnings.filter((w) => w.message === REMIT_TOTAL_MESSAGE);
+    expect(totals).toHaveLength(1);
+    const at = totals[0]?.position.segmentIndex ?? -1;
+    expect(tx.segments[at]?.id).toBe("BPR");
+  });
+
+  it("keeps the remit-total position distinct from every claim-level one", () => {
+    // Claim-level warnings anchor at their CLP. The BPR precedes every CLP,
+    // so the remit-total position cannot collide with one - which is the
+    // property that made the old literal `0` survivable and is now real.
+    const { tx, remit } = imbalancedAtTheTop("835-multi-claim.edi");
+    const balance = remit.warnings.filter(
+      (w) => w.code === WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
+    );
+    const positions = balance.map((w) => w.position.segmentIndex);
+    expect(new Set(positions).size).toBe(positions.length);
+    for (const at of positions) expect(tx.segments[at]).toBeDefined();
+    const total = balance.find((w) => w.message === REMIT_TOTAL_MESSAGE);
+    expect(total).toBeDefined();
+    expect(tx.segments[total?.position.segmentIndex ?? -1]?.id).toBe("BPR");
   });
 });
