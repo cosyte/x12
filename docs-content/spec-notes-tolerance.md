@@ -26,18 +26,21 @@ the library throwing your pipeline off the rails on a vendor quirk.
 Only Tier 3 throws by default. Everything in Tier 2 is a warning you triage, not an exception you
 catch.
 
-**One thing sits outside the tiers: line breaks between segments are silently normalized.** A line
-break after a segment terminator (one optional CR then one optional LF) is absorbed with no warning,
-so a pretty-printed file is Tier 1. That is the footnote "the parser never silently drops anything"
+**One thing sits outside the tiers: line breaks between segments are silently normalized.** Any run of
+CR / LF bytes after a segment terminator is absorbed with no warning, so a pretty-printed file is
+Tier 1, and so is a double-spaced one. That is the footnote "the parser never silently drops anything"
 needs: it drops inter-segment whitespace, never a decoded element value. The practical consequence is
 that `serializeX12(parseX12(file))` returns the compact form rather than your original bytes.
 
 It is not, however, the only thing the round trip does not reproduce. A **segment outside a
-transaction** is a Tier-2 deviation (`X12_UNEXPECTED_SEGMENT`) that is warned about but **not kept on
-the model**, so it is missing from the emit and its warning does not recur when the emit is re-parsed.
-See [Line endings between segments](./spec-notes-envelope) for the full list, and
-[KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md) for the data-loss
-boundary that follows from it.
+transaction** is a Tier-2 deviation (`X12_UNEXPECTED_SEGMENT`): it is warned about, and it is kept
+verbatim on `ix.orphanSegments`, so the value is not lost. What it is not is **decoded** (no `get*`
+reader will see it) or **re-emitted**, so it does not survive the round trip and neither does its
+warning. Treat the first parse's warnings as the authority. See
+[Line endings between segments](./spec-notes-envelope) for the full list of what the emit does not
+reproduce, and
+[KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md) for the canonical
+statement of the boundary.
 
 ## Warnings collect on the model, and stream
 

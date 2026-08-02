@@ -7,7 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`X12Interchange.orphanSegments`** and the `X12OrphanSegment` type. Every segment that falls
+  outside an `ST..SE` transaction set is now retained verbatim (`raw`, the decoded `segment`, its
+  `segmentIndex`, and the library-owned `context` discriminant) instead of being discarded.
+  `segmentIndex` equals the `position.segmentIndex` of that segment's `X12_UNEXPECTED_SEGMENT`
+  warning, so the two surfaces join without string matching. Empty for a well-formed interchange.
+  **Treat it as PHI when logging.** It sits on the model side of this library's diagnostic boundary:
+  a warning `message` is a frozen-registry lookup with positional metadata only, but an orphan is
+  document content, verbatim, exactly like `tx.rawSegments`. Log `context` and `segmentIndex`.
+
+### Fixed
+
+- **Silent data loss: a segment outside a transaction was dropped from the model, and a
+  double-spaced file lost its entire interchange body.** Two defects with one cause. The envelope
+  walker raised `X12_UNEXPECTED_SEGMENT` for a segment it could not place and then discarded it, so
+  the segment's bytes were unrecoverable. Separately the line-break tolerance was exactly one
+  optional CR then one optional LF, which admitted **4 of the 15** CR/LF sequences of length 0 to 3;
+  the other 11 left a break in the stream that opened an unrecognized segment, so via the first
+  defect a uniformly **double-spaced file returned `groups: []`**.
+
+  The parser now absorbs any run of CR / LF bytes between segments (safe because a CR or LF in the
+  segment-terminator position, the byte immediately after ISA-16, is refused as the Tier-3 fatal
+  `X12_INVALID_DELIMITERS` (as it is at all four delimiter positions), so such a run is never
+  structural), and every unplaceable segment is retained on `ix.orphanSegments` through a
+  single chokepoint that raises the warning and records the segment together, so the two can never
+  disagree. Measured before, then after: CR/LF sequences of length 0 to 3 that frame correctly, **4
+  of 15 then 15 of 15**; orphan cases that retain the segment, **0 of 10 then 10 of 10** (ten
+  constructed cases over nine distinct positions). Across the
+  56 committed fixtures nothing changed: zero model divergences, zero warning divergences, zero
+  fixed-point failures, and no fixture produces an orphan.
+
+  **This fixes the model, not the emit.** `serializeX12` still does not reproduce an orphan, so
+  neither the segment nor its warning survives a round trip, and `KNOWN-LIMITATIONS.md` still lists
+  **seven** constructs the default emit does not reproduce. Re-emitting an orphan needs the model to
+  carry a **structural anchor** (which group and transaction it followed) rather than the raw input
+  index it carries today, and that is tracked separately. A positional replay keyed on
+  `segmentIndex` was built and then removed during this change because it was unsound: the emit is
+  not in input order (it hoists `ta1Segments`) and skips the zero-length segment a doubled terminator
+  produces, so replaying by input index spliced the orphan into whatever occupied that slot. Measured
+  on a two-group interchange with a TA1 after the first group, that put a stray segment inside an
+  835's `ST..SE` body between `CLP` and `SE` with **no warning at all** on the re-parse, made a stray
+  `SE` close the transaction early and corrupt SE-01, and carried an orphan across the IEA into
+  `trailingBytes`. A documented omission is preferable to silent structural corruption, and there are
+  now regression tests fencing each of those.
+
+  **Retention is not placement.** An orphan is not decoded by any `get*` reader, and a `TA1` inside
+  an open group is not added to `ta1Segments` (that surface means "envelope-level TA1", and is what
+  `parseTA1` reads). Neither a doubled segment terminator nor a segment whose first element is empty
+  is recorded as an orphan; both are long-standing behaviour, now stated rather than implied.
+
+  Also in this change: a trailing CR/LF run after the final segment terminator is absorbed rather
+  than surfacing as `trailingBytes` (previously `~\n\n` there produced a `trailingBytes` of `"\n~"`,
+  a byte the input never contained, plus an `X12_TRAILING_GARBAGE` warning); a double-spaced file
+  that previously produced 7 warnings now parses cleanly with none; and the five
+  `X12_UNEXPECTED_SEGMENT` messages were rewritten, since each stated that the segment was not
+  retained. No warning code was added or removed (registry unchanged at 22 warnings and 4 fatals) and
+  nothing new throws.
+
 ### Documentation
+
+> **Read the "Fixed" entry above first: it ships in the same release and supersedes two statements
+> made below.** The entry below describes the state of the parser BEFORE that fix, and two of its
+> present-tense sentences are no longer true as of this release: the parser now absorbs **any run of
+> CR / LF** between segments, not "an optional CR then an optional LF"; and a segment outside a
+> transaction is **retained on `ix.orphanSegments`**, not "discarded". What still holds from it, and
+> is the reason it is kept, is the round-trip scope: `serialize(parse(s)) === s` is not guaranteed,
+> the absence of line breaks is not sufficient, `KNOWN-LIMITATIONS.md` is the canonical list at
+> **seven** constructs, and an orphan is still not re-emitted.
 
 - **Corrected the round-trip claim: `serialize(parse(s)) === s` is NOT guaranteed, and the emit is
   byte-faithful only for the segments the parser recorded on the model.** The README described the
@@ -50,6 +118,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   warned about but not kept.
 
 ### Documented, not fixed
+
+> **Superseded in part by the "Fixed" entry above, which ships in the same release.** The model half
+> of the entry below is now fixed: the segment is retained on `ix.orphanSegments`, and a double-spaced
+> file no longer loses its interchange body. The **round-trip** half still stands: `serializeX12` does
+> not re-emit an orphan, so the warning still does not survive. The two entries are kept separate
+> because they were separate changes, and the sentences below describe the release before this one.
 
 - **A segment that falls outside a transaction is dropped from the model, and its warning does not
   survive a round trip.** The envelope walker keeps body segments only while an ST..SE transaction is

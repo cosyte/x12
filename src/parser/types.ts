@@ -12,7 +12,7 @@
 import type { X12Profile } from "../profiles/types.js";
 
 import type { X12Segment } from "./segment.js";
-import type { X12ParseWarning } from "./warnings.js";
+import type { X12ParseWarning, X12UnexpectedSegmentContext } from "./warnings.js";
 
 /**
  * Positional context attached to every warning and fatal error. Fields are
@@ -282,13 +282,86 @@ export interface X12FunctionalGroup {
 }
 
 /**
+ * A segment the envelope grammar has no place for, captured verbatim rather
+ * than discarded. Every segment recorded here also raised exactly one
+ * `X12_UNEXPECTED_SEGMENT` warning whose `position.segmentIndex` equals
+ * {@link segmentIndex}, and `context` is that warning's library-owned
+ * discriminant, so the two surfaces can be joined without string matching.
+ *
+ * These are structural anomalies, not a normal shape: a stray segment
+ * between `GE` and `IEA`, a body segment between an `SE` and its group's
+ * `GE`, a body segment between `GS` and the first `ST`, an `ST` with no open
+ * group, an `SE` closing nothing, a `GE` closing nothing, or a `TA1` inside
+ * an open functional group. The parser cannot place any of them in the typed
+ * tree, but it no longer drops them either, so a segment that used to vanish
+ * is now readable here.
+ *
+ * **Most of these sit outside every ST..SE transaction set, but the `TA1`
+ * case does not.** `TA1` is envelope-level by spec, so a `TA1` anywhere
+ * inside an open group is routed here even when it arrives BETWEEN an `ST`
+ * and its `SE` - in which case it is lifted out of that transaction's
+ * `segments` / `rawSegments` and appears only on this array. That is
+ * long-standing behaviour (it predates this array; the segment simply used
+ * to be discarded), and it is the one case where `ix.groups` is not the whole
+ * typed model.
+ *
+ * **`serializeX12` does NOT re-emit these**, so an orphan does not survive a
+ * round trip and neither does its warning. That is a deliberate limitation
+ * rather than an oversight: {@link segmentIndex} indexes the INPUT stream,
+ * and the emit is not in input order (it hoists `ta1Segments` ahead of the
+ * groups), so replaying an orphan by index can splice it into a transaction
+ * body, where a re-parse reports nothing at all. Placing one correctly needs
+ * a structural anchor on the model, not a raw index. Read orphans from this
+ * array and treat the FIRST parse's warnings as the authority. See
+ * `KNOWN-LIMITATIONS.md`.
+ *
+ * Two things are NOT recorded here. A doubled segment terminator delimits a
+ * zero-length segment carrying no elements, so there is nothing to retain.
+ * A segment whose first element is empty (`*A*B~`) has no id for the
+ * envelope walker to dispatch on and is skipped without a warning; that is
+ * long-standing behaviour this array does not change.
+ *
+ * **This is document content, so treat it as PHI.** Unlike an
+ * `X12ParseWarning`, whose `message` is a lookup into a frozen registry and
+ * whose metadata is positional only, an orphan carries the sender's bytes
+ * verbatim, exactly as `X12TransactionSet.rawSegments` and `isa.raw` do. A
+ * segment outside a transaction is not required to be PHI-free, so do NOT
+ * log this array wholesale when triaging; log `context` and `segmentIndex`,
+ * which name the structural rule and the location without echoing content.
+ *
+ * @example
+ * ```ts
+ * import { parseX12 } from "@cosyte/x12";
+ * const ix = parseX12(raw);
+ * for (const o of ix.orphanSegments) {
+ *   console.warn(o.context, o.segmentIndex, o.segment.id);
+ * }
+ * ```
+ */
+export interface X12OrphanSegment {
+  /** The verbatim segment text, segment terminator stripped. */
+  readonly raw: string;
+  /** The decoded segment (id + 1-indexed elements), as for any body segment. */
+  readonly segment: X12Segment;
+  /**
+   * Global segment index in the post-ISA stream (ISA itself is index 0) -
+   * identical to the `position.segmentIndex` of the segment's
+   * `X12_UNEXPECTED_SEGMENT` warning.
+   */
+  readonly segmentIndex: number;
+  /** Which structural rule the segment broke. */
+  readonly context: X12UnexpectedSegmentContext;
+}
+
+/**
  * The top-level X12 interchange returned by `parseX12`. `isa` carries the
  * envelope header verbatim; `delimiters` is the four-class delimiter set
  * detected from fixed positions inside `isa.raw`; `groups` is the ordered
- * GS..GE list; `warnings` accumulates every Tier-2 deviation observed
- * during the parse (lenient mode); `trailingBytes` (when present) is any
- * non-empty content after IEA - preserved verbatim so a consumer can
- * inspect or re-emit it.
+ * GS..GE list; `orphanSegments` holds any segment that fell outside every
+ * transaction set (empty for a well-formed interchange); `warnings`
+ * accumulates every Tier-2 deviation observed during the parse (lenient
+ * mode); `trailingBytes` (when present) is any non-empty content after IEA -
+ * preserved verbatim so a consumer can inspect or re-emit it.
  *
  * @example
  * ```ts
@@ -303,6 +376,14 @@ export interface X12Interchange {
   readonly delimiters: Delimiters;
   readonly groups: readonly X12FunctionalGroup[];
   readonly ta1Segments: readonly Ta1Segment[];
+  /**
+   * Segments the envelope grammar could not place, in input order - almost
+   * always because they fell outside every ST..SE transaction set, plus the
+   * `TA1`-inside-a-group case, which is lifted out of the transaction it
+   * arrived in. Empty for a well-formed interchange. See
+   * {@link X12OrphanSegment}.
+   */
+  readonly orphanSegments: readonly X12OrphanSegment[];
   readonly warnings: readonly X12ParseWarning[];
   readonly trailingBytes?: string;
   /**

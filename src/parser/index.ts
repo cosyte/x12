@@ -138,6 +138,7 @@ export function parseX12(raw: string | Buffer, options: X12ParseOptions = {}): X
     delimiters,
     groups: decoded.groups,
     ta1Segments: decoded.ta1Segments,
+    orphanSegments: decoded.orphanSegments,
     warnings: decoded.warnings,
     ...(decoded.trailingBytes !== undefined ? { trailingBytes: decoded.trailingBytes } : {}),
     ...(profile !== undefined ? { profile } : {}),

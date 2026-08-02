@@ -10,18 +10,21 @@
  *
  *   Every segment the parser recorded comes back verbatim, including element
  *   padding, composite structure and `?`-release escapes, but it comes back in
- *   the ORDER the model holds it, which is not always the input order. Six
+ *   the ORDER the model holds it, which is not always the input order. Seven
  *   constructs are known not to survive, and line breaks are only the most
  *   common:
  *
- *   1. **Line breaks between segments.** The parser absorbs an optional CR
- *      then an optional LF after each terminator and the model has nowhere to
- *      record it, so a pretty-printed source emits as its compact form.
+ *   1. **Line breaks between segments.** The parser absorbs any run of CR /
+ *      LF bytes between segments and the model has nowhere to record it, so a
+ *      pretty-printed or double-spaced source emits as its compact form.
  *      Silent.
  *   2. **Segments outside a transaction** (a stray segment between GE and IEA,
- *      say). These raise `X12_UNEXPECTED_SEGMENT` on the first parse but are
- *      not kept, so they are absent from the emit AND the warning does not
- *      recur when the emit is re-parsed.
+ *      say). These raise `X12_UNEXPECTED_SEGMENT` and ARE retained on the
+ *      model, at `ix.orphanSegments`, so the decoded value is not lost. The
+ *      emit does not reproduce them, though, so they are absent from the
+ *      output AND the warning does not recur when the emit is re-parsed. Read
+ *      them from `ix.orphanSegments` and treat the FIRST parse's warnings as
+ *      the authority.
  *   3. **A doubled segment terminator** outside a transaction. Silent.
  *   4. **A missing final terminator**, which the emit supplies. Silent.
  *   5. **Post-IEA `trailingBytes`**, re-joined from segment slices rather than
@@ -31,11 +34,17 @@
  *      so the emit reorders it. Silent, and unlike 1 to 5 nothing is dropped:
  *      the model and the warning stream both round-trip identically. This
  *      library takes no position here on where ASC X12 requires a TA1 to sit.
+ *   7. **A segment whose first element is empty** (`*A*B~`), outside a
+ *      transaction. It has no id for the envelope walker to dispatch on, so it
+ *      is skipped: absent from the model, absent from the emit, and it does
+ *      not even raise `X12_UNEXPECTED_SEGMENT`. Silent, and the only case here
+ *      that loses a value with no diagnostic at all. Inside an open
+ *      transaction the same segment is kept and re-emitted normally.
  *
  *   So `serialize(parse(s)) === s` is NOT guaranteed in general, and the
- *   absence of line breaks is not sufficient to make it hold: cases 2 to 6 all
- *   break it on inputs that contain none. Four of the six (1, 3, 4, 6) produce
- *   no warning at all, so the warning stream is not a reliable signal that a
+ *   absence of line breaks is not sufficient to make it hold: cases 2 to 7 all
+ *   break it on inputs that contain none. Five of the seven (1, 3, 4, 6, 7)
+ *   produce no warning at all, so the warning stream is not a reliable signal that a
  *   round trip will be byte-exact. Do not use `serialize(parse(s))` as a
  *   normalization step before comparing warnings, because case 2 discards a
  *   warning along with its segment.
@@ -45,10 +54,10 @@
  *   identical model with an identical warning stream, the 14 fixtures carrying
  *   no line breaks return byte-identical, and the 42 that are pretty-printed
  *   differ from their source by line breaks and nothing else. Two caveats on
- *   that corpus: it contains no instance of cases 2 to 6, and 13 of the 14
+ *   that corpus: it contains no instance of cases 2 to 7, and 13 of the 14
  *   byte-identical fixtures are `golden/*.edi`, which are serializer output by
  *   construction, so `envelope/no-trailing-crlf.edi` is the only independent
- *   witness. `test/serialize.test.ts` covers the corpus sweep and cases 2 to 6
+ *   witness. `test/serialize.test.ts` covers the corpus sweep and cases 2 to 7
  *   separately.
  *
  * - **Spec-clean (`{ specClean: true }`).** Same byte-faithful structure, but
@@ -152,6 +161,33 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
 
   // Running global segment index for warning positions. ISA occupies index 0.
   let segIdx = 0;
+
+  // `ix.orphanSegments` is deliberately NOT re-emitted. See the note on
+  // `X12OrphanSegment` and `KNOWN-LIMITATIONS.md`: an orphan is retained on
+  // the model so nothing the parser decoded is lost, but the emit does not
+  // reproduce it, and that is a correctness decision rather than an omission.
+  //
+  // An earlier revision of this slice DID replay each orphan at its recorded
+  // `segmentIndex`, which made the round trip byte-exact for every position
+  // the tests enumerated and was nonetheless unsound. `segmentIndex` is an
+  // index into the INPUT stream, and this function does not emit in input
+  // order: `ta1Segments` are hoisted ahead of the groups (the documented TA1
+  // reordering), and a zero-length segment from a doubled terminator occupies
+  // an input index that is never emitted. Either one shifts the output's
+  // indices away from the input's, so replaying by index splices the orphan
+  // into whatever happens to occupy that slot in the emit. Measured on a
+  // 2-group interchange with a TA1 after the first group: a stray `ZZ`
+  // segment landed INSIDE the 835's ST..SE body, between `CLP` and `SE`,
+  // where a re-parse produced NO warning at all and `get835` would have
+  // walked it as claim content. With a stray `SE` it was worse, closing the
+  // transaction early and corrupting SE-01. That trades a warned, documented
+  // omission for silent structural corruption of a transaction body, which
+  // is the wrong direction under this library's own invariant.
+  //
+  // Placing an orphan correctly needs the model to carry a STRUCTURAL anchor
+  // (which group and transaction it followed) rather than a raw input index,
+  // because only a structural anchor survives the reordering the emit already
+  // performs. That is a model change, tracked separately.
 
   for (const ta1 of interchange.ta1Segments) {
     out += ta1.raw + term;

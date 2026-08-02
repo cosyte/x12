@@ -278,15 +278,15 @@ const WARNING_MESSAGES = {
   X12_DANGLING_RELEASE_CHAR:
     "Release character (`?`) appears at end of element/segment with no following byte to escape - preserved verbatim.",
   X12_UNEXPECTED_SEGMENT_TA1_INSIDE_GROUP:
-    "Unexpected segment: TA1 is envelope-level but appeared inside an open functional group, so it is NOT captured on `ta1Segments`. Locate it in the input via `position.segmentIndex`.",
+    "Unexpected segment: TA1 is envelope-level but appeared inside an open functional group, so it is NOT captured on `ta1Segments` and `parseTA1` will not read it. It is retained verbatim on `orphanSegments` at the matching `position.segmentIndex`.",
   X12_UNEXPECTED_SEGMENT_GE_WITHOUT_GS:
-    "Unexpected segment: a GE appeared with no open functional group, so it closes nothing and is NOT retained on the model. Locate it in the input via `position.segmentIndex`.",
+    "Unexpected segment: a GE appeared with no open functional group, so it closes nothing and no group is recorded for it. It is retained verbatim on `orphanSegments` at the matching `position.segmentIndex`.",
   X12_UNEXPECTED_SEGMENT_ST_WITHOUT_GS:
-    "Unexpected segment: an ST appeared with no open functional group (missing GS), so no transaction set is opened and it is NOT retained on the model. Locate it in the input via `position.segmentIndex`.",
+    "Unexpected segment: an ST appeared with no open functional group (missing GS), so no transaction set is opened and nothing that follows it is bound to one. It is retained verbatim on `orphanSegments` at the matching `position.segmentIndex`.",
   X12_UNEXPECTED_SEGMENT_SE_WITHOUT_ST:
-    "Unexpected segment: an SE appeared with no open transaction set, so it closes nothing and is NOT retained on the model. Locate it in the input via `position.segmentIndex`.",
+    "Unexpected segment: an SE appeared with no open transaction set, so it closes nothing and no transaction is recorded for it. It is retained verbatim on `orphanSegments` at the matching `position.segmentIndex`.",
   X12_UNEXPECTED_SEGMENT_BODY_OUTSIDE_TRANSACTION:
-    "Unexpected segment: a body segment appeared outside any open transaction set, so it is NOT retained on the model. Locate it in the input via `position.segmentIndex`.",
+    "Unexpected segment: a body segment appeared outside any open transaction set, so it is not bound to a transaction and no `get*` reader will see it. It is retained verbatim on `orphanSegments` at the matching `position.segmentIndex`.",
   X12_835_REMIT_BALANCE_MISMATCH_CLAIM:
     "835 balance invariant violated [CLP-04 + Σ(claim CAS + line CAS) == CLP-03]: the claim does not balance. Every amount is preserved verbatim on the model as an X12Decimal and is NEVER silently rebalanced.",
   X12_835_REMIT_BALANCE_MISMATCH_SERVICE_LINE:
