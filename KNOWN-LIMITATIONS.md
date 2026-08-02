@@ -5,12 +5,13 @@ delivers. Misreading a payer's remittance, a claim's diagnosis, or a member's co
 financial or clinical harm, so this is the deliberate "do not over-trust" list. Everything here is a
 documented, intentional boundary, not a bug. The lenient parser never silently drops or garbles a
 **decoded value**: where a limitation applies, the raw value is preserved (often with a warning), it
-is simply not further decoded. Three things it does discard are worth reading before you rely on a
-round trip, two of them silently: **line breaks between segments**, **a doubled segment terminator**
-outside a transaction (both silent), and **segments outside a transaction** (warned, kept on the
-model at `ix.orphanSegments`, but not re-emitted). All three are in the first two entries below. The
-third used to be worse than the other two, because the segment left the model as well; that half is
-fixed.
+is simply not further decoded. Four things it does discard are worth reading before you rely on a
+round trip, three of them silently: **line breaks between segments**, **a doubled segment
+terminator** outside a transaction, and **a segment whose first element is empty** outside a
+transaction (all three silent), plus **segments outside a transaction** (warned, kept on the model at
+`ix.orphanSegments`, but not re-emitted). All four are in the first two entries below. The last used
+to be worse than the others, because the segment left the model as well; that half is fixed. The
+empty-first-element case is the sharpest of the four: no warning, and no copy anywhere on the model.
 
 ## Data / decode boundaries
 
@@ -26,7 +27,7 @@ fixed.
 
 - **`serialize(parse(s)) === s` is NOT guaranteed.** `serializeX12` rebuilds the interchange from the
   model, so every segment the parser recorded comes back verbatim (element padding, composites, and
-  `?`-release escapes included), in the order the model holds it. Six constructs are known not to
+  `?`-release escapes included), in the order the model holds it. Seven constructs are known not to
   survive:
   1. **Line breaks between segments.** Most senders write one after each terminator; the parser
      absorbs any run of CR / LF bytes between segments, so a pretty-printed, double-spaced, or
@@ -44,9 +45,14 @@ fixed.
      `ix.ta1Segments` and emitted immediately after the ISA, so the emit **reorders** it. **Silent**,
      and unlike 1 to 5 nothing is lost: the model and the warning stream both round-trip identically.
      This library takes no position on where ASC X12 requires a TA1 to sit.
+  7. **A segment whose first element is empty (`*A*B~`), outside a transaction.** It has no id for
+     the envelope walker to dispatch on, so it is skipped: absent from the model, absent from the
+     emit, and it does not even raise `X12_UNEXPECTED_SEGMENT`. **Silent**, and the only case here
+     that loses a value with no diagnostic whatsoever. Inside an open transaction the same segment
+     is kept and re-emitted normally, so this is specific to the outside-a-transaction position.
 
-  **Cases 2 to 6 break the round trip on inputs containing no line breaks**, so "my file is compact"
-  is not sufficient grounds to expect byte equality. **Four of the six (1, 3, 4, 6) produce no
+  **Cases 2 to 7 break the round trip on inputs containing no line breaks**, so "my file is compact"
+  is not sufficient grounds to expect byte equality. **Five of the seven (1, 3, 4, 6, 7) produce no
   warning at all**, so a clean `ix.warnings` is not evidence that a round trip will be byte-exact.
   Case 2 is the one to be careful with in the other direction: do not use
   `serializeX12(parseX12(source))` as a normalization step before comparing warnings, because it
@@ -67,7 +73,7 @@ fixed.
   the 14 fixtures with no line breaks return byte-identical; and the other 42 differ from their source
   by **line breaks and nothing else**, with no element value lost, altered, reordered, or re-escaped.
   Two caveats on that corpus, both of which limit how far the sweep can be pushed: it contains **no
-  instance of cases 2 to 6** (zero fixtures produce an `orphanSegments` entry), and **13 of the 14
+  instance of cases 2 to 7** (zero fixtures produce an `orphanSegments` entry), and **13 of the 14
   byte-identical fixtures are `golden/*.edi`**, which
   are serializer output by construction, leaving `envelope/no-trailing-crlf.edi` as the only
   independent witness. Preserving the original framing byte-for-byte would need the model to carry
@@ -83,9 +89,14 @@ fixed.
   on `ix.orphanSegments`, whose `segmentIndex` is the join key back to the warning's
   `position.segmentIndex`.
 
+  **One of those is not an "outside a transaction" case at all.** `TA1` is envelope-level by spec, so
+  a `TA1` inside an open group goes to `ix.orphanSegments` even when it arrived **between an `ST` and
+  its `SE`**, and it is lifted out of that transaction's `segments` / `rawSegments`. So for a document
+  containing such a `TA1`, `ix.groups` is not the whole typed model. This is long-standing behaviour,
+  unchanged here except that the segment is now retained instead of discarded.
+
   **Two limitations remain, and they are decoding and re-emission, not retention.** No `get*` reader
-  will see an orphan, because none of them is inside a transaction; `ix.groups` is still the whole
-  typed model. And `serializeX12` does not reproduce an orphan, so it does not survive a round trip
+  will see an orphan. And `serializeX12` does not reproduce one, so it does not survive a round trip
   (case 2 above). Read these segments from `ix.orphanSegments`. That array is empty for a well-formed
   interchange, so a non-empty one is itself the signal that the sender's framing did not match the
   envelope grammar. **It carries the sender's bytes verbatim, so treat it as PHI**: unlike

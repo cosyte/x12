@@ -21,8 +21,9 @@
   that opened an unrecognized segment, so via defect (1) a uniformly
   **double-spaced file lost its ENTIRE interchange body** and returned
   `groups: []`. Measured on base `3017d88`: **4 of 15** sequences framed,
-  and **0 of 9** orphan positions retained anything. After: **15/15 and
-  9/9.** The fix is a new public surface,
+  and **0 of 10** orphan cases retained anything. After: **15/15 and
+  10/10** (ten constructed cases over nine distinct positions; one case
+  repeats a position with two segments). The fix is a new public surface,
   `X12Interchange.orphanSegments` (`X12OrphanSegment`: `raw`, decoded
   `segment`, `segmentIndex`, and the library-owned `context`
   discriminant), populated through a single `recordOrphan` chokepoint so
@@ -32,7 +33,7 @@
 
   **▶ THE REFUTER KILLED THE RE-EMIT HALF, AND IT WAS RIGHT.** Pass 1
   shipped a `serializeX12` that replayed each orphan at its recorded
-  `segmentIndex`, making all 8 enumerated positions round-trip byte-exact
+  `segmentIndex`, making every enumerated position round-trip byte-exact
   with the warning surviving. **It was unsound.** `segmentIndex` indexes
   the INPUT stream, and the emit is NOT in input order: `ta1Segments` are
   hoisted ahead of the groups, and a doubled terminator's zero-length
@@ -50,7 +51,19 @@
   replay was REMOVED rather than patched. Correct placement needs a
   STRUCTURAL anchor on the model (which group and transaction the segment
   followed), not a raw input index. **Filed, not shipped.**
-  `KNOWN-LIMITATIONS.md` therefore stays at **six** constructs.
+  `KNOWN-LIMITATIONS.md` therefore keeps "segments outside a transaction" as
+  a construct the emit does not reproduce.
+
+  **▶ PASS 2 (NOT REFUTED) STILL MOVED THE CANONICAL COUNT, from six to
+  SEVEN.** A segment whose first element is empty (`*A*B~`), **outside** a
+  transaction, has no id for the walker to dispatch on and is dropped from
+  the model AND the emit with **no warning at all** - the only construct on
+  the list with no diagnostic whatsoever. Long-standing and byte-identical on
+  base; what was new was the inconsistency, since this slice disclosed it in
+  prose while the numbered list still said six. Inside an open transaction
+  the same segment round-trips normally, so the case is specific to the
+  outside-a-transaction position. Silent constructs are now **five of
+  seven**, not four of six.
 
   **This does NOT turn anything into a fatal and adds no warning code**
   (registry still 22 + 4 fatals); it removes warnings from double-spaced

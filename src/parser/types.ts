@@ -282,9 +282,8 @@ export interface X12FunctionalGroup {
 }
 
 /**
- * A segment that appeared where the envelope grammar has no place for it -
- * outside any open ST..SE transaction set - captured verbatim rather than
- * discarded. Every segment recorded here also raised exactly one
+ * A segment the envelope grammar has no place for, captured verbatim rather
+ * than discarded. Every segment recorded here also raised exactly one
  * `X12_UNEXPECTED_SEGMENT` warning whose `position.segmentIndex` equals
  * {@link segmentIndex}, and `context` is that warning's library-owned
  * discriminant, so the two surfaces can be joined without string matching.
@@ -293,9 +292,18 @@ export interface X12FunctionalGroup {
  * between `GE` and `IEA`, a body segment between an `SE` and its group's
  * `GE`, a body segment between `GS` and the first `ST`, an `ST` with no open
  * group, an `SE` closing nothing, a `GE` closing nothing, or a `TA1` inside
- * an open group. The parser cannot place any of them in the typed tree, but
- * it no longer drops them either, so a segment that used to vanish is now
- * readable here.
+ * an open functional group. The parser cannot place any of them in the typed
+ * tree, but it no longer drops them either, so a segment that used to vanish
+ * is now readable here.
+ *
+ * **Most of these sit outside every ST..SE transaction set, but the `TA1`
+ * case does not.** `TA1` is envelope-level by spec, so a `TA1` anywhere
+ * inside an open group is routed here even when it arrives BETWEEN an `ST`
+ * and its `SE` - in which case it is lifted out of that transaction's
+ * `segments` / `rawSegments` and appears only on this array. That is
+ * long-standing behaviour (it predates this array; the segment simply used
+ * to be discarded), and it is the one case where `ix.groups` is not the whole
+ * typed model.
  *
  * **`serializeX12` does NOT re-emit these**, so an orphan does not survive a
  * round trip and neither does its warning. That is a deliberate limitation
@@ -369,8 +377,11 @@ export interface X12Interchange {
   readonly groups: readonly X12FunctionalGroup[];
   readonly ta1Segments: readonly Ta1Segment[];
   /**
-   * Segments that fell outside every ST..SE transaction set, in input order.
-   * Empty for a well-formed interchange. See {@link X12OrphanSegment}.
+   * Segments the envelope grammar could not place, in input order - almost
+   * always because they fell outside every ST..SE transaction set, plus the
+   * `TA1`-inside-a-group case, which is lifted out of the transaction it
+   * arrived in. Empty for a well-formed interchange. See
+   * {@link X12OrphanSegment}.
    */
   readonly orphanSegments: readonly X12OrphanSegment[];
   readonly warnings: readonly X12ParseWarning[];

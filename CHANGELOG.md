@@ -29,17 +29,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   defect a uniformly **double-spaced file returned `groups: []`**.
 
   The parser now absorbs any run of CR / LF bytes between segments (safe because a CR or LF in the
-  ISA-16 terminator position is refused as the Tier-3 fatal `X12_INVALID_DELIMITERS`, so such a run
-  is never structural), and every unplaceable segment is retained on `ix.orphanSegments` through a
+  segment-terminator position, the byte immediately after ISA-16, is refused as the Tier-3 fatal
+  `X12_INVALID_DELIMITERS` (as it is at all four delimiter positions), so such a run is never
+  structural), and every unplaceable segment is retained on `ix.orphanSegments` through a
   single chokepoint that raises the warning and records the segment together, so the two can never
   disagree. Measured before, then after: CR/LF sequences of length 0 to 3 that frame correctly, **4
-  of 15 then 15 of 15**; orphan positions that retain the segment, **0 of 9 then 9 of 9**. Across the
+  of 15 then 15 of 15**; orphan cases that retain the segment, **0 of 10 then 10 of 10** (ten
+  constructed cases over nine distinct positions). Across the
   56 committed fixtures nothing changed: zero model divergences, zero warning divergences, zero
   fixed-point failures, and no fixture produces an orphan.
 
   **This fixes the model, not the emit.** `serializeX12` still does not reproduce an orphan, so
   neither the segment nor its warning survives a round trip, and `KNOWN-LIMITATIONS.md` still lists
-  **six** constructs the default emit does not reproduce. Re-emitting an orphan needs the model to
+  **seven** constructs the default emit does not reproduce. Re-emitting an orphan needs the model to
   carry a **structural anchor** (which group and transaction it followed) rather than the raw input
   index it carries today, and that is tracked separately. A positional replay keyed on
   `segmentIndex` was built and then removed during this change because it was unsound: the emit is
@@ -65,6 +67,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   nothing new throws.
 
 ### Documentation
+
+> **Read the "Fixed" entry above first: it ships in the same release and supersedes two statements
+> made below.** The entry below describes the state of the parser BEFORE that fix, and two of its
+> present-tense sentences are no longer true as of this release: the parser now absorbs **any run of
+> CR / LF** between segments, not "an optional CR then an optional LF"; and a segment outside a
+> transaction is **retained on `ix.orphanSegments`**, not "discarded". What still holds from it, and
+> is the reason it is kept, is the round-trip scope: `serialize(parse(s)) === s` is not guaranteed,
+> the absence of line breaks is not sufficient, `KNOWN-LIMITATIONS.md` is the canonical list at
+> **seven** constructs, and an orphan is still not re-emitted.
 
 - **Corrected the round-trip claim: `serialize(parse(s)) === s` is NOT guaranteed, and the emit is
   byte-faithful only for the segments the parser recorded on the model.** The README described the

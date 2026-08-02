@@ -84,10 +84,12 @@ function decodeIsa(raw: string, delimiters: Delimiters): IsaSegment {
  * about that loss was recoverable from the emit, which is why the bound is
  * gone rather than merely widened by one.
  *
- * This cannot swallow a segment terminator: `detectDelimiters` rejects a CR
- * or LF in the ISA-16 terminator position as the Tier-3 fatal
- * `X12_INVALID_DELIMITERS`, so a run of CR / LF between segments is never
- * itself structural.
+ * This cannot swallow a segment terminator: `detectDelimiters` rejects any
+ * ASCII control character (which includes CR and LF) at ALL FOUR delimiter
+ * positions, the segment terminator among them, as the Tier-3 fatal
+ * `X12_INVALID_DELIMITERS`. So a run of CR / LF between segments is never
+ * itself structural. (The terminator is the byte immediately AFTER ISA-16,
+ * ISA byte 106; ISA-16 itself is the component separator.)
  *
  * **What is absorbed here is not recorded anywhere on the model**, so
  * `serializeX12` cannot reproduce it and a pretty-printed source does not
@@ -395,10 +397,20 @@ export function decodeEnvelope(
         // X12 standard it appears between ISA and the first GS, or between
         // groups, or alone in an ISA..IEA with no GS at all (TA1-only
         // interchange). At envelope level it is structurally expected - no
-        // unexpected-segment warning. Inside an open transaction the
-        // default branch surfaces it as a body segment (see below). The
-        // raw + elements pair mirrors ISA / GS / GE / IEA so consumers can
-        // narrow uniformly across every typed envelope segment.
+        // unexpected-segment warning.
+        //
+        // This case ALWAYS wins for a `TA1` id; there is no fall-through to
+        // the default branch. So a `TA1` inside an open group is routed to
+        // `orphanSegments` even when it arrived between an `ST` and its
+        // `SE`, which lifts it out of that transaction's segments rather
+        // than keeping it as a body segment. That is deliberate (it is an
+        // envelope segment wherever it appears) and long-standing, and it is
+        // the one orphan context that does NOT mean "outside every
+        // transaction set". An earlier revision of this comment claimed the
+        // default branch handled it; it never ran.
+        //
+        // The raw + elements pair mirrors ISA / GS / GE / IEA so consumers
+        // can narrow uniformly across every typed envelope segment.
         if (currentGroup === undefined) {
           ta1Segments.push({ raw: segmentText, elements });
           break;

@@ -71,9 +71,11 @@ interchange. All 15 CR/LF sequences of length 0 to 3 frame identically. You neve
 it never warns.
 
 A run of CR / LF between segments can never be structural, which is what makes absorbing an unbounded
-one safe: a CR or an LF in the ISA-16 segment-terminator position is refused outright as the Tier-3
-fatal `X12_INVALID_DELIMITERS`, so a line break is never itself a terminator. (This describes what
-this library does. It takes no position on what ASC X12 permits between segments.)
+one safe: `parseX12` refuses any ASCII control character (CR and LF among them) at **all four**
+delimiter positions, the segment terminator included, as the Tier-3 fatal `X12_INVALID_DELIMITERS`.
+So a line break is never itself a delimiter. Note the terminator is the byte immediately **after**
+ISA-16, as stated above; ISA-16 is the component separator. (This describes what this library does.
+It takes no position on what ASC X12 permits between segments.)
 
 The break is discarded rather than recorded, and that has one consequence worth knowing before you
 diff an emit against its input:
@@ -103,7 +105,7 @@ including element padding, composite structure, and `?`-release escapes. Anythin
 record does not come back, and line breaks are only the most common of several such things.
 
 **`serialize(parse(s)) === s` is not guaranteed in general**, and having no line breaks is not enough
-to make it hold. Six constructs are known not to survive:
+to make it hold. Seven constructs are known not to survive:
 
 1. **Line breaks between segments**, as above. Silent.
 2. **Segments outside a transaction** (a stray segment between `GE` and `IEA`, say). These raise
@@ -119,19 +121,24 @@ to make it hold. Six constructs are known not to survive:
    `ix.ta1Segments` and emitted immediately after the ISA, so the emit **reorders** it. Silent, and
    unlike 1 to 5 nothing is lost: the model and the warning stream both round-trip identically. This
    library takes no position on where ASC X12 requires a TA1 to sit.
+7. **A segment whose first element is empty (`*A*B~`), outside a transaction.** It has no id for the
+   envelope walker to dispatch on, so it is skipped entirely: absent from the model, absent from the
+   emit, and it does not even raise `X12_UNEXPECTED_SEGMENT`. Silent, and the only case here that
+   loses a value with no diagnostic at all. Inside an open transaction the same segment is kept and
+   re-emitted normally.
 
-Cases 2 to 6 all break the round trip on inputs containing no line breaks at all, and **four of the
-six (1, 3, 4, 6) produce no warning**, so a clean `ix.warnings` does not tell you a round trip will
-be byte-exact. In the other direction, **do not use `serializeX12(parseX12(source))` as a
+Cases 2 to 7 all break the round trip on inputs containing no line breaks at all, and **five of the
+seven (1, 3, 4, 6, 7) produce no warning**, so a clean `ix.warnings` does not tell you a round trip
+will be byte-exact. In the other direction, **do not use `serializeX12(parseX12(source))` as a
 normalization step before comparing warnings**, because case 2 drops a warning.
 
 What is **measured**, across the 56 fixtures committed to this repository: every emit is a fixed point
 and re-parses to an identical model with an identical warning stream; the 14 fixtures carrying no line
 breaks return byte-identical; and the 42 pretty-printed ones differ from their source by **line breaks
 and nothing else** (no element value lost, altered, reordered, or re-escaped). Two caveats bound how
-far that sweep can be pushed: the corpus contains **no instance of cases 2 to 6**, and **13 of the 14
+far that sweep can be pushed: the corpus contains **no instance of cases 2 to 7**, and **13 of the 14
 byte-identical fixtures are `golden/*.edi`**, which are serializer output by construction, so
-`envelope/no-trailing-crlf.edi` is the only independent witness. That is why the six cases are
+`envelope/no-trailing-crlf.edi` is the only independent witness. That is why the seven cases are
 enumerated here rather than left to the sweep.
 
 So for a file whose only irregularity is pretty-printing, the round trip is safe to build on for data
@@ -145,6 +152,12 @@ outside one has nowhere to go in `ix.groups`. The positions that do this are a s
 `GE` and `IEA`, a body segment between an `SE` and its group's `GE`, a body segment between `GS` and
 the first `ST`, an `ST` with no open group, an `SE` that closes nothing, a `GE` that closes nothing,
 and a `TA1` inside an open group.
+
+That last one is the exception to this section's title. `TA1` is envelope-level by spec, so a `TA1`
+inside an open group lands on `ix.orphanSegments` even when it arrived **between an `ST` and its
+`SE`** - and it is lifted out of that transaction's `segments` and `rawSegments`. For a document
+containing such a `TA1`, `ix.groups` is not the whole typed model. That is long-standing behaviour;
+what changed is only that the segment is retained rather than discarded.
 
 Each raises `X12_UNEXPECTED_SEGMENT` **and** is retained verbatim on `ix.orphanSegments`:
 
@@ -174,10 +187,9 @@ warning?.position.segmentIndex === ix.orphanSegments[0]?.segmentIndex; // => tru
 serializeX12(ix).includes("VENDORTAG"); // => false
 ```
 
-Three things this deliberately does **not** do. An orphan is not decoded by any `get*` reader, because
-none of them is inside a transaction. A `TA1` inside an open group is **not** added to
-`ix.ta1Segments` (that surface means "envelope-level TA1", and `parseTA1` reads it). And
-`serializeX12` does **not** re-emit an orphan.
+Three things this deliberately does **not** do. An orphan is not decoded by any `get*` reader. A `TA1`
+inside an open group is **not** added to `ix.ta1Segments` (that surface means "envelope-level TA1",
+and `parseTA1` reads it). And `serializeX12` does **not** re-emit an orphan.
 
 That last one is a deliberate limitation, not an oversight. `segmentIndex` is an index into the
 **input** stream, and the emit is not in input order: it hoists `ta1Segments` ahead of the groups

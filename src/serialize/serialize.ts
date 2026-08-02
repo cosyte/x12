@@ -10,13 +10,13 @@
  *
  *   Every segment the parser recorded comes back verbatim, including element
  *   padding, composite structure and `?`-release escapes, but it comes back in
- *   the ORDER the model holds it, which is not always the input order. Six
+ *   the ORDER the model holds it, which is not always the input order. Seven
  *   constructs are known not to survive, and line breaks are only the most
  *   common:
  *
- *   1. **Line breaks between segments.** The parser absorbs an optional CR
- *      then an optional LF after each terminator and the model has nowhere to
- *      record it, so a pretty-printed source emits as its compact form.
+ *   1. **Line breaks between segments.** The parser absorbs any run of CR /
+ *      LF bytes between segments and the model has nowhere to record it, so a
+ *      pretty-printed or double-spaced source emits as its compact form.
  *      Silent.
  *   2. **Segments outside a transaction** (a stray segment between GE and IEA,
  *      say). These raise `X12_UNEXPECTED_SEGMENT` and ARE retained on the
@@ -34,11 +34,17 @@
  *      so the emit reorders it. Silent, and unlike 1 to 5 nothing is dropped:
  *      the model and the warning stream both round-trip identically. This
  *      library takes no position here on where ASC X12 requires a TA1 to sit.
+ *   7. **A segment whose first element is empty** (`*A*B~`), outside a
+ *      transaction. It has no id for the envelope walker to dispatch on, so it
+ *      is skipped: absent from the model, absent from the emit, and it does
+ *      not even raise `X12_UNEXPECTED_SEGMENT`. Silent, and the only case here
+ *      that loses a value with no diagnostic at all. Inside an open
+ *      transaction the same segment is kept and re-emitted normally.
  *
  *   So `serialize(parse(s)) === s` is NOT guaranteed in general, and the
- *   absence of line breaks is not sufficient to make it hold: cases 2 to 6 all
- *   break it on inputs that contain none. Four of the six (1, 3, 4, 6) produce
- *   no warning at all, so the warning stream is not a reliable signal that a
+ *   absence of line breaks is not sufficient to make it hold: cases 2 to 7 all
+ *   break it on inputs that contain none. Five of the seven (1, 3, 4, 6, 7)
+ *   produce no warning at all, so the warning stream is not a reliable signal that a
  *   round trip will be byte-exact. Do not use `serialize(parse(s))` as a
  *   normalization step before comparing warnings, because case 2 discards a
  *   warning along with its segment.
@@ -48,10 +54,10 @@
  *   identical model with an identical warning stream, the 14 fixtures carrying
  *   no line breaks return byte-identical, and the 42 that are pretty-printed
  *   differ from their source by line breaks and nothing else. Two caveats on
- *   that corpus: it contains no instance of cases 2 to 6, and 13 of the 14
+ *   that corpus: it contains no instance of cases 2 to 7, and 13 of the 14
  *   byte-identical fixtures are `golden/*.edi`, which are serializer output by
  *   construction, so `envelope/no-trailing-crlf.edi` is the only independent
- *   witness. `test/serialize.test.ts` covers the corpus sweep and cases 2 to 6
+ *   witness. `test/serialize.test.ts` covers the corpus sweep and cases 2 to 7
  *   separately.
  *
  * - **Spec-clean (`{ specClean: true }`).** Same byte-faithful structure, but

@@ -22,7 +22,7 @@ an `SE` and its group's `GE`, or between `GS` and the first `ST`; an `ST` with n
 closing nothing; a `GE` closing nothing; and a `TA1` inside an open group.
 
 This fixes the model, not the emit. `serializeX12` still does not reproduce an orphan, so neither the
-segment nor its warning survives a round trip, and `KNOWN-LIMITATIONS.md` still lists six constructs
+segment nor its warning survives a round trip, and `KNOWN-LIMITATIONS.md` still lists the constructs
 the default emit does not reproduce. Re-emitting one needs the model to carry a structural anchor
 (which group and transaction it followed) rather than the raw input index it carries today, and that
 is tracked separately. A positional replay keyed on `segmentIndex` was built and removed during this
@@ -43,7 +43,8 @@ whole `ix.warnings` array is safe to log, whereas an orphan carries the sender's
 exactly as `tx.rawSegments` and `isa.raw` do. Log `context` and `segmentIndex`, not `raw`.
 
 Measured on the previous release, then after: CR/LF sequences of length 0 to 3 that frame correctly,
-4 of 15 then 15 of 15; orphan positions that retain the segment, 0 of 9 then 9 of 9. Across the 56
+4 of 15 then 15 of 15; orphan cases that retain the segment, 0 of 10 then 10 of 10 (ten constructed
+cases over nine distinct positions). Across the 56
 committed fixtures nothing changed: same 42 pretty-printed and 14 compact, same byte-exact count,
 zero model divergences, zero warning divergences, zero fixed-point failures, and no fixture produces
 an orphan.

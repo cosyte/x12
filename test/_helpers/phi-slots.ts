@@ -364,12 +364,12 @@ export function phiModelIdentifiers(parsed: PhiParsed): readonly string[] {
   const { delimiters, orphanSegments } = parsed.interchange;
   return [
     ...parsed.segments.map((s) => s.id),
-    // `X12OrphanSegment.segment` is an `X12Segment` the helpers above never
-    // reach, because an orphan is by definition outside every transaction set
-    // and no `get*` reader walks one. Its `id` is still a bounded identifier
-    // on the model and is still consumer-controlled, so it belongs in this
-    // walk: this file's standing rule is to re-run it whenever the model gains
-    // a field, and `orphanSegments` is a new one.
+    // `X12OrphanSegment.segment` is an `X12Segment` the helpers above do not
+    // reach: an orphan is one the envelope grammar could not place, and no
+    // `get*` reader walks one. Its `id` is still a bounded identifier on the
+    // model and is still consumer-controlled, so it belongs in this walk:
+    // this file's standing rule is to re-run it whenever the model gains a
+    // field, and `orphanSegments` is a new one.
     //
     // `orphanSegments[].raw` and `.segment.elements` are deliberately NOT
     // here. They are verbatim document content, exactly like
