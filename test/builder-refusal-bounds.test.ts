@@ -1,6 +1,14 @@
 /**
- * The bound gate for `@cosyte/x12`'s BUILDER refusal messages
- * (`X12-BUILDER-BOUNDS`).
+ * The bound gate for `@cosyte/x12`'s refusal messages: every `build*` refusal
+ * (`X12-BUILDER-BOUNDS`) and every `defineProfile()` refusal
+ * (`X12-CALLER-VALUE-RESIDUALS`).
+ *
+ * **The profile half was filed by `X12-BUILDER-BOUNDS` and deliberately not
+ * fixed by it**, because it sat outside that item's `build*` scope. The gate
+ * was widened rather than copied: `src/profiles/validate.ts` joins the scanned
+ * modules and `X12ProfileError` joins the matched constructors, so one
+ * allowlist governs both and a new refusal site in either place is caught by
+ * the same walk.
  *
  * **The source scan is the deliverable, and it is the exhaustive half.** The
  * behavioural assertions below and in the eight per-builder suites drive a
@@ -43,7 +51,7 @@
  */
 
 import { readdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
@@ -55,13 +63,29 @@ import {
   BUILD_REFUSAL_VALUE_MAX_RENDERED,
   buildInterchange,
   buildTA1,
+  defineProfile,
   renderCallerValue,
   X12_BUILD_ERROR_CODES,
   X12BuildError,
+  X12ProfileError,
   type InterchangeSpec,
 } from "../src/index.js";
+import { renderCallerJson } from "../src/builder/caller-value.js";
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
+
+/**
+ * Launder a value into the typed slot a builder declares.
+ *
+ * Every forged case in this file is a JavaScript or JSON caller reaching a slot
+ * the TypeScript types say is unreachable, which is the whole point: the types
+ * are not a runtime guarantee, and `@cosyte/cli` is such a caller. Routing it
+ * through one named helper says so once, and keeps the assertion off the object
+ * literals where the shared ESLint config forbids it.
+ */
+function asJsCaller<T>(value: unknown): T {
+  return value as T;
+}
 
 /** A 120,000-character caller value - the size the item was measured at. */
 const HUGE = "9".repeat(120_000);
@@ -71,14 +95,19 @@ const HUGE = "9".repeat(120_000);
 // ---------------------------------------------------------------------------
 
 /**
- * Every module that raises a `build*` refusal: `src/builder/*.ts` plus
- * `src/transactions/&#42;/build-*.ts`. Discovered rather than listed, so a new
- * builder module joins the gate on its first commit.
+ * Every module that raises a refusal this gate governs: `src/builder/*.ts`,
+ * `src/transactions/&#42;/build-*.ts`, and every `src/profiles/*.ts`. The first
+ * two are discovered rather than listed so a new builder module joins the gate
+ * on its first commit; the profile directory is swept whole for the same
+ * reason, even though only `validate.ts` throws today.
  */
-function builderModules(): string[] {
+function refusingModules(): string[] {
   const out: string[] = [];
   for (const f of readdirSync(join(SRC, "builder"))) {
     if (f.endsWith(".ts")) out.push(join(SRC, "builder", f));
+  }
+  for (const f of readdirSync(join(SRC, "profiles"))) {
+    if (f.endsWith(".ts")) out.push(join(SRC, "profiles", f));
   }
   const txRoot = join(SRC, "transactions");
   for (const dir of readdirSync(txRoot, { withFileTypes: true })) {
@@ -97,14 +126,15 @@ interface ThrowSite {
 }
 
 /**
- * Extract every `throw new <Something>BuildError(...)` from a module together
- * with the `${...}` interpolations in its arguments, matching the constructor
- * call's parentheses so a multi-line message is captured whole.
+ * Extract every `throw new <Something>BuildError(...)` and
+ * `throw new X12ProfileError(...)` from a module together with the `${...}`
+ * interpolations in its arguments, matching the constructor call's parentheses
+ * so a multi-line message is captured whole.
  */
 function throwSites(file: string): ThrowSite[] {
   const src = readFileSync(file, "utf8");
   const sites: ThrowSite[] = [];
-  const marker = /throw new [A-Za-z0-9_]*BuildError\(/g;
+  const marker = /throw new [A-Za-z0-9_]*(?:Build|Profile)Error\(/g;
   let m: RegExpExecArray | null;
   while ((m = marker.exec(src)) !== null) {
     const open = m.index + m[0].length - 1;
@@ -171,28 +201,51 @@ function throwSites(file: string): ThrowSite[] {
  *   table, keyed by a library-owned invariant discriminant. Registry text, and
  *   the reason `PHI-WARNING-MESSAGE-LEAK` bound the parse side at the model.
  * - a ternary over string literals - both branches are literals in this file.
+ * - `renderCallerJson(...)` - the sanctioned route for a caller value whose
+ *   TYPE is what is wrong, so `null` and `"null"` stay distinguishable. Bounded
+ *   by the same two constants as `renderCallerValue`.
+ * - `hint` - the Levenshtein "did you mean?" suggestion, which is an element of
+ *   the module-level `KNOWN_OPTION_KEYS` literal and never the caller's key.
+ *   Same footing as `locator` / `variant`: a named local whose only possible
+ *   values are library literals, in view of the throw.
+ * - `KNOWN_*.join(...)` - a join over a frozen module-level literal array
+ *   (`KNOWN_OPTION_KEYS`, `KNOWN_EFFECTS`). No caller expression appears.
+ *
+ * **Every one of these is a name-based judgement, which is the shape that went
+ * wrong twice.** They are admitted only because the binding is declared in the
+ * same module out of literals; none of them admits a property read off a
+ * caller-supplied object, which is what `String(<expr>.length)` did.
  */
 const SANCTIONED_HOLES: readonly RegExp[] = [
   /^String\([a-z]\)$/,
   /^String\(width\)$/,
   /^renderCallerValue\(/,
-  /^(locator|depLocator|variant)$/,
+  /^renderCallerJson\(/,
+  /^(locator|depLocator|variant|hint)$/,
+  /^KNOWN_[A-Z_]+\.join\(/,
   /^[A-Za-z0-9_]*Warn\.message$/,
   /^[^?]*\?\s*"[^"]*"\s*:\s*"[^"]*"$/,
 ];
 
-describe("builder refusal messages: the source gate", () => {
-  const modules = builderModules();
+describe("refusal messages: the source gate", () => {
+  const modules = refusingModules();
   const sites = modules.flatMap(throwSites);
+  /** A hole is bounded when it goes through one of the two sanctioned renderers. */
+  const isBounded = (h: string): boolean =>
+    h.startsWith("renderCallerValue(") || h.startsWith("renderCallerJson(");
 
-  it("finds the builder modules and their refusal sites", () => {
-    // Re-derived on this tree, not inherited: ten modules raise a typed
-    // refusal, across fifty-nine `throw` sites. Pinned so a module that stops
+  it("finds the refusing modules and their refusal sites", () => {
+    // Re-derived on this tree, not inherited: ELEVEN modules raise a typed
+    // refusal across EIGHTY `throw` sites - ten builder modules with 68 sites
+    // (59 before this slice, plus the nine one-line `refuseSpec` /
+    // `refuseHierarchy` throwers that `requireCallerArray` calls back into),
+    // and `src/profiles/validate.ts` with 12. Pinned so a module that stops
     // being scanned (a rename, a moved directory) is a failure rather than a
     // silently smaller sweep.
     const raising = new Set(sites.map((s) => s.file));
-    expect(raising.size).toBe(10);
-    expect(sites.length).toBe(59);
+    expect(raising.size).toBe(11);
+    expect(sites.length).toBe(80);
+    expect(modules.some((m) => m.endsWith(join("profiles", "validate.ts")))).toBe(true);
   });
 
   it("routes every caller-supplied value through renderCallerValue", () => {
@@ -206,7 +259,7 @@ describe("builder refusal messages: the source gate", () => {
     expect(findings).toEqual([]);
   });
 
-  it("counts twenty-three caller-value slots: the item's sixteen plus seven it missed", () => {
+  it("counts the builder's twenty-three caller-value slots, unchanged by this slice", () => {
     // The item named SIXTEEN, and sixteen is the count of caller-supplied
     // STRING slots: nine over-long control numbers (one per emitting module)
     // plus seven with no length gate at all (`build999`'s ST-02 trace twice,
@@ -227,11 +280,31 @@ describe("builder refusal messages: the source gate", () => {
     // carry a caller value and hold 28 holes between them, because the AK9
     // non-negative refusal names all three counts in one message and three
     // more name two each.
-    const isBounded = (h: string): boolean => h.startsWith("renderCallerValue(");
-    const boundedSites = sites.filter((s) => s.holes.some(isBounded));
-    const boundedHoles = sites.flatMap((s) => s.holes).filter(isBounded);
+    const builderSites = sites.filter((s) => !s.file.includes(`${sep}profiles${sep}`));
+    const boundedSites = builderSites.filter((s) => s.holes.some(isBounded));
+    const boundedHoles = builderSites.flatMap((s) => s.holes).filter(isBounded);
     expect(boundedSites.length).toBe(23);
     expect(boundedHoles.length).toBe(28);
+  });
+
+  it("counts the profile subsystem's twelve refusal sites and twenty-three holes", () => {
+    // `X12-BUILDER-BOUNDS` filed this half as PRE-EXISTING and measured it at
+    // 120,093 characters. **That figure did not reproduce**, the same way its
+    // own filed figures did not: re-derived here, the largest single
+    // `X12ProfileError.message` at base is 240,092 characters, because the
+    // sourceCategory refusal names BOTH the profile name and the quirk id and a
+    // 120,000-digit quirk id passes `QUIRK_ID_RE` (which carries no length
+    // bound, whatever its comment used to say). A `JSON.stringify`d array
+    // reached 160,078. Nothing here is 120,093.
+    //
+    // Sites and holes are counted separately, because they are not the same
+    // number: all twelve sites name at least one caller value, and they hold
+    // twenty-three holes between them, since most name the profile AND the
+    // offending quirk id.
+    const profileSites = sites.filter((s) => s.file.includes(`${sep}profiles${sep}`));
+    expect(profileSites.length).toBe(12);
+    expect(profileSites.filter((s) => s.holes.some(isBounded)).length).toBe(12);
+    expect(profileSites.flatMap((s) => s.holes).filter(isBounded).length).toBe(23);
   });
 });
 
@@ -392,6 +465,211 @@ describe("buildTA1: the note-code slot", () => {
       throw new Error("expected buildTA1 to refuse an accept carrying a note");
     } catch (err) {
       expect((err as Error).message).toContain('note "001"');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// `renderCallerJson`: the type-preserving half of the bound.
+// ---------------------------------------------------------------------------
+
+describe("renderCallerJson", () => {
+  it("keeps the type distinction that made it worth having", () => {
+    // This is the whole reason `defineProfile` does not just call
+    // `renderCallerValue`: it coerces, and `null` / `"null"` / `undefined` are
+    // three different mistakes a caller can make in a `name` field.
+    expect(renderCallerJson(null)).toBe("null");
+    expect(renderCallerJson("null")).toBe('"null"');
+    expect(renderCallerJson(undefined)).toBe("undefined");
+    expect(renderCallerJson(42)).toBe("42");
+    expect(renderCallerJson("acme")).toBe('"acme"');
+  });
+
+  it("stays under the same declared ceiling as renderCallerValue", () => {
+    for (const value of [HUGE, [HUGE], { a: HUGE }, Array.from({ length: 20_000 }, () => "zz")]) {
+      expect(renderCallerJson(value).length).toBeLessThanOrEqual(BUILD_REFUSAL_VALUE_MAX_RENDERED);
+      expect(renderCallerJson(value)).not.toContain(HUGE);
+    }
+  });
+
+  it("fabricates no closing quote, because JSON does not always open one", () => {
+    // Truncating `["aaa…` and appending `"` would misdescribe the caller's
+    // value as a string. The ellipsis is the only thing added.
+    const arrayish = renderCallerJson([HUGE]);
+    expect(arrayish.startsWith('["')).toBe(true);
+    expect(arrayish).toContain("…");
+    expect(arrayish).toMatch(/… \(\d+ characters\)$/u);
+  });
+
+  it("never throws, on the three inputs JSON.stringify throws for", () => {
+    // A refusal that dies inside its own message hands the caller an uncaught
+    // TypeError with no `code` - the regression `renderCallerValue` was made to
+    // coerce away, and it would arrive here by a different door.
+    const circular: Record<string, unknown> = {};
+    circular["self"] = circular;
+    const hostile = {
+      toJSON() {
+        throw new Error("nope");
+      },
+    };
+    for (const rogue of [circular, hostile, 1n, { big: 1n }, Object.create(null)]) {
+      expect(() => renderCallerJson(rogue)).not.toThrow();
+      expect(renderCallerJson(rogue).length).toBeLessThanOrEqual(BUILD_REFUSAL_VALUE_MAX_RENDERED);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Behavioural: `defineProfile`, the half `X12-BUILDER-BOUNDS` filed and left.
+// ---------------------------------------------------------------------------
+
+/**
+ * Every `defineProfile()` shape that reaches a refusal naming a caller value.
+ * Driven off one table so a new refusal site has an obvious home, and so the
+ * ceiling is asserted against every site rather than a chosen one.
+ */
+const PROFILE_REFUSALS: readonly (readonly [string, () => unknown])[] = [
+  ["options is not an object", () => defineProfile(asJsCaller(HUGE))],
+  ["name is not a string", () => defineProfile(asJsCaller({ name: { deep: HUGE } }))],
+  ["name is a huge array", () => defineProfile(asJsCaller({ name: [HUGE, HUGE] }))],
+  ["name is whitespace only", () => defineProfile(asJsCaller({ name: " ".repeat(120_000) }))],
+  ["unknown option key", () => defineProfile(asJsCaller({ name: HUGE, [HUGE]: 1 }))],
+  ["quirk is not an object", () => defineProfile(asJsCaller({ name: HUGE, quirks: [null] }))],
+  [
+    "quirk id is ill-formed",
+    () => defineProfile(asJsCaller({ name: HUGE, quirks: [{ ...QUIRK, id: `!${HUGE}` }] })),
+  ],
+  [
+    "quirk id is duplicated",
+    () =>
+      defineProfile(
+        asJsCaller({
+          name: HUGE,
+          quirks: [
+            { ...QUIRK, id: LOWER },
+            { ...QUIRK, id: LOWER },
+          ],
+        }),
+      ),
+  ],
+  [
+    "quirk effect is unknown",
+    () =>
+      defineProfile(asJsCaller({ name: HUGE, quirks: [{ ...QUIRK, id: LOWER, effect: HUGE }] })),
+  ],
+  [
+    "quirk summary is empty",
+    () =>
+      defineProfile(asJsCaller({ name: HUGE, quirks: [{ ...QUIRK, id: LOWER, summary: " " }] })),
+  ],
+  [
+    "quirk fixture is ill-formed",
+    () =>
+      defineProfile(asJsCaller({ name: HUGE, quirks: [{ ...QUIRK, id: LOWER, fixture: HUGE }] })),
+  ],
+  [
+    "quirk sourceCategory is empty",
+    () =>
+      defineProfile(
+        asJsCaller({ name: HUGE, quirks: [{ ...QUIRK, id: LOWER, sourceCategory: "" }] }),
+      ),
+  ],
+  [
+    "quirk expectedWarnings has an unknown code",
+    () =>
+      defineProfile(
+        asJsCaller({
+          name: HUGE,
+          quirks: [{ ...QUIRK, id: LOWER, expectedWarnings: [HUGE] }],
+        }),
+      ),
+  ],
+];
+
+/** A 120,000-character all-lowercase id, which `QUIRK_ID_RE` accepts. */
+const LOWER = "a".repeat(120_000);
+
+/** A quirk that is valid apart from whatever each case overrides. */
+const QUIRK = {
+  id: "q-one",
+  effect: "relaxes",
+  summary: "s",
+  fixture: "remit/835-availity-quirk.edi",
+  sourceCategory: "c",
+} as const;
+
+describe("defineProfile: caller values in X12ProfileError", () => {
+  it.each(PROFILE_REFUSALS)("bounds the refusal when %s", (_label, run) => {
+    let thrown: unknown;
+    try {
+      run();
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown).toBeInstanceOf(X12ProfileError);
+    const { message } = thrown as Error;
+    expect(message).not.toContain(HUGE);
+    expect(message).not.toContain(LOWER);
+    // Each site is its own fixed template plus at most three bounded
+    // fragments. Asserted against a per-message ceiling, never against
+    // BUILD_REFUSAL_VALUE_MAX_RENDERED, which bounds the FRAGMENT - the
+    // category error `X12-BUILDER-BOUNDS` shipped and had to correct. Measured
+    // on this tree the longest of the thirteen is the fixture refusal at 431
+    // characters, whose fixed template is the longest in the module; the base
+    // it replaces measured 240,092 at its worst.
+    expect(message.length).toBeLessThan(500);
+  });
+
+  it("has a measured maximum of 431 characters across every refusal site", () => {
+    // Pinned as a MEASUREMENT, not a ceiling: the ceiling is the 500 above.
+    // A site that starts saying more should move this number visibly rather
+    // than drift under a round threshold.
+    let longest = 0;
+    for (const [, run] of PROFILE_REFUSALS) {
+      try {
+        run();
+      } catch (err) {
+        longest = Math.max(longest, (err as Error).message.length);
+      }
+    }
+    expect(longest).toBe(431);
+  });
+
+  it("reports the true length of what it truncated", () => {
+    try {
+      defineProfile(asJsCaller({ name: " ".repeat(120_000) }));
+      throw new Error("expected defineProfile to refuse a whitespace-only name");
+    } catch (err) {
+      expect(err).toBeInstanceOf(X12ProfileError);
+      // 120,002 not 120,000: the figure describes the JSON TEXT it truncated,
+      // quotes included, which is the only number that matches the fragment.
+      expect((err as Error).message).toContain("(120002 characters)");
+    }
+  });
+
+  it("still shows a short profile name in full, because the bound is generous", () => {
+    try {
+      defineProfile(asJsCaller({ name: "acme-clearinghouse", nope: 1 }));
+      throw new Error("expected defineProfile to refuse an unknown option key");
+    } catch (err) {
+      expect((err as Error).message).toContain('Profile "acme-clearinghouse"');
+    }
+  });
+
+  it("leaves X12ProfileError.profileName an unbounded copy, which is deliberate", () => {
+    // The BOUND IS ON THE MESSAGE. `profileName` exists so a consumer can
+    // pinpoint which of their definitions failed, and truncating it would stop
+    // it matching the name they passed. It is the caller's own string, they
+    // still hold it, and the disclosure is in KNOWN-LIMITATIONS.md. Asserted so
+    // the asymmetry is a decision on the record rather than an oversight.
+    const name = " ".repeat(120_000);
+    try {
+      defineProfile(asJsCaller({ name }));
+      throw new Error("expected defineProfile to refuse a whitespace-only name");
+    } catch (err) {
+      expect(err).toBeInstanceOf(X12ProfileError);
+      expect((err as X12ProfileError).profileName).toBe(name);
+      expect((err as Error).message.length).toBeLessThan(400);
     }
   });
 });

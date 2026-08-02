@@ -47,7 +47,21 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { requireCallerArray } from "../../builder/caller-array.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
+
+/**
+ * Refuse with this module's typed error, for {@link requireCallerArray}. A
+ * forged array-like where the HL spine expects a review list makes the
+ * hierarchy structurally impossible, so it reuses
+ * `X12_278_BUILD_INVALID_HIERARCHY` rather than minting a code. @internal
+ */
+function refuseHierarchy(message: string): never {
+  throw new ServicesReview278BuildError(
+    AUTH_278_BUILD_ERROR_CODES.X12_278_BUILD_INVALID_HIERARCHY,
+    message,
+  );
+}
 
 /** GS-01 functional identifier code for the 278. `HI` = Health Care Services Review Information. @internal */
 const X12_278_FUNCTIONAL_ID = "HI";
@@ -274,7 +288,11 @@ function buildServicesReview(
  */
 function enforceStructuralSpec(spec: Build278Spec, direction: "request" | "response"): void {
   const subscriber = spec.subscriber;
-  const subscriberReviews = subscriber.reviews ?? [];
+  const subscriberReviews = requireCallerArray(
+    subscriber.reviews,
+    "build278: spec.subscriber.reviews",
+    refuseHierarchy,
+  );
   if (subscriberReviews.length === 0 && subscriber.dependent === undefined) {
     throw new ServicesReview278BuildError(
       AUTH_278_BUILD_ERROR_CODES.X12_278_BUILD_INVALID_HIERARCHY,
@@ -287,14 +305,19 @@ function enforceStructuralSpec(spec: Build278Spec, direction: "request" | "respo
   }
   const dependent = subscriber.dependent;
   if (dependent !== undefined) {
-    if (dependent.reviews.length === 0) {
+    const dependentReviews = requireCallerArray(
+      dependent.reviews,
+      "build278: spec.subscriber.dependent.reviews",
+      refuseHierarchy,
+    );
+    if (dependentReviews.length === 0) {
       throw new ServicesReview278BuildError(
         AUTH_278_BUILD_ERROR_CODES.X12_278_BUILD_INVALID_HIERARCHY,
         "build278: dependent has no review (HL level EV/SS) child.",
       );
     }
-    for (let r = 0; r < dependent.reviews.length; r += 1) {
-      const review = dependent.reviews[r];
+    for (let r = 0; r < dependentReviews.length; r += 1) {
+      const review = dependentReviews[r];
       if (review !== undefined) enforceReview(review, `dependent.review[${String(r)}]`, direction);
     }
   }
@@ -330,7 +353,11 @@ function enforceReview(
       );
     }
   }
-  const nested = review.reviews ?? [];
+  const nested = requireCallerArray(
+    review.reviews,
+    `build278: review at ${locator}: reviews`,
+    refuseHierarchy,
+  );
   for (let r = 0; r < nested.length; r += 1) {
     const child = nested[r];
     if (child !== undefined) enforceReview(child, `${locator}.review[${String(r)}]`, direction);

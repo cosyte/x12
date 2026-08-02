@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`renderCallerJson`** (internal), the type-preserving half of the caller-value bound, held to the
+  same `BUILD_REFUSAL_VALUE_MAX_RENDERED` ceiling as `renderCallerValue`. It exists because
+  `defineProfile()` reports a bad `name` / `id` / `effect` / `fixture` with `JSON.stringify`, and that
+  distinction is diagnostically load-bearing: `null` and `"null"` are different mistakes, and a
+  coercing renderer would flatten them together. It bounds the JSON **text** rather than the argument,
+  never throws (a circular structure, a `BigInt`, a hostile `toJSON`), and fabricates no closing quote,
+  because JSON does not always open one.
+- **`requireCallerArray`** (internal), the single route a caller-supplied array takes into a builder
+  loop. Each builder passes its own `refuse` callback, so a forged list draws that module's existing
+  typed error and code rather than a new shared one.
 - **`renderCallerValue`**, plus the `BUILD_REFUSAL_VALUE_MAX_LENGTH` (63) and
   `BUILD_REFUSAL_VALUE_MAX_RENDERED` (90) bounds. This is the single sanctioned route a
   caller-supplied value takes into a `build*` refusal message, and both ceilings are exported so a
@@ -33,6 +43,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   document content, verbatim, exactly like `tx.rawSegments`. Log `context` and `segmentIndex`.
 
 ### Fixed
+
+- **A `defineProfile()` refusal message no longer grows with the value you passed in.** Twelve
+  refusal sites in `src/profiles/validate.ts` hold twenty-three caller-value holes between them, and
+  every one now routes through `renderCallerValue` or `renderCallerJson`. Re-derived on this tree
+  before the fix: a single `defineProfile()` call produced a **240,092-character**
+  `X12ProfileError.message`, because the `sourceCategory` refusal names both the profile name and the
+  quirk id and a 120,000-digit quirk id passes `QUIRK_ID_RE`. A `JSON.stringify`d array reached
+  160,078. The longest message any of the twelve can now produce is **431 characters**.
+
+  **The figure this was filed on, 120,093, did not reproduce**, the same way `X12-BUILDER-BOUNDS`'s
+  own filed figures did not: it depends on which site is hit and what the probe passes.
+
+  Scope it the way the builder half is scoped. This is **not** `PHI-WARNING-MESSAGE-LEAK`, where the
+  value was the document's: here you passed it in and still hold it, so bounding it **redacts
+  nothing**. What it buys is a fixed ceiling on anything reaching a log line, a crash report or a JSON
+  error envelope. The surviving characters are **not escaped**, and the bound is on UTF-16 **code
+  units, not bytes**. **`X12ProfileError.profileName` is deliberately left unbounded**, so it still
+  matches the name you passed.
+
+- **A builder handed a forged non-array now refuses instead of hanging.** Every domain builder took
+  its loop bound from a caller-supplied `.length`, so `{ length: "9".repeat(120000) }` coerced to
+  `Infinity`, every element read `undefined`, every guard `continue`d, and the builder **spun forever
+  rather than refusing**. Measured at base: **14 of 16 probed entry paths hung** with no refusal, over
+  a 20-second wall-clock timeout in a child process. All **32 indexed loops across 7 builder modules**
+  now take their bound from a `requireCallerArray` binding, and each of the 14 returns that builder's
+  own typed, code-tagged error with a bounded message (169 to 194 characters).
+
+  A hang is a worse failure than a refusal: a refusal hands control back with something to branch on,
+  a hang takes the worker with it. But state the class correctly. This is a **forged non-array input,
+  not a mis-read clinical value** - nothing decodes a document differently because of it, and the
+  reachable harm is availability. It is unreachable from TypeScript and reachable from JavaScript,
+  JSON, and therefore `@cosyte/cli`.
+
+  **Disclosed rather than fixed, and identical at base and head:** where a builder reads a caller array
+  with `for...of` - `buildInterchange`'s `spec.groups`, `build999`'s
+  `functionalGroup.transactionResponses`, and every optional leaf array such as `claim.dates` - a
+  forged list throws `TypeError: ... is not iterable`. That terminates, so it is not the hang, but it
+  carries **no `code`**. Pinned by a test so it cannot quietly become a hang.
+
+- **The `QUIRK_ID_RE` comment claimed a length bound the pattern never had.** It said "2-64
+  lowercase-alphanumeric chars"; the regex accepts one character and it accepts 120,000, which was in
+  fact the path to the largest profile error message on the tree. The comment was corrected to the
+  code, not the grammar tightened: rejecting ids that define cleanly today is a separate decision from
+  bounding a message.
 
 - **A `build*` refusal message no longer grows with the value you passed in.** All twenty-three
   caller-value slots across the ten builder modules route through `renderCallerValue`, capping the

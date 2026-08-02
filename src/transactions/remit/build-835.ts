@@ -44,7 +44,17 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange, X12Position } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { requireCallerArray } from "../../builder/caller-array.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
+
+/**
+ * Refuse with this module's typed error, for {@link requireCallerArray}. A
+ * forged array-like is a structurally impossible spec, so it reuses
+ * `X12_835_BUILD_INVALID_SPEC` rather than minting a code. @internal
+ */
+function refuseSpec(message: string): never {
+  throw new Remit835BuildError(REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_INVALID_SPEC, message);
+}
 
 /**
  * GS-08 / ST-03 version + release emitted for every 835 the library builds
@@ -272,7 +282,14 @@ export function build835(spec: Build835Spec): X12Interchange {
     }
   }
 
-  emitProviderAdjustments(spec.providerAdjustments ?? [], body, seg, esc, comp);
+  emitProviderAdjustments(
+    spec.providerAdjustments,
+    "build835: spec.providerAdjustments",
+    body,
+    seg,
+    esc,
+    comp,
+  );
 
   // ---- SE / GE / IEA ----------------------------------------------------
 
@@ -301,14 +318,16 @@ export function build835(spec: Build835Spec): X12Interchange {
  * would otherwise emit a malformed 835. @internal
  */
 function enforceStructuralSpec(spec: Build835Spec): void {
-  if (spec.traces.length === 0) {
+  const traces = requireCallerArray(spec.traces, "build835: spec.traces", refuseSpec);
+  if (traces.length === 0) {
     throw new Remit835BuildError(
       REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_INVALID_SPEC,
       "build835: at least one TRN trace is required (TR3 005010X221A1 Loop header).",
     );
   }
-  for (let i = 0; i < spec.claims.length; i += 1) {
-    const claim = spec.claims[i];
+  const claims = requireCallerArray(spec.claims, "build835: spec.claims", refuseSpec);
+  for (let i = 0; i < claims.length; i += 1) {
+    const claim = claims[i];
     if (claim === undefined) continue;
     if (claim.patientControlNumber === "") {
       throw new Remit835BuildError(
@@ -551,7 +570,7 @@ function emitClaim(
     ]),
   );
 
-  emitCasGroup(claim.adjustments ?? [], body, seg, esc);
+  emitCasGroup(claim.adjustments, "build835: claim.adjustments", body, seg, esc);
 
   if (claim.patient !== undefined) body.push(emitPerson(claim.patient, seg, esc));
   if (claim.subscriber !== undefined) body.push(emitPerson(claim.subscriber, seg, esc));
@@ -609,7 +628,7 @@ function emitServiceLine(
   );
 
   emitServiceLineDtm(line, body, seg, esc);
-  emitCasGroup(line.adjustments ?? [], body, seg, esc);
+  emitCasGroup(line.adjustments, "build835: serviceLine.adjustments", body, seg, esc);
   for (const ref of line.references ?? []) body.push(emitRef(ref, seg, esc));
   for (const amt of line.amounts ?? []) {
     body.push(seg(["AMT", esc(amt.qualifier), esc(amt.amount.toString())]));
@@ -645,11 +664,13 @@ function emitServiceLineDtm(
  * read side's flatten. @internal
  */
 function emitCasGroup(
-  adjustments: readonly Build835AdjustmentSpec[],
+  raw: readonly Build835AdjustmentSpec[] | undefined,
+  at: string,
   body: string[],
   seg: (parts: readonly string[]) => string,
   esc: (value: string) => string,
 ): void {
+  const adjustments = requireCallerArray(raw, at, refuseSpec);
   let i = 0;
   while (i < adjustments.length) {
     const first = adjustments[i];
@@ -721,12 +742,14 @@ function emitProvider(
  * mirroring the read side's flatten. @internal
  */
 function emitProviderAdjustments(
-  adjustments: readonly Build835ProviderAdjustmentSpec[],
+  raw: readonly Build835ProviderAdjustmentSpec[] | undefined,
+  at: string,
   body: string[],
   seg: (parts: readonly string[]) => string,
   esc: (value: string) => string,
   comp: (components: readonly string[]) => string,
 ): void {
+  const adjustments = requireCallerArray(raw, at, refuseSpec);
   let i = 0;
   while (i < adjustments.length) {
     const first = adjustments[i];

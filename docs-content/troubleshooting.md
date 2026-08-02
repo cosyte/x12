@@ -115,6 +115,23 @@ the acknowledged transaction set's ST-02, and `buildTA1` echoes an inbound ISA-1
 control numbers reach those refusals by design. They are envelope control numbers, not clinical
 content, and they are bounded like the rest.
 
+**`defineProfile()` follows the same rule, since `0.0.6`.** An `X12ProfileError` naming a bad profile
+name, quirk id, effect, fixture path or expected-warning code used to interpolate it verbatim: one call
+measured a **240,092-character** message. Twelve refusal sites now route all twenty-three of their
+caller values through the same bound, and the longest message any of them produces is 431 characters.
+Where the value's **type** is the mistake, the rendering keeps `null` distinguishable from `"null"`.
+One asymmetry worth knowing: **`X12ProfileError.profileName` is not bounded**, on purpose, so it still
+matches the name you passed. Log `err.message`, not the whole error object.
+
+**Hand a builder something that is not an array and it refuses, in most places.** The types say
+`readonly T[]`, but a JSON-driven caller can pass anything. As of `0.0.6` every indexed loop in every
+builder takes its bound from a checked array, so `{ length: "9".repeat(120000) }` draws that builder's
+own typed refusal - before this the length coerced to `Infinity` and the builder **looped forever
+instead of refusing.** The places a builder reads a caller array with `for…of` are not covered:
+`buildInterchange`'s `spec.groups`, `build999`'s `functionalGroup.transactionResponses` and every
+optional leaf array such as `claim.dates` throw `TypeError: … is not iterable`, which terminates but
+carries **no `code`**. Validate the shape at your own boundary if the spec comes from JSON.
+
 **`err.code` is still the thing to branch on and the safest thing to log.** Tracked in
 `KNOWN-LIMITATIONS.md`; the parse side above is unaffected and stronger.
 

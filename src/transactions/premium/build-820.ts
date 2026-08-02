@@ -39,7 +39,17 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { requireCallerArray } from "../../builder/caller-array.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
+
+/**
+ * Refuse with this module's typed error, for {@link requireCallerArray}. A
+ * forged array-like is a structurally impossible spec, so it reuses
+ * `X12_820_BUILD_INVALID_SPEC` rather than minting a code. @internal
+ */
+function refuseSpec(message: string): never {
+  throw new Premium820BuildError(PREMIUM_820_BUILD_ERROR_CODES.X12_820_BUILD_INVALID_SPEC, message);
+}
 
 /** GS-08 / ST-03 version + release emitted for every 820 - the WPC TR3 `005010X218`. @internal */
 const X218_VERSION_RELEASE = "005010X218";
@@ -240,20 +250,26 @@ export function build820(spec: Build820Spec): X12Interchange {
  * carry indices + counts, never a member id / name. @internal
  */
 function enforceStructuralSpec(spec: Build820Spec): void {
-  if (spec.traces.length === 0) {
+  const traces = requireCallerArray(spec.traces, "build820: spec.traces", refuseSpec);
+  if (traces.length === 0) {
     throw new Premium820BuildError(
       PREMIUM_820_BUILD_ERROR_CODES.X12_820_BUILD_INVALID_SPEC,
       "build820: at least one TRN trace is required (TR3 005010X218 header).",
     );
   }
-  if (spec.remittances.length === 0) {
+  const remittances = requireCallerArray(
+    spec.remittances,
+    "build820: spec.remittances",
+    refuseSpec,
+  );
+  if (remittances.length === 0) {
     throw new Premium820BuildError(
       PREMIUM_820_BUILD_ERROR_CODES.X12_820_BUILD_INVALID_SPEC,
       "build820: at least one remittance (Loop 2000) is required.",
     );
   }
-  for (let r = 0; r < spec.remittances.length; r += 1) {
-    const remittance = spec.remittances[r];
+  for (let r = 0; r < remittances.length; r += 1) {
+    const remittance = remittances[r];
     if (remittance === undefined) continue;
     if (remittance.entity === undefined && remittance.individual === undefined) {
       throw new Premium820BuildError(
@@ -261,14 +277,19 @@ function enforceStructuralSpec(spec: Build820Spec): void {
         `build820: remittance at index ${String(r)} has neither an entity (ENT) nor an individual (NM1) to open its loop.`,
       );
     }
-    if (remittance.openItems.length === 0) {
+    const openItems = requireCallerArray(
+      remittance.openItems,
+      `build820: spec.remittances[${String(r)}].openItems`,
+      refuseSpec,
+    );
+    if (openItems.length === 0) {
       throw new Premium820BuildError(
         PREMIUM_820_BUILD_ERROR_CODES.X12_820_BUILD_INVALID_SPEC,
         `build820: remittance at index ${String(r)} has no RMR open item.`,
       );
     }
-    for (let o = 0; o < remittance.openItems.length; o += 1) {
-      const item = remittance.openItems[o];
+    for (let o = 0; o < openItems.length; o += 1) {
+      const item = openItems[o];
       if (item === undefined) continue;
       if (item.qualifier === "" && item.referenceId === "") {
         throw new Premium820BuildError(
