@@ -38,7 +38,20 @@ import { lookupMaintenanceType } from "../../code-lists/maintenance-type.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { requireCallerArray } from "../../builder/caller-array.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
+
+/**
+ * Refuse with this module's typed error, for {@link requireCallerArray}. A
+ * forged array-like is a structurally impossible spec, so it reuses
+ * `X12_834_BUILD_INVALID_SPEC` rather than minting a code. @internal
+ */
+function refuseSpec(message: string): never {
+  throw new Enrollment834BuildError(
+    ENROLLMENT_834_BUILD_ERROR_CODES.X12_834_BUILD_INVALID_SPEC,
+    message,
+  );
+}
 
 /** GS-08 / ST-03 version + release emitted for every 834 - the WPC TR3 `005010X220A1`. @internal */
 const X220A1_VERSION_RELEASE = "005010X220A1";
@@ -199,14 +212,15 @@ export function build834(spec: Build834Spec): X12Interchange {
  * appear. @internal
  */
 function enforceStructuralSpec(spec: Build834Spec): void {
-  if (spec.members.length === 0) {
+  const members = requireCallerArray(spec.members, "build834: spec.members", refuseSpec);
+  if (members.length === 0) {
     throw new Enrollment834BuildError(
       ENROLLMENT_834_BUILD_ERROR_CODES.X12_834_BUILD_INVALID_SPEC,
       "build834: at least one member loop (INS) is required.",
     );
   }
-  for (let m = 0; m < spec.members.length; m += 1) {
-    const member = spec.members[m];
+  for (let m = 0; m < members.length; m += 1) {
+    const member = members[m];
     if (member === undefined) continue;
     if (member.maintenanceTypeCode === "") {
       throw new Enrollment834BuildError(
@@ -220,8 +234,13 @@ function enforceStructuralSpec(spec: Build834Spec): void {
         `build834: member at index ${String(m)} has an unknown INS-03 maintenance type code ${renderCallerValue(member.maintenanceTypeCode)} (outside X12 Code Source 875).`,
       );
     }
-    for (let c = 0; c < (member.healthCoverages ?? []).length; c += 1) {
-      const coverage = member.healthCoverages?.[c];
+    const coverages = requireCallerArray(
+      member.healthCoverages,
+      `build834: spec.members[${String(m)}].healthCoverages`,
+      refuseSpec,
+    );
+    for (let c = 0; c < coverages.length; c += 1) {
+      const coverage = coverages[c];
       if (coverage === undefined) continue;
       const hd01 = coverage.maintenanceTypeCode;
       if (hd01 !== undefined && hd01 !== "" && lookupMaintenanceType(hd01) === undefined) {

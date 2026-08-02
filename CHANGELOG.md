@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`renderCallerJson`** (internal), the type-preserving half of the caller-value bound, held to the
+  same `BUILD_REFUSAL_VALUE_MAX_RENDERED` ceiling as `renderCallerValue`. It exists because
+  `defineProfile()` reports a bad `name` / `id` / `effect` / `fixture` with `JSON.stringify`, and that
+  distinction is diagnostically load-bearing: `null` and `"null"` are different mistakes, and a
+  coercing renderer would flatten them together. It bounds the JSON **text** rather than the argument,
+  never throws (a circular structure, a `BigInt`, a hostile `toJSON`), and fabricates no closing quote,
+  because JSON does not always open one.
+- **`requireCallerArray`** (internal), the single route a caller-supplied array takes into a builder
+  loop. Each builder passes its own `refuse` callback, so a forged list draws that module's existing
+  typed error and code rather than a new shared one.
 - **`renderCallerValue`**, plus the `BUILD_REFUSAL_VALUE_MAX_LENGTH` (63) and
   `BUILD_REFUSAL_VALUE_MAX_RENDERED` (90) bounds. This is the single sanctioned route a
   caller-supplied value takes into a `build*` refusal message, and both ceilings are exported so a
@@ -33,6 +43,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   document content, verbatim, exactly like `tx.rawSegments`. Log `context` and `segmentIndex`.
 
 ### Fixed
+
+- **A `defineProfile()` refusal message no longer grows with the value you passed in.** Twelve
+  refusal sites in `src/profiles/validate.ts` hold twenty-three caller-value holes between them, and
+  every one now routes through `renderCallerValue` or `renderCallerJson`. Re-derived on this tree
+  before the fix, driving the same thirteen cases the suite ships: the worst `X12ProfileError.message`
+  was **360,181 characters**, at the `fixture` refusal. Three of the thirteen exceed 360,000, and they
+  are the three that name **three** caller values (profile name + quirk id + a `JSON.stringify`d
+  value) rather than two; a 120,000-digit quirk id reaches them because `QUIRK_ID_RE` carries no
+  length bound. The same `fixture` refusal now measures **431 characters**.
+
+  **431 is a measurement, not a maximum.** The ` (N characters)` suffix widens with the decimal width
+  of the value's length, so the same refusal measures 434 at a 1,000,000-character value and 437 at
+  10,000,000. The site's ceiling, derived from its fixed text plus its three fragment ceilings, is
+  **443**; the suite asserts every one of the twelve under 500.
+
+  **The figure this was filed on, 120,093, did not reproduce**, the same way `X12-BUILDER-BOUNDS`'s
+  own filed figures did not: it depends on which site is hit and what the probe passes.
+
+  Scope it the way the builder half is scoped. This is **not** `PHI-WARNING-MESSAGE-LEAK`, where the
+  value was the document's: here you passed it in and still hold it, so bounding it **redacts
+  nothing**. What it buys is a fixed ceiling on anything reaching a log line, a crash report or a JSON
+  error envelope. The surviving characters are **not escaped**, and the bound is on UTF-16 **code
+  units, not bytes**. **`X12ProfileError.profileName` is deliberately left unbounded**, so it still
+  matches the name you passed.
+
+- **A builder handed a forged non-array now refuses instead of hanging.** Every domain builder took
+  its loop bound from a caller-supplied `.length`, so `{ length: "9".repeat(120000) }` coerced to
+  `Infinity`, every element read `undefined`, every guard `continue`d, and the builder **spun forever
+  rather than refusing**. Measured at base over the nineteen probes that drive a forged list at a
+  builder ENTRY point (17 `FORGED_ARRAY_CASES` + 2 `RESIDUAL_CASES`), each in a child process under a
+  20-second wall-clock timeout because a hang cannot be observed in-process: **16 of 19 hung** with no
+  refusal and the other **3 threw an untyped `TypeError`**. The suite ships three further forged
+  probes on optional LEAF arrays, which are `TypeError` at base and at head alike and move nothing:
+  counting all 22, base is 16 hung / 6 untyped and head is 17 typed / 5 untyped. All **32 indexed
+  loops across 7 builder modules** now take their bound from a `requireCallerArray` binding, and at
+  head the same nineteen give **17 typed, code-tagged refusals** (messages 169 to 194 characters) and
+  **2 untyped `TypeError`s**. `build835`'s `spec.traces` is the one that moved from the untyped group
+  to the typed one, because its guard reads the list; it never hung, and this changelog does not claim
+  it did.
+
+  A hang is a worse failure than a refusal: a refusal hands control back with something to branch on,
+  a hang takes the worker with it. But state the class correctly. This is a **forged non-array input,
+  not a mis-read clinical value** - nothing decodes a document differently because of it, and the
+  reachable harm is availability. It is unreachable from TypeScript and reachable from JavaScript,
+  JSON, and therefore `@cosyte/cli`.
+
+  **Disclosed rather than fixed, and identical at base and head:** where a builder reads a caller array
+  with `for...of` - `buildInterchange`'s `spec.groups`, `build999`'s
+  `functionalGroup.transactionResponses`, and every optional leaf array such as `claim.dates` - a
+  forged list throws `TypeError: ... is not iterable`. That terminates, so it is not the hang, but it
+  carries **no `code`**. Pinned by a test so it cannot quietly become a hang.
+
+- **The `QUIRK_ID_RE` comment claimed a length bound the pattern never had.** It said "2-64
+  lowercase-alphanumeric chars"; the regex accepts one character and it accepts 120,000, which was in
+  fact the path to the largest profile error message on the tree. The comment was corrected to the
+  code, not the grammar tightened: rejecting ids that define cleanly today is a separate decision from
+  bounding a message.
 
 - **A `build*` refusal message no longer grows with the value you passed in.** All twenty-three
   caller-value slots across the ten builder modules route through `renderCallerValue`, capping the

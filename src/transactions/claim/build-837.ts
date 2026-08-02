@@ -52,7 +52,30 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { requireCallerArray } from "../../builder/caller-array.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
+
+/**
+ * Refuse with this module's typed error, for {@link requireCallerArray}. A
+ * forged array-like where the spine expects a list is a structurally
+ * impossible HIERARCHY, so it reuses `X12_837_BUILD_INVALID_HIERARCHY` for the
+ * spine arrays. @internal
+ */
+function refuseHierarchy(message: string): never {
+  throw new Claim837BuildError(
+    CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_HIERARCHY,
+    message,
+  );
+}
+
+/**
+ * Refuse with this module's typed error, for the non-spine lists (service
+ * lines, adjustments), which are spec content rather than hierarchy.
+ * @internal
+ */
+function refuseSpec(message: string): never {
+  throw new Claim837BuildError(CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_SPEC, message);
+}
 
 /**
  * GS-08 / ST-03 version + release emitted per variant - the WPC TR3
@@ -281,26 +304,45 @@ function buildClaim837(variant: "P" | "I" | "D", spec: Build837Spec): X12Interch
  * carry indices + level codes + counts, never names. @internal
  */
 function enforceStructuralSpec(variant: "P" | "I" | "D", spec: Build837Spec): void {
-  if (spec.billingProviders.length === 0) {
+  const billingProviders = requireCallerArray(
+    spec.billingProviders,
+    "build837: spec.billingProviders",
+    refuseHierarchy,
+  );
+  if (billingProviders.length === 0) {
     throw new Claim837BuildError(
       CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_HIERARCHY,
       "build837: at least one billing provider (HL level 20) is required.",
     );
   }
-  for (let b = 0; b < spec.billingProviders.length; b += 1) {
-    const billing = spec.billingProviders[b];
+  for (let b = 0; b < billingProviders.length; b += 1) {
+    const billing = billingProviders[b];
     if (billing === undefined) continue;
-    if (billing.subscribers.length === 0) {
+    const subscribers = requireCallerArray(
+      billing.subscribers,
+      `build837: spec.billingProviders[${String(b)}].subscribers`,
+      refuseHierarchy,
+    );
+    if (subscribers.length === 0) {
       throw new Claim837BuildError(
         CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_HIERARCHY,
         `build837: billing provider at index ${String(b)} has no subscriber (HL level 22) child.`,
       );
     }
-    for (let s = 0; s < billing.subscribers.length; s += 1) {
-      const subscriber = billing.subscribers[s];
+    for (let s = 0; s < subscribers.length; s += 1) {
+      const subscriber = subscribers[s];
       if (subscriber === undefined) continue;
-      const directClaims = subscriber.claims ?? [];
-      const patients = subscriber.patients ?? [];
+      const locator = `spec.billingProviders[${String(b)}].subscribers[${String(s)}]`;
+      const directClaims = requireCallerArray(
+        subscriber.claims,
+        `build837: ${locator}.claims`,
+        refuseHierarchy,
+      );
+      const patients = requireCallerArray(
+        subscriber.patients,
+        `build837: ${locator}.patients`,
+        refuseHierarchy,
+      );
       if (directClaims.length === 0 && patients.length === 0) {
         throw new Claim837BuildError(
           CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_HIERARCHY,
@@ -320,14 +362,19 @@ function enforceStructuralSpec(variant: "P" | "I" | "D", spec: Build837Spec): vo
       for (let p = 0; p < patients.length; p += 1) {
         const patient = patients[p];
         if (patient === undefined) continue;
-        if (patient.claims.length === 0) {
+        const patientClaims = requireCallerArray(
+          patient.claims,
+          `build837: ${locator}.patients[${String(p)}].claims`,
+          refuseHierarchy,
+        );
+        if (patientClaims.length === 0) {
           throw new Claim837BuildError(
             CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_HIERARCHY,
             `build837: dependent patient at billing[${String(b)}].subscriber[${String(s)}].patient[${String(p)}] has no claim.`,
           );
         }
-        for (let c = 0; c < patient.claims.length; c += 1) {
-          const claim = patient.claims[c];
+        for (let c = 0; c < patientClaims.length; c += 1) {
+          const claim = patientClaims[c];
           if (claim !== undefined) {
             enforceClaim(
               variant,
@@ -354,14 +401,19 @@ function enforceClaim(variant: "P" | "I" | "D", claim: Build837ClaimSpec, locato
       `build837: claim at ${locator} has an empty claimId (CLM-01 is required).`,
     );
   }
-  if (claim.serviceLines.length === 0) {
+  const serviceLines = requireCallerArray(
+    claim.serviceLines,
+    `build837: claim at ${locator}: serviceLines`,
+    refuseSpec,
+  );
+  if (serviceLines.length === 0) {
     throw new Claim837BuildError(
       CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_SPEC,
       `build837: claim at ${locator} has no service line (a CLM requires at least one LX/SVx loop).`,
     );
   }
-  for (let l = 0; l < claim.serviceLines.length; l += 1) {
-    const line = claim.serviceLines[l];
+  for (let l = 0; l < serviceLines.length; l += 1) {
+    const line = serviceLines[l];
     if (line === undefined) continue;
     if (line.variant !== variant) {
       throw new Claim837BuildError(
@@ -661,7 +713,7 @@ function emitAdjudication(adj: Build837AdjudicationSpec, body: string[], ctx: Em
       adj.paidUnits === undefined ? "" : ctx.esc(adj.paidUnits.toString()),
     ]),
   );
-  emitCasGroup(adj.adjustments ?? [], body, ctx);
+  emitCasGroup(adj.adjustments, "build837: adjudication.adjustments", body, ctx);
   if (adj.dateAdjudicated !== undefined) {
     body.push(ctx.seg(["DTP", "573", "D8", ctx.esc(adj.dateAdjudicated)]));
   }
@@ -672,10 +724,12 @@ function emitAdjudication(adj: Build837AdjudicationSpec, body: string[], ctx: Em
  * sharing a `groupCode` pack into one CAS (≤ 6 triples each). @internal
  */
 function emitCasGroup(
-  adjustments: readonly Build837AdjustmentSpec[],
+  raw: readonly Build837AdjustmentSpec[] | undefined,
+  at: string,
   body: string[],
   ctx: EmitContext,
 ): void {
+  const adjustments = requireCallerArray(raw, at, refuseSpec);
   let i = 0;
   while (i < adjustments.length) {
     const first = adjustments[i];

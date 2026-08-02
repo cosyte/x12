@@ -1,6 +1,18 @@
 /**
- * The single route a caller-supplied value takes into a `build*` refusal
- * message.
+ * The single route a caller-supplied value takes into a refusal message
+ * thrown by this library: every `build*` refusal, and every
+ * `defineProfile()` refusal.
+ *
+ * ## The names say `BUILD_REFUSAL_*` and the scope is wider than that
+ *
+ * The two exported constants were introduced by `X12-BUILDER-BOUNDS`, which
+ * bounded the `build*` sites only, and they are published under those names.
+ * `X12-CALLER-VALUE-RESIDUALS` then routed `src/profiles/validate.ts` through
+ * the same renderers, so `X12ProfileError` is bounded by the same numbers.
+ * **The names were deliberately NOT changed**: one ceiling under one name
+ * cannot drift, whereas a second name for the same number is exactly how two
+ * bounds start disagreeing. Read `BUILD_REFUSAL_` as naming where the bound was
+ * introduced, not the only place it applies.
  *
  * ## Why this exists
  *
@@ -58,8 +70,9 @@
  */
 
 /**
- * How many characters of a caller-supplied value survive into a `build*`
- * refusal message. Set to mirror the parser's own `SNIPPET_MAX_INPUT` (63),
+ * How many characters of a caller-supplied value survive into a refusal
+ * message, whether it comes from a `build*` function or from
+ * `defineProfile()`. Set to mirror the parser's own `SNIPPET_MAX_INPUT` (63),
  * so the two bounded copies in this library agree rather than each picking a
  * number. Comfortably wider than every slot it guards: an ISA-13 / IEA-02
  * control number is 9, a TA1-05 note code 3, an ST-01 transaction set id 3, an
@@ -88,6 +101,8 @@ const MAX_LENGTH_DIGITS = 10;
  * Hard ceiling, in characters, on the fragment {@link renderCallerValue}
  * returns: {@link BUILD_REFUSAL_VALUE_MAX_LENGTH} surviving characters, two
  * quotes, one ellipsis, and the ` (N characters)` suffix at its widest.
+ * {@link renderCallerJson} is held to the same ceiling and comes in two
+ * characters under it, because JSON supplies its own quotes.
  *
  * **This is the bound on the FRAGMENT, not on the message.** A refusal message
  * is this plus the site's own fixed template text, which differs per site, so
@@ -157,4 +172,55 @@ function coerce(value: unknown): string {
     // A `toString` that throws (a null-prototype object, a hostile proxy).
     return "[unrenderable value]";
   }
+}
+
+/**
+ * Render a caller-supplied value as a bounded JSON fragment, for the refusal
+ * sites where the value's TYPE is the thing that is wrong.
+ *
+ * `defineProfile()` reports a bad `name`, quirk `id`, `effect`, `fixture` or
+ * expected-warning code with `JSON.stringify`, and that distinction is
+ * diagnostically load-bearing: `null` and `"null"` are different mistakes, and
+ * `{@link renderCallerValue}` would coerce both to the same text. So this keeps
+ * `JSON.stringify` and bounds its OUTPUT, rather than replacing it.
+ *
+ * Three things it does not do, each deliberate:
+ *
+ * - **It never throws.** `JSON.stringify` throws on a circular structure, on a
+ *   `BigInt`, and on any hostile `toJSON`. A refusal that dies inside its own
+ *   error message hands the caller an uncaught `TypeError` with no `code`,
+ *   which is the exact regression `renderCallerValue` was made to coerce away.
+ *   An unrenderable value becomes `[unrenderable value]`.
+ * - **It does not bound the ARGUMENT, only the rendering.** A 120,000-element
+ *   array is still walked by `JSON.stringify` before this slices the result.
+ *   The bound is on what reaches the message, not on the work done to build it.
+ * - **It reports the length of the JSON TEXT**, not of the underlying value:
+ *   `JSON.stringify` escapes, so a 63-character string with newlines in it is
+ *   longer once quoted, and the number in the suffix is the number that
+ *   matches the text it truncated.
+ *
+ * @example
+ * ```ts
+ * renderCallerJson("acme");            // '"acme"'
+ * renderCallerJson(null);              // 'null'
+ * renderCallerJson(undefined);         // 'undefined'
+ * renderCallerJson("9".repeat(120000)); // '"999… (120002 characters)'
+ * ```
+ *
+ * @internal
+ */
+export function renderCallerJson(value: unknown): string {
+  let text: string;
+  try {
+    // `JSON.stringify(undefined)` is `undefined`, not a string, and the sites
+    // that call this render an absent value as the word `undefined` today.
+    text = JSON.stringify(value) ?? "undefined";
+  } catch {
+    return "[unrenderable value]";
+  }
+  if (text.length <= BUILD_REFUSAL_VALUE_MAX_LENGTH) return text;
+  // No closing quote is fabricated. JSON supplies its own delimiters and they
+  // are not always quotes: closing an array or an object with `"` would be a
+  // lie about what the caller passed.
+  return `${text.slice(0, BUILD_REFUSAL_VALUE_MAX_LENGTH)}… (${String(text.length)} characters)`;
 }

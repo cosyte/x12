@@ -9,9 +9,30 @@
  * Zero runtime deps - inlined Levenshtein (~15 LoC) for "did you mean?"
  * hints on unknown option keys.
  *
+ * ## Every caller value in a refusal here is bounded
+ *
+ * `X12-BUILDER-BOUNDS` closed this hole on the `build*` side and filed it open
+ * here; `X12-CALLER-VALUE-RESIDUALS` closed it. Measured on this tree before the
+ * fix, the worst `X12ProfileError.message` was **360,181 characters**, at the
+ * `fixture` refusal, which names THREE caller values (the profile name, the
+ * quirk id, and the `JSON.stringify`d fixture path); the `effect` and
+ * `expectedWarnings` refusals name three as well and measured 360,085 and
+ * 360,090. It grew linearly with whatever the caller passed. Every caller value
+ * now goes through `renderCallerValue` or `renderCallerJson`, so each fragment
+ * is capped at `BUILD_REFUSAL_VALUE_MAX_RENDERED` and the same `fixture`
+ * refusal measures **431**.
+ *
+ * **Say what that buys and no more.** The caller passed these values in and
+ * still holds them, so bounding them redacts nothing and this is NOT
+ * `PHI-WARNING-MESSAGE-LEAK`, where the value was the document's. What it buys
+ * is a fixed ceiling on anything reaching a log line, a crash report or a JSON
+ * error envelope. The surviving characters are **not escaped**, and the bound
+ * is on UTF-16 **code units, not bytes**.
+ *
  * @internal
  */
 
+import { renderCallerJson, renderCallerValue } from "../builder/caller-value.js";
 import { WARNING_CODES } from "../parser/warnings.js";
 import type { X12WarningCode } from "../parser/warnings.js";
 
@@ -34,9 +55,17 @@ const KNOWN_OPTION_KEYS: readonly string[] = ["name", "description", "quirks", "
 const KNOWN_EFFECTS: readonly string[] = ["relaxes", "adds", "requires"];
 
 /**
- * Stable, kebab-case-ish quirk id shape: 2-64 lowercase-alphanumeric chars
- * with internal hyphens. Keeps ids machine-friendly and free of arbitrary
+ * Stable, kebab-case-ish quirk id shape: lowercase-alphanumeric runs joined by
+ * single internal hyphens. Keeps ids machine-friendly and free of arbitrary
  * bytes.
+ *
+ * **This pattern carries NO length bound, and the comment here claimed "2-64
+ * chars" until `X12-CALLER-VALUE-RESIDUALS` measured it.** A one-character id
+ * is accepted and so is a 120,000-character one; a 120,000-digit id was in fact
+ * the path to the largest `X12ProfileError` message on the tree. The grammar was
+ * deliberately left alone - tightening it would reject profiles that define
+ * cleanly today, which is a separate decision from bounding a message - so the
+ * comment was corrected to the code rather than the other way round.
  *
  * @internal
  */
@@ -45,7 +74,8 @@ const QUIRK_ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 /**
  * Fixture path shape: a relative `dir/file.edi` path under `test/fixtures/`.
  * Rejects absolute paths and parent-directory escapes so the cited fixture
- * stays inside the corpus.
+ * stays inside the corpus. Like {@link QUIRK_ID_RE} it bounds the SHAPE and not
+ * the length; the refusal that reports a bad one is bounded instead.
  *
  * @internal
  */
@@ -91,19 +121,19 @@ function levenshtein(a: string, b: string): number {
 export function validateProfileName(opts: X12ProfileSpec): void {
   if (opts === null || opts === undefined) {
     throw new X12ProfileError(
-      `defineProfile: options is required and must be an object. Received: ${String(opts)}.`,
+      `defineProfile: options is required and must be an object. Received: ${renderCallerJson(opts)}.`,
     );
   }
   if (typeof opts.name !== "string") {
     throw new X12ProfileError(
       "defineProfile: 'name' is required and must be a non-empty string. " +
-        `Received: ${JSON.stringify((opts as { name?: unknown }).name)}.`,
+        `Received: ${renderCallerJson((opts as { name?: unknown }).name)}.`,
     );
   }
   if (opts.name.trim().length === 0) {
     throw new X12ProfileError(
       "defineProfile: 'name' is required and must be a non-empty string. " +
-        `Received: ${JSON.stringify(opts.name)}.`,
+        `Received: ${renderCallerJson(opts.name)}.`,
       opts.name,
     );
   }
@@ -126,7 +156,7 @@ export function validateOptionKeys(opts: X12ProfileSpec): void {
       }
     }
     throw new X12ProfileError(
-      `Profile '${opts.name}' has unknown option key '${key}'. ` +
+      `Profile ${renderCallerValue(opts.name)} has unknown option key ${renderCallerValue(key)}. ` +
         (hint !== undefined ? `Did you mean '${hint}'? ` : "") +
         `Known keys: ${KNOWN_OPTION_KEYS.join(", ")}.`,
       opts.name,
@@ -148,50 +178,53 @@ export function validateQuirks(quirks: readonly X12ProfileQuirk[], profileName: 
   const seenIds = new Set<string>();
   for (let i = 0; i < quirks.length; i++) {
     const q = quirks[i];
-    const at = `quirks[${String(i)}]`;
     if (q === undefined || q === null || typeof q !== "object") {
-      throw new X12ProfileError(`Profile '${profileName}' ${at} must be an object.`, profileName);
+      throw new X12ProfileError(
+        `Profile ${renderCallerValue(profileName)} quirks[${String(i)}] must be an object.`,
+        profileName,
+      );
     }
     if (typeof q.id !== "string" || !QUIRK_ID_RE.test(q.id)) {
       throw new X12ProfileError(
-        `Profile '${profileName}' ${at}.id must be a kebab-case string (e.g. "payer-loop-ref-2u"). ` +
-          `Received: ${JSON.stringify(q.id)}.`,
+        `Profile ${renderCallerValue(profileName)} quirks[${String(i)}].id must be a kebab-case string ` +
+          `(e.g. "payer-loop-ref-2u"). Received: ${renderCallerJson(q.id)}.`,
         profileName,
       );
     }
     if (seenIds.has(q.id)) {
       throw new X12ProfileError(
-        `Profile '${profileName}' declares duplicate quirk id '${q.id}'. Each quirk id must be unique within a profile.`,
+        `Profile ${renderCallerValue(profileName)} declares duplicate quirk id ${renderCallerValue(q.id)}. ` +
+          "Each quirk id must be unique within a profile.",
         profileName,
       );
     }
     seenIds.add(q.id);
     if (typeof q.effect !== "string" || !KNOWN_EFFECTS.includes(q.effect)) {
       throw new X12ProfileError(
-        `Profile '${profileName}' quirk '${q.id}' has invalid effect ${JSON.stringify(q.effect)} - ` +
-          `must be one of ${KNOWN_EFFECTS.join(" / ")}.`,
+        `Profile ${renderCallerValue(profileName)} quirk ${renderCallerValue(q.id)} has invalid effect ` +
+          `${renderCallerJson(q.effect)} - must be one of ${KNOWN_EFFECTS.join(" / ")}.`,
         profileName,
       );
     }
     if (typeof q.summary !== "string" || q.summary.trim().length === 0) {
       throw new X12ProfileError(
-        `Profile '${profileName}' quirk '${q.id}' must have a non-empty summary.`,
+        `Profile ${renderCallerValue(profileName)} quirk ${renderCallerValue(q.id)} must have a non-empty summary.`,
         profileName,
       );
     }
     // The locked hard rule: no quirk without a demonstrating fixture.
     if (typeof q.fixture !== "string" || !FIXTURE_PATH_RE.test(q.fixture)) {
       throw new X12ProfileError(
-        `Profile '${profileName}' quirk '${q.id}' must cite a 'fixture' - a relative path under test/fixtures/ ` +
-          `(e.g. "remit/835-availity-quirk.edi") demonstrating the deviation. No invented quirks. ` +
-          `Received: ${JSON.stringify(q.fixture)}.`,
+        `Profile ${renderCallerValue(profileName)} quirk ${renderCallerValue(q.id)} must cite a 'fixture' - ` +
+          'a relative path under test/fixtures/ (e.g. "remit/835-availity-quirk.edi") demonstrating the ' +
+          `deviation. No invented quirks. Received: ${renderCallerJson(q.fixture)}.`,
         profileName,
       );
     }
     if (typeof q.sourceCategory !== "string" || q.sourceCategory.trim().length === 0) {
       throw new X12ProfileError(
-        `Profile '${profileName}' quirk '${q.id}' must have a non-empty sourceCategory ` +
-          `(where the deviation was observed).`,
+        `Profile ${renderCallerValue(profileName)} quirk ${renderCallerValue(q.id)} must have a non-empty ` +
+          "sourceCategory (where the deviation was observed).",
         profileName,
       );
     }
@@ -199,8 +232,8 @@ export function validateQuirks(quirks: readonly X12ProfileQuirk[], profileName: 
       for (const code of q.expectedWarnings) {
         if (!WARNING_CODE_SET.has(code)) {
           throw new X12ProfileError(
-            `Profile '${profileName}' quirk '${q.id}' lists unknown expected warning ${JSON.stringify(code)} - ` +
-              `must be a member of WARNING_CODES.`,
+            `Profile ${renderCallerValue(profileName)} quirk ${renderCallerValue(q.id)} lists unknown ` +
+              `expected warning ${renderCallerJson(code)} - must be a member of WARNING_CODES.`,
             profileName,
           );
         }

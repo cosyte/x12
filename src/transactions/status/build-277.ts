@@ -48,7 +48,31 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { requireCallerArray } from "../../builder/caller-array.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
+
+/**
+ * Refuse with this module's typed error, for {@link requireCallerArray} on the
+ * HL spine arrays. A forged array-like there makes the hierarchy structurally
+ * impossible, so it reuses `X12_277_BUILD_INVALID_HIERARCHY`. @internal
+ */
+function refuseHierarchy(message: string): never {
+  throw new ClaimStatus277BuildError(
+    CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_HIERARCHY,
+    message,
+  );
+}
+
+/**
+ * Refuse with this module's typed error, for the non-spine lists (statuses,
+ * service lines), which are claim content rather than hierarchy. @internal
+ */
+function refuseSpec(message: string): never {
+  throw new ClaimStatus277BuildError(
+    CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_SPEC,
+    message,
+  );
+}
 
 /** GS-01 functional identifier code for the 277. `HN` = Health Care Claim Status Notification. @internal */
 const X12_277_FUNCTIONAL_ID = "HN";
@@ -245,42 +269,62 @@ function buildClaimStatus(version: ClaimStatusVersion, spec: Build277Spec): X12I
  * messages carry indices + counts, never names / member ids. @internal
  */
 function enforceStructuralSpec(spec: Build277Spec): void {
-  if (spec.informationSources.length === 0) {
+  const sources = requireCallerArray(
+    spec.informationSources,
+    "build277: spec.informationSources",
+    refuseHierarchy,
+  );
+  if (sources.length === 0) {
     throw new ClaimStatus277BuildError(
       CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_HIERARCHY,
       "build277: at least one information source (HL level 20) is required.",
     );
   }
-  for (let s = 0; s < spec.informationSources.length; s += 1) {
-    const source = spec.informationSources[s];
+  for (let s = 0; s < sources.length; s += 1) {
+    const source = sources[s];
     if (source === undefined) continue;
-    if (source.receivers.length === 0) {
+    const receivers = requireCallerArray(
+      source.receivers,
+      `build277: spec.informationSources[${String(s)}].receivers`,
+      refuseHierarchy,
+    );
+    if (receivers.length === 0) {
       throw new ClaimStatus277BuildError(
         CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_HIERARCHY,
         `build277: information source at index ${String(s)} has no receiver (HL level 21) child.`,
       );
     }
-    for (let r = 0; r < source.receivers.length; r += 1) {
-      const receiver = source.receivers[r];
+    for (let r = 0; r < receivers.length; r += 1) {
+      const receiver = receivers[r];
       if (receiver === undefined) continue;
-      if (receiver.providers.length === 0) {
+      const providers = requireCallerArray(
+        receiver.providers,
+        `build277: spec.informationSources[${String(s)}].receivers[${String(r)}].providers`,
+        refuseHierarchy,
+      );
+      if (providers.length === 0) {
         throw new ClaimStatus277BuildError(
           CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_HIERARCHY,
           `build277: receiver at source[${String(s)}].receiver[${String(r)}] has no provider (HL level 19) child.`,
         );
       }
-      for (let p = 0; p < receiver.providers.length; p += 1) {
-        const provider = receiver.providers[p];
+      for (let p = 0; p < providers.length; p += 1) {
+        const provider = providers[p];
         if (provider === undefined) continue;
         const locator = `source[${String(s)}].receiver[${String(r)}].provider[${String(p)}]`;
-        if (provider.subscribers.length === 0) {
+        const subscribers = requireCallerArray(
+          provider.subscribers,
+          `build277: ${locator}.subscribers`,
+          refuseHierarchy,
+        );
+        if (subscribers.length === 0) {
           throw new ClaimStatus277BuildError(
             CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_HIERARCHY,
             `build277: provider at ${locator} has no subscriber (HL level 22) child.`,
           );
         }
-        for (let u = 0; u < provider.subscribers.length; u += 1) {
-          const subscriber = provider.subscribers[u];
+        for (let u = 0; u < subscribers.length; u += 1) {
+          const subscriber = subscribers[u];
           if (subscriber === undefined) continue;
           enforceSubscriber(subscriber, `${locator}.subscriber[${String(u)}]`);
         }
@@ -291,8 +335,16 @@ function enforceStructuralSpec(spec: Build277Spec): void {
 
 /** @internal */
 function enforceSubscriber(subscriber: Build277SubscriberSpec, locator: string): void {
-  const claims = subscriber.claims ?? [];
-  const dependents = subscriber.dependents ?? [];
+  const claims = requireCallerArray(
+    subscriber.claims,
+    `build277: subscriber at ${locator}: claims`,
+    refuseHierarchy,
+  );
+  const dependents = requireCallerArray(
+    subscriber.dependents,
+    `build277: subscriber at ${locator}: dependents`,
+    refuseHierarchy,
+  );
   if (claims.length === 0 && dependents.length === 0) {
     throw new ClaimStatus277BuildError(
       CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_HIERARCHY,
@@ -307,14 +359,19 @@ function enforceSubscriber(subscriber: Build277SubscriberSpec, locator: string):
     const dependent = dependents[d];
     if (dependent === undefined) continue;
     const depLocator = `${locator}.dependent[${String(d)}]`;
-    if (dependent.claims.length === 0) {
+    const depClaims = requireCallerArray(
+      dependent.claims,
+      `build277: dependent at ${depLocator}: claims`,
+      refuseHierarchy,
+    );
+    if (depClaims.length === 0) {
       throw new ClaimStatus277BuildError(
         CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_HIERARCHY,
         `build277: dependent at ${depLocator} has no claim.`,
       );
     }
-    for (let c = 0; c < dependent.claims.length; c += 1) {
-      const claim = dependent.claims[c];
+    for (let c = 0; c < depClaims.length; c += 1) {
+      const claim = depClaims[c];
       if (claim !== undefined) enforceClaim(claim, `${depLocator}.claim[${String(c)}]`, c === 0);
     }
   }
@@ -328,8 +385,16 @@ function enforceSubscriber(subscriber: Build277SubscriberSpec, locator: string):
  * one its STC / REF / DTP would silently fold into the prior claim. @internal
  */
 function enforceClaim(claim: Build277ClaimSpec, locator: string, isFirst: boolean): void {
-  const statuses = claim.statuses ?? [];
-  const serviceLines = claim.serviceLines ?? [];
+  const statuses = requireCallerArray(
+    claim.statuses,
+    `build277: claim at ${locator}: statuses`,
+    refuseSpec,
+  );
+  const serviceLines = requireCallerArray(
+    claim.serviceLines,
+    `build277: claim at ${locator}: serviceLines`,
+    refuseSpec,
+  );
   if (claim.trace === undefined && statuses.length === 0 && serviceLines.length === 0) {
     throw new ClaimStatus277BuildError(
       CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_SPEC,
@@ -348,7 +413,11 @@ function enforceClaim(claim: Build277ClaimSpec, locator: string, isFirst: boolea
   for (let l = 0; l < serviceLines.length; l += 1) {
     const line = serviceLines[l];
     if (line === undefined) continue;
-    const lineStatuses = line.statuses ?? [];
+    const lineStatuses = requireCallerArray(
+      line.statuses,
+      `build277: claim at ${locator}.line[${String(l)}]: statuses`,
+      refuseSpec,
+    );
     for (let i = 0; i < lineStatuses.length; i += 1) {
       enforceStatus(lineStatuses[i], `${locator}.line[${String(l)}].status[${String(i)}]`);
     }

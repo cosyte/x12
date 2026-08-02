@@ -115,6 +115,33 @@ the acknowledged transaction set's ST-02, and `buildTA1` echoes an inbound ISA-1
 control numbers reach those refusals by design. They are envelope control numbers, not clinical
 content, and they are bounded like the rest.
 
+**`defineProfile()` follows the same rule, since `0.0.6`.** An `X12ProfileError` naming a bad profile
+name, quirk id, effect, fixture path or expected-warning code used to interpolate it verbatim: one call
+measured a **360,181-character** message. Twelve refusal sites now route all twenty-three of their
+caller values through the same bound, and that same refusal now measures 431 characters. Read 431 as
+a measurement at a 120,000-character value rather than a maximum: the reported length widens with its
+own decimal width, so that site's ceiling is 443, and every site is asserted under 500. Where the
+value's **type** is the mistake, the rendering keeps `null` distinguishable from `"null"`.
+One asymmetry worth knowing: **`X12ProfileError.profileName` is not bounded**, on purpose, so it still
+matches the name you passed. Log `err.message`, not the whole error object.
+
+**Hand a builder something that is not an array and it refuses, in most places.** The types say
+`readonly T[]`, but a JSON-driven caller can pass anything. As of `0.0.6` every indexed loop in every
+builder takes its bound from a checked array, so `{ length: "9".repeat(120000) }` draws that builder's
+own typed refusal - before this the length coerced to `Infinity` and the builder **looped forever
+instead of refusing** (measured across nineteen entry-point probes: 16 hung at base, 17 refuse
+cleanly now). A list you send as `null` is still treated as absent, exactly as before. The places a builder reads a
+caller array with `for…of` are not covered:
+`buildInterchange`'s `spec.groups`, `build999`'s `functionalGroup.transactionResponses` and every
+optional leaf array such as `claim.dates` throw `TypeError: … is not iterable`, which terminates but
+carries **no `code`**. Validate the shape at your own boundary if the spec comes from JSON.
+
+**A separate, long-standing hazard on the same JSON-caller path, which is NOT fixed: pass a builder a
+number where the types say string and it emits an EMPTY element, with no warning and no refusal.** On
+an 835 that empties CLP-01, the patient control number that reassociates the remittance back to the
+837's CLM-01. Coerce your spec values to strings at your own boundary, and treat empty control numbers
+in a built interchange as a failure. See `KNOWN-LIMITATIONS.md`.
+
 **`err.code` is still the thing to branch on and the safest thing to log.** Tracked in
 `KNOWN-LIMITATIONS.md`; the parse side above is unaffected and stronger.
 

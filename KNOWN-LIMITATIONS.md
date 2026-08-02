@@ -179,6 +179,76 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   including a newline or a segment terminator, so a refusal message is bounded but not guaranteed to be
   a single log line.
 
+- **`defineProfile()` refusals are bounded on the same terms, since `0.0.6`.** `X12ProfileError.message`
+  used to interpolate your profile name, quirk id, effect, fixture path and expected-warning codes
+  verbatim. Measured before the fix, the worst message was **360,181 characters**, at the `fixture`
+  refusal, which names three caller values (the profile name, the quirk id, and the `JSON.stringify`d
+  path). It reaches that size because the quirk-id pattern carries no length bound (its comment
+  claimed "2-64 characters"; the regex never said so, and the comment was corrected to the code rather
+  than the grammar tightened). Twelve refusal sites hold twenty-three such holes between them; all
+  twenty-three now route through `renderCallerValue` or, where the value's **type** is what is wrong,
+  `renderCallerJson`, which keeps `null` distinguishable from `"null"` and bounds the JSON text. The
+  same `fixture` refusal now measures **431 characters**.
+
+  **431 is a measurement at a 120,000-character value, not a maximum.** The ` (N characters)` suffix
+  widens with the decimal width of the length, so the same refusal measures 434 at 1,000,000 and 437
+  at 10,000,000 characters. That site's ceiling, derived from its fixed text plus its three fragment
+  ceilings, is **443**, and the suite asserts every one of the twelve under 500.
+
+  Everything the builder paragraph says about scope applies here unchanged: it redacts nothing (you
+  passed the value in), the surviving characters are **not escaped**, and the bound is on UTF-16 code
+  units rather than bytes.
+
+  **`X12ProfileError.profileName` is deliberately NOT bounded.** It exists so you can pinpoint which
+  of your definitions failed, and truncating it would stop it matching the name you passed. It is your
+  own string and you still hold it. If you log a caught `X12ProfileError`, log `err.message` (bounded)
+  rather than the whole error object.
+
+- **A builder emits a NUMBER as an EMPTY element, silently, and one of the affected slots is the
+  patient control number.** Long-standing, not introduced by any recent change, and **not yet fixed**:
+  the escape helper every builder runs values through reads `value.length`, which is `undefined` for a
+  number, so it returns the empty string. The types say `string`, so TypeScript callers cannot reach
+  it; a JavaScript or JSON-driven caller can, and one that reads a spec off `JSON.parse` will.
+
+  Measured on an otherwise valid `build835` spec whose `patientControlNumber` and
+  `payerClaimControlNumber` are numbers rather than strings:
+
+  ```
+  CLP**1*500.00*450.00*50.00*MB**11::1     ix.warnings.length === 0
+  ```
+
+  CLP-01 is required by TR3 005010X221A1 Loop 2100 and is the key that reassociates the remittance
+  back to the 837's CLM-01, and CLP-07 is the payer's claim control number. Both are dropped, **no
+  warning is raised, no refusal is thrown**, and the builder returns a frozen interchange that looks
+  successful. The `patientControlNumber === ""` guard does not catch a number because the value is not
+  yet a string when it is checked.
+
+  **Until this is fixed, coerce your spec values to strings at your own boundary** if any of them can
+  arrive as numbers, and treat a builder result whose control numbers are empty as a failure. It
+  affects every `esc()`-rendered slot in every builder, not only the 835.
+
+- **A forged non-array in a builder spec refuses; in a few places it throws an untyped `TypeError`.**
+  The types say `readonly T[]`, but a JavaScript or JSON caller can hand a builder something else. As
+  of `0.0.6` every indexed loop in every builder takes its bound from a checked array (32 loops across
+  7 modules), so an object like `{ length: "9".repeat(120000) }` draws that builder's own typed
+  refusal - previously the length coerced to `Infinity` and the builder **looped forever instead of
+  refusing**. Measured across the nineteen probes the suite ships: at base **16 hung** and 3 threw an
+  untyped `TypeError`; at head **17 refuse with a typed, coded error** and 2 still throw the untyped
+  `TypeError`.
+
+  **`null` is treated as absent, not forged**, exactly as the `?? []` this replaced did, so an
+  optional list you send as `null` still builds. On a required list `null` draws that builder's own
+  "at least one X is required" refusal instead of an untyped `TypeError` for five of the six:
+  `build834`, `build820`, `build837`, `build271` and `build277`. **`build835`'s `claims` is the
+  exception** and still throws an untyped `TypeError`, as it did at base.
+
+  Not covered, and disclosed rather than fixed: the places a builder reads a caller array with
+  `for…of` - `buildInterchange`'s `spec.groups`, `build999`'s `functionalGroup.transactionResponses`,
+  and every optional leaf array such as `claim.dates` or `member.references`. Those throw
+  `TypeError: … is not iterable` immediately. They terminate, so they are not the hang, but they carry
+  **no `code`**, so `err.code` is `undefined` and you cannot branch on it. Validate your spec shape at
+  your own boundary if it comes from JSON.
+
   **One qualification worth stating precisely: on the acknowledgment path the value is not always
   strictly your own.** TR3 005010X231A1 requires AK2-02 to be a verbatim copy of the acknowledged
   transaction set's ST-02, and `buildTA1` exists to echo an inbound ISA-13, so a _document's_ control

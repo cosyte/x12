@@ -8,6 +8,146 @@
 
 ## Status
 
+- **The two residuals `X12-BUILDER-BOUNDS` filed are closed: profile
+  refusals are bounded, and a forged non-array REFUSES instead of HANGING
+  (2026-08-02, `X12-CALLER-VALUE-RESIDUALS`).** Two parts, and **the second
+  is the sharper one because it is a LIVENESS defect, not a disclosure one.**
+
+  **(1)** `src/profiles/validate.ts` interpolated caller values into
+  `X12ProfileError` verbatim. **Twelve refusal sites hold twenty-three
+  caller-value holes**, and all twenty-three now route through
+  `renderCallerValue` or the new `renderCallerJson`. **THE FILED FIGURE OF
+  120,093 DID NOT REPRODUCE**, exactly as `#51`'s own filed figures did not:
+  re-derived by driving the thirteen cases the suite ships against base
+  `55ebc66`, the worst message is **360,181 characters**, at the `fixture`
+  refusal. **THREE of the thirteen exceed 360,000**, and they are exactly the
+  three that name THREE caller values rather than two (profile name + quirk id +
+  a `JSON.stringify`d value). Head: the same case measures **431**.
+
+  **▶ AND THE FIRST DRAFT OF THIS SLICE PUBLISHED 240,092, WHICH IS THE
+  `sourceCategory` SITE AND NOT THE MAXIMUM.** It came from a side probe rather
+  than from the table the suite runs, which is the same error class the item was
+  filed to correct, one item later. **Drive the shipped table.** And **431 is a
+  measurement at a 120,000-character value, not a maximum**: the
+  ` (N characters)` suffix widens with the decimal width of the length, so the
+  same refusal measures 434 at 1,000,000 and 437 at 10,000,000. That site's
+  derived ceiling is **443**, and the suite asserts every site under 500. `renderCallerJson` exists because the value's
+  TYPE is what is wrong at those sites - `null` and `"null"` are different
+  mistakes and a coercing renderer flattens them - so it keeps `JSON.stringify`
+  and bounds its OUTPUT; it never throws (circular, `BigInt`, hostile `toJSON`)
+  and fabricates no closing quote, because JSON does not always open one.
+  **`X12ProfileError.profileName` is deliberately NOT bounded** and that is
+  asserted as a test: it exists so a consumer can pinpoint which of their
+  definitions failed, and truncating it would stop it matching what they passed.
+
+  **▶ AND THE `QUIRK_ID_RE` COMMENT CLAIMED A BOUND THE PATTERN NEVER HAD.**
+  It said "2-64 lowercase-alphanumeric chars"; the regex accepts one character
+  and accepts 120,000, which is in fact the path to the largest message on the
+  tree. **The comment was corrected to the code, not the grammar tightened** -
+  rejecting ids that define cleanly today is a separate decision from bounding a
+  message.
+
+  **(2) 🩺 THE DOMAIN BUILDERS TOOK THEIR LOOP BOUND FROM A CALLER-SUPPLIED
+  `.length`.** A forged `{ length: "9".repeat(120000) }` coerces to `Infinity`
+  in `m < spec.members.length`, every element read is `undefined`, every guard
+  `continue`s, and the builder **spins forever instead of refusing**. Measured
+  at base with a 20-second wall-clock timeout in a child process (a hang cannot
+  be observed in-process), over the **nineteen** probes the suite ships:
+  **16 HUNG** and 3 threw an untyped `TypeError`. All **32 indexed loops across
+  7 builder modules** now take their bound from a `requireCallerArray` binding,
+  and at head the same nineteen give **17 typed, code-tagged refusals** (169-194
+  characters) and 2 untyped `TypeError`s. **`build835`'s `spec.traces` never
+  hung** - it is a `for...of` residual this slice happens to close - and the
+  first draft of the gate file claimed it did. **"14 of 16" was wrong too**: no
+  shipped table yields sixteen probes.
+  **`requireCallerArray` takes the module's `refuse` callback rather than
+  throwing a shared error**, because each builder owns a distinct error class
+  and code that consumers branch on, and a shared throw would quietly widen all
+  nine contracts.
+
+  **▶ A REGRESSION THE FIRST DRAFT CAUSED AND THE REFUTER CAUGHT, AND IT IS
+  `#51`'s SHAPE AGAIN: THE FIX WAS WIDER THAN THE CLAIM.** Every site this
+  replaced read its optional field as `x.dates ?? []`, and `??` treats `null`
+  and `undefined` alike; guarding only `undefined` made `null` a refusal.
+  Measured: `build834({ members: [{ ..., healthCoverages: null }] })` **emitted a
+  valid 834 at base and drew `X12_834_BUILD_INVALID_SPEC` at the first head** -
+  and _inconsistently_, since the same spec still accepted `references: null`,
+  which is read with `for...of` and never moved onto the chokepoint. `null` is
+  what a `JSON.parse`d payload carries for an absent list, from the exact caller
+  class this module exists for. `requireCallerArray` now answers `null` as
+  absent and base behaviour is restored; on a REQUIRED array it becomes the
+  site's own "at least one X is required" refusal instead of base's untyped
+  `TypeError` **for five of the six** (`build834` / `build820` / `build837` /
+  `build271` / `build277`). **`build835`'s `claims` is the measured exception**,
+  because `enforceBalance` reads `spec.claims.map` rather than the checked
+  binding; it is no worse than base and is pinned by a test. The first draft of
+  the remedy wrote that sentence unqualified, which is the same claim-width
+  error one notch smaller, and pass 2 caught it.
+
+  **▶ SCOPE THE CLAIM. This is a forged NON-ARRAY input, not a mis-read
+  clinical value**, so it is not `STOP-THE-LINE`: nothing decodes a document
+  differently, no dose / allergy / code system / patient identifier moves, and
+  the reachable harm is **availability**. It is unreachable from TypeScript and
+  reachable from JavaScript, JSON, and therefore `@cosyte/cli`.
+
+  **▶ DISCLOSED, NOT FIXED, AND IDENTICAL AT BASE AND HEAD:** where a builder
+  reads a caller array with `for...of` - `buildInterchange`'s `spec.groups`,
+  `build999`'s `functionalGroup.transactionResponses`, and **every optional leaf
+  array** (`claim.dates`, `member.references`, `header.references`) - a forged
+  list throws `TypeError: ... is not iterable`. It **terminates**, so it is not
+  the hang, but it carries **no `code`**. Pinned by tests so it cannot quietly
+  become one, and in `KNOWN-LIMITATIONS.md`.
+
+  **THE DELIVERABLE IS TWO SOURCE GATES, and `#51`'s was REUSED rather than
+  copied.** `test/builder-refusal-bounds.test.ts` now also sweeps
+  `src/profiles/*.ts` and matches `X12ProfileError`, so one allowlist governs
+  both halves: **11 modules, 80 throw sites**, of which the builder half is
+  **unchanged at 23 bounded sites / 28 holes** and the profile half is **12 / 23**.
+  `test/builder-array-bounds.test.ts` is new and scans loop BOUNDS, requiring
+  each to be a local produced by `requireCallerArray` - **it keys on the OPERAND,
+  never on the property name**, which is the mistake `#51`'s allowlist made
+  twice. Its scan strips comments first, because its own first draft flagged
+  `caller-array.ts`'s docblock, which quotes the defect verbatim.
+
+  **▶ THE NEGATIVE CONTROL FOUND SOMETHING WORSE THAN A RED.** Reverting one
+  loop bound reds the scan by file and line, and reverting one profile
+  interpolation reds the message gate by file and line. But **removing the
+  `requireCallerArray` call outright does not fail the behavioural test - it
+  WEDGES it.** A synchronous infinite loop never yields, so vitest's
+  `testTimeout` cannot interrupt it; measured, the run had to be killed from
+  outside at 60 seconds with no verdict. **The behavioural cases cannot report
+  this regression**, which is the argument for keeping the source scan
+  exhaustive rather than trusting the examples.
+
+  **Known and NOT claimed away:** the same limits `#51` wrote down still hold.
+  Bounding a message here **redacts nothing** (the caller passed the value in and
+  still holds it), so this is not `PHI-WARNING-MESSAGE-LEAK`; the surviving
+  characters are **not escaped**; the bound is on UTF-16 **code units, not
+  bytes**; and both scans are syntactic tripwires for the shape this library
+  uses, not proofs.
+
+  **▶ TWO `PRE-EXISTING` FINDINGS THE REFUTER RAISED, MEASURED, FILED, NOT
+  FIXED HERE.**
+  **(a) 🩺 `escapeRelease` EMPTIES A NUMERIC CALLER VALUE SILENTLY, AND ONE OF
+  THE SLOTS IS THE PATIENT CONTROL NUMBER.** `src/parser/release.ts` reads
+  `value.length`; for a `number` that is `undefined`, `i < undefined` is false,
+  the loop never runs, and it returns `""`. Reproduced **identically at base
+  `55ebc66` and at head**: a `build835` spec with a numeric
+  `patientControlNumber` and `payerClaimControlNumber` emits
+  `CLP**1*500.00*450.00*50.00*MB**11::1` with **`warnings.length === 0`** and a
+  frozen, "successful" interchange. CLP-01 is required by TR3 005010X221A1 Loop
+  2100 and is the reassociation key back to the 837's CLM-01, so this is a
+  **silently dropped patient identifier on the emit path**. The
+  `claim.patientControlNumber === ""` guard does not catch a number. It is the
+  same JS/JSON caller `renderCallerValue`'s own `coerce()` JSDoc names as real
+  and reachable: `#51` coerced the **renderer** for that caller and left the
+  **emitter** dropping the value. **Outside this item and NOT fixed here** - the
+  remedy is a decision (coerce like the renderer, or refuse) across every
+  `esc()` slot in nine builders, which is its own slice.
+  **(b)** Neither new gate scans indexed loops outside the `build*` scope
+  (`src/loops/define.ts`, `src/profiles/validate.ts`, the `get-*.ts` readers,
+  `src/parser/envelope.ts`). Scope gap named, not a measured hang.
+
 - **Builder refusal messages are BOUNDED, and the 835 remit-total warning
   points at the BPR (2026-08-02, `X12-BUILDER-BOUNDS`).** Two parts.
   **(1)** Caller-supplied values reached `build*` refusal messages verbatim.
@@ -112,10 +252,11 @@
   `serializeX12(parseX12(f))` byte-identical at base and head across all 56
   fixtures.
 
-  **PRE-EXISTING, filed not fixed:** `src/profiles/validate.ts` interpolates
-  caller values unbounded into `X12ProfileError` (measured 120,093 characters,
-  identical at base). Same class, outside this item's `build*` scope, and named
-  in no public doc yet.
+  **PRE-EXISTING, filed not fixed HERE, and CLOSED by
+  `X12-CALLER-VALUE-RESIDUALS` (see the entry above):**
+  `src/profiles/validate.ts` interpolated caller values unbounded into
+  `X12ProfileError`. **The 120,093 figure filed here did not reproduce** on
+  re-derivation; the worst measured at base is 360,181.
 
 - **The round-trip half is closed too: an orphan is re-emitted at a
   STRUCTURAL ANCHOR (2026-08-02, `X12-ORPHAN-REEMIT`).** The bullet below

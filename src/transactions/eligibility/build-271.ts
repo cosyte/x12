@@ -45,7 +45,21 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { escapeRelease } from "../../parser/release.js";
+import { requireCallerArray } from "../../builder/caller-array.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
+
+/**
+ * Refuse with this module's typed error, for {@link requireCallerArray}. A
+ * forged array-like where the HL spine expects a list makes the hierarchy
+ * structurally impossible, so it reuses `X12_271_BUILD_INVALID_HIERARCHY`
+ * rather than minting a code. @internal
+ */
+function refuseHierarchy(message: string): never {
+  throw new Eligibility271BuildError(
+    ELIGIBILITY_271_BUILD_ERROR_CODES.X12_271_BUILD_INVALID_HIERARCHY,
+    message,
+  );
+}
 
 /** GS-08 / ST-03 version + release emitted for every 271 - the WPC TR3 `005010X279A1`. @internal */
 const X279A1_VERSION_RELEASE = "005010X279A1";
@@ -202,25 +216,40 @@ export function build271(spec: Build271Spec): X12Interchange {
  * messages carry indices + counts, never names / member ids. @internal
  */
 function enforceStructuralSpec(spec: Build271Spec): void {
-  if (spec.informationSources.length === 0) {
+  const sources = requireCallerArray(
+    spec.informationSources,
+    "build271: spec.informationSources",
+    refuseHierarchy,
+  );
+  if (sources.length === 0) {
     throw new Eligibility271BuildError(
       ELIGIBILITY_271_BUILD_ERROR_CODES.X12_271_BUILD_INVALID_HIERARCHY,
       "build271: at least one information source (HL level 20) is required.",
     );
   }
-  for (let s = 0; s < spec.informationSources.length; s += 1) {
-    const source = spec.informationSources[s];
+  for (let s = 0; s < sources.length; s += 1) {
+    const source = sources[s];
     if (source === undefined) continue;
-    if (source.receivers.length === 0) {
+    const receivers = requireCallerArray(
+      source.receivers,
+      `build271: spec.informationSources[${String(s)}].receivers`,
+      refuseHierarchy,
+    );
+    if (receivers.length === 0) {
       throw new Eligibility271BuildError(
         ELIGIBILITY_271_BUILD_ERROR_CODES.X12_271_BUILD_INVALID_HIERARCHY,
         `build271: information source at index ${String(s)} has no receiver (HL level 21) child.`,
       );
     }
-    for (let r = 0; r < source.receivers.length; r += 1) {
-      const receiver = source.receivers[r];
+    for (let r = 0; r < receivers.length; r += 1) {
+      const receiver = receivers[r];
       if (receiver === undefined) continue;
-      if (receiver.subscribers.length === 0) {
+      const subscribers = requireCallerArray(
+        receiver.subscribers,
+        `build271: spec.informationSources[${String(s)}].receivers[${String(r)}].subscribers`,
+        refuseHierarchy,
+      );
+      if (subscribers.length === 0) {
         throw new Eligibility271BuildError(
           ELIGIBILITY_271_BUILD_ERROR_CODES.X12_271_BUILD_INVALID_HIERARCHY,
           `build271: receiver at source[${String(s)}].receiver[${String(r)}] has no subscriber (HL level 22) child.`,
