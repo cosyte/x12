@@ -15,10 +15,11 @@ New public surface `X12Interchange.orphanSegments`, an ordered `readonly X12Orph
 each such segment's verbatim `raw`, its decoded `segment`, its `segmentIndex`, and the library-owned
 `context` discriminant naming which structural rule it broke. `segmentIndex` equals the
 `position.segmentIndex` of that segment's `X12_UNEXPECTED_SEGMENT` warning, so the two surfaces join
-without string matching. The array is empty for a well-formed interchange, and `parseX12` populates
-it for every position that produces one: a body segment between `GE` and `IEA`, between an `SE` and
-its group's `GE`, or between `GS` and the first `ST`; an `ST` with no open group; an `SE` closing
-nothing; a `GE` closing nothing; and a `TA1` inside an open group.
+without string matching. The array is empty for a well-formed interchange. Retention runs through one
+chokepoint rather than per call site, so it covers whatever reaches the envelope walker's
+unexpected-segment paths; the positions measured are a body segment between `GE` and `IEA`, between
+an `SE` and its group's `GE`, or between `GS` and the first `ST`; an `ST` with no open group; an `SE`
+closing nothing; a `GE` closing nothing; and a `TA1` inside an open group.
 
 This fixes the model, not the emit. `serializeX12` still does not reproduce an orphan, so neither the
 segment nor its warning survives a round trip, and `KNOWN-LIMITATIONS.md` still lists six constructs

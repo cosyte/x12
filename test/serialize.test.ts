@@ -565,7 +565,11 @@ describe("parseX12: segments outside a transaction are retained on the model", (
     ["two orphans in sequence", `${closed}REF*ZZ*ONE~REF*ZZ*TWO~IEA*1*000000001~`, 2],
   ];
 
-  it("enumerates all nine positions", () => {
+  it("covers nine constructed positions", () => {
+    // A guard against the table silently shrinking, not a claim that these
+    // are the only inputs that can produce an orphan. Retention runs through
+    // one chokepoint (`recordOrphan`), so coverage does not depend on this
+    // list being exhaustive.
     expect(cases).toHaveLength(9);
   });
 
