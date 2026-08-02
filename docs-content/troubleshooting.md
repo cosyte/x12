@@ -129,12 +129,18 @@ matches the name you passed. Log `err.message`, not the whole error object.
 `readonly T[]`, but a JSON-driven caller can pass anything. As of `0.0.6` every indexed loop in every
 builder takes its bound from a checked array, so `{ length: "9".repeat(120000) }` draws that builder's
 own typed refusal - before this the length coerced to `Infinity` and the builder **looped forever
-instead of refusing** (measured across nineteen probes: 16 hung at base, 17 refuse cleanly now). A
-list you send as `null` is still treated as absent, exactly as before. The places a builder reads a
+instead of refusing** (measured across nineteen entry-point probes: 16 hung at base, 17 refuse
+cleanly now). A list you send as `null` is still treated as absent, exactly as before. The places a builder reads a
 caller array with `for…of` are not covered:
 `buildInterchange`'s `spec.groups`, `build999`'s `functionalGroup.transactionResponses` and every
 optional leaf array such as `claim.dates` throw `TypeError: … is not iterable`, which terminates but
 carries **no `code`**. Validate the shape at your own boundary if the spec comes from JSON.
+
+**A separate, long-standing hazard on the same JSON-caller path, which is NOT fixed: pass a builder a
+number where the types say string and it emits an EMPTY element, with no warning and no refusal.** On
+an 835 that empties CLP-01, the patient control number that reassociates the remittance back to the
+837's CLM-01. Coerce your spec values to strings at your own boundary, and treat empty control numbers
+in a built interchange as a failure. See `KNOWN-LIMITATIONS.md`.
 
 **`err.code` is still the thing to branch on and the safest thing to log.** Tracked in
 `KNOWN-LIMITATIONS.md`; the parse side above is unaffected and stronger.

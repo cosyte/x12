@@ -77,7 +77,12 @@
   class this module exists for. `requireCallerArray` now answers `null` as
   absent and base behaviour is restored; on a REQUIRED array it becomes the
   site's own "at least one X is required" refusal instead of base's untyped
-  `TypeError`.
+  `TypeError` **for five of the six** (`build834` / `build820` / `build837` /
+  `build271` / `build277`). **`build835`'s `claims` is the measured exception**,
+  because `enforceBalance` reads `spec.claims.map` rather than the checked
+  binding; it is no worse than base and is pinned by a test. The first draft of
+  the remedy wrote that sentence unqualified, which is the same claim-width
+  error one notch smaller, and pass 2 caught it.
 
   **▶ SCOPE THE CLAIM. This is a forged NON-ARRAY input, not a mis-read
   clinical value**, so it is not `STOP-THE-LINE`: nothing decodes a document

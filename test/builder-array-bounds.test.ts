@@ -331,6 +331,65 @@ describe("requireCallerArray", () => {
     expect((thrown as Error).message).toContain("at least one member loop");
   });
 
+  it("gives five of the six required lists a typed refusal for null, and pins the sixth", () => {
+    // The first remedy claimed this for required lists generally. It is true of
+    // five of the six, and `build835`'s `claims` is the measured exception:
+    // `enforceBalance` reads `spec.claims.map` directly rather than the checked
+    // binding, so null still lands as an untyped TypeError there. It is no
+    // worse than base, which threw a TypeError for all six, and it is pinned
+    // here rather than papered over - stating the rule without the exception is
+    // the same claim-width error this whole item exists to correct.
+    const env = ENVELOPE;
+    const typed: readonly (readonly [() => unknown, new () => Error])[] = [
+      [
+        () =>
+          build820(
+            asJsCaller({
+              envelope: env,
+              payment: {},
+              traces: [{ referenceId: "T" }],
+              remittances: null,
+            }),
+          ),
+        Premium820BuildError as unknown as new () => Error,
+      ],
+      [
+        () => build837P(asJsCaller({ envelope: env, header: {}, billingProviders: null })),
+        Claim837BuildError as unknown as new () => Error,
+      ],
+      [
+        () => build271(asJsCaller({ envelope: env, header: {}, informationSources: null })),
+        Eligibility271BuildError as unknown as new () => Error,
+      ],
+      [
+        () => build277(asJsCaller({ envelope: env, header: {}, informationSources: null })),
+        ClaimStatus277BuildError as unknown as new () => Error,
+      ],
+    ];
+    for (const [run, expected] of typed) {
+      let thrown: unknown;
+      try {
+        run();
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(expected);
+      expect(typeof (thrown as { code?: unknown }).code).toBe("string");
+    }
+
+    // The exception, asserted as an exception.
+    let thrown: unknown;
+    try {
+      build835(
+        asJsCaller({ envelope: env, payment: {}, traces: [{ referenceId: "T" }], claims: null }),
+      );
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown).toBeInstanceOf(TypeError);
+    expect(thrown).not.toBeInstanceOf(Remit835BuildError);
+  });
+
   it("bounds what it says about the forged value", () => {
     // The refusal names the shape it was handed, and that naming is itself a
     // caller-value interpolation - so it goes through the same renderer. A

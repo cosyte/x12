@@ -71,9 +71,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A builder handed a forged non-array now refuses instead of hanging.** Every domain builder took
   its loop bound from a caller-supplied `.length`, so `{ length: "9".repeat(120000) }` coerced to
   `Infinity`, every element read `undefined`, every guard `continue`d, and the builder **spun forever
-  rather than refusing**. Measured at base over the nineteen probes the suite ships, each in a child
-  process under a 20-second wall-clock timeout because a hang cannot be observed in-process:
-  **16 of 19 hung** with no refusal and the other **3 threw an untyped `TypeError`**. All **32 indexed
+  rather than refusing**. Measured at base over the nineteen probes that drive a forged list at a
+  builder ENTRY point (17 `FORGED_ARRAY_CASES` + 2 `RESIDUAL_CASES`), each in a child process under a
+  20-second wall-clock timeout because a hang cannot be observed in-process: **16 of 19 hung** with no
+  refusal and the other **3 threw an untyped `TypeError`**. The suite ships three further forged
+  probes on optional LEAF arrays, which are `TypeError` at base and at head alike and move nothing:
+  counting all 22, base is 16 hung / 6 untyped and head is 17 typed / 5 untyped. All **32 indexed
   loops across 7 builder modules** now take their bound from a `requireCallerArray` binding, and at
   head the same nineteen give **17 typed, code-tagged refusals** (messages 169 to 194 characters) and
   **2 untyped `TypeError`s**. `build835`'s `spec.traces` is the one that moved from the untyped group

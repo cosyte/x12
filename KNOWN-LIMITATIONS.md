@@ -204,6 +204,29 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   own string and you still hold it. If you log a caught `X12ProfileError`, log `err.message` (bounded)
   rather than the whole error object.
 
+- **A builder emits a NUMBER as an EMPTY element, silently, and one of the affected slots is the
+  patient control number.** Long-standing, not introduced by any recent change, and **not yet fixed**:
+  the escape helper every builder runs values through reads `value.length`, which is `undefined` for a
+  number, so it returns the empty string. The types say `string`, so TypeScript callers cannot reach
+  it; a JavaScript or JSON-driven caller can, and one that reads a spec off `JSON.parse` will.
+
+  Measured on an otherwise valid `build835` spec whose `patientControlNumber` and
+  `payerClaimControlNumber` are numbers rather than strings:
+
+  ```
+  CLP**1*500.00*450.00*50.00*MB**11::1     ix.warnings.length === 0
+  ```
+
+  CLP-01 is required by TR3 005010X221A1 Loop 2100 and is the key that reassociates the remittance
+  back to the 837's CLM-01, and CLP-07 is the payer's claim control number. Both are dropped, **no
+  warning is raised, no refusal is thrown**, and the builder returns a frozen interchange that looks
+  successful. The `patientControlNumber === ""` guard does not catch a number because the value is not
+  yet a string when it is checked.
+
+  **Until this is fixed, coerce your spec values to strings at your own boundary** if any of them can
+  arrive as numbers, and treat a builder result whose control numbers are empty as a failure. It
+  affects every `esc()`-rendered slot in every builder, not only the 835.
+
 - **A forged non-array in a builder spec refuses; in a few places it throws an untyped `TypeError`.**
   The types say `readonly T[]`, but a JavaScript or JSON caller can hand a builder something else. As
   of `0.0.6` every indexed loop in every builder takes its bound from a checked array (32 loops across
@@ -214,8 +237,10 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   `TypeError`.
 
   **`null` is treated as absent, not forged**, exactly as the `?? []` this replaced did, so an
-  optional list you send as `null` still builds. On a required list `null` now draws that builder's
-  own "at least one X is required" refusal instead of an untyped `TypeError`.
+  optional list you send as `null` still builds. On a required list `null` draws that builder's own
+  "at least one X is required" refusal instead of an untyped `TypeError` for five of the six:
+  `build834`, `build820`, `build837`, `build271` and `build277`. **`build835`'s `claims` is the
+  exception** and still throws an untyped `TypeError`, as it did at base.
 
   Not covered, and disclosed rather than fixed: the places a builder reads a caller array with
   `for…of` - `buildInterchange`'s `spec.groups`, `build999`'s `functionalGroup.transactionResponses`,
