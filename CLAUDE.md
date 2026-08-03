@@ -62,14 +62,22 @@ positionally recoverable. **The filed 835 case reproduces exactly**:
   find one more, that is expected and is not a new finding.** All of it is
   `PRE-EXISTING` and outside the item's stated `esc()` scope.
 
-  **THE ONE COUNT THAT IS EXHAUSTIVE, BECAUSE THE GATE ASSERTS IT FILE BY FILE:
-  THIRTY-SIX `esc` SLOTS READ `.toString()` OFF AN `X12Decimal`**, so a raw
-  `number` arrives at the chokepoint already a string: 12 in `build-837`, 12 in
-  `build-835`, 4 in `build-820`, 4 in `build-277`, 3 in `build-271`, 1 in
-  `build-834`. Head, `warnings.length === 0`: a `patientResponsibilityAmount` of
-  `0.1+0.2` emits `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21`
-  emits `…*1e+21*…`, `NaN` emits `…*NaN*…` - **the exact three strings this
-  slice's own prose names as disqualifying.**
+  **AND THE THIRD ROUND KILLED THE LAST COUNT TOO.** `esc` slots that read
+  `.toString()` off an `X12Decimal` let a raw `number` through as a string, and
+  the slice published that class as "THIRTY-SIX, exhaustive, because the gate
+  asserts it file by file". **The gate asserts a same-line REGEX, which pins it
+  against drift and says nothing about the property** - `build-837` alone has
+  three off-line reads the regex misses (`const units = line.units.toString()`
+  then `ctx.esc(units)`; two `.toString()`s inside a `ctx.comp([...])` that maps
+  `esc`), so `SV1*HC:99213*150.00*UN*0.30000000000000004***1` and
+  `HI*ABK:J20.9:::0.30000000000000004` also ship with zero warnings. **The file
+  contradicted its own limit 4 twenty lines earlier** ("a strong tripwire for the
+  shape this library uses, not a proof"). Head, `warnings.length === 0`: a
+  `patientResponsibilityAmount` of `0.1+0.2` emits
+  `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emits
+  `…*1e+21*…`, `NaN` emits `…*NaN*…` - **the exact three strings this slice's own
+  prose names as disqualifying.** Examples, not a census. **No total is
+  published, on purpose.**
 
   **THE SHARPEST KNOWN RAW SLOT IS `build999`'s `functionalGroup.disposition`
   (AK9-01)**, an `ID` element bound to X12 code source 715: `AK9*12345*1*1*1`

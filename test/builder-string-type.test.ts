@@ -74,15 +74,18 @@
  *    `.toString()` off what the types say is an `X12Decimal`, so a raw `number`
  *    arrives already a string. All of it is `PRE-EXISTING`, outside the item's
  *    stated `esc()` scope, and disclosed in `KNOWN-LIMITATIONS.md`. **This
- *    sentence is deliberately NOT a census, and that is a correction: two
+ *    sentence is deliberately NOT a census, and that is a correction: three
  *    consecutive drafts published an exhaustive counted list here** (first
  *    "the single route a caller-supplied element value takes into an emitted
- *    segment", then "SEVEN string-typed positions") **and adversarial review
- *    measured both false, finding GS-04, GS-05, GS-07 and `build837`'s LX-01
- *    among the rest.** The behavioural cases at the bottom of this file pin
- *    named EXAMPLES so the class cannot change shape unnoticed; the examples
- *    are not the boundary. The `.toString()` census IS counted, because this
- *    file asserts it file by file.
+ *    segment", then "SEVEN string-typed positions", then "THIRTY-SIX
+ *    `.toString()` slots, and this one IS counted because the gate asserts it")
+ *    **and adversarial review measured all three false** - GS-04, GS-05, GS-07
+ *    and `build837`'s LX-01 for the second, and for the third `build-837`'s
+ *    off-line `const units = line.units.toString()` plus two `.toString()`s
+ *    inside a `ctx.comp([...])`, none of which the same-line regex below can
+ *    see. **No total is published anywhere in this slice now, on purpose.** The
+ *    behavioural cases at the bottom of this file pin named EXAMPLES so the
+ *    class cannot change shape unnoticed; the examples are not the boundary.
  * 1. **The refusal names the BUILDER, not the element position.** `esc` is
  *    unary and invoked 411 times on 378 lines (counted comment-stripped on this
  *    tree, `ctx.esc(...)` included, and pinned below); threading a per-slot
@@ -275,12 +278,19 @@ describe("builder element escaping: the source gate", () => {
     expect(invocations).toBeGreaterThan(lines);
   });
 
-  it("pins the 36 esc slots that read .toString(), which this gate does NOT guard", () => {
+  it("pins the same-line .toString() reads, WITHOUT claiming they are all of them", () => {
     // A raw `number` in a slot the types say is an `X12Decimal` has its own
     // `.toString()`, so it arrives at the chokepoint already a string and is
-    // passed through. Counted comment-stripped on this tree: build-837 12,
-    // build-835 12, build-820 4, build-277 4, build-271 3, build-834 1.
-    // Pinned so the residual cannot grow unnoticed.
+    // passed through. This assertion is a DRIFT TRIPWIRE for the shape the
+    // regex sees, exactly like limit 4 above says of the sibling scan - it is
+    // not a proof and it is not a census. `escToStringSlots` is same-line only,
+    // and `build-837` alone has three reads it cannot see: `const units =
+    // line.units.toString()` followed by `ctx.esc(units)` on another line, and
+    // two `.toString()`s inside a `ctx.comp([...])` that maps `esc`. A draft of
+    // this slice published these numbers as "exhaustive, because the gate
+    // asserts it file by file", which is circular: a regex asserting its own
+    // output proves the regex has not drifted, never that it captures the
+    // property. The numbers are kept because drift is worth catching.
     const byFile = new Map(
       modules.map((m) => [m.slice(SRC.length + 1), escToStringSlots(m)] as const),
     );
@@ -1109,7 +1119,7 @@ describe("string-typed slots that never call esc: EXAMPLES of the disclosed resi
   });
 });
 
-describe("esc slots that read .toString(): the one residual that IS counted", () => {
+describe("esc slots that read .toString(): EXAMPLES, deliberately not counted", () => {
   // A raw `number` in a slot the types say is an `X12Decimal` has its own
   // `.toString()`, so it reaches `esc` already a string and is passed through.
   // These are the exact three renderings `caller-string.ts` names as
@@ -1120,6 +1130,98 @@ describe("esc slots that read .toString(): the one residual that IS counted", ()
     ["exponential notation", 1e21, "*1e+21*"],
     ["NaN", NaN, "*NaN*"],
   ];
+
+  it("also reaches SV1-04 and HI-01, which the same-line regex cannot see", () => {
+    // The two off-line shapes, pinned as the counter-example to the "36 slots,
+    // exhaustive" claim a draft of this slice published. `build-837` reads
+    // `const units = line.units.toString()` on one line and `ctx.esc(units)` on
+    // another, and passes two `.toString()`s into a `ctx.comp([...])` that maps
+    // `esc`. Identical at base commit `143a6ea`.
+    const drift = 0.1 + 0.2;
+    const ix = build837P(
+      asJsCaller({
+        envelope: ENVELOPE,
+        submitter: {
+          entityIdentifierCode: "41",
+          entityTypeQualifier: "2",
+          name: "SUBMITTER ONE",
+          idQualifier: "46",
+          idCode: "SUB001",
+        },
+        receiver: {
+          entityIdentifierCode: "40",
+          entityTypeQualifier: "2",
+          name: "RECEIVER ONE",
+          idQualifier: "46",
+          idCode: "REC001",
+        },
+        billingProviders: [
+          {
+            provider: {
+              entityIdentifierCode: "85",
+              entityTypeQualifier: "2",
+              name: "BILLING CLINIC INC",
+              idQualifier: "XX",
+              idCode: "1234567890",
+            },
+            subscribers: [
+              {
+                info: {
+                  payerResponsibilityCode: "P",
+                  individualRelationshipCode: "18",
+                  claimFilingIndicator: "MB",
+                },
+                subscriber: {
+                  entityIdentifierCode: "IL",
+                  entityTypeQualifier: "1",
+                  name: "PATIENT",
+                  firstName: "TEST",
+                  idQualifier: "MI",
+                  idCode: "MEMBER001",
+                },
+                payer: {
+                  entityIdentifierCode: "PR",
+                  entityTypeQualifier: "2",
+                  name: "PAYER ONE",
+                  idQualifier: "PI",
+                  idCode: "PAYER01",
+                },
+                claims: [
+                  {
+                    claimId: "PT-ACCT-001",
+                    totalCharge: dec("150.00"),
+                    placeOfServiceCode: "11",
+                    facilityCodeQualifier: "B",
+                    claimFrequencyCode: "1",
+                    providerSignatureOnFile: "Y",
+                    providerAcceptAssignment: "A",
+                    benefitsAssignment: "Y",
+                    releaseOfInformationCode: "Y",
+                    diagnoses: [{ qualifier: "ABK", code: "J20.9", monetaryAmount: drift }],
+                    serviceLines: [
+                      {
+                        variant: "P",
+                        procedureQualifier: "HC",
+                        procedureCode: "99213",
+                        charge: dec("150.00"),
+                        unitOfMeasure: "UN",
+                        units: drift,
+                        diagnosisPointers: ["1"],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    const text = serializeX12(ix);
+    expect(text).toContain("SV1*HC:99213*150.00*UN*0.30000000000000004***1");
+    expect(text).toContain("HI*ABK:J20.9:::0.30000000000000004");
+    expect(ix.warnings).toHaveLength(0);
+  });
 
   it.each(cases)("still emits %s in CLP-05", (_label, value, expected) => {
     const spec = remitSpec("PT-ACCT-001") as { claims: { patientResponsibilityAmount: unknown }[] };

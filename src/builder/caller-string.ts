@@ -5,10 +5,11 @@
  *
  * **Read that scope literally, because an earlier draft of this line said "the
  * single route a caller-supplied ELEMENT VALUE takes into an emitted segment"
- * and adversarial review was right to reject it.** Two measured classes of
- * element value do not pass through here at all, and both are enumerated under
- * "What this does NOT cover" below. This module is the chokepoint on `esc`, not
- * on emission.
+ * and adversarial review was right to reject it.** Element values that do not
+ * pass through here are described under "What this does NOT cover" below, in
+ * examples rather than a list, and the reason that section refuses to enumerate
+ * them is written there. This module is the chokepoint on `esc`, not on
+ * emission.
  *
  * ## The defect this exists to stop, which is a silently DROPPED identifier
  *
@@ -130,17 +131,23 @@
  *
  * Three specifics are worth naming, because each is a different shape:
  *
- * - **THIRTY-SIX `esc` slots read `.toString()` off what the types say is an
- *   `X12Decimal`**, so a raw `number` arrives here already a string and is
- *   passed through. This one IS counted, because the gate asserts the census
- *   file by file: 12 in `build-837`, 12 in `build-835`, 4 in `build-820`, 4 in
- *   `build-277`, 3 in `build-271`, 1 in `build-834`. Measured identical at base
- *   and head, `warnings.length === 0` in all three cases: a
- *   `patientResponsibilityAmount` of `0.1 + 0.2` emits
+ * - **`esc` slots that read `.toString()` off what the types say is an
+ *   `X12Decimal`** hand a raw `number` here already a string, so it is passed
+ *   through. Measured identical at base and head, `warnings.length === 0` in
+ *   every case: a `patientResponsibilityAmount` of `0.1 + 0.2` emits
  *   `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emits
- *   `…*1e+21*…`, and `NaN` emits `…*NaN*…`. Closing it is a different decision
- *   from the one this module makes (whether an element slot may take anything
- *   but an `X12Decimal` instance), so it is disclosed, not fixed.
+ *   `…*1e+21*…`, `NaN` emits `…*NaN*…`, and an 837 service-line `units` of
+ *   `0.1 + 0.2` emits `SV1*HC:99213*150.00*UN*0.30000000000000004***1`.
+ *   **A draft of this bullet said "THIRTY-SIX, and this one IS counted, because
+ *   the gate asserts the census file by file". That was the same mistake one
+ *   layer down**: the gate asserts a SAME-LINE regex, which pins the figure
+ *   against drift and establishes nothing about the property. `build-837` alone
+ *   has three reads the regex cannot see - `const units = line.units.toString()`
+ *   followed by `ctx.esc(units)`, and two `.toString()`s inside a
+ *   `ctx.comp([...])` that maps `esc`. So this class is examples too, and **no
+ *   total is published.** Closing it is a different decision from the one this
+ *   module makes (whether an element slot may take anything but an `X12Decimal`
+ *   instance), so it is disclosed, not fixed.
  * - **`build999`'s `functionalGroup.disposition` (AK9-01) is the sharpest known
  *   example of the raw class.** It is an `ID` element bound to X12 code source
  *   715, so a number tells a receiver nothing about whether the group was

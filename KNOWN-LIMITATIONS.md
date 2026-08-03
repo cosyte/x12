@@ -246,14 +246,15 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   honest thing:** two drafts of this entry published a counted enumeration and both were measured
   incomplete. Treat it as "some envelope, control-number and line-counter slots are emitted raw",
   validate at your boundary, and do not read a slot's absence here as a guarantee.
-  1. **Monetary and quantity slots read `.toString()`, so a raw number passes the check.** 36 such
-     slots across six builders (12 in the 837, 12 in the 835, 4 in the 820, 4 in the 277, 3 in the
-     271, 1 in the 834). This count **is** exhaustive, because the test suite asserts it file by
-     file. `X12Decimal` is the first-class route and the one you should use, but a bare `number` is
-     **not** refused there. Measured with `warnings.length === 0` in every case: a
+  1. **Monetary and quantity slots read `.toString()`, so a raw number passes the check.**
+     `X12Decimal` is the first-class route and the one you should use, but a bare `number` is **not**
+     refused there. Measured with `warnings.length === 0` in every case: a
      `patientResponsibilityAmount` of `0.1 + 0.2` emits
-     `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emits `…*1e+21*…`, and `NaN`
-     emits `…*NaN*…`.
+     `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emits `…*1e+21*…`, `NaN` emits
+     `…*NaN*…`, and an 837 service-line `units` of `0.1 + 0.2` emits
+     `SV1*HC:99213*150.00*UN*0.30000000000000004***1`. **Like the rest of this entry, that is a set
+     of examples and not a count** - a draft of this page said the class was exactly 36 slots and
+     closed, and it is not.
   2. **Some string-typed positions never call the escape helper at all**, so a number is still emitted
      verbatim with no warning. Known examples, not a complete set: `build999`'s
      `envelope.groupControlNumber` (GS-06 / GE-02), `envelope.transactionSetControlNumber` (ST-02 /

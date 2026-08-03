@@ -150,8 +150,8 @@ still tell whether the zeros mattered.
 
 **Keep validating spec types at your own boundary anyway. The fix guards values routed through the
 escape helper, and not every element position goes through it**, all pre-existing and unchanged.
-**Monetary and quantity slots read `.toString()`, so a raw number is not refused there** (36 slots
-across six builders, a count the suite asserts file by file): a `patientResponsibilityAmount` of
+**Monetary and quantity slots read `.toString()`, so a raw number is not refused there**, and that
+class is examples-only too, not a count: a `patientResponsibilityAmount` of
 `0.1 + 0.2` still emits `…*0.30000000000000004*…`, `1e21` still emits `…*1e+21*…` and `NaN` still
 emits `…*NaN*…`, each with zero warnings. `X12Decimal` is the route you should use, but it is not
 enforced. **Some string-typed positions never call the escape helper at all** and still emit a number

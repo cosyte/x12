@@ -10,7 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`requireCallerString` / `makeCallerEscaper`** (internal), the single route a caller-supplied
-  ELEMENT VALUE takes into an emitted segment. All nine builders now build their `esc` helper through
+  element value takes **through a builder's `esc` helper**. Read that scope literally: it is not
+  every route into an emitted segment, and the `### Fixed` entry below says which positions bypass
+  it. All nine builders now build their `esc` helper through
   `makeCallerEscaper`, which type-checks the value before escaping and refuses through the calling
   module's own `refuse` callback, so a wrong-typed element draws that builder's existing typed error
   and code rather than a new shared one. `buildInterchange`, `build999`, `build271` and `build278`
@@ -172,8 +174,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `X12Decimal`**, so a raw number arrives already a string and is passed through: a
   `patientResponsibilityAmount` of `0.1 + 0.2` still emits `…*0.30000000000000004*…`, `1e21` still
   emits `…*1e+21*…` and `NaN` still emits `…*NaN*…`, each with zero warnings, which are the exact
-  three renderings this entry names as disqualifying. That count is exhaustive and the suite asserts
-  it file by file. **Some string-typed positions never call the escape helper at all** and emit a
+  three renderings this entry names as disqualifying, and an 837 service-line `units` reaches SV1-04
+  the same way. **That is a set of examples too, not a count** - a draft of this entry said the class
+  was exactly 36 slots and closed, and adversarial review measured it open. **Some string-typed
+  positions never call the escape helper at all** and emit a
   number, or an unescaped delimiter, verbatim: the 999's `groupControlNumber` (GS-06 / GE-02),
   `transactionSetControlNumber` (ST-02 / SE-02) and `disposition` (AK9-01 and IK5-01), the 278's
   `levelCode` (HL-03), `groupDate` / `groupTime` (GS-04 / GS-05), and the 837's `lineNumber`
