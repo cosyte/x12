@@ -365,6 +365,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tests
 
+- **The PHI-scanner suite stopped paying 30 of its 32 `tsx` start-ups, and the global `testTimeout`
+  now says what it does and does not cover.** No library code, no public surface and no timeout value
+  changed; `scripts/phi-scan.ts` and `scripts/attw.mjs` are untouched.
+
+  Nearly every case in `test/scripts/phi-scan.test.ts` spawns the scanner. Counted at runtime on
+  both trees with a `spawnSync` shim: **32 spawns across 32 cases, all under `tsx`**, becoming
+  **36 spawns across 33 cases, 34 under `node` and 2 under `tsx`**. So 30 `tsx` start-ups were
+  removed and 2 were kept deliberately, in the equivalence case below. The scanner is type-annotated
+  Node that needs erasing and nothing more, and Node 22.18 or newer strips types itself, so the
+  spawns now use `process.execPath`. Measured on a 12-CPU cgroup quota with
+  `availableParallelism()` 12 and other workers running (load average 8.9 to 11.3, a realistic
+  condition rather than a quiet one): one scanner start is a 441 ms median under `tsx` against
+  149 ms under `node`, seven runs each. Interleaved BASE/HEAD under `pnpm test:coverage`, two rounds
+  each so the arms share a load condition, that file went 17.2 s / 17.5 s to 8.6 s / 8.6 s, and
+  15.7 s to 6.6 s run on its own. Total CPU across all workers went 58.9 s / 58.4 s to
+  50.5 s / 49.5 s. Those medians predict 8.2 s off this file (32 starts converted, less the 2 `node`
+  and 2 `tsx` starts the new case adds) against 9.1 s measured, so the model is the right shape and
+  about 11% light, not a match.
+
+  **The substitution is pinned as an equivalence rather than assumed.** The gate consumers actually
+  run (`pnpm phi-scan`, the pre-commit hook, CI) still invokes `tsx`, so one new case drives both
+  runners over the same violator and the same clean file and requires the same exit code, stdout and
+  stderr. It is the only place `tsx` is still spawned, and a simulated divergence reds it. **Scope it
+  honestly:** that case drives `paths` mode on one hit and one clean file, so it pins the exit-0 and
+  exit-1 verdicts and not the exit-2 refusals, nor all-mode, nor `--staged`. It is aimed at the only
+  divergence these two runners plausibly have, which is at module load, and a load-time divergence
+  cannot be confined to the routes it does not drive.
+
+  **What this did not buy, stated because the two figures diverge:** it removed about 8.6 s of CPU
+  but barely moved the suite's critical path (17.2 s / 17.5 s to 16.3 s / 16.7 s), which is now
+  `test/scripts/attw-gate.test.ts`. That file is deliberately left alone: measured, one `attw --pack`
+  on a trivial two-file package is 1,596 ms median, of which the real `npm pack` is 462 ms and the
+  rest is attw's own analysis. There is no runner to substitute there, pinning the real binary is the
+  point of that gate, and each of its cases already carries its own 60 s ceiling.
+
+  **`vitest.config.ts` now documents the scope of `testTimeout: 10_000`, which is narrower than it
+  looks in both directions.** It is a floor for ordinary tests, not where slow work gets its room:
+  the three slowest suites already take per-test ceilings, and the 10 MB+ 834 stream measured
+  8.9 s / 10.0 s / 9.3 s / 9.1 s across the four interleaved runs, so it sits AT the 10 s global on a
+  merely-loaded box (a 10.0 s reading is not evidence of which side of the bar it fell), and measured
+  24.1 s under heavier load on the same box. It is green only on its own 120 s ceiling. Raising the
+  global to
+  fit it would hand the same leash to all 1,100-odd tests and turn a genuinely hung test from broken
+  into merely slow. It is also **not a liveness net**: measured on this tree with vitest 4.1.4, an
+  async overrun reds at the ceiling, a finite synchronous overrun reds only after the work returns,
+  and an infinite synchronous loop produces no verdict at all, wedging the worker until it is killed
+  from outside (45 s, exit 143, no pass/fail line). That is the failure mode
+  `X12-CALLER-VALUE-RESIDUALS` hit for real, and the defence against it is the source scan in
+  `test/builder-array-bounds.test.ts`, not any timeout value.
+
 - **The default emit mode's guarantees are locked against the whole committed corpus, not just the 13
   goldens.** The goldens are already in the serializer's image, so they could only ever demonstrate
   the easy half of the round trip. `test/serialize.test.ts` now discovers every `.edi` fixture from

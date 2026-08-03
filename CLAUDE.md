@@ -8,6 +8,82 @@
 
 ## Status
 
+- **THE SUITE'S START-UP TAX IS GONE AND `testTimeout` NOW STATES ITS OWN SCOPE
+  (2026-08-03, `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX`). NO TIMEOUT VALUE
+  CHANGED, AND THAT IS THE FINDING, NOT AN OMISSION.** Test + config only;
+  `scripts/phi-scan.ts` and `scripts/attw.mjs` untouched.
+
+  **TRIMMED, NOT BOUNDED.** `test/scripts/phi-scan.test.ts` went from **32 spawns
+  across 32 cases, ALL under `tsx`**, to **36 spawns across 33 cases, 34 under
+  `node` and 2 under `tsx`**: **30 `tsx` start-ups removed**, 2 kept on purpose in
+  the equivalence case. **Counted at RUNTIME with a `spawnSync` shim, on BOTH
+  trees.** **▶ AND THE FIRST DRAFT PUBLISHED "34, every one of them" IN FIVE
+  PLACES, WHICH IS THE HEAD CENSUS PORTED ONTO THE BASE STATE** - the exact
+  "a remedy's prose does not port with its code" trap the item names, committed
+  while quoting the rule, and self-contradicted by this slice's own docblock. A
+  refuter caught it. **Count both trees, and never reuse one census for the
+  other.** The scanner is type-annotated Node that needs erasing and nothing more
+  and **Node 22.18 or newer strips types itself**, so the spawns take
+  `process.execPath`. Measured on this box (12-CPU cgroup quota,
+  `availableParallelism()` **12**, other workers running, load average 8.9 to
+  11.3 - **the item's 2.0-CPU / `nproc` 56 figure is STALE, re-derive it, do not
+  inherit it**): one start is **441 ms** median under `tsx` against **149 ms**
+  under `node`, seven runs each. **Interleaved BASE/HEAD, two rounds each**, so
+  the arms share a load condition: that file goes **17.2 / 17.5 s to 8.6 / 8.6 s**
+  in-suite, **15.7 s to 6.6 s** alone, and total CPU across workers **58.9 / 58.4 s
+  to 50.5 / 49.5 s**. The first attempt at this measurement compared a base run
+  and a head run taken an hour apart and showed a **2.4x** whole-suite win that
+  was mostly the box getting quieter; **every figure here is interleaved.** Those
+  medians **predict 8.2 s and not 9.1 s** (32 conversions at 292 ms, less the 4
+  starts the new case adds), so the model is the right shape and **about 11%
+  light**; the first draft claimed a 1% fit, which was the miscount again.
+
+  **▶ THE SUBSTITUTION IS PINNED AS AN EQUIVALENCE, NOT ASSUMED.** `pnpm phi-scan`,
+  the pre-commit hook and CI still run `tsx`, so one new case drives BOTH runners
+  over the same violator and the same clean file and requires the same exit code,
+  stdout and stderr. It is the only `tsx` spawn left in the file, and a simulated
+  divergence reds it. Nothing else enforces erasable-only syntax: the shared
+  `@cosyte/tsconfig` sets no `erasableSyntaxOnly`, and sets
+  `verbatimModuleSyntax: FALSE`. **The Node 22.18 floor is likewise unenforced**
+  (`engines.node` is `>=22.0.0`, no `.nvmrc`); it fails loudly rather than
+  greening wrongly, and CI's `node-version: "22"` resolves past it.
+  **SCOPE IT:** it drives `paths` mode only, so it pins exit 0 and exit 1 and
+  **NOT** the exit-2 refusals, all-mode, or `--staged`. Deliberate: the only
+  plausible divergence is at MODULE LOAD, which cannot be confined to the routes
+  it skips. A non-load-time divergence would mean this case is too narrow.
+
+  **▶ SAY WHAT IT BOUGHT AND WHAT IT DID NOT, BECAUSE THE TWO FIGURES DIVERGE.**
+  It removed ~8.6 s of CPU and barely moved the critical path
+  (**17.2 / 17.5 s to 16.3 / 16.7 s**), which is now `test/scripts/attw-gate.test.ts`.
+  **Deliberately left alone, measured not asserted:** one `attw --pack` on a
+  trivial two-file package is **1,596 ms** median, of which the real `npm pack` is
+  **462 ms** and the rest is attw's own analysis. No runner to substitute, pinning
+  the REAL binary is the point of that gate, and its cases already carry 60 s
+  ceilings each.
+
+  **▶ THE GLOBAL WAS LEFT AT 10 s ON PURPOSE, AND THE 834 STREAM IS WHY.** The
+  three slowest suites already take **per-test** ceilings (834 stream 120 s,
+  `attw-gate` 60 s/case, the 81-slot PHI sweep 120 s). The 10 MB+ 834 stream
+  measured **8.9 / 10.0 / 9.3 / 9.1 s** across the four interleaved runs: it sits
+  **AT the 10 s global**, and is green only on its own ceiling (**24.1 s** under
+  heavier load, which is the unambiguous figure). **Do not upgrade the 10.0 s
+  reading into a proven crossing** - the reporter rounds, so it is not evidence of
+  which side it fell on, and a first draft asserted it anyway. Raising the global to fit
+  it hands the same leash to all 1,100-odd tests and makes a genuinely hung test
+  look slow rather than broken. The slowest test still under the global is ~1.2 s,
+  about 8x headroom.
+
+  **▶ AND IT IS NOT THE LIVENESS NET PEOPLE ASSUME.** Measured on this tree with
+  vitest 4.1.4 under a deliberately tiny per-test ceiling: an **async** overrun
+  reds at the ceiling; a **finite synchronous** overrun reds but only AFTER the
+  work returns, so the verdict is late; an **infinite synchronous** loop gives
+  **NO VERDICT AT ALL** and wedges the worker (killed from outside at 45 s, exit
+  143, no pass/fail line). That is exactly what `X12-CALLER-VALUE-RESIDUALS` hit,
+  where removing a `requireCallerArray` call spins a builder forever. **A liveness
+  regression here reads as an ABSENT verdict, not a red one, and no value of
+  `testTimeout` changes that** - the defence is the source scan in
+  `test/builder-array-bounds.test.ts`.
+
 - **🩺 THE PHI SCANNER WAS BLIND TO A SYMLINK ON BOTH ENUMERATING ROUTES, AND
   BOTH NOW REFUSE (2026-08-03, `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES`).**
   Ported from the graded `terminology#37`, re-measured here rather than copied.

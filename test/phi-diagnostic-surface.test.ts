@@ -38,14 +38,22 @@ const LONG_MARKER = PHI_MARKER_UNIT.repeat(64);
 
 describe("PHI: no consumer-controlled input reaches a diagnostic surface", () => {
   /**
-   * The suite-wide `testTimeout` is 10s and this one sweep does not fit in it:
-   * 81 slots, each planted at several marker lengths, each a full parse of a
-   * golden interchange. Measured: a few seconds uninstrumented, varying with
-   * the box, but ~15s in this repo's `test:coverage` run, which is the gate
-   * and is what the 10s default failed. The ceiling is set
-   * here rather than by raising the global timeout, so a slot table that
-   * starts genuinely hanging still fails somewhere, and so no other suite
-   * silently gets a longer leash.
+   * The suite-wide `testTimeout` is 10s and this one sweep is not reliably
+   * inside it: 81 slots, each planted at several marker lengths, each a full
+   * parse of a golden interchange. The ceiling is set here rather than by
+   * raising the global timeout, so a slot table that starts genuinely hanging
+   * still fails somewhere, and so no other suite silently gets a longer leash.
+   *
+   * WHAT IT COSTS VARIES WITH THE BOX BY SEVERAL TIMES OVER, WHICH IS THE WHOLE
+   * REASON THE CEILING IS GENEROUS AND LOCAL. This comment carried "~15s in this
+   * repo's `test:coverage` run" and that figure did NOT reproduce on re-measurement
+   * (2026-08-03, `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX`). On a 12-CPU cgroup quota
+   * with `availableParallelism()` 12 and other workers running, the same test under
+   * `pnpm test:coverage` measured **2.7s to 3.5s** across four interleaved runs, and
+   * **7.6s** under heavier load on the same box. The old figure is left quoted rather
+   * than deleted because the spread is the point: do not treat any of these as the
+   * cost, and do not shrink this ceiling toward whichever one your box produced.
+   * `vitest.config.ts` carries the full profile and the reasoning.
    */
   it("holds for every consumer-controlled slot in the X12 envelope and body", () => {
     assertNoDiagnosticPhiLeak({ ...PHI_RUNNER, slots: PHI_SLOTS });
