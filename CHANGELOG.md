@@ -42,6 +42,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a warning `message` is a frozen-registry lookup with positional metadata only, but an orphan is
   document content, verbatim, exactly like `tx.rawSegments`. Log `context` and `segmentIndex`.
 
+### Security
+
+- **The PHI scanner refuses an in-scope entry that is not a regular file, on both of its enumerating
+  routes.** A symbolic link under a scan root pointing at a PHI-bearing file used to scan CLEAN on
+  both, so the pre-commit gate and CI both reported "no hits" over a capture the scan never read.
+  Measured on `5779542`, against a throwaway repository laid out like this one, using a synthetic
+  `.edi` payload whose NM1 person name, DMG date of birth, PER phone and `REF*SY` SSN are all hits at
+  exit 1 when the same bytes sit at a regular file:
+  - the all-mode walk enumerates `Dirent.isFile()`, which is an lstat answer, so a link is neither a
+    file nor a directory and fell out of the loop silently. A link under `test/fixtures`, a link
+    under `src/`, and a linked DIRECTORY (which takes a whole subtree with it) each reported
+    `OK - no hits` at exit 0;
+  - `--staged` reads content with `git show :<path>`, and git stores a link as its TARGET PATH under
+    mode `120000`, so that route was handed the path text and never the target's bytes. A staged
+    link reported `OK - no hits` at exit 0.
+
+  Both routes now refuse the scan (exit 2, the existing "could not complete" code) and name every
+  offender, not just the first. Neither route is made to FOLLOW an ENTRY it enumerated: following
+  would read bytes the enumeration does not control, and git does not carry those bytes anyway, so a
+  hit on them would be a claim about something no commit contains. That is a statement about an
+  entry, not about a scan ROOT: a walk root that is itself a link is still followed, because
+  `existsSync` and `readdirSync` both follow. Measured identically before and after this change, that
+  direction produces a superset scan rather than a blind one (the target's files are enumerated under
+  their in-root names and hit, exit 1), so it is deliberately left alone.
+
+  **A refusal names the entry's own repo-relative path and a scanner-owned token for its kind. It
+  never reports the link target**, which is working-tree text that can itself carry PHI: a target
+  path of the shape `<surname>-<given>-<dob>.edi` is the whole reason. That shape is written out
+  rather than shown, because a diagnostic about a PHI leak is itself a PHI surface. The concern was
+  not hypothetical here: measured at base, a staged link whose target name was a dashed-SSN shape
+  exited 1 and printed that shape, because `git show` handed the path text straight to the
+  cross-cutting shape pass.
+
+  **The `--staged` filter is now `AMT`, and `T` is the one-letter difference that made the mode check
+  reachable.** Replacing a TRACKED regular file with a link is neither an add nor a modify: measured
+  on this tree, `git diff --cached --raw --diff-filter=AM` returned zero rows for that change while
+  the unfiltered `--raw` showed `:100644 120000 <sha> <sha> T`. Without `T` the record died before
+  any mode could be read and the hook passed a mode-`120000` blob green. Admitting `T` also covers
+  the reverse typechange, a link replaced by a real file bearing PHI. The route reads
+  `git diff --cached --raw -z` rather than `--name-only` because the destination mode is the only
+  thing that distinguishes a staged regular file from a staged link or gitlink, and
+  `git show :<path>` answers all three without complaint. A record that does not parse refuses rather
+  than being skipped.
+
+  **Each route keeps its own existing boundary**: the walk still excludes a gitignored entry (the same
+  rule that already excludes a gitignored file), and `--staged` still looks only at
+  `test/fixtures/**` and `src/**.ts`. This narrows what those scopes admit; it does not widen them.
+  A gitlink under a scanned prefix already exited 2 before this change, but by `git show` failing and
+  echoing git's own text; it is now refused at enumeration and named by kind.
+
+  **`paths` mode is deliberately unchanged, because it was never blind**: it reads with
+  `readFileSync`, which follows a link, so an explicitly named path that is a link to a PHI-bearing
+  file is scanned and hits (measured, exit 1).
+
+  **Not closed here, and stated rather than implied**: `R` (rename) and `C` (copy) are still not
+  enumerated by `--staged` at all, which is pre-existing and needs the two-path `--raw` record shape
+  handled. Measured, so the cost is not left to inference: renaming a fixture while substituting a
+  real name stages as `:100644 100644 <sha> <sha> R080 <old> <new>`, which both `AM` and `AMT` return
+  zero rows for, and `--staged` exits 0 over a payload that is a hit as an ordinary add; `git mv` of
+  an already-committed link into `test/fixtures/` is `R100` and is likewise not refused. The all-mode
+  sweep is the backstop for both (exit 1 and exit 2 respectively), so the gap is at pre-commit, not
+  in CI. Also unclosed: a scan that observed nothing is still reported clean rather than refused; and
+  the
+  enumerate-then-read window in all mode is untouched, because tolerating a failed read pulls the
+  opposite way from narrowing what the enumeration admits and belongs in its own change. No library
+  code changed and no published type changed.
+
 ### Fixed
 
 - **The `attw` publish gate no longer passes a tarball that carries no type declarations.** The
