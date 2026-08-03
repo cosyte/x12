@@ -15,6 +15,13 @@ the difference is the money-handling analog of mis-reading a dose.
 > **The rule:** `@cosyte/x12` **never** calls `parseFloat` on an EDI amount, and neither should you.
 > Read the `X12Decimal`, do exact arithmetic on it, and format it back to a string.
 
+> **On the BUILD side this is a convention, not an enforced boundary.** The builder specs type their
+> monetary and quantity fields as `X12Decimal`, and a TypeScript caller cannot hand them anything
+> else. A JavaScript or JSON-driven caller can, and 36 of those slots read `.toString()` off whatever
+> they were given, so a raw `number` is emitted rather than refused: `0.1 + 0.2` reaches an 835's
+> CLP-05 as `0.30000000000000004`, with `warnings.length === 0`. Build the `X12Decimal` yourself at
+> your boundary. Tracked in `KNOWN-LIMITATIONS.md`.
+
 ## What `X12Decimal` is
 
 `X12Decimal` is a string-backed, `BigInt`-exact fixed-point number: it holds the unscaled integer and

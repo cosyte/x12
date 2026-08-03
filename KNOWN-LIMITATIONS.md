@@ -224,7 +224,7 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   one-line mechanism reached every `esc()`-rendered slot in all nine builders, including the 837's
   `CLM-01`, the other end of that same reassociation link.
 
-  **From `0.0.9` a non-string in any of those slots draws that builder's own typed, code-tagged
+  **From `0.0.9` a non-string reaching that escape helper draws that builder's own typed, code-tagged
   refusal** (`X12_835_BUILD_INVALID_SPEC` and its eight siblings) before anything is emitted. It
   covers `number`, `boolean`, `null`, `undefined`, arrays, objects, functions, symbols and bigints.
 
@@ -234,19 +234,38 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   remittance that reassociates to the wrong claim is worse than one that fails to reassociate at all.
   `String(1e21)` is `"1e+21"`, `String(NaN)` is `"NaN"` and `String(0.1 + 0.2)` is
   `"0.30000000000000004"`. None are valid in an `AN`, `ID` or `Nn` element. **Convert at your own
-  boundary, where you can still see whether the leading zeros mattered.** Monetary and quantity
-  values have a first-class route already: `X12Decimal`.
+  boundary, where you can still see whether the leading zeros mattered.**
 
-  **Two related things this did NOT change**, both pre-existing and neither silent:
-  - The fixed-width ISA / GS slots (`senderId`, `receiverId`, `interchangeControlNumber`, …) do not
-    go through the escape helper. A number there throws an untyped `TypeError` with no `code`
-    (`value.slice is not a function`), and a numeric `interchangeControlNumber` throws the builder's
-    typed refusal with the **misleading** text "exceeds the 9-char spec limit". Both terminate; both
-    are still worth validating at your boundary.
-  - The exported `escapeRelease(value, delimiters)` now **throws `TypeError` on a non-string** rather
-    than returning `""`. If you call it directly, it is a `TypeError` and not a code-tagged library
-    error, because it is a pure text utility with no spec context to name. Nothing inside the library
-    can reach it: the builders refuse first.
+  **KEEP VALIDATING SPEC TYPES AT YOUR OWN BOUNDARY ANYWAY. The fix covers the escape helper, and
+  three classes of slot do not go through it.** This paragraph replaces the blanket "coerce your spec
+  values to strings at your own boundary" advice this page carried before `0.0.9`, and it is narrower
+  rather than gone, because that advice is still correct for everything below. All three are
+  **pre-existing, measured, and unchanged by the fix**:
+  1. **Monetary and quantity slots read `.toString()`, so a raw number passes the check.** 36 such
+     slots across six builders (12 in the 837, 12 in the 835, 4 in the 820, 4 in the 277, 3 in the
+     271, 1 in the 834). `X12Decimal` is the first-class route and the one you should use, but a bare
+     `number` is **not** refused there. Measured with `warnings.length === 0` in every case: a
+     `patientResponsibilityAmount` of `0.1 + 0.2` emits
+     `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emits `…*1e+21*…`, and `NaN`
+     emits `…*NaN*…`.
+  2. **Seven string-typed positions never call the escape helper at all**, so a number is still
+     emitted verbatim with no warning: `build999`'s `envelope.groupControlNumber` (GS-06 / GE-02),
+     `envelope.transactionSetControlNumber` (ST-02 / SE-02), `functionalGroup.disposition` (AK9-01)
+     and `transactionResponses[].disposition` (IK5-01), and `build278`'s `review.levelCode` (HL-03).
+     **AK9-01 is the one to know about:** it is an `ID` element bound to X12 code source 715, so a
+     number there tells the receiver nothing about whether the functional group was accepted, and the
+     library's own accept-with-errors guard compares it against `"A"` and does not fire.
+  3. **The fixed-width ISA / GS slots** (`senderId`, `receiverId`, `interchangeControlNumber`, …) go
+     through padding rather than escaping. A number there throws an untyped `TypeError` with no
+     `code` (`value.slice is not a function`), and a numeric `interchangeControlNumber` throws the
+     builder's typed refusal with the **misleading** text "exceeds the 9-char spec limit". Both
+     terminate rather than emitting silently, which is why they are a smaller hazard than 1 and 2.
+
+  **One other change, and it is a behaviour change:** the exported `escapeRelease(value, delimiters)`
+  now **throws `TypeError` on a non-string** rather than returning `""`. If you call it directly, it
+  is a `TypeError` and not a code-tagged library error, because it is a pure text utility with no
+  spec context to name. Nothing inside the library can reach it: the builders refuse first. A boxed
+  `new String("…")` is also refused now, where it built at `0.0.8`.
 
 - **A forged non-array in a builder spec refuses; in a few places it throws an untyped `TypeError`.**
   The types say `readonly T[]`, but a JavaScript or JSON caller can hand a builder something else. As

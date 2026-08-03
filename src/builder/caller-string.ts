@@ -1,14 +1,21 @@
 /**
- * The single route a caller-supplied ELEMENT VALUE takes into an emitted
- * segment, and the decision it encodes: **a non-string is refused, never
- * coerced.**
+ * The single route a caller-supplied element value takes **through a builder's
+ * `esc` helper**, and the decision it encodes: **a non-string reaching `esc` is
+ * refused, never coerced.**
+ *
+ * **Read that scope literally, because an earlier draft of this line said "the
+ * single route a caller-supplied ELEMENT VALUE takes into an emitted segment"
+ * and adversarial review was right to reject it.** Two measured classes of
+ * element value do not pass through here at all, and both are enumerated under
+ * "What this does NOT cover" below. This module is the chokepoint on `esc`, not
+ * on emission.
  *
  * ## The defect this exists to stop, which is a silently DROPPED identifier
  *
  * `src/builder/caller-value.ts` bounds what a refusal *says*.
  * `src/builder/caller-array.ts` bounds whether a refusal *happens* when a
  * caller forges a list. This module bounds whether an element the caller
- * supplied actually *reaches the document*.
+ * supplied and routed through `esc` actually *reaches the document*.
  *
  * Every builder escaped its element values through one helper:
  *
@@ -62,14 +69,21 @@
  *    `"1e+21"`, `String(NaN)` is `"NaN"`, `String(0.1 + 0.2)` is
  *    `"0.30000000000000004"`, and `String(-0)` is `"0"`. None are valid in an
  *    `AN`, `ID` or `Nn` element. Coercion would emit every one of them without
- *    a warning. This library already ships `X12Decimal` as the sanctioned route
- *    for numeric content, so a bare `number` in an element slot is never the
- *    right thing to have been handed.
- * 3. **No working caller is broken by refusing.** The objection to refusal is
- *    that JS/JSON callers pass numbers today - but what they get today is a
- *    document with the field gone. There is no numeric path that works and
- *    would stop working. A typed, code-tagged error at the call site is
- *    strictly better than a frozen interchange with a required element missing.
+ *    a warning. **And this is not hypothetical in this package: the 36 `esc`
+ *    slots that read `.toString()` off an `X12Decimal` emit exactly those three
+ *    strings today for a raw `number`, measured and unchanged by this slice.**
+ *    See "What this does NOT cover". `X12Decimal` is the sanctioned route for
+ *    numeric content, so a bare `number` in an element slot is never the right
+ *    thing to have been handed - but passing one is not currently refused
+ *    everywhere either, and this module should not imply that it is.
+ * 3. **No caller who was getting the value into the document is broken by
+ *    refusing.** The objection to refusal is that JS/JSON callers pass numbers
+ *    today - but what they get today is a document with the field gone. There
+ *    is no numeric path that works and would stop working. **One measured
+ *    exception, which is why this is not phrased absolutely:** a boxed
+ *    `new String("PT-ACCT-001")` built cleanly at base (it has `.length` and
+ *    `.charAt`) and is refused here, because `typeof` it is `"object"`.
+ *    Refusing it is the right call, but it did previously build.
  * 4. **Emit is the strict half of this library by standing convention.**
  *    Postel's Law is applied deliberately asymmetrically here: lenient on
  *    parse, spec-clean on emit. Coercing a caller's mistake into a document is
@@ -106,12 +120,41 @@
  * - **`buildTA1` has no `esc` at all** - every TA1 element is fixed-width and
  *   goes through `pad`. It is outside this chokepoint by construction, not by
  *   omission.
- * - **The refusal names the BUILDER, not the element position.** `esc` is
- *   unary and called 378 times across the nine modules; threading a per-slot
- *   locator through every one of them would be 378 opportunities to mislabel a
- *   slot, which is a worse trade than a message that names the builder and
- *   echoes the offending value bounded. Stated as a limit rather than claimed
- *   away.
+ * - **SEVEN string-typed element positions never call `esc` at all**, so this
+ *   chokepoint never sees them and a number is still emitted verbatim with
+ *   `warnings.length === 0`. Measured identical at base `143a6ea` and at head:
+ *   `build999`'s `envelope.groupControlNumber` (GS-06 / GE-02) gives
+ *   `GS*FA*…*12345*X*005010X231A1` and `GE*1*12345`; its
+ *   `envelope.transactionSetControlNumber` (ST-02 / SE-02) gives `ST*999*12345*…`
+ *   and `SE*6*12345`; its `functionalGroup.disposition` (AK9-01) gives
+ *   `AK9*12345*1*1*1`; `response.disposition` (IK5-01) and `build278`'s
+ *   `review.levelCode` (HL-03) are the same shape. **AK9-01 is the sharpest:**
+ *   it is an `ID` element bound to X12 code source 715, so `12345` tells a
+ *   receiver nothing about whether the group was accepted, and `build999`'s own
+ *   `X12_ACK_ACCEPT_WITH_ERRORS` guard compares `disposition === "A"`, which a
+ *   number walks past exactly the way it walked past `build835`'s
+ *   `patientControlNumber === ""`. **This is the same mechanism as the filed
+ *   defect, in a builder this slice otherwise fixes.** It is `PRE-EXISTING`,
+ *   outside the item's stated `esc()` scope, unchanged here, pinned in
+ *   `test/builder-string-type.test.ts` and disclosed in `KNOWN-LIMITATIONS.md`.
+ * - **THIRTY-SIX `esc` slots read `.toString()` off what the types say is an
+ *   `X12Decimal`**, so a raw `number` arrives here already a string and is
+ *   passed through. Counted comment-stripped on this tree: 12 in `build-837`,
+ *   12 in `build-835`, 4 in `build-820`, 4 in `build-277`, 3 in `build-271`, 1
+ *   in `build-834`. Measured identical at base and head, `warnings.length === 0`
+ *   in all three: a `patientResponsibilityAmount` of `0.1 + 0.2` emits
+ *   `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emits
+ *   `…*1e+21*…`, and `NaN` emits `…*NaN*…`. Closing this is a different
+ *   decision from the one this module makes (whether an element slot may take
+ *   anything but an `X12Decimal` instance), so it is disclosed, not fixed.
+ * - **The refusal names the BUILDER, not the element position.** `esc` is unary
+ *   and invoked **411 times on 378 lines** across the nine modules (counted
+ *   comment-stripped on this tree, `ctx.esc(...)` included, and pinned by the
+ *   gate so the figure cannot drift); threading a per-slot locator through every
+ *   one of them would be 411 opportunities to mislabel a slot, which is a worse
+ *   trade than a message that names the builder and echoes the offending value
+ *   bounded. Stated as a limit rather than claimed away. **An earlier draft
+ *   published "378 call sites", which is the LINE count.**
  *
  * @see `test/builder-string-type.test.ts` - the source gate that requires every
  * builder module to build its `esc` through {@link makeCallerEscaper}.

@@ -146,13 +146,24 @@ own CLM-01. It now draws that builder's typed, code-tagged refusal before anythi
 thinking.** A JSON payload that carried `"0012345"` as a number lost the leading zeros before the
 library saw it, so coercion would emit `12345`: a well-formed identifier that is not the one you sent,
 and a remittance that reassociates to the **wrong** claim. Convert at your own boundary, where you can
-still tell whether the zeros mattered; use `X12Decimal` for monetary and quantity values.
+still tell whether the zeros mattered.
 
-Two neighbours were **not** changed, and neither is silent: the fixed-width ISA / GS slots do not use
-the escape helper, so a number there throws an untyped `TypeError` (or, for
-`interchangeControlNumber`, a typed refusal whose text misleadingly says "exceeds the 9-char spec
-limit"); and the exported `escapeRelease` now throws `TypeError` on a non-string instead of returning
-`""`. See `KNOWN-LIMITATIONS.md`.
+**Keep validating spec types at your own boundary anyway. The fix covers the escape helper, and three
+classes of slot do not go through it**, all pre-existing and unchanged. **Monetary and quantity slots
+read `.toString()`, so a raw number is not refused there** (36 slots across six builders): a
+`patientResponsibilityAmount` of `0.1 + 0.2` still emits `…*0.30000000000000004*…`, `1e21` still emits
+`…*1e+21*…` and `NaN` still emits `…*NaN*…`, each with zero warnings. `X12Decimal` is the route you
+should use, but it is not enforced. **Seven string-typed positions never call the escape helper at
+all** and still emit a number verbatim: the 999's `groupControlNumber` (GS-06 / GE-02),
+`transactionSetControlNumber` (ST-02 / SE-02), `disposition` (AK9-01 and IK5-01), and the 278's
+`levelCode` (HL-03); AK9-01 is an `ID` element bound to X12 code source 715, so a number there tells
+the receiver nothing about whether the group was accepted. **The fixed-width ISA / GS slots** throw an
+untyped `TypeError` (or, for `interchangeControlNumber`, a typed refusal whose text misleadingly says
+"exceeds the 9-char spec limit"), which at least terminates.
+
+One other behaviour change: the exported `escapeRelease` now throws `TypeError` on a non-string
+instead of returning `""`, and a boxed `new String("…")` is refused where it built at `0.0.8`. See
+`KNOWN-LIMITATIONS.md`.
 
 **`err.code` is still the thing to branch on and the safest thing to log.** Tracked in
 `KNOWN-LIMITATIONS.md`; the parse side above is unaffected and stronger.

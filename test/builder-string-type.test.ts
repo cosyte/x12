@@ -59,18 +59,32 @@
  * ## The source scan is the exhaustive half
  *
  * The behavioural cases below drive a number into one element of each builder.
- * What covers all 378 `esc` call sites is {@link escaperDeclarations}: it walks
+ * What covers all 411 `esc` invocations is {@link escaperDeclarations}: it walks
  * every builder module and requires the module's `esc` to be built by
  * `makeCallerEscaper(`, and {@link directEscapeCalls}, which requires no
  * builder module to reach `escapeRelease` on its own. A tenth builder that
  * writes the base one-liner reds this file without anyone remembering to add a
  * case.
  *
- * ## Four limits, written down rather than claimed away
+ * ## Six limits, written down rather than claimed away
  *
+ * 0. **This gate covers what goes through `esc`, and TWO classes of element
+ *    value do not.** SEVEN string-typed positions never call `esc` at all
+ *    (`build999`'s GS-06 / GE-02, ST-02 / SE-02, AK9-01 and IK5-01, and
+ *    `build278`'s HL-03), and THIRTY-SIX `esc` slots read `.toString()` off
+ *    what the types say is an `X12Decimal`, so a raw `number` arrives already a
+ *    string. Both are `PRE-EXISTING`, both are outside the item's stated
+ *    `esc()` scope, both are measured and pinned at the bottom of this file,
+ *    and both are disclosed in `KNOWN-LIMITATIONS.md`. **An earlier draft of
+ *    this file and of `caller-string.ts` called the chokepoint "the single
+ *    route a caller-supplied element value takes into an emitted segment",
+ *    which these falsify; adversarial review was right to reject it.**
  * 1. **The refusal names the BUILDER, not the element position.** `esc` is
- *    unary and called 378 times; threading a per-slot locator through every one
- *    of them would be 378 chances to mislabel a slot. The message names the
+ *    unary and invoked 411 times on 378 lines (counted comment-stripped on this
+ *    tree, `ctx.esc(...)` included, and pinned below); threading a per-slot
+ *    locator through every one of them would be 411 chances to mislabel a slot.
+ *    An earlier draft of this file published "378 call sites", which is the
+ *    LINE count. The message names the
  *    builder and echoes the offending value bounded, and that is the whole
  *    locator a caller gets.
  * 2. **The ISA/GS fixed-width slots are NOT covered and are NOT fixed here.**
@@ -197,6 +211,24 @@ function directEscapeCalls(file: string): number {
   return (code(file).match(/\bescapeRelease\(/gu) ?? []).length;
 }
 
+/**
+ * Every `esc(` / `ctx.esc(` INVOCATION in a builder module, comment-stripped.
+ *
+ * Deliberately counts invocations and not matching lines: a first draft of this
+ * slice published "378 `esc` call sites" in four places, and 378 is the number
+ * of LINES that contain one. `\besc\(` also has to admit `ctx.esc(`, because
+ * the domain builders pass the escaper down inside an emit context and that is
+ * where most of the invocations live (66 of `build-837`'s 82).
+ */
+function escInvocations(file: string): number {
+  return (code(file).match(/\besc\(/gu) ?? []).length;
+}
+
+/** Every `esc(` invocation whose argument reaches `.toString()` on the same line. */
+function escToStringSlots(file: string): number {
+  return (code(file).match(/\besc\([^\n]*\.toString\(\)/gu) ?? []).length;
+}
+
 describe("builder element escaping: the source gate", () => {
   const modules = builderModules();
   const declarations = modules.flatMap(escaperDeclarations);
@@ -212,6 +244,42 @@ describe("builder element escaping: the source gate", () => {
     expect(
       declarations.some((d) => d.file.endsWith(join("transactions", "ack", "build-ta1.ts"))),
     ).toBe(false);
+  });
+
+  it("pins the invocation count, because the first draft published a line count", () => {
+    // 411 invocations on 378 lines, counted comment-stripped on this tree with
+    // `ctx.esc(...)` included. The published figure and the asserted figure are
+    // the same number, so prose cannot drift away from the code.
+    const invocations = modules.reduce((n, m) => n + escInvocations(m), 0);
+    const lines = modules.reduce(
+      (n, m) =>
+        n +
+        code(m)
+          .split("\n")
+          .filter((l) => /\besc\(/u.test(l)).length,
+      0,
+    );
+    expect(invocations).toBe(411);
+    expect(lines).toBe(378);
+    expect(invocations).toBeGreaterThan(lines);
+  });
+
+  it("pins the 36 esc slots that read .toString(), which this gate does NOT guard", () => {
+    // A raw `number` in a slot the types say is an `X12Decimal` has its own
+    // `.toString()`, so it arrives at the chokepoint already a string and is
+    // passed through. Counted comment-stripped on this tree: build-837 12,
+    // build-835 12, build-820 4, build-277 4, build-271 3, build-834 1.
+    // Pinned so the residual cannot grow unnoticed.
+    const byFile = new Map(
+      modules.map((m) => [m.slice(SRC.length + 1), escToStringSlots(m)] as const),
+    );
+    expect([...byFile.values()].reduce((a, b) => a + b, 0)).toBe(36);
+    expect(byFile.get(join("transactions", "claim", "build-837.ts"))).toBe(12);
+    expect(byFile.get(join("transactions", "remit", "build-835.ts"))).toBe(12);
+    expect(byFile.get(join("transactions", "premium", "build-820.ts"))).toBe(4);
+    expect(byFile.get(join("transactions", "status", "build-277.ts"))).toBe(4);
+    expect(byFile.get(join("transactions", "eligibility", "build-271.ts"))).toBe(3);
+    expect(byFile.get(join("transactions", "enrollment", "build-834.ts"))).toBe(1);
   });
 
   it("builds every one of them through makeCallerEscaper", () => {
@@ -543,8 +611,8 @@ const MEMBER = {
  * CLP-01 reassociates back to, so the same one-line mechanism could drop both
  * ends of the claim-to-payment link.
  *
- * They are one element each, not a sweep - what covers all 378 `esc` sites is
- * the source scan above.
+ * They are one element each, not a sweep - what covers all 411 `esc`
+ * invocations is the source scan above.
  */
 const CASES: readonly (readonly [string, (v: unknown) => unknown, new () => Error])[] = [
   [
@@ -611,7 +679,7 @@ const CASES: readonly (readonly [string, (v: unknown) => unknown, new () => Erro
     Enrollment834BuildError as unknown as new () => Error,
   ],
   [
-    "build820 remittance.entity.idCode (NM1-09)",
+    "build820 remittance.entity.idCode (ENT-04)",
     (v) =>
       build820(
         asJsCaller({
@@ -741,7 +809,7 @@ const CASES: readonly (readonly [string, (v: unknown) => unknown, new () => Erro
     ClaimStatus277BuildError as unknown as new () => Error,
   ],
   [
-    "build278Request review.serviceTypeCode (UM-04)",
+    "build278Request review.serviceTypeCode (UM-03)",
     (v) =>
       build278Request(
         asJsCaller({
@@ -942,5 +1010,113 @@ describe("the fixed-width envelope slots: the disclosed residual", () => {
     }
     expect(thrown).toBeInstanceOf(Enrollment834BuildError);
     expect((thrown as Error).message).toContain("exceeds the 9-char spec limit");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The two disclosed residuals adversarial review found, both PRE-EXISTING and
+// both outside the item's `esc()` scope. Pinned so they cannot change shape
+// silently, and so this file cannot go on claiming more than it guards.
+// ---------------------------------------------------------------------------
+
+const ACK_GROUP = {
+  functionalIdCode: "HC",
+  groupControlNumber: "1",
+  versionRelease: "005010X222A2",
+  disposition: "A",
+  numberOfTransactionSets: 1,
+  numberOfReceivedTransactionSets: 1,
+  numberOfAcceptedTransactionSets: 1,
+  transactionResponses: [
+    {
+      transactionSetIdCode: "837",
+      transactionSetControlNumber: "0001",
+      implementationConventionReference: "005010X222A2",
+      disposition: "A",
+    },
+  ],
+};
+
+describe("string-typed slots that never call esc: the disclosed residual", () => {
+  // A MEASUREMENT of a known gap, not an endorsement. These positions are
+  // emitted verbatim without going through `esc`, so `makeCallerEscaper` never
+  // sees them and a number is still emitted with zero warnings. Identical at
+  // base commit `143a6ea` and at head. Disclosed in `KNOWN-LIMITATIONS.md`.
+  const cases: readonly (readonly [string, () => X12Interchange, string])[] = [
+    [
+      "build999 envelope.groupControlNumber (GS-06 / GE-02)",
+      () =>
+        build999(
+          asJsCaller({
+            envelope: { ...ENVELOPE, groupControlNumber: 12_345 },
+            functionalGroup: ACK_GROUP,
+          }),
+        ),
+      "GE*1*12345",
+    ],
+    [
+      "build999 envelope.transactionSetControlNumber (ST-02 / SE-02)",
+      () =>
+        build999(
+          asJsCaller({
+            envelope: { ...ENVELOPE, transactionSetControlNumber: 12_345 },
+            functionalGroup: ACK_GROUP,
+          }),
+        ),
+      "ST*999*12345*005010X231A1",
+    ],
+    [
+      "build999 functionalGroup.disposition (AK9-01)",
+      () =>
+        build999(
+          asJsCaller({
+            envelope: ENVELOPE,
+            functionalGroup: { ...ACK_GROUP, disposition: 12_345 },
+          }),
+        ),
+      "AK9*12345*1*1*1",
+    ],
+  ];
+
+  it.each(cases)("still emits a number verbatim for %s", (_label, run, expected) => {
+    const ix = run();
+    expect(serializeX12(ix)).toContain(expected);
+    expect(ix.warnings).toHaveLength(0);
+  });
+
+  it("walks past build999's own disposition guard, exactly as the filed defect did", () => {
+    // AK9-01 is an `ID` element bound to X12 code source 715, so `12345` tells
+    // a receiver nothing about whether the functional group was accepted. And
+    // `X12_ACK_ACCEPT_WITH_ERRORS` compares `disposition === "A"`, which a
+    // number is not - the same walk-past as `patientControlNumber === ""`.
+    const ix = build999(
+      asJsCaller({ envelope: ENVELOPE, functionalGroup: { ...ACK_GROUP, disposition: 12_345 } }),
+    );
+    expect(serializeX12(ix)).toContain("AK9*12345");
+  });
+});
+
+describe("esc slots that read .toString(): the disclosed residual", () => {
+  // A raw `number` in a slot the types say is an `X12Decimal` has its own
+  // `.toString()`, so it reaches `esc` already a string and is passed through.
+  // These are the exact three renderings `caller-string.ts` names as
+  // disqualifying, and they are emitted with zero warnings, identically at base
+  // commit `143a6ea` and at head. Disclosed in `KNOWN-LIMITATIONS.md`.
+  const cases: readonly (readonly [string, number, string])[] = [
+    ["an IEEE-754 artifact", 0.1 + 0.2, "*0.30000000000000004*"],
+    ["exponential notation", 1e21, "*1e+21*"],
+    ["NaN", NaN, "*NaN*"],
+  ];
+
+  it.each(cases)("still emits %s in CLP-05", (_label, value, expected) => {
+    const spec = remitSpec("PT-ACCT-001") as { claims: { patientResponsibilityAmount: unknown }[] };
+    const ix = build835(
+      asJsCaller({
+        ...spec,
+        claims: [{ ...spec.claims[0], patientResponsibilityAmount: value }],
+      }),
+    );
+    expect(serializeX12(ix)).toContain(expected);
+    expect(ix.warnings).toHaveLength(0);
   });
 });

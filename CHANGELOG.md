@@ -166,11 +166,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mistake. A refusal message that throws replaces a typed, code-tagged error with an uncaught
   `TypeError`, so its duty is to survive anything; an emitted document's duty is to invent nothing.
 
-  Not changed, and neither is silent: the fixed-width ISA / GS slots go through `pad` / `padControl`
-  rather than the escape helper, so a number there throws an untyped `TypeError` and a numeric
-  `interchangeControlNumber` throws a typed refusal whose text misleadingly says "exceeds the 9-char
-  spec limit". `buildTA1` has no escape helper at all. Both are pinned by the new suite and disclosed
-  in `KNOWN-LIMITATIONS.md`.
+  **The guard is on the escape helper, not on emission, and three classes of slot do not go through
+  it.** All three are pre-existing, measured, unchanged here, pinned by the new suite and disclosed in
+  `KNOWN-LIMITATIONS.md`. **36 `esc` slots read `.toString()` off what the types say is an
+  `X12Decimal`**, so a raw number arrives already a string and is passed through: a
+  `patientResponsibilityAmount` of `0.1 + 0.2` still emits `…*0.30000000000000004*…`, `1e21` still
+  emits `…*1e+21*…` and `NaN` still emits `…*NaN*…`, each with zero warnings, which are the exact
+  three renderings this entry names as disqualifying. **Seven string-typed positions never call the
+  escape helper at all**: the 999's `groupControlNumber` (GS-06 / GE-02), `transactionSetControlNumber`
+  (ST-02 / SE-02) and `disposition` (AK9-01 and IK5-01), and the 278's `levelCode` (HL-03). AK9-01 is
+  an `ID` element bound to X12 code source 715, and `build999`'s own accept-with-errors guard compares
+  it against `"A"`, so a number walks past it the same way it walked past
+  `patientControlNumber === ""`. **The fixed-width ISA / GS slots** go through `pad` / `padControl`, so
+  a number throws an untyped `TypeError` and a numeric `interchangeControlNumber` throws a typed
+  refusal whose text misleadingly says "exceeds the 9-char spec limit"; `buildTA1` has no escape helper
+  at all.
+
+  **The "no working caller is broken" claim holds with one measured exception:** a boxed
+  `new String("PT-ACCT-001")` built cleanly at `0.0.8` and is refused now, because `typeof` it is
+  `"object"`.
 
 - **The `attw` publish gate no longer passes a tarball that carries no type declarations.** The
   `attw` script was the bare CLI, and `@arethetypeswrong/cli` returns 0 whenever its analysis found
