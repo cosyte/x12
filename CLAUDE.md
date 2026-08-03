@@ -50,36 +50,47 @@ positionally recoverable. **The filed 835 case reproduces exactly**:
   **refuses** because a document must invent nothing. _Survive anything_ vs
   _invent nothing_. Opposite duties, opposite answers.
 
-  **▶ THE FIRST DRAFT CLAIMED THIS WAS "THE SINGLE ROUTE A CALLER-SUPPLIED
-  ELEMENT VALUE TAKES INTO AN EMITTED SEGMENT" AND A REFUTER FALSIFIED IT TWICE.
-  THE MECHANISM WAS RIGHT; THE CLAIM WAS TOO WIDE. Both classes are
-  `PRE-EXISTING`, both outside the item's stated `esc()` scope, both now measured
-  and pinned in the gate.**
-  **(1) THIRTY-SIX `esc` SLOTS READ `.toString()` OFF AN `X12Decimal`**, so a raw
+  **▶ TWO DRAFTS PUBLISHED AN EXHAUSTIVE COUNTED CENSUS OF WHAT BYPASSES THE
+  CHOKEPOINT AND A REFUTER MEASURED BOTH FALSE. THE MECHANISM WAS RIGHT BOTH
+  TIMES; THE CLAIM WAS TOO WIDE BOTH TIMES.** First "the single route a
+  caller-supplied ELEMENT VALUE takes into an emitted segment", then "SEVEN
+  string-typed positions" - each round found more (GS-04, GS-05, GS-07,
+  `build837`'s LX-01). **The remedy on round three was to CUT THE CLAIM BACK, not
+  to grow the census**, per the refuter's own convergence call: the guard covers
+  values routed through `esc`; other positions, including some envelope,
+  control-number and line-counter slots, are emitted raw. Not a census. **If you
+  find one more, that is expected and is not a new finding.** All of it is
+  `PRE-EXISTING` and outside the item's stated `esc()` scope.
+
+  **THE ONE COUNT THAT IS EXHAUSTIVE, BECAUSE THE GATE ASSERTS IT FILE BY FILE:
+  THIRTY-SIX `esc` SLOTS READ `.toString()` OFF AN `X12Decimal`**, so a raw
   `number` arrives at the chokepoint already a string: 12 in `build-837`, 12 in
   `build-835`, 4 in `build-820`, 4 in `build-277`, 3 in `build-271`, 1 in
   `build-834`. Head, `warnings.length === 0`: a `patientResponsibilityAmount` of
   `0.1+0.2` emits `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21`
   emits `…*1e+21*…`, `NaN` emits `…*NaN*…` - **the exact three strings this
   slice's own prose names as disqualifying.**
-  **(2) SEVEN STRING-TYPED POSITIONS NEVER CALL `esc` AT ALL:** `build999`'s
-  `envelope.groupControlNumber` (GS-06/GE-02, `GE*1*12345`),
-  `envelope.transactionSetControlNumber` (ST-02/SE-02, `ST*999*12345*…`),
-  `functionalGroup.disposition` (AK9-01, `AK9*12345*1*1*1`),
-  `transactionResponses[].disposition` (IK5-01), and `build278`'s
-  `review.levelCode` (HL-03). **AK9-01 is the sharpest: an `ID` element bound to
-  X12 code source 715, and `build999`'s own `X12_ACK_ACCEPT_WITH_ERRORS` guard
-  compares `disposition === "A"`, which a number walks past exactly as it walked
-  past `patientControlNumber === ""`.** Same mechanism, unfixed, in a builder
-  this slice otherwise fixes. **Worth its own item, together with the
-  `PRE-EXISTING` delimiter-injection those same raw slots admit
-  (`groupControlNumber: "1*BOGUS"` shifts GS-07/GS-08 with zero warnings).**
 
-  **ALSO NOT FIXED, PINNED AS RESIDUALS:** the fixed-width ISA/GS slots go
+  **THE SHARPEST KNOWN RAW SLOT IS `build999`'s `functionalGroup.disposition`
+  (AK9-01)**, an `ID` element bound to X12 code source 715: `AK9*12345*1*1*1`
+  with zero warnings, and `build999`'s own `X12_ACK_ACCEPT_WITH_ERRORS` guard
+  compares `disposition === "A"`, which a number walks past exactly as it walked
+  past `patientControlNumber === ""`. **Same mechanism, unfixed, in a builder
+  this slice otherwise fixes.** Worth its own item together with the
+  `PRE-EXISTING` delimiter injection the raw slots admit (`build999` with
+  `groupControlNumber: "1*BOGUS"` emits `GS*FA*…*1*BOGUS*X*005010X231A1`, shifting
+  GS-07/GS-08 by one; `build837` with `lineNumber: "1*BOGUS"` gives `LX*1*BOGUS`;
+  both zero warnings. `build834`'s `groupControlNumber` DOES go through `esc` and
+  correctly gives `1?*BOGUS`, which is the difference the helper makes). **Not stop-the-line: these fail at the receiver, they do
+  not mint a wrong clinical value.**
+
+  **ALSO NOT FIXED, PINNED AS RESIDUALS:** the fixed-width ISA slots go
   through `pad`/`padControl`, not `esc`. `pad(1, 15)` throws an untyped
   `TypeError` and `padControl(1, 9)` throws a **typed but MISLEADING** "exceeds
   the 9-char spec limit" for a one-digit number. Neither is silent, so neither is
-  this defect. `buildTA1` has no `esc` at all (every element fixed-width). And
+  this defect - but that is a property of those two slots and not of the
+  envelope, since GS-04 and GS-05 above are envelope elements and ARE silent.
+  `buildTA1` has no `esc` at all (every element fixed-width). And
   the refusal names the **builder, not the element position**: `esc` is unary and
   **invoked 411 times on 378 lines** (comment-stripped, `ctx.esc(...)` included,
   and the gate asserts both numbers). **The first draft published "378 call

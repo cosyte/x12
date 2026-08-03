@@ -107,46 +107,58 @@
  * A refusal message must never fail; a document must never lie. Those pull in
  * opposite directions on purpose.
  *
- * ## What this does NOT cover, measured rather than assumed
+ * ## What this does NOT cover, and why this section is deliberately NOT a census
  *
- * - **The ISA/GS fixed-width slots do not go through `esc`.** They go through
- *   each module's `pad` / `padControl`, and a number there already terminates
- *   rather than emitting empty: `pad(1, 15)` throws an untyped `TypeError`
- *   (`value.slice is not a function`) and `padControl(1, 9)` throws the
- *   module's typed refusal with the **misleading** text "exceeds the 9-char
- *   spec limit". Both are wrong in their own way and neither is silent, so they
- *   are a different defect from this one. Unchanged here and disclosed in
- *   `KNOWN-LIMITATIONS.md`.
- * - **`buildTA1` has no `esc` at all** - every TA1 element is fixed-width and
- *   goes through `pad`. It is outside this chokepoint by construction, not by
- *   omission.
- * - **SEVEN string-typed element positions never call `esc` at all**, so this
- *   chokepoint never sees them and a number is still emitted verbatim with
- *   `warnings.length === 0`. Measured identical at base `143a6ea` and at head:
- *   `build999`'s `envelope.groupControlNumber` (GS-06 / GE-02) gives
- *   `GS*FA*…*12345*X*005010X231A1` and `GE*1*12345`; its
- *   `envelope.transactionSetControlNumber` (ST-02 / SE-02) gives `ST*999*12345*…`
- *   and `SE*6*12345`; its `functionalGroup.disposition` (AK9-01) gives
- *   `AK9*12345*1*1*1`; `response.disposition` (IK5-01) and `build278`'s
- *   `review.levelCode` (HL-03) are the same shape. **AK9-01 is the sharpest:**
- *   it is an `ID` element bound to X12 code source 715, so `12345` tells a
- *   receiver nothing about whether the group was accepted, and `build999`'s own
- *   `X12_ACK_ACCEPT_WITH_ERRORS` guard compares `disposition === "A"`, which a
- *   number walks past exactly the way it walked past `build835`'s
- *   `patientControlNumber === ""`. **This is the same mechanism as the filed
- *   defect, in a builder this slice otherwise fixes.** It is `PRE-EXISTING`,
- *   outside the item's stated `esc()` scope, unchanged here, pinned in
- *   `test/builder-string-type.test.ts` and disclosed in `KNOWN-LIMITATIONS.md`.
+ * **Two consecutive adversarial rounds published an exhaustive, counted list of
+ * the slots that bypass this chokepoint, and BOTH were measured false** - first
+ * "the single route a caller-supplied element value takes into an emitted
+ * segment", then "SEVEN string-typed positions". Each round found more (GS-04,
+ * GS-05, GS-07 and `build837`'s LX-01 among them). Growing the count a third
+ * time is the runaway ADR 0016 exists to stop, so the claim is cut back to the
+ * form that cannot be falsified by finding one more:
+ *
+ * > **This module guards values routed through a builder's `esc` helper.
+ * > Other positions - including some envelope, control-number and
+ * > line-counter slots - are emitted raw, and a wrong-typed value there is
+ * > still emitted verbatim with no warning. It is not a complete list, and
+ * > callers should validate spec types at their own boundary.**
+ *
+ * That whole class is `PRE-EXISTING` (byte-identical at base `143a6ea`),
+ * outside the item's stated `esc()` scope, and unchanged here.
+ * `test/builder-string-type.test.ts` pins named EXAMPLES of it so it cannot
+ * change shape unnoticed; the examples are not the boundary.
+ *
+ * Three specifics are worth naming, because each is a different shape:
+ *
  * - **THIRTY-SIX `esc` slots read `.toString()` off what the types say is an
  *   `X12Decimal`**, so a raw `number` arrives here already a string and is
- *   passed through. Counted comment-stripped on this tree: 12 in `build-837`,
- *   12 in `build-835`, 4 in `build-820`, 4 in `build-277`, 3 in `build-271`, 1
- *   in `build-834`. Measured identical at base and head, `warnings.length === 0`
- *   in all three: a `patientResponsibilityAmount` of `0.1 + 0.2` emits
+ *   passed through. This one IS counted, because the gate asserts the census
+ *   file by file: 12 in `build-837`, 12 in `build-835`, 4 in `build-820`, 4 in
+ *   `build-277`, 3 in `build-271`, 1 in `build-834`. Measured identical at base
+ *   and head, `warnings.length === 0` in all three cases: a
+ *   `patientResponsibilityAmount` of `0.1 + 0.2` emits
  *   `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emits
- *   `…*1e+21*…`, and `NaN` emits `…*NaN*…`. Closing this is a different
- *   decision from the one this module makes (whether an element slot may take
- *   anything but an `X12Decimal` instance), so it is disclosed, not fixed.
+ *   `…*1e+21*…`, and `NaN` emits `…*NaN*…`. Closing it is a different decision
+ *   from the one this module makes (whether an element slot may take anything
+ *   but an `X12Decimal` instance), so it is disclosed, not fixed.
+ * - **`build999`'s `functionalGroup.disposition` (AK9-01) is the sharpest known
+ *   example of the raw class.** It is an `ID` element bound to X12 code source
+ *   715, so a number tells a receiver nothing about whether the group was
+ *   accepted, and `build999`'s own `X12_ACK_ACCEPT_WITH_ERRORS` guard compares
+ *   `disposition === "A"`, which a number walks past exactly the way it walked
+ *   past `build835`'s `patientControlNumber === ""`. **Same mechanism as the
+ *   filed defect, in a builder this slice otherwise fixes.**
+ * - **The ISA/GS fixed-width slots go through `pad` / `padControl`, not `esc`.**
+ *   `pad(1, 15)` throws an untyped `TypeError` (`value.slice is not a
+ *   function`) and `padControl(1, 9)` throws the module's typed refusal with the
+ *   **misleading** text "exceeds the 9-char spec limit". Those two terminate,
+ *   which is better than emitting silently - but do NOT read that as "the
+ *   envelope is safe": `groupDate` (GS-04) and `groupTime` (GS-05) go through
+ *   neither `pad` nor `esc` and emit a number verbatim. `buildTA1` has no `esc`
+ *   at all, every TA1 element being fixed-width.
+ *
+ * One limit of the guard itself, rather than of its scope:
+ *
  * - **The refusal names the BUILDER, not the element position.** `esc` is unary
  *   and invoked **411 times on 378 lines** across the nine modules (counted
  *   comment-stripped on this tree, `ctx.esc(...)` included, and pinned by the

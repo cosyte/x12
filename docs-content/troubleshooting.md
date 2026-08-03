@@ -148,18 +148,23 @@ library saw it, so coercion would emit `12345`: a well-formed identifier that is
 and a remittance that reassociates to the **wrong** claim. Convert at your own boundary, where you can
 still tell whether the zeros mattered.
 
-**Keep validating spec types at your own boundary anyway. The fix covers the escape helper, and three
-classes of slot do not go through it**, all pre-existing and unchanged. **Monetary and quantity slots
-read `.toString()`, so a raw number is not refused there** (36 slots across six builders): a
-`patientResponsibilityAmount` of `0.1 + 0.2` still emits `…*0.30000000000000004*…`, `1e21` still emits
-`…*1e+21*…` and `NaN` still emits `…*NaN*…`, each with zero warnings. `X12Decimal` is the route you
-should use, but it is not enforced. **Seven string-typed positions never call the escape helper at
-all** and still emit a number verbatim: the 999's `groupControlNumber` (GS-06 / GE-02),
-`transactionSetControlNumber` (ST-02 / SE-02), `disposition` (AK9-01 and IK5-01), and the 278's
-`levelCode` (HL-03); AK9-01 is an `ID` element bound to X12 code source 715, so a number there tells
-the receiver nothing about whether the group was accepted. **The fixed-width ISA / GS slots** throw an
-untyped `TypeError` (or, for `interchangeControlNumber`, a typed refusal whose text misleadingly says
-"exceeds the 9-char spec limit"), which at least terminates.
+**Keep validating spec types at your own boundary anyway. The fix guards values routed through the
+escape helper, and not every element position goes through it**, all pre-existing and unchanged.
+**Monetary and quantity slots read `.toString()`, so a raw number is not refused there** (36 slots
+across six builders, a count the suite asserts file by file): a `patientResponsibilityAmount` of
+`0.1 + 0.2` still emits `…*0.30000000000000004*…`, `1e21` still emits `…*1e+21*…` and `NaN` still
+emits `…*NaN*…`, each with zero warnings. `X12Decimal` is the route you should use, but it is not
+enforced. **Some string-typed positions never call the escape helper at all** and still emit a number
+verbatim, or an unescaped delimiter: known examples are the 999's `groupControlNumber` (GS-06 /
+GE-02), `transactionSetControlNumber` (ST-02 / SE-02) and `disposition` (AK9-01 and IK5-01), the
+278's `levelCode` (HL-03), `groupDate` / `groupTime` (GS-04 / GS-05), and the 837's `lineNumber`
+(LX-01). **That is a list of examples and not a census** - two drafts of this page
+published an exhaustive count and both were measured incomplete, so validate at your boundary rather
+than reading a slot's absence as a guarantee. AK9-01 is the one to know about: it is an `ID` element
+bound to X12 code source 715, so a number there tells the receiver nothing about whether the group
+was accepted. **The fixed-width ISA slots** throw an untyped `TypeError` (or, for
+`interchangeControlNumber`, a typed refusal whose text misleadingly says "exceeds the 9-char spec
+limit"), which at least terminates.
 
 One other behaviour change: the exported `escapeRelease` now throws `TypeError` on a non-string
 instead of returning `""`, and a boxed `new String("…")` is refused where it built at `0.0.8`. See

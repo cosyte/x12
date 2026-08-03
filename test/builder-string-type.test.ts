@@ -68,17 +68,21 @@
  *
  * ## Six limits, written down rather than claimed away
  *
- * 0. **This gate covers what goes through `esc`, and TWO classes of element
- *    value do not.** SEVEN string-typed positions never call `esc` at all
- *    (`build999`'s GS-06 / GE-02, ST-02 / SE-02, AK9-01 and IK5-01, and
- *    `build278`'s HL-03), and THIRTY-SIX `esc` slots read `.toString()` off
- *    what the types say is an `X12Decimal`, so a raw `number` arrives already a
- *    string. Both are `PRE-EXISTING`, both are outside the item's stated
- *    `esc()` scope, both are measured and pinned at the bottom of this file,
- *    and both are disclosed in `KNOWN-LIMITATIONS.md`. **An earlier draft of
- *    this file and of `caller-string.ts` called the chokepoint "the single
- *    route a caller-supplied element value takes into an emitted segment",
- *    which these falsify; adversarial review was right to reject it.**
+ * 0. **This gate covers what goes through `esc`, and other element positions do
+ *    not go through it.** Some are emitted raw, so a wrong-typed value there is
+ *    still emitted verbatim with no warning; THIRTY-SIX `esc` slots read
+ *    `.toString()` off what the types say is an `X12Decimal`, so a raw `number`
+ *    arrives already a string. All of it is `PRE-EXISTING`, outside the item's
+ *    stated `esc()` scope, and disclosed in `KNOWN-LIMITATIONS.md`. **This
+ *    sentence is deliberately NOT a census, and that is a correction: two
+ *    consecutive drafts published an exhaustive counted list here** (first
+ *    "the single route a caller-supplied element value takes into an emitted
+ *    segment", then "SEVEN string-typed positions") **and adversarial review
+ *    measured both false, finding GS-04, GS-05, GS-07 and `build837`'s LX-01
+ *    among the rest.** The behavioural cases at the bottom of this file pin
+ *    named EXAMPLES so the class cannot change shape unnoticed; the examples
+ *    are not the boundary. The `.toString()` census IS counted, because this
+ *    file asserts it file by file.
  * 1. **The refusal names the BUILDER, not the element position.** `esc` is
  *    unary and invoked 411 times on 378 lines (counted comment-stripped on this
  *    tree, `ctx.esc(...)` included, and pinned below); threading a per-slot
@@ -218,7 +222,10 @@ function directEscapeCalls(file: string): number {
  * slice published "378 `esc` call sites" in four places, and 378 is the number
  * of LINES that contain one. `\besc\(` also has to admit `ctx.esc(`, because
  * the domain builders pass the escaper down inside an emit context and that is
- * where most of the invocations live (66 of `build-837`'s 82).
+ * where most of the invocations live: 72 of `build-837`'s 82 are `ctx.esc(`.
+ * (An earlier draft of this very sentence wrote "66 of 82", which is the
+ * `ctx.esc(` LINE count against the total INVOCATION count. Third instance of
+ * the same mistake in this slice; it is not a hard one to make.)
  */
 function escInvocations(file: string): number {
   return (code(file).match(/\besc\(/gu) ?? []).length;
@@ -250,6 +257,10 @@ describe("builder element escaping: the source gate", () => {
     // 411 invocations on 378 lines, counted comment-stripped on this tree with
     // `ctx.esc(...)` included. The published figure and the asserted figure are
     // the same number, so prose cannot drift away from the code.
+    //
+    // A legitimate builder edit WILL red this. The remedy is to update this
+    // number and the places that publish it in the SAME commit, which is the
+    // whole point of pinning it. Never delete the assertion to get green.
     const invocations = modules.reduce((n, m) => n + escInvocations(m), 0);
     const lines = modules.reduce(
       (n, m) =>
@@ -1037,11 +1048,13 @@ const ACK_GROUP = {
   ],
 };
 
-describe("string-typed slots that never call esc: the disclosed residual", () => {
-  // A MEASUREMENT of a known gap, not an endorsement. These positions are
-  // emitted verbatim without going through `esc`, so `makeCallerEscaper` never
-  // sees them and a number is still emitted with zero warnings. Identical at
-  // base commit `143a6ea` and at head. Disclosed in `KNOWN-LIMITATIONS.md`.
+describe("string-typed slots that never call esc: EXAMPLES of the disclosed residual", () => {
+  // A MEASUREMENT of a known gap, not an endorsement, and deliberately NOT a
+  // census: two drafts of this slice published an exhaustive count here and
+  // adversarial review measured both false. These positions are emitted
+  // verbatim without going through `esc`, so `makeCallerEscaper` never sees
+  // them and a number is still emitted with zero warnings. Identical at base
+  // commit `143a6ea` and at head. Disclosed in `KNOWN-LIMITATIONS.md`.
   const cases: readonly (readonly [string, () => X12Interchange, string])[] = [
     [
       "build999 envelope.groupControlNumber (GS-06 / GE-02)",
@@ -1096,7 +1109,7 @@ describe("string-typed slots that never call esc: the disclosed residual", () =>
   });
 });
 
-describe("esc slots that read .toString(): the disclosed residual", () => {
+describe("esc slots that read .toString(): the one residual that IS counted", () => {
   // A raw `number` in a slot the types say is an `X12Decimal` has its own
   // `.toString()`, so it reaches `esc` already a string and is passed through.
   // These are the exact three renderings `caller-string.ts` names as
