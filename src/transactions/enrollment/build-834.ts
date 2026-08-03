@@ -37,9 +37,9 @@ import type {
 import { lookupMaintenanceType } from "../../code-lists/maintenance-type.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
-import { escapeRelease } from "../../parser/release.js";
 import { requireCallerArray } from "../../builder/caller-array.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
+import { makeCallerEscaper } from "../../builder/caller-string.js";
 
 /**
  * Refuse with this module's typed error, for {@link requireCallerArray}. A
@@ -119,7 +119,7 @@ export function build834(spec: Build834Spec): X12Interchange {
     component: componentSeparator,
     segment: segmentTerminator,
   };
-  const esc = (value: string): string => escapeRelease(value, delimiters);
+  const esc = makeCallerEscaper(delimiters, "build834", refuseSpec);
 
   /**
    * Join already-escaped element strings into a segment, dropping trailing

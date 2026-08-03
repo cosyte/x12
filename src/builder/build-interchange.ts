@@ -20,9 +20,18 @@
 import { X12_BUILD_ERROR_CODES, X12BuildError } from "./errors.js";
 import type { FunctionalGroupSpec, InterchangeSpec, TransactionSetSpec } from "./types.js";
 import { parseX12 } from "../parser/index.js";
-import { escapeRelease } from "../parser/release.js";
 import type { X12Interchange } from "../parser/types.js";
 import { renderCallerValue } from "./caller-value.js";
+import { makeCallerEscaper } from "./caller-string.js";
+
+/**
+ * Refuse with this module's typed error, for {@link makeCallerEscaper}. A
+ * non-string element value is a structurally impossible spec, so it reuses
+ * `X12_BUILD_INVALID_SPEC` rather than minting a code. @internal
+ */
+function refuseSpec(message: string): never {
+  throw new X12BuildError(X12_BUILD_ERROR_CODES.X12_BUILD_INVALID_SPEC, message);
+}
 
 /**
  * Assemble a complete {@link X12Interchange} from a segment-level
@@ -62,7 +71,7 @@ export function buildInterchange(spec: InterchangeSpec): X12Interchange {
     component: componentSeparator,
     segment: segmentTerminator,
   };
-  const esc = (value: string): string => escapeRelease(value, delimiters);
+  const esc = makeCallerEscaper(delimiters, "buildInterchange", refuseSpec);
 
   const senderQualifier = spec.senderQualifier ?? "ZZ";
   const receiverQualifier = spec.receiverQualifier ?? "ZZ";

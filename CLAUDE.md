@@ -8,6 +8,109 @@
 
 ## Status
 
+- **🩺 A NUMBER IN A STRING ELEMENT NOW REFUSES INSTEAD OF EMITTING `""`
+  (2026-08-03, `X12-NUMERIC-VALUE-EMITS-EMPTY`). THE DELIVERABLE IS A DECISION,
+  AND THE DECISION IS _REFUSE, NEVER COERCE_.** `escapeRelease` read
+  `value.length`, `undefined` on a number, so the early return did not fire, the
+  loop never ran, and it returned its empty accumulator. **The value vanished
+  with no warning and no error.** All nine builders now take their `esc` from
+  `makeCallerEscaper` (`src/builder/caller-string.ts`), which type-checks first
+  and refuses with the calling module's own typed, code-tagged error.
+
+  **MEASURED AT BASE `143a6ea` BY DRIVING THE SHIPPED TABLE AGAINST A `143a6ea`
+  WORKTREE, NOT ASSUMED.** Eight builders, one element each, string arm vs
+  number arm: `BPR*A1*450.00 -> BPR**450.00`, `AK2*837*A1*… -> AK2*837**…`,
+  `NM1*…*34*A1 -> NM1*…*34`, `ENT**2J*34*A1 -> ENT**2J*34`, `NM1*…*MI*A1 ->
+NM1*…*MI`, `NM1*1P*2*A1 -> NM1*1P*2`, `UM*HS*I*A1 -> UM*HS*I`, and
+  **`CLM*A1*150.00\*… -> CLM**150.00*…`**. Where the dropped element was
+trailing, `seg`'s trailing-empty trim removed it outright, so it is not even
+positionally recoverable. **The filed 835 case reproduces exactly**:
+`CLP\*\*1*500.00*450.00*50.00*MB*ICN-9001\*11::1`with`warnings.length === 0`.
+
+  **▶ THE 837's CLM-01 IS THE OTHER END OF THE SAME LINK AND WAS IN NO FILED
+  RECORD.** CLP-01 reassociates a remittance back to CLM-01; one line could drop
+  **both**.
+
+  **▶ THE BUILDER'S OWN REQUIRED-FIELD GUARD WAS DEFEATED, WHICH IS THE SHARPEST
+  PART.** `build-835.ts` refuses `patientControlNumber === ""` by name. A number
+  is not `""`, so it passed the guard and became `""` one line later.
+
+  **▶ WHY REFUSE AND NOT COERCE, WHICH IS THE WHOLE ITEM.** Coercion mints a
+  _different_ identifier: a JSON payload that carried `"0012345"` as a number
+  already lost the leading zeros, so `String(12345)` emits a well-formed id that
+  is **not the one the caller sent**, and reassociating to the wrong claim is
+  worse than failing to reassociate. `String(1e21)` is `"1e+21"`, `String(NaN)`
+  is `"NaN"`. None are valid `AN`/`ID`/`Nn` content, and `X12Decimal` is
+  already the sanctioned numeric route. No working caller breaks, because the
+  numeric path did not work; it silently lost the field.
+
+  **▶ THE `#51` ASYMMETRY IS DELIBERATE, NOT AN INCONSISTENCY.**
+  `renderCallerValue` **coerces** for this same caller mistake because a refusal
+  message that throws destroys the `code` surface consumers branch on; `esc`
+  **refuses** because a document must invent nothing. _Survive anything_ vs
+  _invent nothing_. Opposite duties, opposite answers.
+
+  **▶ TWO DRAFTS PUBLISHED AN EXHAUSTIVE COUNTED CENSUS OF WHAT BYPASSES THE
+  CHOKEPOINT AND A REFUTER MEASURED BOTH FALSE. THE MECHANISM WAS RIGHT BOTH
+  TIMES; THE CLAIM WAS TOO WIDE BOTH TIMES.** First "the single route a
+  caller-supplied ELEMENT VALUE takes into an emitted segment", then "SEVEN
+  string-typed positions" - each round found more (GS-04, GS-05, GS-07,
+  `build837`'s LX-01). **The remedy on round three was to CUT THE CLAIM BACK, not
+  to grow the census**, per the refuter's own convergence call: the guard covers
+  values routed through `esc`; other positions, including some envelope,
+  control-number and line-counter slots, are emitted raw. Not a census. **If you
+  find one more, that is expected and is not a new finding.** All of it is
+  `PRE-EXISTING` and outside the item's stated `esc()` scope.
+
+  **AND THE THIRD ROUND KILLED THE LAST COUNT TOO.** `esc` slots that read
+  `.toString()` off an `X12Decimal` let a raw `number` through as a string, and
+  the slice published that class as "THIRTY-SIX, exhaustive, because the gate
+  asserts it file by file". **The gate asserts a same-line REGEX, which pins it
+  against drift and says nothing about the property** - `build-837` alone has
+  three off-line reads the regex misses (`const units = line.units.toString()`
+  then `ctx.esc(units)`; two `.toString()`s inside a `ctx.comp([...])` that maps
+  `esc`), so `SV1*HC:99213*150.00*UN*0.30000000000000004***1` and
+  `HI*ABK:J20.9:::0.30000000000000004` also ship with zero warnings. **The file
+  contradicted its own limit 4 twenty lines earlier** ("a strong tripwire for the
+  shape this library uses, not a proof"). Head, `warnings.length === 0`: a
+  `patientResponsibilityAmount` of `0.1+0.2` emits
+  `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emits
+  `…*1e+21*…`, `NaN` emits `…*NaN*…` - **the exact three strings this slice's own
+  prose names as disqualifying.** Examples, not a census. **No total is
+  published, on purpose.**
+
+  **THE SHARPEST KNOWN RAW SLOT IS `build999`'s `functionalGroup.disposition`
+  (AK9-01)**, an `ID` element bound to X12 code source 715: `AK9*12345*1*1*1`
+  with zero warnings, and `build999`'s own `X12_ACK_ACCEPT_WITH_ERRORS` guard
+  compares `disposition === "A"`, which a number walks past exactly as it walked
+  past `patientControlNumber === ""`. **Same mechanism, unfixed, in a builder
+  this slice otherwise fixes.** Worth its own item together with the
+  `PRE-EXISTING` delimiter injection the raw slots admit (`build999` with
+  `groupControlNumber: "1*BOGUS"` emits `GS*FA*…*1*BOGUS*X*005010X231A1`, shifting
+  GS-07/GS-08 by one; `build837` with `lineNumber: "1*BOGUS"` gives `LX*1*BOGUS`;
+  both zero warnings. `build834`'s `groupControlNumber` DOES go through `esc` and
+  correctly gives `1?*BOGUS`, which is the difference the helper makes). **Not stop-the-line: these fail at the receiver, they do
+  not mint a wrong clinical value.**
+
+  **ALSO NOT FIXED, PINNED AS RESIDUALS:** the fixed-width ISA slots go
+  through `pad`/`padControl`, not `esc`. `pad(1, 15)` throws an untyped
+  `TypeError` and `padControl(1, 9)` throws a **typed but MISLEADING** "exceeds
+  the 9-char spec limit" for a one-digit number. Neither is silent, so neither is
+  this defect - but that is a property of those two slots and not of the
+  envelope, since GS-04 and GS-05 above are envelope elements and ARE silent.
+  `buildTA1` has no `esc` at all (every element fixed-width). And
+  the refusal names the **builder, not the element position**: `esc` is unary and
+  **invoked 411 times on 378 lines** (comment-stripped, `ctx.esc(...)` included,
+  and the gate asserts both numbers). **The first draft published "378 call
+  sites", which is the LINE count** - the same class of miscount this repo has
+  now shipped twice. And **"no working caller is broken" was too absolute**: a
+  boxed `new String("PT-ACCT-001")` built at base and is refused at head.
+
+  **Public surface change:** exported `escapeRelease` now **throws `TypeError`**
+  on a non-string instead of returning `""`. A `TypeError` on purpose: it is a
+  pure text utility with no spec context to name, and nothing in the library can
+  reach it because the builders refuse first.
+
 - **THE SUITE'S START-UP TAX IS GONE AND `testTimeout` NOW STATES ITS OWN SCOPE
   (2026-08-03, `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX`). NO TIMEOUT VALUE
   CHANGED, AND THAT IS THE FINDING, NOT AN OMISSION.** Test + config only;
@@ -305,6 +408,8 @@
   **emitter** dropping the value. **Outside this item and NOT fixed here** - the
   remedy is a decision (coerce like the renderer, or refuse) across every
   `esc()` slot in nine builders, which is its own slice.
+  **▶ CLOSED 2026-08-03 by `X12-NUMERIC-VALUE-EMITS-EMPTY`. The decision was
+  REFUSE. See the top of this section.**
   **(b)** Neither new gate scans indexed loops outside the `build*` scope
   (`src/loops/define.ts`, `src/profiles/validate.ts`, the `get-*.ts` readers,
   `src/parser/envelope.ts`). Scope gap named, not a measured hang.

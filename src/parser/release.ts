@@ -111,15 +111,46 @@ export function unescapeRelease(
  * delimiters (or the release character itself) is preceded by `?`; other
  * bytes pass through verbatim. The companion to {@link unescapeRelease}.
  *
+ * **Throws `TypeError` on a non-string, and the previous behaviour was the
+ * defect.** This function is declared over `string`, but a JavaScript or
+ * JSON-driven caller is not held to that. Reading `value.length` gave three
+ * different wrong answers depending on what arrived: a `number`, a `boolean`
+ * or a plain object has no `.length`, so `undefined === 0` was false, `i <
+ * undefined` was false, and the function **returned the empty accumulator** -
+ * the value vanished with no error and no warning; `null` and `undefined` threw
+ * on the property read; an array or an array-like threw on `charAt`. The silent
+ * one was by far the worst: `build835` emitted `CLP**1*500.00*…` with
+ * `warnings.length === 0`, dropping the CLP-01 reassociation key TR3
+ * 005010X221A1 requires. All three now terminate the same way.
+ *
+ * `TypeError` and not a code-tagged library error is deliberate, and it is not
+ * the untyped-refusal defect this package has fixed elsewhere. This is a pure
+ * text utility with no spec, no element and no caller context to name, so
+ * `TypeError` is the accurate answer for a wrong-typed argument. **Nothing
+ * inside this library can reach it**: all nine builders route every element
+ * through `src/builder/caller-string.ts`, which refuses first with the calling
+ * builder's own typed, code-tagged error. This throw is the backstop for a
+ * consumer calling the export directly, where the alternative was silent data
+ * loss.
+ *
+ * @throws TypeError if `value` is not a string
+ *
  * @example
  * ```ts
  * import { escapeRelease } from "@cosyte/x12";
  * const d = { element: "*", repetition: "^", component: ":", segment: "~" };
  * escapeRelease("ab~cd*ef:gh", d); // "ab?~cd?*ef?:gh"
  * escapeRelease("a?b", d);          // "a??b"
+ * escapeRelease(1 as unknown as string, d); // TypeError (was "")
  * ```
  */
 export function escapeRelease(value: string, delimiters: Delimiters): string {
+  if (typeof value !== "string") {
+    // The message names the type only. Echoing the value here would put an
+    // unbounded caller string into an `Error.message` on the one path in this
+    // module that has no access to the `renderCallerValue` bound.
+    throw new TypeError(`escapeRelease: value must be a string, received ${typeof value}.`);
+  }
   if (value.length === 0) return value;
   let out = "";
   for (let i = 0; i < value.length; i++) {

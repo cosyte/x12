@@ -26,8 +26,18 @@ import type {
 } from "./types.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
-import { escapeRelease } from "../../parser/release.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
+import { makeCallerEscaper } from "../../builder/caller-string.js";
+
+/**
+ * Refuse with this module's typed error, for {@link makeCallerEscaper}. A
+ * non-string element value is a structurally impossible spec rather than an
+ * inconsistent disposition, so it reuses `X12_ACK_INVALID_SPEC` rather than
+ * minting a code. @internal
+ */
+function refuseSpec(message: string): never {
+  throw new AckBuildError(ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC, message);
+}
 
 /**
  * The version string emitted at GS-08 and ST-03 for every 999 the library
@@ -115,7 +125,7 @@ export function build999(spec: Build999Spec): X12Interchange {
    * emit step. The output is always spec-clean (Postel's-Law conservative
    * emit) and round-trippable through the parser's lenient mode.
    */
-  const esc = (value: string): string => escapeRelease(value, delimiters);
+  const esc = makeCallerEscaper(delimiters, "build999", refuseSpec);
 
   // ---- ISA envelope -----------------------------------------------------
 

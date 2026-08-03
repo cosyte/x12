@@ -44,9 +44,9 @@ import type {
 } from "./build-271-types.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
-import { escapeRelease } from "../../parser/release.js";
 import { requireCallerArray } from "../../builder/caller-array.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
+import { makeCallerEscaper } from "../../builder/caller-string.js";
 
 /**
  * Refuse with this module's typed error, for {@link requireCallerArray}. A
@@ -57,6 +57,18 @@ import { renderCallerValue } from "../../builder/caller-value.js";
 function refuseHierarchy(message: string): never {
   throw new Eligibility271BuildError(
     ELIGIBILITY_271_BUILD_ERROR_CODES.X12_271_BUILD_INVALID_HIERARCHY,
+    message,
+  );
+}
+
+/**
+ * Refuse with this module's typed error, for {@link makeCallerEscaper}. A
+ * non-string element value is a non-hierarchy precondition failure, so it takes
+ * `X12_271_BUILD_INVALID_SPEC` rather than the hierarchy code. @internal
+ */
+function refuseSpec(message: string): never {
+  throw new Eligibility271BuildError(
+    ELIGIBILITY_271_BUILD_ERROR_CODES.X12_271_BUILD_INVALID_SPEC,
     message,
   );
 }
@@ -125,7 +137,7 @@ export function build271(spec: Build271Spec): X12Interchange {
     component: componentSeparator,
     segment: segmentTerminator,
   };
-  const esc = (value: string): string => escapeRelease(value, delimiters);
+  const esc = makeCallerEscaper(delimiters, "build271", refuseSpec);
 
   const seg = (parts: readonly string[]): string => {
     let end = parts.length;

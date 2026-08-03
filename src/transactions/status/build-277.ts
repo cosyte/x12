@@ -47,9 +47,9 @@ import type {
 } from "./build-277-types.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
-import { escapeRelease } from "../../parser/release.js";
 import { requireCallerArray } from "../../builder/caller-array.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
+import { makeCallerEscaper } from "../../builder/caller-string.js";
 
 /**
  * Refuse with this module's typed error, for {@link requireCallerArray} on the
@@ -168,7 +168,7 @@ function buildClaimStatus(version: ClaimStatusVersion, spec: Build277Spec): X12I
     component: componentSeparator,
     segment: segmentTerminator,
   };
-  const esc = (value: string): string => escapeRelease(value, delimiters);
+  const esc = makeCallerEscaper(delimiters, "build277", refuseSpec);
 
   const seg = (parts: readonly string[]): string => {
     let end = parts.length;

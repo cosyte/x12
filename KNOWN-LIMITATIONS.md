@@ -204,28 +204,84 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   own string and you still hold it. If you log a caught `X12ProfileError`, log `err.message` (bounded)
   rather than the whole error object.
 
-- **A builder emits a NUMBER as an EMPTY element, silently, and one of the affected slots is the
-  patient control number.** Long-standing, not introduced by any recent change, and **not yet fixed**:
-  the escape helper every builder runs values through reads `value.length`, which is `undefined` for a
-  number, so it returns the empty string. The types say `string`, so TypeScript callers cannot reach
-  it; a JavaScript or JSON-driven caller can, and one that reads a spec off `JSON.parse` will.
+- **A builder used to emit a NUMBER as an EMPTY element, silently. FIXED in `0.0.9`: it now
+  REFUSES, and does not coerce.** The escape helper every builder ran values through read
+  `value.length`, which is `undefined` for a number, so it returned the empty string. The types say
+  `string`, so TypeScript callers could not reach it; a JavaScript or JSON-driven caller could, and
+  one that reads a spec off `JSON.parse` did.
 
-  Measured on an otherwise valid `build835` spec whose `patientControlNumber` and
-  `payerClaimControlNumber` are numbers rather than strings:
+  Measured at `0.0.8` on an otherwise valid `build835` spec whose `patientControlNumber` was a number
+  rather than a string:
 
   ```
-  CLP**1*500.00*450.00*50.00*MB**11::1     ix.warnings.length === 0
+  CLP**1*500.00*450.00*50.00*MB*ICN-9001*11::1     ix.warnings.length === 0
   ```
 
   CLP-01 is required by TR3 005010X221A1 Loop 2100 and is the key that reassociates the remittance
-  back to the 837's CLM-01, and CLP-07 is the payer's claim control number. Both are dropped, **no
-  warning is raised, no refusal is thrown**, and the builder returns a frozen interchange that looks
-  successful. The `patientControlNumber === ""` guard does not catch a number because the value is not
-  yet a string when it is checked.
+  back to the 837's CLM-01. It was dropped, **no warning was raised, no refusal was thrown**, and the
+  builder returned a frozen interchange that looked successful. The `patientControlNumber === ""`
+  guard did not catch a number, because the value was not yet a string when it was checked. The same
+  one-line mechanism reached every `esc()`-rendered slot in all nine builders, including the 837's
+  `CLM-01`, the other end of that same reassociation link.
 
-  **Until this is fixed, coerce your spec values to strings at your own boundary** if any of them can
-  arrive as numbers, and treat a builder result whose control numbers are empty as a failure. It
-  affects every `esc()`-rendered slot in every builder, not only the 835.
+  **From `0.0.9` a non-string reaching that escape helper draws that builder's own typed, code-tagged
+  refusal** (`X12_835_BUILD_INVALID_SPEC` and its eight siblings) before anything is emitted. It
+  covers `number`, `boolean`, `null`, `undefined`, arrays, objects, functions, symbols and bigints.
+
+  **The library deliberately does NOT coerce, and you should know why before you reach for
+  `String(value)`.** A JSON payload that carried `"0012345"` as a number has already lost the leading
+  zeros; coercing would emit `12345`, a well-formed identifier that is **not the one you sent**, and a
+  remittance that reassociates to the wrong claim is worse than one that fails to reassociate at all.
+  `String(1e21)` is `"1e+21"`, `String(NaN)` is `"NaN"` and `String(0.1 + 0.2)` is
+  `"0.30000000000000004"`. None are valid in an `AN`, `ID` or `Nn` element. **Convert at your own
+  boundary, where you can still see whether the leading zeros mattered.**
+
+  **KEEP VALIDATING SPEC TYPES AT YOUR OWN BOUNDARY ANYWAY. The fix guards values routed through the
+  escape helper, and not every element position goes through it.** This paragraph replaces the blanket
+  "coerce your spec values to strings at your own boundary" advice this page carried before `0.0.9`,
+  and it is narrower rather than gone, because that advice is still correct for the positions below.
+  Everything here is **pre-existing, measured, and unchanged by the fix**.
+
+  **This is deliberately not an exhaustive list of the unguarded positions, and saying so is the
+  honest thing:** two drafts of this entry published a counted enumeration and both were measured
+  incomplete. Treat it as "some envelope, control-number and line-counter slots are emitted raw",
+  validate at your boundary, and do not read a slot's absence here as a guarantee.
+  1. **Monetary and quantity slots read `.toString()`, so a raw number passes the check.**
+     `X12Decimal` is the first-class route and the one you should use, but a bare `number` is **not**
+     refused there. Measured with `warnings.length === 0` in every case: a
+     `patientResponsibilityAmount` of `0.1 + 0.2` emits
+     `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emits `…*1e+21*…`, `NaN` emits
+     `…*NaN*…`, and an 837 service-line `units` of `0.1 + 0.2` emits
+     `SV1*HC:99213*150.00*UN*0.30000000000000004***1`. **Like the rest of this entry, that is a set
+     of examples and not a count** - a draft of this page said the class was exactly 36 slots and
+     closed, and it is not.
+  2. **Some string-typed positions never call the escape helper at all**, so a number is still emitted
+     verbatim with no warning. Known examples, not a complete set: `build999`'s
+     `envelope.groupControlNumber` (GS-06 / GE-02), `envelope.transactionSetControlNumber` (ST-02 /
+     SE-02), `functionalGroup.disposition` (AK9-01) and `transactionResponses[].disposition` (IK5-01);
+     `build278`'s `review.levelCode` (HL-03); `envelope.groupDate` / `envelope.groupTime` (GS-04 /
+     GS-05); and `build837`'s `serviceLine.lineNumber` (LX-01). **AK9-01 is the one
+     to know about:** it is an `ID` element bound to X12 code source 715, so a number there tells the
+     receiver nothing about whether the functional group was accepted, and the library's own
+     accept-with-errors guard compares it against `"A"` and does not fire. These positions also admit
+     an **unescaped delimiter**: `build999` with a `groupControlNumber` of `"1*BOGUS"` emits
+     `GS*FA*…*1*BOGUS*X*005010X231A1`, shifting GS-07 and GS-08 by one, and `build837` with a
+     `lineNumber` of `"1*BOGUS"` emits `LX*1*BOGUS`, both with zero warnings. (Where a slot DOES go
+     through the escape helper the delimiter is escaped correctly: `build834`'s `groupControlNumber`
+     gives `1?*BOGUS`. That is the difference the helper makes.)
+  3. **The fixed-width ISA slots** (`senderId`, `receiverId`, `interchangeControlNumber`, …) go
+     through padding rather than escaping. A number there throws an untyped `TypeError` with no
+     `code` (`value.slice is not a function`), and a numeric `interchangeControlNumber` throws the
+     builder's typed refusal with the **misleading** text "exceeds the 9-char spec limit". Those two
+     terminate rather than emitting silently, which makes them a smaller hazard than 1 and 2 - but
+     that is a property of those two slots, not of the envelope: GS-04 and GS-05 above are envelope
+     elements and are silent.
+
+  **One other change, and it is a behaviour change:** the exported `escapeRelease(value, delimiters)`
+  now **throws `TypeError` on a non-string** rather than returning `""`. If you call it directly, it
+  is a `TypeError` and not a code-tagged library error, because it is a pure text utility with no
+  spec context to name. Nothing inside the library can reach it: the builders refuse first. A boxed
+  `new String("…")` is also refused now, where it built at `0.0.8`.
 
 - **A forged non-array in a builder spec refuses; in a few places it throws an untyped `TypeError`.**
   The types say `readonly T[]`, but a JavaScript or JSON caller can hand a builder something else. As
