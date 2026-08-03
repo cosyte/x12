@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`requireCallerString` / `makeCallerEscaper`** (internal), the single route a caller-supplied
+  ELEMENT VALUE takes into an emitted segment. All nine builders now build their `esc` helper through
+  `makeCallerEscaper`, which type-checks the value before escaping and refuses through the calling
+  module's own `refuse` callback, so a wrong-typed element draws that builder's existing typed error
+  and code rather than a new shared one. `buildInterchange`, `build999`, `build271` and `build278`
+  each gained the one-line `refuseSpec` thrower they needed for it.
+
 - **`renderCallerJson`** (internal), the type-preserving half of the caller-value bound, held to the
   same `BUILD_REFUSAL_VALUE_MAX_RENDERED` ceiling as `renderCallerValue`. It exists because
   `defineProfile()` reports a bad `name` / `id` / `effect` / `fixture` with `JSON.stringify`, and that
@@ -41,6 +48,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **Treat it as PHI when logging.** It sits on the model side of this library's diagnostic boundary:
   a warning `message` is a frozen-registry lookup with positional metadata only, but an orphan is
   document content, verbatim, exactly like `tx.rawSegments`. Log `context` and `segmentIndex`.
+
+### Changed
+
+- **`escapeRelease` now throws `TypeError` on a non-string instead of returning `""`.** Previously it
+  gave three different wrong answers depending on what arrived: a number, a boolean or a plain object
+  returned the empty string silently; `null` and `undefined` threw on the property read; an array or
+  an array-like threw on `charAt`. All three now terminate the same way. A `TypeError` rather than a
+  code-tagged library error is deliberate: it is a pure text utility with no spec, element or caller
+  context to name. Nothing inside the library can reach it, because all nine builders refuse
+  first with their own typed, code-tagged error.
 
 ### Security
 
@@ -110,6 +127,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   code changed and no published type changed.
 
 ### Fixed
+
+- **A number passed where a builder's types say `string` no longer emits an EMPTY element. It is now
+  REFUSED, and it is deliberately not coerced.** `escapeRelease` opened with
+  `if (value.length === 0) return value;` and then looped to `value.length`. On a number `.length` is
+  `undefined`, so the early return did not fire, `i < undefined` was false, the loop body never ran,
+  and the function returned its empty accumulator. **The value vanished with no warning and no
+  error.** The types say `string`, so a TypeScript caller could not reach it; a JavaScript or
+  JSON-driven caller could, and `@cosyte/cli` is such a caller.
+
+  Measured at `0.0.8` on an otherwise valid `build835` spec with only `patientControlNumber` changed:
+  `CLP**1*500.00*450.00*50.00*MB*ICN-9001*11::1`, `ix.warnings.length === 0`, and a frozen interchange
+  that looks successful. CLP-01 is required by TR3 005010X221A1 Loop 2100 and is the key that
+  reassociates the remittance back to the 837's CLM-01. The builder's own
+  `patientControlNumber === ""` guard did not catch it, because the value was not yet a string when it
+  was checked.
+
+  **The same one line reached every escaped slot in all nine builders**, including the 837's own
+  CLM-01, the other end of that reassociation link. Measured at base by driving the shipped table
+  against a `143a6ea` worktree, one element each: `BPR*A1*450.00` became `BPR**450.00`,
+  `AK2*837*A1*005010X222A2` became `AK2*837**005010X222A2`, `NM1*IL*1*DOE*JANE****34*A1` became
+  `NM1*IL*1*DOE*JANE****34`, `ENT**2J*34*A1` became `ENT**2J*34`, `NM1*1P*2*A1` became `NM1*1P*2`,
+  `UM*HS*I*A1` became `UM*HS*I`, and `CLM*A1*150.00***11:B:1*Y*A*Y*Y` became
+  `CLM**150.00***11:B:1*Y*A*Y*Y`. Where the dropped element was trailing, the trailing-empty trim
+  removed it outright, so it is not even positionally recoverable.
+
+  **It refuses rather than coercing, and that choice is the substance of the fix.** Coercion would
+  mint a _different_ identifier: a JSON payload that carried `"0012345"` as a number has already lost
+  the leading zeros, so `String(12345)` emits a well-formed identifier that is not the one the caller
+  sent, and a remittance that reassociates to the wrong claim is worse than one that fails to
+  reassociate at all. `String(1e21)` is `"1e+21"`, `String(NaN)` is `"NaN"` and `String(0.1 + 0.2)` is
+  `"0.30000000000000004"`, none valid in an `AN`, `ID` or `Nn` element, and `X12Decimal` is already
+  the sanctioned route for numeric content. No working caller is broken, because the numeric path did
+  not work; it silently lost the field. The refusal message says why, so a caller is not nudged
+  straight into `String(value)` at the wrong boundary.
+
+  This is deliberately the OPPOSITE answer to `renderCallerValue`, which coerces for the same caller
+  mistake. A refusal message that throws replaces a typed, code-tagged error with an uncaught
+  `TypeError`, so its duty is to survive anything; an emitted document's duty is to invent nothing.
+
+  Not changed, and neither is silent: the fixed-width ISA / GS slots go through `pad` / `padControl`
+  rather than the escape helper, so a number there throws an untyped `TypeError` and a numeric
+  `interchangeControlNumber` throws a typed refusal whose text misleadingly says "exceeds the 9-char
+  spec limit". `buildTA1` has no escape helper at all. Both are pinned by the new suite and disclosed
+  in `KNOWN-LIMITATIONS.md`.
 
 - **The `attw` publish gate no longer passes a tarball that carries no type declarations.** The
   `attw` script was the bare CLI, and `@arethetypeswrong/cli` returns 0 whenever its analysis found
@@ -364,6 +425,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   item.
 
 ### Tests
+
+- **`test/builder-string-type.test.ts`**, the emit gate for the fix above and the third member of the
+  builder-gate family (`builder-refusal-bounds` guards what a refusal says, `builder-array-bounds`
+  guards whether a refusal happens, this one guards whether the caller's value reaches the document).
+  The source scan is the exhaustive half: it requires every builder module's `esc` to be built by
+  `makeCallerEscaper` and requires no builder module to call `escapeRelease` itself, so a tenth
+  builder writing the old one-liner reds it without anyone adding a case. Negative-controlled by
+  putting the defect back: reverting one module's `esc` reds the scan by file and line **and** reds
+  the behavioural half, which is a cleaner control than the array gate gets, since there is no loop
+  here to wedge the runner.
 
 - **The PHI-scanner suite stopped paying 30 of its 32 `tsx` start-ups, and the global `testTimeout`
   now says what it does and does not cover.** No library code, no public surface and no timeout value

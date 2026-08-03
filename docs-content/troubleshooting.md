@@ -136,11 +136,23 @@ caller array with `for…of` are not covered:
 optional leaf array such as `claim.dates` throw `TypeError: … is not iterable`, which terminates but
 carries **no `code`**. Validate the shape at your own boundary if the spec comes from JSON.
 
-**A separate, long-standing hazard on the same JSON-caller path, which is NOT fixed: pass a builder a
-number where the types say string and it emits an EMPTY element, with no warning and no refusal.** On
-an 835 that empties CLP-01, the patient control number that reassociates the remittance back to the
-837's CLM-01. Coerce your spec values to strings at your own boundary, and treat empty control numbers
-in a built interchange as a failure. See `KNOWN-LIMITATIONS.md`.
+**A separate, long-standing hazard on the same JSON-caller path, FIXED in `0.0.9`: passing a builder a
+number where the types say string used to emit an EMPTY element, with no warning and no refusal.** On
+an 835 that emptied CLP-01, the patient control number that reassociates the remittance back to the
+837's CLM-01; the same one line reached every escaped slot in all nine builders, including the 837's
+own CLM-01. It now draws that builder's typed, code-tagged refusal before anything is emitted.
+
+**It refuses rather than coercing, on purpose. Do not just wrap your value in `String()` without
+thinking.** A JSON payload that carried `"0012345"` as a number lost the leading zeros before the
+library saw it, so coercion would emit `12345`: a well-formed identifier that is not the one you sent,
+and a remittance that reassociates to the **wrong** claim. Convert at your own boundary, where you can
+still tell whether the zeros mattered; use `X12Decimal` for monetary and quantity values.
+
+Two neighbours were **not** changed, and neither is silent: the fixed-width ISA / GS slots do not use
+the escape helper, so a number there throws an untyped `TypeError` (or, for
+`interchangeControlNumber`, a typed refusal whose text misleadingly says "exceeds the 9-char spec
+limit"); and the exported `escapeRelease` now throws `TypeError` on a non-string instead of returning
+`""`. See `KNOWN-LIMITATIONS.md`.
 
 **`err.code` is still the thing to branch on and the safest thing to log.** Tracked in
 `KNOWN-LIMITATIONS.md`; the parse side above is unaffected and stronger.

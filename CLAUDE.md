@@ -8,6 +8,61 @@
 
 ## Status
 
+- **🩺 A NUMBER IN A STRING ELEMENT NOW REFUSES INSTEAD OF EMITTING `""`
+  (2026-08-03, `X12-NUMERIC-VALUE-EMITS-EMPTY`). THE DELIVERABLE IS A DECISION,
+  AND THE DECISION IS _REFUSE, NEVER COERCE_.** `escapeRelease` read
+  `value.length`, `undefined` on a number, so the early return did not fire, the
+  loop never ran, and it returned its empty accumulator. **The value vanished
+  with no warning and no error.** All nine builders now take their `esc` from
+  `makeCallerEscaper` (`src/builder/caller-string.ts`), which type-checks first
+  and refuses with the calling module's own typed, code-tagged error.
+
+  **MEASURED AT BASE `143a6ea` BY DRIVING THE SHIPPED TABLE AGAINST A `143a6ea`
+  WORKTREE, NOT ASSUMED.** Eight builders, one element each, string arm vs
+  number arm: `BPR*A1*450.00 -> BPR**450.00`, `AK2*837*A1*… -> AK2*837**…`,
+  `NM1*…*34*A1 -> NM1*…*34`, `ENT**2J*34*A1 -> ENT**2J*34`, `NM1*…*MI*A1 ->
+NM1*…*MI`, `NM1*1P*2*A1 -> NM1*1P*2`, `UM*HS*I*A1 -> UM*HS*I`, and
+  **`CLM*A1*150.00\*… -> CLM**150.00*…`**. Where the dropped element was
+trailing, `seg`'s trailing-empty trim removed it outright, so it is not even
+positionally recoverable. **The filed 835 case reproduces exactly**:
+`CLP\*\*1*500.00*450.00*50.00*MB*ICN-9001\*11::1`with`warnings.length === 0`.
+
+  **▶ THE 837's CLM-01 IS THE OTHER END OF THE SAME LINK AND WAS IN NO FILED
+  RECORD.** CLP-01 reassociates a remittance back to CLM-01; one line could drop
+  **both**.
+
+  **▶ THE BUILDER'S OWN REQUIRED-FIELD GUARD WAS DEFEATED, WHICH IS THE SHARPEST
+  PART.** `build-835.ts` refuses `patientControlNumber === ""` by name. A number
+  is not `""`, so it passed the guard and became `""` one line later.
+
+  **▶ WHY REFUSE AND NOT COERCE, WHICH IS THE WHOLE ITEM.** Coercion mints a
+  _different_ identifier: a JSON payload that carried `"0012345"` as a number
+  already lost the leading zeros, so `String(12345)` emits a well-formed id that
+  is **not the one the caller sent**, and reassociating to the wrong claim is
+  worse than failing to reassociate. `String(1e21)` is `"1e+21"`, `String(NaN)`
+  is `"NaN"`. None are valid `AN`/`ID`/`Nn` content, and `X12Decimal` is
+  already the sanctioned numeric route. No working caller breaks, because the
+  numeric path did not work; it silently lost the field.
+
+  **▶ THE `#51` ASYMMETRY IS DELIBERATE, NOT AN INCONSISTENCY.**
+  `renderCallerValue` **coerces** for this same caller mistake because a refusal
+  message that throws destroys the `code` surface consumers branch on; `esc`
+  **refuses** because a document must invent nothing. _Survive anything_ vs
+  _invent nothing_. Opposite duties, opposite answers.
+
+  **NOT FIXED, PINNED AS RESIDUALS:** the fixed-width ISA/GS slots go through
+  `pad`/`padControl`, not `esc`. `pad(1, 15)` throws an untyped `TypeError` and
+  `padControl(1, 9)` throws a **typed but MISLEADING** "exceeds the 9-char spec
+  limit" for a one-digit number. Neither is silent, so neither is this defect.
+  `buildTA1` has no `esc` at all (every element fixed-width). And the refusal
+  names the **builder, not the element position**: `esc` is unary at 378 call
+  sites, and 378 hand-written locators is 378 chances to mislabel a slot.
+
+  **Public surface change:** exported `escapeRelease` now **throws `TypeError`**
+  on a non-string instead of returning `""`. A `TypeError` on purpose: it is a
+  pure text utility with no spec context to name, and nothing in the library can
+  reach it because the builders refuse first.
+
 - **THE SUITE'S START-UP TAX IS GONE AND `testTimeout` NOW STATES ITS OWN SCOPE
   (2026-08-03, `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX`). NO TIMEOUT VALUE
   CHANGED, AND THAT IS THE FINDING, NOT AN OMISSION.** Test + config only;
@@ -305,6 +360,8 @@
   **emitter** dropping the value. **Outside this item and NOT fixed here** - the
   remedy is a decision (coerce like the renderer, or refuse) across every
   `esc()` slot in nine builders, which is its own slice.
+  **▶ CLOSED 2026-08-03 by `X12-NUMERIC-VALUE-EMITS-EMPTY`. The decision was
+  REFUSE. See the top of this section.**
   **(b)** Neither new gate scans indexed loops outside the `build*` scope
   (`src/loops/define.ts`, `src/profiles/validate.ts`, the `get-*.ts` readers,
   `src/parser/envelope.ts`). Scope gap named, not a measured hang.
