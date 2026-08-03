@@ -44,6 +44,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The `attw` publish gate no longer passes a tarball that carries no type declarations.** The
+  `attw` script was the bare CLI, and `@arethetypeswrong/cli` returns 0 whenever its analysis found
+  no types at all, before it reads the problem list. For a package that ships types, "This package
+  does not contain types." means the declarations were missing from the tarball, which is a broken
+  publish that the gate reported as a pass. Reproduced against this package with no concurrency
+  involved: with `dist/` removed, and with only `dist/index.d.ts` and `dist/index.d.cts` removed,
+  the CLI printed that sentence and exited 0 in both cases. The second is a state every build passes
+  through, because `tsup` writes the JS before the declarations (measured at 1.92 seconds apart on
+  one clean build here). `pnpm attw` now runs `scripts/attw.mjs`, which checks that every relative
+  path `package.json` promises exists and is non-empty before invoking the CLI, and fails afterwards
+  if the CLI still reports an untyped package. No change to the library or to any published type.
+
 - **A `defineProfile()` refusal message no longer grows with the value you passed in.** Twelve
   refusal sites in `src/profiles/validate.ts` hold twenty-three caller-value holes between them, and
   every one now routes through `renderCallerValue` or `renderCallerJson`. Re-derived on this tree
