@@ -8,6 +8,91 @@
 
 ## Status
 
+- **🩺 THE PHI SCANNER WAS BLIND TO A SYMLINK ON BOTH ENUMERATING ROUTES, AND
+  BOTH NOW REFUSE (2026-08-03, `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES`).**
+  Ported from the graded `terminology#37`, re-measured here rather than copied.
+  Measured on base `5779542` against a throwaway repo laid out like this one,
+  with a synthetic name-bearing `.edi` payload (NM1 person name + DMG DOB + PER
+  phone off the 555 convention + `REF*SY` SSN + a dashed SSN), which as a plain
+  regular file is **exit 1 on the NM1 name detector specifically**:
+  - **all mode**: `walk()` enumerates `Dirent.isFile()`, an **lstat** answer, so
+    a link is neither a file nor a directory. A link under `test/fixtures`, a
+    link under `src/`, and a **linked DIRECTORY** (a whole subtree) each printed
+    `OK - no hits` at **exit 0**;
+  - **`--staged`**: git stores a link as its **TARGET STRING** under mode
+    `120000`, so `git show :<path>` handed back `../../<name>.edi` and never the
+    bytes. **Exit 0.**
+
+  Both refuse now (**exit 2**, the existing "could not complete" code), naming
+  **every** offender with its own repo-relative path and a scanner-owned kind
+  token. **Neither route FOLLOWS an ENTRY it enumerated** - following reads
+  bytes the enumeration does not control, and git does not carry them, so a hit
+  on them would be a claim about something no commit contains. **Say ENTRY, not
+  "anything": a walk ROOT that is itself a link IS followed**, because
+  `existsSync`/`readdirSync` both follow. Measured identically at base and head:
+  with `test/fixtures` pointing outside, the walk enumerates the target's files
+  under their `test/fixtures/*` names and **hits (exit 1)**. That is a superset
+  scan, not a blind one, so it is left alone - but the absolute phrasing was
+  wrong and a refuter caught it.
+
+  **▶ THE ONE-LETTER BLOCKER, RE-DERIVED ON THIS TREE, NOT INHERITED:**
+  `--diff-filter=AM` **drops status `T`**. Replacing a **tracked** regular file
+  with a link is neither add nor modify: measured here, `--diff-filter=AM`
+  returned **zero rows** while the unfiltered `--raw` showed
+  `:100644 120000 <sha> <sha> T`, so the record died before any mode was read
+  and the hook passed a mode-`120000` blob **green**. The filter is `AMT` and
+  the route reads `--raw -z` rather than `--name-only`, because the destination
+  mode is the only thing separating a staged regular file from a link or a
+  gitlink. Admitting `T` also closes the reverse typechange (link → real file
+  bearing PHI). **Both directions are pinned, and dropping the `T` reds exactly
+  those two tests.**
+
+  **A REFUSAL NEVER REPORTS THE LINK TARGET**, which is working-tree text that
+  can itself carry PHI. **That is not hypothetical here:** measured at base, a
+  staged link whose target NAME was a dashed-SSN shape exited **1 and printed
+  that shape**, because `git show` fed the path text to `scanCommonShapes`. The
+  target shape is written out in prose rather than exemplified, because a
+  diagnostic ABOUT a PHI leak is itself a PHI surface.
+
+  **SCOPE NARROWED, NOT WIDENED.** The walk still excludes a gitignored entry
+  (one boundary, not a second stricter one for links); `--staged` still sees only
+  `test/fixtures/**` and `src/**.ts`. **A gitlink already exited 2 at base** - by
+  `git show` failing and echoing git's own text - so it is **renamed, not newly
+  caught**, and the test asserts the kind token AND the absence of
+  `could not read`. **`paths` mode is deliberately untouched because it was never
+  blind:** `readFileSync` follows a link, so a named path is scanned and hits
+  (measured, exit 1).
+
+  **DELIBERATELY DEFERRED, and the reason is direction:** x12 still carries the
+  **enumerate-then-read race** (closed so far in `ccda`/`hl7`/`mllp`/`ncpdp`/
+  `synth`). Its remedy TOLERATES a failed read; this one NARROWS what the
+  enumeration admits. Shipping both together would mean one commit that both
+  widens and narrows the same gate. x12 is also not reachable through it today
+  by the same **scope accident** the org survey recorded: the walk roots are
+  `test/fixtures` and `src`, so a repo-root `tsup` transient is never enumerated,
+  and **this repo's own `test/scripts/phi-scan.test.ts` mkdtemps under
+  `os.tmpdir()`, not under a scan root** - unlike `mllp` and `ncpdp`/`synth`,
+  which seeded transients inside theirs. Not a measured hang, and **any widening
+  of a walk root reintroduces it verbatim.**
+
+  **INHERITED AS DISCLOSURE, NOT SILENTLY RE-CLOSED:** `R`/`C` rename/copy are
+  still **not enumerated by `--staged` at all** (pre-existing; admitting them
+  needs the two-path record shape, a scope decision), and there is still **no
+  refuse-a-scan-that-observed-nothing rule** (`ccda#80`'s, which `terminology`
+  never had either). **Measure the R/C cost rather than inferring it, because it
+  is a live pre-commit hole with a real PHI shape:** renaming a fixture while
+  substituting a real name stages as `:100644 100644 ... R080 <old> <new>`,
+  which **both `AM` and `AMT` return zero rows for**, and `--staged` exits **0**
+  over a payload that is a hit as an ordinary add; `git mv`-ing an
+  already-committed **link** into `test/fixtures/` is `R100` and is likewise not
+  refused. **All-mode is the backstop for both** (exit 1 and exit 2), so the gap
+  is at pre-commit, not in CI. Worth its own item now that the mode check exists
+  to hang it on.
+
+  **Negative controls both ways:** dropping the walk's non-regular branch reds 6
+  tests, and `AMT` → `AM` reds the 2 typechange tests. No library code changed
+  and no published type changed.
+
 - **The two residuals `X12-BUILDER-BOUNDS` filed are closed: profile
   refusals are bounded, and a forged non-array REFUSES instead of HANGING
   (2026-08-02, `X12-CALLER-VALUE-RESIDUALS`).** Two parts, and **the second
