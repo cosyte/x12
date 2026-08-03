@@ -12,6 +12,7 @@
  *   - a non-test email violator
  *   - a plain-text (.txt) dashed-SSN violator (text-mode pass)
  *   - the --allow-fixture override-log gate
+ *   - the equivalence of the two runners, which is the premise the rest rests on
  *
  * Fixtures are written to a throwaway temp dir so violators never pollute the
  * committed corpus that `pnpm phi-scan` sweeps. The scanner is invoked via
@@ -43,6 +44,49 @@ const SCANNER_PATH = join(REPO_ROOT, "scripts", "phi-scan.ts");
 const OVERRIDES_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
 
+/**
+ * The scanner runs under the SAME Node that is running vitest, not under `tsx`.
+ *
+ * Nearly every case here spawns the scanner, so what this file pays for is
+ * start-up. Counted at runtime with a `spawnSync` shim on BOTH trees, because the
+ * two censuses are different and quoting one for the other is the easy mistake:
+ * before, **32 spawns across 32 cases, every one under `tsx`**; now, **36 spawns
+ * across 33 cases, 34 under `node` and 2 under `tsx`**. So 30 `tsx` start-ups are
+ * gone and 2 are kept on purpose, in the equivalence case below. The scanner is a
+ * few hundred lines of type-annotated Node that needs erasing and nothing more, and
+ * Node 22.18 or newer strips types itself, so `tsx`'s esbuild pipeline buys nothing
+ * here and costs a process launch. **That floor is not enforced anywhere:**
+ * `engines.node` is `>=22.0.0` and there is no `.nvmrc`, so on a supported
+ * 22.0 to 22.17 every `node` spawn below fails. It fails LOUDLY
+ * (`ERR_UNKNOWN_FILE_EXTENSION`, caught by the exit-code and stderr assertions)
+ * rather than greening for the wrong reason, and CI pins `node-version: "22"`
+ * which resolves to the latest 22.x, so this is a dev-runtime note and not a
+ * library constraint. Measured on this box (12-CPU cgroup quota,
+ * `availableParallelism()` 12, loaded, so a realistic condition rather than a
+ * quiet one): one scanner start is a **441 ms** median under `tsx` and a **149 ms**
+ * median under `node`, seven runs each. Whole-file wall clock, this file alone:
+ * **15.7 s to 6.6 s**.
+ *
+ * Those medians predict **8.2 s**, not 9.1 s: 32 starts converted at the 292 ms
+ * difference is 9.3 s saved, less the 2 `node` and 2 `tsx` starts the new case adds
+ * (1.2 s). So the model is the right shape and about **11% light** against the
+ * 9.1 s measured. It is quoted as a sanity check on the mechanism, not as a fit.
+ *
+ * In-suite under `pnpm test:coverage`, interleaved BASE/HEAD two rounds each so the
+ * arms share a load condition rather than being compared across a drifting one:
+ * this file went **17.2 s / 17.5 s to 8.6 s / 8.6 s**. Do not restate that as a
+ * whole-suite win: the run's critical path is now `test/scripts/attw-gate.test.ts`,
+ * so what this bought the suite is about 8.6 s of CPU, not 8.6 s of wall clock.
+ * `vitest.config.ts` carries the full profile and the reasoning.
+ *
+ * The gate itself (`pnpm phi-scan`) still runs under `tsx`, so this substitutes a
+ * runner rather than following one. `equivalence` below is what keeps that honest:
+ * it drives BOTH runners over the same violator and the same clean file and
+ * requires the same exit code and the same stderr, so if the two ever diverge the
+ * suite says so instead of quietly grading a different artifact than the gate runs.
+ */
+const NODE_BIN = process.execPath;
+
 // A valid 106-byte ISA so looksLikeX12() is true and ISA-byte delimiter
 // detection works (element `*`, segment `~`).
 const ISA =
@@ -63,7 +107,7 @@ interface RunResult {
 }
 
 function runScanner(args: string[]): RunResult {
-  const r = spawnSync(TSX_BIN, [SCANNER_PATH, ...args], {
+  const r = spawnSync(NODE_BIN, [SCANNER_PATH, ...args], {
     cwd: REPO_ROOT,
     encoding: "utf8",
     shell: false,
@@ -83,6 +127,56 @@ beforeAll(() => {
 
 afterAll(() => {
   rmSync(dir, { recursive: true, force: true });
+});
+
+describe("phi-scan: the runner substitution is an equivalence, not an assumption", () => {
+  /**
+   * Every other case in this file spawns the scanner under `node`, while the gate
+   * consumers actually run (`pnpm phi-scan`, the pre-commit hook, CI) spawns it
+   * under `tsx`. That is only sound while the two runners produce the same verdict,
+   * so this case measures it rather than assuming it, on both directions of the
+   * verdict: a file that must be a hit and a file that must be clean.
+   *
+   * It is deliberately the only place `tsx` is still spawned. If a future toolchain
+   * change makes the two disagree (an erase-only stripper meeting a TS feature that
+   * needs a real transform, say), this reds and names the divergence instead of the
+   * suite silently grading an artifact the gate never runs. Nothing else enforces
+   * that: the shared `@cosyte/tsconfig` sets neither `erasableSyntaxOnly` nor
+   * `verbatimModuleSyntax: true`, so this case is the guard.
+   *
+   * SCOPE IT HONESTLY. It drives `paths` mode only, on one hit and one clean file, so
+   * it pins the exit-0 and exit-1 verdicts and NOT the exit-2 refusals, nor all-mode,
+   * nor `--staged`. That is deliberate rather than an oversight: the only divergence
+   * these two runners plausibly have is at MODULE LOAD, which cannot be confined to
+   * the routes this case does not drive, so widening it would cost `tsx` start-ups
+   * back for no reachable extra signal. If a divergence is ever found that is NOT
+   * load-time, this case is too narrow and must grow.
+   */
+  function runUnderTsx(args: string[]): RunResult {
+    const r = spawnSync(TSX_BIN, [SCANNER_PATH, ...args], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+      shell: false,
+    });
+    return { code: r.status ?? -1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
+  }
+
+  it("node and tsx agree on exit code and stderr, on a hit and on a clean file", () => {
+    const hit = write("runner-hit.edi", interchange("NM1*IL*1*SMITH*ROBERT****MI*MEMBER001~"));
+    const clean = write("runner-clean.edi", interchange("NM1*IL*1*TEST*PATIENT*A***MI*MEMBER001~"));
+
+    for (const [label, target, expected] of [
+      ["hit", hit, 1],
+      ["clean", clean, 0],
+    ] as const) {
+      const viaNode = runScanner([target]);
+      const viaTsx = runUnderTsx([target]);
+      expect(viaNode.code, `${label}: node stderr: ${viaNode.stderr}`).toBe(expected);
+      expect(viaTsx.code, `${label}: tsx stderr: ${viaTsx.stderr}`).toBe(expected);
+      expect(viaTsx.stderr, `${label}: the two runners disagree on stderr`).toBe(viaNode.stderr);
+      expect(viaTsx.stdout, `${label}: the two runners disagree on stdout`).toBe(viaNode.stdout);
+    }
+  });
 });
 
 describe("phi-scan: clean synthetic interchange", () => {
@@ -257,7 +351,7 @@ function gitOut(cwd: string, args: string[]): string {
 }
 
 function runIn(cwd: string, args: string[]): RunResult {
-  const r = spawnSync(TSX_BIN, [SCANNER_PATH, ...args], { cwd, encoding: "utf8", shell: false });
+  const r = spawnSync(NODE_BIN, [SCANNER_PATH, ...args], { cwd, encoding: "utf8", shell: false });
   return { code: r.status ?? -1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 }
 
