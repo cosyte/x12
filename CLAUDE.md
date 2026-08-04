@@ -8,6 +8,72 @@
 
 ## Status
 
+- **🩺 THE 835 SVC ELEMENT MAP WAS OFF BY ONE IN BOTH DIRECTIONS AND IS FIXED
+  (2026-08-04, `X12-SVC-ELEMENT-MAP-OFF-BY-ONE`). BREAKING on a published
+  surface.** `get835` read `revenueCode` from SVC-05 and `paidUnitsOfService`
+  from SVC-07; `build835` wrote them there and hard-coded SVC-04 empty behind a
+  comment asserting "revenue code is SVC-05 in X221A1; SVC-04 unused". **That
+  comment was wrong.** SVC-04 is the NUBC revenue code (element 234, a
+  **string**), SVC-05 is Units of Service **PAID** Count (element 380, a
+  **Quantity**), SVC-07 is **ORIGINAL** Units of Service Count (element 380).
+  `revenueCode` -> SVC-04, `paidUnitsOfService` -> SVC-05, and
+  **`originalUnitsOfService` is NEW** at SVC-07.
+
+  **▶ THE NEW FIELD IS REQUIRED, NOT CONVENIENT.** Element 7 was read at base
+  (mislabelled). Fixing only the two positions would have left SVC-07 unread
+  and unwritten - **converting a mis-read into a fresh silent drop**, the
+  direction this repo's house invariant calls the dangerous one. Retention is
+  non-decreasing on purpose.
+
+  **▶ MEASURED, BOTH DIRECTIONS.** Across the six committed remit fixtures plus
+  the golden, **8 of 8 service lines** read `revenueCode: "1"` at base - not a
+  valid NUBC revenue code, it is the paid count from SVC-05 - with
+  `paidUnitsOfService` `undefined`. On emit, revenue code `0300` + 2 paid units
+  gave `SVC*HC:99213*600.00*550.00**0300*HC:99212*2`, **a revenue code inside a
+  Quantity element**, so a conformant receiver reads 300 units. Head:
+  `SVC*HC:99213*600.00*550.00*0300*2*HC:99212`.
+
+  **▶ 🩺 THE WHOLE SUITE STAYED GREEN THROUGH THE FIX, AND THAT IS THE REAL
+  FINDING.** All 1,227 tests passed with the corrected map applied. **The item
+  predicted `transactions-remit-835-build.test.ts:532-560` would turn red and it
+  did not** - it is a `build835` -> `get835` round trip, green for ANY pair of
+  positions the two modules agree on, including a wrong one. **A round trip
+  cannot test an element map; only bytes can.** The map is pinned literally in
+  `test/transactions-remit-835-svc-element-map.test.ts`: **11 of 11 red on
+  `e3cdf49`, 11 of 11 green at head.** Do not weaken those to round trips.
+
+  **▶ THE REPO CONTRADICTED ITSELF AND THE 277 WAS RIGHT ALL ALONG.**
+  `build277`/`get277Status` use SVC-04, `build-277-types.ts` says so in prose,
+  and **every committed 835 fixture is written to the correct map** (`**1` is an
+  empty SVC-04 and one unit paid). Only the 835 module disagreed - with itself.
+  A cross-transaction test now pins the two together.
+
+  **▶ SOURCES, AND WHAT WAS NOT READ. TR3 005010X221A1 IS PAID AND NOBODY HERE
+  HAS READ IT.** Grounded on **pyx12's machine-readable `835.5010.X221.A1.xml`**
+  (an independent open-source implementation of the same guide, carries the whole
+  table, and is **the source for SVC-04**); X12's own RFI #2163 for SVC-05; the
+  base 005010 element dictionary (**SVC-04 is a string and SVC-05/07 are
+  Quantities, which rules out a revenue code at SVC-05 on type alone**); and two
+  published payer companion guides. Listed with links in `KNOWN-LIMITATIONS.md`.
+  **▶ AGREEMENT WITH THE 277 IS CORROBORATING, NOT A SOURCE.** It is what
+  surfaced the defect, but checking a spec claim against this repo's own
+  implementation only proves the two agree - which is how the wrong map survived.
+
+  **▶ AN ABSENT SVC-05 IS NOT DEFAULTED TO ONE**, though X221A1 is _reported_ to
+  assume one (that is the RFI's Description, quoted secondhand, not a clause read
+  from the TR3). Fabricating a count the sender did not send is inventing.
+  **▶ AND `undefined` MEANS "NOT DECODED", NOT "ABSENT"** - the element may have
+  been present and unparseable, which warns nothing. Pre-existing at every
+  quantity site; disclosed, not fixed. The **277's** SVC-07 is still not decoded
+  either, and per pyx12's map it is **usage R (required) in X212** - so an
+  **X212** 277 this library emits **with a service line** is short a required
+  element. **Do not widen that:** in **X214** the same element is usage `S`, so
+  `build277CA` is unaffected, and a 277 with no service line emits no SVC and is
+  missing nothing. `PRE-EXISTING`, reproduces at `e3cdf49`, filed not fixed.
+  **▶ 835s THIS LIBRARY EMITTED AT `0.0.9` OR EARLIER ARE NON-CONFORMANT AND
+  SHOULD BE RE-EMITTED**: their revenue code sits in SVC-05, so head reads it
+  back as a paid quantity (`0300` -> 300 units) with no warning.
+
 - **🩺 A RAW `number` IN AN `X12Decimal` SLOT NOW REFUSES, AND THE TYPE CHECK IS
   STRUCTURAL RATHER THAN A LIST (2026-08-04, `X12-DECIMAL-BYPASSES-THE-GUARD`).**
   Closes both classes `#60` disclosed and deliberately did not fix.
@@ -91,9 +157,19 @@ string`), which `esc` cannot, being unary - that limit is gone for the segment
   level, `serviceLine.chargeAmount`, `serviceLine.paymentAmount`,
   `providerAdjustments[].amount`. Every other `X12Decimal` field refuses
   **typed**. **The element numbers are what went wrong: a draft published
-  `serviceLine.paidUnitsOfService` as "SVC-05", and this repo emits it at
-  element 7** (`revenueCode` is what it puts at 5). Field names cannot drift that
-  way. Both arms are pinned on one fixture, so moving a slot between them reds
+  `serviceLine.paidUnitsOfService` as "SVC-05", and this repo emitted it at
+  element 7** (`revenueCode` was what it put at 5). Field names cannot drift
+  that way.
+  **▶ AND THE CORRECTION ITSELF WAS BACKWARDS, WHICH IS THE SHARPER LESSON.
+  THE DRAFT WAS RIGHT AND THE REPO WAS WRONG.** SVC-05 **is** the Units of
+  Service Paid Count; the 835 module was off by one in both directions and was
+  fixed by `X12-SVC-ELEMENT-MAP-OFF-BY-ONE` (see the entry at the top).
+  Grading the prose against the code found "one wrong" and filed the
+  **conformant** value as the defect, because the code was the thing that was
+  wrong. **Checking a spec claim against this repo's own implementation is not
+  a check** - it only proves the two agree. Ground an element number in a
+  source outside the repo, or state a field name and no number at all. Both
+  arms are pinned on one fixture, so moving a slot between them reds
   the gate. Reordering the balance
   guard changes the refusal precedence of an out-of-balance remit, so it is
   disclosed, not fixed.

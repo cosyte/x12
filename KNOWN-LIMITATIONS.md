@@ -16,6 +16,83 @@ model.
 
 ## Data / decode boundaries
 
+- **🩺 BREAKING, in the release after `0.0.9`: the 835 Loop 2110 SVC element map was off by one, in
+  BOTH directions, and is corrected.** Through `0.0.9` `get835` read the revenue code from **SVC-05**
+  and the paid units from **SVC-07**, and `build835` wrote them to the same two places while leaving
+  SVC-04 empty. The correct map, which the repo's own 277 modules already used:
+
+  | Element | X12 element                        | Meaning                             |
+  | ------- | ---------------------------------- | ----------------------------------- |
+  | SVC-04  | 234, Product/Service ID (a string) | NUBC revenue code                   |
+  | SVC-05  | 380, Quantity                      | Units of Service **Paid** Count     |
+  | SVC-06  | C003 composite                     | original / submitted procedure      |
+  | SVC-07  | 380, Quantity                      | **Original** Units of Service Count |
+
+  **What changes for you.** On parse, `serviceLine.revenueCode` now comes from SVC-04 and is
+  `undefined` on a professional line; through `0.0.9` it returned whatever sat in SVC-05, which on a
+  conformant 835 is the paid-unit count - measured across all six committed remit fixtures plus the
+  golden, **8 of 8 service lines returned `revenueCode: "1"`, which is not a valid NUBC revenue
+  code**, while `paidUnitsOfService` came back `undefined`. `serviceLine.paidUnitsOfService` now
+  comes from SVC-05; through `0.0.9` it read SVC-07, which is the _submitted_ count, so where a payer
+  sent both the field named "paid" carried the original. **`serviceLine.originalUnitsOfService` is
+  new** and carries SVC-07; without it the corrected map would have made SVC-07 unread, turning a
+  fixed mis-read into a fresh silent drop. On emit, the same three fields move to the same three
+  places: `build835` with a revenue code `0300` and 2 paid units emitted
+  `SVC*HC:99213*600.00*550.00**0300*HC:99212*2` at `0.0.9` and emits
+  `SVC*HC:99213*600.00*550.00*0300*2*HC:99212` now. **The old bytes put a revenue code in a Quantity
+  element**, so a conformant receiver read `0300` as 300 units of service.
+
+  **If you compensated for the old behaviour** - reading `paidUnitsOfService` off `revenueCode`, or
+  writing the revenue code into `paidUnitsOfService` - that workaround must be removed. Code that
+  only round-tripped through this library saw nothing wrong, because both halves were wrong together.
+
+  **Sources, and what was NOT read. The TR3 005010X221A1 itself is a paid X12 document; nobody here
+  has read it.** Sources 1, 2 and 4 below are free to check and are linked; source 3 is a paid X12
+  document, named rather than linked, and every fact taken from it is independently carried by
+  source 1 anyway. Read the qualifiers literally, because an unsourced assertion about this table
+  baked into a code comment is exactly what shipped the defect:
+  1. **The full X221A1 element table**, from [pyx12](https://github.com/azoner/pyx12)'s
+     machine-readable map `pyx12/map/835.5010.X221.A1.xml` - an independent open-source
+     implementation of this same guide: `SVC04 / 234 / "National Uniform Billing Committee Revenue
+Code"`, `SVC05 / 380 / "Units of Service Paid Count"`, `SVC06 / C003`,
+     `SVC07 / 380 / "Original Units of Service Count"`. **This is the source for SVC-04**, and the
+     only one here that carries the whole map.
+  2. **X12's own [RFI #2163](https://x12.org/resources/requests-for-interpretation/rfi-2163-835-svc05-vs-837-svd05)**,
+     which names "the SVC05 'Units of Service Paid Count/Quantity' in the 835 guide" and states that
+     "a default has been included for SVC05 in guide 005010X221A1". Primary, from X12, naming the
+     guide - but it speaks only to SVC-05.
+  3. **The base X12 005010 SVC element dictionary**: SVC-04 is element 234, a string, and SVC-05 and
+     SVC-07 are both element 380, Quantity. This does not say what SVC-04 carries, but it **rules
+     out a revenue code at SVC-05** on type alone.
+  4. **Published payer companion guides implementing X221A1** ([Florida Health Care
+     Plans](https://www.fhcp.com/documents/edi-forms/Florida-Health-Care-Plans-835.pdf) p.44 gives
+     all three names; [South Dakota
+     Medicaid](https://dss.sd.gov/docs/medicaid/providers/billingmanuals/HIPAA/835_Healthcare_Payment.pdf)
+     p.9 gives SVC-04 and SVC-05).
+
+  **Agreement inside this repo is NOT one of the sources.** The 277 modules use SVC-04 and every
+  committed 835 fixture is written to the map above, which is corroborating and was what surfaced
+  the defect - but checking a spec claim against this repo's own implementation only proves the two
+  agree, which is precisely how the wrong map survived.
+
+  **An absent SVC-05 is NOT defaulted to one.** X221A1 is reported to assume the value is one when
+  not present - that is source 2's Description, quoted secondhand, not a clause read from the TR3.
+  This reader leaves `paidUnitsOfService` `undefined` regardless, because fabricating a count the
+  sender did not send is inventing data.
+
+  **`undefined` on either quantity means "not decoded", not "absent".** The element may have been
+  missing, or present and unparseable as a decimal; the two are not distinguished and neither raises
+  a warning. Pre-existing at every quantity site in this reader, not introduced here. Read the
+  verbatim element off `tx.segments` if you need to tell them apart.
+
+  **If you archived 835s this library EMITTED at `0.0.9` or earlier, they are non-conformant on the
+  wire and should be re-emitted.** Their revenue code sits in SVC-05, so this library now reads it
+  back as a paid quantity (`0300` becomes 300 units) and reports no revenue code, silently and with
+  no warning. Re-emitting from the model with this release produces conformant bytes.
+
+  **The 277's SVC-07 (Units of Service Count) is still not decoded** - pre-existing, unchanged by
+  this slice, and separate from the 835 field above.
+
 - **Bundled code-list snapshots are pre-launch initial subsets, not the full WPC-published lists.**
   CARC, RARC, Claim-Status-Category (CSCC), Claim-Status (CSC), service-type, CLP-status, and
   maintenance-type ship as versioned data artifacts sized to the parser's Tier-1/Tier-2 fixtures plus

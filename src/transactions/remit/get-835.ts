@@ -400,6 +400,7 @@ interface ServiceLineAccumulator {
   readonly paymentAmount: X12Decimal;
   readonly revenueCode: string | undefined;
   readonly paidUnitsOfService: X12Decimal | undefined;
+  readonly originalUnitsOfService: X12Decimal | undefined;
   readonly originalServiceId: string | undefined;
   readonly originalServiceIdQualifier: string | undefined;
   serviceDateStart: string | undefined;
@@ -678,8 +679,12 @@ function openServiceLine(seg: X12Segment, delimiters: Delimiters): ServiceLineAc
     const m = componentOptional(seg, 1, comp, delimiters);
     if (m !== undefined) modifiers.push(m);
   }
-  const revenueCode = elementOptional(seg, 5, delimiters);
-  const paidUnitsOfService = elementDecimal(seg, 7, delimiters);
+  // SVC-04 is the NUBC revenue code (element 234, Product/Service ID);
+  // SVC-05 is the Units of Service PAID Count (element 380, Quantity); SVC-07
+  // is the ORIGINAL (submitted) units, only sent when it differs from SVC-05.
+  const revenueCode = elementOptional(seg, 4, delimiters);
+  const paidUnitsOfService = elementDecimal(seg, 5, delimiters);
+  const originalUnitsOfService = elementDecimal(seg, 7, delimiters);
   const originalServiceIdQualifier = componentOptional(seg, 6, 1, delimiters);
   const originalServiceId = componentOptional(seg, 6, 2, delimiters);
   return {
@@ -690,6 +695,7 @@ function openServiceLine(seg: X12Segment, delimiters: Delimiters): ServiceLineAc
     paymentAmount: elementDecimalOrZero(seg, 3, delimiters),
     revenueCode,
     paidUnitsOfService,
+    originalUnitsOfService,
     originalServiceId,
     originalServiceIdQualifier,
     serviceDateStart: undefined,
@@ -830,6 +836,7 @@ function freezeServiceLine(acc: ServiceLineAccumulator): X12RemitServiceLine {
     paymentAmount: acc.paymentAmount,
     revenueCode: acc.revenueCode,
     paidUnitsOfService: acc.paidUnitsOfService,
+    originalUnitsOfService: acc.originalUnitsOfService,
     originalServiceId: acc.originalServiceId,
     originalServiceIdQualifier: acc.originalServiceIdQualifier,
     serviceDateStart: acc.serviceDateStart,

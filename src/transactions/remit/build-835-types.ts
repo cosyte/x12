@@ -380,10 +380,19 @@ export interface Build835ServiceLineSpec {
   readonly chargeAmount: X12Decimal;
   /** SVC-03 - line item provider payment amount. */
   readonly paymentAmount: X12Decimal;
-  /** SVC-05 - revenue code (institutional). */
+  /** SVC-04 - NUBC revenue code (institutional). */
   readonly revenueCode?: string;
-  /** SVC-07 - units of service paid. */
+  /**
+   * SVC-05 - Units of Service Paid Count. The count the payer actually
+   * adjudicated. Distinct from {@link Build835ServiceLineSpec.originalUnitsOfService},
+   * which is what was submitted.
+   */
   readonly paidUnitsOfService?: X12Decimal;
+  /**
+   * SVC-07 - Original Units of Service Count: the units as SUBMITTED, sent
+   * only when they differ from the paid count in SVC-05.
+   */
+  readonly originalUnitsOfService?: X12Decimal;
   /** SVC-06-2 - original (submitted) product/service ID. */
   readonly originalServiceId?: string;
   /** SVC-06-1 - original product/service ID qualifier. */
