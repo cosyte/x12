@@ -375,6 +375,12 @@ export interface X12RemitRemark {
  * code. The qualifier governs interpretation - **misreading it picks
  * the wrong code system** and corrupts the clinical context.
  *
+ * X221A1 says an absent SVC-05 is assumed to be one. This reader does
+ * **not** apply that default: `paidUnitsOfService` is `undefined` when the
+ * wire carried nothing, because fabricating a count the sender did not send
+ * is inventing data. Apply the default yourself if you want it - the
+ * distinction between "absent" and "one" is preserved here so that you can.
+ *
  * @example
  * ```ts
  * import type { X12RemitServiceLine } from "@cosyte/x12";
@@ -391,8 +397,16 @@ export interface X12RemitServiceLine {
   readonly modifiers: readonly string[];
   readonly chargeAmount: X12Decimal;
   readonly paymentAmount: X12Decimal;
+  /** SVC-04 - NUBC revenue code. Absent on a professional line. */
   readonly revenueCode: string | undefined;
+  /** SVC-05 - Units of Service Paid Count: what the payer adjudicated. */
   readonly paidUnitsOfService: X12Decimal | undefined;
+  /**
+   * SVC-07 - Original Units of Service Count: the units as SUBMITTED. Sent
+   * only when they differ from the paid count in SVC-05, so `undefined` here
+   * does NOT mean zero submitted units - it means "same as paid".
+   */
+  readonly originalUnitsOfService: X12Decimal | undefined;
   readonly originalServiceId: string | undefined;
   readonly originalServiceIdQualifier: string | undefined;
   readonly serviceDateStart: string | undefined;

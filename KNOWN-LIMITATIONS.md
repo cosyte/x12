@@ -16,6 +16,55 @@ model.
 
 ## Data / decode boundaries
 
+- **🩺 BREAKING, in the release after `0.0.9`: the 835 Loop 2110 SVC element map was off by one, in
+  BOTH directions, and is corrected.** Through `0.0.9` `get835` read the revenue code from **SVC-05**
+  and the paid units from **SVC-07**, and `build835` wrote them to the same two places while leaving
+  SVC-04 empty. The correct map, which the repo's own 277 modules already used:
+
+  | Element | X12 element                        | Meaning                             |
+  | ------- | ---------------------------------- | ----------------------------------- |
+  | SVC-04  | 234, Product/Service ID (a string) | NUBC revenue code                   |
+  | SVC-05  | 380, Quantity                      | Units of Service **Paid** Count     |
+  | SVC-06  | C003 composite                     | original / submitted procedure      |
+  | SVC-07  | 380, Quantity                      | **Original** Units of Service Count |
+
+  **What changes for you.** On parse, `serviceLine.revenueCode` now comes from SVC-04 and is
+  `undefined` on a professional line; through `0.0.9` it returned whatever sat in SVC-05, which on a
+  conformant 835 is the paid-unit count - measured across all six committed remit fixtures plus the
+  golden, **8 of 8 service lines returned `revenueCode: "1"`, which is not a valid NUBC revenue
+  code**, while `paidUnitsOfService` came back `undefined`. `serviceLine.paidUnitsOfService` now
+  comes from SVC-05; through `0.0.9` it read SVC-07, which is the _submitted_ count, so where a payer
+  sent both the field named "paid" carried the original. **`serviceLine.originalUnitsOfService` is
+  new** and carries SVC-07; without it the corrected map would have made SVC-07 unread, turning a
+  fixed mis-read into a fresh silent drop. On emit, the same three fields move to the same three
+  places: `build835` with a revenue code `0300` and 2 paid units emitted
+  `SVC*HC:99213*600.00*550.00**0300*HC:99212*2` at `0.0.9` and emits
+  `SVC*HC:99213*600.00*550.00*0300*2*HC:99212` now. **The old bytes put a revenue code in a Quantity
+  element**, so a conformant receiver read `0300` as 300 units of service.
+
+  **If you compensated for the old behaviour** - reading `paidUnitsOfService` off `revenueCode`, or
+  writing the revenue code into `paidUnitsOfService` - that workaround must be removed. Code that
+  only round-tripped through this library saw nothing wrong, because both halves were wrong together.
+
+  **Sources, and what was NOT read.** The TR3 005010X221A1 itself is a paid X12 document and **no
+  clause of it is quoted or claimed here.** The map above rests on: X12's own
+  [RFI #2163](https://x12.org/resources/requests-for-interpretation/rfi-2163-835-svc05-vs-837-svd05),
+  which names "the SVC05 'Units of Service Paid Count/Quantity' in the 835 guide" and states that "a
+  default has been included for SVC05 in guide 005010X221A1"; the base X12 005010 SVC element
+  dictionary, where SVC-04 is element 234 (a string) and SVC-05 and SVC-07 are both element 380
+  (Quantity), which alone rules out a revenue code at SVC-05; and three independently published
+  payer companion guides implementing X221A1 that name SVC-04 "National Uniform Billing Committee
+  Revenue Code", SVC-05 "Units of Service Paid Count" and SVC-07 "Original Units of Service Count".
+  Four sources, no dissent.
+
+  **An absent SVC-05 is NOT defaulted to one.** X221A1 says the value is assumed to be one when not
+  present; this reader leaves `paidUnitsOfService` `undefined` instead, because fabricating a count
+  the sender did not send is inventing data. "Absent" and "one" stay distinct so you can apply the
+  default yourself.
+
+  **The 277's SVC-07 (Units of Service Count) is still not decoded** - pre-existing, unchanged by
+  this slice, and separate from the 835 field above.
+
 - **Bundled code-list snapshots are pre-launch initial subsets, not the full WPC-published lists.**
   CARC, RARC, Claim-Status-Category (CSCC), Claim-Status (CSC), service-type, CLP-status, and
   maintenance-type ship as versioned data artifacts sized to the parser's Tier-1/Tier-2 fixtures plus

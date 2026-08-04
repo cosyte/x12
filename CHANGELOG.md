@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`X12RemitServiceLine.originalUnitsOfService` / `Build835ServiceLineSpec.originalUnitsOfService`**,
+  the 835 SVC-07 Original Units of Service Count: the units as **submitted**, which a payer sends only
+  when they differ from the paid count in SVC-05. It is not a convenience field - without it the
+  corrected SVC map (see `### Changed`) would have left SVC-07 unread and unwritten, converting a
+  mis-read into a fresh silent drop. `undefined` means "same as paid", not "zero submitted".
+
 - **`requireCallerString` / `makeCallerEscaper`** (internal), the single route a caller-supplied
   element value takes **through a builder's `esc` helper**. Read that scope literally: it is not
   every route into an emitted segment, and the `### Fixed` entry below says which positions bypass
@@ -52,6 +58,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   document content, verbatim, exactly like `tx.rawSegments`. Log `context` and `segmentIndex`.
 
 ### Changed
+
+- **🩺 BREAKING: the 835 Loop 2110 SVC element map is corrected, in both directions
+  (`X12-SVC-ELEMENT-MAP-OFF-BY-ONE`).** Through `0.0.9` `get835` read `revenueCode` from **SVC-05**
+  and `paidUnitsOfService` from **SVC-07**, and `build835` wrote them to those same two positions
+  while hard-coding SVC-04 empty behind a comment asserting "revenue code is SVC-05 in X221A1;
+  SVC-04 unused". That comment was wrong. SVC-04 is the NUBC revenue code (X12 element 234, a
+  string), SVC-05 is the Units of Service **Paid** Count (element 380, a Quantity), and SVC-07 is
+  the **Original** Units of Service Count (element 380) - a different quantity, sent only when the
+  submitted count differs from the paid one. `revenueCode` now reads and writes **SVC-04** and
+  `paidUnitsOfService` now reads and writes **SVC-05**.
+
+  **The harm was a mis-read code system and a mis-read quantity, in both directions, silently.**
+  Measured across the six committed remit fixtures plus the golden, **8 of 8 service lines** read
+  back `revenueCode: "1"` at `0.0.9` - `1` is not a valid NUBC revenue code, it is the paid-unit
+  count from SVC-05 - while `paidUnitsOfService` came back `undefined` because SVC-07 was absent.
+  On emit, a line with revenue code `0300` and 2 paid units produced
+  `SVC*HC:99213*600.00*550.00**0300*HC:99212*2`, putting a revenue code into a **Quantity**
+  element, so a conformant receiver read `0300` as 300 units of service. It now produces
+  `SVC*HC:99213*600.00*550.00*0300*2*HC:99212`.
+
+  **Nothing in the suite could detect this and that is why it shipped.** Every existing assertion
+  was a `build835` -> `get835` round trip, which is green for any pair of positions the two modules
+  agree on. All 1,227 tests stayed green with the fix applied. The map is now pinned against literal
+  bytes in `test/transactions-remit-835-svc-element-map.test.ts`; all 11 of its cases fail on
+  `e3cdf49` and pass at head.
+
+  **The repo already contradicted itself:** `build277` / `get277Status` read and write the revenue
+  code at SVC-04, `build-277-types.ts` says so in prose, and every committed 835 fixture is written
+  to the correct map (`SVC*…**1` is an empty SVC-04 and one unit paid). Only the 835 module
+  disagreed, and only with itself.
+
+  **Sources, and what was not read.** TR3 005010X221A1 is a paid X12 document and **no clause of it
+  is quoted or claimed.** The map rests on X12's own RFI #2163 (which names "the SVC05 'Units of
+  Service Paid Count/Quantity' in the 835 guide" and states "a default has been included for SVC05
+  in guide 005010X221A1"), the base X12 005010 SVC element dictionary (SVC-04 is element 234, a
+  string; SVC-05 and SVC-07 are both element 380, Quantity - which alone rules out a revenue code at
+  SVC-05), and three published payer companion guides implementing X221A1. Four sources, no dissent.
+  They are listed in `KNOWN-LIMITATIONS.md`.
 
 - **`escapeRelease` now throws `TypeError` on a non-string instead of returning `""`.** Previously it
   gave three different wrong answers depending on what arrived: a number, a boolean or a plain object

@@ -436,6 +436,7 @@ function materializeServiceLine(spec: Build835ServiceLineSpec): X12RemitServiceL
     paymentAmount: spec.paymentAmount,
     revenueCode: spec.revenueCode,
     paidUnitsOfService: spec.paidUnitsOfService,
+    originalUnitsOfService: spec.originalUnitsOfService,
     originalServiceId: spec.originalServiceId,
     originalServiceIdQualifier: spec.originalServiceIdQualifier,
     serviceDateStart: spec.serviceDateStart,
@@ -633,10 +634,15 @@ function emitServiceLine(
       svc01,
       escDec(line.chargeAmount, esc),
       escDec(line.paymentAmount, esc),
-      "", // SVC-04 - revenue code is SVC-05 in X221A1; SVC-04 unused
+      // SVC-04 is the NUBC revenue code (element 234, Product/Service ID) and
+      // SVC-05 is the Units of Service PAID Count (element 380, Quantity).
+      // SVC-07 is the ORIGINAL (submitted) units, a different quantity from
+      // SVC-05 - so the two never share a field. See the SVC note in
+      // KNOWN-LIMITATIONS.md for the sources.
       esc(line.revenueCode ?? ""),
-      svc06,
       line.paidUnitsOfService === undefined ? "" : escDec(line.paidUnitsOfService, esc),
+      svc06,
+      line.originalUnitsOfService === undefined ? "" : escDec(line.originalUnitsOfService, esc),
     ]),
   );
 

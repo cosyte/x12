@@ -558,7 +558,14 @@ describe("build835 - maximal claim coverage", () => {
     expect(claim?.references[0]?.qualifier).toBe("EA");
     const line = claim?.serviceLines[0];
     expect(line?.revenueCode).toBe("0300");
+    expect(line?.paidUnitsOfService?.toString()).toBe("2");
     expect(line?.originalServiceId).toBe("99212");
+    // NOTE: these are round-trip assertions and therefore CANNOT pin the SVC
+    // element map - they are green for any pair of positions `build835` and
+    // `get835` agree on, including the off-by-one pair this repo shipped
+    // through 0.0.9. The map is pinned against literal bytes in
+    // `transactions-remit-835-svc-element-map.test.ts`; do not weaken it to
+    // a round trip.
   });
 });
 
