@@ -255,9 +255,13 @@ string, …` - which `esc` cannot, being unary.
   refusal. **The rule, rather than a list, because a first draft of this disclosure published a
   closed list of four and a refuter measured it incomplete:** a slot refuses untyped exactly when the
   balance guard reads it as a term of one of the three TR3 X221A1 §1.10.2 invariants in
-  `src/transactions/remit/balance.ts` (so BPR-02, CLP-03, CLP-04, CAS-03 at either level, SVC-02,
-  SVC-03 and PLB-04), and every amount outside those equations refuses typed (CLP-05, SVC-05,
-  AMT-02). Both arms are pinned. Reordering the balance guard changes the refusal precedence of an
+  `src/transactions/remit/balance.ts`. **Named by SPEC FIELD and not by element number, because the
+  next draft used element numbers and got one wrong:** `payment.totalActualPayment`,
+  `claim.totalChargeAmount`, `claim.totalPaymentAmount`, every `adjustments[].amount` at claim and
+  line level, `serviceLine.chargeAmount`, `serviceLine.paymentAmount` and
+  `providerAdjustments[].amount`. Every other `X12Decimal` field refuses typed, including
+  `claim.patientResponsibilityAmount`, `serviceLine.paidUnitsOfService` and every `amounts[].amount`.
+  Both arms are pinned. Reordering the balance guard changes the refusal precedence of an
   out-of-balance remit, which is its own decision.
 
   **AK9-01 was the sharpest of the raw slots** - an `ID` element bound to X12 code list **715**

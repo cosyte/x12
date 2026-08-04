@@ -717,21 +717,25 @@ describe("the X12Decimal slots this guard does NOT reach, disclosed not fixed", 
 
   /** Terms of the three §1.10.2 invariants: claim, service line, remit total. */
   const balanceTermSlots: readonly (readonly [string, readonly (string | number)[]])[] = [
-    ["BPR-02 payment.totalActualPayment", ["payment", "totalActualPayment"]],
-    ["CLP-03 claim totalChargeAmount", ["claims", 0, "totalChargeAmount"]],
-    ["CLP-04 claim totalPaymentAmount", ["claims", 0, "totalPaymentAmount"]],
-    ["SVC-02 service line chargeAmount", ["claims", 0, "serviceLines", 0, "chargeAmount"]],
-    ["SVC-03 service line paymentAmount", ["claims", 0, "serviceLines", 0, "paymentAmount"]],
-    ["CAS-03 line adjustment amount", ["claims", 0, "serviceLines", 0, "adjustments", 0, "amount"]],
-    ["PLB-04 provider adjustment amount", ["providerAdjustments", 0, "amount"]],
+    ["payment.totalActualPayment", ["payment", "totalActualPayment"]],
+    ["claim.totalChargeAmount", ["claims", 0, "totalChargeAmount"]],
+    ["claim.totalPaymentAmount", ["claims", 0, "totalPaymentAmount"]],
+    ["serviceLine.chargeAmount", ["claims", 0, "serviceLines", 0, "chargeAmount"]],
+    ["serviceLine.paymentAmount", ["claims", 0, "serviceLines", 0, "paymentAmount"]],
+    [
+      "serviceLine.adjustments[].amount",
+      ["claims", 0, "serviceLines", 0, "adjustments", 0, "amount"],
+    ],
+    ["claim.adjustments[].amount", ["claims", 1, "adjustments", 0, "amount"]],
+    ["providerAdjustments[].amount", ["providerAdjustments", 0, "amount"]],
   ];
 
   /** Amounts no invariant reads: informational or reported, never summed. */
   const nonTermSlots: readonly (readonly [string, readonly (string | number)[]])[] = [
-    ["CLP-05 patientResponsibilityAmount", ["claims", 0, "patientResponsibilityAmount"]],
-    ["SVC-05 paidUnitsOfService", ["claims", 0, "serviceLines", 0, "paidUnitsOfService"]],
-    ["AMT-02 claim amount", ["claims", 0, "amounts", 0, "amount"]],
-    ["AMT-02 service line amount", ["claims", 0, "serviceLines", 0, "amounts", 0, "amount"]],
+    ["claim.patientResponsibilityAmount", ["claims", 0, "patientResponsibilityAmount"]],
+    ["serviceLine.paidUnitsOfService", ["claims", 0, "serviceLines", 0, "paidUnitsOfService"]],
+    ["claim.amounts[].amount", ["claims", 0, "amounts", 0, "amount"]],
+    ["serviceLine.amounts[].amount", ["claims", 0, "serviceLines", 0, "amounts", 0, "amount"]],
   ];
 
   /** Set a nested path on an untyped spec, so the cases read as spec locations. */
@@ -747,7 +751,7 @@ describe("the X12Decimal slots this guard does NOT reach, disclosed not fixed", 
     envelope: ENVELOPE,
     payment: {
       transactionHandlingCode: "I",
-      totalActualPayment: dec("450.00"),
+      totalActualPayment: dec("550.00"),
       creditDebitFlag: "C",
       method: "ACH",
       paymentDate: "20260601",
@@ -791,6 +795,26 @@ describe("the X12Decimal slots this guard does NOT reach, disclosed not fixed", 
           },
         ],
       },
+      {
+        // A second claim whose only adjustment is CLAIM-level, so the
+        // claim-level `adjustments[].amount` arm is pinned as well as the line
+        // one. A draft dropped this and still published "at either level".
+        patientControlNumber: "PT-ACCT-002",
+        claimStatusCode: "1",
+        totalChargeAmount: dec("100.00"),
+        totalPaymentAmount: dec("100.00"),
+        patientResponsibilityAmount: dec("0.00"),
+        claimFilingIndicatorCode: "MB",
+        payerClaimControlNumber: "ICN-9002",
+        patient: {
+          entityIdentifierCode: "QC",
+          lastName: "PATIENT",
+          firstName: "TWO",
+          idQualifier: "MI",
+          idCode: "MEMBER002",
+        },
+        adjustments: [{ groupCode: "PR", reasonCode: "1", amount: dec("0.00") }],
+      },
     ],
     providerAdjustments: [
       {
@@ -807,7 +831,10 @@ describe("the X12Decimal slots this guard does NOT reach, disclosed not fixed", 
     // "untyped" for that reason rather than the one under test.
     const ix = build835(asJsCaller(remit()));
     expect(ix.warnings).toHaveLength(0);
-    expect(serializeX12(ix)).toContain("CLP*PT-ACCT-001*1*500.00*450.00*50.00*MB*ICN-9001");
+    const text = serializeX12(ix);
+    expect(text).toContain("CLP*PT-ACCT-001*1*500.00*450.00*50.00*MB*ICN-9001");
+    // The second claim exists so the CLAIM-level adjustment arm is really pinned.
+    expect(text).toContain("CLP*PT-ACCT-002*1*100.00*100.00*0.00*MB*ICN-9002");
   });
 
   it.each(balanceTermSlots)(

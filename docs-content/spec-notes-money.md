@@ -26,9 +26,11 @@ the difference is the money-handling analog of mis-reading a dose.
 > **One caveat on the error you get.** Most slots refuse with that builder's typed, code-tagged
 > error. `build835`'s balance-equation amounts do not: the balance guard runs first and calls
 > `X12Decimal` methods on your value, so any amount it reads as a term of one of the three TR3
-> X221A1 §1.10.2 invariants (**BPR-02, CLP-03, CLP-04, CAS-03, SVC-02, SVC-03, PLB-04**) throws a
-> plain `TypeError` with no `code`. It still refuses; it just refuses untyped. Amounts outside those
-> equations (**CLP-05, SVC-05, AMT-02**) refuse typed. See `KNOWN-LIMITATIONS.md`.
+> X221A1 §1.10.2 invariants throws a plain `TypeError` with no `code`: `payment.totalActualPayment`,
+> `claim.totalChargeAmount`, `claim.totalPaymentAmount`, every `adjustments[].amount`,
+> `serviceLine.chargeAmount`, `serviceLine.paymentAmount` and `providerAdjustments[].amount`. It
+> still refuses; it just refuses untyped. Every other `X12Decimal` field refuses typed. See
+> `KNOWN-LIMITATIONS.md`.
 
 ## What `X12Decimal` is
 

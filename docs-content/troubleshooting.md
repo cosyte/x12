@@ -178,9 +178,13 @@ acknowledges, so build it as a string.
 Fourth, **`build835`'s balance-equation amounts refuse UNTYPED.** The balance guard runs before the
 escape helper is built and calls `X12Decimal` methods on your value, so a raw `number` there throws a
 plain `TypeError` with **no `code`** rather than the typed refusal. The rule is the equation, not a
-list of fields: an amount refuses untyped exactly when the balance guard reads it as a term of one of
-the three TR3 X221A1 §1.10.2 invariants (**BPR-02, CLP-03, CLP-04, CAS-03 at either level, SVC-02,
-SVC-03, PLB-04**), and every amount outside them refuses typed (**CLP-05, SVC-05, AMT-02**).
+list: an amount refuses untyped exactly when the balance guard reads it as a term of one of the three
+TR3 X221A1 §1.10.2 invariants. Named by spec field rather than element number, the untyped set is
+`payment.totalActualPayment`, `claim.totalChargeAmount`, `claim.totalPaymentAmount`, every
+`adjustments[].amount` at claim and line level, `serviceLine.chargeAmount`,
+`serviceLine.paymentAmount` and `providerAdjustments[].amount`. Every other `X12Decimal` field
+refuses typed, including `claim.patientResponsibilityAmount`, `serviceLine.paidUnitsOfService` and
+every `amounts[].amount`.
 
 One other behaviour change: the exported `escapeRelease` now throws `TypeError` on a non-string
 instead of returning `""`, and a boxed `new String("…")` is refused where it built at `0.0.8`. See

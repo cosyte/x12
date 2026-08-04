@@ -81,13 +81,20 @@ string`), which `esc` cannot, being unary - that limit is gone for the segment
   with **no `code`**, some saying the value was "tampered with", which is a
   misleading thing to tell someone who passed a number.
   **▶ THE FIRST REMEDY FOR THIS PUBLISHED A CLOSED LIST OF FOUR AND PASS 2
-  MEASURED IT INCOMPLETE - THE CENSUS FAILURE, COMMITTED INSIDE THE FIX FOR AN
-  OVERCLAIM. STATE THE RULE:** a slot refuses **untyped exactly when the balance
-  guard reads it as a term of one of the THREE §1.10.2 invariants** in
-  `src/transactions/remit/balance.ts` (BPR-02, CLP-03, CLP-04, CAS-03 at either
-  level, **SVC-02, SVC-03, PLB-04**); every amount outside those equations
-  refuses **typed** (CLP-05, **SVC-05**, AMT-02). Both arms are pinned on one
-  fixture, so moving a slot between them reds the gate. Reordering the balance
+  MEASURED IT INCOMPLETE; THE SECOND NAMED THE SLOTS BY ELEMENT NUMBER AND PASS 3
+  FOUND ONE WRONG. THAT IS THE SAME CENSUS FAILURE TWICE INSIDE THE FIX FOR IT.
+  STATE THE RULE, AND NAME SPEC FIELDS - NEVER ELEMENT NUMBERS:** a slot refuses
+  **untyped exactly when the balance guard reads it as a term of one of the THREE
+  §1.10.2 invariants** in `src/transactions/remit/balance.ts` -
+  `payment.totalActualPayment`, `claim.totalChargeAmount`,
+  `claim.totalPaymentAmount`, every `adjustments[].amount` at claim and line
+  level, `serviceLine.chargeAmount`, `serviceLine.paymentAmount`,
+  `providerAdjustments[].amount`. Every other `X12Decimal` field refuses
+  **typed**. **The element numbers are what went wrong: a draft published
+  `serviceLine.paidUnitsOfService` as "SVC-05", and this repo emits it at
+  element 7** (`revenueCode` is what it puts at 5). Field names cannot drift that
+  way. Both arms are pinned on one fixture, so moving a slot between them reds
+  the gate. Reordering the balance
   guard changes the refusal precedence of an out-of-balance remit, so it is
   disclosed, not fixed.
 
@@ -217,7 +224,9 @@ positionally recoverable. **The filed 835 case reproduces exactly**:
   the 9-char spec limit" for a one-digit number. Neither is silent, so neither is
   this defect - but that is a property of those two slots and not of the
   envelope, since GS-04 and GS-05 above are envelope elements and ARE silent.
-  `buildTA1` has no `esc` at all (every element fixed-width). And
+  `buildTA1` has no `esc` at all (**and no `pad` either - the "every element
+  fixed-width" reason recorded here was false in both halves; all five elements
+  are caller-supplied and the module imports no `pad`**). And
   the refusal names the **builder, not the element position**: `esc` is unary and
   **invoked 411 times on 378 lines** (comment-stripped, `ctx.esc(...)` included,
   and the gate asserts both numbers). **The first draft published "378 call

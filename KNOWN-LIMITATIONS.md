@@ -270,9 +270,13 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
      value "has no internal state - was it tampered with?", which is a misleading thing to be told
      when you passed a number. **The rule, not a list:** a slot refuses untyped exactly when the
      balance guard reads it as a term of one of the three TR3 X221A1 §1.10.2 invariants (the claim,
-     service-line and remit-total equations), so **BPR-02, CLP-03, CLP-04, CAS-03 at either level,
-     SVC-02, SVC-03 and PLB-04**; every amount outside those equations refuses typed (**CLP-05,
-     SVC-05, AMT-02**). Unchanged from `0.0.9`; `err.code` is still the thing to branch on, and the
+     service-line and remit-total equations). **Named by SPEC FIELD rather than element number,
+     because a draft that used element numbers got one wrong:** the untyped set is
+     `payment.totalActualPayment`, `claim.totalChargeAmount`, `claim.totalPaymentAmount`, every
+     `adjustments[].amount` at claim and line level, `serviceLine.chargeAmount`,
+     `serviceLine.paymentAmount` and `providerAdjustments[].amount`. Every other `X12Decimal` field
+     refuses typed, including `claim.patientResponsibilityAmount`, `serviceLine.paidUnitsOfService`,
+     every `amounts[].amount` and every `adjustments[].quantity`. Unchanged from `0.0.9`; `err.code` is still the thing to branch on, and the
      balance terms are the case where there is not one.
 
   **Closed in the release after `0.0.9`, and recorded because the behaviour changed for callers who
