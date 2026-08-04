@@ -21,6 +21,7 @@ import { X12_BUILD_ERROR_CODES, X12BuildError } from "./errors.js";
 import type { FunctionalGroupSpec, InterchangeSpec, TransactionSetSpec } from "./types.js";
 import { parseX12 } from "../parser/index.js";
 import type { X12Interchange } from "../parser/types.js";
+import { requireCallerSegment } from "./caller-segment.js";
 import { renderCallerValue } from "./caller-value.js";
 import { makeCallerEscaper } from "./caller-string.js";
 
@@ -210,6 +211,11 @@ function joinSeg(
   elementSeparator: string,
   segmentTerminator: string,
 ): string {
+  // Redundant here and kept anyway: this builder already maps `esc` over the
+  // whole segment array, id included, so nothing can reach the join wrong-typed.
+  // The gate asserts every joiner runs the check, and a joiner exempted because
+  // it happens to be safe today is one refactor away from not being.
+  requireCallerSegment(parts, "buildInterchange", refuseSpec);
   return parts.join(elementSeparator) + segmentTerminator;
 }
 

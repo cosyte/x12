@@ -8,6 +8,81 @@
 
 ## Status
 
+- **🩺 A RAW `number` IN AN `X12Decimal` SLOT NOW REFUSES, AND THE TYPE CHECK IS
+  STRUCTURAL RATHER THAN A LIST (2026-08-04, `X12-DECIMAL-BYPASSES-THE-GUARD`).**
+  Closes both classes `#60` disclosed and deliberately did not fix.
+
+  **THE DECIMAL HALF.** `makeCallerEscaper` checks what reaches `esc`, but an
+  `X12Decimal` slot hands `esc` a `value.toString()`, and a raw `number` answers
+  that with a perfectly good string - so it arrived already a string and the
+  guard never applied. Measured at `15abbd4`, `warnings.length === 0` every
+  time: `patientResponsibilityAmount` of `0.1+0.2` emitted
+  `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emitted
+  `…*1e+21*…`, `NaN` emitted `…*NaN*…`, `units` reached
+  `SV1*HC:99213*150.00*UN*0.30000000000000004***1` and a diagnosis
+  `monetaryAmount` reached `HI*ABK:J20.9:::0.30000000000000004`.
+  **TWO OF THE THREE RENDERINGS THIS LIBRARY CANNOT PARSE BACK** - `X12_DECIMAL_RE`
+  rejects exponent notation and `NaN` - so they did not round-trip. Every slot
+  now emits through the builder's `escDec` over `requireCallerDecimal`.
+  **REFUSE, NOT ROUND, AND THAT IS THE DECISION:** `0.30` guesses cents, `0.3`
+  guesses tenths, and guessing the scale of money is what `X12Decimal` exists to
+  prevent. No supported path is taken away - every one of these slots is _typed_
+  `X12Decimal` already.
+
+  **▶ THIS IS NOT THE HARM `#60` FIXED AND THE DIFFERENCE IS THE PRIORITY CALL.**
+  `#60` existed because a required identifier VANISHED. Nothing vanishes here and
+  nothing is mis-_read_; the library renders faithfully what a JS caller handed
+  it. The exposure is float noise on the wire. Do not flatten the two.
+
+  **THE RAW-SLOT HALF.** Routed through `esc`: `build999`'s GS-06/GE-02,
+  ST-02/SE-02, AK9-01, IK5-01 and GS-07; `groupDate`/`groupTime` (GS-04/GS-05) in
+  **all seven** domain builders, not just the 999; `build278`'s HL-03;
+  `build837`'s LX-01. That closes their delimiter hole too - `"1*BOGUS"` in a 999
+  `groupControlNumber` emitted `GS*FA*…*1*BOGUS*X*005010X231A1`, shifting
+  GS-07/GS-08 by one, and now reads `1?*BOGUS`.
+
+  **▶ AND THE PART THAT IS A PROPERTY RATHER THAN A LIST, WHICH IS THE POINT.**
+  Three drafts of `#60` published an exhaustive census of the slots that bypass
+  `esc` and a refuter measured **all three** false, each time by finding one
+  more. A census is the wrong instrument: **`esc` is optional on a slot, the
+  segment join is not.** `requireCallerSegment` type-checks every element of
+  every emitted segment on every route in, so one more slot cannot falsify it.
+  It also **names the slot the way the spec does** (`build999: "AK9"-01 must be a
+string`), which `esc` cannot, being unary - that limit is gone for the segment
+  guard and still stands for `esc`.
+
+  **▶ WHAT IS STILL NOT CLAIMED, AND SAYING SO IS THE POINT OF THE ABOVE.**
+  **Type safety is structural; DELIMITER safety is per-slot.** A `string`
+  carrying an active delimiter in a slot that skipped `esc` is still emitted
+  verbatim - the segment guard passes it, because it is a string. Only the slots
+  named above were routed. And the fixed-width **ISA** line is joined directly,
+  not through `seg`/`joinSeg`, so it is outside BOTH guards: `pad(1, 15)` still
+  throws an untyped `TypeError` and `padControl(1, 9)` still throws the
+  misleading "exceeds the 9-char spec limit". Both terminate; neither is silent.
+
+  **▶ THE EXISTING ARRAY-BOUNDS GATE CAUGHT A REAL DEFECT IN THE FIRST DRAFT OF
+  THE NEW GUARD, AND IT IS WORTH KNOWING.** `for (let i = 0; i < parts.length;
+i += 1)` over a forged `{ length: undefined }` array-like compares `0` against
+  `undefined`, gets false, runs **zero** iterations, and reports every segment
+  clean without examining one element - the same defect this guard exists to
+  stop, one layer up. It iterates with `for...of` now, which throws instead.
+  **The scanner is not comment-stripped for that rule**, so writing the bad shape
+  in a comment reds it too.
+
+  **Counts that moved and are pinned:** `esc` invocations **411 -> 406** on
+  **378 -> 377** lines; same-line `esc(x.toString())` **36 -> 5**, and those five
+  are the `escDec` declarations themselves. `build-837` also declares `decStr`
+  (`escDec` without the escape) because SV1-04/SV2-05/SV3-05 share one `units`
+  read and HI's components go through `ctx.comp`, which maps `esc` - escaping
+  there would double-release.
+
+  **Prose defects `#60` shipped, now fixed:** a `## Six limits` heading over five
+  limits; "no total is published" asserted while publishing one; the count
+  republished **unqualified and understated** on the consumer-facing
+  `docs-content/spec-notes-money.md`; and **"X12 code source 715" in five places**
+  - 715 is the _data element_ number and its values are a code **list**, which
+    this repo's own `src/transactions/ack/codes.ts` had right all along.
+
 - **🩺 A NUMBER IN A STRING ELEMENT NOW REFUSES INSTEAD OF EMITTING `""`
   (2026-08-03, `X12-NUMERIC-VALUE-EMITS-EMPTY`). THE DELIVERABLE IS A DECISION,
   AND THE DECISION IS _REFUSE, NEVER COERCE_.** `escapeRelease` read
@@ -80,7 +155,7 @@ positionally recoverable. **The filed 835 case reproduces exactly**:
   published, on purpose.**
 
   **THE SHARPEST KNOWN RAW SLOT IS `build999`'s `functionalGroup.disposition`
-  (AK9-01)**, an `ID` element bound to X12 code source 715: `AK9*12345*1*1*1`
+  (AK9-01)**, an `ID` element bound to X12 code list 715: `AK9*12345*1*1*1`
   with zero warnings, and `build999`'s own `X12_ACK_ACCEPT_WITH_ERRORS` guard
   compares `disposition === "A"`, which a number walks past exactly as it walked
   past `patientControlNumber === ""`. **Same mechanism, unfixed, in a builder

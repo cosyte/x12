@@ -47,7 +47,10 @@ import type {
 } from "./build-277-types.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
+import type { X12Decimal } from "../../decimal.js";
 import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerDecimal } from "../../builder/caller-decimal.js";
+import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 
@@ -72,6 +75,15 @@ function refuseSpec(message: string): never {
     CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_SPEC,
     message,
   );
+}
+
+/**
+ * Escape a caller-supplied `X12Decimal` into an element, refusing a raw
+ * `number` instead of emitting its JavaScript rendering
+ * (`X12-DECIMAL-BYPASSES-THE-GUARD`). @internal
+ */
+function escDec(value: X12Decimal, esc: (value: string) => string): string {
+  return esc(requireCallerDecimal(value, "build277", refuseSpec).toString());
 }
 
 /** GS-01 functional identifier code for the 277. `HN` = Health Care Claim Status Notification. @internal */
@@ -171,6 +183,7 @@ function buildClaimStatus(version: ClaimStatusVersion, spec: Build277Spec): X12I
   const esc = makeCallerEscaper(delimiters, "build277", refuseSpec);
 
   const seg = (parts: readonly string[]): string => {
+    requireCallerSegment(parts, "build277", refuseSpec);
     let end = parts.length;
     while (end > 1 && parts[end - 1] === "") end -= 1;
     return parts.slice(0, end).join(elementSeparator) + segmentTerminator;
@@ -224,8 +237,8 @@ function buildClaimStatus(version: ClaimStatusVersion, spec: Build277Spec): X12I
     X12_277_FUNCTIONAL_ID,
     esc(applicationSenderCode),
     esc(applicationReceiverCode),
-    groupDate,
-    groupTime,
+    esc(groupDate),
+    esc(groupTime),
     esc(envelope.groupControlNumber),
     X12_AGENCY_CODE,
     version,
@@ -576,8 +589,8 @@ function emitServiceLine(line: Build277ServiceLineSpec, body: string[], ctx: Emi
     ctx.seg([
       "SVC",
       svc01,
-      line.lineChargeAmount === undefined ? "" : ctx.esc(line.lineChargeAmount.toString()),
-      line.linePaymentAmount === undefined ? "" : ctx.esc(line.linePaymentAmount.toString()),
+      line.lineChargeAmount === undefined ? "" : escDec(line.lineChargeAmount, ctx.esc),
+      line.linePaymentAmount === undefined ? "" : escDec(line.linePaymentAmount, ctx.esc),
       ctx.esc(line.revenueCode ?? ""),
     ]),
   );
@@ -603,8 +616,8 @@ function emitStatus(status: Build277StatusSpec, body: string[], ctx: EmitContext
       composite(0),
       ctx.esc(status.statusEffectiveDate ?? ""),
       ctx.esc(status.actionCode ?? ""),
-      status.totalChargeAmount === undefined ? "" : ctx.esc(status.totalChargeAmount.toString()),
-      status.paymentAmount === undefined ? "" : ctx.esc(status.paymentAmount.toString()),
+      status.totalChargeAmount === undefined ? "" : escDec(status.totalChargeAmount, ctx.esc),
+      status.paymentAmount === undefined ? "" : escDec(status.paymentAmount, ctx.esc),
       ctx.esc(status.adjudicationDate ?? ""),
       "",
       "",

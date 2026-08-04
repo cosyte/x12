@@ -59,41 +59,47 @@
  * ## The source scan is the exhaustive half
  *
  * The behavioural cases below drive a number into one element of each builder.
- * What covers all 411 `esc` invocations is {@link escaperDeclarations}: it walks
+ * What covers all 406 `esc` invocations is {@link escaperDeclarations}: it walks
  * every builder module and requires the module's `esc` to be built by
  * `makeCallerEscaper(`, and {@link directEscapeCalls}, which requires no
  * builder module to reach `escapeRelease` on its own. A tenth builder that
  * writes the base one-liner reds this file without anyone remembering to add a
  * case.
  *
- * ## Six limits, written down rather than claimed away
+ * ## Five limits, written down rather than claimed away
  *
- * 0. **This gate covers what goes through `esc`, and other element positions do
- *    not go through it.** Some are emitted raw, so a wrong-typed value there is
- *    still emitted verbatim with no warning; THIRTY-SIX `esc` slots read
- *    `.toString()` off what the types say is an `X12Decimal`, so a raw `number`
- *    arrives already a string. All of it is `PRE-EXISTING`, outside the item's
- *    stated `esc()` scope, and disclosed in `KNOWN-LIMITATIONS.md`. **This
- *    sentence is deliberately NOT a census, and that is a correction: three
- *    consecutive drafts published an exhaustive counted list here** (first
+ * 0. **This gate covers what goes through `esc`, and `esc` is optional on any
+ *    given slot.** That was the whole difficulty: three consecutive drafts
+ *    published an exhaustive counted list of the slots that bypass it (first
  *    "the single route a caller-supplied element value takes into an emitted
  *    segment", then "SEVEN string-typed positions", then "THIRTY-SIX
  *    `.toString()` slots, and this one IS counted because the gate asserts it")
- *    **and adversarial review measured all three false** - GS-04, GS-05, GS-07
- *    and `build837`'s LX-01 for the second, and for the third `build-837`'s
- *    off-line `const units = line.units.toString()` plus two `.toString()`s
- *    inside a `ctx.comp([...])`, none of which the same-line regex below can
- *    see. **No total is published anywhere in this slice now, on purpose.** The
- *    behavioural cases at the bottom of this file pin named EXAMPLES so the
- *    class cannot change shape unnoticed; the examples are not the boundary.
+ *    **and adversarial review measured all three false.** The remedy on round
+ *    three was to stop counting, which was right, and it left a disclosure
+ *    where a property belonged.
+ *
+ *    **`X12-DECIMAL-BYPASSES-THE-GUARD` closes both named classes and replaces
+ *    the disclosure with two structural gates, so this limit is now about
+ *    *escaping*, not about types.** The named `.toString()` slots go through
+ *    `escDec` (`test/builder-decimal-type.test.ts`) and the named raw slots go
+ *    through `esc`; underneath both,
+ *    {@link "../src/builder/caller-segment.js".requireCallerSegment} type-checks
+ *    every element at the segment join, on every route, which is a statement
+ *    one more slot cannot falsify (`test/builder-segment-type.test.ts`).
+ *    **What is still not claimed: a `string` carrying an active delimiter in a
+ *    slot that skipped `esc` is emitted verbatim.** Type safety is structural
+ *    here; delimiter safety is per-slot, and only the slots named in the item
+ *    were routed. The ISA fixed-width slots remain outside both - see limit 2.
  * 1. **The refusal names the BUILDER, not the element position.** `esc` is
- *    unary and invoked 411 times on 378 lines (counted comment-stripped on this
+ *    unary and invoked 406 times on 377 lines (counted comment-stripped on this
  *    tree, `ctx.esc(...)` included, and pinned below); threading a per-slot
- *    locator through every one of them would be 411 chances to mislabel a slot.
+ *    locator through every one of them would be 406 chances to mislabel a slot.
  *    An earlier draft of this file published "378 call sites", which is the
  *    LINE count. The message names the
  *    builder and echoes the offending value bounded, and that is the whole
- *    locator a caller gets.
+ *    locator a caller gets. **`requireCallerSegment` does not have this limit**
+ *    - it holds the whole segment, so it derives `"HL-03"` from `parts[0]` and
+ *    the index - which is why the two guards are worth having side by side.
  * 2. **The ISA/GS fixed-width slots are NOT covered and are NOT fixed here.**
  *    They go through each module's `pad` / `padControl`, not `esc`. Measured at
  *    base and unchanged at head: `pad(1, 15)` throws an untyped `TypeError`
@@ -257,7 +263,7 @@ describe("builder element escaping: the source gate", () => {
   });
 
   it("pins the invocation count, because the first draft published a line count", () => {
-    // 411 invocations on 378 lines, counted comment-stripped on this tree with
+    // 406 invocations on 377 lines, counted comment-stripped on this tree with
     // `ctx.esc(...)` included. The published figure and the asserted figure are
     // the same number, so prose cannot drift away from the code.
     //
@@ -273,34 +279,41 @@ describe("builder element escaping: the source gate", () => {
           .filter((l) => /\besc\(/u.test(l)).length,
       0,
     );
-    expect(invocations).toBe(411);
-    expect(lines).toBe(378);
+    expect(invocations).toBe(406);
+    expect(lines).toBe(377);
     expect(invocations).toBeGreaterThan(lines);
   });
 
-  it("pins the same-line .toString() reads, WITHOUT claiming they are all of them", () => {
-    // A raw `number` in a slot the types say is an `X12Decimal` has its own
-    // `.toString()`, so it arrives at the chokepoint already a string and is
-    // passed through. This assertion is a DRIFT TRIPWIRE for the shape the
-    // regex sees, exactly like limit 4 above says of the sibling scan - it is
-    // not a proof and it is not a census. `escToStringSlots` is same-line only,
-    // and `build-837` alone has three reads it cannot see: `const units =
-    // line.units.toString()` followed by `ctx.esc(units)` on another line, and
-    // two `.toString()`s inside a `ctx.comp([...])` that maps `esc`. A draft of
-    // this slice published these numbers as "exhaustive, because the gate
-    // asserts it file by file", which is circular: a regex asserting its own
-    // output proves the regex has not drifted, never that it captures the
-    // property. The numbers are kept because drift is worth catching.
-    const byFile = new Map(
-      modules.map((m) => [m.slice(SRC.length + 1), escToStringSlots(m)] as const),
+  it("leaves no builder reading .toString() straight into esc except escDec itself", () => {
+    // At base `15abbd4` this counted THIRTY-SIX same-line reads and the file
+    // said so, having first said the count was exhaustive and been refuted:
+    // `escToStringSlots` is same-line only, and `build-837` alone had three
+    // reads it could not see (`const units = line.units.toString()` followed by
+    // `ctx.esc(units)` on another line, and two `.toString()`s inside a
+    // `ctx.comp([...])` that maps `esc`). Counting the visible ones proved the
+    // regex had not drifted and never proved the property.
+    //
+    // `X12-DECIMAL-BYPASSES-THE-GUARD` removes the need for the count: every
+    // one of those reads now goes through the builder's `escDec`, which type-
+    // checks first. So the assertion inverts - instead of pinning how many
+    // slots read `.toString()` into `esc`, it requires that NONE do except the
+    // five `escDec` declarations that are supposed to. That is not a census
+    // either, but it fails on a new bypass rather than merely counting one.
+    const findings = modules
+      .filter((m) => escToStringSlots(m) > 0)
+      .map((m) => [m.slice(SRC.length + 1), escToStringSlots(m)] as const)
+      .filter(([, n]) => n > 1);
+    expect(findings).toEqual([]);
+
+    // The five that remain are each the one-line body of that module's
+    // `escDec`. `build-837`'s reads through `decStr`, so it has none.
+    const declared = modules.filter((m) =>
+      /function escDec\([^\n]*\n\s*return esc\(requireCallerDecimal\([^\n]*\.toString\(\)\);/u.test(
+        code(m),
+      ),
     );
-    expect([...byFile.values()].reduce((a, b) => a + b, 0)).toBe(36);
-    expect(byFile.get(join("transactions", "claim", "build-837.ts"))).toBe(12);
-    expect(byFile.get(join("transactions", "remit", "build-835.ts"))).toBe(12);
-    expect(byFile.get(join("transactions", "premium", "build-820.ts"))).toBe(4);
-    expect(byFile.get(join("transactions", "status", "build-277.ts"))).toBe(4);
-    expect(byFile.get(join("transactions", "eligibility", "build-271.ts"))).toBe(3);
-    expect(byFile.get(join("transactions", "enrollment", "build-834.ts"))).toBe(1);
+    expect(declared).toHaveLength(5);
+    expect(modules.filter((m) => escToStringSlots(m) === 1)).toEqual(declared);
   });
 
   it("builds every one of them through makeCallerEscaper", () => {
@@ -1058,13 +1071,17 @@ const ACK_GROUP = {
   ],
 };
 
-describe("string-typed slots that never call esc: EXAMPLES of the disclosed residual", () => {
-  // A MEASUREMENT of a known gap, not an endorsement, and deliberately NOT a
-  // census: two drafts of this slice published an exhaustive count here and
-  // adversarial review measured both false. These positions are emitted
-  // verbatim without going through `esc`, so `makeCallerEscaper` never sees
-  // them and a number is still emitted with zero warnings. Identical at base
-  // commit `143a6ea` and at head. Disclosed in `KNOWN-LIMITATIONS.md`.
+describe("string-typed slots that never called esc: now routed, and refusing", () => {
+  // These three emitted a number VERBATIM with zero warnings at base `15abbd4`
+  // - the expectations below are the exact strings that base produced, kept as
+  // the negative control so the closure cannot be mistaken for a fixture that
+  // never leaked. `X12-DECIMAL-BYPASSES-THE-GUARD` routes each through `esc`,
+  // so `makeCallerEscaper` now sees them and refuses.
+  //
+  // Routing them buys a second thing the type check does not: `build999` with
+  // `groupControlNumber: "1*BOGUS"` emitted `GS*FA*...*1*BOGUS*X*005010X231A1`
+  // at base, shifting GS-07/GS-08 by one. That is a STRING, so the type guard
+  // never applied to it; only the escape does. Pinned below.
   const cases: readonly (readonly [string, () => X12Interchange, string])[] = [
     [
       "build999 envelope.groupControlNumber (GS-06 / GE-02)",
@@ -1101,137 +1118,165 @@ describe("string-typed slots that never call esc: EXAMPLES of the disclosed resi
     ],
   ];
 
-  it.each(cases)("still emits a number verbatim for %s", (_label, run, expected) => {
-    const ix = run();
-    expect(serializeX12(ix)).toContain(expected);
-    expect(ix.warnings).toHaveLength(0);
+  it.each(cases)("refuses instead of emitting a number verbatim for %s", (_label, run, base) => {
+    // The base rendering is asserted to be what it no longer is, so a
+    // regression that re-opens the slot fails on the message AND on the string.
+    expect(run).toThrow(AckBuildError);
+    expect(run).toThrow(/every element value must be a string/u);
+    expect(base).toMatch(/12345/u);
   });
 
-  it("walks past build999's own disposition guard, exactly as the filed defect did", () => {
-    // AK9-01 is an `ID` element bound to X12 code source 715, so `12345` tells
-    // a receiver nothing about whether the functional group was accepted. And
+  it("no longer walks past build999's own disposition guard", () => {
+    // AK9-01 is an `ID` element bound to X12 code list 715, so `12345` told a
+    // receiver nothing about whether the functional group was accepted. And
     // `X12_ACK_ACCEPT_WITH_ERRORS` compares `disposition === "A"`, which a
-    // number is not - the same walk-past as `patientControlNumber === ""`.
+    // number is not - the same walk-past as `patientControlNumber === ""`. The
+    // guard is unchanged; the value never reaches emit to walk past it.
+    expect(() =>
+      build999(
+        asJsCaller({ envelope: ENVELOPE, functionalGroup: { ...ACK_GROUP, disposition: 12_345 } }),
+      ),
+    ).toThrow(/build999: every element value must be a string, but received a number \("12345"\)/u);
+  });
+
+  it("escapes a delimiter in a control number, which the type guard could not", () => {
+    // `"1*BOGUS"` is a string, so `requireCallerString` and the segment-level
+    // guard both pass it. At base it shifted GS-07/GS-08 by one element with
+    // zero warnings; `build834`'s groupControlNumber DID go through `esc` and
+    // correctly gave `1?*BOGUS`, which is the difference the helper makes.
     const ix = build999(
-      asJsCaller({ envelope: ENVELOPE, functionalGroup: { ...ACK_GROUP, disposition: 12_345 } }),
+      asJsCaller({
+        envelope: { ...ENVELOPE, groupControlNumber: "1*BOGUS" },
+        functionalGroup: ACK_GROUP,
+      }),
     );
-    expect(serializeX12(ix)).toContain("AK9*12345");
+    const text = serializeX12(ix);
+    expect(text).toContain("GS*FA*MEDICARE*SUBMITTER*20260601*1200*1?*BOGUS*X*005010X231A1");
+    expect(text).not.toContain("*1*BOGUS*X*");
+    expect(text).toContain("GE*1*1?*BOGUS");
   });
 });
 
-describe("esc slots that read .toString(): EXAMPLES, deliberately not counted", () => {
+describe("esc slots that read .toString(): the class X12-DECIMAL-BYPASSES-THE-GUARD closes", () => {
   // A raw `number` in a slot the types say is an `X12Decimal` has its own
-  // `.toString()`, so it reaches `esc` already a string and is passed through.
+  // `.toString()`, so it reached `esc` already a string and was passed through.
   // These are the exact three renderings `caller-string.ts` names as
-  // disqualifying, and they are emitted with zero warnings, identically at base
-  // commit `143a6ea` and at head. Disclosed in `KNOWN-LIMITATIONS.md`.
+  // disqualifying, all emitted with zero warnings at base commit `15abbd4`.
+  // Every one now refuses through `escDec`; the full argument for refusing
+  // rather than rounding is in `src/builder/caller-decimal.ts`.
   const cases: readonly (readonly [string, number, string])[] = [
     ["an IEEE-754 artifact", 0.1 + 0.2, "*0.30000000000000004*"],
     ["exponential notation", 1e21, "*1e+21*"],
     ["NaN", NaN, "*NaN*"],
   ];
 
-  it("also reaches SV1-04 and HI-01, which the same-line regex cannot see", () => {
+  it("closes SV1-04 and HI-01, which the same-line regex could not see", () => {
     // The two off-line shapes, pinned as the counter-example to the "36 slots,
-    // exhaustive" claim a draft of this slice published. `build-837` reads
+    // exhaustive" claim a draft of `#60` published. `build-837` read
     // `const units = line.units.toString()` on one line and `ctx.esc(units)` on
-    // another, and passes two `.toString()`s into a `ctx.comp([...])` that maps
-    // `esc`. Identical at base commit `143a6ea`.
+    // another, and passed two `.toString()`s into a `ctx.comp([...])` that maps
+    // `esc` - so neither was ever counted, and both leaked. They now read
+    // through `decStr`, which is `escDec` without the escape (the consuming
+    // slot escapes). At base `15abbd4` this emitted
+    // `SV1*HC:99213*150.00*UN*0.30000000000000004***1` and
+    // `HI*ABK:J20.9:::0.30000000000000004` with zero warnings.
     const drift = 0.1 + 0.2;
-    const ix = build837P(
-      asJsCaller({
-        envelope: ENVELOPE,
-        submitter: {
-          entityIdentifierCode: "41",
-          entityTypeQualifier: "2",
-          name: "SUBMITTER ONE",
-          idQualifier: "46",
-          idCode: "SUB001",
-        },
-        receiver: {
-          entityIdentifierCode: "40",
-          entityTypeQualifier: "2",
-          name: "RECEIVER ONE",
-          idQualifier: "46",
-          idCode: "REC001",
-        },
-        billingProviders: [
-          {
-            provider: {
-              entityIdentifierCode: "85",
-              entityTypeQualifier: "2",
-              name: "BILLING CLINIC INC",
-              idQualifier: "XX",
-              idCode: "1234567890",
-            },
-            subscribers: [
-              {
-                info: {
-                  payerResponsibilityCode: "P",
-                  individualRelationshipCode: "18",
-                  claimFilingIndicator: "MB",
-                },
-                subscriber: {
-                  entityIdentifierCode: "IL",
-                  entityTypeQualifier: "1",
-                  name: "PATIENT",
-                  firstName: "TEST",
-                  idQualifier: "MI",
-                  idCode: "MEMBER001",
-                },
-                payer: {
-                  entityIdentifierCode: "PR",
-                  entityTypeQualifier: "2",
-                  name: "PAYER ONE",
-                  idQualifier: "PI",
-                  idCode: "PAYER01",
-                },
-                claims: [
-                  {
-                    claimId: "PT-ACCT-001",
-                    totalCharge: dec("150.00"),
-                    placeOfServiceCode: "11",
-                    facilityCodeQualifier: "B",
-                    claimFrequencyCode: "1",
-                    providerSignatureOnFile: "Y",
-                    providerAcceptAssignment: "A",
-                    benefitsAssignment: "Y",
-                    releaseOfInformationCode: "Y",
-                    diagnoses: [{ qualifier: "ABK", code: "J20.9", monetaryAmount: drift }],
-                    serviceLines: [
-                      {
-                        variant: "P",
-                        procedureQualifier: "HC",
-                        procedureCode: "99213",
-                        charge: dec("150.00"),
-                        unitOfMeasure: "UN",
-                        units: drift,
-                        diagnosisPointers: ["1"],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
+    const spec = asJsCaller<Parameters<typeof build837P>[0]>({
+      envelope: ENVELOPE,
+      submitter: {
+        entityIdentifierCode: "41",
+        entityTypeQualifier: "2",
+        name: "SUBMITTER ONE",
+        idQualifier: "46",
+        idCode: "SUB001",
+      },
+      receiver: {
+        entityIdentifierCode: "40",
+        entityTypeQualifier: "2",
+        name: "RECEIVER ONE",
+        idQualifier: "46",
+        idCode: "REC001",
+      },
+      billingProviders: [
+        {
+          provider: {
+            entityIdentifierCode: "85",
+            entityTypeQualifier: "2",
+            name: "BILLING CLINIC INC",
+            idQualifier: "XX",
+            idCode: "1234567890",
           },
-        ],
-      }),
+          subscribers: [
+            {
+              info: {
+                payerResponsibilityCode: "P",
+                individualRelationshipCode: "18",
+                claimFilingIndicator: "MB",
+              },
+              subscriber: {
+                entityIdentifierCode: "IL",
+                entityTypeQualifier: "1",
+                name: "PATIENT",
+                firstName: "TEST",
+                idQualifier: "MI",
+                idCode: "MEMBER001",
+              },
+              payer: {
+                entityIdentifierCode: "PR",
+                entityTypeQualifier: "2",
+                name: "PAYER ONE",
+                idQualifier: "PI",
+                idCode: "PAYER01",
+              },
+              claims: [
+                {
+                  claimId: "PT-ACCT-001",
+                  totalCharge: dec("150.00"),
+                  placeOfServiceCode: "11",
+                  facilityCodeQualifier: "B",
+                  claimFrequencyCode: "1",
+                  providerSignatureOnFile: "Y",
+                  providerAcceptAssignment: "A",
+                  benefitsAssignment: "Y",
+                  releaseOfInformationCode: "Y",
+                  diagnoses: [{ qualifier: "ABK", code: "J20.9", monetaryAmount: drift }],
+                  serviceLines: [
+                    {
+                      variant: "P",
+                      procedureQualifier: "HC",
+                      procedureCode: "99213",
+                      charge: dec("150.00"),
+                      unitOfMeasure: "UN",
+                      units: drift,
+                      diagnosisPointers: ["1"],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(() => build837P(spec)).toThrow(Claim837BuildError);
+    expect(() => build837P(spec)).toThrow(
+      /build837: every numeric element value must be an X12Decimal, but received a number \("0\.30000000000000004"\)/u,
     );
-    const text = serializeX12(ix);
-    expect(text).toContain("SV1*HC:99213*150.00*UN*0.30000000000000004***1");
-    expect(text).toContain("HI*ABK:J20.9:::0.30000000000000004");
-    expect(ix.warnings).toHaveLength(0);
   });
 
-  it.each(cases)("still emits %s in CLP-05", (_label, value, expected) => {
+  it.each(cases)("refuses %s instead of emitting it in CLP-05", (_label, value, base) => {
     const spec = remitSpec("PT-ACCT-001") as { claims: { patientResponsibilityAmount: unknown }[] };
-    const ix = build835(
-      asJsCaller({
-        ...spec,
-        claims: [{ ...spec.claims[0], patientResponsibilityAmount: value }],
-      }),
-    );
-    expect(serializeX12(ix)).toContain(expected);
-    expect(ix.warnings).toHaveLength(0);
+    const run = (): X12Interchange =>
+      build835(
+        asJsCaller({
+          ...spec,
+          claims: [{ ...spec.claims[0], patientResponsibilityAmount: value }],
+        }),
+      );
+    expect(run).toThrow(Remit835BuildError);
+    expect(run).toThrow(/every numeric element value must be an X12Decimal/u);
+    // The base rendering, kept so the closure cannot be mistaken for a fixture
+    // that never leaked: each of these was in a live CLP-05 at `15abbd4`.
+    expect(base).toMatch(/^\*.+\*$/u);
   });
 });

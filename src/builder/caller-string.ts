@@ -70,13 +70,13 @@
  *    `"1e+21"`, `String(NaN)` is `"NaN"`, `String(0.1 + 0.2)` is
  *    `"0.30000000000000004"`, and `String(-0)` is `"0"`. None are valid in an
  *    `AN`, `ID` or `Nn` element. Coercion would emit every one of them without
- *    a warning. **And this is not hypothetical in this package: the 36 `esc`
- *    slots that read `.toString()` off an `X12Decimal` emit exactly those three
- *    strings today for a raw `number`, measured and unchanged by this slice.**
- *    See "What this does NOT cover". `X12Decimal` is the sanctioned route for
- *    numeric content, so a bare `number` in an element slot is never the right
- *    thing to have been handed - but passing one is not currently refused
- *    everywhere either, and this module should not imply that it is.
+ *    a warning. **And this was not hypothetical in this package: the `esc`
+ *    slots that read `.toString()` off an `X12Decimal` emitted exactly those
+ *    three strings for a raw `number`, disclosed and unfixed by this slice and
+ *    closed by `X12-DECIMAL-BYPASSES-THE-GUARD`** - see "What this does NOT
+ *    cover". `X12Decimal` is the sanctioned route for numeric content, so a
+ *    bare `number` in an element slot is never the right thing to have been
+ *    handed.
  * 3. **No caller who was getting the value into the document is broken by
  *    refusing.** The objection to refusal is that JS/JSON callers pass numbers
  *    today - but what they get today is a document with the field gone. There
@@ -115,65 +115,82 @@
  * "the single route a caller-supplied element value takes into an emitted
  * segment", then "SEVEN string-typed positions". Each round found more (GS-04,
  * GS-05, GS-07 and `build837`'s LX-01 among them). Growing the count a third
- * time is the runaway ADR 0016 exists to stop, so the claim is cut back to the
+ * time is the runaway ADR 0016 exists to stop, so the claim was cut back to the
  * form that cannot be falsified by finding one more:
  *
- * > **This module guards values routed through a builder's `esc` helper.
- * > Other positions - including some envelope, control-number and
- * > line-counter slots - are emitted raw, and a wrong-typed value there is
- * > still emitted verbatim with no warning. It is not a complete list, and
- * > callers should validate spec types at their own boundary.**
+ * > **This module guards values routed through a builder's `esc` helper.**
  *
- * That whole class is `PRE-EXISTING` (byte-identical at base `143a6ea`),
- * outside the item's stated `esc()` scope, and unchanged here.
- * `test/builder-string-type.test.ts` pins named EXAMPLES of it so it cannot
- * change shape unnoticed; the examples are not the boundary.
+ * That is still exactly what this module does, and `esc` is still optional on
+ * any given slot. What changed is what sits underneath it.
  *
- * Three specifics are worth naming, because each is a different shape:
+ * ### `X12-DECIMAL-BYPASSES-THE-GUARD` replaced the disclosure with a property
+ *
+ * The three shapes this section used to disclose as live, `PRE-EXISTING` and
+ * deliberately unfixed are now closed, and two of them by structure rather than
+ * by enumeration:
  *
  * - **`esc` slots that read `.toString()` off what the types say is an
- *   `X12Decimal`** hand a raw `number` here already a string, so it is passed
- *   through. Measured identical at base and head, `warnings.length === 0` in
- *   every case: a `patientResponsibilityAmount` of `0.1 + 0.2` emits
- *   `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emits
- *   `…*1e+21*…`, `NaN` emits `…*NaN*…`, and an 837 service-line `units` of
- *   `0.1 + 0.2` emits `SV1*HC:99213*150.00*UN*0.30000000000000004***1`.
+ *   `X12Decimal`** handed a raw `number` here already a string, so it was
+ *   passed through: a `patientResponsibilityAmount` of `0.1 + 0.2` emitted
+ *   `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emitted
+ *   `…*1e+21*…`, `NaN` emitted `…*NaN*…`, and an 837 service-line `units` of
+ *   `0.1 + 0.2` emitted `SV1*HC:99213*150.00*UN*0.30000000000000004***1`, all
+ *   with `warnings.length === 0`. Every one now routes through the builder's
+ *   `escDec`, over {@link "./caller-decimal.js".requireCallerDecimal}.
  *   **A draft of this bullet said "THIRTY-SIX, and this one IS counted, because
  *   the gate asserts the census file by file". That was the same mistake one
- *   layer down**: the gate asserts a SAME-LINE regex, which pins the figure
- *   against drift and establishes nothing about the property. `build-837` alone
- *   has three reads the regex cannot see - `const units = line.units.toString()`
- *   followed by `ctx.esc(units)`, and two `.toString()`s inside a
- *   `ctx.comp([...])` that maps `esc`. So this class is examples too, and **no
- *   total is published.** Closing it is a different decision from the one this
- *   module makes (whether an element slot may take anything but an `X12Decimal`
- *   instance), so it is disclosed, not fixed.
- * - **`build999`'s `functionalGroup.disposition` (AK9-01) is the sharpest known
- *   example of the raw class.** It is an `ID` element bound to X12 code source
- *   715, so a number tells a receiver nothing about whether the group was
- *   accepted, and `build999`'s own `X12_ACK_ACCEPT_WITH_ERRORS` guard compares
- *   `disposition === "A"`, which a number walks past exactly the way it walked
- *   past `build835`'s `patientControlNumber === ""`. **Same mechanism as the
- *   filed defect, in a builder this slice otherwise fixes.**
- * - **The ISA/GS fixed-width slots go through `pad` / `padControl`, not `esc`.**
- *   `pad(1, 15)` throws an untyped `TypeError` (`value.slice is not a
- *   function`) and `padControl(1, 9)` throws the module's typed refusal with the
- *   **misleading** text "exceeds the 9-char spec limit". Those two terminate,
- *   which is better than emitting silently - but do NOT read that as "the
- *   envelope is safe": `groupDate` (GS-04) and `groupTime` (GS-05) go through
- *   neither `pad` nor `esc` and emit a number verbatim. `buildTA1` has no `esc`
- *   at all, every TA1 element being fixed-width.
+ *   layer down** - the gate asserted a SAME-LINE regex, which pins a figure
+ *   against drift and establishes nothing about the property, and `build-837`
+ *   alone had three reads it could not see. The replacement gate does not count:
+ *   it requires that **no `.toString()` read reaches an element except through
+ *   `escDec` / `decStr`**, which one more slot cannot falsify.
+ * - **The string-typed slots that never called `esc` at all** - `build999`'s
+ *   `groupControlNumber` (GS-06 / GE-02), `transactionSetControlNumber`
+ *   (ST-02 / SE-02), `disposition` (AK9-01 and IK5-01) and `groupResponsibleAgency`
+ *   (GS-07); `groupDate` / `groupTime` (GS-04 / GS-05) in all seven domain
+ *   builders; the 278's `levelCode` (HL-03); the 837's `lineNumber` (LX-01) -
+ *   are now routed through `esc`. AK9-01 was the sharpest of them: an `ID`
+ *   element bound to X12 code list 715, so a number told a receiver nothing
+ *   about whether the group was accepted, and `build999`'s own
+ *   `X12_ACK_ACCEPT_WITH_ERRORS` guard compares `disposition === "A"`, which a
+ *   number walked past exactly the way it walked past `build835`'s
+ *   `patientControlNumber === ""`.
+ * - **And underneath both**, {@link "./caller-segment.js".requireCallerSegment}
+ *   type-checks every element at the segment join, on every route into a
+ *   document. That is the statement this section could never make by listing:
+ *   `esc` is optional on a slot, the join is not.
+ *
+ * ### What is still NOT claimed
+ *
+ * - **Type safety is structural; delimiter safety is per-slot.** A `string`
+ *   carrying an active delimiter in a slot that skipped `esc` is still emitted
+ *   verbatim - the segment guard would pass it, because it is a string. Only
+ *   the slots named above were routed, and that is a list, with a list's
+ *   weakness. `build999` with `groupControlNumber: "1*BOGUS"` shifting
+ *   GS-07/GS-08 by one is the shape to look for.
+ * - **The ISA fixed-width slots go through `pad` / `padControl`, not `esc`, and
+ *   not through the segment join either** - every builder assembles ISA with a
+ *   direct `.join()`. `pad(1, 15)` throws an untyped `TypeError` (`value.slice
+ *   is not a function`) and `padControl(1, 9)` throws the module's typed
+ *   refusal with the **misleading** text "exceeds the 9-char spec limit". Those
+ *   two terminate, which is better than emitting silently, and neither is
+ *   improved here. `buildTA1` has no `esc` at all, every TA1 element being
+ *   fixed-width.
  *
  * One limit of the guard itself, rather than of its scope:
  *
  * - **The refusal names the BUILDER, not the element position.** `esc` is unary
- *   and invoked **411 times on 378 lines** across the nine modules (counted
+ *   and invoked **406 times on 377 lines** across the nine modules (counted
  *   comment-stripped on this tree, `ctx.esc(...)` included, and pinned by the
  *   gate so the figure cannot drift); threading a per-slot locator through every
- *   one of them would be 411 opportunities to mislabel a slot, which is a worse
+ *   one of them would be 406 opportunities to mislabel a slot, which is a worse
  *   trade than a message that names the builder and echoes the offending value
  *   bounded. Stated as a limit rather than claimed away. **An earlier draft
  *   published "378 call sites", which is the LINE count.**
+ *   {@link "./caller-segment.js".requireCallerSegment} does **not** carry this
+ *   limit - it holds the whole segment, so it derives `"HL-03"` from `parts[0]`
+ *   and the index - which is the other reason the two guards are worth having
+ *   side by side.
  *
  * @see `test/builder-string-type.test.ts` - the source gate that requires every
  * builder module to build its `esc` through {@link makeCallerEscaper}.

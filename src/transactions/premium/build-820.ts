@@ -38,7 +38,10 @@ import type {
 } from "./build-820-types.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
+import type { X12Decimal } from "../../decimal.js";
 import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerDecimal } from "../../builder/caller-decimal.js";
+import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 
@@ -49,6 +52,15 @@ import { makeCallerEscaper } from "../../builder/caller-string.js";
  */
 function refuseSpec(message: string): never {
   throw new Premium820BuildError(PREMIUM_820_BUILD_ERROR_CODES.X12_820_BUILD_INVALID_SPEC, message);
+}
+
+/**
+ * Escape a caller-supplied `X12Decimal` into an element, refusing a raw
+ * `number` instead of emitting its JavaScript rendering
+ * (`X12-DECIMAL-BYPASSES-THE-GUARD`). @internal
+ */
+function escDec(value: X12Decimal, esc: (value: string) => string): string {
+  return esc(requireCallerDecimal(value, "build820", refuseSpec).toString());
 }
 
 /** GS-08 / ST-03 version + release emitted for every 820 - the WPC TR3 `005010X218`. @internal */
@@ -121,6 +133,7 @@ export function build820(spec: Build820Spec): X12Interchange {
    * empty elements (interior empties are positionally meaningful and kept).
    */
   const seg = (parts: readonly string[]): string => {
+    requireCallerSegment(parts, "build820", refuseSpec);
     let end = parts.length;
     while (end > 1 && parts[end - 1] === "") end -= 1;
     return parts.slice(0, end).join(elementSeparator) + segmentTerminator;
@@ -165,8 +178,8 @@ export function build820(spec: Build820Spec): X12Interchange {
     X12_820_FUNCTIONAL_ID, // GS-01 - "RA"
     esc(applicationSenderCode), // GS-02
     esc(applicationReceiverCode), // GS-03
-    groupDate, // GS-04 - CCYYMMDD
-    groupTime, // GS-05 - HHMM
+    esc(groupDate), // GS-04 - CCYYMMDD
+    esc(groupTime), // GS-05 - HHMM
     esc(envelope.groupControlNumber), // GS-06
     X12_AGENCY_CODE, // GS-07
     X218_VERSION_RELEASE, // GS-08
@@ -186,7 +199,7 @@ export function build820(spec: Build820Spec): X12Interchange {
     seg([
       "BPR",
       esc(spec.payment.transactionHandlingCode),
-      esc(spec.payment.totalPremiumAmount.toString()),
+      escDec(spec.payment.totalPremiumAmount, esc),
       esc(spec.payment.creditDebitFlag),
       esc(spec.payment.method),
       esc(spec.payment.paymentFormatCode ?? ""),
@@ -391,7 +404,7 @@ function emitRemittance(
     body.push(
       seg([
         "ADX",
-        esc(adjustment.amount.toString()),
+        escDec(adjustment.amount, esc),
         esc(adjustment.reasonCode),
         esc(adjustment.referenceQualifier ?? ""),
         esc(adjustment.referenceId ?? ""),
@@ -431,8 +444,8 @@ function emitOpenItem(
     esc(item.qualifier),
     esc(item.referenceId),
     esc(item.paymentActionCode ?? ""),
-    esc(item.amountPaid.toString()),
-    item.amountDue === undefined ? "" : esc(item.amountDue.toString()),
+    escDec(item.amountPaid, esc),
+    item.amountDue === undefined ? "" : escDec(item.amountDue, esc),
   ]);
 }
 

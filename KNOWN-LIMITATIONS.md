@@ -236,46 +236,55 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   `"0.30000000000000004"`. None are valid in an `AN`, `ID` or `Nn` element. **Convert at your own
   boundary, where you can still see whether the leading zeros mattered.**
 
-  **KEEP VALIDATING SPEC TYPES AT YOUR OWN BOUNDARY ANYWAY. The fix guards values routed through the
-  escape helper, and not every element position goes through it.** This paragraph replaces the blanket
-  "coerce your spec values to strings at your own boundary" advice this page carried before `0.0.9`,
-  and it is narrower rather than gone, because that advice is still correct for the positions below.
-  Everything here is **pre-existing, measured, and unchanged by the fix**.
+  **THE TYPE CHECK IS NOW STRUCTURAL, AND THE DELIMITER ESCAPE IS NOT.** `0.0.9` guarded values
+  routed through the escape helper, and not every element position went through it - two drafts of
+  this entry published a counted enumeration of the gaps and **both were measured incomplete**.
+  Rather than count a third time, the library moved the check to the one place every element must
+  pass: **the segment join**. So the statement is now a property instead of a list:
 
-  **This is deliberately not an exhaustive list of the unguarded positions, and saying so is the
-  honest thing:** two drafts of this entry published a counted enumeration and both were measured
-  incomplete. Treat it as "some envelope, control-number and line-counter slots are emitted raw",
-  validate at your boundary, and do not read a slot's absence here as a guarantee.
-  1. **Monetary and quantity slots read `.toString()`, so a raw number passes the check.**
-     `X12Decimal` is the first-class route and the one you should use, but a bare `number` is **not**
-     refused there. Measured with `warnings.length === 0` in every case: a
-     `patientResponsibilityAmount` of `0.1 + 0.2` emits
-     `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emits `…*1e+21*…`, `NaN` emits
-     `…*NaN*…`, and an 837 service-line `units` of `0.1 + 0.2` emits
-     `SV1*HC:99213*150.00*UN*0.30000000000000004***1`. **Like the rest of this entry, that is a set
-     of examples and not a count** - a draft of this page said the class was exactly 36 slots and
-     closed, and it is not.
-  2. **Some string-typed positions never call the escape helper at all**, so a number is still emitted
-     verbatim with no warning. Known examples, not a complete set: `build999`'s
-     `envelope.groupControlNumber` (GS-06 / GE-02), `envelope.transactionSetControlNumber` (ST-02 /
-     SE-02), `functionalGroup.disposition` (AK9-01) and `transactionResponses[].disposition` (IK5-01);
-     `build278`'s `review.levelCode` (HL-03); `envelope.groupDate` / `envelope.groupTime` (GS-04 /
-     GS-05); and `build837`'s `serviceLine.lineNumber` (LX-01). **AK9-01 is the one
-     to know about:** it is an `ID` element bound to X12 code source 715, so a number there tells the
-     receiver nothing about whether the functional group was accepted, and the library's own
-     accept-with-errors guard compares it against `"A"` and does not fire. These positions also admit
-     an **unescaped delimiter**: `build999` with a `groupControlNumber` of `"1*BOGUS"` emits
-     `GS*FA*…*1*BOGUS*X*005010X231A1`, shifting GS-07 and GS-08 by one, and `build837` with a
-     `lineNumber` of `"1*BOGUS"` emits `LX*1*BOGUS`, both with zero warnings. (Where a slot DOES go
-     through the escape helper the delimiter is escaped correctly: `build834`'s `groupControlNumber`
-     gives `1?*BOGUS`. That is the difference the helper makes.)
+  > **No non-string value reaches an element of a segment any builder emits.** A number, `null`,
+  > `undefined`, a boolean or an object in an element slot draws that builder's own typed, code-tagged
+  > refusal, naming the slot the way the spec does (`build999: "AK9"-01 must be a string, …`).
+
+  The monetary slots got their own guard on top of it: a slot typed `X12Decimal` refuses anything that
+  is not one, rather than rendering `number.toString()` into the document.
+
+  **What is still worth validating at your own boundary,** because it is a list and lists have the
+  weakness described above:
+  1. **A `string` carrying an active delimiter.** The segment guard passes it, because it is a
+     string. Slots that route through the escape helper release it correctly (`"1*BOGUS"` emits as
+     `1?*BOGUS`); the fixed-width ISA slots do not go through it at all.
+  2. **Whether an `X12Decimal` carries the SCALE you meant.** `fromString("0.3")` and
+     `fromString("0.30")` are both accepted and both emit verbatim. That choice is yours.
+
+  **Closed in the release after `0.0.9`, and recorded because the behaviour changed for callers who
+  were relying on it.** Each of these emitted silently before and refuses now:
+  1. **Monetary and quantity slots read `.toString()`, so a raw number passed the check.** Measured
+     with `warnings.length === 0` in every case: a `patientResponsibilityAmount` of `0.1 + 0.2`
+     emitted `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emitted `…*1e+21*…`,
+     `NaN` emitted `…*NaN*…`, and an 837 service-line `units` of `0.1 + 0.2` emitted
+     `SV1*HC:99213*150.00*UN*0.30000000000000004***1`. Two of those three the library **cannot parse
+     back** - it rejects exponent notation and `NaN` outright - so they did not round-trip.
+  2. **Some string-typed positions never called the escape helper at all**, so a number was emitted
+     verbatim with no warning: `build999`'s `envelope.groupControlNumber` (GS-06 / GE-02),
+     `envelope.transactionSetControlNumber` (ST-02 / SE-02), `functionalGroup.disposition` (AK9-01)
+     and `transactionResponses[].disposition` (IK5-01); `build278`'s `review.levelCode` (HL-03);
+     `envelope.groupDate` / `envelope.groupTime` (GS-04 / GS-05) in every domain builder; and
+     `build837`'s `serviceLine.lineNumber` (LX-01). **AK9-01 was the one to know about:** it is an
+     `ID` element bound to X12 code list 715, so a number there told the receiver nothing about
+     whether the functional group was accepted, and the library's own accept-with-errors guard
+     compares it against `"A"` and did not fire. These positions also admitted an **unescaped
+     delimiter**: `build999` with a `groupControlNumber` of `"1*BOGUS"` emitted
+     `GS*FA*…*1*BOGUS*X*005010X231A1`, shifting GS-07 and GS-08 by one. They are routed through the
+     escape helper now, so that reads `1?*BOGUS`.
   3. **The fixed-width ISA slots** (`senderId`, `receiverId`, `interchangeControlNumber`, …) go
-     through padding rather than escaping. A number there throws an untyped `TypeError` with no
-     `code` (`value.slice is not a function`), and a numeric `interchangeControlNumber` throws the
-     builder's typed refusal with the **misleading** text "exceeds the 9-char spec limit". Those two
-     terminate rather than emitting silently, which makes them a smaller hazard than 1 and 2 - but
-     that is a property of those two slots, not of the envelope: GS-04 and GS-05 above are envelope
-     elements and are silent.
+     through padding rather than escaping, and **are still not covered** - they do not pass through
+     the segment join either. A number there throws an untyped `TypeError` with no `code`
+     (`value.slice is not a function`), and a numeric `interchangeControlNumber` throws the builder's
+     typed refusal with the **misleading** text "exceeds the 9-char spec limit". Both terminate
+     rather than emitting silently, which is why they were the smaller hazard and why they are left
+     alone. GS-04 and GS-05 were the counter-example that made this distinction worth stating - they
+     are envelope elements and they WERE silent. They are covered now; ISA still is not.
 
   **One other change, and it is a behaviour change:** the exported `escapeRelease(value, delimiters)`
   now **throws `TypeError` on a non-string** rather than returning `""`. If you call it directly, it
