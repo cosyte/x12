@@ -149,11 +149,12 @@ and a remittance that reassociates to the **wrong** claim. Convert at your own b
 still tell whether the zeros mattered.
 
 **The type check now covers every element of every segment a builder emits through its segment
-joiner, not only the ones routed through the escape helper.** Two earlier drafts of this page published a counted list of the slots
-that escaped the check and both were measured incomplete, so the check moved to the one place every
-element has to pass, the segment join. A number, `null`, `undefined`, a boolean or an object in any
-element slot draws that builder's typed refusal, naming the slot the way the spec does:
-`build999: "AK9"-01 must be a string, …`.
+joiner, not only the ones routed through the escape helper.** Two earlier drafts of this page
+published a counted list of the slots that escaped the check and both were measured incomplete, so
+the check moved to the place every element of those segments has to pass, the joiner. A number,
+`null`, `undefined`, a boolean or an object in a slot that goes through one draws that builder's
+typed refusal, naming the slot the way the spec does: `build999: "AK9"-01 must be a string, …`.
+`buildTA1` does not use a segment joiner and is not covered; see below.
 
 **Monetary and quantity slots have their own guard on top of that**, because a raw `number` answers
 `.toString()` with a perfectly good string and used to sail straight through: a
@@ -175,10 +176,11 @@ silently as `TA1**250101*1200*A*000`. TA1-01 reassociates the acknowledgment to 
 acknowledges, so build it as a string.
 
 Fourth, **`build835`'s balance-equation amounts refuse UNTYPED.** The balance guard runs before the
-escape helper is built and calls `X12Decimal` methods on your value, so a raw `number` in **BPR-02**,
-**CLP-03**, **CLP-04** or a **CAS-03** amount throws a plain `TypeError` with **no `code`** rather
-than the typed refusal. The typed one fires on the amounts the balance equation does not read
-(CLP-05, CAS-04, AMT-02).
+escape helper is built and calls `X12Decimal` methods on your value, so a raw `number` there throws a
+plain `TypeError` with **no `code`** rather than the typed refusal. The rule is the equation, not a
+list of fields: an amount refuses untyped exactly when the balance guard reads it as a term of one of
+the three TR3 X221A1 §1.10.2 invariants (**BPR-02, CLP-03, CLP-04, CAS-03 at either level, SVC-02,
+SVC-03, PLB-04**), and every amount outside them refuses typed (**CLP-05, SVC-05, AMT-02**).
 
 One other behaviour change: the exported `escapeRelease` now throws `TypeError` on a non-string
 instead of returning `""`, and a boxed `new String("…")` is refused where it built at `0.0.8`. See

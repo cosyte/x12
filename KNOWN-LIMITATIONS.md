@@ -266,12 +266,14 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   3. **Anything `buildTA1` emits**, per the paragraph above.
   4. **`build835`'s balance-equation amounts, which refuse UNTYPED.** `build835` runs its balance
      guard before it builds the escape helper, and that guard calls `X12Decimal` methods on your
-     value. So a raw `number` in **BPR-02**, **CLP-03**, **CLP-04** or a **CAS-03** adjustment amount
-     throws a plain `TypeError` with **no `code`** - one of them saying the value "has no internal
-     state - was it tampered with?", which is a misleading thing to be told when you passed a number.
-     The typed refusal you would expect fires only on the amounts the balance equation does not read
-     (CLP-05, CAS-04, AMT-02). Unchanged from `0.0.9`; `err.code` is still the thing to branch on, and
-     these four are the case where there is not one.
+     value. So a raw `number` there throws a plain `TypeError` with **no `code`** - some saying the
+     value "has no internal state - was it tampered with?", which is a misleading thing to be told
+     when you passed a number. **The rule, not a list:** a slot refuses untyped exactly when the
+     balance guard reads it as a term of one of the three TR3 X221A1 §1.10.2 invariants (the claim,
+     service-line and remit-total equations), so **BPR-02, CLP-03, CLP-04, CAS-03 at either level,
+     SVC-02, SVC-03 and PLB-04**; every amount outside those equations refuses typed (**CLP-05,
+     SVC-05, AMT-02**). Unchanged from `0.0.9`; `err.code` is still the thing to branch on, and the
+     balance terms are the case where there is not one.
 
   **Closed in the release after `0.0.9`, and recorded because the behaviour changed for callers who
   were relying on it.** Each of these emitted silently before and refuses now:

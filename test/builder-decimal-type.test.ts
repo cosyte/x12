@@ -688,28 +688,50 @@ describe("a real X12Decimal is unaffected, which is the regression half", () => 
 });
 
 describe("the X12Decimal slots this guard does NOT reach, disclosed not fixed", () => {
-  // Found by the `conformance-refuter` on this slice. `build835` runs
+  // Found by the `conformance-refuter`, twice. `build835` runs
   // `enforceBalance(spec)` BEFORE it resolves delimiters and builds `escDec`,
   // and the balance check calls `X12Decimal` methods on the caller's value. So
-  // for every slot that is a TERM in the TR3 X221A1 balance equation,
-  // `requireCallerDecimal` is unreachable: the caller gets an untyped
-  // `TypeError` with no `code`, and one of them says they tampered with a
-  // frozen class, which is a misleading thing to tell someone who passed a
-  // number.
+  // for any slot the balance guard reads, `requireCallerDecimal` is unreachable:
+  // the caller gets an untyped `TypeError` with no `code`, and some of them say
+  // the value "has no internal state - was it tampered with?", which is a
+  // misleading thing to tell someone who passed a number.
   //
-  // Behaviour identical at base `15abbd4` - this is `PRE-EXISTING`, and the
-  // reason it is pinned here rather than fixed is that reordering
-  // `enforceBalance` after the escaper is a behaviour change to the refusal
-  // PRECEDENCE of an out-of-balance remit, which is its own decision.
+  // **THE CLAIM IS THE DICHOTOMY, NOT EITHER LIST.** A first draft of this pin
+  // published the untyped side as a closed list of FOUR and a refuter measured
+  // it incomplete - SVC-02, SVC-03 and PLB-04 are untyped too. That is the same
+  // census failure the whole slice exists to end, committed inside the fix for
+  // an overclaim. So what is asserted is the rule:
   //
-  // **It is pinned because the docs would otherwise overclaim.** Without this,
-  // "a raw number is refused with that builder's typed error" reads as true of
-  // every money slot, and it is not true of these.
+  //   > A slot refuses UNTYPED exactly when the balance guard reads it as a term
+  //   > of one of the three TR3 X221A1 §1.10.2 invariants in
+  //   > `src/transactions/remit/balance.ts`. Every other X12Decimal slot refuses
+  //   > TYPED.
+  //
+  // Both arms are asserted below, on ONE fixture that exercises both, so a
+  // change that moves a slot from one arm to the other reds this file. The
+  // entries are EXAMPLES of each arm; the rule is the claim.
+  //
+  // Behaviour identical at base `15abbd4` - `PRE-EXISTING`. Pinned rather than
+  // fixed because reordering `enforceBalance` after the escaper changes the
+  // refusal PRECEDENCE of an out-of-balance remit, which is its own decision.
+
+  /** Terms of the three §1.10.2 invariants: claim, service line, remit total. */
   const balanceTermSlots: readonly (readonly [string, readonly (string | number)[]])[] = [
     ["BPR-02 payment.totalActualPayment", ["payment", "totalActualPayment"]],
-    ["CLP-03 claims[0].totalChargeAmount", ["claims", 0, "totalChargeAmount"]],
-    ["CLP-04 claims[0].totalPaymentAmount", ["claims", 0, "totalPaymentAmount"]],
-    ["CAS-03 claims[0].adjustments[0].amount", ["claims", 0, "adjustments", 0, "amount"]],
+    ["CLP-03 claim totalChargeAmount", ["claims", 0, "totalChargeAmount"]],
+    ["CLP-04 claim totalPaymentAmount", ["claims", 0, "totalPaymentAmount"]],
+    ["SVC-02 service line chargeAmount", ["claims", 0, "serviceLines", 0, "chargeAmount"]],
+    ["SVC-03 service line paymentAmount", ["claims", 0, "serviceLines", 0, "paymentAmount"]],
+    ["CAS-03 line adjustment amount", ["claims", 0, "serviceLines", 0, "adjustments", 0, "amount"]],
+    ["PLB-04 provider adjustment amount", ["providerAdjustments", 0, "amount"]],
+  ];
+
+  /** Amounts no invariant reads: informational or reported, never summed. */
+  const nonTermSlots: readonly (readonly [string, readonly (string | number)[]])[] = [
+    ["CLP-05 patientResponsibilityAmount", ["claims", 0, "patientResponsibilityAmount"]],
+    ["SVC-05 paidUnitsOfService", ["claims", 0, "serviceLines", 0, "paidUnitsOfService"]],
+    ["AMT-02 claim amount", ["claims", 0, "amounts", 0, "amount"]],
+    ["AMT-02 service line amount", ["claims", 0, "serviceLines", 0, "amounts", 0, "amount"]],
   ];
 
   /** Set a nested path on an untyped spec, so the cases read as spec locations. */
@@ -745,7 +767,6 @@ describe("the X12Decimal slots this guard does NOT reach, disclosed not fixed", 
         totalChargeAmount: dec("500.00"),
         totalPaymentAmount: dec("450.00"),
         patientResponsibilityAmount: dec("50.00"),
-        adjustments: [{ groupCode: "PR", reasonCode: "1", amount: dec("50.00") }],
         claimFilingIndicatorCode: "MB",
         payerClaimControlNumber: "ICN-9001",
         patient: {
@@ -755,12 +776,42 @@ describe("the X12Decimal slots this guard does NOT reach, disclosed not fixed", 
           idQualifier: "MI",
           idCode: "MEMBER001",
         },
+        amounts: [{ qualifier: "AU", amount: dec("500.00") }],
+        serviceLines: [
+          {
+            productServiceIdQualifier: "HC",
+            productServiceId: "99213",
+            chargeAmount: dec("500.00"),
+            paymentAmount: dec("450.00"),
+            paidUnitsOfService: dec("1"),
+            serviceDateStart: "20260501",
+            serviceDateEnd: "20260501",
+            adjustments: [{ groupCode: "PR", reasonCode: "1", amount: dec("50.00") }],
+            amounts: [{ qualifier: "B6", amount: dec("450.00") }],
+          },
+        ],
+      },
+    ],
+    providerAdjustments: [
+      {
+        providerId: "1234567890",
+        fiscalPeriodDate: "20261231",
+        reasonCode: "WO",
+        amount: dec("0.00"),
       },
     ],
   });
 
+  it("the fixture builds clean, so neither arm below is measuring a broken spec", () => {
+    // A first draft of this probe was out of balance, and every slot read
+    // "untyped" for that reason rather than the one under test.
+    const ix = build835(asJsCaller(remit()));
+    expect(ix.warnings).toHaveLength(0);
+    expect(serializeX12(ix)).toContain("CLP*PT-ACCT-001*1*500.00*450.00*50.00*MB*ICN-9001");
+  });
+
   it.each(balanceTermSlots)(
-    "throws an UNTYPED TypeError for a numeric %s, before escDec sees it",
+    "refuses UNTYPED for a numeric %s, because the balance guard reads it first",
     (_label, path) => {
       const spec = remit();
       setPath(spec, path, 0.1 + 0.2);
@@ -773,14 +824,23 @@ describe("the X12Decimal slots this guard does NOT reach, disclosed not fixed", 
       expect(caught).toBeInstanceOf(TypeError);
       expect(caught).not.toBeInstanceOf(Remit835BuildError);
       expect((caught as { code?: string }).code).toBeUndefined();
+      // Assert the MESSAGE too, not only the shape: an unrelated `TypeError`
+      // from a mis-named fixture field satisfies the three checks above and
+      // proves nothing. These are the two the balance guard actually produces.
+      expect((caught as Error).message).toMatch(
+        /has no internal state - was it tampered with\?|\.add is not a function|\.subtract is not a function|\.compareTo is not a function/u,
+      );
     },
   );
 
-  it("the balance guard is what gets there first, which is why", () => {
-    // Negative control for the explanation above: with the SAME wrong type in a
-    // slot the balance equation does not read (CLP-05), the typed refusal fires.
-    const spec = remit();
-    setPath(spec, ["claims", 0, "patientResponsibilityAmount"], 0.1 + 0.2);
-    expect(() => build835(asJsCaller(spec))).toThrow(Remit835BuildError);
-  });
+  it.each(nonTermSlots)(
+    "refuses TYPED for a numeric %s, which is the other arm of the rule",
+    (_label, path) => {
+      const spec = remit();
+      setPath(spec, path, 0.1 + 0.2);
+      const run = (): X12Interchange => build835(asJsCaller(spec));
+      expect(run).toThrow(Remit835BuildError);
+      expect(run).toThrow(/every numeric element value must be an X12Decimal/u);
+    },
+  );
 });

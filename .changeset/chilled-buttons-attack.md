@@ -24,6 +24,7 @@ way the spec does (`build999: "AK9"-01 must be a string, …`).
 
 Deliberately still not claimed, and unchanged here: delimiter safety is per-slot, not structural; the
 fixed-width ISA slots go through `pad` / `padControl`; `buildTA1` uses no segment joiner at all, so a
-non-string TA1-01 is still emitted silently; and `build835`'s balance-equation amounts (BPR-02,
-CLP-03, CLP-04, CAS-03) refuse with an untyped `TypeError` because the balance guard reads them
-before the escaper is built.
+non-string TA1-01 is still emitted silently; and `build835` refuses with an untyped `TypeError` for
+any amount its balance guard reads as a term of one of the three TR3 X221A1 §1.10.2 invariants
+(BPR-02, CLP-03, CLP-04, CAS-03, SVC-02, SVC-03, PLB-04), because that guard runs before the escaper
+is built. Amounts outside those equations (CLP-05, SVC-05, AMT-02) refuse typed.

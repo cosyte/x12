@@ -84,8 +84,10 @@
  *    `escDec` (`test/builder-decimal-type.test.ts`) and the named raw slots go
  *    through `esc`; underneath both,
  *    {@link "../src/builder/caller-segment.js".requireCallerSegment} type-checks
- *    every element at the segment join, on every route, which is a statement
- *    one more slot cannot falsify (`test/builder-segment-type.test.ts`).
+ *    every element at the segment join, on every route **through a builder's
+ *    `seg` / `joinSeg` helper** - a statement one more *slot* cannot falsify,
+ *    though a builder that joins without one can, and `buildTA1` does
+ *    (`test/builder-segment-type.test.ts` pins it).
  *    **What is still not claimed: a `string` carrying an active delimiter in a
  *    slot that skipped `esc` is emitted verbatim.** Type safety is structural
  *    here; delimiter safety is per-slot, and only the slots named in the item

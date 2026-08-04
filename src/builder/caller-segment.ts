@@ -1,7 +1,9 @@
 /**
  * The **structural backstop** under `caller-string.ts` and `caller-decimal.ts`:
- * every element of every emitted segment is a real string, checked at the join,
- * on every route into the document.
+ * every element of every segment emitted **through a builder's `seg` / `joinSeg`
+ * helper** is a real string, checked at the join, on every route through one.
+ * `buildTA1` uses neither and is outside it - see "What it deliberately does NOT
+ * claim" below, and keep the qualifier every time this sentence is written.
  *
  * ## Why this exists, which is a claim problem and not only a code one
  *

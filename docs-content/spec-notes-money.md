@@ -24,10 +24,11 @@ the difference is the money-handling analog of mis-reading a dose.
 > between `0.30` and `0.3` is a decision about your money, not ours.
 >
 > **One caveat on the error you get.** Most slots refuse with that builder's typed, code-tagged
-> error. `build835`'s balance-equation amounts (**BPR-02**, **CLP-03**, **CLP-04**, **CAS-03**) do
-> not: the balance guard runs first and calls `X12Decimal` methods on your value, so those four throw
-> a plain `TypeError` with no `code`. It still refuses; it just refuses untyped. See
-> `KNOWN-LIMITATIONS.md`.
+> error. `build835`'s balance-equation amounts do not: the balance guard runs first and calls
+> `X12Decimal` methods on your value, so any amount it reads as a term of one of the three TR3
+> X221A1 §1.10.2 invariants (**BPR-02, CLP-03, CLP-04, CAS-03, SVC-02, SVC-03, PLB-04**) throws a
+> plain `TypeError` with no `code`. It still refuses; it just refuses untyped. Amounts outside those
+> equations (**CLP-05, SVC-05, AMT-02**) refuse typed. See `KNOWN-LIMITATIONS.md`.
 
 ## What `X12Decimal` is
 

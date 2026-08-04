@@ -76,22 +76,33 @@ string`), which `esc` cannot, being unary - that limit is gone for the segment
 
   **▶ AND `build835`'s BALANCE-EQUATION AMOUNTS REFUSE UNTYPED, WHICH THE FIRST
   DRAFT ALSO OVERCLAIMED.** `enforceBalance(spec)` runs BEFORE the escaper is
-  built and calls `X12Decimal` methods on the caller's value, so **BPR-02,
-  CLP-03, CLP-04 and CAS-03** throw a plain `TypeError` with **no `code`** - one
-  of them saying the value was "tampered with", which is a misleading thing to
-  tell someone who passed a number. `requireCallerDecimal` is unreachable on
-  those four. **CLP-05, CAS-04 and AMT-02 are outside the equation and DO refuse
-  typed**, which is why the behavioural cases target CLP-05. Reordering the
-  balance guard changes the refusal precedence of an out-of-balance remit, so it
-  is disclosed, not fixed.
+  built and calls `X12Decimal` methods on the caller's value, so
+  `requireCallerDecimal` is unreachable on anything it reads: a plain `TypeError`
+  with **no `code`**, some saying the value was "tampered with", which is a
+  misleading thing to tell someone who passed a number.
+  **▶ THE FIRST REMEDY FOR THIS PUBLISHED A CLOSED LIST OF FOUR AND PASS 2
+  MEASURED IT INCOMPLETE - THE CENSUS FAILURE, COMMITTED INSIDE THE FIX FOR AN
+  OVERCLAIM. STATE THE RULE:** a slot refuses **untyped exactly when the balance
+  guard reads it as a term of one of the THREE §1.10.2 invariants** in
+  `src/transactions/remit/balance.ts` (BPR-02, CLP-03, CLP-04, CAS-03 at either
+  level, **SVC-02, SVC-03, PLB-04**); every amount outside those equations
+  refuses **typed** (CLP-05, **SVC-05**, AMT-02). Both arms are pinned on one
+  fixture, so moving a slot between them reds the gate. Reordering the balance
+  guard changes the refusal precedence of an out-of-balance remit, so it is
+  disclosed, not fixed.
 
   **▶ FOUR OF THE SIX NEW BEHAVIOURAL CASES WERE VACUOUS AND THE CLASS-ONLY
   ASSERTION IS WHY.** `expect(run).toThrow(Remit835BuildError)` passes on
   "at least one TRN trace is required" just as happily as on the refusal being
-  tested; four fixtures were missing a required field or using a wrong field name
-  (`paymentMethodCode` for `method`, `amounts` on the member instead of the
-  coverage, 271/277 flat specs against nested `informationSources`). **Assert the
-  MESSAGE, not the class**, in every builder-refusal test here.
+  tested. The four causes, corrected after pass 2 named one of them wrongly:
+  `build835` missing `traces` **and** using `paymentMethodCode` for `method`;
+  `build820` missing `remittances`; and `build271`/`build277` given FLAT specs
+  where both take nested `informationSources -> receivers -> …`. (`build834` and
+  `build837P` were the two that were never vacuous - an earlier draft of this
+  paragraph blamed 834's `amounts` placement, which was correct all along.)
+  **Assert the MESSAGE, not the class**, in every builder-refusal test here -
+  including the disclosure pins, where `instanceof TypeError` alone is satisfied
+  by any unrelated `TypeError` a mis-named fixture field produces.
 
   **▶ THE EXISTING ARRAY-BOUNDS GATE CAUGHT A REAL DEFECT IN THE FIRST DRAFT OF
   THE NEW GUARD, AND IT IS WORTH KNOWING.** `for (let i = 0; i < parts.length;

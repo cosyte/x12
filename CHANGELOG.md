@@ -196,7 +196,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `"object"`.
 
 - **A raw `number` in an `X12Decimal` slot is refused instead of rendered, and the type check now
-  covers every element of every emitted segment** (`X12-DECIMAL-BYPASSES-THE-GUARD`). This closes the
+  covers every element of every segment emitted through a builder's segment joiner**
+  (`X12-DECIMAL-BYPASSES-THE-GUARD`). This closes the
   two classes the entry above disclosed and deliberately did not fix.
 
   **The decimal half.** `makeCallerEscaper` type-checks what reaches `esc`, but an `X12Decimal` slot
@@ -249,10 +250,15 @@ string, …` - which `esc` cannot, being unary.
   TA1-01 is the reassociation key back to the acknowledged interchange, so it is filed as its own
   item rather than widened into here. And **`build835`'s balance-equation amounts refuse UNTYPED**:
   `enforceBalance(spec)` runs before the escaper is built and calls `X12Decimal` methods on the
-  caller's value, so BPR-02, CLP-03, CLP-04 and CAS-03 throw a plain `TypeError` with no `code` (one
-  of them saying the value was "tampered with") instead of the typed refusal. CLP-05, CAS-04 and
-  AMT-02 are outside the equation and do refuse typed. Reordering the balance guard changes the
-  refusal precedence of an out-of-balance remit, which is its own decision.
+  caller's value, so `requireCallerDecimal` is unreachable on them and the caller gets a plain
+  `TypeError` with no `code` (some saying the value was "tampered with") instead of the typed
+  refusal. **The rule, rather than a list, because a first draft of this disclosure published a
+  closed list of four and a refuter measured it incomplete:** a slot refuses untyped exactly when the
+  balance guard reads it as a term of one of the three TR3 X221A1 §1.10.2 invariants in
+  `src/transactions/remit/balance.ts` (so BPR-02, CLP-03, CLP-04, CAS-03 at either level, SVC-02,
+  SVC-03 and PLB-04), and every amount outside those equations refuses typed (CLP-05, SVC-05,
+  AMT-02). Both arms are pinned. Reordering the balance guard changes the refusal precedence of an
+  out-of-balance remit, which is its own decision.
 
   **AK9-01 was the sharpest of the raw slots** - an `ID` element bound to X12 code list **715**
   (a data element number, and its values are a code _list_; this repo's own `src/transactions/ack/codes.ts`
