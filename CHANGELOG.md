@@ -89,13 +89,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to the correct map (`SVC*…**1` is an empty SVC-04 and one unit paid). Only the 835 module
   disagreed, and only with itself.
 
-  **Sources, and what was not read.** TR3 005010X221A1 is a paid X12 document and **no clause of it
-  is quoted or claimed.** The map rests on X12's own RFI #2163 (which names "the SVC05 'Units of
-  Service Paid Count/Quantity' in the 835 guide" and states "a default has been included for SVC05
-  in guide 005010X221A1"), the base X12 005010 SVC element dictionary (SVC-04 is element 234, a
-  string; SVC-05 and SVC-07 are both element 380, Quantity - which alone rules out a revenue code at
-  SVC-05), and three published payer companion guides implementing X221A1. Four sources, no dissent.
-  They are listed in `KNOWN-LIMITATIONS.md`.
+  **Sources, and what was not read. TR3 005010X221A1 is a paid X12 document; nobody here has read
+  it**, and every claim is traceable to something publicly checkable: pyx12's machine-readable
+  `835.5010.X221.A1.xml`, an independent open-source implementation of the same guide, which carries
+  the whole table and is **the source for SVC-04**; X12's own RFI #2163 for SVC-05; the base 005010
+  element dictionary, where SVC-04 is a string and SVC-05/07 are Quantities, which rules out a
+  revenue code at SVC-05 on type alone; and two published payer companion guides. **Agreement with
+  this repo's own 277 modules is corroborating, not a source** - checking a spec claim against the
+  implementation only proves the two agree, which is how the wrong map survived. Listed with links
+  in `KNOWN-LIMITATIONS.md`.
+
+  **Also disclosed rather than fixed:** `undefined` on either quantity means "not decoded", not
+  "absent" - the element may have been present and unparseable, which raises no warning and is
+  pre-existing at every quantity site. And **835s this library emitted at `0.0.9` or earlier are
+  non-conformant on the wire and should be re-emitted**: their revenue code sits in SVC-05, so this
+  release reads it back as a paid quantity and reports no revenue code.
 
 - **`escapeRelease` now throws `TypeError` on a non-string instead of returning `""`.** Previously it
   gave three different wrong answers depending on what arrived: a number, a boolean or a plain object

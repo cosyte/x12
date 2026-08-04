@@ -48,19 +48,29 @@
   empty SVC-04 and one unit paid). Only the 835 module disagreed - with itself.
   A cross-transaction test now pins the two together.
 
-  **▶ SOURCES, AND WHAT WAS NOT READ. TR3 005010X221A1 IS PAID AND NO CLAUSE OF
-  IT IS QUOTED OR CLAIMED.** Grounded on X12's own RFI #2163 (names "the SVC05
-  'Units of Service Paid Count/Quantity' in the 835 guide", states "a default has
-  been included for SVC05 in guide 005010X221A1"), the base 005010 SVC element
-  dictionary (**SVC-04 is a string and SVC-05/07 are Quantities, which alone
-  rules out a revenue code at SVC-05**), and three published payer companion
-  guides implementing X221A1. Four sources, no dissent; listed in
-  `KNOWN-LIMITATIONS.md`.
+  **▶ SOURCES, AND WHAT WAS NOT READ. TR3 005010X221A1 IS PAID AND NOBODY HERE
+  HAS READ IT.** Grounded on **pyx12's machine-readable `835.5010.X221.A1.xml`**
+  (an independent open-source implementation of the same guide, carries the whole
+  table, and is **the source for SVC-04**); X12's own RFI #2163 for SVC-05; the
+  base 005010 element dictionary (**SVC-04 is a string and SVC-05/07 are
+  Quantities, which rules out a revenue code at SVC-05 on type alone**); and two
+  published payer companion guides. Listed with links in `KNOWN-LIMITATIONS.md`.
+  **▶ AGREEMENT WITH THE 277 IS CORROBORATING, NOT A SOURCE.** It is what
+  surfaced the defect, but checking a spec claim against this repo's own
+  implementation only proves the two agree - which is how the wrong map survived.
 
-  **▶ AN ABSENT SVC-05 IS NOT DEFAULTED TO ONE**, though X221A1 says it is
-  assumed to be one. Absent and one stay distinct so a caller can apply that
-  themselves; fabricating a count the sender did not send is inventing. The
-  **277's** SVC-07 is still not decoded - pre-existing, untouched.
+  **▶ AN ABSENT SVC-05 IS NOT DEFAULTED TO ONE**, though X221A1 is _reported_ to
+  assume one (that is the RFI's Description, quoted secondhand, not a clause read
+  from the TR3). Fabricating a count the sender did not send is inventing.
+  **▶ AND `undefined` MEANS "NOT DECODED", NOT "ABSENT"** - the element may have
+  been present and unparseable, which warns nothing. Pre-existing at every
+  quantity site; disclosed, not fixed. The **277's** SVC-07 is still not decoded
+  either, and per pyx12's X212 map it is **usage R (required)** on the emit side,
+  so every 277 this library emits is short a required element - `PRE-EXISTING`,
+  reproduces at `e3cdf49`, filed rather than fixed here.
+  **▶ 835s THIS LIBRARY EMITTED AT `0.0.9` OR EARLIER ARE NON-CONFORMANT AND
+  SHOULD BE RE-EMITTED**: their revenue code sits in SVC-05, so head reads it
+  back as a paid quantity (`0300` -> 300 units) with no warning.
 
 - **🩺 A RAW `number` IN AN `X12Decimal` SLOT NOW REFUSES, AND THE TYPE CHECK IS
   STRUCTURAL RATHER THAN A LIST (2026-08-04, `X12-DECIMAL-BYPASSES-THE-GUARD`).**

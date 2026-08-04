@@ -375,11 +375,15 @@ export interface X12RemitRemark {
  * code. The qualifier governs interpretation - **misreading it picks
  * the wrong code system** and corrupts the clinical context.
  *
- * X221A1 says an absent SVC-05 is assumed to be one. This reader does
- * **not** apply that default: `paidUnitsOfService` is `undefined` when the
- * wire carried nothing, because fabricating a count the sender did not send
- * is inventing data. Apply the default yourself if you want it - the
- * distinction between "absent" and "one" is preserved here so that you can.
+ * X221A1 is reported to default an absent SVC-05 to one (secondhand, via
+ * X12's RFI #2163 - this library has not read the TR3). This reader does
+ * **not** apply that default, because fabricating a count the sender did not
+ * send is inventing data. Apply it yourself if you want it.
+ *
+ * **`undefined` on either quantity means "not decoded", not "absent".** The
+ * element may have been missing, or present and unparseable as a decimal -
+ * the two are not distinguished here and neither raises a warning. Read the
+ * verbatim element off `tx.segments` if you need to tell them apart.
  *
  * @example
  * ```ts

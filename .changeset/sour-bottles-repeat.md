@@ -31,6 +31,18 @@ through this library saw nothing wrong, because both halves were wrong together,
 the suite never caught it: every existing assertion was a `build835` -> `get835` round trip, green
 for any pair of positions the two modules agreed on. The map is now pinned against literal bytes.
 
-An absent SVC-05 is still not defaulted to one, though X221A1 says it is assumed to be one. Absent
-and one stay distinct so a caller can apply that default themselves; fabricating a count the sender
-did not send is inventing data.
+An absent SVC-05 is still not defaulted to one, though X221A1 is reported to assume it is one
+(secondhand, via X12's RFI #2163 - nobody here has read the TR3, which is a paid document).
+Fabricating a count the sender did not send is inventing data. Note that `undefined` on either
+quantity means "not decoded" rather than "absent": the element may also have been present and
+unparseable, which is pre-existing behaviour at every quantity site and raises no warning.
+
+The map is grounded on publicly checkable sources rather than on this repo's own 277 modules, which
+would only prove the two agree: pyx12's machine-readable `835.5010.X221.A1.xml`, which carries the
+whole table including SVC-04; X12's RFI #2163 for SVC-05; the base 005010 element dictionary, where
+SVC-04 is a string and SVC-05/07 are Quantities; and two published payer companion guides. They are
+listed with links in `KNOWN-LIMITATIONS.md`.
+
+If you archived 835s this library EMITTED at 0.0.9 or earlier, they are non-conformant on the wire
+and should be re-emitted: their revenue code sits in SVC-05, so this release reads it back as a paid
+quantity and reports no revenue code.

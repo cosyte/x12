@@ -127,7 +127,14 @@ function parse835(body: string, seCount: number): ReturnType<typeof get835> {
   return get835(ix.delimiters, tx);
 }
 
-/** An institutional claim body whose SVC carries `svc` verbatim. */
+/**
+ * An institutional claim body whose SVC carries `svc` verbatim. The line CAS
+ * sits AFTER the SVC so it is line-level, which keeps every balance invariant
+ * satisfied: line `SVC-02 1000 == SVC-03 800 + 200 line CAS`, claim
+ * `CLP-03 1000 == CLP-04 800 + 200`, remit `BPR-02 800 == Σ(CLP-04)`. A pin on
+ * an out-of-balance document would still pass today, but it would stop being
+ * evidence about the element map the moment the imbalance path changed.
+ */
 function institutionalBody(svc: string): string {
   return (
     "BPR*I*800.00*C*ACH*CCP*01*1*DA*1*1*20260628**01*2*DA*2*20260628~\n" +
@@ -135,14 +142,16 @@ function institutionalBody(svc: string): string {
     "N1*PR*PAYER~\nN1*PE*PROVIDER~\n" +
     "LX*1~\n" +
     "CLP*PT-INST*1*1000.00*800.00*0*MA*PCN-INST*11*1~\n" +
-    "CAS*CO*45*200.00~\n" +
-    `${svc}~\n`
+    `${svc}~\n` +
+    "CAS*CO*45*200.00~\n"
   );
 }
 
 function firstLine(body: string, seCount: number) {
   const remit = parse835(body, seCount);
   if (remit === undefined) throw new Error("undefined remit");
+  // The document balances, so the map is pinned on a conformant remit.
+  expect(remit.warnings.map((w) => w.code)).not.toContain("X12_835_REMIT_BALANCE_MISMATCH");
   const line = remit.claims[0]?.serviceLines[0];
   if (line === undefined) throw new Error("no service line parsed");
   return line;
@@ -235,18 +244,22 @@ describe("835 SVC element map - parse starts from bytes", () => {
 describe("835 SVC element map - the committed corpus reads conformantly", () => {
   it("reads every committed 835 fixture as units-paid, with no bogus revenue code", () => {
     // Before this slice all eight of these read `revenueCode: "1"` and
-    // dropped the paid count entirely.
+    // dropped the paid count entirely. The count is EIGHT and it includes the
+    // golden, which is what every published figure for this slice counts; an
+    // earlier draft of this test looped over the six remit fixtures only and
+    // asserted seven, which did not match the number in the changelog.
     const files = [
-      "835-availity-quirk",
-      "835-carc-rarc-mix",
-      "835-imbalance",
-      "835-medicare-canonical",
-      "835-multi-claim",
-      "835-with-plb",
+      "remit/835-availity-quirk.edi",
+      "remit/835-carc-rarc-mix.edi",
+      "remit/835-imbalance.edi",
+      "remit/835-medicare-canonical.edi",
+      "remit/835-multi-claim.edi",
+      "remit/835-with-plb.edi",
+      "golden/835.edi",
     ];
     let lines = 0;
     for (const name of files) {
-      const raw = readFixture(`remit/${name}.edi`);
+      const raw = readFixture(name);
       const ix = parseX12(raw);
       for (const group of ix.groups) {
         for (const tx of group.transactions) {
@@ -262,7 +275,7 @@ describe("835 SVC element map - the committed corpus reads conformantly", () => 
         }
       }
     }
-    expect(lines).toBe(7);
+    expect(lines).toBe(8);
   });
 });
 
