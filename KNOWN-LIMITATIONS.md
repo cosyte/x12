@@ -47,9 +47,10 @@ model.
   only round-tripped through this library saw nothing wrong, because both halves were wrong together.
 
   **Sources, and what was NOT read. The TR3 005010X221A1 itself is a paid X12 document; nobody here
-  has read it, and every claim below is traceable to something that is publicly checkable.** Read
-  the qualifiers literally, because an unsourced assertion about this table baked into a code
-  comment is exactly what shipped the defect:
+  has read it.** Sources 1, 2 and 4 below are free to check and are linked; source 3 is a paid X12
+  document, named rather than linked, and every fact taken from it is independently carried by
+  source 1 anyway. Read the qualifiers literally, because an unsourced assertion about this table
+  baked into a code comment is exactly what shipped the defect:
   1. **The full X221A1 element table**, from [pyx12](https://github.com/azoner/pyx12)'s
      machine-readable map `pyx12/map/835.5010.X221.A1.xml` - an independent open-source
      implementation of this same guide: `SVC04 / 234 / "National Uniform Billing Committee Revenue

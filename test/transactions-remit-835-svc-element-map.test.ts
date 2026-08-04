@@ -150,7 +150,8 @@ function institutionalBody(svc: string): string {
 function firstLine(body: string, seCount: number) {
   const remit = parse835(body, seCount);
   if (remit === undefined) throw new Error("undefined remit");
-  // The document balances, so the map is pinned on a conformant remit.
+  // Every balance invariant holds and SE-01 counts the emitted range, so the
+  // map is pinned on a spec-clean remit rather than on the imbalance path.
   expect(remit.warnings.map((w) => w.code)).not.toContain("X12_835_REMIT_BALANCE_MISMATCH");
   const line = remit.claims[0]?.serviceLines[0];
   if (line === undefined) throw new Error("no service line parsed");
@@ -210,14 +211,14 @@ describe("835 SVC element map - emit pins the wire, not the round trip", () => {
 
 describe("835 SVC element map - parse starts from bytes", () => {
   it("reads the revenue code from SVC-04 and the paid units from SVC-05", () => {
-    const line = firstLine(institutionalBody("SVC*HC:99213*1000.00*800.00*0300*2"), 9);
+    const line = firstLine(institutionalBody("SVC*HC:99213*1000.00*800.00*0300*2"), 10);
     expect(line.revenueCode).toBe("0300");
     expect(line.paidUnitsOfService?.toString()).toBe("2");
     expect(line.originalUnitsOfService).toBeUndefined();
   });
 
   it("reads the ORIGINAL units from SVC-07 as a separate quantity from SVC-05", () => {
-    const line = firstLine(institutionalBody("SVC*HC:99213*1000.00*800.00*0300*2*HC:99212*3"), 9);
+    const line = firstLine(institutionalBody("SVC*HC:99213*1000.00*800.00*0300*2*HC:99212*3"), 10);
     expect(line.paidUnitsOfService?.toString()).toBe("2");
     expect(line.originalUnitsOfService?.toString()).toBe("3");
     // SVC-06 is unmoved by this slice and must still decode.
@@ -227,15 +228,16 @@ describe("835 SVC element map - parse starts from bytes", () => {
   it("reads a professional `**1` line as ONE UNIT PAID, never as revenue code `1`", () => {
     // This is the filed harm verbatim. `1` is not a valid NUBC revenue code,
     // and every 835 fixture in this repo is written in this shape.
-    const line = firstLine(institutionalBody("SVC*HC:99213*1000.00*800.00**1"), 9);
+    const line = firstLine(institutionalBody("SVC*HC:99213*1000.00*800.00**1"), 10);
     expect(line.revenueCode).toBeUndefined();
     expect(line.paidUnitsOfService?.toString()).toBe("1");
   });
 
   it("does not fabricate the X221A1 default of one when SVC-05 is absent", () => {
-    // X221A1 says an absent SVC-05 is assumed to be one. This reader keeps
+    // X221A1 is REPORTED to assume an absent SVC-05 is one - secondhand, via
+    // X12's RFI #2163, not a clause read from the TR3. This reader keeps
     // "absent" distinct from "one" so a consumer can apply that themselves.
-    const line = firstLine(institutionalBody("SVC*HC:99213*1000.00*800.00*0300"), 9);
+    const line = firstLine(institutionalBody("SVC*HC:99213*1000.00*800.00*0300"), 10);
     expect(line.revenueCode).toBe("0300");
     expect(line.paidUnitsOfService).toBeUndefined();
   });
@@ -283,7 +285,7 @@ describe("835 and 277 agree on where the revenue code lives", () => {
   it("both read the revenue code from SVC-04", () => {
     // The 277 was already correct; this pins the two against each other so
     // they cannot drift apart again, which is how the defect went unseen.
-    const line835 = firstLine(institutionalBody("SVC*HC:99213*1000.00*800.00*0300*2"), 9);
+    const line835 = firstLine(institutionalBody("SVC*HC:99213*1000.00*800.00*0300*2"), 10);
     expect(line835.revenueCode).toBe("0300");
 
     // The committed 277 fixture, with a revenue code added at SVC-04 only.

@@ -65,9 +65,11 @@
   **▶ AND `undefined` MEANS "NOT DECODED", NOT "ABSENT"** - the element may have
   been present and unparseable, which warns nothing. Pre-existing at every
   quantity site; disclosed, not fixed. The **277's** SVC-07 is still not decoded
-  either, and per pyx12's X212 map it is **usage R (required)** on the emit side,
-  so every 277 this library emits is short a required element - `PRE-EXISTING`,
-  reproduces at `e3cdf49`, filed rather than fixed here.
+  either, and per pyx12's map it is **usage R (required) in X212** - so an
+  **X212** 277 this library emits **with a service line** is short a required
+  element. **Do not widen that:** in **X214** the same element is usage `S`, so
+  `build277CA` is unaffected, and a 277 with no service line emits no SVC and is
+  missing nothing. `PRE-EXISTING`, reproduces at `e3cdf49`, filed not fixed.
   **▶ 835s THIS LIBRARY EMITTED AT `0.0.9` OR EARLIER ARE NON-CONFORMANT AND
   SHOULD BE RE-EMITTED**: their revenue code sits in SVC-05, so head reads it
   back as a paid quantity (`0300` -> 300 units) with no warning.
