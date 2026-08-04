@@ -88,6 +88,7 @@ import {
   Remit835BuildError,
   serializeX12,
   X12Decimal,
+  type X12Interchange,
 } from "../src/index.js";
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
@@ -298,7 +299,11 @@ describe("every builder that emits an X12Decimal refuses a raw number", () => {
   const drift = 0.1 + 0.2;
 
   it("build835 refuses a numeric CLP-05 (patientResponsibilityAmount)", () => {
-    expect(() =>
+    // CLP-05 specifically, because it is informational and NOT a term in the
+    // TR3 X221A1 balance equation, so it survives `enforceBalance` and actually
+    // reaches `escDec`. BPR-02, CLP-03, CLP-04 and CAS-03 do not - see the
+    // disclosure below.
+    const run = (): X12Interchange =>
       build835(
         asJsCaller({
           envelope: ENVELOPE,
@@ -306,32 +311,46 @@ describe("every builder that emits an X12Decimal refuses a raw number", () => {
             transactionHandlingCode: "I",
             totalActualPayment: dec("450.00"),
             creditDebitFlag: "C",
-            paymentMethodCode: "ACH",
-            senderAccountNumber: "ACCT",
-            senderId: "PAYER01",
-            receiverAccountNumber: "RCVR",
-            effectiveDate: "20260601",
+            method: "ACH",
+            paymentDate: "20260601",
           },
-          payer: { name: "PAYER ONE" },
-          payee: { name: "BILLING CLINIC INC", idQualifier: "XX", idCode: "1234567890" },
+          traces: [
+            { traceTypeCode: "1", referenceId: "EFT-202606", originatingCompanyId: "1512345678" },
+          ],
+          payer: { entityIdentifierCode: "PR", name: "MEDICARE PART A" },
+          payee: {
+            entityIdentifierCode: "PE",
+            name: "RENDERING CLINIC",
+            idQualifier: "XX",
+            idCode: "1234567890",
+          },
           claims: [
             {
               patientControlNumber: "PT-ACCT-001",
-              statusCode: "1",
+              claimStatusCode: "1",
               totalChargeAmount: dec("500.00"),
               totalPaymentAmount: dec("450.00"),
               patientResponsibilityAmount: drift,
-              claimFilingIndicator: "MB",
-              patient: { lastName: "DOE", firstName: "JANE", idQualifier: "MI", idCode: "MBR0001" },
+              adjustments: [{ groupCode: "PR", reasonCode: "1", amount: dec("50.00") }],
+              claimFilingIndicatorCode: "MB",
+              payerClaimControlNumber: "ICN-9001",
+              patient: {
+                entityIdentifierCode: "QC",
+                lastName: "PATIENT",
+                firstName: "TEST",
+                idQualifier: "MI",
+                idCode: "MEMBER001",
+              },
             },
           ],
         }),
-      ),
-    ).toThrow(Remit835BuildError);
+      );
+    expect(run).toThrow(Remit835BuildError);
+    expect(run).toThrow(/every numeric element value must be an X12Decimal/u);
   });
 
   it("build837P refuses a numeric CLM-02 (totalCharge)", () => {
-    expect(() =>
+    const run = (): X12Interchange =>
       build837P(
         asJsCaller({
           envelope: ENVELOPE,
@@ -399,12 +418,13 @@ describe("every builder that emits an X12Decimal refuses a raw number", () => {
             },
           ],
         }),
-      ),
-    ).toThrow(Claim837BuildError);
+      );
+    expect(run).toThrow(Claim837BuildError);
+    expect(run).toThrow(/every numeric element value must be an X12Decimal/u);
   });
 
   it("build820 refuses a numeric BPR-02 (totalPremiumAmount)", () => {
-    expect(() =>
+    const run = (): X12Interchange =>
       build820(
         asJsCaller({
           envelope: ENVELOPE,
@@ -431,13 +451,26 @@ describe("every builder that emits an X12Decimal refuses a raw number", () => {
             idQualifier: "FI",
             idCode: "FEIN123",
           },
+          remittances: [
+            {
+              individual: {
+                entityIdentifierCode: "IL",
+                lastName: "DOE",
+                firstName: "JANE",
+                idQualifier: "34",
+                idCode: "MBR0001",
+              },
+              openItems: [{ qualifier: "AZ", referenceId: "POL-0001", amountPaid: dec("250.00") }],
+            },
+          ],
         }),
-      ),
-    ).toThrow(Premium820BuildError);
+      );
+    expect(run).toThrow(Premium820BuildError);
+    expect(run).toThrow(/every numeric element value must be an X12Decimal/u);
   });
 
   it("build834 refuses a numeric AMT-02 (member amount)", () => {
-    expect(() =>
+    const run = (): X12Interchange =>
       build834(
         asJsCaller({
           envelope: ENVELOPE,
@@ -477,74 +510,49 @@ describe("every builder that emits an X12Decimal refuses a raw number", () => {
             },
           ],
         }),
-      ),
-    ).toThrow(Enrollment834BuildError);
+      );
+    expect(run).toThrow(Enrollment834BuildError);
+    expect(run).toThrow(/every numeric element value must be an X12Decimal/u);
   });
 
   it("build271 refuses a numeric EB-07 (benefit monetaryAmount)", () => {
-    expect(() =>
+    const run = (): X12Interchange =>
       build271(
         asJsCaller({
           envelope: ENVELOPE,
-          header: { referenceId: "ELIG-202606" },
-          informationSource: {
-            entityIdentifierCode: "PR",
-            entityTypeQualifier: "2",
-            name: "PAYER ONE",
-            idQualifier: "PI",
-            idCode: "PAYER01",
-          },
-          informationReceiver: {
-            entityIdentifierCode: "1P",
-            entityTypeQualifier: "2",
-            name: "RENDERING CLINIC",
-            idQualifier: "XX",
-            idCode: "1234567893",
-          },
-          subscriber: {
-            member: {
-              entityIdentifierCode: "IL",
-              entityTypeQualifier: "1",
-              lastName: "DOE",
-              firstName: "JANE",
-              idQualifier: "MI",
-              idCode: "MBR0001",
-            },
-            benefits: [{ eligibilityCode: "1", serviceTypeCodes: ["30"], monetaryAmount: drift }],
-          },
-        }),
-      ),
-    ).toThrow(Eligibility271BuildError);
-  });
-
-  it("build277 refuses a numeric STC-04 (totalChargeAmount)", () => {
-    expect(() =>
-      build277(
-        asJsCaller({
-          envelope: ENVELOPE,
-          header: { referenceId: "STAT-202606" },
-          informationSource: { name: "PAYER ONE", idQualifier: "PI", idCode: "PAYER01" },
-          informationReceiver: { name: "RENDERING CLINIC", idQualifier: "46", idCode: "REC001" },
-          providers: [
+          informationSources: [
             {
-              provider: { name: "BILLING CLINIC INC", idQualifier: "XX", idCode: "1234567890" },
-              patients: [
+              entity: {
+                entityIdentifierCode: "PR",
+                entityTypeQualifier: "2",
+                name: "MEDPAY INSURANCE",
+                idQualifier: "PI",
+                idCode: "00123",
+              },
+              receivers: [
                 {
-                  patient: {
-                    lastName: "DOE",
-                    firstName: "JANE",
-                    idQualifier: "MI",
-                    idCode: "MBR0001",
+                  entity: {
+                    entityIdentifierCode: "1P",
+                    entityTypeQualifier: "2",
+                    name: "ANYTOWN CLINIC",
+                    idQualifier: "XX",
+                    idCode: "1234567890",
                   },
-                  claims: [
+                  subscribers: [
                     {
-                      claimId: "PT-ACCT-001",
-                      statuses: [
+                      name: {
+                        entityIdentifierCode: "IL",
+                        entityTypeQualifier: "1",
+                        lastName: "DOE",
+                        firstName: "JANE",
+                        idQualifier: "MI",
+                        idCode: "MBR0001",
+                      },
+                      benefits: [
                         {
-                          categoryCode: "F1",
-                          statusCode: "1",
-                          entityCode: "PR",
-                          totalChargeAmount: drift,
+                          eligibilityCode: "1",
+                          serviceTypeCodes: [{ code: "30" }],
+                          monetaryAmount: drift,
                         },
                       ],
                     },
@@ -554,8 +562,78 @@ describe("every builder that emits an X12Decimal refuses a raw number", () => {
             },
           ],
         }),
-      ),
-    ).toThrow(ClaimStatus277BuildError);
+      );
+    expect(run).toThrow(Eligibility271BuildError);
+    expect(run).toThrow(/every numeric element value must be an X12Decimal/u);
+  });
+
+  it("build277 refuses a numeric STC-04 (totalChargeAmount)", () => {
+    const run = (): X12Interchange =>
+      build277(
+        asJsCaller({
+          envelope: ENVELOPE,
+          informationSources: [
+            {
+              entity: {
+                entityIdentifierCode: "PR",
+                entityTypeQualifier: "2",
+                name: "MEDPAY INSURANCE",
+                idQualifier: "PI",
+                idCode: "00123",
+              },
+              receivers: [
+                {
+                  entity: {
+                    entityIdentifierCode: "41",
+                    entityTypeQualifier: "2",
+                    name: "CLEARINGHOUSE",
+                    idQualifier: "46",
+                    idCode: "CH001",
+                  },
+                  providers: [
+                    {
+                      entity: {
+                        entityIdentifierCode: "1P",
+                        entityTypeQualifier: "2",
+                        name: "ANYTOWN CLINIC",
+                        idQualifier: "XX",
+                        idCode: "1234567890",
+                      },
+                      subscribers: [
+                        {
+                          member: {
+                            entityIdentifierCode: "QC",
+                            entityTypeQualifier: "1",
+                            lastName: "DOE",
+                            firstName: "JANE",
+                            idQualifier: "MI",
+                            idCode: "MBR0001",
+                          },
+                          claims: [
+                            {
+                              trace: { traceTypeCode: "2", referenceId: "CLAIM20260627001" },
+                              statuses: [
+                                {
+                                  statuses: [
+                                    { categoryCode: "A2", statusCode: "20", entityCode: "PR" },
+                                  ],
+                                  totalChargeAmount: drift,
+                                },
+                              ],
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      );
+    expect(run).toThrow(ClaimStatus277BuildError);
+    expect(run).toThrow(/every numeric element value must be an X12Decimal/u);
   });
 });
 
@@ -606,5 +684,103 @@ describe("a real X12Decimal is unaffected, which is the regression half", () => 
     });
     expect(serializeX12(ix)).toContain("BPR*I*0250.00*C*ACH");
     expect(ix.warnings).toHaveLength(0);
+  });
+});
+
+describe("the X12Decimal slots this guard does NOT reach, disclosed not fixed", () => {
+  // Found by the `conformance-refuter` on this slice. `build835` runs
+  // `enforceBalance(spec)` BEFORE it resolves delimiters and builds `escDec`,
+  // and the balance check calls `X12Decimal` methods on the caller's value. So
+  // for every slot that is a TERM in the TR3 X221A1 balance equation,
+  // `requireCallerDecimal` is unreachable: the caller gets an untyped
+  // `TypeError` with no `code`, and one of them says they tampered with a
+  // frozen class, which is a misleading thing to tell someone who passed a
+  // number.
+  //
+  // Behaviour identical at base `15abbd4` - this is `PRE-EXISTING`, and the
+  // reason it is pinned here rather than fixed is that reordering
+  // `enforceBalance` after the escaper is a behaviour change to the refusal
+  // PRECEDENCE of an out-of-balance remit, which is its own decision.
+  //
+  // **It is pinned because the docs would otherwise overclaim.** Without this,
+  // "a raw number is refused with that builder's typed error" reads as true of
+  // every money slot, and it is not true of these.
+  const balanceTermSlots: readonly (readonly [string, readonly (string | number)[]])[] = [
+    ["BPR-02 payment.totalActualPayment", ["payment", "totalActualPayment"]],
+    ["CLP-03 claims[0].totalChargeAmount", ["claims", 0, "totalChargeAmount"]],
+    ["CLP-04 claims[0].totalPaymentAmount", ["claims", 0, "totalPaymentAmount"]],
+    ["CAS-03 claims[0].adjustments[0].amount", ["claims", 0, "adjustments", 0, "amount"]],
+  ];
+
+  /** Set a nested path on an untyped spec, so the cases read as spec locations. */
+  function setPath(root: unknown, path: readonly (string | number)[], value: unknown): void {
+    let node = root as Record<string | number, unknown>;
+    for (const key of path.slice(0, -1)) {
+      node = node[key] as Record<string | number, unknown>;
+    }
+    node[path[path.length - 1] as string | number] = value;
+  }
+
+  const remit = (): unknown => ({
+    envelope: ENVELOPE,
+    payment: {
+      transactionHandlingCode: "I",
+      totalActualPayment: dec("450.00"),
+      creditDebitFlag: "C",
+      method: "ACH",
+      paymentDate: "20260601",
+    },
+    traces: [{ traceTypeCode: "1", referenceId: "EFT-202606", originatingCompanyId: "1512345678" }],
+    payer: { entityIdentifierCode: "PR", name: "MEDICARE PART A" },
+    payee: {
+      entityIdentifierCode: "PE",
+      name: "RENDERING CLINIC",
+      idQualifier: "XX",
+      idCode: "1234567890",
+    },
+    claims: [
+      {
+        patientControlNumber: "PT-ACCT-001",
+        claimStatusCode: "1",
+        totalChargeAmount: dec("500.00"),
+        totalPaymentAmount: dec("450.00"),
+        patientResponsibilityAmount: dec("50.00"),
+        adjustments: [{ groupCode: "PR", reasonCode: "1", amount: dec("50.00") }],
+        claimFilingIndicatorCode: "MB",
+        payerClaimControlNumber: "ICN-9001",
+        patient: {
+          entityIdentifierCode: "QC",
+          lastName: "PATIENT",
+          firstName: "TEST",
+          idQualifier: "MI",
+          idCode: "MEMBER001",
+        },
+      },
+    ],
+  });
+
+  it.each(balanceTermSlots)(
+    "throws an UNTYPED TypeError for a numeric %s, before escDec sees it",
+    (_label, path) => {
+      const spec = remit();
+      setPath(spec, path, 0.1 + 0.2);
+      let caught: unknown;
+      try {
+        build835(asJsCaller(spec));
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toBeInstanceOf(TypeError);
+      expect(caught).not.toBeInstanceOf(Remit835BuildError);
+      expect((caught as { code?: string }).code).toBeUndefined();
+    },
+  );
+
+  it("the balance guard is what gets there first, which is why", () => {
+    // Negative control for the explanation above: with the SAME wrong type in a
+    // slot the balance equation does not read (CLP-05), the typed refusal fires.
+    const spec = remit();
+    setPath(spec, ["claims", 0, "patientResponsibilityAmount"], 0.1 + 0.2);
+    expect(() => build835(asJsCaller(spec))).toThrow(Remit835BuildError);
   });
 });

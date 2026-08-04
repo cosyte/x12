@@ -73,7 +73,19 @@
  * it publishes no census of the slots that use it. What *is* structural, and is
  * asserted rather than counted, is the segment-level backstop in
  * {@link "./caller-segment.js".requireCallerSegment}: no non-string reaches an
- * emitted segment on any route, `escDec` included.
+ * element of a segment emitted **through a builder's `seg` / `joinSeg`
+ * helper**, `escDec` included. `buildTA1` uses neither and is outside it; see
+ * that module's own scope note.
+ *
+ * **And one class of `X12Decimal` slot never reaches this guard at all.**
+ * `build835` runs `enforceBalance(spec)` before it resolves delimiters, and the
+ * balance check calls `X12Decimal` methods on the caller's value. So every slot
+ * that is a TERM in the TR3 X221A1 balance equation - BPR-02, CLP-03, CLP-04,
+ * CAS-03 - throws an **untyped `TypeError` with no `code`** (one of them saying
+ * the caller tampered with a frozen class) before `requireCallerDecimal` can
+ * refuse it typed. `PRE-EXISTING`, pinned in `test/builder-decimal-type.test.ts`,
+ * and disclosed rather than fixed because reordering `enforceBalance` changes
+ * the refusal precedence of an out-of-balance remit, which is its own decision.
  *
  * One limit of the check itself: `instanceof` is the test, so an object built
  * with `Object.create(X12Decimal.prototype)` passes it and then throws

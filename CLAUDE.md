@@ -46,7 +46,8 @@
   `esc` and a refuter measured **all three** false, each time by finding one
   more. A census is the wrong instrument: **`esc` is optional on a slot, the
   segment join is not.** `requireCallerSegment` type-checks every element of
-  every emitted segment on every route in, so one more slot cannot falsify it.
+  every segment emitted **through a builder's `seg`/`joinSeg` helper** on every
+  route in, so one more slot cannot falsify it.
   It also **names the slot the way the spec does** (`build999: "AK9"-01 must be a
 string`), which `esc` cannot, being unary - that limit is gone for the segment
   guard and still stands for `esc`.
@@ -59,6 +60,38 @@ string`), which `esc` cannot, being unary - that limit is gone for the segment
   not through `seg`/`joinSeg`, so it is outside BOTH guards: `pad(1, 15)` still
   throws an untyped `TypeError` and `padControl(1, 9)` still throws the
   misleading "exceeds the 9-char spec limit". Both terminate; neither is silent.
+
+  **▶ THE REFUTER REFUSED PASS 1 ON EXACTLY THIS, AND IT WAS RIGHT.** The first
+  draft dropped the `seg`/`joinSeg` qualifier and published "any builder emits"
+  in six places. **`buildTA1` uses NEITHER helper** - it joins its five
+  caller-supplied elements directly, no `esc`, no `pad` (it imports none) - so
+  `TA1**250101*1200*A*000` still emits silently for a numeric or `undefined`
+  control number. **TA1-01 is data element I12, the reassociation key back to the
+  acknowledged interchange**, so this is the same class `#60` closed and it is
+  filed as its own item rather than widened into here. The gate test's first
+  rationale for excluding it ("one fixed-width line with no variable elements")
+  was **false on both halves** and is corrected. **This was the FOURTH iteration
+  of the completeness claim the item exists to stop - do not write the unqualified
+  form again.**
+
+  **▶ AND `build835`'s BALANCE-EQUATION AMOUNTS REFUSE UNTYPED, WHICH THE FIRST
+  DRAFT ALSO OVERCLAIMED.** `enforceBalance(spec)` runs BEFORE the escaper is
+  built and calls `X12Decimal` methods on the caller's value, so **BPR-02,
+  CLP-03, CLP-04 and CAS-03** throw a plain `TypeError` with **no `code`** - one
+  of them saying the value was "tampered with", which is a misleading thing to
+  tell someone who passed a number. `requireCallerDecimal` is unreachable on
+  those four. **CLP-05, CAS-04 and AMT-02 are outside the equation and DO refuse
+  typed**, which is why the behavioural cases target CLP-05. Reordering the
+  balance guard changes the refusal precedence of an out-of-balance remit, so it
+  is disclosed, not fixed.
+
+  **▶ FOUR OF THE SIX NEW BEHAVIOURAL CASES WERE VACUOUS AND THE CLASS-ONLY
+  ASSERTION IS WHY.** `expect(run).toThrow(Remit835BuildError)` passes on
+  "at least one TRN trace is required" just as happily as on the refusal being
+  tested; four fixtures were missing a required field or using a wrong field name
+  (`paymentMethodCode` for `method`, `amounts` on the member instead of the
+  coverage, 271/277 flat specs against nested `informationSources`). **Assert the
+  MESSAGE, not the class**, in every builder-refusal test here.
 
   **▶ THE EXISTING ARRAY-BOUNDS GATE CAUGHT A REAL DEFECT IN THE FIRST DRAFT OF
   THE NEW GUARD, AND IT IS WORTH KNOWING.** `for (let i = 0; i < parts.length;

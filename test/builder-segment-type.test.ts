@@ -59,6 +59,7 @@ import {
   AckBuildError,
   build999,
   buildInterchange,
+  buildTA1,
   BUILD_REFUSAL_VALUE_MAX_RENDERED,
   ServicesReview278BuildError,
   serializeX12,
@@ -143,19 +144,28 @@ const ACK_GROUP = {
 describe("builder segment joining: the source gate", () => {
   const modules = joiningModules();
 
-  it("finds a joiner in every module that emits a segment", () => {
-    // NINE modules join segments: the eight domain builders that emit variable
-    // elements, plus `buildInterchange`. `build-ta1.ts` is the deliberate
-    // absence - a TA1 is one fixed-width line assembled by `.join()` with no
-    // variable elements, and it is the same module `builder-string-type` records
-    // as having no `esc`. Pinned so a module that stops being scanned is a
-    // failure rather than a silently smaller sweep.
+  it("finds a joiner in every module that declares one, and NAMES the one that does not", () => {
+    // NINE modules declare a joiner: the eight domain builders plus
+    // `buildInterchange`. `build-ta1.ts` does NOT, and is therefore NOT covered.
+    //
+    // **A draft of this comment gave the reason as "a TA1 is one fixed-width
+    // line with no variable elements", and a refuter measured that false.** All
+    // five TA1 elements are caller-supplied, `build-ta1.ts` imports no `pad` at
+    // all, and it emits with a direct `.join()`. The real reason it is excluded
+    // is narrower and less comfortable: nothing checks it, this slice did not
+    // widen the guard into it, and the honest thing is to name it as an
+    // exclusion rather than write a rationale that makes it sound safe. The
+    // behavioural test at the bottom of this file pins what it actually does.
     const joining = modules.filter(declaresJoiner);
     expect(joining).toHaveLength(9);
-    expect(modules.some((m) => m.endsWith(join("transactions", "ack", "build-ta1.ts")))).toBe(true);
-    expect(joining.some((m) => m.endsWith(join("transactions", "ack", "build-ta1.ts")))).toBe(
-      false,
-    );
+    const ta1 = join("transactions", "ack", "build-ta1.ts");
+    expect(modules.some((m) => m.endsWith(ta1))).toBe(true);
+    expect(joining.some((m) => m.endsWith(ta1))).toBe(false);
+    // And it really is a direct join with no padding, which is the shape that
+    // puts it outside a `seg` / `joinSeg` claim.
+    const src = code(modules.find((m) => m.endsWith(ta1)) ?? "");
+    expect(/\.join\(elementSeparator\)/u.test(src)).toBe(true);
+    expect(/\bpad\(/u.test(src)).toBe(false);
   });
 
   it("runs requireCallerSegment in every one of them", () => {
@@ -414,5 +424,44 @@ describe("the joiners refuse where no element-level gate applies", () => {
         }),
       ),
     ).toThrow(AckBuildError);
+  });
+});
+
+describe("buildTA1 is OUTSIDE the property, and this pins what it does instead", () => {
+  // Found by the `conformance-refuter` on this slice, against a first draft that
+  // claimed "no non-string reaches an element of a segment ANY BUILDER emits".
+  // `buildTA1` emits `["TA1", ...five caller values].join(sep)` directly - no
+  // `seg`, no `joinSeg`, no `esc`, no `pad` - so nothing checks it.
+  //
+  // **TA1-01 is data element I12, the interchange control number echoed from
+  // ISA-13.** It is the reassociation key from the acknowledgment back to the
+  // interchange being acknowledged, so emitting it empty is the same
+  // silent-identifier-loss class `#60` existed to close. Behaviour is identical
+  // at base `15abbd4`, so this is `PRE-EXISTING` and unchanged - but it is why
+  // the property this file asserts is about `seg` / `joinSeg` and not about
+  // "any builder", and every published statement of it now says so.
+  //
+  // Pinned rather than fixed on purpose: widening `requireCallerSegment` into
+  // `buildTA1` is a behaviour change to a public builder, so it is filed as its
+  // own item and gets its own graded slice.
+  const spec = (interchangeControlNumber: unknown): unknown => ({
+    interchangeControlNumber,
+    interchangeDate: "250101",
+    interchangeTime: "1200",
+    ackCode: "A",
+    noteCode: "000",
+  });
+
+  it("emits a non-string TA1-01 with no error and no warning", () => {
+    expect(buildTA1(asJsCaller(spec(undefined))).raw).toBe("TA1**250101*1200*A*000");
+    expect(buildTA1(asJsCaller(spec(null))).raw).toBe("TA1**250101*1200*A*000");
+    expect(buildTA1(asJsCaller(spec(123_456_789))).raw).toBe("TA1*123456789*250101*1200*A*000");
+    expect(buildTA1(asJsCaller(spec({ a: 1 }))).raw).toBe("TA1*[object Object]*250101*1200*A*000");
+  });
+
+  it("also admits an unescaped delimiter, for the same reason", () => {
+    // No `esc` either, so a delimiter in the control number shifts every element
+    // after it. Same class as the raw slots this slice DID route.
+    expect(buildTA1(asJsCaller(spec("1*BOGUS"))).raw).toBe("TA1*1*BOGUS*250101*1200*A*000");
   });
 });

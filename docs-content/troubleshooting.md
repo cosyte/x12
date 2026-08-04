@@ -148,8 +148,8 @@ library saw it, so coercion would emit `12345`: a well-formed identifier that is
 and a remittance that reassociates to the **wrong** claim. Convert at your own boundary, where you can
 still tell whether the zeros mattered.
 
-**The type check now covers every element of every segment a builder emits, not only the ones routed
-through the escape helper.** Two earlier drafts of this page published a counted list of the slots
+**The type check now covers every element of every segment a builder emits through its segment
+joiner, not only the ones routed through the escape helper.** Two earlier drafts of this page published a counted list of the slots
 that escaped the check and both were measured incomplete, so the check moved to the one place every
 element has to pass, the segment join. A number, `null`, `undefined`, a boolean or an object in any
 element slot draws that builder's typed refusal, naming the slot the way the spec does:
@@ -162,12 +162,23 @@ element slot draws that builder's typed refusal, naming the slot the way the spe
 last two back. A slot typed `X12Decimal` now refuses anything that is not one. It will **not** round
 for you: choosing between `0.30` and `0.3` is a decision about your money.
 
-**Two things are still worth validating at your own boundary.** First, a `string` carrying an active
+**Four things are still worth validating at your own boundary.** First, a `string` carrying an active
 delimiter: the type check passes it, and only slots routed through the escape helper release it
 (`"1*BOGUS"` emits as `1?*BOGUS`). Second, **the fixed-width ISA slots**, which go through padding
-and not through the segment join at all. A number there throws an untyped `TypeError`, or for
+and not through the segment joiner at all. A number there throws an untyped `TypeError`, or for
 `interchangeControlNumber` a typed refusal whose text misleadingly says "exceeds the 9-char spec
 limit". Both terminate, which is why they are the smaller hazard.
+
+Third, **`buildTA1`**, which uses no segment joiner and no escape helper: it joins its five
+caller-supplied elements directly, so a numeric or `undefined` `interchangeControlNumber` is emitted
+silently as `TA1**250101*1200*A*000`. TA1-01 reassociates the acknowledgment to the interchange it
+acknowledges, so build it as a string.
+
+Fourth, **`build835`'s balance-equation amounts refuse UNTYPED.** The balance guard runs before the
+escape helper is built and calls `X12Decimal` methods on your value, so a raw `number` in **BPR-02**,
+**CLP-03**, **CLP-04** or a **CAS-03** amount throws a plain `TypeError` with **no `code`** rather
+than the typed refusal. The typed one fires on the amounts the balance equation does not read
+(CLP-05, CAS-04, AMT-02).
 
 One other behaviour change: the exported `escapeRelease` now throws `TypeError` on a non-string
 instead of returning `""`, and a boxed `new String("…")` is refused where it built at `0.0.8`. See

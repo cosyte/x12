@@ -211,10 +211,11 @@ function joinSeg(
   elementSeparator: string,
   segmentTerminator: string,
 ): string {
-  // Redundant here and kept anyway: this builder already maps `esc` over the
-  // whole segment array, id included, so nothing can reach the join wrong-typed.
-  // The gate asserts every joiner runs the check, and a joiner exempted because
-  // it happens to be safe today is one refactor away from not being.
+  // Load-bearing, not redundant. A draft of this comment claimed the check was
+  // redundant "because this builder already maps `esc` over the whole segment
+  // array", and a refuter measured that false: `buildTransaction` does map `esc`
+  // over the body segments, but `buildGroup` emits GS-04, GS-05 and GS-07 RAW.
+  // A numeric `groupDate` was emitted silently at base and refuses here.
   requireCallerSegment(parts, "buildInterchange", refuseSpec);
   return parts.join(elementSeparator) + segmentTerminator;
 }

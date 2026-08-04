@@ -27,6 +27,15 @@
  * > **No non-string value reaches an element of a segment emitted through a
  * > builder's `seg` / `joinSeg` helper.**
  *
+ * **Read the `seg` / `joinSeg` qualifier literally, because a refuter measured a
+ * draft of this file that dropped it.** That draft said "any builder emits", and
+ * `buildTA1` does not use either helper: it emits `["TA1", ...five caller
+ * values].join(sep)` directly, with no `esc` and no `pad`, so nothing checks it
+ * and a numeric or `undefined` TA1-01 is emitted silently. That is
+ * `PRE-EXISTING` and unchanged here; it is named below and pinned in
+ * `test/builder-segment-type.test.ts` rather than papered over. The lesson is
+ * the same one the census drafts taught: the qualifier is the claim.
+ *
  * Deliberately **not** claimed:
  *
  * - **It is a type guard, not an escape.** A `string` carrying an active
@@ -36,6 +45,11 @@
  *   slots by routing them through `esc` in this same slice, and this module
  *   would not have caught it. Type and delimiter safety are separate
  *   properties and only one of them is structural.
+ * - **`buildTA1` is outside it**, per the paragraph above. TA1-01 is data
+ *   element I12, the interchange control number echoed from ISA-13 and the
+ *   reassociation key back to the acknowledged interchange, so a silently empty
+ *   one is not a small thing. Filed as its own item; widening this guard into a
+ *   public builder is a behaviour change that deserves its own graded slice.
  * - **The fixed-width ISA line is outside it.** Every builder assembles ISA by
  *   `[...].join(elementSeparator)` directly, not through `seg`, because its
  *   elements are `pad`ed to width rather than escaped. Those slots remain as

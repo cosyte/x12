@@ -242,9 +242,16 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   Rather than count a third time, the library moved the check to the one place every element must
   pass: **the segment join**. So the statement is now a property instead of a list:
 
-  > **No non-string value reaches an element of a segment any builder emits.** A number, `null`,
-  > `undefined`, a boolean or an object in an element slot draws that builder's own typed, code-tagged
-  > refusal, naming the slot the way the spec does (`build999: "AK9"-01 must be a string, …`).
+  > **No non-string value reaches an element of a segment emitted through a builder's segment
+  > joiner.** A number, `null`, `undefined`, a boolean or an object in an element slot draws that
+  > builder's own typed, code-tagged refusal, naming the slot the way the spec does
+  > (`build999: "AK9"-01 must be a string, …`).
+
+  **Read the "through a builder's segment joiner" qualifier literally.** `buildTA1` does not use one,
+  and is therefore **not covered**: it emits its five caller-supplied elements with a direct join, no
+  escape and no padding, so a numeric or `undefined` `interchangeControlNumber` is emitted silently
+  (`TA1**250101*1200*A*000`). TA1-01 is the reassociation key from the acknowledgment back to the
+  interchange it acknowledges, so that matters. Unchanged from `0.0.9` and tracked as its own item.
 
   The monetary slots got their own guard on top of it: a slot typed `X12Decimal` refuses anything that
   is not one, rather than rendering `number.toString()` into the document.
@@ -256,6 +263,15 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
      `1?*BOGUS`); the fixed-width ISA slots do not go through it at all.
   2. **Whether an `X12Decimal` carries the SCALE you meant.** `fromString("0.3")` and
      `fromString("0.30")` are both accepted and both emit verbatim. That choice is yours.
+  3. **Anything `buildTA1` emits**, per the paragraph above.
+  4. **`build835`'s balance-equation amounts, which refuse UNTYPED.** `build835` runs its balance
+     guard before it builds the escape helper, and that guard calls `X12Decimal` methods on your
+     value. So a raw `number` in **BPR-02**, **CLP-03**, **CLP-04** or a **CAS-03** adjustment amount
+     throws a plain `TypeError` with **no `code`** - one of them saying the value "has no internal
+     state - was it tampered with?", which is a misleading thing to be told when you passed a number.
+     The typed refusal you would expect fires only on the amounts the balance equation does not read
+     (CLP-05, CAS-04, AMT-02). Unchanged from `0.0.9`; `err.code` is still the thing to branch on, and
+     these four are the case where there is not one.
 
   **Closed in the release after `0.0.9`, and recorded because the behaviour changed for callers who
   were relying on it.** Each of these emitted silently before and refuses now:

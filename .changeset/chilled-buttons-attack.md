@@ -16,11 +16,14 @@ The string-typed slots that never called `esc` at all are routed through it (`bu
 GE-02 / ST-02 / SE-02 / AK9-01 / IK5-01 / GS-07, GS-04 / GS-05 in every domain builder, `build278`'s
 HL-03, `build837`'s LX-01), which closes their delimiter hole too.
 
-Underneath both, `requireCallerSegment` type-checks every element of every emitted segment, on every
-route in. Three earlier drafts published an exhaustive census of the slots that bypass `esc` and all
-three were measured false; the join is the one place every element must pass, so the statement is now
-a property rather than a list. It names the slot the way the spec does (`build999: "AK9"-01 must be a
-string, …`).
+Underneath both, `requireCallerSegment` type-checks every element of every segment emitted through a
+builder's `seg` / `joinSeg` helper, on every route in. Three earlier drafts published an exhaustive
+census of the slots that bypass `esc` and all three were measured false; the join is the one place
+every element must pass, so the statement is now a property rather than a list. It names the slot the
+way the spec does (`build999: "AK9"-01 must be a string, …`).
 
-Still not claimed: delimiter safety is per-slot, not structural, and the fixed-width ISA slots go
-through `pad` / `padControl` and are unchanged.
+Deliberately still not claimed, and unchanged here: delimiter safety is per-slot, not structural; the
+fixed-width ISA slots go through `pad` / `padControl`; `buildTA1` uses no segment joiner at all, so a
+non-string TA1-01 is still emitted silently; and `build835`'s balance-equation amounts (BPR-02,
+CLP-03, CLP-04, CAS-03) refuse with an untyped `TypeError` because the balance guard reads them
+before the escaper is built.

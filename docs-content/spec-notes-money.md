@@ -18,10 +18,16 @@ the difference is the money-handling analog of mis-reading a dose.
 > **On the BUILD side this is enforced, not just a convention.** The builder specs type their
 > monetary and quantity fields as `X12Decimal`, so a TypeScript caller cannot hand them anything
 > else. A JavaScript or JSON-driven caller can, and every one of those slots now type-checks before
-> emitting: a raw `number` is **refused** with that builder's typed error rather than rendered. It
-> used to be rendered: `0.1 + 0.2` reached an 835's CLP-05 as `0.30000000000000004` with
-> `warnings.length === 0`. Build the `X12Decimal` yourself at your boundary; the library will not
-> round for you, because choosing between `0.30` and `0.3` is a decision about your money, not ours.
+> emitting: a raw `number` is **refused** rather than rendered. It used to be rendered: `0.1 + 0.2`
+> reached an 835's CLP-05 as `0.30000000000000004` with `warnings.length === 0`. Build the
+> `X12Decimal` yourself at your boundary; the library will not round for you, because choosing
+> between `0.30` and `0.3` is a decision about your money, not ours.
+>
+> **One caveat on the error you get.** Most slots refuse with that builder's typed, code-tagged
+> error. `build835`'s balance-equation amounts (**BPR-02**, **CLP-03**, **CLP-04**, **CAS-03**) do
+> not: the balance guard runs first and calls `X12Decimal` methods on your value, so those four throw
+> a plain `TypeError` with no `code`. It still refuses; it just refuses untyped. See
+> `KNOWN-LIMITATIONS.md`.
 
 ## What `X12Decimal` is
 

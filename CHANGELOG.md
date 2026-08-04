@@ -229,17 +229,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   published an exhaustive counted census of the slots that bypass `esc`, and adversarial review
   measured all three false, each time by finding one more. Counting a fourth time would repeat that,
   so the check moved to the one place every element must pass: **the segment join**.
-  `requireCallerSegment` type-checks every element of every segment each builder emits, on every route
-  in, `escDec` included. `esc` is optional on a slot; the join is not. It also names the slot the way
-  the spec does - `build999: "AK9"-01 must be a string, …` - which `esc` cannot, being unary.
+  `requireCallerSegment` type-checks every element of every segment emitted **through a builder's
+  `seg` / `joinSeg` helper**, on every route in, `escDec` included. `esc` is optional on a slot; the
+  join is not. It also names the slot the way the spec does - `build999: "AK9"-01 must be a
+string, …` - which `esc` cannot, being unary.
 
   **What is deliberately still NOT claimed.** Type safety is structural here; **delimiter safety is
   per-slot**. A `string` carrying an active delimiter in a slot that skipped `esc` is still emitted
   verbatim, because the segment guard passes it - only the slots named above were routed. And the
-  fixed-width ISA slots go through `pad` / `padControl` and not through the segment join either, so
+  fixed-width ISA slots go through `pad` / `padControl` and not through the segment joiner either, so
   they remain as the entry above describes them: an untyped `TypeError`, or for
   `interchangeControlNumber` a typed refusal whose text misleadingly says "exceeds the 9-char spec
   limit". Both terminate; neither is silent; neither is improved here.
+
+  **Two more exclusions, both found by the refuter against a draft that claimed more than the code
+  did, both `PRE-EXISTING` and both now pinned by tests rather than argued away.** `buildTA1` uses no
+  segment joiner and no escape helper - it joins its five caller-supplied elements directly - so a
+  numeric or `undefined` `interchangeControlNumber` still emits silently as `TA1**250101*1200*A*000`;
+  TA1-01 is the reassociation key back to the acknowledged interchange, so it is filed as its own
+  item rather than widened into here. And **`build835`'s balance-equation amounts refuse UNTYPED**:
+  `enforceBalance(spec)` runs before the escaper is built and calls `X12Decimal` methods on the
+  caller's value, so BPR-02, CLP-03, CLP-04 and CAS-03 throw a plain `TypeError` with no `code` (one
+  of them saying the value was "tampered with") instead of the typed refusal. CLP-05, CAS-04 and
+  AMT-02 are outside the equation and do refuse typed. Reordering the balance guard changes the
+  refusal precedence of an out-of-balance remit, which is its own decision.
 
   **AK9-01 was the sharpest of the raw slots** - an `ID` element bound to X12 code list **715**
   (a data element number, and its values are a code _list_; this repo's own `src/transactions/ack/codes.ts`
