@@ -169,9 +169,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `TypeError`, so its duty is to survive anything; an emitted document's duty is to invent nothing.
 
   **The guard is on values routed through the escape helper, and not every element position goes
-  through it.** All of what follows is pre-existing, measured, unchanged here and disclosed in
-  `KNOWN-LIMITATIONS.md`. **36 `esc` slots read `.toString()` off what the types say is an
-  `X12Decimal`**, so a raw number arrives already a string and is passed through: a
+  through it.** All of what follows was pre-existing, measured and unchanged here; it is **closed by
+  the `X12-DECIMAL-BYPASSES-THE-GUARD` entry below**, in the same unreleased window, so the residual
+  described here never reached a published version. **`esc` slots read `.toString()` off what the
+  types say is an `X12Decimal`**, so a raw number arrives already a string and is passed through: a
   `patientResponsibilityAmount` of `0.1 + 0.2` still emits `…*0.30000000000000004*…`, `1e21` still
   emits `…*1e+21*…` and `NaN` still emits `…*NaN*…`, each with zero warnings, which are the exact
   three renderings this entry names as disqualifying, and an 837 service-line `units` reaches SV1-04
@@ -183,7 +184,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `levelCode` (HL-03), `groupDate` / `groupTime` (GS-04 / GS-05), and the 837's `lineNumber`
   (LX-01). **Those are examples and not a census, deliberately:** two drafts of this
   entry published an exhaustive count and adversarial review measured both incomplete, so the claim
-  is cut back rather than grown a third time. AK9-01 is an `ID` element bound to X12 code source 715,
+  is cut back rather than grown a third time. AK9-01 is an `ID` element bound to X12 code list 715,
   and `build999`'s own accept-with-errors guard compares it against `"A"`, so a number walks past it
   the same way it walked past `patientControlNumber === ""`. **The fixed-width ISA slots** go through
   `pad` / `padControl`, so a number throws an untyped `TypeError` and a numeric
@@ -193,6 +194,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **The "no working caller is broken" claim holds with one measured exception:** a boxed
   `new String("PT-ACCT-001")` built cleanly at `0.0.8` and is refused now, because `typeof` it is
   `"object"`.
+
+- **A raw `number` in an `X12Decimal` slot is refused instead of rendered, and the type check now
+  covers every element of every segment emitted through a builder's segment joiner**
+  (`X12-DECIMAL-BYPASSES-THE-GUARD`). This closes the
+  two classes the entry above disclosed and deliberately did not fix.
+
+  **The decimal half.** `makeCallerEscaper` type-checks what reaches `esc`, but an `X12Decimal` slot
+  hands `esc` a `value.toString()`, and a raw `number` answers that with a perfectly good string. So
+  the value arrived already a string and the guard never applied. Measured at `15abbd4` with
+  `warnings.length === 0` in every case: a `patientResponsibilityAmount` of `0.1 + 0.2` emitted
+  `CLP*PT-ACCT-001*1*500.00*450.00*0.30000000000000004*…`, `1e21` emitted `…*1e+21*…`, `NaN` emitted
+  `…*NaN*…`, an 837 service-line `units` of `0.1 + 0.2` emitted
+  `SV1*HC:99213*150.00*UN*0.30000000000000004***1`, and a diagnosis `monetaryAmount` reached
+  `HI*ABK:J20.9:::0.30000000000000004`. **Two of those three renderings the library cannot parse
+  back** - `X12_DECIMAL_RE` rejects exponent notation and `NaN` - so they did not round-trip; the
+  IEEE-754 artifact is worse in the other direction, being well-formed enough that nothing downstream
+  refuses it. Every such slot now emits through that builder's `escDec`, over `requireCallerDecimal`.
+
+  **Why refuse and not round, which is the decision:** rounding `0.1 + 0.2` to `0.30` guesses cents
+  and to `0.3` guesses tenths, and guessing the scale of a monetary amount is what `X12Decimal` exists
+  to prevent. Same answer as the entry above, for a reason specific to this slot: every one of these
+  is _typed_ `X12Decimal` already, so a raw `number` is a caller who defeated their own type checker
+  and no supported numeric path is taken away.
+
+  **The raw-slot half.** The string-typed positions that never called the escape helper at all are
+  routed through it: `build999`'s `groupControlNumber` (GS-06 / GE-02), `transactionSetControlNumber`
+  (ST-02 / SE-02), `disposition` (AK9-01 and IK5-01) and `groupResponsibleAgency` (GS-07);
+  `groupDate` / `groupTime` (GS-04 / GS-05) in all seven domain builders; `build278`'s `levelCode`
+  (HL-03); and `build837`'s `lineNumber` (LX-01). That closes the delimiter hole on them too -
+  `build999` with a `groupControlNumber` of `"1*BOGUS"` emitted `GS*FA*…*1*BOGUS*X*005010X231A1`,
+  shifting GS-07 and GS-08 by one, and now emits `1?*BOGUS`.
+
+  **And the part that is a property rather than a list.** Three consecutive drafts of the entry above
+  published an exhaustive counted census of the slots that bypass `esc`, and adversarial review
+  measured all three false, each time by finding one more. Counting a fourth time would repeat that,
+  so the check moved to the one place every element must pass: **the segment join**.
+  `requireCallerSegment` type-checks every element of every segment emitted **through a builder's
+  `seg` / `joinSeg` helper**, on every route in, `escDec` included. `esc` is optional on a slot; the
+  join is not. It also names the slot the way the spec does - `build999: "AK9"-01 must be a
+string, …` - which `esc` cannot, being unary.
+
+  **What is deliberately still NOT claimed.** Type safety is structural here; **delimiter safety is
+  per-slot**. A `string` carrying an active delimiter in a slot that skipped `esc` is still emitted
+  verbatim, because the segment guard passes it - only the slots named above were routed. And the
+  fixed-width ISA slots go through `pad` / `padControl` and not through the segment joiner either, so
+  they remain as the entry above describes them: an untyped `TypeError`, or for
+  `interchangeControlNumber` a typed refusal whose text misleadingly says "exceeds the 9-char spec
+  limit". Both terminate; neither is silent; neither is improved here.
+
+  **Two more exclusions, both found by the refuter against a draft that claimed more than the code
+  did, both `PRE-EXISTING` and both now pinned by tests rather than argued away.** `buildTA1` uses no
+  segment joiner and no escape helper - it joins its five caller-supplied elements directly - so a
+  numeric or `undefined` `interchangeControlNumber` still emits silently as `TA1**250101*1200*A*000`;
+  TA1-01 is the reassociation key back to the acknowledged interchange, so it is filed as its own
+  item rather than widened into here. And **`build835`'s balance-equation amounts refuse UNTYPED**:
+  `enforceBalance(spec)` runs before the escaper is built and calls `X12Decimal` methods on the
+  caller's value, so `requireCallerDecimal` is unreachable on them and the caller gets a plain
+  `TypeError` with no `code` (some saying the value was "tampered with") instead of the typed
+  refusal. **The rule, rather than a list, because a first draft of this disclosure published a
+  closed list of four and a refuter measured it incomplete:** a slot refuses untyped exactly when the
+  balance guard reads it as a term of one of the three TR3 X221A1 §1.10.2 invariants in
+  `src/transactions/remit/balance.ts`. **Named by SPEC FIELD and not by element number, because the
+  next draft used element numbers and got one wrong:** `payment.totalActualPayment`,
+  `claim.totalChargeAmount`, `claim.totalPaymentAmount`, every `adjustments[].amount` at claim and
+  line level, `serviceLine.chargeAmount`, `serviceLine.paymentAmount` and
+  `providerAdjustments[].amount`. Every other `X12Decimal` field refuses typed, including
+  `claim.patientResponsibilityAmount`, `serviceLine.paidUnitsOfService` and every `amounts[].amount`.
+  Both arms are pinned. Reordering the balance guard changes the refusal precedence of an
+  out-of-balance remit, which is its own decision.
+
+  **AK9-01 was the sharpest of the raw slots** - an `ID` element bound to X12 code list **715**
+  (a data element number, and its values are a code _list_; this repo's own `src/transactions/ack/codes.ts`
+  had it right and four other places said "code source"), so a number there told a receiver nothing
+  about whether the functional group was accepted, and `build999`'s own `X12_ACK_ACCEPT_WITH_ERRORS`
+  guard compares `disposition === "A"`, which a number walked past exactly as it walked past
+  `patientControlNumber === ""`.
 
 - **The `attw` publish gate no longer passes a tarball that carries no type declarations.** The
   `attw` script was the bare CLI, and `@arethetypeswrong/cli` returns 0 whenever its analysis found

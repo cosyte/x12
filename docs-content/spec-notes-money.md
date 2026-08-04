@@ -15,12 +15,22 @@ the difference is the money-handling analog of mis-reading a dose.
 > **The rule:** `@cosyte/x12` **never** calls `parseFloat` on an EDI amount, and neither should you.
 > Read the `X12Decimal`, do exact arithmetic on it, and format it back to a string.
 
-> **On the BUILD side this is a convention, not an enforced boundary.** The builder specs type their
-> monetary and quantity fields as `X12Decimal`, and a TypeScript caller cannot hand them anything
-> else. A JavaScript or JSON-driven caller can, and 36 of those slots read `.toString()` off whatever
-> they were given, so a raw `number` is emitted rather than refused: `0.1 + 0.2` reaches an 835's
-> CLP-05 as `0.30000000000000004`, with `warnings.length === 0`. Build the `X12Decimal` yourself at
-> your boundary. Tracked in `KNOWN-LIMITATIONS.md`.
+> **On the BUILD side this is enforced, not just a convention.** The builder specs type their
+> monetary and quantity fields as `X12Decimal`, so a TypeScript caller cannot hand them anything
+> else. A JavaScript or JSON-driven caller can, and every one of those slots now type-checks before
+> emitting: a raw `number` is **refused** rather than rendered. It used to be rendered: `0.1 + 0.2`
+> reached an 835's CLP-05 as `0.30000000000000004` with `warnings.length === 0`. Build the
+> `X12Decimal` yourself at your boundary; the library will not round for you, because choosing
+> between `0.30` and `0.3` is a decision about your money, not ours.
+>
+> **One caveat on the error you get.** Most slots refuse with that builder's typed, code-tagged
+> error. `build835`'s balance-equation amounts do not: the balance guard runs first and calls
+> `X12Decimal` methods on your value, so any amount it reads as a term of one of the three TR3
+> X221A1 §1.10.2 invariants throws a plain `TypeError` with no `code`: `payment.totalActualPayment`,
+> `claim.totalChargeAmount`, `claim.totalPaymentAmount`, every `adjustments[].amount`,
+> `serviceLine.chargeAmount`, `serviceLine.paymentAmount` and `providerAdjustments[].amount`. It
+> still refuses; it just refuses untyped. Every other `X12Decimal` field refuses typed. See
+> `KNOWN-LIMITATIONS.md`.
 
 ## What `X12Decimal` is
 

@@ -47,6 +47,7 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 
@@ -179,6 +180,7 @@ function buildServicesReview(
   const esc = makeCallerEscaper(delimiters, "build278", refuseSpec);
 
   const seg = (parts: readonly string[]): string => {
+    requireCallerSegment(parts, "build278", refuseSpec);
     let end = parts.length;
     while (end > 1 && parts[end - 1] === "") end -= 1;
     return parts.slice(0, end).join(elementSeparator) + segmentTerminator;
@@ -232,8 +234,8 @@ function buildServicesReview(
     X12_278_FUNCTIONAL_ID,
     esc(applicationSenderCode),
     esc(applicationReceiverCode),
-    groupDate,
-    groupTime,
+    esc(groupDate),
+    esc(groupTime),
     esc(envelope.groupControlNumber),
     X12_AGENCY_CODE,
     version,
@@ -452,7 +454,7 @@ function emitReview(
   const nested = review.reviews ?? [];
   const hasChild = nested.length > 0 ? "1" : "0";
   const levelCode = review.levelCode ?? DEFAULT_REVIEW_LEVEL;
-  body.push(ctx.seg(["HL", hlId, parentHlId, levelCode, hasChild]));
+  body.push(ctx.seg(["HL", hlId, parentHlId, ctx.esc(levelCode), hasChild]));
 
   for (const trace of review.traces ?? []) {
     body.push(

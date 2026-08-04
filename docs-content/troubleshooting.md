@@ -148,23 +148,43 @@ library saw it, so coercion would emit `12345`: a well-formed identifier that is
 and a remittance that reassociates to the **wrong** claim. Convert at your own boundary, where you can
 still tell whether the zeros mattered.
 
-**Keep validating spec types at your own boundary anyway. The fix guards values routed through the
-escape helper, and not every element position goes through it**, all pre-existing and unchanged.
-**Monetary and quantity slots read `.toString()`, so a raw number is not refused there**, and that
-class is examples-only too, not a count: a `patientResponsibilityAmount` of
-`0.1 + 0.2` still emits `…*0.30000000000000004*…`, `1e21` still emits `…*1e+21*…` and `NaN` still
-emits `…*NaN*…`, each with zero warnings. `X12Decimal` is the route you should use, but it is not
-enforced. **Some string-typed positions never call the escape helper at all** and still emit a number
-verbatim, or an unescaped delimiter: known examples are the 999's `groupControlNumber` (GS-06 /
-GE-02), `transactionSetControlNumber` (ST-02 / SE-02) and `disposition` (AK9-01 and IK5-01), the
-278's `levelCode` (HL-03), `groupDate` / `groupTime` (GS-04 / GS-05), and the 837's `lineNumber`
-(LX-01). **That is a list of examples and not a census** - two drafts of this page
-published an exhaustive count and both were measured incomplete, so validate at your boundary rather
-than reading a slot's absence as a guarantee. AK9-01 is the one to know about: it is an `ID` element
-bound to X12 code source 715, so a number there tells the receiver nothing about whether the group
-was accepted. **The fixed-width ISA slots** throw an untyped `TypeError` (or, for
-`interchangeControlNumber`, a typed refusal whose text misleadingly says "exceeds the 9-char spec
-limit"), which at least terminates.
+**The type check now covers every element of every segment a builder emits through its segment
+joiner, not only the ones routed through the escape helper.** Two earlier drafts of this page
+published a counted list of the slots that escaped the check and both were measured incomplete, so
+the check moved to the place every element of those segments has to pass, the joiner. A number,
+`null`, `undefined`, a boolean or an object in a slot that goes through one draws that builder's
+typed refusal, naming the slot the way the spec does: `build999: "AK9"-01 must be a string, …`.
+`buildTA1` does not use a segment joiner and is not covered; see below.
+
+**Monetary and quantity slots have their own guard on top of that**, because a raw `number` answers
+`.toString()` with a perfectly good string and used to sail straight through: a
+`patientResponsibilityAmount` of `0.1 + 0.2` emitted `…*0.30000000000000004*…`, `1e21` emitted
+`…*1e+21*…` and `NaN` emitted `…*NaN*…`, each with zero warnings, and the library cannot parse the
+last two back. A slot typed `X12Decimal` now refuses anything that is not one. It will **not** round
+for you: choosing between `0.30` and `0.3` is a decision about your money.
+
+**Four things are still worth validating at your own boundary.** First, a `string` carrying an active
+delimiter: the type check passes it, and only slots routed through the escape helper release it
+(`"1*BOGUS"` emits as `1?*BOGUS`). Second, **the fixed-width ISA slots**, which go through padding
+and not through the segment joiner at all. A number there throws an untyped `TypeError`, or for
+`interchangeControlNumber` a typed refusal whose text misleadingly says "exceeds the 9-char spec
+limit". Both terminate, which is why they are the smaller hazard.
+
+Third, **`buildTA1`**, which uses no segment joiner and no escape helper: it joins its five
+caller-supplied elements directly, so a numeric or `undefined` `interchangeControlNumber` is emitted
+silently as `TA1**250101*1200*A*000`. TA1-01 reassociates the acknowledgment to the interchange it
+acknowledges, so build it as a string.
+
+Fourth, **`build835`'s balance-equation amounts refuse UNTYPED.** The balance guard runs before the
+escape helper is built and calls `X12Decimal` methods on your value, so a raw `number` there throws a
+plain `TypeError` with **no `code`** rather than the typed refusal. The rule is the equation, not a
+list: an amount refuses untyped exactly when the balance guard reads it as a term of one of the three
+TR3 X221A1 §1.10.2 invariants. Named by spec field rather than element number, the untyped set is
+`payment.totalActualPayment`, `claim.totalChargeAmount`, `claim.totalPaymentAmount`, every
+`adjustments[].amount` at claim and line level, `serviceLine.chargeAmount`,
+`serviceLine.paymentAmount` and `providerAdjustments[].amount`. Every other `X12Decimal` field
+refuses typed, including `claim.patientResponsibilityAmount`, `serviceLine.paidUnitsOfService` and
+every `amounts[].amount`.
 
 One other behaviour change: the exported `escapeRelease` now throws `TypeError` on a non-string
 instead of returning `""`, and a boxed `new String("…")` is refused where it built at `0.0.8`. See

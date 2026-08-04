@@ -26,6 +26,7 @@ import type {
 } from "./types.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
+import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 
@@ -168,10 +169,10 @@ export function build999(spec: Build999Spec): X12Interchange {
       "FA", // GS-01 - functional ID code "FA" for ack
       esc(envelope.senderId), // GS-02
       esc(envelope.receiverId), // GS-03
-      groupDate, // GS-04 - CCYYMMDD
-      groupTime, // GS-05 - HHMM
-      envelope.groupControlNumber, // GS-06
-      groupResponsibleAgency, // GS-07
+      esc(groupDate), // GS-04 - CCYYMMDD
+      esc(groupTime), // GS-05 - HHMM
+      esc(envelope.groupControlNumber), // GS-06
+      esc(groupResponsibleAgency), // GS-07
       X231A1_VERSION_RELEASE, // GS-08 - the 999 TR3
     ],
     elementSeparator,
@@ -180,7 +181,7 @@ export function build999(spec: Build999Spec): X12Interchange {
 
   const stControlNumber = envelope.transactionSetControlNumber;
   const st = joinSeg(
-    ["ST", "999", stControlNumber, X231A1_VERSION_RELEASE],
+    ["ST", "999", esc(stControlNumber), X231A1_VERSION_RELEASE],
     elementSeparator,
     segmentTerminator,
   );
@@ -218,9 +219,17 @@ export function build999(spec: Build999Spec): X12Interchange {
   // SE-01 includes ST and SE themselves.
   const bodySegments = [st, ak1, ...responseSegments, ak9];
   const seCount = bodySegments.length + 1;
-  const se = joinSeg(["SE", String(seCount), stControlNumber], elementSeparator, segmentTerminator);
+  const se = joinSeg(
+    ["SE", String(seCount), esc(stControlNumber)],
+    elementSeparator,
+    segmentTerminator,
+  );
 
-  const ge = joinSeg(["GE", "1", envelope.groupControlNumber], elementSeparator, segmentTerminator);
+  const ge = joinSeg(
+    ["GE", "1", esc(envelope.groupControlNumber)],
+    elementSeparator,
+    segmentTerminator,
+  );
 
   const iea = joinSeg(["IEA", "1", interchangeControlNumber], elementSeparator, segmentTerminator);
 
@@ -418,7 +427,7 @@ function buildIk5(
   elementSeparator: string,
   segmentTerminator: string,
 ): string {
-  const parts: string[] = ["IK5", response.disposition];
+  const parts: string[] = ["IK5", esc(response.disposition)];
   const codes = response.syntaxErrorCodes ?? [];
   if (codes.length > 5) {
     throw new AckBuildError(
@@ -439,7 +448,7 @@ function buildAk9(
 ): string {
   const parts: string[] = [
     "AK9",
-    group.disposition,
+    esc(group.disposition),
     String(group.numberOfTransactionSets),
     String(group.numberOfReceivedTransactionSets),
     String(group.numberOfAcceptedTransactionSets),
@@ -465,6 +474,7 @@ function joinSeg(
   elementSeparator: string,
   segmentTerminator: string,
 ): string {
+  requireCallerSegment(parts, "build999", refuseSpec);
   return parts.join(elementSeparator) + segmentTerminator;
 }
 

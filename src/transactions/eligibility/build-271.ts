@@ -44,7 +44,10 @@ import type {
 } from "./build-271-types.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
+import type { X12Decimal } from "../../decimal.js";
 import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerDecimal } from "../../builder/caller-decimal.js";
+import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 
@@ -71,6 +74,15 @@ function refuseSpec(message: string): never {
     ELIGIBILITY_271_BUILD_ERROR_CODES.X12_271_BUILD_INVALID_SPEC,
     message,
   );
+}
+
+/**
+ * Escape a caller-supplied `X12Decimal` into an element, refusing a raw
+ * `number` instead of emitting its JavaScript rendering
+ * (`X12-DECIMAL-BYPASSES-THE-GUARD`). @internal
+ */
+function escDec(value: X12Decimal, esc: (value: string) => string): string {
+  return esc(requireCallerDecimal(value, "build271", refuseSpec).toString());
 }
 
 /** GS-08 / ST-03 version + release emitted for every 271 - the WPC TR3 `005010X279A1`. @internal */
@@ -140,6 +152,7 @@ export function build271(spec: Build271Spec): X12Interchange {
   const esc = makeCallerEscaper(delimiters, "build271", refuseSpec);
 
   const seg = (parts: readonly string[]): string => {
+    requireCallerSegment(parts, "build271", refuseSpec);
     let end = parts.length;
     while (end > 1 && parts[end - 1] === "") end -= 1;
     return parts.slice(0, end).join(elementSeparator) + segmentTerminator;
@@ -186,8 +199,8 @@ export function build271(spec: Build271Spec): X12Interchange {
     X12_271_FUNCTIONAL_ID,
     esc(applicationSenderCode),
     esc(applicationReceiverCode),
-    groupDate,
-    groupTime,
+    esc(groupDate),
+    esc(groupTime),
     esc(envelope.groupControlNumber),
     X12_AGENCY_CODE,
     X279A1_VERSION_RELEASE,
@@ -446,10 +459,10 @@ function emitBenefit(benefit: Build271BenefitSpec, body: string[], ctx: EmitCont
       ctx.esc(benefit.insuranceTypeCode ?? ""),
       ctx.esc(benefit.planCoverageDescription ?? ""),
       ctx.esc(benefit.timePeriodQualifier ?? ""),
-      benefit.monetaryAmount === undefined ? "" : ctx.esc(benefit.monetaryAmount.toString()),
-      benefit.percent === undefined ? "" : ctx.esc(benefit.percent.toString()),
+      benefit.monetaryAmount === undefined ? "" : escDec(benefit.monetaryAmount, ctx.esc),
+      benefit.percent === undefined ? "" : escDec(benefit.percent, ctx.esc),
       ctx.esc(benefit.quantityQualifier ?? ""),
-      benefit.quantity === undefined ? "" : ctx.esc(benefit.quantity.toString()),
+      benefit.quantity === undefined ? "" : escDec(benefit.quantity, ctx.esc),
       ctx.esc(benefit.authorizationRequired ?? ""),
       ctx.esc(benefit.inPlanNetwork ?? ""),
     ]),

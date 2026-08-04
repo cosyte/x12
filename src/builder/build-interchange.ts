@@ -21,6 +21,7 @@ import { X12_BUILD_ERROR_CODES, X12BuildError } from "./errors.js";
 import type { FunctionalGroupSpec, InterchangeSpec, TransactionSetSpec } from "./types.js";
 import { parseX12 } from "../parser/index.js";
 import type { X12Interchange } from "../parser/types.js";
+import { requireCallerSegment } from "./caller-segment.js";
 import { renderCallerValue } from "./caller-value.js";
 import { makeCallerEscaper } from "./caller-string.js";
 
@@ -210,6 +211,12 @@ function joinSeg(
   elementSeparator: string,
   segmentTerminator: string,
 ): string {
+  // Load-bearing, not redundant. A draft of this comment claimed the check was
+  // redundant "because this builder already maps `esc` over the whole segment
+  // array", and a refuter measured that false: `buildTransaction` does map `esc`
+  // over the body segments, but `buildGroup` emits GS-04, GS-05 and GS-07 RAW.
+  // A numeric `groupDate` was emitted silently at base and refuses here.
+  requireCallerSegment(parts, "buildInterchange", refuseSpec);
   return parts.join(elementSeparator) + segmentTerminator;
 }
 

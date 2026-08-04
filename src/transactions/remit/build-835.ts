@@ -43,7 +43,10 @@ import type {
 } from "./types.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange, X12Position } from "../../parser/types.js";
+import type { X12Decimal } from "../../decimal.js";
 import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerDecimal } from "../../builder/caller-decimal.js";
+import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 
@@ -54,6 +57,15 @@ import { makeCallerEscaper } from "../../builder/caller-string.js";
  */
 function refuseSpec(message: string): never {
   throw new Remit835BuildError(REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_INVALID_SPEC, message);
+}
+
+/**
+ * Escape a caller-supplied `X12Decimal` into an element, refusing a raw
+ * `number` instead of emitting its JavaScript rendering
+ * (`X12-DECIMAL-BYPASSES-THE-GUARD`). @internal
+ */
+function escDec(value: X12Decimal, esc: (value: string) => string): string {
+  return esc(requireCallerDecimal(value, "build835", refuseSpec).toString());
 }
 
 /**
@@ -161,6 +173,7 @@ export function build835(spec: Build835Spec): X12Interchange {
    * and kept). Never re-escapes - composites arrive pre-escaped.
    */
   const seg = (parts: readonly string[]): string => {
+    requireCallerSegment(parts, "build835", refuseSpec);
     let end = parts.length;
     while (end > 1 && parts[end - 1] === "") end -= 1;
     return parts.slice(0, end).join(elementSeparator) + segmentTerminator;
@@ -217,8 +230,8 @@ export function build835(spec: Build835Spec): X12Interchange {
     X12_835_FUNCTIONAL_ID, // GS-01 - "HP"
     esc(applicationSenderCode), // GS-02
     esc(applicationReceiverCode), // GS-03
-    groupDate, // GS-04 - CCYYMMDD
-    groupTime, // GS-05 - HHMM
+    esc(groupDate), // GS-04 - CCYYMMDD
+    esc(groupTime), // GS-05 - HHMM
     esc(envelope.groupControlNumber), // GS-06
     X12_AGENCY_CODE, // GS-07
     X221A1_VERSION_RELEASE, // GS-08
@@ -238,7 +251,7 @@ export function build835(spec: Build835Spec): X12Interchange {
     seg([
       "BPR",
       esc(spec.payment.transactionHandlingCode),
-      esc(spec.payment.totalActualPayment.toString()),
+      escDec(spec.payment.totalActualPayment, esc),
       esc(spec.payment.creditDebitFlag),
       esc(spec.payment.method),
       esc(spec.payment.paymentFormatCode ?? ""),
@@ -561,9 +574,9 @@ function emitClaim(
       "CLP",
       esc(claim.patientControlNumber),
       esc(claim.claimStatusCode),
-      esc(claim.totalChargeAmount.toString()),
-      esc(claim.totalPaymentAmount.toString()),
-      esc(claim.patientResponsibilityAmount.toString()),
+      escDec(claim.totalChargeAmount, esc),
+      escDec(claim.totalPaymentAmount, esc),
+      escDec(claim.patientResponsibilityAmount, esc),
       esc(claim.claimFilingIndicatorCode ?? ""),
       esc(claim.payerClaimControlNumber ?? ""),
       comp([claim.facilityTypeCode ?? "", "", claim.claimFrequencyCode ?? ""]),
@@ -589,7 +602,7 @@ function emitClaim(
 
   for (const ref of claim.references ?? []) body.push(emitRef(ref, seg, esc));
   for (const amt of claim.amounts ?? []) {
-    body.push(seg(["AMT", esc(amt.qualifier), esc(amt.amount.toString())]));
+    body.push(seg(["AMT", esc(amt.qualifier), escDec(amt.amount, esc)]));
   }
   for (const remark of claim.remarks ?? []) {
     body.push(seg(["LQ", esc(remark.system), esc(remark.code)]));
@@ -618,12 +631,12 @@ function emitServiceLine(
     seg([
       "SVC",
       svc01,
-      esc(line.chargeAmount.toString()),
-      esc(line.paymentAmount.toString()),
+      escDec(line.chargeAmount, esc),
+      escDec(line.paymentAmount, esc),
       "", // SVC-04 - revenue code is SVC-05 in X221A1; SVC-04 unused
       esc(line.revenueCode ?? ""),
       svc06,
-      line.paidUnitsOfService === undefined ? "" : esc(line.paidUnitsOfService.toString()),
+      line.paidUnitsOfService === undefined ? "" : escDec(line.paidUnitsOfService, esc),
     ]),
   );
 
@@ -631,7 +644,7 @@ function emitServiceLine(
   emitCasGroup(line.adjustments, "build835: serviceLine.adjustments", body, seg, esc);
   for (const ref of line.references ?? []) body.push(emitRef(ref, seg, esc));
   for (const amt of line.amounts ?? []) {
-    body.push(seg(["AMT", esc(amt.qualifier), esc(amt.amount.toString())]));
+    body.push(seg(["AMT", esc(amt.qualifier), escDec(amt.amount, esc)]));
   }
   for (const remark of line.remarks ?? []) {
     body.push(seg(["LQ", esc(remark.system), esc(remark.code)]));
@@ -686,8 +699,8 @@ function emitCasGroup(
       if (adj === undefined || adj.groupCode !== groupCode) break;
       parts.push(
         esc(adj.reasonCode),
-        esc(adj.amount.toString()),
-        adj.quantity === undefined ? "" : esc(adj.quantity.toString()),
+        escDec(adj.amount, esc),
+        adj.quantity === undefined ? "" : escDec(adj.quantity, esc),
       );
       triples += 1;
       i += 1;
@@ -769,7 +782,7 @@ function emitProviderAdjustments(
       ) {
         break;
       }
-      parts.push(comp([adj.reasonCode, adj.subCode ?? ""]), esc(adj.amount.toString()));
+      parts.push(comp([adj.reasonCode, adj.subCode ?? ""]), escDec(adj.amount, esc));
       pairs += 1;
       i += 1;
     }

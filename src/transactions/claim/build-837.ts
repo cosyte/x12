@@ -51,7 +51,10 @@ import type {
 } from "./build-837-types.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
+import type { X12Decimal } from "../../decimal.js";
 import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerDecimal } from "../../builder/caller-decimal.js";
+import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 
@@ -75,6 +78,27 @@ function refuseHierarchy(message: string): never {
  */
 function refuseSpec(message: string): never {
   throw new Claim837BuildError(CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_SPEC, message);
+}
+
+/**
+ * The lexical form of a caller-supplied `X12Decimal`, refusing anything that is
+ * not one (`X12-DECIMAL-BYPASSES-THE-GUARD`). Exposed alongside {@link escDec}
+ * because this builder is the only one with slots that want the value
+ * *unescaped*: SV1-04/SV2-05/SV3-05 read `units` once and each escape it
+ * themselves, and HI's components go through `ctx.comp`, which maps `esc`.
+ * @internal
+ */
+function decStr(value: X12Decimal): string {
+  return requireCallerDecimal(value, "build837", refuseSpec).toString();
+}
+
+/**
+ * Escape a caller-supplied `X12Decimal` into an element, refusing a raw
+ * `number` instead of emitting its JavaScript rendering
+ * (`X12-DECIMAL-BYPASSES-THE-GUARD`). @internal
+ */
+function escDec(value: X12Decimal, esc: (value: string) => string): string {
+  return esc(decStr(value));
 }
 
 /**
@@ -189,6 +213,7 @@ function buildClaim837(variant: "P" | "I" | "D", spec: Build837Spec): X12Interch
   const esc = makeCallerEscaper(delimiters, "build837", refuseSpec);
 
   const seg = (parts: readonly string[]): string => {
+    requireCallerSegment(parts, "build837", refuseSpec);
     let end = parts.length;
     while (end > 1 && parts[end - 1] === "") end -= 1;
     return parts.slice(0, end).join(elementSeparator) + segmentTerminator;
@@ -242,8 +267,8 @@ function buildClaim837(variant: "P" | "I" | "D", spec: Build837Spec): X12Interch
     X12_837_FUNCTIONAL_ID,
     esc(applicationSenderCode),
     esc(applicationReceiverCode),
-    groupDate,
-    groupTime,
+    esc(groupDate),
+    esc(groupTime),
     esc(envelope.groupControlNumber),
     X12_AGENCY_CODE,
     versionRelease,
@@ -540,7 +565,7 @@ function emitClaim(
     ctx.seg([
       "CLM",
       ctx.esc(claim.claimId),
-      ctx.esc(claim.totalCharge.toString()),
+      escDec(claim.totalCharge, ctx.esc),
       "",
       "",
       ctx.comp([
@@ -604,9 +629,11 @@ function emitServiceLine(
   body: string[],
   ctx: EmitContext,
 ): void {
-  body.push(ctx.seg(["LX", line.lineNumber ?? String(lineNumber)]));
+  body.push(ctx.seg(["LX", ctx.esc(line.lineNumber ?? String(lineNumber))]));
 
-  const units = line.units === undefined ? "0" : line.units.toString();
+  // Read off-line because SV1-04, SV2-05 and SV3-05 all want the same value:
+  // `decStr` rather than `escDec` because each consuming slot escapes it itself.
+  const units = line.units === undefined ? "0" : decStr(line.units);
   if (line.variant === "P") {
     const proc = ctx.comp([line.procedureQualifier, line.procedureCode, ...(line.modifiers ?? [])]);
     const pointers = ctx.comp(line.diagnosisPointers ?? []);
@@ -614,7 +641,7 @@ function emitServiceLine(
       ctx.seg([
         "SV1",
         proc,
-        ctx.esc(line.charge.toString()),
+        escDec(line.charge, ctx.esc),
         ctx.esc(line.unitOfMeasure ?? ""),
         ctx.esc(units),
         ctx.esc(line.placeOfServiceCode ?? ""),
@@ -638,11 +665,11 @@ function emitServiceLine(
         "SV2",
         ctx.esc(line.revenueCode),
         proc,
-        ctx.esc(line.charge.toString()),
+        escDec(line.charge, ctx.esc),
         ctx.esc(line.unitOfMeasure ?? ""),
         ctx.esc(units),
-        line.serviceLineRate === undefined ? "" : ctx.esc(line.serviceLineRate.toString()),
-        line.nonCoveredCharge === undefined ? "" : ctx.esc(line.nonCoveredCharge.toString()),
+        line.serviceLineRate === undefined ? "" : escDec(line.serviceLineRate, ctx.esc),
+        line.nonCoveredCharge === undefined ? "" : escDec(line.nonCoveredCharge, ctx.esc),
       ]),
     );
   } else {
@@ -652,7 +679,7 @@ function emitServiceLine(
       ctx.seg([
         "SV3",
         proc,
-        ctx.esc(line.charge.toString()),
+        escDec(line.charge, ctx.esc),
         ctx.esc(line.placeOfServiceCode ?? ""),
         cavity,
         ctx.esc(line.prosthesisCrownInlayCode ?? ""),
@@ -673,7 +700,7 @@ function emitServiceLine(
           "",
           "",
           "",
-          drug.quantity === undefined ? "" : ctx.esc(drug.quantity.toString()),
+          drug.quantity === undefined ? "" : escDec(drug.quantity, ctx.esc),
           ctx.esc(drug.unitOfMeasure ?? ""),
         ]),
       );
@@ -707,10 +734,10 @@ function emitAdjudication(adj: Build837AdjudicationSpec, body: string[], ctx: Em
     ctx.seg([
       "SVD",
       ctx.esc(adj.otherPayerId),
-      ctx.esc(adj.amountPaid.toString()),
+      escDec(adj.amountPaid, ctx.esc),
       proc,
       "",
-      adj.paidUnits === undefined ? "" : ctx.esc(adj.paidUnits.toString()),
+      adj.paidUnits === undefined ? "" : escDec(adj.paidUnits, ctx.esc),
     ]),
   );
   emitCasGroup(adj.adjustments, "build837: adjudication.adjustments", body, ctx);
@@ -745,8 +772,8 @@ function emitCasGroup(
       if (adj === undefined || adj.groupCode !== groupCode) break;
       parts.push(
         ctx.esc(adj.reasonCode),
-        ctx.esc(adj.amount.toString()),
-        adj.quantity === undefined ? "" : ctx.esc(adj.quantity.toString()),
+        escDec(adj.amount, ctx.esc),
+        adj.quantity === undefined ? "" : escDec(adj.quantity, ctx.esc),
       );
       triples += 1;
       i += 1;
@@ -840,7 +867,7 @@ function emitNote(note: Build837NoteSpec, body: string[], ctx: EmitContext): voi
 
 /** @internal */
 function emitAmount(amt: Build837AmountSpec, body: string[], ctx: EmitContext): void {
-  body.push(ctx.seg(["AMT", ctx.esc(amt.qualifier), ctx.esc(amt.amount.toString())]));
+  body.push(ctx.seg(["AMT", ctx.esc(amt.qualifier), escDec(amt.amount, ctx.esc)]));
 }
 
 /**
@@ -854,8 +881,10 @@ function emitHi(hi: Build837HiCodeSpec, body: string[], ctx: EmitContext): void 
     hi.code,
     hi.dateQualifier ?? "",
     hi.date ?? "",
-    hi.monetaryAmount === undefined ? "" : hi.monetaryAmount.toString(),
-    hi.quantity === undefined ? "" : hi.quantity.toString(),
+    // `decStr`, not `escDec`: `ctx.comp` maps `esc` over every component, so
+    // escaping here would double-release an active delimiter.
+    hi.monetaryAmount === undefined ? "" : decStr(hi.monetaryAmount),
+    hi.quantity === undefined ? "" : decStr(hi.quantity),
     hi.versionId ?? "",
     "",
     hi.poaIndicator ?? "",
