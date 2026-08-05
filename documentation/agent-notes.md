@@ -157,7 +157,9 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   read TR3 005010X222A2 / X223A3 / X224A2.** The load-bearing claim survives that gap because it is
   a claim about THIS library: `decodeSv1` and `decodeSv2` read the charge from **different** element
   indexes, so decoding an `SV2` through the `SV1` path mis-reads money whatever the TR3 says. The
-  gate's independent read of the 005010 `SVx` layouts corroborated all five positions. **Anything
+  gate's independent read of the 005010 `SVx` layouts corroborated every position listed above
+  (there are six of them, and the count is written out because this is the section that corrects an
+  off-by-one). **Anything
   stronger than that needs a source outside this repo** (pyx12's `837.5010.X222.A1.xml`, the base
   005010 element dictionary, a published payer companion guide).
 

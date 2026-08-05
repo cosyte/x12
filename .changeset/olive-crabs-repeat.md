@@ -37,8 +37,10 @@ than fail to read it. Refusing to read is the safe half. Doing it without saying
 exactly what it saw before. Making those slots `X12Decimal | undefined` is a breaking model change
 that ripples into `balance.ts` and every builder, and it stays its own slice. No control flow changed
 either: the line is still retained on the claim, the resolved variant still wins over a disagreeing
-`SVx`, and every segment stays verbatim on `tx.segments`. An unresolvable variant is still the
-separate `X12_837_UNKNOWN_VARIANT` case, where no line is opened and no `0` is fabricated.
+`SVx`, and every segment stays verbatim on `tx.segments`. A variant that resolves to nothing at all
+is still the separate `X12_837_UNKNOWN_VARIANT` case, where no line is opened and no `0` is
+fabricated; `KNOWN-LIMITATIONS.md` says how far that second case reaches, because an ST-03 that
+collides with an inherited object key resolves to something and is not covered by it.
 
 The message is a frozen-registry lookup like every other warning here and never quotes the segment it
 refused to decode, which on a real 837 carries the procedure billed for a named patient. That is

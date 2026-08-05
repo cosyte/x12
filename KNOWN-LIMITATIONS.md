@@ -73,10 +73,11 @@ model.
   - **Neither cause is attributed to the sender.** A `type` option that disagrees with a perfectly
     conformant document produces the same warning as a document that disagrees with itself, and the
     library does not decide which side is wrong. A line with no `SVx` at all is short a Loop 2400
-    element the 837 TR3s require, but that judgement is yours to make from the bytes.
-  - **An unresolvable variant is a different case.** With no `type` and an ST-03 that resolves to no
-    known variant, no service line is opened and no `0` is fabricated on any line slot. **`0` such
-    lines is therefore also a signal, and it is a weaker one:** `X12_837_UNKNOWN_VARIANT` covers the
+    segment the 837 TR3s require, but that judgement is yours to make from the bytes.
+  - **An unresolvable variant is a different case.** With no `type`, an ST-03 that resolves to no
+    known variant **and no `SVx` anywhere in the transaction to fall back on**, no service line is
+    opened and no `0` is fabricated on any line slot. **`0` such lines is therefore also a signal,
+    and it is a weaker one:** `X12_837_UNKNOWN_VARIANT` covers the
     ordinary shape of that case, but it is raised from a plain-object lookup on a sender-controlled
     ST-03, so **do not read the absence of a warning as proof the variant resolved honestly.** Check
     `submission.variant` against the set you expect.

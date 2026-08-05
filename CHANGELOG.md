@@ -222,9 +222,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rather than fail to read it. **The model is unchanged too:** `charge` and `units` are still typed
   `X12Decimal` and still read `0`, so a consumer that never looks at `.warnings` sees what it saw
   before. Making those slots `X12Decimal | undefined` remains a breaking change and its own slice.
-  The line is still retained, every segment stays verbatim on `tx.segments`, and an unresolvable
-  variant is still the separate `X12_837_UNKNOWN_VARIANT` case with no line opened and no `0`
-  fabricated.
+  The line is still retained, every segment stays verbatim on `tx.segments`, and a variant that
+  resolves to nothing at all is still the separate `X12_837_UNKNOWN_VARIANT` case, where no line is
+  opened and no `0` is fabricated. `KNOWN-LIMITATIONS.md` says how far that second case reaches.
 
 - **🩺 An unparseable decimal no longer becomes a confident zero in silence
   (`X12-QUANTITY-SILENT-DEFAULTS`).** `elementDecimalOrZero` returned `X12Decimal.ZERO` for an
