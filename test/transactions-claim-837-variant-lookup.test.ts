@@ -576,17 +576,22 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: the bounds of X12_837_SERVICE_LINE_DROPP
     expect(sub.claims[0]?.payer?.references.map((r) => r.value)).toContain("LINE-CTRL-99");
   });
 
-  it("🩺 an SVx with NO LX at all is still dropped in SILENCE, and that is disclosed not fixed", () => {
-    // PRE-EXISTING, identical at `a33c208`: this code is anchored at the LX,
-    // so a service segment arriving with no LX to anchor to reports nothing.
-    // The bound exists so no document ever says "the warning channel will
-    // tell you a service line went missing". It will not tell you this one.
+  it("🩺 an SVx with NO LX at all is reported by a DIFFERENT code, not by this one", () => {
+    // This bound used to read "still dropped in SILENCE, disclosed not
+    // fixed": `X12_837_SERVICE_LINE_DROPPED` is anchored at the LX, so a
+    // service segment arriving with no LX had nothing to anchor to and
+    // reported on no channel. `X12-837-LOOP-RESIDUALS` closed that with
+    // `X12_837_SERVICE_SEGMENT_WITHOUT_LX`, anchored at the service segment
+    // itself. The bound on THIS code is unchanged and is what the case
+    // still pins: it is raised at an LX, so it is not the code that reports
+    // a document which has none. Full coverage of the new one lives in
+    // `test/transactions-claim-837-service-segment-without-lx.test.ts`.
     const withClaim = parse837("005010X222A2", claimBody([SV1])).sub;
     expect(withClaim.claims[0]?.serviceLines).toEqual([]);
-    expect(channel(withClaim)).toEqual([]);
+    expect(channel(withClaim)).toEqual([WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX]);
 
     const withoutClaim = parse837("005010X222A2", noClaimBody([SV1])).sub;
     expect(withoutClaim.claims).toEqual([]);
-    expect(channel(withoutClaim)).toEqual([]);
+    expect(channel(withoutClaim)).toEqual([WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX]);
   });
 });

@@ -46,6 +46,7 @@ export {
   segmentCountMismatch,
   serviceLineDropped,
   serviceLineNotDecoded,
+  serviceSegmentWithoutLx,
   trailingGarbage,
   transactionCountMismatch,
   unexpectedSegment,

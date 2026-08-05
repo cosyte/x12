@@ -145,10 +145,53 @@ model.
     _later_ claim's payer. Both are pre-existing walker behaviour, unchanged here and pinned by
     tests; the `REF` mis-attribution is owed its own item. **Read the segments off
     `tx.segments[…].raw` rather than inferring either outcome.**
-  - **An `SVx` with no `LX` at all is still dropped in SILENCE.** The code is anchored at the `LX`,
-    so a service segment that never had one reports nothing on any channel. `PRE-EXISTING`,
-    identical at `0.0.9`, disclosed and not fixed. **The warning channel is therefore not a complete
-    account of every way a service line can go missing.**
+  - **An `SVx` with no `LX` at all raises `X12_837_SERVICE_SEGMENT_WITHOUT_LX`, the 26th Tier-2
+    code, anchored at the service segment itself.** Through `0.0.10` it was dropped in SILENCE:
+    both codes above are anchored at the `LX`, so a service segment that never had one had nothing
+    to anchor to and reported on no channel. See the next entry for what that code says and what it
+    still does not. **The general caveat stands even so: the warning channel is a report of the
+    losses this library knows how to name, and `tx.segments` is the only complete account of the
+    bytes.**
+
+- **🩺 An `SV1` / `SV2` / `SV3` that arrives with no Loop 2400 open raises
+  `X12_837_SERVICE_SEGMENT_WITHOUT_LX`, anchored at the service segment itself.** The third code in
+  this family, and the one that needed a different anchor: the other two both name an `LX`, and this
+  case is defined by there being no line open to name one. **Read that condition literally.** It is
+  **not** "the file contains no `LX`" - an `LX` in an earlier claim is still an `LX`, and
+  `CLM*1~ LX*1~ SV1~ CLM*2~ SV1~` raises this code on the second `SV1` while the first claim keeps
+  its decoded line. Nothing the segment carries is read - not its charge, its
+  units, its procedure code, its modifiers, its unit of measure or its place of service - no line
+  reaches any claim's `serviceLines`, and nothing is fabricated to stand in. **Through `0.0.10` -
+  the release published as this was written, so a consumer who has not upgraded still has it - that
+  was the whole of the report: a charge, a quantity and a procedure code left the typed model with
+  `warnings: []` and the claim read as one that simply had no service lines.** Five bounds, each
+  measured:
+  - **The three codes never report the SAME service segment**, because the other two are raised at
+    an `LX` and this one only where no line is open. A document with several claims can still carry
+    all three, on three distinct segments; that case is a committed test.
+  - **An `LX` that opened nothing suppresses it for the segments inside that dropped loop**, which
+    is deliberate: the loss is already named, once, at the `LX`. The suppression is scoped to the
+    dropped loop and is cleared by the next flush, so a later orphan in the same transaction is
+    still reported. Both halves have a red negative control.
+  - **It reports once per service segment, not once per loop.** Two orphan `SVx` segments raise two
+    warnings at two positions, so a consumer can name both rather than infer a count from one.
+  - **The segment is NOT decoded into any line.** `SV1-02` and `SV2-03` are both the line charge, so
+    reading a service segment into a line the walker never opened mis-reads money. Refusing to read
+    is the safe half; doing it silently was the defect. **This does not change the `SV1-02` case
+    above:** an absent `SV1-02` on a line that DID open still reads a confident `0`, which closes
+    only with the deferred `X12Decimal | undefined` model change.
+  - **🩺 IT SAYS NOTHING ABOUT THE VARIANT, AND A FIRST DRAFT OF THIS BOUND CLAIMED IT DID.** Variant
+    resolution runs before the walk. A caller-supplied `type` option wins first; absent one, and
+    where `ST-03` names none of the three known implementation conventions, it **falls back to the
+    first `SVx` segment id anywhere in the transaction body - orphans included**. So a stray `SV2`
+    under an `ST-03` of `005010X222A1` re-types the whole submission as Institutional, and every
+    conformant `SV1` line in it then reads `charge` `0`, `units` `0` and an `undefined` procedure
+    code - `undefined`, not `""`, which on such a line is the `revenueCode`. Passing
+    `{ type: "P" }` reads the same document correctly. Measured, both trees: `PRE-EXISTING`,
+    identical at `0.0.10`, **not** introduced or changed by this code, and **not** narrowed here - excluding
+    orphans from the fallback would change how existing documents decode and is its own slice. It
+    is warned rather than silent (`X12_837_SERVICE_LINE_NOT_DECODED` at each `LX`), and
+    `submission.variant` is the field that tells you.
 
 - **🩺 Through `0.0.9`, a lookup keyed by document bytes could be defeated by a key inherited from
   `Object.prototype`, and the affected code paths reported nothing.** The bundled code lists, the

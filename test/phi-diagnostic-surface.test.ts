@@ -39,8 +39,11 @@ const LONG_MARKER = PHI_MARKER_UNIT.repeat(64);
 describe("PHI: no consumer-controlled input reaches a diagnostic surface", () => {
   /**
    * The suite-wide `testTimeout` is 10s and this one sweep is not reliably
-   * inside it: 84 slots, each planted at several marker lengths, each a full
-   * parse of a golden interchange. The ceiling is set here rather than by
+   * inside it: every slot in the table, planted at several marker lengths,
+   * each a full parse of a golden interchange. The count that used to be
+   * quoted here is deliberately gone - it drifted the first time a slot was
+   * added, and the cost is a property of the table's size, not of any one
+   * number for it. The ceiling is set here rather than by
    * raising the global timeout, so a slot table that starts genuinely hanging
    * still fails somewhere, and so no other suite silently gets a longer leash.
    *
@@ -79,8 +82,10 @@ describe("PHI: no consumer-controlled input reaches a diagnostic surface", () =>
       }
     }
     // Guard against the corpus going quiet: the assertion above means nothing
-    // if the slot table stops producing warnings. Measured, the table
-    // exercises 21 of the 22 registered codes, so the floor is set just under
+    // if the slot table stops producing warnings. The property, which is
+    // what to re-derive rather than the pair of counts that used to be
+    // quoted here and had gone stale by two registry additions: the table
+    // exercises every registered code but ONE, and the floor is set under
     // that rather than at a number a halved corpus would still clear. The one
     // code no synchronous slot reaches is `X12_834_UNKNOWN_MAINTENANCE_TYPE`,
     // which is emitted per member by the `AsyncIterable` enrollment reader and

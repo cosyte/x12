@@ -12,6 +12,7 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 ## Contents
 
 - [CLAUDE-MD-AUDIT (2026-08-04)](#claude-md-audit-2026-08-04)
+- [X12-837-LOOP-RESIDUALS (2026-08-05)](#x12-837-loop-residuals-2026-08-05)
 - [X12-277-SVC07-NOT-DECODED (2026-08-05)](#x12-277-svc07-not-decoded-2026-08-05)
 - [X12-VARIANT-LOOKUP-PROTOTYPE (2026-08-05)](#x12-variant-lookup-prototype-2026-08-05)
 - [X12-837-SV-SILENT-ZERO (2026-08-05)](#x12-837-sv-silent-zero-2026-08-05)
@@ -73,6 +74,118 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   trap block and `CLAUDE.md` stood at 52,992 against a 53,000 ratchet, so this section moved here
   first and the trap went in against the room it freed. That is the intended shape: **the entry is
   never raised to meet a new trap.** The umbrella owes the matching ratchet drop.
+
+## X12-837-LOOP-RESIDUALS (2026-08-05)
+
+The third and last of the ways an 837 service line could go missing with no diagnostic. The
+other two closed in `#67` and `#69`; this one was disclosed by both of them and left open,
+because both of their codes are anchored at an `LX` and this case is defined by there not
+being one.
+
+- **🩺 THE DEFECT, MEASURED AT `0899813`, WHICH IS PUBLISHED `0.0.10` - NOT `0.0.9`.** Every
+  past-tense sentence in this slice says `0.0.10` for that reason: a draft said "through
+  `0.0.9`" throughout, which tells a consumer on the CURRENT release that they already have
+  the fix. Check `git show <base>:package.json` against `npm view`, never the sibling
+  bullets, which say `0.0.9` correctly about their OWN earlier bases. An
+  `SV1*HC:99213*8500*UN*4***1~` inside an open `CLM` with **no `LX` ahead of it** left
+  `claims[0].serviceLines` **empty** and `warnings` **empty**. A charge of 8500, 4 units, a
+  procedure code and its modifiers read into nothing, and the claim was indistinguishable
+  from one that genuinely had no service lines. The same shape with no `CLM` open either
+  was equally silent. Both are pinned as committed cases.
+
+- **🩺 WHY IT NEEDED A NEW CODE RATHER THAN A WIDENING.** `X12_837_SERVICE_LINE_DROPPED`
+  reports an `LX` that opened no Loop 2400 and `X12_837_SERVICE_LINE_NOT_DECODED` an `LX`
+  whose line was retained undecoded. **Both anchor at the `LX`, and this case has none** -
+  there is nothing for either to point at. `X12_837_SERVICE_SEGMENT_WITHOUT_LX` anchors at
+  the service segment itself, which is the only segment the case has. The three therefore
+  never report the same segment, though a document with several claims can carry all three
+  on three distinct segments (a committed case, and the grounding for that sentence in the
+  message text - it was written before it was measured and would have been wrong as
+  "these codes never co-occur").
+
+- **🩺 THE ORPHAN SEGMENT IS NOT DECODED INTO A LINE, AND THAT IS THE SAFETY DECISION.**
+  `SV1-02` and `SV2-03` are both the line charge and `SV1-04` / `SV2-05` / `SV3-06` the
+  units, so reading a service segment into a line the walker never opened is how a mis-read
+  charge is minted. `#67` settled this direction already: refusing to read is the safe half,
+  and doing it silently was the defect.
+
+- **🩺 THE PASS-1 BLOCKER, AND IT WAS A CLAIM DEFECT, NOT A CODE DEFECT: "IT DOES NOT NAME
+  THE SUBMISSION'S VARIANT" WAS PUBLISHED AS A MEASURED BOUND AND IS FALSE.** Variant
+  resolution runs **before** the walk and, where `ST-03` matches none of the three keys in
+  `VARIANT_BY_ICR`, falls back to **the first `SVx` segment id anywhere in `body`** -
+  orphans included. Measured on both trees, with an `ST-03` of `005010X222A1`:
+
+  | Document | `variant` | The conformant line |
+  | --- | --- | --- |
+  | `CLM~ SV2~ LX*1~ SV1~` | `"I"` | `charge` **0**, `units` **0** |
+  | `CLM~ LX*1~ SV1~` (control) | `"P"` | `charge` **8500**, `units` **4** |
+
+  So one stray `SV2` re-types the whole submission and every conformant `SV1` line in it
+  reads zero. **`PRE-EXISTING`, identical at `0899813`** - the slice neither introduced nor
+  changed it. **The remedy was to correct the claim on every surface carrying it, NOT to grow
+  the guard** (derive the list with `grep`; a count here went stale within the same slice)**:** excluding orphans from the fallback changes how existing documents decode and is
+  its own slice, on a published package. The failure that let it through is the one this
+  repo keeps paying for: **the test asserting the property ran only under a resolving
+  `ST-03`, so its title claimed the general case while its body could observe only the half
+  that is true.** It now pins both halves, and the false half carries a control that
+  measures the $8,500 the stray segment costs. **Pass 2 then found the corrected sentences
+  themselves incomplete: `opts.type` wins BEFORE the ICR and before the segment scan
+  (`explicitType ?? variantFromIcr ?? variantFromSegment ?? "unknown"`), so `{ type: "P" }`
+  reads that same document correctly - `8500` / `4` / `"99213"`.** Every surface now says so.
+  The re-typed line's procedure code is `undefined`, **not** `""`; the `""` on such a line is
+  its `revenueCode`. And the ordering matters: the fallback takes the FIRST `SVx`, so a stray
+  `SV2` placed AFTER the conformant `SV1` leaves `variant` `"P"` and the charge intact.
+
+- **🩺 THE SECOND PASS-1 FINDING, SAME SHAPE: "NOT PRECEDED BY AN `LX`" IS NOT WHAT THE CODE
+  TESTS.** The walker tests "no Loop 2400 open". Measured: `CLM*1~ LX*1~ SV1~ CLM*2~ SV1~`
+  raises the code on the second `SV1` while an `LX` sits earlier in the transaction and the
+  first claim keeps its decoded line - which also falsifies the "`serviceLines` is empty"
+  premise the troubleshooting row was written around. The registry message is public and
+  frozen, so this was fixed before the first publish rather than disclosed.
+
+- **THE SUPPRESSION, AND WHY IT IS SCOPED RATHER THAN GLOBAL.** A service segment inside a
+  loop an `LX` failed to open must NOT raise this code: the loss is already named, once, at
+  the `LX`. That is a single `droppedLineReported` flag, set beside each of the two
+  existing `serviceLineDropped` pushes and cleared in `flushServiceLine` - the one place
+  `currentServiceLine` is cleared, so the two can never disagree. **A flag that latched
+  would silence every later orphan in the transaction**, which is the failure this shape
+  invites; the case that pins it is a dropped `LX`, then a fresh `CLM`, then a bare `SVx`,
+  and it reds if the reset is removed.
+
+- **THE `LX` CASE'S CONTROL FLOW IS UNCHANGED.** `#69` recorded why: an earlier draft
+  returned early on the second route, skipped the `activeEntity` reset, and let a trailing
+  bare `N3` / `N4` address the last active party. The only additions here are the two flag
+  assignments beside the existing warnings.
+
+- **THE RED/GREEN CENSUS, RUN NOT DERIVED - AND RE-RUN AFTER THE REMEDY ADDED CASES, WHICH
+  IS THE ONLY REASON IT IS RIGHT.** Head's final suite against a base checkout of
+  `src/transactions/claim/get-837.ts`: **15 of 21 red, 6 green.** A pass-2 finding: the
+  remedy's two new cases assert the WHOLE channel including the new code, so both are red at
+  base even though the behaviour they pin is pre-existing, and the pre-remedy figure of 13/19
+  had gone stale in the document that exists to hold measurements. The 6 green are exactly the
+  controls - the same bytes with the `LX` restored, a dropped `LX` reporting once, a
+  dropped `LX` with two service segments, a retained-but-undecoded line, a well-formed
+  claim, and the verbatim-segments assertion. Two negative controls on the guards
+  themselves: removing the `droppedLineReported` check reds 4 cases, removing the reset in
+  `flushServiceLine` reds 2. The pre-existing residual that pinned the leaking behaviour
+  (`transactions-claim-837-variant-lookup.test.ts`, "still dropped in SILENCE") went red on
+  the fix, as it was written to, and now pins the bound that is still true: this is not the
+  code `X12_837_SERVICE_LINE_DROPPED` raises.
+
+- **WHAT IS STILL OPEN AND IS NOT THIS SLICE.** An **absent `SV1-02` on a line that DID
+  open still reads a confident `0`**, unwarned - it closes only with the deferred
+  `X12Decimal | undefined` model change. The **`REF` mis-attribution after a dropped `LX`**
+  (a line-item control number landing on the last named party, measured in a later claim's
+  payer) is owed its own item. Neither was touched here.
+  Three more `PRE-EXISTING` findings the pass-1 refuter raised, all filed rather than fixed:
+  the **variant re-typing above** (its own item - and whether `VARIANT_BY_ICR`'s three keys
+  are the right errata set is an open question nobody here has grounded against the TR3s); a
+  **duplicate or foreign `SVx` INSIDE an opened Loop 2400 is still silent** (a second `SV1`
+  overwrites the first's charge, an `SV2` after a decoded `SV1` is discarded, both with
+  `warnings: []`, measured identical at base); and **`transactionIndex` is hard-coded `0`**
+  in `get-837.ts` and `get-835.ts`, so for a second `ST` in a group the join key names the
+  wrong transaction. The new code follows that uniform convention rather than diverging from
+  it.
 
 ## X12-277-SVC07-NOT-DECODED (2026-08-05)
 
