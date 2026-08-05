@@ -212,10 +212,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **🩺 A lookup keyed by document bytes can no longer be defeated by a key inherited from
   `Object.prototype` (`X12-VARIANT-LOOKUP-PROTOTYPE`).** Several lookup tables were plain object
-  literals, which inherit `Object.prototype`, so an inbound value of `constructor`, `valueOf`,
-  `toString`, `toLocaleString`, `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable` or
-  `__proto__` resolved TRUTHY against them. `Object.freeze` did not help: it seals the own
-  properties and changes nothing about the prototype chain. What that cost, measured at `a33c208`:
+  literals, which inherit `Object.prototype`, so an inbound value matching **any own property of
+  `Object.prototype`** resolved TRUTHY against them. That set is engine- and version-dependent and
+  is deliberately not enumerated here; on the Node 22 this package targets it is twelve members, and
+  a draft of this entry listed eight. `Object.freeze` did not help: it seals the own properties and
+  changes nothing about the prototype chain. What that cost, measured at `a33c208`:
   - **🩺 An ST-03 of `constructor` took every 837 service line off the model, silently.**
     `VARIANT_BY_ICR` answered the `Object` constructor, so `submission.variant` was a **function**
     rather than one of `P` / `I` / `D` / `unknown`, `X12_837_UNKNOWN_VARIANT` never fired, and
@@ -237,7 +238,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     form, not the safe form. It is now `Object.hasOwn`.
 
   Every one of these now behaves exactly as it does for any other unrecognized value, which is the
-  whole of the claim: each fixed case is pinned against an honest-control case in the same slot.
+  whole of the claim: each fixed case is pinned against an honest-control case in the same slot, and
+  the suite derives its key list from `Object.getOwnPropertyNames(Object.prototype)` at run time
+  rather than from a list anyone maintains.
   Tables this package declares itself are built through the new internal
   `wireLookup` (`Object.create(null)`, then frozen), so the absent prototype protects future read
   sites too; tables it receives from a caller are guarded with `Object.hasOwn` at the read, the form
@@ -245,13 +248,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   content changed.
 
 - **🩺 An 837 `LX` that opens no Loop 2400 no longer drops the whole service line in silence
-  (`X12-VARIANT-LOOKUP-PROTOTYPE`).** Two routes reached it: an `LX` / `SVx` arriving before any
-  `CLM`, which produced `claims: []` and `warnings: []` even with a charge and units on the wire;
-  and a submission whose variant never resolved to `P` / `I` / `D`, where `openServiceLine` answers
+  (`X12-VARIANT-LOOKUP-PROTOTYPE`).** Two routes reached it: an `LX` arriving before any `CLM`,
+  which produced `claims: []` and `warnings: []` even with a charge and units on the wire; and a
+  submission whose variant is not one of `P` / `I` / `D`, where `openServiceLine` answers
   `undefined` and the line was never opened. Both now raise `X12_837_SERVICE_LINE_DROPPED` at the
   `LX`. **Retention is unchanged and nothing is invented**: no claim is synthesized to hold an
   orphan line and no variant is guessed, because either would put structure on the model that the
   sender did not send. The segments were, and remain, verbatim on `tx.segments`.
+  **Read the scope of this code literally, because three things sit just outside it and all three
+  are unchanged.** It is anchored at the `LX`, so an `SVx` arriving with **no `LX` at all** is still
+  dropped in silence (`PRE-EXISTING`, disclosed not fixed). It does **not** travel with
+  `X12_837_UNKNOWN_VARIANT`: a caller-supplied `type` outside `"P" | "I" | "D"`, which only a
+  JavaScript or `JSON.parse`d caller can pass, reaches the second route without it, so read
+  `submission.variant` to tell the routes apart. And a `DTP` / `AMT` / `NTE` / `REF` following a
+  dropped `LX` attaches to the **enclosing claim** rather than being discarded, so a line-level
+  date, amount or note can land among the claim-level ones.
 
 - **🩺 An 837 service line whose `SVx` never decoded no longer reads `0` / `0` in silence
   (`X12-837-SV-SILENT-ZERO`).** `get837Claims` resolves ONE variant for the whole submission (the

@@ -109,31 +109,41 @@ sources and its refutation history. Do not act on a line here without reading th
 ### 🩺 `X12-VARIANT-LOOKUP-PROTOTYPE` (2026-08-05) · `documentation/agent-notes.md#x12-variant-lookup-prototype-2026-08-05`
 
 - **🩺 A lookup keyed by DOCUMENT BYTES is built with `wireLookup` (`Object.create(null)`) where this
-  package declares the table, and read through `Object.hasOwn` where it does not.** An object literal
-  inherits `Object.prototype`, so `constructor` / `valueOf` / `toString` / `toLocaleString` /
-  `hasOwnProperty` / `isPrototypeOf` / `propertyIsEnumerable` / `__proto__` resolved TRUTHY.
-  **`Object.freeze` DOES NOT HELP and is why this passed review** - it seals OWN properties only.
+  package declares the table, and read through `Object.hasOwn` where it does not.** A literal
+  inherits `Object.prototype`, so EVERY OWN PROPERTY of it resolved TRUTHY. **`Object.freeze` DOES
+  NOT HELP and is why this passed review** - it seals OWN properties only. **🩺 NAME THE SET, NEVER
+  THE MEMBERS:** a draft published EIGHT across five docs and the shipped JSDoc; the engine has
+  TWELVE. **Cut the claim back, never grow the census.**
 - **🩺 It destroyed strictly more than `#67`: an ST-03 of `constructor` made `variant` a FUNCTION, so
   `openServiceLine` answered `undefined` and EVERY Loop 2400 left the model with `warnings: []`.**
   It also made a `lookupCarc` `description` a function (suppressing `X12_UNKNOWN_CARC`), suppressed
   `X12_UNKNOWN_HI_QUALIFIER`, and FABRICATED an `X12_HL_PARENT_LEVEL_INVALID`.
 - **🩺 `in` IS NOT THE SAFE FORM** - it walks the prototype chain. Reach for `Object.hasOwn`.
 - **271 / 277 / 278 were NEVER exposed and their literal tables are LEFT ALONE:** `shared/hl.ts` has
-  always guarded with `hasOwnProperty`; the 837's LOCAL `validateHl` copy did not. Measured `[]` at
-  base and head. **Do not "finish the job" there.**
-- **NO SOURCE SCAN SHIPS, DELIBERATELY.** A scan cannot separate a wire-keyed table from a
-  discriminant-keyed one, and `warnings.ts` has four of the latter that must stay literals, so it
-  needs a per-TABLE allowlist (the `#51` failure mode). The defence is behavioural and derives its
-  keys from `Object.getOwnPropertyNames(Object.prototype)` AT RUN TIME.
+  always guarded with `hasOwnProperty`; the 837's LOCAL `validateHl` copy did not. **Do not "finish
+  the job" there.** **NO SOURCE SCAN SHIPS, DELIBERATELY** - a scan cannot separate a wire-keyed
+  table from a discriminant-keyed one and `warnings.ts` has four of the latter, so it needs a
+  per-TABLE allowlist (`#51`'s failure mode). The defence derives its keys from
+  `Object.getOwnPropertyNames(Object.prototype)` AT RUN TIME, unfiltered.
 - **`X12_837_SERVICE_LINE_DROPPED` is the 25th code and is NOT `#67`'s renamed.** `NOT_DECODED` = the
   line IS on the model with seeded zeros; `DROPPED` = it is on NO claim. Two routes (no `CLM` open,
-  or the variant never resolved), one message, no discriminant. **Nothing is fabricated** - no
-  synthesized claim, no guessed variant. Anchored at the `LX`, like `#67`.
-- **🩺 `toContain` APPEARS NOWHERE IN THE NEW SUITE** - `#67`'s residual pinned a value plus the
-  absence of a DIFFERENT code and stayed green. Assert the WHOLE channel with `toEqual`, and pair
-  every lying document with an honest control in the same slot.
-- **33 of 49 red at `a33c208`, 49 green at head; every guard has its own red negative control.**
-  `phi-slots` **84** - the dropped `LX-01` and its `SV1-01-2`, both OWN.
+  or the variant is not P/I/D), one message, no discriminant, anchored at the `LX`. **Nothing is
+  fabricated** - no synthesized claim, no guessed variant.
+- **🩺 STATE ITS THREE BOUNDS; A DRAFT PUBLISHED ALL THREE FALSE.** It does **NOT** travel with
+  `X12_837_UNKNOWN_VARIANT` (an out-of-enum caller `type` reaches route 2 without it - read
+  `submission.variant`); an **`SVx` with NO `LX` at all is STILL SILENT**, so **never write "the
+  channel will tell you a line went missing"**; and a line-level `DTP`/`AMT`/`NTE`/`REF` after a
+  dropped `LX` **attaches to the ENCLOSING CLAIM**, so it is RE-ATTRIBUTED, not "absent".
+- **🩺 DO NOT RESTRUCTURE THE `LX` CASE.** Its control flow is the base's; the two `warnings.push` are
+  the whole difference. A draft returned early on route 2, skipped the `activeEntity` reset, and a
+  trailing bare `N3`/`N4` silently put an address on the last active party.
+- **🩺 EVERY WARNING-CHANNEL ASSERTION IS `toEqual` ON THE WHOLE ARRAY** - `#67`'s residual pinned a
+  value plus the absence of a DIFFERENT code and stayed green. Pair every lying document with an
+  honest control. **Never state an absolute about a matcher NAME:** a draft's "`toContain` appears
+  nowhere" was false twice, once on an `expect([true, false]).toContain(...)` that passes for any
+  boolean.
+- **33 of the first 49 cases red at `a33c208`, all 56 green at head; every guard has its own red
+  negative control.** `phi-slots` **84** - the dropped `LX-01` and its `SV1-01-2`, both OWN.
 - **🩺 An ABSENT `SV1-02` still reads a confident `0`, unwarned. Left open on purpose** - it closes
   only with the deferred `X12Decimal | undefined` slice.
 
@@ -176,32 +186,30 @@ sources and its refutation history. Do not act on a line here without reading th
 
 ### 🩺 `X12-SVC-ELEMENT-MAP-OFF-BY-ONE` (2026-08-04) · `documentation/agent-notes.md#x12-svc-element-map-off-by-one-2026-08-04`
 
-- **🩺 The 835 SVC map is `revenueCode` -> SVC-04, `paidUnitsOfService` -> SVC-05,
-  `originalUnitsOfService` -> SVC-07. Never move them back.** SVC-04 is the NUBC revenue code
-  (element 234, a **string**); SVC-05 is Units of Service **PAID** Count (element 380, a
-  **Quantity**); SVC-07 is **ORIGINAL** Units of Service Count (element 380). The old comment
-  asserting "revenue code is SVC-05 in X221A1; SVC-04 unused" was wrong in both directions.
+- **🩺 The 835 SVC map is `revenueCode` -> SVC-04 (element 234, the NUBC revenue code, a **string**),
+  `paidUnitsOfService` -> SVC-05 (element 380, Units of Service **PAID** Count) and
+  `originalUnitsOfService` -> SVC-07 (element 380, **ORIGINAL** Units of Service Count). Never move
+  them back.** The old comment asserting "revenue code is SVC-05 in X221A1; SVC-04 unused" was wrong
+  in both directions.
 - **Never fix a mis-read position while leaving its sibling element unread.** Fixing only the two
   positions would have left SVC-07 unread and unwritten, converting a mis-read into a **fresh silent
   drop**. **Retention is non-decreasing, on purpose.**
 - **🩺 A round trip cannot test an element map; only bytes can.** The suite stayed green through the
-  fix: `transactions-remit-835-build.test.ts:532-560` is a `build835` -> `get835` round trip and is
-  green for ANY pair of positions the two modules agree on, including a wrong one. The map is pinned
-  literally in `test/transactions-remit-835-svc-element-map.test.ts` (11 red at `e3cdf49`, 11 green
-  at head). **Never weaken those to round trips.**
+  fix: `transactions-remit-835-build.test.ts:532-560` is a `build835` -> `get835` round trip, green
+  for ANY pair of positions the two modules agree on. The map is pinned literally in
+  `test/transactions-remit-835-svc-element-map.test.ts` (11 red at `e3cdf49`). **Never weaken those
+  to round trips.**
 - **🩺 Checking a spec claim against this repo's own implementation is NOT a check** - it only proves
-  the two agree, which is exactly how the wrong map survived. Ground an element number in a source
-  **outside** the repo (pyx12's `835.5010.X221.A1.xml`, X12 RFI #2163, the base 005010 element
-  dictionary, published payer companion guides; all linked in `KNOWN-LIMITATIONS.md`). Agreement with
-  the 277 was corroborating, not a source. **TR3 005010X221A1 is paid for and nobody here has read it.**
+  the two agree, which is exactly how the wrong map survived. Ground an element number OUTSIDE the
+  repo (sources linked in `KNOWN-LIMITATIONS.md`). Agreement with the 277 was corroborating, not a
+  source. **TR3 005010X221A1 is paid for and nobody here has read it.**
 - **Never default an absent SVC-05 to one.** X221A1 is _reported_ to assume one (secondhand, from an
-  RFI Description, not a clause read from the TR3). Fabricating a count the sender did not send is
-  inventing.
+  RFI Description, not a clause read from the TR3). Fabricating a count is inventing.
 - **`undefined` still means "not decoded", not "absent"** - but the unparseable case now warns and
   the absent case does not, which is what tells them apart (next trap).
 - **The 277's SVC-07 is still not decoded and is usage R in X212**, so an **X212** 277 this library
   emits with a service line is short a required element. `PRE-EXISTING`, filed not fixed. **Do not
-  widen it:** in **X214** the same element is usage `S`, so `build277CA` is unaffected.
+  widen it:** in **X214** it is usage `S`, so `build277CA` is unaffected.
 - **🩺 835s this library emitted at `0.0.9` or earlier are non-conformant and should be re-emitted** -
   their revenue code sits in SVC-05, so head reads it back as a paid quantity (`0300` -> 300 units)
   with no warning.
@@ -265,32 +273,28 @@ sources and its refutation history. Do not act on a line here without reading th
   and no error - including `CLP-01`, the reassociation key back to the 837's `CLM-01`.
 - **🩺 Refuse, never coerce, and that is the whole item.** Coercion mints a _different_ identifier: a
   payload carrying `"0012345"` as a number already lost its leading zeros, and reassociating to the
-  wrong claim is worse than failing to reassociate.
-- **The builder's own required-field guard is defeated by a number.** `build-835.ts` refuses
-  `patientControlNumber === ""` by name; a number is not `""`, so it passed and became `""` one line
-  later. Check the type, not the sentinel.
+  wrong claim is worse than failing to reassociate. **The builder's own required-field guard is
+  defeated by a number** - `build-835.ts` refused `patientControlNumber === ""` by name, and a number
+  is not `""`, so it passed and became `""` one line later. Check the type, not the sentinel.
 - **The `#51` asymmetry is deliberate, not an inconsistency.** `renderCallerValue` **coerces**;
   `esc` **refuses**. _Survive anything_ vs _invent nothing_. Opposite duties, opposite answers.
 - **🩺 NEVER PUBLISH AN EXHAUSTIVE CENSUS OF WHAT BYPASSES THE CHOKEPOINT.** Three drafts did; a
-  refuter measured all three false, each time by finding one more. The remedy on round three was to
-  **cut the claim back, not grow the census**. **If you find one more, that is expected and is not a
-  new finding. No total is published, on purpose.**
+  refuter measured all three false, each time by finding one more. **Cut the claim back, do not grow
+  the census. Finding one more is expected and is not a new finding. No total is published.**
 - **A gate that asserts a same-line REGEX pins against drift and says nothing about the property.**
   `build-837` alone has three off-line `.toString()` reads the regex misses.
 - **Public surface:** exported `escapeRelease` now **throws `TypeError`** on a non-string instead of
-  returning `""`. Nothing in the library can reach it, because the builders refuse first.
-- **"No working caller is broken" was too absolute:** a boxed `new String(...)` built at base and is
-  refused at head.
+  returning `""`; nothing in the library can reach it, because the builders refuse first. **"No
+  working caller is broken" was too absolute:** a boxed `new String(...)` built at base, refused now.
 
 ### `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX` (2026-08-03) · `documentation/agent-notes.md#parser-testtimeout-asserts-an-idle-box-2026-08-03`
 
 - **No timeout value changed, and that is the finding, not an omission.**
-- **Count BOTH trees, and never reuse one census for the other.** A first draft published the head
-  census ported onto the base state in five places - the exact "a remedy's prose does not port with
-  its code" trap, committed while quoting the rule.
-- **Re-derive this box's capacity; never inherit a figure.** The item's 2.0-CPU / `nproc` 56 numbers
-  are stale.
-- **Interleave BASE/HEAD runs, two rounds each.** The first attempt compared runs an hour apart and
+- **Count BOTH trees, and never reuse one census for the other.** A first draft ported the head
+  census onto the base state in five places - the "a remedy's prose does not port with its code"
+  trap, committed while quoting the rule.
+- **Re-derive this box's capacity; never inherit a figure.** The item's numbers are stale.
+- **Interleave BASE/HEAD runs, two rounds each.** A first attempt compared runs an hour apart and
   showed a 2.4x win that was mostly the box getting quieter.
 - **The `tsx` -> `node` substitution is pinned as an EQUIVALENCE, not assumed** (same violator, same
   clean file, same exit code / stdout / stderr). Nothing else enforces erasable-only syntax and the
@@ -309,7 +313,7 @@ sources and its refutation history. Do not act on a line here without reading th
 
 - **🩺 Both enumerating routes REFUSE a symlink (exit 2), naming every offender.** `walk()` used
   `Dirent.isFile()` (an **lstat** answer) so a link was neither file nor directory; `--staged` got the
-  link's **target string** back from `git show` under mode `120000`. Both exited 0 over PHI.
+  link's **target string** from `git show` under mode `120000`. Both exited 0 over PHI.
 - **Neither route FOLLOWS an ENTRY it enumerated.** Say ENTRY, not "anything": **a walk ROOT that is
   itself a link IS followed**, because `existsSync`/`readdirSync` both follow. That is a superset
   scan, not a blind one, and is left alone.
@@ -325,13 +329,11 @@ sources and its refutation history. Do not act on a line here without reading th
   blind (`readFileSync` follows a link). A gitlink already exited 2 at base and is **renamed, not
   newly caught**.
 - **The enumerate-then-read race is deliberately deferred, and the reason is direction:** its remedy
-  TOLERATES a failed read; this one NARROWS what the enumeration admits. x12 is unreachable through it
-  today only by a **scope accident** (walk roots are `test/fixtures` and `src`, and this repo's own
-  test mkdtemps under `os.tmpdir()`). **Any widening of a walk root reintroduces it verbatim.**
+  TOLERATES a failed read; this one NARROWS what the enumeration admits. x12 is unreachable today
+  only by a **scope accident** of which walk roots it has. **Any widening reintroduces it verbatim.**
 - **`R`/`C` rename/copy are still not enumerated by `--staged` at all**, and there is still no
   refuse-a-scan-that-observed-nothing rule. Renaming a fixture while substituting a real name returns
-  zero rows for both `AM` and `AMT`. **All-mode is the backstop**, so the gap is at pre-commit, not
-  in CI.
+  zero rows. **All-mode is the backstop**, so the gap is at pre-commit, not in CI.
 
 ### 🩺 `X12-CALLER-VALUE-RESIDUALS` (2026-08-02) · `documentation/agent-notes.md#x12-caller-value-residuals-2026-08-02`
 
@@ -403,20 +405,18 @@ sources and its refutation history. Do not act on a line here without reading th
 - **🩺 `serializeX12` places every orphan by `X12OrphanSegment.anchor` and NEVER by `segmentIndex`.**
   The fix is the anchor, not the re-emission. An anchor names a SLOT of the typed tree
   (`interchange` / `group` / `transaction`), so it survives both reorderings the emit performs (the
-  `ta1Segments` hoist, the skipped zero-length segment); a raw input index cannot.
-- **An index equal to the eventual length means "after the last one"; `segmentOffset` is never `0`
-  because `rawSegments[0]` is the `ST`; the `transaction` kind is reachable only by a `TA1`**, since
-  anything else arriving inside an open `ST..SE` is body content.
+  `ta1Segments` hoist, the skipped zero-length segment); a raw input index cannot. An index equal to
+  the eventual length means "after the last one"; `segmentOffset` is never `0` because
+  `rawSegments[0]` is the `ST`; the `transaction` kind is reachable only by a `TA1`.
 - **🩺 SE-01 must count the BYTES THE SERIALIZER WRITES, not the model rows** (X12.6: "segments
   included in the transaction set, including ST and SE"). Pass 1 counted only `tx.rawSegments`, so
   spec-clean mode **rewrote a CORRECT `SE*4*` down to `SE*3*`**. `segCount` now adds every orphan
-  flushed between the `ST` and the `SE`. GE-01 and IEA-01 are unaffected: an orphan is never a `GS`.
+  flushed between the `ST` and the `SE`. GE-01/IEA-01 are unaffected: an orphan is never a `GS`.
 - **The canonical not-reproduced list is SIX and silent constructs are FIVE.** `KNOWN-LIMITATIONS.md`
   holds it.
 - **Case 6 (the empty-first-element segment `*A*B~` outside a transaction) is deliberately NOT in
-  scope.** It is skipped by the walker, so there is nothing on the model to re-emit; closing it is a
-  RETENTION change to the `name.length > 0` guard and would mint `X12_UNEXPECTED_SEGMENT` warnings
-  where there are none today.
+  scope.** The walker skips it, so there is nothing on the model to re-emit; closing it is a
+  RETENTION change to the `name.length > 0` guard and would mint new `X12_UNEXPECTED_SEGMENT`s.
 - **Retention and placement are still not PROMOTION:** no `get*` reader sees an orphan, and a `TA1`
   inside a group still does not join `ta1Segments`.
 - **State the four kept regression assertions at the MODEL level, not the byte level.** A
@@ -426,12 +426,10 @@ sources and its refutation history. Do not act on a line here without reading th
 ### 🩺 `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` (2026-08-02) · `documentation/agent-notes.md#x12-segment-outside-transaction-dropped-2026-08-02`
 
 - **🩺 A segment the envelope walker cannot place is RETAINED on `X12Interchange.orphanSegments`, not
-  discarded.** It used to leave the model, leave the emit, and lose its warning on a re-parse. All
-  orphans go through the single `recordOrphan` chokepoint so the warning and the retained segment can
-  never disagree; `segmentIndex` is the documented join key back to `position.segmentIndex`.
-- **🩺 Line-break tolerance is 15 of 15 CR/LF sequences of length 0 to 3.** It was exactly one
-  optional CR then one optional LF, which admitted 4 of 15, so a uniformly **double-spaced file lost
-  its ENTIRE interchange body** and returned `groups: []`.
+  discarded.** All orphans go through the single `recordOrphan` chokepoint so the warning and the
+  retained segment can never disagree; `segmentIndex` is the join key back to `position.segmentIndex`.
+- **🩺 Line-break tolerance is 15 of 15 CR/LF sequences of length 0 to 3.** It admitted 4 of 15, so a
+  uniformly **double-spaced file lost its ENTIRE interchange body** and returned `groups: []`.
 - **🩺 NEVER replay an orphan at its recorded `segmentIndex`. Read the refutation before touching the
   emit again.** `segmentIndex` indexes the INPUT stream and the emit is not in input order, so replay
   splices the orphan into whatever occupies that slot: measured, a stray `ZZ` landed INSIDE an 835's

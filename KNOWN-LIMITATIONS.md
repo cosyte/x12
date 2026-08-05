@@ -87,19 +87,31 @@ model.
 - **🩺 An 837 `LX` that opens no Loop 2400 at all raises `X12_837_SERVICE_LINE_DROPPED`, the 25th
   Tier-2 warning code.** Distinct from `X12_837_SERVICE_LINE_NOT_DECODED` above, where the line IS
   on the model and only its service segment went unread: here the line reaches **no claim's**
-  `serviceLines`, so its charge, units, procedure code, dates, amounts, notes and line-level
-  adjudications are all absent rather than stubbed. Two causes: no Loop 2300 (`CLM`) is open at that
-  `LX`, or the submission's variant never resolved to `P` / `I` / `D`. Nothing is fabricated to
-  stand in and no claim is synthesized - the segments stay verbatim on `tx.segments`. **Do not read
-  an empty `serviceLines` as "the claim had no service lines" without checking the warning channel.**
+  `serviceLines`, so its charge, units, procedure code and modifiers are read into nothing. Two
+  causes: no Loop 2300 (`CLM`) is open at that `LX`, or the submission's variant is not one of
+  `P` / `I` / `D`. Nothing is fabricated to stand in and no claim is synthesized; the segments stay
+  verbatim on `tx.segments`. **Do not read an empty `serviceLines` as "the claim had no service
+  lines" without checking the warning channel.** Three bounds on that code, each measured:
+  - **It does not travel with `X12_837_UNKNOWN_VARIANT`.** A caller-supplied `type` outside
+    `"P" | "I" | "D"` - which only a JavaScript or `JSON.parse`d caller can pass - reaches the second
+    cause with no unknown-variant warning at all. Read `submission.variant`, not the other code.
+  - **A line-level `DTP` / `AMT` / `NTE` / `REF` after a dropped `LX` is NOT absent: it attaches to
+    the ENCLOSING CLAIM.** A line service date, a line amount and a line note land among the
+    claim-level ones, indistinguishable from them. That is pre-existing walker behaviour, unchanged
+    here, and it is the reason this entry does not say the line's data is "absent".
+  - **An `SVx` with no `LX` at all is still dropped in SILENCE.** The code is anchored at the `LX`,
+    so a service segment that never had one reports nothing on any channel. `PRE-EXISTING`,
+    identical at `0.0.9`, disclosed and not fixed. **The warning channel is therefore not a complete
+    account of every way a service line can go missing.**
 
 - **🩺 Through `0.0.9`, a lookup keyed by document bytes could be defeated by a key inherited from
   `Object.prototype`, and the affected code paths reported nothing.** The bundled code lists, the
   837's variant resolution, and the 837's HL parent-level map were built as plain object literals,
-  which inherit `Object.prototype`. An inbound value of `constructor`, `valueOf`, `toString`,
-  `toLocaleString`, `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable` or `__proto__`
-  therefore resolved TRUTHY. `Object.freeze` did not help: it seals the own properties and changes
-  nothing about the prototype chain. Concretely, at `0.0.9`:
+  which inherit `Object.prototype`. An inbound value matching **any own property of
+  `Object.prototype`** therefore resolved TRUTHY. That set is engine- and version-dependent and is
+  deliberately not enumerated here: on the Node 22 this package targets it is twelve members, and a
+  draft of this entry listed eight. `Object.freeze` did not help: it seals the own properties and
+  changes nothing about the prototype chain. Concretely, at `0.0.9`:
   - An ST-03 of `constructor` made `submission.variant` a **function**, suppressed
     `X12_837_UNKNOWN_VARIANT`, and took **every Loop 2400 off the model** with `warnings: []`.
   - `lookupCarc("constructor")` answered a `CodeListEntry` whose `description`, typed `string`, was

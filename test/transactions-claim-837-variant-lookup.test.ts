@@ -1,11 +1,12 @@
 /**
  * `X12-VARIANT-LOOKUP-PROTOTYPE`: a lookup table built as a bare object
  * literal inherits `Object.prototype`, so indexing one with a key that came
- * off the wire resolves TRUTHY for `constructor`, `valueOf`, `toString`,
- * `toLocaleString`, `hasOwnProperty`, `isPrototypeOf`,
- * `propertyIsEnumerable` and `__proto__`. `Object.freeze` does not help -
- * it seals the own properties and changes nothing about the prototype
- * chain.
+ * off the wire resolves TRUTHY for **every own property of
+ * `Object.prototype`**. Say that, never a list: the set is engine- and
+ * version-dependent, a first draft of this suite named eight when the
+ * running engine had twelve, and the whole point of deriving the key list
+ * below is that nobody has to keep one. `Object.freeze` does not help - it
+ * seals the own properties and changes nothing about the prototype chain.
  *
  * 🩺 **What that cost, measured at `a33c208`.** An ST-03 of `constructor`
  * made `VARIANT_BY_ICR` answer the `Object` constructor, so
@@ -17,12 +18,16 @@
  * and fabricated an `X12_HL_PARENT_LEVEL_INVALID` against an HL-03 the
  * walker has no expectation for.
  *
- * **▶ EVERY CASE HERE ASSERTS THE WHOLE `warnings` CHANNEL WITH `toEqual`,
- * NEVER `toContain` / `not.toContain` A SINGLE CODE.** That is the lesson
- * `#67` paid for: its residual test pinned a value and the absence of a
- * *different* code, both of which stayed true when the leak closed, so it
- * could not observe the silence ending. A pin on "it is silent" that never
- * reads the whole channel is not a pin on silence.
+ * **▶ EVERY ASSERTION ON THE WARNING CHANNEL HERE IS `toEqual` ON THE WHOLE
+ * ARRAY. No case tests a single code for membership or absence.** That is
+ * the lesson `#67` paid for: its residual test pinned a value and the
+ * absence of a *different* code, both of which stayed true when the leak
+ * closed, so it could not observe the silence ending. A pin on "it is
+ * silent" that never reads the whole channel is not a pin on silence.
+ * (`not.toContain` does appear once, on a message STRING rather than the
+ * channel, to prove a planted marker was not echoed back. That is a
+ * different assertion about a different object; do not let it grow into a
+ * channel test.)
  *
  * **Every lying document is paired with an honest control** - an ordinary
  * unrecognized value in the same slot - because the fix's whole claim is
@@ -38,6 +43,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ALL_WARNING_MESSAGES,
+  CLAIM_ADJUSTMENT_GROUP_CODES,
   WARNING_CODES,
   get837Claims,
   isClaimAdjustmentGroupCode,
@@ -58,14 +64,14 @@ const ISA =
   "*260601*1200*^*00501*000000001*0*P*:~";
 
 /**
- * The keys an object literal inherits, derived from the running engine
- * rather than hard-coded: a future ECMAScript adding a member to
- * `Object.prototype` widens this suite by itself. `__proto__` is an
- * accessor on the prototype and is included by the same derivation.
+ * Every own property of `Object.prototype`, derived from the running engine
+ * and **not filtered**: a future ECMAScript adding a member widens this
+ * suite by itself, and a hand-maintained list is the thing that was wrong.
+ * An earlier draft excluded three of the `__define*` / `__lookup*`
+ * accessors for no stated reason and thereby covered 9 of 12; all twelve
+ * behave identically at every site measured, at base and at head.
  */
-const INHERITED_KEYS: readonly string[] = Object.getOwnPropertyNames(Object.prototype).filter(
-  (k) => k !== "__defineGetter__" && k !== "__defineSetter__" && k !== "__lookupGetter__",
-);
+const INHERITED_KEYS: readonly string[] = Object.getOwnPropertyNames(Object.prototype);
 
 /** A marker planted in wire bytes, to prove no diagnostic quotes them back. */
 const MARKER = "ZZMARKERZZ";
@@ -382,12 +388,15 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: the code-list lookups answer undefined f
     for (const key of INHERITED_KEYS) expect(isClaimAdjustmentGroupCode(key)).toBe(false);
   });
 
-  it("CONTROL: isClaimAdjustmentGroupCode still accepts the four spec codes and rejects a typo", () => {
-    for (const code of ["CO", "CR", "OA", "PI", "PR"]) {
-      expect([true, false]).toContain(isClaimAdjustmentGroupCode(code));
-    }
-    expect(isClaimAdjustmentGroupCode("CO")).toBe(true);
+  it("CONTROL: isClaimAdjustmentGroupCode still accepts every declared code and rejects a non-code", () => {
+    // Driven off the exported table rather than a hand-typed list, so this
+    // cannot go vacuous the way an `expect([true, false]).toContain(...)`
+    // draft did - that form passes for any boolean.
+    const declared = Object.keys(CLAIM_ADJUSTMENT_GROUP_CODES);
+    expect(declared.length).toBeGreaterThan(0);
+    for (const code of declared) expect(isClaimAdjustmentGroupCode(code)).toBe(true);
     expect(isClaimAdjustmentGroupCode("ZZ")).toBe(false);
+    expect(isClaimAdjustmentGroupCode("")).toBe(false);
   });
 });
 
@@ -468,3 +477,91 @@ function claimBodyWithHi(qualifier: string): readonly string[] {
 function casBody(reasonCode: string): readonly string[] {
   return claimBody(["LX*1~", SV1, "SVD*PAYER02*100*HC:99213**1~", `CAS*CO*${reasonCode}*50~`]);
 }
+
+// ---------------------------------------------------------------------------
+// 6. What the dropped-line code does NOT promise. Each of these was a claim
+//    this slice made and a refuter measured false; they are pinned so the
+//    prose cannot drift back.
+// ---------------------------------------------------------------------------
+
+describe("X12-VARIANT-LOOKUP-PROTOTYPE: the bounds of X12_837_SERVICE_LINE_DROPPED", () => {
+  /** Parse with a caller `type` a TypeScript caller could not write. */
+  function parseWithForeignType(body: readonly string[], type: string): X12_837Submission {
+    const segs = [
+      ISA,
+      "GS*HC*SUBMITTER*RECEIVER*20260601*1200*1*X*005010X222A2~",
+      "ST*837*0001*005010X222A2~",
+      "BHT*0019*00*0123*20260601*1200*CH~",
+      ...body,
+      `SE*${String(body.length + 3)}*0001~`,
+      "GE*1*1~",
+      "IEA*1*000000001~",
+    ];
+    const ix = parseX12(segs.join("\n"));
+    const tx = ix.groups[0]?.transactions[0];
+    if (tx === undefined) throw new Error("no transaction set");
+    // The cast is the point of the case: `opts.type` is typed `"P" | "I" | "D"`,
+    // but a JavaScript or `JSON.parse`d caller can pass anything.
+    const sub = get837Claims(ix.delimiters, tx, { type } as unknown as { type: "P" });
+    if (sub === undefined) throw new Error("get837Claims returned undefined");
+    return sub;
+  }
+
+  it("🩺 an out-of-enum caller `type` drops every line WITHOUT X12_837_UNKNOWN_VARIANT", () => {
+    // The reason the message must not promise the two codes travel together,
+    // and the reason it points at `submission.variant` instead. Lower-case
+    // "p" is not the union member "P".
+    const sub = parseWithForeignType(claimBody(["LX*1~", SV1]), "p");
+    expect(sub.variant).toBe("p");
+    expect(sub.claims[0]?.serviceLines).toEqual([]);
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
+  });
+
+  it("🩺 a dropped LX still clears the active entity, so a trailing N3/N4 attaches to nobody", () => {
+    // The regression control for this slice's own near-miss: returning early
+    // from the LX case skipped the `activeEntity` reset, and the address below
+    // silently landed on whichever party the last NM1 left active. Trading a
+    // warned omission for a silent mis-attribution is the wrong direction.
+    const sub = parse837("005010XZZZZZ", [
+      ...noClaimBody([]),
+      "CLM*PT-ACCT-900*8500***11:B:1*Y*A*Y*Y~",
+      "SBR*S*01*GRP2******CI~",
+      "NM1*IL*1*OTHER*SUB****MI*OTHER1~",
+      "LX*1~",
+      "N3*999 LINE FACILITY RD~",
+      "N4*SOMEWHERE*NY*10001~",
+    ]).sub;
+    expect(sub.claims[0]?.otherSubscribers[0]?.otherSubscriber?.address).toBeUndefined();
+    expect(sub.claims[0]?.subscriber?.entity.address?.lines ?? []).not.toContain(
+      "999 LINE FACILITY RD",
+    );
+  });
+
+  it("a line-level DTP / AMT / NTE after a dropped LX lands on the ENCLOSING CLAIM", () => {
+    // Pre-existing walker behaviour, identical at `a33c208`, pinned because
+    // the first draft of this slice's disclosure called these values "absent"
+    // and they are not: they are re-attributed, which is harder to notice.
+    const sub = parse837(
+      "005010XZZZZZ",
+      claimBody(["LX*1~", "DTP*472*D8*20260615~", "AMT*T*77.77~", "NTE*ADD*LINE LEVEL NOTE~"]),
+    ).sub;
+    expect(sub.claims[0]?.serviceLines).toEqual([]);
+    expect(sub.claims[0]?.dates.map((d) => d.qualifier)).toContain("472");
+    expect(sub.claims[0]?.amounts.map((a) => a.qualifier)).toContain("T");
+    expect(sub.claims[0]?.notes).toHaveLength(1);
+  });
+
+  it("🩺 an SVx with NO LX at all is still dropped in SILENCE, and that is disclosed not fixed", () => {
+    // PRE-EXISTING, identical at `a33c208`: this code is anchored at the LX,
+    // so a service segment arriving with no LX to anchor to reports nothing.
+    // The bound exists so no document ever says "the warning channel will
+    // tell you a service line went missing". It will not tell you this one.
+    const withClaim = parse837("005010X222A2", claimBody([SV1])).sub;
+    expect(withClaim.claims[0]?.serviceLines).toEqual([]);
+    expect(channel(withClaim)).toEqual([]);
+
+    const withoutClaim = parse837("005010X222A2", noClaimBody([SV1])).sub;
+    expect(withoutClaim.claims).toEqual([]);
+    expect(channel(withoutClaim)).toEqual([]);
+  });
+});

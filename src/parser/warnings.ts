@@ -327,7 +327,7 @@ const WARNING_MESSAGES = {
   X12_837_SERVICE_LINE_NOT_DECODED:
     "837 service line with no decoded service segment: the Loop 2400 line opened at `position.segmentIndex` is followed by no SV1 / SV2 / SV3 matching the variant this submission resolved to, so NOTHING carried by the service segment was read. The line's `charge` and `units` hold 0 as a stand-in and are NOT values the sender supplied; its procedure code, modifiers, unit of measure and place of service are equally undecoded. Two common causes: the line carries no SVx at all, or it carries one for a different 837 variant than ST-03 (or the caller's `type` option) named. Which side is wrong is NOT decided here, because a caller-supplied `type` can disagree with a perfectly conformant document. The verbatim segments are preserved on the transaction set; read them there before acting on the charge or the quantity.",
   X12_837_SERVICE_LINE_DROPPED:
-    "837 service line dropped from the typed model: the LX at `position.segmentIndex` opened no Loop 2400, so this line and everything that followed it - its SV1 / SV2 / SV3 charge, units, procedure code and modifiers, its dates, amounts, notes and line adjudications - appears on NO claim's `serviceLines`. Compare `X12_837_SERVICE_LINE_NOT_DECODED`, where the line IS on the model and only its service segment went unread. Two causes: no Loop 2300 (CLM) is open at this LX, so there is no claim to attach a line to; or the submission's variant never resolved to P / I / D, so no variant-specific line shape could be built (`submission.variant` says which, and `X12_837_UNKNOWN_VARIANT` accompanies that case). Nothing is fabricated to stand in for the missing line, and no claim is synthesized. The verbatim segments are preserved on the transaction set; read them there before concluding the claim had no service lines.",
+    "837 service line dropped from the typed model: the LX at `position.segmentIndex` opened no Loop 2400, so no line appears on any claim's `serviceLines` for it and the SV1 / SV2 / SV3 that followed - its charge, units, procedure code and modifiers - was read into nothing. Compare `X12_837_SERVICE_LINE_NOT_DECODED`, where the line IS on the model and only its service segment went unread. Two causes: no Loop 2300 (CLM) is open at this LX, so there is no claim to attach a line to; or the submission's variant is not one of P / I / D, so no variant-specific line shape could be built. Read `submission.variant` and `submission.claims` to tell them apart; do NOT expect `X12_837_UNKNOWN_VARIANT` alongside this code, because a caller-supplied `type` outside P / I / D reaches the second cause without it. Nothing is fabricated to stand in for the missing line and no claim is synthesized, but note that any DTP / AMT / NTE / REF following the dropped LX attaches to the ENCLOSING CLAIM rather than being discarded, so a line-level date, amount or note can land among the claim-level ones. The verbatim segments are preserved on the transaction set; read them there before concluding the claim had no service lines.",
 } as const;
 
 /**
@@ -878,8 +878,11 @@ export function serviceLineNotDecoded(position: X12Position): X12ParseWarning {
  * Build an `X12_837_SERVICE_LINE_DROPPED` warning. Emitted by the 837
  * helper when an LX opens no Loop 2400 at all, so the service line never
  * reaches any claim's `serviceLines`: either no CLM is open at that point
- * in the walk, or the submission's variant never resolved to `P` / `I` /
- * `D` and there is no variant-specific line shape to build. Distinct from
+ * in the walk, or the submission's variant is not one of `P` / `I` / `D`
+ * and there is no variant-specific line shape to build. That second cause
+ * is reachable WITHOUT `X12_837_UNKNOWN_VARIANT`, because a caller-supplied
+ * `opts.type` outside the union (from JavaScript or a JSON payload) is a
+ * variant this reader never resolved and never warned about. Distinct from
  * {@link serviceLineNotDecoded}, where the line IS retained and only its
  * service segment went unread. `position` names the LX itself - the same
  * anchor, for the same reason: it is the one segment present in every

@@ -623,15 +623,20 @@ export function get837Claims(
         // to build. Nothing is fabricated for either: synthesizing a claim
         // or guessing a variant would invent structure the sender did not
         // send, which is the failure mode this reader exists to avoid.
-        const opened =
-          currentClaim === undefined
-            ? undefined
-            : openServiceLine(seg, delimiters, currentClaim.variant, position);
-        if (opened === undefined) {
+        //
+        // The control flow below is the base's, unchanged: the two
+        // `warnings.push` calls are the whole behavioural difference. An
+        // earlier draft returned early on the second route and thereby
+        // skipped the `activeEntity` reset, which let a trailing bare
+        // `N3` / `N4` / `PER` attach its address to whatever party the last
+        // `NM1` had left active. Trading a warned omission for a silent
+        // mis-attribution is the wrong direction; do not restructure this.
+        if (currentClaim === undefined) {
           warnings.push(serviceLineDropped(position));
           break;
         }
-        currentServiceLine = opened;
+        currentServiceLine = openServiceLine(seg, delimiters, currentClaim.variant, position);
+        if (currentServiceLine === undefined) warnings.push(serviceLineDropped(position));
         activeEntity = undefined;
         context = { kind: "loop2400" };
         break;

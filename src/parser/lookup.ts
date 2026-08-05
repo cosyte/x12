@@ -3,14 +3,15 @@
  * whose key is read out of an EDI document.
  *
  * A bare object literal inherits `Object.prototype`, so indexing one with a
- * value that came off the wire resolves TRUTHY for `constructor`,
- * `valueOf`, `toString`, `toLocaleString`, `hasOwnProperty`,
- * `isPrototypeOf`, `propertyIsEnumerable` and `__proto__`. `Object.freeze`
- * does not help: freezing seals the own properties and changes nothing
- * about what the prototype chain contributes to a read. A table built here
- * has no prototype at all, so a key the table does not declare answers
- * `undefined` - which is what every caller's "not in the table" branch is
- * already written against.
+ * value that came off the wire resolves TRUTHY for **every own property of
+ * `Object.prototype`**. State it exactly that way and never as a list: the
+ * set is engine- and version-dependent, and a draft of this comment
+ * enumerated eight when the running engine had twelve. `Object.freeze` does
+ * not help: freezing seals the own properties and changes nothing about
+ * what the prototype chain contributes to a read. A table built here has no
+ * prototype at all, so a key the table does not declare answers `undefined`
+ * - which is what every caller's "not in the table" branch is already
+ * written against.
  *
  * The fix is applied at the TABLE rather than at each read site on purpose:
  * a guard at the read site protects only the read sites that exist today,

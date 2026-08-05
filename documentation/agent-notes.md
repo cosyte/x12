@@ -76,12 +76,19 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
 ## X12-VARIANT-LOOKUP-PROTOTYPE (2026-08-05)
 
 - **🩺 THE DEFECT: A LOOKUP TABLE BUILT AS AN OBJECT LITERAL INHERITS `Object.prototype`, SO A KEY
-  READ OFF THE WIRE RESOLVES TRUTHY FOR EIGHT VALUES THE TABLE NEVER DECLARED.** `constructor`,
-  `valueOf`, `toString`, `toLocaleString`, `hasOwnProperty`, `isPrototypeOf`,
-  `propertyIsEnumerable`, `__proto__`. **`Object.freeze` DOES NOT HELP** and is the reason this
-  looked safe on review: it seals the OWN properties and changes nothing about what the prototype
-  chain contributes to a read. `VARIANT_BY_ICR` was frozen. Found at base by `#67`'s refuter,
-  disclosed in this file, filed as its own item, fixed here.
+  READ OFF THE WIRE RESOLVES TRUTHY FOR EVERY OWN PROPERTY OF `Object.prototype`.**
+  **`Object.freeze` DOES NOT HELP** and is the reason this looked safe on review: it seals the OWN
+  properties and changes nothing about what the prototype chain contributes to a read.
+  `VARIANT_BY_ICR` was frozen. Found at base by `#67`'s refuter, disclosed in this file, filed as its
+  own item, fixed here.
+
+- **🩺 NAME THE SET, NEVER THE MEMBERS. A DRAFT OF THIS SECTION PUBLISHED EIGHT AND THE ENGINE HAD
+  TWELVE**, in `CLAUDE.md`, the CHANGELOG, `KNOWN-LIMITATIONS.md`, the shipped changeset AND
+  `src/parser/lookup.ts`'s JSDoc, all at once. The four it missed were `__defineGetter__`,
+  `__defineSetter__`, `__lookupGetter__` and `__lookupSetter__`, and all four behave identically to
+  `constructor` at every site measured. This is `X12-NUMERIC-VALUE-EMITS-EMPTY`'s rule arriving in a
+  new place: **the remedy is to cut the claim back, not to grow the census.** The set is engine- and
+  version-dependent, so the only durable form is "every own property of `Object.prototype`".
 
 - **🩺 WHAT IT COST, MEASURED AT `a33c208`, PROBE BY PROBE.** Every row is a literal-EDI probe run
   against the base sha and against head. All eight inherited keys behave identically at each site;
@@ -91,6 +98,7 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   | --- | --- | --- |
   | 837 ST-03 `constructor`, SV1 present | `variant` a **function**, `serviceLines` **0**, `warnings: []` | `variant` `"P"` via the SVx fallback, 1 line, charge `8500`, `warnings: []` |
   | 837 ST-03 `constructor`, no SVx anywhere | `variant` a **function**, 0 lines, `warnings: []` | `["X12_837_UNKNOWN_VARIANT", "X12_837_SERVICE_LINE_DROPPED"]` |
+  | 837, caller `{ type: "p" }`, SV1 present | 0 lines, `warnings: []` | `["X12_837_SERVICE_LINE_DROPPED"]`, **no unknown-variant code** |
   | 837 HL-03 `constructor` | `["X12_HL_PARENT_LEVEL_INVALID"]` | `[]` (matches HL-03 `99`) |
   | `lookupCarc("constructor")` | `{ code: "constructor", description: <function Object> }` | `undefined` |
   | 837 CAS-02 `constructor` | `reasonDescription` a **function**, `warnings: []` | `["X12_UNKNOWN_CARC"]` |
@@ -140,12 +148,41 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   future engine adding an inherited member widens the suite with nobody editing a list.
 
 - **THE SECOND FINDING FOLDED IN: AN `LX` THAT OPENS NO LOOP 2400 NOW SAYS SO, AND IT COVERS TWO
-  ROUTES.** Route 1, an `LX` / `SVx` before any `CLM` (`claims: []`, `warnings: []` at base, with a
+  ROUTES.** Route 1, an `LX` before any `CLM` (`claims: []`, `warnings: []` at base, with a
   real charge and units on the wire). Route 2, the residual of the headline fix: a variant that
   honestly does not resolve, where `openServiceLine` answers `undefined` and the line was silently
   never opened even though `X12_837_UNKNOWN_VARIANT` fired for the submission. **Route 2 is why this
   belongs in THIS slice rather than its own** - fixing the lookup converts the prototype case into
   the honest-unknown case, and the honest-unknown case was silent too.
+
+- **🩺 THE CODE HAS THREE BOUNDS AND A DRAFT PUBLISHED ALL THREE WRONG. A REFUTER MEASURED EACH.**
+  1. **It does NOT travel with `X12_837_UNKNOWN_VARIANT`.** That code fires only for
+     `variant === "unknown"`; route 2 fires for `variant` outside `P` / `I` / `D`. A JavaScript or
+     `JSON.parse`d caller passing `{ type: "p" }` against a clean 837P gets `variant "p"`, zero
+     lines, and `["X12_837_SERVICE_LINE_DROPPED"]` alone. The shipped message and two docs asserted
+     the two codes travel together; since the code deliberately carries NO discriminant, that
+     parenthetical was the only route-splitter a consumer had and it pointed at the wrong route.
+     **`submission.variant` is the discriminant. Say that.** Same class as `#67`'s refutation: a
+     caller-supplied `type` is a caller instruction and the warning must attribute nothing.
+  2. **An `SVx` with NO `LX` at all is STILL DROPPED IN SILENCE.** The code is anchored at the `LX`,
+     so a service segment that never had one reports nothing on any channel - `$8,500` and 4 units,
+     gone, `warnings: []`, with and without an open `CLM`. `PRE-EXISTING`, identical at base,
+     disclosed and NOT fixed; it is owed its own umbrella backlog ID. **Never write that the warning
+     channel is a complete account of how a service line can go missing.** A draft of the cookbook
+     and of `KNOWN-LIMITATIONS.md` did.
+  3. **A line-level `DTP` / `AMT` / `NTE` / `REF` after a dropped `LX` is NOT absent: it attaches to
+     the ENCLOSING CLAIM.** Measured: a line service date, a line amount and a line note land among
+     the claim-level ones, indistinguishable from them. The first disclosure called that data
+     "absent", which is the more dangerous error of the two - a consumer told a value is missing will
+     not go looking for it in the wrong bucket. `PRE-EXISTING` walker behaviour, pinned by a test.
+
+- **🩺 THE `LX` CASE'S CONTROL FLOW IS THE BASE'S, AND THE ONE TIME IT WAS NOT, IT MINTED SILENT
+  CORRUPTION.** A draft returned early on route 2 and thereby skipped `activeEntity = undefined`, so
+  a trailing bare `N3` / `N4` / `PER` attached its address to whichever party the last `NM1` had left
+  active - measured, an address landing on a named other-subscriber that had none at base, with no
+  warning. **Trading a warned omission for a silent mis-attribution is the direction
+  `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` forbids.** The two `warnings.push` calls are now the
+  entire behavioural difference from base, and a test reds if the early return comes back.
 
 - **`X12_837_SERVICE_LINE_DROPPED` IS THE 25TH CODE, AND IT IS NOT A RENAME OF `#67`'s.**
   Additions-only, 24 -> 25. **The two report different losses and must never be merged:**
@@ -172,14 +209,21 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
 - **🩺 THE `#67` TRAP WAS THE DESIGN CONSTRAINT ON THE SUITE, AND IT IS WHY EVERY CASE USES
   `toEqual` ON THE WHOLE CHANNEL.** `#67`'s residual test pinned a value plus the absence of a
   DIFFERENT code, both of which stayed true when the leak closed, so every surface predicted a red
-  that never came. `dicom`'s carve-out fixture had the identical hole. **`toContain` and
-  `not.toContain` appear nowhere in the new suite.** Every lying document is paired with an honest
+  that never came. `dicom`'s carve-out fixture had the identical hole. **Every assertion on the
+  warning channel is `toEqual` on the whole array.** A draft claimed `toContain` appeared NOWHERE in
+  the suite and was false twice: `not.toContain` is used once on a message STRING for the marker
+  probe, and one control read `expect([true, false]).toContain(<boolean>)`, **which passes for any
+  boolean** - a vacuous assertion inside a case titled "still accepts the four spec codes". It is now
+  driven off the exported table. **State the property, not an absolute about a matcher name.** Every
+  lying document is paired with an honest
   control in the same slot - an ordinary unrecognized ST-03, an ordinary unknown HL-03, an ordinary
   unknown CARC - because the whole claim is that an inherited key is now INDISTINGUISHABLE from any
   other unrecognized value, and a guard that over-fired would pass the lying half and red the
   control.
 
-- **MEASURED: 33 of the new suite's 49 cases are RED at `a33c208` and 49 green at head.** The
+- **MEASURED: 33 of the suite's first 49 cases are RED at `a33c208`, and all 56 are green at head**
+  (the last seven pin the three bounds and the `activeEntity` regression control, and are not part of
+  the base measurement because four of them describe behaviour that is identical at base).** The
   pre-existing suite went 1,313 -> 1,362 with the only two reds being
   `warning-codes.snapshot.test.ts`'s inline snapshot and its length assertion, which is expected for
   an additions-only registry change and is **not** evidence the fix works.
