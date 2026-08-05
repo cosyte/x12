@@ -390,18 +390,28 @@ describe("get834Enrollments - scoped to the member it was read from", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3b. The residual, pinned so the disclosure cannot go stale silently.
+// 3b. The residual this file used to pin is CLOSED (X12-837-SV-SILENT-ZERO).
+//     The case stays, inverted: it now pins that the hole is warned rather
+//     than silent, so the disclosure cannot go stale in either direction.
 // ---------------------------------------------------------------------------
 
 describe("the guarantee is about an element a reader DECODED, not about every 0", () => {
-  it("🩺 an 837 line whose variant disagrees with its SVx reads 0 / 0 with NO warning", () => {
-    // PRE-EXISTING and deliberately NOT fixed here: `openServiceLine` seeds
-    // `charge` / `units` at X12Decimal.ZERO and `decodeSv1` returns before
-    // reading anything when the resolved variant is not "P", so no decimal is
-    // ever read and no sink is ever consulted. This asserts the LEAKING
-    // behaviour on purpose. Closing it turns this test red, which is the
-    // point: it is what stops the corrected disclosure in KNOWN-LIMITATIONS.md
-    // from quietly becoming false in either direction.
+  it("🩺 an 837 line whose variant disagrees with its SVx still reads 0 / 0, now WARNED", () => {
+    // This case shipped with `#66` asserting the LEAK: 0 / 0 with no warning
+    // on any channel. `X12-837-SV-SILENT-ZERO` closes the silence, not the 0:
+    // `openServiceLine` still seeds `charge` / `units` at X12Decimal.ZERO and
+    // `decodeSv1` still returns before reading anything when the resolved
+    // variant is not "P", so NO decimal is read and the decimal sink is still
+    // never consulted. What changed is that closing the line now emits
+    // X12_837_SERVICE_LINE_NOT_DECODED, so the stand-in is announced.
+    //
+    // 🩺 The absence assertion below is the load-bearing half and it is why
+    // this case did NOT go red on its own when the fix landed: it asserted
+    // only that X12_UNPARSEABLE_DECIMAL was absent, which is still true and
+    // always was. A pin on "it is silent" that never looked at the whole
+    // warning channel could not observe the silence ending. Both halves are
+    // asserted now, on the lying document AND on the honest control.
+    //
     // The ST-03 implementation-convention reference is the only lever moved:
     // it says Professional while every service line in the file is an SV2.
     const mis = substitute(
@@ -416,13 +426,21 @@ describe("the guarantee is about an element a reader DECODED, not about every 0"
     expect(sub?.variant).toBe("P");
     expect(line?.charge.toString()).toBe("0");
     expect(line?.units.toString()).toBe("0");
+    // Still no decimal warning: no decimal was ever read, so the sink cannot
+    // fire. The line-level warning is the channel that speaks for this hole.
     expect(codes(sub?.warnings ?? [])).not.toContain(WARNING_CODES.X12_UNPARSEABLE_DECIMAL);
+    expect(codes(sub?.warnings ?? [])).toContain(WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED);
 
-    // The same file read with its own variant decodes the real amounts, which
-    // is what makes the assertion above a defect rather than an empty fixture.
+    // The same file read with its own variant decodes the real amounts and is
+    // silent on both channels. That is what makes the assertions above a
+    // defect being reported rather than an empty fixture or a noisy warning.
     const honest = txOf(readFixture("claim/837i-canonical.edi"), "837");
-    const ok = get837Claims(honest.delimiters, honest.tx)?.claims[0]?.serviceLines[0];
+    const honestSub = get837Claims(honest.delimiters, honest.tx);
+    const ok = honestSub?.claims[0]?.serviceLines[0];
     expect(ok?.charge.toString()).not.toBe("0");
+    expect(codes(honestSub?.warnings ?? [])).not.toContain(
+      WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED,
+    );
   });
 });
 

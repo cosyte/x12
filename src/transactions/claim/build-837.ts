@@ -84,7 +84,7 @@ function refuseSpec(message: string): never {
  * The lexical form of a caller-supplied `X12Decimal`, refusing anything that is
  * not one (`X12-DECIMAL-BYPASSES-THE-GUARD`). Exposed alongside {@link escDec}
  * because this builder is the only one with slots that want the value
- * *unescaped*: SV1-04/SV2-05/SV3-05 read `units` once and each escape it
+ * *unescaped*: SV1-04/SV2-05/SV3-06 read `units` once and each escape it
  * themselves, and HI's components go through `ctx.comp`, which maps `esc`.
  * @internal
  */
@@ -631,8 +631,13 @@ function emitServiceLine(
 ): void {
   body.push(ctx.seg(["LX", ctx.esc(line.lineNumber ?? String(lineNumber))]));
 
-  // Read off-line because SV1-04, SV2-05 and SV3-05 all want the same value:
+  // Read off-line because SV1-04, SV2-05 and SV3-06 all want the same value:
   // `decStr` rather than `escDec` because each consuming slot escapes it itself.
+  // The position is SV3-06, not SV3-05: SV3-05 is the prosthesis/crown/inlay
+  // code (see `Build837ServiceLineD.prosthesisCrownInlayCode`). Both this emit
+  // and `decodeSv3` have always used 6; three comments said 5 and were
+  // corrected under `X12-837-SV-SILENT-ZERO` rather than left to become the
+  // next `X12-SVC-ELEMENT-MAP-OFF-BY-ONE`.
   const units = line.units === undefined ? "0" : decStr(line.units);
   if (line.variant === "P") {
     const proc = ctx.comp([line.procedureQualifier, line.procedureCode, ...(line.modifiers ?? [])]);

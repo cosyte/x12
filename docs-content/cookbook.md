@@ -222,6 +222,14 @@ with their code-system provenance.
 implementation-convention reference (`X222A2` → P, `X223A3` → I, `X224A2` → D), with an SVx fallback;
 an unresolvable one raises `X12_837_UNKNOWN_VARIANT`.
 
+The reference wins over the segments when the two disagree, and the `type` option wins over both. A
+service line whose `SVx` then does not match is **not** decoded (reading an `SV2` into a Professional
+line would mis-read the charge), so its `charge` and `units` ship as `0` and
+`X12_837_SERVICE_LINE_NOT_DECODED` is raised against the `LX` that opened it. Gate on that warning
+before you post a line amount, alongside `X12_UNPARSEABLE_DECIMAL` (the `SVx` decoded but the amount
+itself did not); neither is a complete account of every way a `0` can reach the model, and
+[Decimal-exact money](./spec-notes-money) states the guarantee in the only direction it holds.
+
 ```ts
 import { parseX12, get837Claims, HL_LEVEL_CODES, WARNING_CODES } from "@cosyte/x12";
 

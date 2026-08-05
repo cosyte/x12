@@ -55,6 +55,7 @@ import {
   hlParentLevelInvalid,
   hlParentMismatch,
   missingRequiredLoop,
+  serviceLineNotDecoded,
   unknown837Variant,
   unknownCarc,
   unknownHiQualifier,
@@ -249,6 +250,14 @@ export function get837Claims(
   const flushServiceLine = (): void => {
     flushAdjudication();
     if (currentServiceLine !== undefined && currentClaim !== undefined) {
+      // A line whose SVx never decoded carries the accumulator's seeded
+      // `X12Decimal.ZERO` in `charge` / `units`. That is a stand-in, not a
+      // read, and no decimal sink was ever consulted for it - so the only
+      // channel that can say so is this warning. Retention is unchanged:
+      // the line is still pushed and every segment stays on `tx.segments`.
+      if (!currentServiceLine.serviceSegmentDecoded) {
+        warnings.push(serviceLineNotDecoded(currentServiceLine.position));
+      }
       currentClaim.serviceLines.push(freezeServiceLine(currentServiceLine));
     }
     currentServiceLine = undefined;
@@ -576,7 +585,7 @@ export function get837Claims(
       case "LX": {
         flushServiceLine();
         if (currentClaim === undefined) break;
-        currentServiceLine = openServiceLine(seg, delimiters, currentClaim.variant);
+        currentServiceLine = openServiceLine(seg, delimiters, currentClaim.variant, position);
         activeEntity = undefined;
         context = { kind: "loop2400" };
         break;
@@ -968,6 +977,14 @@ type ServiceLineAccumulator =
 
 interface ServiceLineBaseAccumulator {
   readonly lineNumber: string;
+  /** Position of the LX that opened this line - the warning's anchor. @internal */
+  readonly position: X12Position;
+  /**
+   * Set by whichever of `decodeSv1` / `decodeSv2` / `decodeSv3` matches this
+   * line's variant. False at flush means nothing on the service segment was
+   * ever read, so `charge` / `units` below are seeded stand-ins. @internal
+   */
+  serviceSegmentDecoded: boolean;
   charge: X12Decimal;
   units: X12Decimal;
   unitOfMeasure: string | undefined;
@@ -1107,10 +1124,13 @@ function openServiceLine(
   seg: X12Segment,
   delimiters: Delimiters,
   variant: X12Claim837Variant,
+  position: X12Position,
 ): ServiceLineAccumulator | undefined {
   const lineNumber = elementValue(seg, 1, delimiters);
   const base: ServiceLineBaseAccumulator = {
     lineNumber,
+    position,
+    serviceSegmentDecoded: false,
     charge: X12Decimal.ZERO,
     units: X12Decimal.ZERO,
     unitOfMeasure: undefined,
@@ -1170,6 +1190,7 @@ function decodeSv1(
   sink: X12DecimalWarningSink,
 ): void {
   if (acc.variant !== "P") return;
+  acc.serviceSegmentDecoded = true;
   acc.procedureQualifier = componentOptional(seg, 1, 1, delimiters) ?? "";
   acc.procedureCode = componentOptional(seg, 1, 2, delimiters) ?? "";
   const mods: string[] = [];
@@ -1200,6 +1221,7 @@ function decodeSv2(
   sink: X12DecimalWarningSink,
 ): void {
   if (acc.variant !== "I") return;
+  acc.serviceSegmentDecoded = true;
   acc.revenueCode = elementValue(seg, 1, delimiters);
   acc.procedureQualifier = componentOptional(seg, 2, 1, delimiters);
   acc.procedureCode = componentOptional(seg, 2, 2, delimiters);
@@ -1223,6 +1245,7 @@ function decodeSv3(
   sink: X12DecimalWarningSink,
 ): void {
   if (acc.variant !== "D") return;
+  acc.serviceSegmentDecoded = true;
   acc.procedureQualifier = componentOptional(seg, 1, 1, delimiters) ?? "";
   acc.procedureCode = componentOptional(seg, 1, 2, delimiters) ?? "";
   const mods: string[] = [];

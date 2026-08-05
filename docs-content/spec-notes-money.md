@@ -99,7 +99,11 @@ Three things to hold onto:
   documented convention of those slots and is unchanged. The warning fires only when the sender put
   bytes there and this library could not read them. Read the guarantee in exactly that direction:
   an unwarned `0` **at an element a reader decoded** is a zero the sender sent or omitted. It is not
-  a promise about every `0` on the model, because a slot a reader never read cannot warn.
+  a promise about every `0` on the model, because a slot a reader never read cannot warn. The known
+  instance of that in this library, an 837 service line whose `SVx` never decoded because it does not
+  match the variant the submission resolved to, is announced by its own warning,
+  **`X12_837_SERVICE_LINE_NOT_DECODED`**, anchored at the `LX` that opened the line. No census of
+  never-read slots is published here, on purpose: the rule is what holds.
 - **On an optional slot the same warning disambiguates `undefined`.** A `paidUnitsOfService` of
   `undefined` used to mean either "the payer omitted it" or "the payer sent something unreadable".
   With a warning at that element index, it means the second; without one, the first.

@@ -36,13 +36,10 @@ model.
   - **🩺 That does NOT make an unwarned `0` trustworthy in general, and this is the one inversion to
     refuse.** The warning is a property of a decimal READ, not a property of a model slot. A slot
     the reader never read at all cannot warn, and it still holds whatever the accumulator was seeded
-    with. `get837Claims` has exactly such a hole today, `PRE-EXISTING` and untouched here: when the
-    resolved variant disagrees with the `SVx` segment actually present (an ST-03 of `005010X222A2`
-    on a file whose lines are `SV2`, or a caller-supplied `{ type: "P" }` over the same), `decodeSv1`
-    returns before reading anything and the line's `charge` and `units` stay at their seeded
-    `X12Decimal.ZERO` with `warnings: []`. Pinned as a residual test, so closing it turns that test
-    red rather than leaving this paragraph quietly false. **What this slice guarantees is narrower and exact: an
-    unwarned `0` AT AN ELEMENT A READER DECODED is a zero the sender sent or omitted.**
+    with. **What this guarantees is narrower and exact: an unwarned `0` AT AN ELEMENT A READER
+    DECODED is a zero the sender sent or omitted.** The known slot of the other kind, an 837 service
+    line whose `SVx` never decoded, is covered by a warning of its own (next entry) rather than by
+    this one. **No census of never-read slots is published**, on purpose: the rule is what holds.
   - **The public helpers are silent without a sink.** `elementDecimal` / `elementDecimalOrZero` take
     an optional 4th `X12DecimalWarningSink`. Every reader inside this library passes one, and a
     source scan in `test/parser-decimal-silent-defaults.test.ts` keeps it that way. **A consumer
@@ -53,6 +50,37 @@ model.
     `elementDecimal` / `elementDecimalOrZero` call under `src/transactions/` after stripping
     comments. It says nothing about a decimal decoded some other way, and no exhaustive census of
     such routes is published here, on purpose.
+
+- **🩺 An 837 service line whose `SVx` never decoded still ships with `charge` and `units` at `0`;
+  what changed is that it warns.** `get837Claims` resolves ONE variant for the submission, from the
+  caller's `type` option, else ST-03's implementation-convention reference, else the first `SVx`
+  segment present. A Loop 2400 line is then decoded only by the `SV1` / `SV2` / `SV3` that matches
+  that variant. When none arrives, because the line carries an `SVx` for a different variant (an
+  ST-03 of `005010X222A2` on a file whose lines are `SV2`, or a `{ type: "P" }` over the same) or
+  because it carries no `SVx` at all, **nothing on the service segment is read**: the line's
+  `charge` and `units` hold the accumulator's seeded `X12Decimal.ZERO`, and its procedure code,
+  modifiers, unit of measure and place of service are equally undecoded. **That line now emits
+  `X12_837_SERVICE_LINE_NOT_DECODED`, anchored at the `LX` that opened it.** Read the values off
+  `tx.segments[…].raw` and decide which of the two disagreeing signals the sender meant.
+  - **Ignoring the foreign `SVx` is deliberate and is not the limitation.** `SV1-02` and `SV2-03`
+    are both the line charge, so decoding an `SV2` into a Professional line would mis-read money.
+    Refusing to read is the safe half; doing it silently was the defect.
+  - **The model is unchanged.** `charge` and `units` are still typed `X12Decimal`, so the stand-in
+    `0` is still what a consumer that never reads `.warnings` sees. Making them
+    `X12Decimal | undefined` is a breaking model change and is deliberately not in this slice.
+  - **The line is still retained, and so are the bytes.** Nothing is dropped: the service line is
+    on the claim, and every segment, decoded or not, stays verbatim on `tx.segments`.
+  - **Neither cause is attributed to the sender.** A `type` option that disagrees with a perfectly
+    conformant document produces the same warning as a document that disagrees with itself, and the
+    library does not decide which side is wrong. A line with no `SVx` at all is short a Loop 2400
+    segment the 837 TR3s require, but that judgement is yours to make from the bytes.
+  - **An unresolvable variant is a different case.** With no `type`, an ST-03 that resolves to no
+    known variant **and no `SVx` anywhere in the transaction to fall back on**, no service line is
+    opened and no `0` is fabricated on any line slot. **`0` such lines is therefore also a signal,
+    and it is a weaker one:** `X12_837_UNKNOWN_VARIANT` covers the
+    ordinary shape of that case, but it is raised from a plain-object lookup on a sender-controlled
+    ST-03, so **do not read the absence of a warning as proof the variant resolved honestly.** Check
+    `submission.variant` against the set you expect.
 
 - **🩺 BREAKING, in the release after `0.0.9`: the 835 Loop 2110 SVC element map was off by one, in
   BOTH directions, and is corrected.** Through `0.0.9` `get835` read the revenue code from **SVC-05**

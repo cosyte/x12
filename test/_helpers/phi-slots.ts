@@ -695,6 +695,16 @@ export const PHI_SLOTS: readonly DiagnosticSlot<string>[] = [
     expectCode: WARNING_CODES.X12_UNKNOWN_HI_QUALIFIER,
   },
   {
+    name: "SV2-02-2 procedure code inside a service segment the walker refuses to decode",
+    // own: the whole point of X12_837_SERVICE_LINE_NOT_DECODED is that this
+    // segment was NOT read, so it is the segment a diagnostic would be most
+    // tempted to quote back ("could not decode: <bytes>"). The ST-03 says
+    // Professional and the line is an SV2, which is the mismatch the code
+    // reports; the marker rides in the ignored segment while it does.
+    plant: (m) => swap(G_837P, "~SV1*HC:99213:25*150*UN*1***1~", `~SV2*0300*HC:${m}*150*UN*1~`),
+    expectCode: WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED,
+  },
+  {
     name: "HL-01 hierarchical id number",
     // own: X12_HL_PARENT_MISMATCH is raised because HL-02 on the next level
     // no longer resolves to this HL-01.

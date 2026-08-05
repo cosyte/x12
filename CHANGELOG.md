@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🩺 `X12_837_SERVICE_LINE_NOT_DECODED`, the 24th Tier-2 warning code, plus the public factory
+  `serviceLineNotDecoded(position)`** (`X12-837-SV-SILENT-ZERO`). Raised when an 837 Loop 2400
+  service line is closed without ever having decoded an `SV1` / `SV2` / `SV3` for the variant the
+  submission resolved to; see `### Fixed` for what that line was reporting instead.
+  `position.segmentIndex` names the `LX` that opened the line rather than the `SVx`, because the
+  no-`SVx`-at-all case has no `SVx` to point at. The registry stays additions-only.
+
 - **🩺 `X12_UNPARSEABLE_DECIMAL`, the 23rd Tier-2 warning code, plus `readElementDecimal` and
   `X12DecimalWarningSink`** (`X12-QUANTITY-SILENT-DEFAULTS`). A decimal element that is **present**
   and is not an X12 R-type decimal now says so; see `### Fixed` for what it was doing instead.
@@ -192,6 +199,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   code changed and no published type changed.
 
 ### Fixed
+
+- **🩺 An 837 service line whose `SVx` never decoded no longer reads `0` / `0` in silence
+  (`X12-837-SV-SILENT-ZERO`).** `get837Claims` resolves ONE variant for the whole submission (the
+  caller's `type` option, else ST-03's implementation-convention reference, else the first `SVx`
+  present). `openServiceLine` seeds a line's `charge` and `units` at `X12Decimal.ZERO`, and
+  `decodeSv1` / `decodeSv2` / `decodeSv3` each **return before reading anything** when the line's
+  variant is not theirs. So an `SV2` line on a submission that resolved to Professional read back as
+  a `$0.00` charge for `0` units with `warnings: []`, with the procedure code, modifiers, unit of
+  measure and place of service equally undecoded; a line carrying no `SVx` at all did the same. This
+  is the residual `X12-QUANTITY-SILENT-DEFAULTS` disclosed rather than fixed, and it is the same
+  fabrication one level up: a slot a reader never read cannot warn on the decimal channel.
+
+  Measured against `d8b5085`: a conformant 837I whose ST-03 is flipped to `005010X222A2` read back
+  `0` / `0` on both service lines with `warnings: []`, where the same bytes read with their own
+  variant give `1500` / `1`. Three further probes were equally silent at base (the same file with
+  `{ type: "P" }`, an `LX` with no `SVx` at all, and the 837D fixture with `{ type: "I" }`). All four
+  now raise `X12_837_SERVICE_LINE_NOT_DECODED`; the honest 837P and 837I controls stay silent.
+
+  **Not decoding the foreign `SVx` is unchanged and is not the defect.** `SV1-02` and `SV2-03` are
+  both the line charge, so reading an `SV2` into a Professional-shaped line would mis-read money
+  rather than fail to read it. **The model is unchanged too:** `charge` and `units` are still typed
+  `X12Decimal` and still read `0`, so a consumer that never looks at `.warnings` sees what it saw
+  before. Making those slots `X12Decimal | undefined` remains a breaking change and its own slice.
+  The line is still retained, every segment stays verbatim on `tx.segments`, and a variant that
+  resolves to nothing at all is still the separate `X12_837_UNKNOWN_VARIANT` case, where no line is
+  opened and no `0` is fabricated. `KNOWN-LIMITATIONS.md` says how far that second case reaches.
 
 - **🩺 An unparseable decimal no longer becomes a confident zero in silence
   (`X12-QUANTITY-SILENT-DEFAULTS`).** `elementDecimalOrZero` returned `X12Decimal.ZERO` for an
