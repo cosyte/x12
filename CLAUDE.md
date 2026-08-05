@@ -135,7 +135,6 @@ sources and its refutation history. Do not act on a line here without reading th
   channel will tell you a line went missing"**; and a trailing `DTP`/`AMT`/`NTE`/`REF` is
   **ROUTE-DEPENDENT** (claim open: onto the claim; no claim: discarded, or the `REF` onto the last
   named party). **Never state that unqualified** - two drafts did, opposite ways.
-  `KNOWN-LIMITATIONS.md` is the ONE surface carrying both routes.
 - **🩺 DO NOT RESTRUCTURE THE `LX` CASE.** Its control flow is the base's; the two `warnings.push` are
   the whole difference. A draft returned early on route 2, skipped the `activeEntity` reset, and a
   trailing bare `N3`/`N4` silently addressed the last active party.

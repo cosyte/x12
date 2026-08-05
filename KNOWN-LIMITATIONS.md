@@ -96,8 +96,8 @@ model.
     `"P" | "I" | "D"` - which only a JavaScript or `JSON.parse`d caller can pass - reaches the second
     cause with no unknown-variant warning at all. Read `submission.variant`, not the other code.
   - **What becomes of a line-level `DTP` / `AMT` / `NTE` / `REF` after a dropped `LX` depends on
-    the route, and is not simply "absent" on either. This is the only surface that states both,
-    deliberately: two drafts stated it unqualified, in opposite directions, and both were wrong.**
+    the route, and is not simply "absent" on either. Two drafts stated it unqualified, in opposite
+    directions, and both were wrong.**
     With a `CLM` open (the variant route), the line service date, amount and note land among the
     **claim-level** ones, indistinguishable from them. With **no** `CLM` open, the `DTP`, `AMT` and
     `NTE` are **discarded** and a trailing `REF` attaches to whichever party the last `NM1` left

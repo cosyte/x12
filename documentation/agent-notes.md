@@ -179,8 +179,8 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
      `CLM` open, the `DTP`, `AMT` and `NTE` are **discarded** and a trailing `REF` attaches to
      whichever party the last `NM1` left active - measured, a line-item control number landing in a
      *later* claim's `payer.references`. **The remedy was to CUT THE CLAUSE OUT OF THE SHIPPED
-     MESSAGE ENTIRELY and state both routes on exactly ONE surface** (`KNOWN-LIMITATIONS.md`), rather
-     than to write the conditional a third time on eight surfaces. `PRE-EXISTING` walker behaviour;
+     MESSAGE ENTIRELY**, because a registry message cannot carry a conditional and a consumer reading
+     one should not have to. `PRE-EXISTING` walker behaviour;
      both routes pinned by tests, and the `REF` mis-attribution is owed its own umbrella item.
 
 - **🩺 THE `LX` CASE'S CONTROL FLOW IS THE BASE'S, AND THE ONE TIME IT WAS NOT, IT MINTED SILENT

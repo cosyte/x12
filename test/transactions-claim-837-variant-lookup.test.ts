@@ -24,9 +24,9 @@
  * absence of a *different* code, both of which stayed true when the leak
  * closed, so it could not observe the silence ending. A pin on "it is
  * silent" that never reads the whole channel is not a pin on silence. Other
- * matchers appear on other objects (a message string, a qualifier list) and
- * that is fine; the property is about the CHANNEL, so do not restate it as an
- * absolute about a matcher name. Two drafts did and both were false.
+ * matchers appear on other objects and that is fine; the property is
+ * about the CHANNEL, so do not restate it as an absolute about a matcher name,
+ * and do not count them either. Drafts did both, and were false each time.
  *
  * **Every lying document is paired with an honest control** - an ordinary
  * unrecognized value in the same slot - because the fix's whole claim is

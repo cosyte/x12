@@ -262,7 +262,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   JavaScript or `JSON.parse`d caller can pass, reaches the second route without it, so read
   `submission.variant` to tell the routes apart. And what becomes of a `DTP` / `AMT` / `NTE` /
   `REF` following a dropped `LX` is route-dependent and is **not** simply "absent": see
-  `KNOWN-LIMITATIONS.md`, which states both routes and is the only surface that does.
+  `KNOWN-LIMITATIONS.md`, which states both routes.
 
 - **🩺 An 837 service line whose `SVx` never decoded no longer reads `0` / `0` in silence
   (`X12-837-SV-SILENT-ZERO`).** `get837Claims` resolves ONE variant for the whole submission (the
