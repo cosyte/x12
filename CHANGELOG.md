@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🩺 `X12_837_SERVICE_LINE_DROPPED`, the 25th Tier-2 warning code, plus the public factory
+  `serviceLineDropped(position)`** (`X12-VARIANT-LOOKUP-PROTOTYPE`). Raised when an 837 `LX` opens
+  no Loop 2400 at all, so the service line reaches **no claim's** `serviceLines` - either because no
+  `CLM` is open at that point in the walk, or because the submission's variant never resolved to
+  `P` / `I` / `D`. Distinct from `X12_837_SERVICE_LINE_NOT_DECODED`, where the line is retained and
+  only its service segment went unread. `position.segmentIndex` names the `LX`, the same anchor and
+  for the same reason: it is the one segment present in every case. Nothing is fabricated to stand
+  in for the missing line and no claim is synthesized; the segments stay verbatim on `tx.segments`.
+  The registry stays additions-only.
+
 - **🩺 `X12_837_SERVICE_LINE_NOT_DECODED`, the 24th Tier-2 warning code, plus the public factory
   `serviceLineNotDecoded(position)`** (`X12-837-SV-SILENT-ZERO`). Raised when an 837 Loop 2400
   service line is closed without ever having decoded an `SV1` / `SV2` / `SV3` for the variant the
@@ -199,6 +209,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   code changed and no published type changed.
 
 ### Fixed
+
+- **🩺 A lookup keyed by document bytes can no longer be defeated by a key inherited from
+  `Object.prototype` (`X12-VARIANT-LOOKUP-PROTOTYPE`).** Several lookup tables were plain object
+  literals, which inherit `Object.prototype`, so an inbound value of `constructor`, `valueOf`,
+  `toString`, `toLocaleString`, `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable` or
+  `__proto__` resolved TRUTHY against them. `Object.freeze` did not help: it seals the own
+  properties and changes nothing about the prototype chain. What that cost, measured at `a33c208`:
+  - **🩺 An ST-03 of `constructor` took every 837 service line off the model, silently.**
+    `VARIANT_BY_ICR` answered the `Object` constructor, so `submission.variant` was a **function**
+    rather than one of `P` / `I` / `D` / `unknown`, `X12_837_UNKNOWN_VARIANT` never fired, and
+    `openServiceLine` - which answers `undefined` for anything that is not a known variant - dropped
+    **every Loop 2400**, its charge, its units and its procedure code, with `warnings: []`.
+  - **🩺 `lookupCarc("constructor")` answered a `CodeListEntry` whose `description` was a function**,
+    on a field typed `string`, and suppressed `X12_UNKNOWN_CARC`. The guard is now in `makeLookup`,
+    the single factory every bundled snapshot is read through, so the other bundled lists are
+    covered by the same fix.
+  - **🩺 An HI qualifier of `constructor` suppressed `X12_UNKNOWN_HI_QUALIFIER`** while still
+    landing the code with `codeSystem: "unknown"` - an unresolvable code system on a diagnosis, with
+    nothing on any channel to say so.
+  - **An HL-03 of `constructor` raised `X12_HL_PARENT_LEVEL_INVALID`** against a level code the
+    walker has no expectation for: a structural violation the document never made. The 271 / 277 /
+    278 readers were never exposed - they share `src/transactions/shared/hl.ts`, which has always
+    guarded this read with `hasOwnProperty`; the 837's local copy did not.
+  - **`isClaimAdjustmentGroupCode("constructor")` answered `true`** and narrowed a non-code to
+    `ClaimAdjustmentGroupCode`. It used `in`, which **walks the prototype chain**: the safe-looking
+    form, not the safe form. It is now `Object.hasOwn`.
+
+  Every one of these now behaves exactly as it does for any other unrecognized value, which is the
+  whole of the claim: each fixed case is pinned against an honest-control case in the same slot.
+  Tables this package declares itself are built through the new internal
+  `wireLookup` (`Object.create(null)`, then frozen), so the absent prototype protects future read
+  sites too; tables it receives from a caller are guarded with `Object.hasOwn` at the read, the form
+  `shared/hl.ts` already used. **No model shape and no message text changed**, and no code-list
+  content changed.
+
+- **🩺 An 837 `LX` that opens no Loop 2400 no longer drops the whole service line in silence
+  (`X12-VARIANT-LOOKUP-PROTOTYPE`).** Two routes reached it: an `LX` / `SVx` arriving before any
+  `CLM`, which produced `claims: []` and `warnings: []` even with a charge and units on the wire;
+  and a submission whose variant never resolved to `P` / `I` / `D`, where `openServiceLine` answers
+  `undefined` and the line was never opened. Both now raise `X12_837_SERVICE_LINE_DROPPED` at the
+  `LX`. **Retention is unchanged and nothing is invented**: no claim is synthesized to hold an
+  orphan line and no variant is guessed, because either would put structure on the model that the
+  sender did not send. The segments were, and remain, verbatim on `tx.segments`.
 
 - **🩺 An 837 service line whose `SVx` never decoded no longer reads `0` / `0` in silence
   (`X12-837-SV-SILENT-ZERO`).** `get837Claims` resolves ONE variant for the whole submission (the

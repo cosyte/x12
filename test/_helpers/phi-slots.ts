@@ -705,6 +705,28 @@ export const PHI_SLOTS: readonly DiagnosticSlot<string>[] = [
     expectCode: WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED,
   },
   {
+    name: "LX-01 line number on a Loop 2400 the walker never opened",
+    // own: X12_837_SERVICE_LINE_DROPPED is raised on exactly this LX.
+    // Removing the CLM orphans the whole loop, so nothing downstream of the
+    // LX reaches the model and this segment is all a diagnostic has to name.
+    plant: (m) =>
+      swap(swap(G_837P, "~CLM*PT-ACCT-001*150***11:B:1*Y*A*Y*Y~", "~"), "~LX*1~", `~LX*${m}~`),
+    expectCode: WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
+  },
+  {
+    name: "SV1-01-2 procedure code on a service line the walker never opened",
+    // own: the dropped line's SVx is the text a "helpful" message would be
+    // most tempted to quote ("dropped: <bytes>"), and on a real 837 it is
+    // the procedure billed for a named patient.
+    plant: (m) =>
+      swap(
+        swap(G_837P, "~CLM*PT-ACCT-001*150***11:B:1*Y*A*Y*Y~", "~"),
+        "~SV1*HC:99213:25*150*UN*1***1~",
+        `~SV1*HC:${m}:25*150*UN*1***1~`,
+      ),
+    expectCode: WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
+  },
+  {
     name: "HL-01 hierarchical id number",
     // own: X12_HL_PARENT_MISMATCH is raised because HL-02 on the next level
     // no longer resolves to this HL-01.

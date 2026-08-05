@@ -257,6 +257,16 @@ export type X12HiQualifier = keyof typeof HI_QUALIFIERS;
  * ```
  */
 export function resolveHiQualifier(qualifier: string): HiQualifierEntry | undefined {
+  // `Object.hasOwn` first: `HI_QUALIFIERS` is an object literal and
+  // `qualifier` is an HI composite's first component, read off the wire. A
+  // literal inherits `Object.prototype`, so at `a33c208` an HI qualifier of
+  // `constructor` / `toString` / `valueOf` resolved to a FUNCTION, the
+  // 837 and 278 walkers read `resolved !== undefined` and therefore did
+  // NOT raise `X12_UNKNOWN_HI_QUALIFIER`, and the code still landed with
+  // `codeSystem: "unknown"` - an unresolvable code system on a diagnosis,
+  // silently. The table stays `as const` (its keys are the
+  // `X12HiQualifier` union), so the guard is at the read.
+  if (!Object.hasOwn(HI_QUALIFIERS, qualifier)) return undefined;
   return (HI_QUALIFIERS as Record<string, HiQualifierEntry>)[qualifier];
 }
 

@@ -93,6 +93,21 @@ export function makeLookup(
   snapshot: CodeListSnapshot,
 ): (code: string) => CodeListEntry | undefined {
   return (code: string): CodeListEntry | undefined => {
+    // `Object.hasOwn` first, ALWAYS. `snapshot.codes` is a plain object
+    // literal, `code` comes off the wire, and a literal inherits
+    // `Object.prototype` - so a bare `snapshot.codes[code]` answers a
+    // FUNCTION for `constructor` / `valueOf` / `toString` /
+    // `hasOwnProperty` and `Object.prototype` itself for `__proto__`.
+    // Measured at `a33c208`: `lookupCarc("constructor")` returned
+    // `{ code: "constructor", description: <function Object> }`, so a
+    // `description` typed `string` was a function on the frozen model AND
+    // the caller's `entry === undefined` branch - the one that raises
+    // `X12_UNKNOWN_CARC` / `X12_UNKNOWN_RARC` / the claim-status codes -
+    // never ran. The guard is here, at the single factory every bundled
+    // snapshot is read through, rather than at each caller: `snapshot` is
+    // supplied by the caller, so this module cannot re-declare the table
+    // with a null prototype the way `src/parser/lookup.ts` does.
+    if (!Object.hasOwn(snapshot.codes, code)) return undefined;
     const description = snapshot.codes[code];
     if (description === undefined) return undefined;
     return Object.freeze({ code, description });

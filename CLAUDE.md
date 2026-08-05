@@ -37,7 +37,7 @@ Pre-alpha `0.0.x`, **published** to npm from a public repo. **Never quote a vers
   v1 read or emit scope as "270/271" or "276/277" complete** - that claim was on the README and the
   docs site until `ASSETS-P8` corrected it.
   Why: `documentation/agent-notes.md#published-scope-the-270-and-276-gap`
-- **Warning registry: 24 codes + 4 Tier-3 fatals.** Additions-only. **Derive the count rather than
+- **Warning registry: 25 codes + 4 Tier-3 fatals.** Additions-only. **Derive the count rather than
   trusting this line** - the codes are exported as `ALL_WARNING_MESSAGES`, and the four fatals are
   enumerated under Engineering Guardrails below.
 - **Profile system** (`defineProfile()`, `profiles` namespace) shipped Phase 9. **PHI commit-gate**
@@ -105,6 +105,37 @@ the published `@cosyte/*` config packages, not by copying files. The source of t
 **Every one of these was paid for, and each `###` names the section carrying its measurement, its
 sources and its refutation history. Do not act on a line here without reading that section.**
 **🩺 marks a trap where getting it wrong mis-states a clinical or financial value on the wire.**
+
+### 🩺 `X12-VARIANT-LOOKUP-PROTOTYPE` (2026-08-05) · `documentation/agent-notes.md#x12-variant-lookup-prototype-2026-08-05`
+
+- **🩺 A lookup keyed by DOCUMENT BYTES is built with `wireLookup` (`Object.create(null)`) where this
+  package declares the table, and read through `Object.hasOwn` where it does not.** An object literal
+  inherits `Object.prototype`, so `constructor` / `valueOf` / `toString` / `toLocaleString` /
+  `hasOwnProperty` / `isPrototypeOf` / `propertyIsEnumerable` / `__proto__` resolved TRUTHY.
+  **`Object.freeze` DOES NOT HELP and is why this passed review** - it seals OWN properties only.
+- **🩺 It destroyed strictly more than `#67`: an ST-03 of `constructor` made `variant` a FUNCTION, so
+  `openServiceLine` answered `undefined` and EVERY Loop 2400 left the model with `warnings: []`.**
+  It also made a `lookupCarc` `description` a function (suppressing `X12_UNKNOWN_CARC`), suppressed
+  `X12_UNKNOWN_HI_QUALIFIER`, and FABRICATED an `X12_HL_PARENT_LEVEL_INVALID`.
+- **🩺 `in` IS NOT THE SAFE FORM** - it walks the prototype chain. Reach for `Object.hasOwn`.
+- **271 / 277 / 278 were NEVER exposed and their literal tables are LEFT ALONE:** `shared/hl.ts` has
+  always guarded with `hasOwnProperty`; the 837's LOCAL `validateHl` copy did not. Measured `[]` at
+  base and head. **Do not "finish the job" there.**
+- **NO SOURCE SCAN SHIPS, DELIBERATELY.** A scan cannot separate a wire-keyed table from a
+  discriminant-keyed one, and `warnings.ts` has four of the latter that must stay literals, so it
+  needs a per-TABLE allowlist (the `#51` failure mode). The defence is behavioural and derives its
+  keys from `Object.getOwnPropertyNames(Object.prototype)` AT RUN TIME.
+- **`X12_837_SERVICE_LINE_DROPPED` is the 25th code and is NOT `#67`'s renamed.** `NOT_DECODED` = the
+  line IS on the model with seeded zeros; `DROPPED` = it is on NO claim. Two routes (no `CLM` open,
+  or the variant never resolved), one message, no discriminant. **Nothing is fabricated** - no
+  synthesized claim, no guessed variant. Anchored at the `LX`, like `#67`.
+- **🩺 `toContain` APPEARS NOWHERE IN THE NEW SUITE** - `#67`'s residual pinned a value plus the
+  absence of a DIFFERENT code and stayed green. Assert the WHOLE channel with `toEqual`, and pair
+  every lying document with an honest control in the same slot.
+- **33 of 49 red at `a33c208`, 49 green at head; every guard has its own red negative control.**
+  `phi-slots` **84** - the dropped `LX-01` and its `SV1-01-2`, both OWN.
+- **🩺 An ABSENT `SV1-02` still reads a confident `0`, unwarned. Left open on purpose** - it closes
+  only with the deferred `X12Decimal | undefined` slice.
 
 ### 🩺 `X12-837-SV-SILENT-ZERO` (2026-08-05) · `documentation/agent-notes.md#x12-837-sv-silent-zero-2026-08-05`
 
@@ -191,10 +222,9 @@ sources and its refutation history. Do not act on a line here without reading th
 - **The raw slots that were routed through `esc`, and are therefore delimiter-safe and type-checked
   but NOT value-constrained:** `build999`'s GS-06/GE-02, ST-02/SE-02, AK9-01, IK5-01 and GS-07;
   `groupDate`/`groupTime` (GS-04/GS-05) in **all seven** domain builders, not just the 999;
-  `build278`'s **HL-03**; `build837`'s LX-01. Routing closed their delimiter hole (a `"1*BOGUS"` 999
-  `groupControlNumber` used to shift GS-07/GS-08 by one and now reads `1?*BOGUS`). **Only the slots
-  named here were routed.** **The residual delimiter injection is NOT stop-the-line: these fail at
-  the receiver, they do not mint a wrong clinical value.** Do not escalate it as if they did.
+  `build278`'s **HL-03**; `build837`'s LX-01. **Only the slots named here were routed.** **The
+  residual delimiter injection is NOT stop-the-line: these fail at the receiver, they do not mint a
+  wrong clinical value.** Do not escalate it as if they did.
 - **`buildTA1` uses NEITHER `seg` NOR `joinSeg`** - it joins its five caller-supplied elements
   directly, no `esc`, no `pad`. TA1-01 is data element I12, the reassociation key back to the
   acknowledged interchange. **This was the FOURTH iteration of the completeness claim; do not write
@@ -210,11 +240,10 @@ sources and its refutation history. Do not act on a line here without reading th
   top-of-remit) in `src/transactions/remit/balance.ts`. **The terms, enumerated, because a count
   without its list cannot self-correct:** `payment.totalActualPayment`, `claim.totalChargeAmount`,
   `claim.totalPaymentAmount`, every `adjustments[].amount` at claim and line level,
-  `serviceLine.chargeAmount`, `serviceLine.paymentAmount`, `providerAdjustments[].amount`. Every
-  other `X12Decimal` field refuses typed. Two successive remedies published a closed list and an
-  element-number list and both were measured wrong; the second was wrong because it graded the prose
-  against this repo's code. Field names cannot drift that way. Both arms are pinned on one fixture,
-  so moving a slot between them reds the gate.
+  `serviceLine.chargeAmount`, `serviceLine.paymentAmount`, `providerAdjustments[].amount`. Two
+  successive remedies published a closed list and an element-number list and both were measured
+  wrong; the second because it graded the prose against this repo's code. Field names cannot drift
+  that way. Both arms are pinned on one fixture, so moving a slot between them reds the gate.
 - **Assert the MESSAGE, not the class, in every builder-refusal test** - including the disclosure
   pins. `expect(run).toThrow(Remit835BuildError)` passes on an unrelated refusal; four of six new
   cases were vacuous that way.
@@ -224,8 +253,7 @@ sources and its refutation history. Do not act on a line here without reading th
   shape in a comment reds it too.
 - **Pinned counts:** `esc` **406** invocations on **377** lines; same-line `esc(x.toString())` is
   **5**, and those five are the `escDec` declarations. `build-837` also declares `decStr` (`escDec`
-  without the escape) because HI's components go through `ctx.comp`, which maps `esc`, and escaping
-  there would double-release.
+  without the escape) because HI's components go through `ctx.comp`, which maps `esc`.
 - **"X12 code source 715" is wrong.** 715 is the _data element_ number and its values are a code
   **list**; `src/transactions/ack/codes.ts` had it right all along.
 
@@ -308,8 +336,7 @@ sources and its refutation history. Do not act on a line here without reading th
 ### 🩺 `X12-CALLER-VALUE-RESIDUALS` (2026-08-02) · `documentation/agent-notes.md#x12-caller-value-residuals-2026-08-02`
 
 - **All twenty-three caller-value holes across twelve `src/profiles/validate.ts` refusal sites route
-  through `renderCallerValue` or `renderCallerJson`.** Worst message at base measured **360,181**
-  characters; head measures **431**.
+  through `renderCallerValue` or `renderCallerJson`** (360,181 characters at base, 431 at head).
 - **`renderCallerJson` keeps `JSON.stringify` and bounds its OUTPUT**, because the value's TYPE is
   what is wrong at those sites (`null` and `"null"` are different mistakes). It never throws
   (circular, `BigInt`, hostile `toJSON`) and fabricates no closing quote.
@@ -320,69 +347,55 @@ sources and its refutation history. Do not act on a line here without reading th
   refusing** - 16 of 19 probes HUNG at base. 32 indexed loops across 7 builder modules.
 - **`requireCallerArray` takes the module's own `refuse` callback, never a shared throw**, because
   each builder owns a distinct error class and code consumers branch on.
-- **`requireCallerArray` answers `null` as ABSENT.** Every site it replaced read `x.dates ?? []`, and
-  `??` treats `null` and `undefined` alike; guarding only `undefined` turned a valid 834 into a
-  refusal. `null` is what a `JSON.parse`d payload carries for an absent list.
-- **`build835`'s `claims` is the measured exception** to the required-array upgrade, because
-  `enforceBalance` reads `spec.claims.map` rather than the checked binding. Pinned by a test.
+- **`requireCallerArray` answers `null` as ABSENT.** Every site it replaced read `x.dates ?? []`, so
+  guarding only `undefined` turned a valid 834 into a refusal. `null` is what a `JSON.parse`d
+  payload carries for an absent list. **`build835`'s `claims` is the measured exception** (
+  `enforceBalance` reads `spec.claims.map`, not the checked binding); pinned by a test.
 - **Scope the claim: a forged non-array is availability, not `STOP-THE-LINE`.** Nothing decodes a
   document differently. Unreachable from TypeScript, reachable from JavaScript / JSON / `@cosyte/cli`.
 - **`for...of` sites throw `TypeError: ... is not iterable` with NO `code`** (`buildInterchange`'s
-  `spec.groups`, `build999`'s `transactionResponses`, every optional leaf array). Disclosed, pinned,
-  in `KNOWN-LIMITATIONS.md`.
+  `spec.groups`, `build999`'s `transactionResponses`, every optional leaf array). Disclosed, pinned.
 - **`test/builder-array-bounds.test.ts` keys on the OPERAND, never on the property NAME** - that is
   the mistake `#51`'s allowlist made twice. Its scan strips comments first.
 - **🩺 The negative control found something worse than a red: removing a `requireCallerArray` call
-  WEDGES the test rather than failing it.** A synchronous infinite loop never yields, so `testTimeout`
-  cannot interrupt it. **That is the argument for keeping the source scan exhaustive rather than
-  trusting the examples.**
-- **Drive the shipped table, not a side probe.** A draft published 240,092 (the `sourceCategory`
-  site) as the maximum; the filed 120,093 never reproduced at all.
-- **431 is a measurement at a 120,000-character value, not a maximum** - the ` (N characters)` suffix
-  widens with the decimal width. That site's derived ceiling is **443**; the suite asserts every site
-  under 500.
+  WEDGES the test rather than failing it.** A synchronous infinite loop never yields, so
+  `testTimeout` cannot interrupt it. **That is the argument for keeping the source scan exhaustive
+  rather than trusting the examples.**
+- **Drive the shipped table, not a side probe**, and **431 is a measurement at a 120,000-character
+  value, not a maximum** (that site's derived ceiling is 443; the suite asserts every site under 500).
 - **The `QUIRK_ID_RE` comment claimed a bound the pattern never had.** Corrected the comment to the
   code, not the grammar to the comment.
 - **Known and NOT claimed away:** bounding a message here **redacts nothing** (the caller passed the
   value in), the surviving characters are **not escaped**, the bound is on UTF-16 **code units, not
-  bytes**, and both scans are syntactic tripwires for the shape this library uses, not proofs.
-- **Scope gap, named not measured:** neither gate scans indexed loops outside the `build*` scope
-  (`src/loops/define.ts`, `src/profiles/validate.ts`, the `get-*.ts` readers, `src/parser/envelope.ts`).
+  bytes**, both scans are syntactic tripwires and not proofs, and **neither gate scans indexed loops
+  outside the `build*` scope** (`src/loops/define.ts`, `src/profiles/validate.ts`, the `get-*.ts`
+  readers, `src/parser/envelope.ts`).
 
 ### `X12-BUILDER-BOUNDS` (2026-08-02) · `documentation/agent-notes.md#x12-builder-bounds-2026-08-02`
 
 - **Every caller-supplied value in a `build*` refusal message goes through `renderCallerValue`**
   (`src/builder/caller-value.ts`), capping the rendered **fragment** at
   `BUILD_REFUSAL_VALUE_MAX_RENDERED` = **90**. All three names are public.
-- **23 sites, 28 holes.** The census in the item was sixteen. Seven more were in `build999` and found
-  only by adversarial review over two passes: four are `number`-typed AK9 counts (exactly why a census
-  of string-typed slots missed them, and **a type is not a runtime guarantee**), three are `.length`
-  reads on caller arrays.
-- **State a ceiling as a ceiling and a measurement as a measurement.** 90 is the ceiling on the
-  interpolated FRAGMENT; the message is the fragment plus the site's template text. Three published
-  figures were wrong in the first draft, in the same run that was told to re-derive them.
+- **23 sites, 28 holes.** The census in the item was sixteen; seven more were found only by
+  adversarial review over two passes, four of them `number`-typed AK9 counts - **a type is not a
+  runtime guarantee.** **State a ceiling as a ceiling and a measurement as a measurement:** 90 is the
+  ceiling on the interpolated FRAGMENT, and three published figures were wrong in the first draft.
 - **This is NOT `PHI-WARNING-MESSAGE-LEAK` on the emit side.** There the value was the DOCUMENT's, so
   bounding it was redaction; here the caller passed it in and still holds it. Escaping was considered
   and **deliberately not done**, so a refusal message is bounded but **not** guaranteed to be one log
-  line.
-- **The caller-vs-document dichotomy is NOT categorical.** TR3 005010X231A1 requires AK2-02 to be a
-  verbatim copy of the acknowledged ST-02 and `buildTA1` echoes an inbound ISA-13, so on the ack path
-  a DOCUMENT's control numbers reach a refusal by the standard's own design.
+  line. **The caller-vs-document dichotomy is NOT categorical** - TR3 005010X231A1 requires AK2-02 to
+  copy the acknowledged ST-02 and `buildTA1` echoes an inbound ISA-13.
 - **`test/builder-refusal-bounds.test.ts` must never allow `String(...)` or `String(<expr>.length)`.**
-  Its first allowlist admitted any `String(...)` (which is how the four AK9 counts passed clean); its
-  second admitted `String(x.length)` by inspecting the property NAME and not the operand, so a forged
-  `{length}` sailed through. What remains allowed is a single-letter loop index and the `width`
-  literal only. **Negative controls run both ways.**
+  Its first allowlist admitted any `String(...)`; its second inspected the property NAME and not the
+  operand, so a forged `{length}` sailed through. What remains allowed is a single-letter loop index
+  and the `width` literal only. **Negative controls run both ways.**
 - **🩺 `segmentIndex: 0` is NOT a neutral sentinel: `tx.segments[0]` is the `ST`.** The remit-total
-  balance warning now carries the BPR's own 1-based body index. `balance.ts` had documented the old
-  `0` as deliberate, so that doc was corrected with the code.
-- **The build-side `segmentIndex: 0` was filed as the same defect and is not one.** The builder has no
-  parsed segment stream to index into and consumes only `.message`. The position is **inert by
-  construction**, not merely unused; it is now `UNANCHORED_BUILD_POSITION`. Fabricating a plausible
-  index would have named a segment no consumer can resolve.
+  balance warning now carries the BPR's own 1-based body index, and `balance.ts`'s doc was corrected
+  with the code. **The build-side `segmentIndex: 0` was filed as the same defect and is not one** -
+  the builder has no parsed segment stream, so the position is `UNANCHORED_BUILD_POSITION`, inert by
+  construction. Fabricating a plausible index would have named a segment no consumer can resolve.
 - **`renderCallerValue` coerces and never throws.** A first draft read `.length` where the base
-  interpolated into a template literal, turning a typed refusal into an uncaught `TypeError` with no
-  `code` for any JS/JSON caller.
+  interpolated into a template literal, turning a typed refusal into an uncaught `TypeError`.
 - **Assert SE-01 outright rather than trusting it** - a tripwire this repo has hit three times.
 
 ### 🩺 `X12-ORPHAN-REEMIT` (2026-08-02) · `documentation/agent-notes.md#x12-orphan-reemit-2026-08-02`
@@ -461,44 +474,38 @@ sources and its refutation history. Do not act on a line here without reading th
 
 ### 🩺 Per-transaction invariants that shipped with the phases
 
-Full detail in the phase sections of `documentation/agent-notes.md` (`#phase-9-profiles-and-quirk-attribution` through `#phase-1-envelope-decoder`).
+Full detail for EVERY bullet below is in the phase sections of `documentation/agent-notes.md`, `#phase-9-profiles-and-quirk-attribution` through `#phase-1-envelope-decoder`. Open the phase that shipped the surface before you change it.
 
 - **🩺 v1 profiles are DESCRIPTIVE: a profile NEVER alters the parse.** `groups`, `warnings` and `isa`
   are byte-identical with and without one (asserted by a divergence test); it attaches attribution to
   `ix.profile` and powers the one behavioural hook, `partitionWarnings`.
-  `documentation/agent-notes.md#phase-9-profiles-and-quirk-attribution`
 - **🩺 HARD RULE, LOCKED: a profile quirk with no Tier-2 fixture demonstrating the deviation is
   FORBIDDEN. No invented quirks.** Enforced three ways: `fixture` is required at the type level,
   `defineProfile()` rejects a missing or ill-formed fixture path, and the accuracy suite's per-quirk
-  DEMONSTRATOR registry asserts the cited fixture actually exhibits its claimed deviation - so a
+  DEMONSTRATOR registry asserts the cited fixture actually exhibits its claimed deviation, so a
   real-but-irrelevant fixture cannot slip past. A generic Medicare-FFS profile was DEFERRED rather
   than invented. Built-ins reach consumers only through the `profiles` namespace, never the top-level
-  export. `documentation/agent-notes.md#phase-9-profiles-and-quirk-attribution`
+  export.
 - **The profile API DIVERGES from `hl7` by design, and the divergences are conscious, not drift.**
   `describe()` returns a structured `X12ProfileDescription` bucketed by effect
   (`relaxes` / `adds` / `requires`), **deliberately DATA and not hl7's formatted string**; the input
   type is `X12ProfileSpec`; and `partitionWarnings` is x12-only. Driven by x12's lossless-lenient
   reality. **"Symmetry is a feature" does not license collapsing these back onto hl7's shapes.**
-  `documentation/agent-notes.md#phase-9-profiles-and-quirk-attribution`
 - **🩺 The 820 carries no TR3 balance equation.** `build820` emits all monetary amounts VERBATIM and
   NEVER raises a balance-mismatch refusal - a deliberate contrast with `build835`.
-  `documentation/agent-notes.md#phase-8f-build820-and-build834`
 - **🩺 Maintenance type is the 834's safety primitive: emit verbatim, refuse the unknown.** The
   builder places the caller's INS-03 / HD-01 code (X12 code source 875) into the segment VERBATIM and
   NEVER infers or normalizes it. Where the lenient read side only WARNS
   (`X12_834_UNKNOWN_MAINTENANCE_TYPE` on the affected member only), the builder REFUSES to emit an
   action it cannot name. On the read side the code is preserved verbatim and the warning is scoped to
   the affected member only, so one unknown code never invalidates the roster.
-  `documentation/agent-notes.md#phase-8f-build820-and-build834` and
-  `#phase-7-278-834-820-readers`
 - **🩺 The 278 certification decision is response-only and never inferred.** `build278Response` places
   HCR-01 VERBATIM and never normalizes or **upgrades** it; `build278Request` REFUSES a review carrying
-  a decision. `documentation/agent-notes.md#phase-8e-build278request-and-build278response`
+  a decision.
 - **🩺 TRN echo is the safety-critical reassociation invariant.** A 271 echoes the 270's TRN-02 onto
   its subscriber / dependent, a 277 echoes the 276's onto its claim; the builders place the caller's
   trace into TRN-02 verbatim and NEVER fabricate, normalize, or mutate it. Locked by round-trip
-  property tests on both sides. `documentation/agent-notes.md#phase-8d-build271-build277-build277ca`
-  and `#phase-6-271-277-277ca-readers`
+  property tests on both sides.
 - **🩺 The HL spine is computed, never caller-supplied. Base stated this per builder and never as a
   blanket - keep it that way.** `build837P/I/D` OWNS the 837's safety primitive
   (`20 -> 22 -> 23`); `build271` (`20 -> 21 -> 22 -> 23`), `build277` / `build277CA`
@@ -506,11 +513,9 @@ Full detail in the phase sections of `documentation/agent-notes.md` (`#phase-9-p
   (`20 -> 21 -> 22 -> 23 -> EV/SS`) own theirs. All four compute HL-01, HL-02 and HL-04 from the
   nested input tree and take HL-03 from a module-level `HL_LEVEL` constant selected by tree position,
   at every level **except** the 278's EV/SS review level. Where the builder owns the field, a
-  structurally inconsistent hierarchy is
-  _unrepresentable_ and SE-01 is correct by construction. **There is no level field on
-  `Build271Spec` or `Build277Spec` and none should be added** - that would destroy the guarantee, not
-  close a gap. `documentation/agent-notes.md#phase-8c-build837p-build837i-build837d`,
-  `#phase-8d-build271-build277-build277ca`, `#phase-8e-build278request-and-build278response`
+  structurally inconsistent hierarchy is _unrepresentable_ and SE-01 is correct by construction.
+  **There is no level field on `Build271Spec` or `Build277Spec` and none should be added** - that
+  would destroy the guarantee, not close a gap.
 - **🩺 The one exception is the 278's EV/SS REVIEW level, whose HL-03 is caller-supplied**
   (`review.levelCode`, typed `"EV" | "SS"`, defaulted to `EV`, routed through `esc` as a raw slot -
   it is on the raw-slot list above as `build278`'s HL-03). `esc` type-checks for `string` and escapes
@@ -520,40 +525,34 @@ Full detail in the phase sections of `documentation/agent-notes.md` (`#phase-9-p
   `PRE-EXISTING`, identical at base and head, filed not fixed. **Do not restate this as a property of
   `build278`'s HL-03 generally, and do not write "every builder that has one" over it** - the UMO,
   requester, subscriber and dependent levels are library constants like every other builder's.
-  `documentation/agent-notes.md#x12-decimal-bypasses-the-guard-2026-08-04`
 - **🩺 On the READ side the walker NEVER silently re-numbers a broken HL pointer** - it emits
   `X12_HL_PARENT_MISMATCH` / `X12_HL_PARENT_LEVEL_INVALID`. The 278 `EV` / `SS` levels are
   deliberately tolerant (omitted from the expected-parent map), which is why nothing on the read side
   catches the out-of-enum HL-03 named above.
-  `documentation/agent-notes.md#phase-5-837-pid-reader` and `#phase-7-278-834-820-readers`
 - **Emit the envelope INLINE, not via `buildInterchange`, in any domain builder that composes a
   composite element** (835, 837), so a pre-composed composite is never double-escaped. Composites
   escape each component then join with the RAW component separator.
-  `documentation/agent-notes.md#phase-8b-build835`
 - **`splitSegments` is release-aware via `findUnescapedTerminator`.** A naive `indexOf` split
   mid-value on a `?`-release-escaped terminator (`?~`). A degenerate terminator-is-release delimiter
-  set falls back to the literal scan. `documentation/agent-notes.md#phase-8b-build835`
+  set falls back to the literal scan.
 - **Control NUMBERS are identity and are NEVER rewritten**, even under `{ specClean: true }`;
   corrected COUNTS emit only with `{ recomputeCounts: true }`, which is inert without `specClean`.
   Every mismatch surfaces via `onWarning` and is never silently corrected.
-  `documentation/agent-notes.md#phase-8-serializer-and-general-builder`
 - **🩺 All monetary / percent / quantity fields decode as `X12Decimal`: string-backed, `BigInt`-exact,
-  NEVER `parseFloat`.** `documentation/agent-notes.md#phase-4-835-era-reader`
+  NEVER `parseFloat`.**
 - **🩺 The 835 model is NEVER silently rebalanced.** Three TR3 X221A1 §1.10.2 invariants (line, claim,
   top-of-remit) run after the walk and emit `X12_835_REMIT_BALANCE_MISMATCH`. **PLB amounts carry the
   RAW EDI sign (positive = take-back), so the top equation is `BPR-02 == Σ(CLP-04) - Σ(PLB)`.**
-  `documentation/agent-notes.md#phase-4-835-era-reader`
 - **🩺 An unknown code preserves its verbatim value and warns; it is never dropped or normalized** -
   `X12_UNKNOWN_CARC` / `X12_UNKNOWN_RARC` / `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` /
   `X12_UNKNOWN_CLAIM_STATUS` / `X12_UNKNOWN_HI_QUALIFIER` (verbatim qualifier + code, with
   `codeSystem: "unknown"`) / `X12_837_UNKNOWN_VARIANT`.
-  `documentation/agent-notes.md#phase-5-837-pid-reader`
 - **🩺 Acks are structurally PHI-free by design, and `IK4-04` (`copyOfBadDataElement`) is a
   caller-supplied surface callers SHOULD omit when the bytes are PHI. The library NEVER
-  auto-populates it.** `documentation/agent-notes.md#phase-3-999-and-ta1-acknowledgments`
+  auto-populates it.**
 - **`build999` REFUSES `Accept` against a non-empty error list (`X12_ACK_ACCEPT_WITH_ERRORS`) and
   inconsistent AK9 counts (`X12_ACK_COUNT_MISMATCH`); `buildTA1` REFUSES `A` with a non-`000` note
-  (`X12_TA1_ACCEPT_WITH_NOTE`).** `documentation/agent-notes.md#phase-3-999-and-ta1-acknowledgments`
+  (`X12_TA1_ACCEPT_WITH_NOTE`).**
 - **🩺 Every DOMAIN builder's own refusal message carries structural locators, counts and numeric
   totals only** - never a `claimId` (patient-account number), member id, member name, trace, or
   diagnosis code. `build834` additionally names the offending maintenance code, which is an X12
@@ -566,19 +565,13 @@ Full detail in the phase sections of `documentation/agent-notes.md` (`#phase-9-p
   (`build835: CLP-01 must be a string, but received a number (…)`) - bounded to 90, not redacted.
   `PRE-EXISTING`, identical at base and head, filed not fixed. **The negative list is not an absolute
   PHI guarantee; it is a guarantee about the builder's own templates.**
-  `documentation/agent-notes.md#phase-8c-build837p-build837i-build837d`,
-  `#phase-8b-build835`, `#phase-8d-build271-build277-build277ca`,
-  `#phase-8e-build278request-and-build278response`, `#phase-8f-build820-and-build834`
 - **The `?`-release escape is honored losslessly** (`?~`->`~`, `?*`->`*`, `??`->`?`); dot-path
   traversal walks elements, composites (`-N`, 1-indexed) and repetitions (`[N]`, 0-indexed).
-  `documentation/agent-notes.md#phase-2-syntactic-core`
 - **Known read-side limitations, documented not accidental:** claim-/line-level provider addresses
   (837 Loop 2310 / 2420 N3/N4) do not round-trip, though the NM1 fields do; and the 837's Loop 2320
   other-subscriber / other-payer is captured at the SURFACE level only, with the detailed CAS / OI /
   MOA inside 2320 deferred. `get834Enrollments` streams one member per `INS` loop, but **the file is
   still parsed into `tx.segments` up front** - an honest v1 limitation, not a streaming parser.
-  `documentation/agent-notes.md#phase-8c-build837p-build837i-build837d`,
-  `#phase-5-837-pid-reader`, `#phase-7-278-834-820-readers`
 
 ### 🩺 PHI commit-gate · `documentation/agent-notes.md#phi-commit-gate-armed-2026-06-28`
 

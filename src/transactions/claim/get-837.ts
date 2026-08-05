@@ -39,6 +39,7 @@
 
 import { X12Decimal } from "../../decimal.js";
 import { lookupCarc } from "../../code-lists/carc.js";
+import { wireLookup } from "../../parser/lookup.js";
 import {
   collectElementValues,
   componentOptional,
@@ -55,6 +56,7 @@ import {
   hlParentLevelInvalid,
   hlParentMismatch,
   missingRequiredLoop,
+  serviceLineDropped,
   serviceLineNotDecoded,
   unknown837Variant,
   unknownCarc,
@@ -91,15 +93,30 @@ import type {
   X12_837Submission,
 } from "./types.js";
 
-/** Map ST-03 implementation-convention reference → 837 variant. @internal */
-const VARIANT_BY_ICR: Readonly<Record<string, X12Claim837Variant>> = Object.freeze({
+/**
+ * Map ST-03 implementation-convention reference → 837 variant.
+ *
+ * Built through {@link "../../parser/lookup.js".wireLookup} because the key
+ * is document bytes. As a plain object literal (which it was through
+ * `a33c208`) an ST-03 of `constructor` / `valueOf` / `toString` /
+ * `__proto__` resolved TRUTHY, so `variant` became a function or
+ * `Object.prototype`, `X12_837_UNKNOWN_VARIANT` never fired, and
+ * `openServiceLine` - which answers `undefined` for anything that is not
+ * `P` / `I` / `D` - dropped EVERY Loop 2400 off the model with no warning
+ * on any channel. @internal
+ */
+const VARIANT_BY_ICR: Readonly<Record<string, X12Claim837Variant>> = wireLookup({
   "005010X222A2": "P",
   "005010X223A3": "I",
   "005010X224A2": "D",
 });
 
-/** Map SVx segment id → 837 variant for fall-back detection. @internal */
-const VARIANT_BY_SV_SEGMENT: Readonly<Record<string, X12Claim837Variant>> = Object.freeze({
+/**
+ * Map SVx segment id → 837 variant for fall-back detection. Same
+ * null-prototype construction and the same reason: `seg.id` is the
+ * segment's first element, read off the wire. @internal
+ */
+const VARIANT_BY_SV_SEGMENT: Readonly<Record<string, X12Claim837Variant>> = wireLookup({
   SV1: "P",
   SV2: "I",
   SV3: "D",
@@ -150,8 +167,17 @@ export const NM1_QUALIFIERS = Object.freeze({
  * parent. Subscriber (level 22) MUST be parented by billing provider.
  * Dependent / patient (level 23) MUST be parented by subscriber.
  * Violations fire `X12_HL_PARENT_LEVEL_INVALID`. @internal
+ *
+ * Null-prototype for the same reason as the two tables above: `hl.levelCode`
+ * is HL-03, read off the wire. As a literal, an HL-03 of `constructor` /
+ * `valueOf` / `__proto__` answered a truthy expectation no parent could ever
+ * match, so the walker raised `X12_HL_PARENT_LEVEL_INVALID` against a level
+ * it has no expectation for - a fabricated non-conformance claim, where an
+ * honest unknown level code such as `99` is correctly tolerated. The 271 /
+ * 277 / 278 readers share `src/transactions/shared/hl.ts`, which has always
+ * guarded this read with `hasOwnProperty`; this local copy did not.
  */
-const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Object.freeze({
+const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = wireLookup({
   [HL_LEVEL_CODES.INFORMATION_SOURCE]: undefined,
   [HL_LEVEL_CODES.SUBSCRIBER]: HL_LEVEL_CODES.INFORMATION_SOURCE,
   [HL_LEVEL_CODES.DEPENDENT]: HL_LEVEL_CODES.SUBSCRIBER,
@@ -584,8 +610,28 @@ export function get837Claims(
       }
       case "LX": {
         flushServiceLine();
-        if (currentClaim === undefined) break;
-        currentServiceLine = openServiceLine(seg, delimiters, currentClaim.variant, position);
+        // An LX that opens no accumulator takes its whole Loop 2400 off the
+        // model: the SVx that follows finds no line to decode into, and the
+        // line is never pushed onto any claim. Both routes here are silent
+        // at `a33c208` and both are the same loss to a consumer, so both
+        // warn, at the LX itself - the one segment present in every case,
+        // and the anchor `X12_837_SERVICE_LINE_NOT_DECODED` already uses.
+        //
+        // Route 1: no CLM is open, so there is no claim to attach a line to.
+        // Route 2: `openServiceLine` answers `undefined` because the
+        // submission's variant is not P / I / D, so there is no line shape
+        // to build. Nothing is fabricated for either: synthesizing a claim
+        // or guessing a variant would invent structure the sender did not
+        // send, which is the failure mode this reader exists to avoid.
+        const opened =
+          currentClaim === undefined
+            ? undefined
+            : openServiceLine(seg, delimiters, currentClaim.variant, position);
+        if (opened === undefined) {
+          warnings.push(serviceLineDropped(position));
+          break;
+        }
+        currentServiceLine = opened;
         activeEntity = undefined;
         context = { kind: "loop2400" };
         break;

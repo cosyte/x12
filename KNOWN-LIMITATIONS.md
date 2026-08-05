@@ -74,13 +74,53 @@ model.
     conformant document produces the same warning as a document that disagrees with itself, and the
     library does not decide which side is wrong. A line with no `SVx` at all is short a Loop 2400
     segment the 837 TR3s require, but that judgement is yours to make from the bytes.
-  - **An unresolvable variant is a different case.** With no `type`, an ST-03 that resolves to no
-    known variant **and no `SVx` anywhere in the transaction to fall back on**, no service line is
-    opened and no `0` is fabricated on any line slot. **`0` such lines is therefore also a signal,
-    and it is a weaker one:** `X12_837_UNKNOWN_VARIANT` covers the
-    ordinary shape of that case, but it is raised from a plain-object lookup on a sender-controlled
-    ST-03, so **do not read the absence of a warning as proof the variant resolved honestly.** Check
-    `submission.variant` against the set you expect.
+  - **An unresolvable variant is a different case, and it no longer goes unreported.** With no
+    `type`, an ST-03 that resolves to no known variant **and no `SVx` anywhere in the transaction to
+    fall back on**, no service line is opened and no `0` is fabricated on any line slot. That raises
+    `X12_837_UNKNOWN_VARIANT` for the submission, and now also
+    `X12_837_SERVICE_LINE_DROPPED` at each `LX` that consequently opened nothing - so the missing
+    lines are reported per line and not inferred from a count. The earlier warning here, that the
+    lookup was a plain object literal and its absence therefore proved nothing, is **withdrawn: that
+    hole is closed** (see the next entry). Checking `submission.variant` against the set you expect
+    is still worth doing, as a cheap assertion rather than as a defence.
+
+- **🩺 An 837 `LX` that opens no Loop 2400 at all raises `X12_837_SERVICE_LINE_DROPPED`, the 25th
+  Tier-2 warning code.** Distinct from `X12_837_SERVICE_LINE_NOT_DECODED` above, where the line IS
+  on the model and only its service segment went unread: here the line reaches **no claim's**
+  `serviceLines`, so its charge, units, procedure code, dates, amounts, notes and line-level
+  adjudications are all absent rather than stubbed. Two causes: no Loop 2300 (`CLM`) is open at that
+  `LX`, or the submission's variant never resolved to `P` / `I` / `D`. Nothing is fabricated to
+  stand in and no claim is synthesized - the segments stay verbatim on `tx.segments`. **Do not read
+  an empty `serviceLines` as "the claim had no service lines" without checking the warning channel.**
+
+- **🩺 Through `0.0.9`, a lookup keyed by document bytes could be defeated by a key inherited from
+  `Object.prototype`, and the affected code paths reported nothing.** The bundled code lists, the
+  837's variant resolution, and the 837's HL parent-level map were built as plain object literals,
+  which inherit `Object.prototype`. An inbound value of `constructor`, `valueOf`, `toString`,
+  `toLocaleString`, `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable` or `__proto__`
+  therefore resolved TRUTHY. `Object.freeze` did not help: it seals the own properties and changes
+  nothing about the prototype chain. Concretely, at `0.0.9`:
+  - An ST-03 of `constructor` made `submission.variant` a **function**, suppressed
+    `X12_837_UNKNOWN_VARIANT`, and took **every Loop 2400 off the model** with `warnings: []`.
+  - `lookupCarc("constructor")` answered a `CodeListEntry` whose `description`, typed `string`, was
+    a function, and suppressed `X12_UNKNOWN_CARC`. The same held for the other bundled lists.
+  - An HI qualifier of `constructor` suppressed `X12_UNKNOWN_HI_QUALIFIER` while still landing the
+    code with `codeSystem: "unknown"`.
+  - An HL-03 of `constructor` raised `X12_HL_PARENT_LEVEL_INVALID` against a level the walker has
+    no expectation for - a structural violation the document never made.
+  - `isClaimAdjustmentGroupCode("constructor")` answered `true` and narrowed the type. It used the
+    `in` operator, which **walks the prototype chain**; `in` is the safe-looking form and is not
+    the safe form.
+
+  Every one of these now behaves exactly as it does for any other unrecognized value. The 271 / 277
+  / 278 readers were never exposed: their `EXPECTED_PARENT_LEVEL` tables have the same literal shape
+  but are read only through `src/transactions/shared/hl.ts`, which has always guarded with
+  `hasOwnProperty`. **What is not claimed:** there is no source-level scan enforcing this shape. A
+  syntactic scan cannot tell a table keyed by document bytes from one keyed by a library-owned
+  discriminant, and the message registries in `src/parser/warnings.ts` are legitimately the latter,
+  so such a scan would need a per-table allowlist. The defence is behavioural instead: the suite
+  derives its key list from `Object.getOwnPropertyNames(Object.prototype)` at run time, so a future
+  engine adding an inherited member widens it without anyone editing a list.
 
 - **🩺 BREAKING, in the release after `0.0.9`: the 835 Loop 2110 SVC element map was off by one, in
   BOTH directions, and is corrected.** Through `0.0.9` `get835` read the revenue code from **SVC-05**
