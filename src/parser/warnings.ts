@@ -82,6 +82,7 @@ export const WARNING_CODES = {
   X12_UNKNOWN_CLAIM_STATUS: "X12_UNKNOWN_CLAIM_STATUS",
   X12_834_UNKNOWN_MAINTENANCE_TYPE: "X12_834_UNKNOWN_MAINTENANCE_TYPE",
   X12_UNPARSEABLE_DECIMAL: "X12_UNPARSEABLE_DECIMAL",
+  X12_837_SERVICE_LINE_NOT_DECODED: "X12_837_SERVICE_LINE_NOT_DECODED",
 } as const;
 
 /**
@@ -322,6 +323,8 @@ const WARNING_MESSAGES = {
     "Unknown 834 maintenance type: the INS-03/HD-01 code is outside the bundled snapshot. The verbatim code is preserved on the enrollment and the action is NEVER inferred.",
   X12_UNPARSEABLE_DECIMAL:
     "Unparseable decimal: the element at `position.elementIndex` held bytes this library could not decode as a decimal, so NO value was decoded from it. Whatever occupies that slot on the model, including 0 and undefined, is a stand-in and is NOT a value the sender supplied. The verbatim bytes are preserved on the segment; read them there before acting on the amount, quantity or percent.",
+  X12_837_SERVICE_LINE_NOT_DECODED:
+    "837 service line with no decoded service segment: the Loop 2400 line opened at `position.segmentIndex` is followed by no SV1 / SV2 / SV3 matching the variant this submission resolved to, so NOTHING carried by the service segment was read. The line's `charge` and `units` hold 0 as a stand-in and are NOT values the sender supplied; its procedure code, modifiers, unit of measure and place of service are equally undecoded. Two common causes, both non-conformant: the line carries no SVx at all, or it carries one for a different 837 variant than ST-03 (or the caller's `type` option) named. The verbatim segments are preserved on the transaction set; read them there before acting on the charge or the quantity.",
 } as const;
 
 /**
@@ -839,6 +842,31 @@ export function unknown837Variant(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_837_UNKNOWN_VARIANT,
     message: WARNING_MESSAGES.X12_837_UNKNOWN_VARIANT,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_837_SERVICE_LINE_NOT_DECODED` warning. Emitted by the 837
+ * helper when a Loop 2400 service line is closed without ever having
+ * decoded an SV1 / SV2 / SV3 for the resolved variant: either the line
+ * carries no SVx at all, or it carries one belonging to a different 837
+ * variant than ST-03 (or the caller's `type` option) named. The line is
+ * still retained, and every segment stays verbatim on the transaction set,
+ * but the line's `charge` and `units` are the accumulator's seeded
+ * `X12Decimal.ZERO` rather than anything read off the wire. `position`
+ * names the LX segment that opened the line.
+ *
+ * @example
+ * ```ts
+ * import { serviceLineNotDecoded } from "@cosyte/x12";
+ * const w = serviceLineNotDecoded({ segmentIndex: 9, transactionIndex: 0 });
+ * ```
+ */
+export function serviceLineNotDecoded(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED,
+    message: WARNING_MESSAGES.X12_837_SERVICE_LINE_NOT_DECODED,
     position,
   };
 }

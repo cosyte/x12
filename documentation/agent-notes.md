@@ -11,6 +11,8 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 
 ## Contents
 
+- [CLAUDE-MD-AUDIT (2026-08-04)](#claude-md-audit-2026-08-04)
+- [X12-837-SV-SILENT-ZERO (2026-08-05)](#x12-837-sv-silent-zero-2026-08-05)
 - [X12-QUANTITY-SILENT-DEFAULTS (2026-08-05)](#x12-quantity-silent-defaults-2026-08-05)
 - [X12-SVC-ELEMENT-MAP-OFF-BY-ONE (2026-08-04)](#x12-svc-element-map-off-by-one-2026-08-04)
 - [X12-DECIMAL-BYPASSES-THE-GUARD (2026-08-04)](#x12-decimal-bypasses-the-guard-2026-08-04)
@@ -40,6 +42,120 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 - [PHI commit-gate armed (2026-06-28)](#phi-commit-gate-armed-2026-06-28)
 - [Published scope: the 270 and 276 gap](#published-scope-the-270-and-276-gap)
 - [ASSETS-P8: the attw wrapper](#assets-p8-the-attw-wrapper)
+
+## CLAUDE-MD-AUDIT (2026-08-04)
+
+The reasoning behind this archive and the bound on `CLAUDE.md`, relocated out of `CLAUDE.md`
+itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
+
+- **This file used to be 106,994 bytes.** The narrative that made it that big - the per-incident
+  write-ups, the shipped-phase histories, the measurements, and every refutation that killed a
+  remedy - is now in `documentation/agent-notes.md`, verbatim and unedited, under headings named for
+  the item that produced them. Relocated 2026-08-04 under `CLAUDE-MD-AUDIT` (meta-repo
+  `documentation/decisions/0023-doc-budgets.md`, 2026-08-04 amendment). **This file's size is bounded
+  at write time by the umbrella's `.claude/hooks/doc-budget.mjs`. Never quote its number here - read
+  `REPO_CLAUDE` in the hook**, because the bound is a **per-repo ratchet** set at each file's
+  measured size **+2,000**, not a uniform cap. A uniform 90,000 was built first and reversed the same
+  day: it would have made five repos shrink-only while workers were mid-flight in them. **The +2,000
+  is load-bearing, not slack - a new TRAP must always be addable in one line; a new essay must not.**
+  **The ratchet must be LOWERED as a relocation lands, or it is a rubber stamp** - lowering x12's
+  entry to fit this file is part of landing this change and belongs in the umbrella, not here.
+
+- **Nothing was deleted.** What stays there is the cursor, the rules, and every trap, each compressed
+  to one imperative line. **Every `###` heading in "Traps" names the section of `agent-notes.md` that
+  carries that trap's measurement, its sources, and the reasoning - open it before you act on the
+  line.** These paragraphs each cost a defect or a refuted claim to learn, and several name a remedy
+  that was tried, shipped, and then refuted.
+
+- **The relocation is itself paid for, both ways.** `X12-837-SV-SILENT-ZERO` (2026-08-05) needed a
+  trap block and `CLAUDE.md` stood at 52,992 against a 53,000 ratchet, so this section moved here
+  first and the trap went in against the room it freed. That is the intended shape: **the entry is
+  never raised to meet a new trap.** The umbrella owes the matching ratchet drop.
+
+## X12-837-SV-SILENT-ZERO (2026-08-05)
+
+- **🩺 THE DEFECT: A SERVICE LINE THE READER NEVER READ SHIPPED A FABRICATED `0` CHARGE AND A
+  FABRICATED `0` UNITS, ON EVERY CHANNEL, WITH `warnings: []`.** `get837Claims` resolves ONE variant
+  for the whole submission (`opts.type` -> ST-03's implementation-convention reference -> the first
+  `SVx` segment present -> `"unknown"`). `openServiceLine` seeds `charge` / `units` at
+  `X12Decimal.ZERO`, and `decodeSv1` / `decodeSv2` / `decodeSv3` open with
+  `if (acc.variant !== "P"/"I"/"D") return;` - **before any element read**. So an `SV2` line on a
+  submission that resolved Professional decoded NOTHING: not the charge, not the units, not the
+  procedure code, modifiers, unit of measure or place of service. This is the residual
+  `X12-QUANTITY-SILENT-DEFAULTS` disclosed and did not fix, and it is the same harm class one level
+  up: the decimal sink cannot fire for an element no reader ever reached.
+
+- **🩺 MEASURE THE BASE, PROBE BY PROBE. Four leak paths, two honest controls, run against `d8b5085`
+  and against head:**
+
+  | Probe | Base | Head |
+  | --- | --- | --- |
+  | 837I fixture, ST-03 flipped to `005010X222A2` | 2 lines, `charge` `0` / `units` `0`, **`warnings: []`** | 2x `X12_837_SERVICE_LINE_NOT_DECODED` |
+  | 837I fixture read with `{ type: "P" }` | 2 lines, `0` / `0`, **`warnings: []`** | 2x `X12_837_SERVICE_LINE_NOT_DECODED` |
+  | `LX` with no `SVx` at all | 1 line, `0` / `0`, **`warnings: []`** | 1x `X12_837_SERVICE_LINE_NOT_DECODED` |
+  | 837D fixture read with `{ type: "I" }` | 1 line, `0` / `0`, **`warnings: []`** | 1x `X12_837_SERVICE_LINE_NOT_DECODED` |
+  | 837I fixture read as itself (control) | `charge` `1500`, `units` `1`, `warnings: []` | unchanged, still silent |
+  | 837P fixture read as itself (control) | `charge` `150`, `units` `1`, `warnings: []` | unchanged, still silent |
+
+  **The controls are half the evidence.** A warning that fired unconditionally passes every row in
+  the top half and fails both rows in the bottom half. The negative control ran the other way too:
+  deleting the single `acc.serviceSegmentDecoded = true` from `decodeSv1` makes the honest 837P
+  control emit the warning, which is what proves the flag, and not something ambient, is the gate.
+
+- **🩺 THE FOURTH PROBE IS NOT IN THE ITEM AND IS THE SAME DEFECT.** The item names the variant /
+  `SVx` disagreement. An `LX` carrying **no** `SVx` at all reaches the identical fabricated pair by a
+  different route, and a warning keyed on "an `SVx` arrived and was refused" would have missed it
+  entirely. **The warning is therefore a property of the LINE at flush - "no service segment was
+  ever decoded onto this line" - never of the SVx dispatch.** Same shape as the previous slice's
+  rule: a property of the READ, not of the control flow that led there.
+
+- **NOT DECODING THE FOREIGN `SVx` IS CORRECT AND IS NOT WHAT CHANGED. Do not "fix" it by decoding
+  the segment that is present.** `SV1-02` and `SV2-03` are both the line charge and `SV1-04` /
+  `SV2-05` / `SV3-06` are three different positions for the quantity, so reading an `SV2` into a
+  Professional-shaped line would **mis-read money** rather than fail to read it. Refusing to read is
+  the safe half. Nor may the line silently adopt the variant of the `SVx` present: `opts.type` is an
+  explicit caller instruction and the returned line is a discriminated union the caller narrows on.
+
+- **NO CONTROL FLOW CHANGED AND THE MODEL IS UNCHANGED, ON PURPOSE.** The line is still retained on
+  the claim, the resolved variant still wins over a disagreeing `SVx`, every segment stays verbatim
+  on `tx.segments`, and `charge` / `units` are still typed `X12Decimal` and still read `0`. **Never
+  write "an 837 line can no longer read 0 without the sender having billed 0".** It can; not
+  _silently_. Closing that is `X12Decimal | undefined` on the model, which ripples into `balance.ts`
+  and all nine builders: the same breaking slice the previous item deferred, still deferred.
+
+- **THE ANCHOR IS THE `LX`, NOT THE `SVx`.** `position.segmentIndex` names the segment that opened
+  the line, because the no-`SVx`-at-all case has no `SVx` to point at and an anchor that is
+  sometimes absent is worse than one that is always the same. `elementIndex` is deliberately absent:
+  no element was read, so there is no failing element to name. Both pinned.
+
+- **ONE MESSAGE, NO DISCRIMINANT.** A `<segment id> x <resolved variant>` discriminant was available
+  and library-owned, and was still not taken: it is six message-table entries for a fact
+  `tx.segments[position.segmentIndex]` and `submission.variant` already carry, and the previous
+  slice's discriminant was measurably wrong at three sites. The message names both causes in prose
+  instead.
+
+- **🩺 THE RESIDUAL TEST DID NOT GO RED, AND THAT IS THE FINDING.** The item, the umbrella docs and
+  the test's own comment all said closing this hole would red
+  `test/parser-decimal-silent-defaults.test.ts` §3b. **It stayed green.** The case asserted
+  `charge` `0`, `units` `0`, and `not.toContain(X12_UNPARSEABLE_DECIMAL)` - all three still true,
+  because the fix changes neither the model nor the decimal channel. **A pin on "it is silent" that
+  never looks at the whole warning channel cannot observe the silence ending.** This is
+  `DICOM-ITEM-CROSSES-RESIDUALS`'s lesson arriving verbatim in another repo: the carve-out fixture
+  there asserted the leak and never `parseWarnings`. The case is now inverted rather than deleted,
+  and pins the new code's presence on the lying document AND its absence on the honest control.
+
+- **The PHI slot table gained the ignored `SVx`, and it is an OWN slot.** The segment the walker
+  refused to decode is exactly the text a future "helpful" message would echo back, and on a real
+  837 it carries the procedure billed for a named patient. `test/_helpers/phi-slots.ts` is **82**
+  slots now; the `13 of 81 red` figure in `PHI-WARNING-MESSAGE-LEAK` below is a measurement of that
+  slice against its own base and is not restated.
+
+- **Only bytes can produce any of these cases, so the new suite is literal EDI.** `build837` emits
+  the `SVx` matching the variant it was asked for, so no round trip can build a line with a foreign
+  one or with none at all. The pre-existing suite stayed green through the whole change except the
+  registry snapshot: **1,296 passing before, 1,313 after, and the only two reds were
+  `warning-codes.snapshot.test.ts`'s inline snapshot and its length assertion.** That is expected
+  for an additions-only registry change and is not evidence the fix works.
 
 ## X12-QUANTITY-SILENT-DEFAULTS (2026-08-05)
 
@@ -1076,7 +1192,10 @@ positionally recoverable. **The filed 835 case reproduces exactly**:
   the `hl7`-to-`deid` layering lesson applied here), and
   `X12_INVALID_DELIMITERS` echoed the detected separator byte.
   **The deliverable is the slot table, not the fix**:
-  `test/_helpers/phi-slots.ts` declares **81 consumer-controlled slots**
+  `test/_helpers/phi-slots.ts` declared **81 consumer-controlled slots**
+  (82 since `X12-837-SV-SILENT-ZERO` added the ignored `SVx`; the two
+  figures below are measurements of THIS slice against its own base and are
+  not restated against a later table)
   across the envelope, all six control numbers, the counts, every code-list
   slot, the 835 / 837 / 271 / 277 / 277CA / 278 / 820 / 999 / TA1 bodies, and
   the model identifiers, driven by `assertNoDiagnosticPhiLeak` from

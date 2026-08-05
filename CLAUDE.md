@@ -8,24 +8,16 @@
 
 ## ▶ Read this before you touch the parser: `documentation/agent-notes.md`
 
-**This file used to be 106,994 bytes.** The narrative that made it that big - the per-incident
-write-ups, the shipped-phase histories, the measurements, and every refutation that killed a remedy -
-is now in **[`documentation/agent-notes.md`](documentation/agent-notes.md)**, verbatim and unedited,
-under headings named for the item that produced them. Relocated 2026-08-04 under `CLAUDE-MD-AUDIT`
-(meta-repo `documentation/decisions/0023-doc-budgets.md`, 2026-08-04 amendment). **This file's size is
-bounded at write time by the umbrella's `.claude/hooks/doc-budget.mjs`. Never quote its number here -
-read `REPO_CLAUDE` in the hook**, because the bound is a **per-repo ratchet** set at each file's
-measured size **+2,000**, not a uniform cap. A uniform 90,000 was built first and reversed the same
-day: it would have made five repos shrink-only while workers were mid-flight in them. **The +2,000 is
-load-bearing, not slack - a new TRAP must always be addable in one line; a new essay must not.**
-**The ratchet must be LOWERED as a relocation lands, or it is a rubber stamp** - lowering x12's entry
-to fit this file is part of landing this change and belongs in the umbrella, not here.
-
-**Nothing was deleted.** What stays here is the cursor, the rules, and every trap, each compressed to
-one imperative line. **Every `###` heading in "Traps" below names the section of `agent-notes.md`
-that carries that trap's measurement, its sources, and the reasoning - open it before you act on the
-line.** These paragraphs each cost a defect or a refuted claim to learn, and several name a remedy
-that was tried, shipped, and then refuted.
+**Every `###` heading in "Traps" below names the section of
+**[`documentation/agent-notes.md`](documentation/agent-notes.md)** that carries that trap's
+measurement, its sources, and the reasoning - open it before you act on the line.** The narrative
+that once made this file 106,994 bytes lives there, verbatim and unedited; the bound, the per-repo
+ratchet, and why a uniform cap was reversed are in
+`documentation/agent-notes.md#claude-md-audit-2026-08-04`. **Nothing was deleted - a trap deleted to
+hit a number is the one failure mode this bound exists to prevent.** This file is bounded at write
+time by the umbrella's `.claude/hooks/doc-budget.mjs`; **never quote its number here, read
+`REPO_CLAUDE` in the hook.** **A new trap here is PAID FOR BY RELOCATING FIRST**, and the entry is
+LOWERED as the relocation lands, never raised to meet it.
 
 ## Status
 
@@ -45,7 +37,7 @@ Pre-alpha `0.0.x`, **published** to npm from a public repo. **Never quote a vers
   v1 read or emit scope as "270/271" or "276/277" complete** - that claim was on the README and the
   docs site until `ASSETS-P8` corrected it.
   Why: `documentation/agent-notes.md#published-scope-the-270-and-276-gap`
-- **Warning registry: 23 codes + 4 Tier-3 fatals.** Additions-only. **Derive the count rather than
+- **Warning registry: 24 codes + 4 Tier-3 fatals.** Additions-only. **Derive the count rather than
   trusting this line** - the codes are exported as `ALL_WARNING_MESSAGES`, and the four fatals are
   enumerated under Engineering Guardrails below.
 - **Profile system** (`defineProfile()`, `profiles` namespace) shipped Phase 9. **PHI commit-gate**
@@ -115,6 +107,21 @@ the published `@cosyte/*` config packages, not by copying files. The source of t
 and the refutation history are there. **Do not act on a line here without reading its section.**
 **🩺 marks a trap where getting it wrong mis-states a clinical or financial value on the wire.**
 
+### 🩺 `X12-837-SV-SILENT-ZERO` (2026-08-05) · `documentation/agent-notes.md#x12-837-sv-silent-zero-2026-08-05`
+
+- **🩺 An 837 Loop 2400 line closed with NO `SVx` decoded for the resolved variant warns
+  `X12_837_SERVICE_LINE_NOT_DECODED` at its `LX`.** BOTH causes: a foreign `SVx`, and none at all.
+- **🩺 The model is UNCHANGED - `charge`/`units` still read `0`. Never write "an 837 line can no
+  longer read a fabricated 0".** It can; not silently. `X12Decimal | undefined` is still its slice.
+- **🩺 NEVER decode the `SVx` that IS present, nor let it flip the line's variant.** `SV1-02` and
+  `SV2-03` are both the charge, so that mis-READS money; `opts.type` is a caller instruction.
+- **Anchor the `LX`, never the `SVx`** (the no-`SVx` case has none); no `elementIndex`, nothing was
+  read; one message, no discriminant.
+- **🩺 THE RESIDUAL TEST DID NOT GO RED, AND THAT IS THE FINDING.** It pinned `0`/`0` + no
+  `X12_UNPARSEABLE_DECIMAL`, both still true. **Pin the WHOLE warning channel, on BOTH sides.**
+- **Only bytes make these cases; no `build837` round trip can.** 4 leak probes + 2 honest controls,
+  measured both ways: deleting one flag-set reds a control. `phi-slots` 82 - the ignored `SVx`, OWN.
+
 ### 🩺 `X12-QUANTITY-SILENT-DEFAULTS` (2026-08-05) · `documentation/agent-notes.md#x12-quantity-silent-defaults-2026-08-05`
 
 - **🩺 A PRESENT decimal that does not decode emits `X12_UNPARSEABLE_DECIMAL` at its
@@ -122,9 +129,8 @@ and the refutation history are there. **Do not act on a line here without readin
 - **🩺 The model is UNCHANGED. Never write "an unparseable amount can no longer read as zero".** It
   can; not _silently_. Closing it is `X12Decimal | undefined` everywhere: its own slice.
 - **🩺 NEVER INVERT IT INTO "an unwarned `0` is a zero the sender sent". A slot a reader never read
-  cannot warn** - `get837Claims` leaves `charge`/`units` at their seeded `ZERO`, `warnings: []`, on
-  a variant/`SVx` disagreement (`PRE-EXISTING`, UNFILED). Three shipped docs carried the bare form.
-  Guarantee: unwarned `0` **at an element a reader decoded**.
+  cannot warn**; three shipped docs carried the bare form. Guarantee: unwarned `0` **at an element a
+  reader decoded**. The 837 instance of the other kind is the trap above.
 - **PUBLISH NO CENSUS OF THE FALLBACK OUTCOMES.** A draft said three, a refuter measured four. The
   RULE holds: it is a property of the READ, not the USE - so no control flow changed.
 - **ONE message, NO discriminant** - a `ZERO`/`NOT_DECODED` pair was wrong at 835 `CAS`, 835 `PLB`,
@@ -441,10 +447,10 @@ and the refutation history are there. **Do not act on a line here without readin
   carry 64 bytes of the interchange.
 - **`X12Segment.id` is bounded to the X12 segment-id grammar with a `NON_SPEC_SEGMENT_ID` sentinel.**
   It was an unbounded copy of the segment's first element. This is the `hl7`-to-`deid` layering lesson.
-- **The deliverable is the slot table, not the fix.** `test/_helpers/phi-slots.ts` declares **81
-  consumer-controlled slots**, driven by `assertNoDiagnosticPhiLeak` from `@cosyte/test-utils@0.0.2`.
-  Measured one slot at a time against base: **13 of 81 red**, and **the 68 green ones are the point of
-  writing the table before the fix.** Registry membership is asserted separately, so a factory that
+- **The deliverable is the slot table, not the fix.** `test/_helpers/phi-slots.ts` declared **81
+  consumer-controlled slots** (82 today), driven by `assertNoDiagnosticPhiLeak` from
+  `@cosyte/test-utils@0.0.2`. Measured one slot at a time against base: **13 of 81 red**, and **the
+  68 green ones are the point of writing the table before the fix.** Registry membership is asserted separately, so a factory that
   starts interpolating again fails without anyone extending the table.
 - **`^0.0.1` resolves EXACTLY on npm for a `0.0.x`.** The `@cosyte/test-utils` pin had to move.
 - **The shipped disclosure was wrong in five places** (README, `docs-content/troubleshooting.md`,
@@ -633,12 +639,6 @@ These three bind every change in this repo (mirrored from the cosyte meta-repo's
 3. **Crew + knowledgebase feedback loop.** When a standard, decision, or public surface changes,
    flag whether a `crew` skill or `knowledgebase` doc needs creating/updating, never silently skip.
 
-**A fourth, added by `CLAUDE-MD-AUDIT`:** when an incident, a refutation, or a shipped phase produces
-narrative, it goes in **`documentation/agent-notes.md`** and only its imperative comes back here.
-The umbrella hook's ratchet is a ceiling, not a target; `hl7`, the reference parser this package
-mirrors, is 8 KB. **Relocate, never delete: a trap deleted to hit a number is the one failure mode
-this audit exists to prevent.**
-
-Build, lint, format, and TypeScript settings come from the shared `@cosyte/*` config packages
-(`@cosyte/tsconfig` · `@cosyte/eslint-config` · `@cosyte/prettier-config`; see
-`documentation/conventions.md` → "Canonical toolchain (enforced)"). Node ≥ 22.
+**A fourth, added by `CLAUDE-MD-AUDIT`:** narrative from an incident, a refutation or a shipped phase
+goes in **`documentation/agent-notes.md`**; only its imperative comes back here. The ratchet is a
+ceiling, not a target - `hl7`, the parser this one mirrors, is 8 KB.

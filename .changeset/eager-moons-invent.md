@@ -43,10 +43,11 @@ An **absent** element still returns `X12Decimal.ZERO` and still does **not** war
 zero" is the documented convention of the slots that use that helper and is unchanged. That does
 **not** make every unwarned `0` trustworthy, and the inversion is the one thing to refuse here: the
 warning is a property of a decimal READ, not of a model slot, so a slot a reader never read cannot
-warn and still holds whatever it was seeded with. `get837Claims` has exactly such a hole today,
-`PRE-EXISTING` and untouched by this change. The guarantee is exactly this: **an unwarned `0` at an
-element a reader decoded is a zero the sender sent or omitted.** `KNOWN-LIMITATIONS.md` carries it
-with the measured instance.
+warn and still holds whatever it was seeded with. `get837Claims` had exactly such a hole, which was
+`PRE-EXISTING` and untouched by this change and is closed **in this same release** by
+`X12-837-SV-SILENT-ZERO` and its own warning code, `X12_837_SERVICE_LINE_NOT_DECODED`. The
+guarantee this change makes is still exactly this: **an unwarned `0` at an element a reader decoded
+is a zero the sender sent or omitted.** `KNOWN-LIMITATIONS.md` carries it with the measured instance.
 
 The offending bytes never reach the warning message. They are sender-controlled, and a monetary
 element is exactly where a mis-mapped identifier lands, so the message is a frozen-registry lookup
