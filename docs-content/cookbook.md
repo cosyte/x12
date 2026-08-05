@@ -236,8 +236,9 @@ A third code covers one more way a line goes missing: `X12_837_SERVICE_LINE_DROP
 none** - check the warning channel before concluding it. Read that code's scope literally: it is
 anchored at the `LX`, so an `SVx` arriving with **no `LX` at all** is still dropped silently; it does
 **not** travel with `X12_837_UNKNOWN_VARIANT` (a caller-supplied `type` outside the union reaches the
-same route without it, so read `submission.variant`); and a `DTP` / `AMT` / `NTE` / `REF` after a
-dropped `LX` attaches to the **enclosing claim** rather than disappearing.
+same route without it, so read `submission.variant`); and what becomes of a `DTP` / `AMT` /
+`NTE` / `REF` after a dropped `LX` is route-dependent, so do not assume it is simply absent (see
+[Troubleshooting](./troubleshooting) and the package's `KNOWN-LIMITATIONS.md`).
 
 ```ts
 import { parseX12, get837Claims, HL_LEVEL_CODES, WARNING_CODES } from "@cosyte/x12";

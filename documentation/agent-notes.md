@@ -91,7 +91,8 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   version-dependent, so the only durable form is "every own property of `Object.prototype`".
 
 - **🩺 WHAT IT COST, MEASURED AT `a33c208`, PROBE BY PROBE.** Every row is a literal-EDI probe run
-  against the base sha and against head. All eight inherited keys behave identically at each site;
+  against the base sha and against head. Every own property of `Object.prototype` behaves
+  identically at each site;
   `constructor` is quoted as the representative.
 
   | Probe | Base (`a33c208`) | Head |
@@ -170,11 +171,17 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
      disclosed and NOT fixed; it is owed its own umbrella backlog ID. **Never write that the warning
      channel is a complete account of how a service line can go missing.** A draft of the cookbook
      and of `KNOWN-LIMITATIONS.md` did.
-  3. **A line-level `DTP` / `AMT` / `NTE` / `REF` after a dropped `LX` is NOT absent: it attaches to
-     the ENCLOSING CLAIM.** Measured: a line service date, a line amount and a line note land among
-     the claim-level ones, indistinguishable from them. The first disclosure called that data
-     "absent", which is the more dangerous error of the two - a consumer told a value is missing will
-     not go looking for it in the wrong bucket. `PRE-EXISTING` walker behaviour, pinned by a test.
+  3. **What becomes of a line-level `DTP` / `AMT` / `NTE` / `REF` after a dropped `LX` is
+     ROUTE-DEPENDENT, and TWO successive drafts stated it unqualified in OPPOSITE directions.**
+     Draft one said the data was "absent"; the remedy for that said it "attaches to the enclosing
+     claim"; both were measured false, because each is true on exactly one of the code's two routes.
+     With a `CLM` open, the date, amount and note land among the **claim-level** ones. With **no**
+     `CLM` open, the `DTP`, `AMT` and `NTE` are **discarded** and a trailing `REF` attaches to
+     whichever party the last `NM1` left active - measured, a line-item control number landing in a
+     *later* claim's `payer.references`. **The remedy was to CUT THE CLAUSE OUT OF THE SHIPPED
+     MESSAGE ENTIRELY and state both routes on exactly ONE surface** (`KNOWN-LIMITATIONS.md`), rather
+     than to write the conditional a third time on eight surfaces. `PRE-EXISTING` walker behaviour;
+     both routes pinned by tests, and the `REF` mis-attribution is owed its own umbrella item.
 
 - **🩺 THE `LX` CASE'S CONTROL FLOW IS THE BASE'S, AND THE ONE TIME IT WAS NOT, IT MINTED SILENT
   CORRUPTION.** A draft returned early on route 2 and thereby skipped `activeEntity = undefined`, so
@@ -210,23 +217,29 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   `toEqual` ON THE WHOLE CHANNEL.** `#67`'s residual test pinned a value plus the absence of a
   DIFFERENT code, both of which stayed true when the leak closed, so every surface predicted a red
   that never came. `dicom`'s carve-out fixture had the identical hole. **Every assertion on the
-  warning channel is `toEqual` on the whole array.** A draft claimed `toContain` appeared NOWHERE in
-  the suite and was false twice: `not.toContain` is used once on a message STRING for the marker
-  probe, and one control read `expect([true, false]).toContain(<boolean>)`, **which passes for any
-  boolean** - a vacuous assertion inside a case titled "still accepts the four spec codes". It is now
-  driven off the exported table. **State the property, not an absolute about a matcher name.** Every
+  warning channel is `toEqual` on the whole array.** **STATE THE PROPERTY, NEVER AN ABSOLUTE ABOUT A
+  MATCHER NAME.** "`toContain` appears nowhere in the new suite" was published twice and measured
+  false BOTH times - the second time in the very commit that corrected the first, which had itself
+  added a new `not.toContain` on an array. The underlying defect the first measurement found was
+  real and is fixed: a control read `expect([true, false]).toContain(<boolean>)`, **which passes for
+  any boolean**, inside a case titled "still accepts the four spec codes"; it now drives off the
+  exported table. **The lesson is that a claim about which matchers a file contains has to be
+  re-measured on every edit, so do not make one.** Every
   lying document is paired with an honest
   control in the same slot - an ordinary unrecognized ST-03, an ordinary unknown HL-03, an ordinary
   unknown CARC - because the whole claim is that an inherited key is now INDISTINGUISHABLE from any
   other unrecognized value, and a guard that over-fired would pass the lying half and red the
   control.
 
-- **MEASURED: 33 of the suite's first 49 cases are RED at `a33c208`, and all 56 are green at head**
-  (the last seven pin the three bounds and the `activeEntity` regression control, and are not part of
-  the base measurement because four of them describe behaviour that is identical at base).** The
-  pre-existing suite went 1,313 -> 1,362 with the only two reds being
-  `warning-codes.snapshot.test.ts`'s inline snapshot and its length assertion, which is expected for
-  an additions-only registry change and is **not** evidence the fix works.
+- **MEASURED, AND RE-MEASURED TWICE AS THE SUITE GREW: the WHOLE suite is 57 cases, 38 RED against a
+  clean `a33c208` checkout and 57 green at head.** Take that as one figure over the whole file and
+  do not partition it: a first form said "33 of the first 49", which was wrong four ways at once
+  (three of the added cases are ST-03 cases in section 1, not appended; four of the added cases are
+  red at base, not three). **Re-derive it by RUNNING the head suite against a base checkout, never
+  by arithmetic on an older number.** The pre-existing suite went 1,313 -> 1,370, and the only
+  two reds through the whole change were `warning-codes.snapshot.test.ts`'s inline snapshot and its
+  length assertion, which is expected for an additions-only registry change and is **not** evidence
+  the fix works.
 
 - **EVERY GUARD HAS ITS OWN RED NEGATIVE CONTROL, RUN ONE AT A TIME.** Neutering `wireLookup` back
   to a frozen literal reds 17; removing the `makeLookup` guard reds 8; the `hi-qualifiers` guard, 2;

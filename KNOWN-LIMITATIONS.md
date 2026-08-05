@@ -95,10 +95,16 @@ model.
   - **It does not travel with `X12_837_UNKNOWN_VARIANT`.** A caller-supplied `type` outside
     `"P" | "I" | "D"` - which only a JavaScript or `JSON.parse`d caller can pass - reaches the second
     cause with no unknown-variant warning at all. Read `submission.variant`, not the other code.
-  - **A line-level `DTP` / `AMT` / `NTE` / `REF` after a dropped `LX` is NOT absent: it attaches to
-    the ENCLOSING CLAIM.** A line service date, a line amount and a line note land among the
-    claim-level ones, indistinguishable from them. That is pre-existing walker behaviour, unchanged
-    here, and it is the reason this entry does not say the line's data is "absent".
+  - **What becomes of a line-level `DTP` / `AMT` / `NTE` / `REF` after a dropped `LX` depends on
+    the route, and is not simply "absent" on either. This is the only surface that states both,
+    deliberately: two drafts stated it unqualified, in opposite directions, and both were wrong.**
+    With a `CLM` open (the variant route), the line service date, amount and note land among the
+    **claim-level** ones, indistinguishable from them. With **no** `CLM` open, the `DTP`, `AMT` and
+    `NTE` are **discarded** and a trailing `REF` attaches to whichever party the last `NM1` left
+    active, so a line-item control number can land on an entity's `references` - measured, in a
+    _later_ claim's payer. Both are pre-existing walker behaviour, unchanged here and pinned by
+    tests; the `REF` mis-attribution is owed its own item. **Read the segments off
+    `tx.segments[…].raw` rather than inferring either outcome.**
   - **An `SVx` with no `LX` at all is still dropped in SILENCE.** The code is anchored at the `LX`,
     so a service segment that never had one reports nothing on any channel. `PRE-EXISTING`,
     identical at `0.0.9`, disclosed and not fixed. **The warning channel is therefore not a complete

@@ -113,37 +113,40 @@ sources and its refutation history. Do not act on a line here without reading th
   inherits `Object.prototype`, so EVERY OWN PROPERTY of it resolved TRUTHY. **`Object.freeze` DOES
   NOT HELP and is why this passed review** - it seals OWN properties only. **🩺 NAME THE SET, NEVER
   THE MEMBERS:** a draft published EIGHT across five docs and the shipped JSDoc; the engine has
-  TWELVE. **Cut the claim back, never grow the census.**
+  TWELVE. **Cut back, never grow a census.**
 - **🩺 It destroyed strictly more than `#67`: an ST-03 of `constructor` made `variant` a FUNCTION, so
   `openServiceLine` answered `undefined` and EVERY Loop 2400 left the model with `warnings: []`.**
   It also made a `lookupCarc` `description` a function (suppressing `X12_UNKNOWN_CARC`), suppressed
-  `X12_UNKNOWN_HI_QUALIFIER`, and FABRICATED an `X12_HL_PARENT_LEVEL_INVALID`.
-- **🩺 `in` IS NOT THE SAFE FORM** - it walks the prototype chain. Reach for `Object.hasOwn`.
+  `X12_UNKNOWN_HI_QUALIFIER`, and FABRICATED an `X12_HL_PARENT_LEVEL_INVALID`. **🩺 `in` IS NOT THE
+  SAFE FORM** - it walks the prototype chain. Reach for `Object.hasOwn`.
 - **271 / 277 / 278 were NEVER exposed and their literal tables are LEFT ALONE:** `shared/hl.ts` has
   always guarded with `hasOwnProperty`; the 837's LOCAL `validateHl` copy did not. **Do not "finish
   the job" there.** **NO SOURCE SCAN SHIPS, DELIBERATELY** - a scan cannot separate a wire-keyed
   table from a discriminant-keyed one and `warnings.ts` has four of the latter, so it needs a
   per-TABLE allowlist (`#51`'s failure mode). The defence derives its keys from
-  `Object.getOwnPropertyNames(Object.prototype)` AT RUN TIME, unfiltered.
-- **`X12_837_SERVICE_LINE_DROPPED` is the 25th code and is NOT `#67`'s renamed.** `NOT_DECODED` = the
-  line IS on the model with seeded zeros; `DROPPED` = it is on NO claim. Two routes (no `CLM` open,
-  or the variant is not P/I/D), one message, no discriminant, anchored at the `LX`. **Nothing is
+  `Object.getOwnPropertyNames(Object.prototype)` AT RUN TIME, UNFILTERED.
+- **`X12_837_SERVICE_LINE_DROPPED` is the 25th code, NOT `#67`'s renamed.** `NOT_DECODED` = the line
+  IS on the model with seeded zeros; `DROPPED` = it is on NO claim. Two routes (no `CLM` open, or the
+  variant is not P/I/D), one message, no discriminant, anchored at the `LX`. **Nothing is
   fabricated** - no synthesized claim, no guessed variant.
-- **🩺 STATE ITS THREE BOUNDS; A DRAFT PUBLISHED ALL THREE FALSE.** It does **NOT** travel with
+- **🩺 STATE ITS THREE BOUNDS; DRAFTS PUBLISHED ALL THREE FALSE.** It does **NOT** travel with
   `X12_837_UNKNOWN_VARIANT` (an out-of-enum caller `type` reaches route 2 without it - read
   `submission.variant`); an **`SVx` with NO `LX` at all is STILL SILENT**, so **never write "the
-  channel will tell you a line went missing"**; and a line-level `DTP`/`AMT`/`NTE`/`REF` after a
-  dropped `LX` **attaches to the ENCLOSING CLAIM**, so it is RE-ATTRIBUTED, not "absent".
+  channel will tell you a line went missing"**; and a trailing `DTP`/`AMT`/`NTE`/`REF` is
+  **ROUTE-DEPENDENT** (claim open: onto the claim; no claim: discarded, or the `REF` onto the last
+  named party). **Never state that unqualified** - two drafts did, opposite ways.
+  `KNOWN-LIMITATIONS.md` is the ONE surface carrying both routes.
 - **🩺 DO NOT RESTRUCTURE THE `LX` CASE.** Its control flow is the base's; the two `warnings.push` are
   the whole difference. A draft returned early on route 2, skipped the `activeEntity` reset, and a
-  trailing bare `N3`/`N4` silently put an address on the last active party.
+  trailing bare `N3`/`N4` silently addressed the last active party.
 - **🩺 EVERY WARNING-CHANNEL ASSERTION IS `toEqual` ON THE WHOLE ARRAY** - `#67`'s residual pinned a
   value plus the absence of a DIFFERENT code and stayed green. Pair every lying document with an
-  honest control. **Never state an absolute about a matcher NAME:** a draft's "`toContain` appears
-  nowhere" was false twice, once on an `expect([true, false]).toContain(...)` that passes for any
-  boolean.
-- **33 of the first 49 cases red at `a33c208`, all 56 green at head; every guard has its own red
-  negative control.** `phi-slots` **84** - the dropped `LX-01` and its `SV1-01-2`, both OWN.
+  honest control. **State the property, never an absolute about a matcher NAME:** "`toContain`
+  appears nowhere" was published twice, false both times, the second inside the fix for the first.
+- **38 of the suite's 57 cases red against a clean `a33c208` checkout, 57 green at head; suite
+  1,313 -> 1,370; every guard has its own red negative control. Re-derive by RUNNING head's suite
+  against a base checkout, never by arithmetic** - a partitioned form was wrong four ways.
+  `phi-slots` **84** - the dropped `LX-01` and its `SV1-01-2`, both OWN.
 - **🩺 An ABSENT `SV1-02` still reads a confident `0`, unwarned. Left open on purpose** - it closes
   only with the deferred `X12Decimal | undefined` slice.
 
@@ -155,13 +158,13 @@ sources and its refutation history. Do not act on a line here without reading th
   longer read a fabricated 0".** It can; not silently. `X12Decimal | undefined` is still its slice.
 - **🩺 NEVER decode the `SVx` that IS present, nor let it flip the line's variant.** The charge is
   `SV1-02`/`SV2-03` and the units `SV1-04`/`SV2-05`/**`SV3-06`** (`SV3-05` is the prosthesis code -
-  three comments said units and were corrected), so that mis-READS money; `opts.type` is a caller
+  three comments said units and were corrected), so that mis-READS money. `opts.type` is a caller
   instruction, so **the warning attributes nothing**: a `type` can disagree with a clean document.
-- **Anchor the `LX`, never the `SVx`** (the no-`SVx` case has none); no `elementIndex`, nothing read.
+- **Anchor the `LX`, never the `SVx`** (the no-`SVx` case has none); no `elementIndex`.
 - **🩺 THE RESIDUAL TEST DID NOT GO RED, AND THAT IS THE FINDING.** It pinned `0`/`0` + no
-  `X12_UNPARSEABLE_DECIMAL`, still true. **Pin the WHOLE warning channel, BOTH sides.**
+  `X12_UNPARSEABLE_DECIMAL`, still true. **Pin the WHOLE channel, BOTH sides.**
 - **Only bytes make these; no round trip can.** 4 leak probes + 2 controls, both ways: deleting one
-  flag-set reds a control. `phi-slots` 82 - the ignored `SVx`, OWN.
+  flag-set reds a control.
 
 ### 🩺 `X12-QUANTITY-SILENT-DEFAULTS` (2026-08-05) · `documentation/agent-notes.md#x12-quantity-silent-defaults-2026-08-05`
 
@@ -173,16 +176,15 @@ sources and its refutation history. Do not act on a line here without reading th
   cannot warn**; three shipped docs carried the bare form. Guarantee: unwarned `0` **at an element a
   reader decoded**. The 837 instance of the other kind is the trap above.
 - **PUBLISH NO CENSUS OF THE FALLBACK OUTCOMES.** A draft said three, a refuter measured four. The
-  RULE holds: it is a property of the READ, not the USE - so no control flow changed.
+  RULE holds: a property of the READ, not the USE - so no control flow changed.
 - **ONE message, NO discriminant** - a `ZERO`/`NOT_DECODED` pair was wrong at 835 `CAS`, 835 `PLB`,
   837 `CAS`. **And assert nothing about what X12.6 type R permits;** nobody here has read it, so the
   message says "could not decode".
 - **The 835 balance invariant is NOT a net: it names an equation, never an element, and exists in no
   other reader.** 7 of 9 base probes were wholly silent, 835 `SVC-05` among them.
 - **The sink is an OPTIONAL 4th arg; the public helpers stay silent without one.** The library's own
-  silence is held by a source scan counting TOP-LEVEL ARGS, never a `, sink)` regex.
-- **A green suite proved nothing: no fixture holds an unparseable decimal and a round trip CANNOT
-  make one.** Only bytes can.
+  silence is held by a source scan counting TOP-LEVEL ARGS, never a `, sink)` regex. **A green suite
+  proved nothing: no fixture holds an unparseable decimal and a round trip CANNOT make one.**
 
 ### 🩺 `X12-SVC-ELEMENT-MAP-OFF-BY-ONE` (2026-08-04) · `documentation/agent-notes.md#x12-svc-element-map-off-by-one-2026-08-04`
 
@@ -342,7 +344,7 @@ sources and its refutation history. Do not act on a line here without reading th
 - **`renderCallerJson` keeps `JSON.stringify` and bounds its OUTPUT**, because the value's TYPE is
   what is wrong at those sites (`null` and `"null"` are different mistakes). It never throws
   (circular, `BigInt`, hostile `toJSON`) and fabricates no closing quote.
-- **`X12ProfileError.profileName` is deliberately NOT bounded**, asserted as a test: truncating it
+  **`X12ProfileError.profileName` is deliberately NOT bounded**, asserted as a test: truncating it
   would stop it matching what the consumer passed.
 - **🩺 Every indexed loop bound in a builder comes from a `requireCallerArray` binding.** A forged
   `{ length: "9".repeat(120000) }` coerces to `Infinity` and the builder **spins forever instead of
@@ -350,12 +352,12 @@ sources and its refutation history. Do not act on a line here without reading th
 - **`requireCallerArray` takes the module's own `refuse` callback, never a shared throw**, because
   each builder owns a distinct error class and code consumers branch on.
 - **`requireCallerArray` answers `null` as ABSENT.** Every site it replaced read `x.dates ?? []`, so
-  guarding only `undefined` turned a valid 834 into a refusal. `null` is what a `JSON.parse`d
-  payload carries for an absent list. **`build835`'s `claims` is the measured exception** (
-  `enforceBalance` reads `spec.claims.map`, not the checked binding); pinned by a test.
+  guarding only `undefined` turned a valid 834 into a refusal. `null` is what a `JSON.parse`d payload
+  carries for an absent list. **`build835`'s `claims` is the measured exception** (`enforceBalance`
+  reads `spec.claims.map`, not the checked binding); pinned by a test.
 - **Scope the claim: a forged non-array is availability, not `STOP-THE-LINE`.** Nothing decodes a
-  document differently. Unreachable from TypeScript, reachable from JavaScript / JSON / `@cosyte/cli`.
-- **`for...of` sites throw `TypeError: ... is not iterable` with NO `code`** (`buildInterchange`'s
+  document differently. Unreachable from TypeScript, reachable from JS / JSON / `@cosyte/cli`.
+  **`for...of` sites throw `TypeError: ... is not iterable` with NO `code`** (`buildInterchange`'s
   `spec.groups`, `build999`'s `transactionResponses`, every optional leaf array). Disclosed, pinned.
 - **`test/builder-array-bounds.test.ts` keys on the OPERAND, never on the property NAME** - that is
   the mistake `#51`'s allowlist made twice. Its scan strips comments first.
@@ -364,8 +366,8 @@ sources and its refutation history. Do not act on a line here without reading th
   `testTimeout` cannot interrupt it. **That is the argument for keeping the source scan exhaustive
   rather than trusting the examples.**
 - **Drive the shipped table, not a side probe**, and **431 is a measurement at a 120,000-character
-  value, not a maximum** (that site's derived ceiling is 443; the suite asserts every site under 500).
-- **The `QUIRK_ID_RE` comment claimed a bound the pattern never had.** Corrected the comment to the
+  value, not a maximum** (that site's derived ceiling is 443; every site is asserted under 500).
+  **The `QUIRK_ID_RE` comment claimed a bound the pattern never had.** Corrected the comment to the
   code, not the grammar to the comment.
 - **Known and NOT claimed away:** bounding a message here **redacts nothing** (the caller passed the
   value in), the surviving characters are **not escaped**, the bound is on UTF-16 **code units, not
@@ -381,7 +383,7 @@ sources and its refutation history. Do not act on a line here without reading th
 - **23 sites, 28 holes.** The census in the item was sixteen; seven more were found only by
   adversarial review over two passes, four of them `number`-typed AK9 counts - **a type is not a
   runtime guarantee.** **State a ceiling as a ceiling and a measurement as a measurement:** 90 is the
-  ceiling on the interpolated FRAGMENT, and three published figures were wrong in the first draft.
+  ceiling on the FRAGMENT, and three published figures were wrong in the first draft.
 - **This is NOT `PHI-WARNING-MESSAGE-LEAK` on the emit side.** There the value was the DOCUMENT's, so
   bounding it was redaction; here the caller passed it in and still holds it. Escaping was considered
   and **deliberately not done**, so a refusal message is bounded but **not** guaranteed to be one log
@@ -395,7 +397,7 @@ sources and its refutation history. Do not act on a line here without reading th
   balance warning now carries the BPR's own 1-based body index, and `balance.ts`'s doc was corrected
   with the code. **The build-side `segmentIndex: 0` was filed as the same defect and is not one** -
   the builder has no parsed segment stream, so the position is `UNANCHORED_BUILD_POSITION`, inert by
-  construction. Fabricating a plausible index would have named a segment no consumer can resolve.
+  construction. Fabricating an index would have named a segment no consumer can resolve.
 - **`renderCallerValue` coerces and never throws.** A first draft read `.length` where the base
   interpolated into a template literal, turning a typed refusal into an uncaught `TypeError`.
 - **Assert SE-01 outright rather than trusting it** - a tripwire this repo has hit three times.
@@ -426,8 +428,8 @@ sources and its refutation history. Do not act on a line here without reading th
 ### 🩺 `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` (2026-08-02) · `documentation/agent-notes.md#x12-segment-outside-transaction-dropped-2026-08-02`
 
 - **🩺 A segment the envelope walker cannot place is RETAINED on `X12Interchange.orphanSegments`, not
-  discarded.** All orphans go through the single `recordOrphan` chokepoint so the warning and the
-  retained segment can never disagree; `segmentIndex` is the join key back to `position.segmentIndex`.
+  discarded.** All orphans go through one `recordOrphan` chokepoint so the warning and the retained
+  segment can never disagree; `segmentIndex` is the join key back to `position.segmentIndex`.
 - **🩺 Line-break tolerance is 15 of 15 CR/LF sequences of length 0 to 3.** It admitted 4 of 15, so a
   uniformly **double-spaced file lost its ENTIRE interchange body** and returned `groups: []`.
 - **🩺 NEVER replay an orphan at its recorded `segmentIndex`. Read the refutation before touching the
@@ -443,7 +445,7 @@ sources and its refutation history. Do not act on a line here without reading th
   segment round-trips normally.
 - **Neither a doubled terminator nor a segment with an empty first element is recorded.**
 - **The five `X12_UNEXPECTED_SEGMENT` messages were corrected** - they said the segment was not
-  retained, which is now false. Registry unchanged at 22 + 4 fatals; nothing became fatal.
+  retained, now false. Registry unchanged at 22 + 4 fatals; nothing became fatal.
 
 ### 🩺 `PHI-WARNING-MESSAGE-LEAK` (2026-07-31) · `documentation/agent-notes.md#phi-warning-message-leak-2026-07-31`
 
@@ -553,9 +555,8 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   (`X12_TA1_ACCEPT_WITH_NOTE`).**
 - **🩺 Every DOMAIN builder's own refusal message carries structural locators, counts and numeric
   totals only** - never a `claimId` (patient-account number), member id, member name, trace, or
-  diagnosis code. `build834` additionally names the offending maintenance code, which is an X12
-  control code and never PHI. **State this per builder, as base did, and never as a property of every
-  builder.** Two standing exceptions: the **ack path**, where `build999` interpolates the
+  diagnosis code. `build834` additionally names the offending maintenance code, an X12 control code
+  and never PHI. **State this per builder, as base did, never as a property of every builder.** Two standing exceptions: the **ack path**, where `build999` interpolates the
   acknowledged ST-02 (AK2-02, verbatim by TR3 005010X231A1) and `buildTA1` its TA1-05 note code (see
   "the caller-vs-document dichotomy is NOT categorical" above); and the **shared segment guard**,
   where `requireCallerSegment` echoes a non-string primitive it refuses, so a `JSON.parse`d spec with

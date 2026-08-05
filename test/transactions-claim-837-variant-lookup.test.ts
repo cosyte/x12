@@ -23,11 +23,10 @@
  * the lesson `#67` paid for: its residual test pinned a value and the
  * absence of a *different* code, both of which stayed true when the leak
  * closed, so it could not observe the silence ending. A pin on "it is
- * silent" that never reads the whole channel is not a pin on silence.
- * (`not.toContain` does appear once, on a message STRING rather than the
- * channel, to prove a planted marker was not echoed back. That is a
- * different assertion about a different object; do not let it grow into a
- * channel test.)
+ * silent" that never reads the whole channel is not a pin on silence. Other
+ * matchers appear on other objects (a message string, a qualifier list) and
+ * that is fine; the property is about the CHANNEL, so do not restate it as an
+ * absolute about a matcher name. Two drafts did and both were false.
  *
  * **Every lying document is paired with an honest control** - an ordinary
  * unrecognized value in the same slot - because the fix's whole claim is
@@ -549,6 +548,32 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: the bounds of X12_837_SERVICE_LINE_DROPP
     expect(sub.claims[0]?.dates.map((d) => d.qualifier)).toContain("472");
     expect(sub.claims[0]?.amounts.map((a) => a.qualifier)).toContain("T");
     expect(sub.claims[0]?.notes).toHaveLength(1);
+  });
+
+  it("with NO claim open, the same trailing segments are discarded and a REF lands on the last party", () => {
+    // The other half of the route-dependent behaviour `KNOWN-LIMITATIONS.md`
+    // states. Two drafts of this slice published the conditional unqualified,
+    // in opposite directions, because each is true on exactly one route.
+    // Pre-existing at `a33c208`; pinned so the disclosure cannot go stale.
+    const sub = parse837("005010X222A2", [
+      ...noClaimBody([
+        "LX*1~",
+        SV1,
+        "DTP*472*D8*20260615~",
+        "AMT*T*77.77~",
+        "NTE*ADD*LINE LEVEL NOTE~",
+        "REF*6R*LINE-CTRL-99~",
+      ]),
+      "CLM*PT-ACCT-901*8500***11:B:1*Y*A*Y*Y~",
+    ]).sub;
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
+    // The date, the amount and the note went nowhere at all.
+    expect(sub.claims[0]?.dates).toEqual([]);
+    expect(sub.claims[0]?.amounts).toEqual([]);
+    expect(sub.claims[0]?.notes).toEqual([]);
+    // The REF did not: it attached to whichever party the last NM1 left
+    // active, which here is the payer of the claim that opens AFTER it.
+    expect(sub.claims[0]?.payer?.references.map((r) => r.value)).toContain("LINE-CTRL-99");
   });
 
   it("🩺 an SVx with NO LX at all is still dropped in SILENCE, and that is disclosed not fixed", () => {
