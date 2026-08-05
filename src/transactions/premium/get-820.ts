@@ -18,6 +18,7 @@ import {
   elementDecimalOrZero,
   elementOptional,
   elementValue,
+  type X12DecimalWarningSink,
   type X12Segment,
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
@@ -85,10 +86,12 @@ export function get820Payments(
     const seg = body[i];
     if (seg === undefined) continue;
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
-    void position;
+    // Every decimal read below routes its `X12_UNPARSEABLE_DECIMAL` here; the
+    // helper narrows the position to the failing element itself.
+    const sink: X12DecimalWarningSink = { warnings, position };
     switch (seg.id) {
       case "BPR": {
-        payment = decodeBpr(seg, delimiters);
+        payment = decodeBpr(seg, delimiters, sink);
         break;
       }
       case "TRN": {
@@ -167,13 +170,13 @@ export function get820Payments(
       }
       case "RMR": {
         if (current === undefined) break;
-        const item = decodeRmr(seg, delimiters);
+        const item = decodeRmr(seg, delimiters, sink);
         if (item !== undefined) current.openItems.push(item);
         break;
       }
       case "ADX": {
         if (current === undefined) break;
-        const adjustment = decodeAdx(seg, delimiters);
+        const adjustment = decodeAdx(seg, delimiters, sink);
         if (adjustment !== undefined) current.adjustments.push(adjustment);
         break;
       }
@@ -260,10 +263,14 @@ function freezeRemittance(acc: RemittanceAccumulator): X12PremiumRemittance {
 // ---------------------------------------------------------------------------
 
 /** @internal */
-function decodeBpr(seg: X12Segment, delimiters: Delimiters): X12PremiumPaymentHeader {
+function decodeBpr(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): X12PremiumPaymentHeader {
   return Object.freeze({
     transactionHandlingCode: elementValue(seg, 1, delimiters),
-    totalPremiumAmount: elementDecimalOrZero(seg, 2, delimiters),
+    totalPremiumAmount: elementDecimalOrZero(seg, 2, delimiters, sink),
     creditDebitFlag: elementValue(seg, 3, delimiters),
     method: elementValue(seg, 4, delimiters),
     paymentFormatCode: elementOptional(seg, 5, delimiters),
@@ -353,7 +360,11 @@ function decodeNm1(seg: X12Segment, delimiters: Delimiters): X12PremiumPerson {
  * id is present (an RMR with no open-item identity carries no usable line).
  * @internal
  */
-function decodeRmr(seg: X12Segment, delimiters: Delimiters): X12PremiumOpenItem | undefined {
+function decodeRmr(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): X12PremiumOpenItem | undefined {
   const qualifier = elementValue(seg, 1, delimiters);
   const referenceId = elementValue(seg, 2, delimiters);
   if (qualifier === "" && referenceId === "") return undefined;
@@ -361,8 +372,8 @@ function decodeRmr(seg: X12Segment, delimiters: Delimiters): X12PremiumOpenItem 
     qualifier,
     referenceId,
     paymentActionCode: elementOptional(seg, 3, delimiters),
-    amountPaid: elementDecimalOrZero(seg, 4, delimiters),
-    amountDue: elementDecimal(seg, 5, delimiters),
+    amountPaid: elementDecimalOrZero(seg, 4, delimiters, sink),
+    amountDue: elementDecimal(seg, 5, delimiters, sink),
   });
 }
 
@@ -371,8 +382,12 @@ function decodeRmr(seg: X12Segment, delimiters: Delimiters): X12PremiumOpenItem 
  * adjustment reason code, ADX-03 / ADX-04 optional reference qualifier +
  * id. Skipped if the amount is absent. @internal
  */
-function decodeAdx(seg: X12Segment, delimiters: Delimiters): X12PremiumAdjustment | undefined {
-  const amount = elementDecimal(seg, 1, delimiters);
+function decodeAdx(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): X12PremiumAdjustment | undefined {
+  const amount = elementDecimal(seg, 1, delimiters, sink);
   if (amount === undefined) return undefined;
   return Object.freeze({
     amount,

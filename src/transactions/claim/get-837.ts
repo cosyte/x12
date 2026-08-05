@@ -46,6 +46,7 @@ import {
   elementDecimalOrZero,
   elementOptional,
   elementValue,
+  type X12DecimalWarningSink,
   type X12Segment,
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
@@ -331,6 +332,9 @@ export function get837Claims(
     const seg = body[i];
     if (seg === undefined) continue;
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
+    // Every decimal read below routes its `X12_UNPARSEABLE_DECIMAL` here; the
+    // helper narrows the position to the failing element itself.
+    const sink: X12DecimalWarningSink = { warnings, position };
     switch (seg.id) {
       case "HL": {
         // Hierarchy boundary - flush any in-flight claim/line.
@@ -509,16 +513,21 @@ export function get837Claims(
             warnings.push(missingRequiredLoop(position, REQUIRED_LOOPS.PAYER_NAME_2010BB));
           }
         }
-        currentClaim = openClaim(seg, delimiters, {
-          variant,
-          hierarchy: currentPatientHl ?? currentSubscriberHl,
-          billingProvider,
-          payToAddress,
-          payToPlan,
-          subscriber: currentSubscriberMember,
-          payer: currentPayer,
-          patient: currentPatientMember,
-        });
+        currentClaim = openClaim(
+          seg,
+          delimiters,
+          {
+            variant,
+            hierarchy: currentPatientHl ?? currentSubscriberHl,
+            billingProvider,
+            payToAddress,
+            payToPlan,
+            subscriber: currentSubscriberMember,
+            payer: currentPayer,
+            patient: currentPatientMember,
+          },
+          sink,
+        );
         activeEntity = undefined;
         context = { kind: "loop2300" };
         break;
@@ -557,7 +566,7 @@ export function get837Claims(
         break;
       }
       case "AMT": {
-        const amount = decodeAmt(seg, delimiters);
+        const amount = decodeAmt(seg, delimiters, sink);
         if (amount === undefined) break;
         if (currentAdjudication !== undefined) break;
         if (currentServiceLine !== undefined) currentServiceLine.amounts.push(amount);
@@ -573,15 +582,15 @@ export function get837Claims(
         break;
       }
       case "SV1": {
-        if (currentServiceLine !== undefined) decodeSv1(currentServiceLine, seg, delimiters);
+        if (currentServiceLine !== undefined) decodeSv1(currentServiceLine, seg, delimiters, sink);
         break;
       }
       case "SV2": {
-        if (currentServiceLine !== undefined) decodeSv2(currentServiceLine, seg, delimiters);
+        if (currentServiceLine !== undefined) decodeSv2(currentServiceLine, seg, delimiters, sink);
         break;
       }
       case "SV3": {
-        if (currentServiceLine !== undefined) decodeSv3(currentServiceLine, seg, delimiters);
+        if (currentServiceLine !== undefined) decodeSv3(currentServiceLine, seg, delimiters, sink);
         break;
       }
       case "TOO": {
@@ -611,7 +620,7 @@ export function get837Claims(
         }
         currentServiceLine.drug = {
           ...currentServiceLine.drug,
-          quantity: elementDecimal(seg, 4, delimiters),
+          quantity: elementDecimal(seg, 4, delimiters, sink),
           unitOfMeasure: componentOptional(seg, 5, 1, delimiters),
         };
         break;
@@ -619,7 +628,7 @@ export function get837Claims(
       case "SVD": {
         flushAdjudication();
         if (currentServiceLine === undefined) break;
-        currentAdjudication = openAdjudication(seg, delimiters);
+        currentAdjudication = openAdjudication(seg, delimiters, sink);
         break;
       }
       case "CAS": {
@@ -865,8 +874,12 @@ function decodeNte(seg: X12Segment, delimiters: Delimiters): X12ClaimNote | unde
   });
 }
 
-function decodeAmt(seg: X12Segment, delimiters: Delimiters): X12ClaimAmount | undefined {
-  const amount = elementDecimal(seg, 2, delimiters);
+function decodeAmt(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): X12ClaimAmount | undefined {
+  const amount = elementDecimal(seg, 2, delimiters, sink);
   if (amount === undefined) return undefined;
   return Object.freeze({ qualifier: elementValue(seg, 1, delimiters), amount });
 }
@@ -877,13 +890,14 @@ function decodeCas(
   warnings: X12ParseWarning[],
   position: X12Position,
 ): readonly X12RemitAdjustment[] {
+  const sink: X12DecimalWarningSink = { warnings, position };
   const groupCode = elementValue(seg, 1, delimiters);
   const out: X12RemitAdjustment[] = [];
   for (let triple = 0; triple < 6; triple += 1) {
     const base = 2 + triple * 3;
     const reasonCode = elementOptional(seg, base, delimiters);
-    const amount = elementDecimal(seg, base + 1, delimiters);
-    const quantity = elementDecimal(seg, base + 2, delimiters);
+    const amount = elementDecimal(seg, base + 1, delimiters, sink);
+    const quantity = elementDecimal(seg, base + 2, delimiters, sink);
     if (reasonCode === undefined && amount === undefined) continue;
     const code = reasonCode ?? "";
     const entry = code === "" ? undefined : lookupCarc(code);
@@ -1042,7 +1056,12 @@ interface ClaimContext {
 }
 
 /** Open a fresh CLM accumulator. @internal */
-function openClaim(seg: X12Segment, delimiters: Delimiters, ctx: ClaimContext): ClaimAccumulator {
+function openClaim(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  ctx: ClaimContext,
+  sink: X12DecimalWarningSink,
+): ClaimAccumulator {
   const {
     variant,
     hierarchy,
@@ -1063,7 +1082,7 @@ function openClaim(seg: X12Segment, delimiters: Delimiters, ctx: ClaimContext): 
     payer,
     patient,
     claimId: elementValue(seg, 1, delimiters),
-    totalCharge: elementDecimalOrZero(seg, 2, delimiters),
+    totalCharge: elementDecimalOrZero(seg, 2, delimiters, sink),
     placeOfServiceCode: componentOptional(seg, 5, 1, delimiters),
     facilityCodeQualifier: componentOptional(seg, 5, 2, delimiters),
     claimFrequencyCode: componentOptional(seg, 5, 3, delimiters),
@@ -1144,7 +1163,12 @@ function openServiceLine(
   return undefined;
 }
 
-function decodeSv1(acc: ServiceLineAccumulator, seg: X12Segment, delimiters: Delimiters): void {
+function decodeSv1(
+  acc: ServiceLineAccumulator,
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): void {
   if (acc.variant !== "P") return;
   acc.procedureQualifier = componentOptional(seg, 1, 1, delimiters) ?? "";
   acc.procedureCode = componentOptional(seg, 1, 2, delimiters) ?? "";
@@ -1154,9 +1178,9 @@ function decodeSv1(acc: ServiceLineAccumulator, seg: X12Segment, delimiters: Del
     if (m !== undefined) mods.push(m);
   }
   acc.modifiers = mods;
-  acc.charge = elementDecimalOrZero(seg, 2, delimiters);
+  acc.charge = elementDecimalOrZero(seg, 2, delimiters, sink);
   acc.unitOfMeasure = elementOptional(seg, 3, delimiters);
-  acc.units = elementDecimalOrZero(seg, 4, delimiters);
+  acc.units = elementDecimalOrZero(seg, 4, delimiters, sink);
   acc.placeOfServiceCode = elementOptional(seg, 5, delimiters);
   const pointers: string[] = [];
   for (let p = 1; p <= 4; p += 1) {
@@ -1169,7 +1193,12 @@ function decodeSv1(acc: ServiceLineAccumulator, seg: X12Segment, delimiters: Del
   acc.familyPlanningIndicator = elementOptional(seg, 12, delimiters);
 }
 
-function decodeSv2(acc: ServiceLineAccumulator, seg: X12Segment, delimiters: Delimiters): void {
+function decodeSv2(
+  acc: ServiceLineAccumulator,
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): void {
   if (acc.variant !== "I") return;
   acc.revenueCode = elementValue(seg, 1, delimiters);
   acc.procedureQualifier = componentOptional(seg, 2, 1, delimiters);
@@ -1180,14 +1209,19 @@ function decodeSv2(acc: ServiceLineAccumulator, seg: X12Segment, delimiters: Del
     if (m !== undefined) mods.push(m);
   }
   acc.modifiers = mods;
-  acc.charge = elementDecimalOrZero(seg, 3, delimiters);
+  acc.charge = elementDecimalOrZero(seg, 3, delimiters, sink);
   acc.unitOfMeasure = elementOptional(seg, 4, delimiters);
-  acc.units = elementDecimalOrZero(seg, 5, delimiters);
-  acc.serviceLineRate = elementDecimal(seg, 6, delimiters);
-  acc.nonCoveredCharge = elementDecimal(seg, 7, delimiters);
+  acc.units = elementDecimalOrZero(seg, 5, delimiters, sink);
+  acc.serviceLineRate = elementDecimal(seg, 6, delimiters, sink);
+  acc.nonCoveredCharge = elementDecimal(seg, 7, delimiters, sink);
 }
 
-function decodeSv3(acc: ServiceLineAccumulator, seg: X12Segment, delimiters: Delimiters): void {
+function decodeSv3(
+  acc: ServiceLineAccumulator,
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): void {
   if (acc.variant !== "D") return;
   acc.procedureQualifier = componentOptional(seg, 1, 1, delimiters) ?? "";
   acc.procedureCode = componentOptional(seg, 1, 2, delimiters) ?? "";
@@ -1197,7 +1231,7 @@ function decodeSv3(acc: ServiceLineAccumulator, seg: X12Segment, delimiters: Del
     if (m !== undefined) mods.push(m);
   }
   acc.modifiers = mods;
-  acc.charge = elementDecimalOrZero(seg, 2, delimiters);
+  acc.charge = elementDecimalOrZero(seg, 2, delimiters, sink);
   acc.placeOfServiceCode = elementOptional(seg, 3, delimiters);
   const cavities: string[] = [];
   for (let p = 1; p <= 5; p += 1) {
@@ -1206,16 +1240,20 @@ function decodeSv3(acc: ServiceLineAccumulator, seg: X12Segment, delimiters: Del
   }
   acc.oralCavityArea = cavities;
   acc.prosthesisCrownInlayCode = elementOptional(seg, 5, delimiters);
-  acc.units = elementDecimalOrZero(seg, 6, delimiters);
+  acc.units = elementDecimalOrZero(seg, 6, delimiters, sink);
 }
 
-function openAdjudication(seg: X12Segment, delimiters: Delimiters): AdjudicationAccumulator {
+function openAdjudication(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): AdjudicationAccumulator {
   return {
     otherPayerId: elementValue(seg, 1, delimiters),
-    amountPaid: elementDecimalOrZero(seg, 2, delimiters),
+    amountPaid: elementDecimalOrZero(seg, 2, delimiters, sink),
     procedureQualifier: componentOptional(seg, 3, 1, delimiters),
     procedureCode: componentOptional(seg, 3, 2, delimiters),
-    paidUnits: elementDecimal(seg, 5, delimiters),
+    paidUnits: elementDecimal(seg, 5, delimiters, sink),
     adjustments: [],
     dateAdjudicated: undefined,
   };

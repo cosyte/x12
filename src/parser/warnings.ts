@@ -81,6 +81,7 @@ export const WARNING_CODES = {
   X12_UNKNOWN_CLAIM_STATUS_CATEGORY: "X12_UNKNOWN_CLAIM_STATUS_CATEGORY",
   X12_UNKNOWN_CLAIM_STATUS: "X12_UNKNOWN_CLAIM_STATUS",
   X12_834_UNKNOWN_MAINTENANCE_TYPE: "X12_834_UNKNOWN_MAINTENANCE_TYPE",
+  X12_UNPARSEABLE_DECIMAL: "X12_UNPARSEABLE_DECIMAL",
 } as const;
 
 /**
@@ -319,6 +320,8 @@ const WARNING_MESSAGES = {
     "Unknown claim status code (CSC): the STC composite's second component is outside the bundled snapshot. The verbatim code is preserved on the status; only its description is unavailable.",
   X12_834_UNKNOWN_MAINTENANCE_TYPE:
     "Unknown 834 maintenance type: the INS-03/HD-01 code is outside the bundled snapshot. The verbatim code is preserved on the enrollment and the action is NEVER inferred.",
+  X12_UNPARSEABLE_DECIMAL:
+    "Unparseable decimal: the element at `position.elementIndex` held bytes this library could not decode as a decimal, so NO value was decoded from it. Whatever occupies that slot on the model, including 0 and undefined, is a stand-in and is NOT a value the sender supplied. The verbatim bytes are preserved on the segment; read them there before acting on the amount, quantity or percent.",
 } as const;
 
 /**
@@ -901,6 +904,42 @@ export function unknownMaintenanceType(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_834_UNKNOWN_MAINTENANCE_TYPE,
     message: WARNING_MESSAGES.X12_834_UNKNOWN_MAINTENANCE_TYPE,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_UNPARSEABLE_DECIMAL` warning. Emitted whenever an element
+ * read as a decimal held bytes that are NOT empty and do not match the shape
+ * {@link "../decimal.js".X12Decimal} decodes, `[+-]?digits(.digits?)?` - a
+ * thousands separator, a currency symbol, `N/A`, two decimal points, a
+ * trailing sign, and so on. That shape is what this library reads, stated as
+ * such: no clause of X12.6 is cited for it here, so do not read the code as
+ * an assertion about what type R does and does not permit.
+ *
+ * The warning is a property of the READ, not of what the caller does with
+ * the result: it fires whether the decoded slot ends up on the model, is
+ * discarded, or is replaced by a stand-in. That is what makes it countable
+ * against the input rather than against the walker's control flow.
+ *
+ * `position.elementIndex` is the 1-indexed element that failed, so a
+ * consumer can go read the verbatim bytes off the segment. The message
+ * takes NO discriminant and deliberately does not name which stand-in
+ * landed: a reader may put `X12Decimal.ZERO` on a slot typed `X12Decimal`,
+ * leave an optional slot `undefined`, or drop the row entirely, and the one
+ * thing true of all three is that the number now in that slot is not the
+ * sender's. Read the model field itself to see which happened.
+ *
+ * @example
+ * ```ts
+ * import { unparseableDecimal } from "@cosyte/x12";
+ * const w = unparseableDecimal({ segmentIndex: 3, transactionIndex: 0, elementIndex: 2 });
+ * ```
+ */
+export function unparseableDecimal(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_UNPARSEABLE_DECIMAL,
+    message: WARNING_MESSAGES.X12_UNPARSEABLE_DECIMAL,
     position,
   };
 }

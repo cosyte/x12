@@ -45,7 +45,7 @@ Pre-alpha `0.0.x`, **published** to npm from a public repo. **Never quote a vers
   v1 read or emit scope as "270/271" or "276/277" complete** - that claim was on the README and the
   docs site until `ASSETS-P8` corrected it.
   Why: `documentation/agent-notes.md#published-scope-the-270-and-276-gap`
-- **Warning registry: 22 codes + 4 Tier-3 fatals.** Additions-only. **Derive the count rather than
+- **Warning registry: 23 codes + 4 Tier-3 fatals.** Additions-only. **Derive the count rather than
   trusting this line** - the codes are exported as `ALL_WARNING_MESSAGES`, and the four fatals are
   enumerated under Engineering Guardrails below.
 - **Profile system** (`defineProfile()`, `profiles` namespace) shipped Phase 9. **PHI commit-gate**
@@ -115,6 +115,28 @@ the published `@cosyte/*` config packages, not by copying files. The source of t
 and the refutation history are there. **Do not act on a line here without reading its section.**
 **🩺 marks a trap where getting it wrong mis-states a clinical or financial value on the wire.**
 
+### 🩺 `X12-QUANTITY-SILENT-DEFAULTS` (2026-08-05) · `documentation/agent-notes.md#x12-quantity-silent-defaults-2026-08-05`
+
+- **🩺 A PRESENT decimal that does not decode emits `X12_UNPARSEABLE_DECIMAL` at its
+  `position.elementIndex`, in all six readers. An ABSENT one emits nothing.** Both pinned.
+- **🩺 The model is UNCHANGED. Never write "an unparseable amount can no longer read as zero".** It
+  can; not _silently_. Closing it is `X12Decimal | undefined` everywhere: its own slice.
+- **🩺 NEVER INVERT IT INTO "an unwarned `0` is a zero the sender sent". A slot a reader never read
+  cannot warn** - `get837Claims` leaves `charge`/`units` at their seeded `ZERO`, `warnings: []`, on
+  a variant/`SVx` disagreement (`PRE-EXISTING`, UNFILED). Three shipped docs carried the bare form.
+  Guarantee: unwarned `0` **at an element a reader decoded**.
+- **PUBLISH NO CENSUS OF THE FALLBACK OUTCOMES.** A draft said three, a refuter measured four. The
+  RULE holds: it is a property of the READ, not the USE - so no control flow changed.
+- **ONE message, NO discriminant** - a `ZERO`/`NOT_DECODED` pair was wrong at 835 `CAS`, 835 `PLB`,
+  837 `CAS`. **And assert nothing about what X12.6 type R permits;** nobody here has read it, so the
+  message says "could not decode".
+- **The 835 balance invariant is NOT a net: it names an equation, never an element, and exists in no
+  other reader.** 7 of 9 base probes were wholly silent, 835 `SVC-05` among them.
+- **The sink is an OPTIONAL 4th arg; the public helpers stay silent without one.** The library's own
+  silence is held by a source scan counting TOP-LEVEL ARGS, never a `, sink)` regex.
+- **A green suite proved nothing: no fixture holds an unparseable decimal and a round trip CANNOT
+  make one.** Only bytes can.
+
 ### 🩺 `X12-SVC-ELEMENT-MAP-OFF-BY-ONE` (2026-08-04) · `documentation/agent-notes.md#x12-svc-element-map-off-by-one-2026-08-04`
 
 - **🩺 The 835 SVC map is `revenueCode` -> SVC-04, `paidUnitsOfService` -> SVC-05,
@@ -138,8 +160,8 @@ and the refutation history are there. **Do not act on a line here without readin
 - **Never default an absent SVC-05 to one.** X221A1 is _reported_ to assume one (secondhand, from an
   RFI Description, not a clause read from the TR3). Fabricating a count the sender did not send is
   inventing.
-- **`undefined` means "not decoded", not "absent"** - the element may have been present and
-  unparseable, which warns nothing. Pre-existing at every quantity site; disclosed, not fixed.
+- **`undefined` still means "not decoded", not "absent"** - but the unparseable case now warns and
+  the absent case does not, which is what tells them apart (next trap).
 - **The 277's SVC-07 is still not decoded and is usage R in X212**, so an **X212** 277 this library
   emits with a service line is short a required element. `PRE-EXISTING`, filed not fixed. **Do not
   widen it:** in **X214** the same element is usage `S`, so `build277CA` is unaffected.

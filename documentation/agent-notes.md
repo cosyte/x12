@@ -11,6 +11,7 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 
 ## Contents
 
+- [X12-QUANTITY-SILENT-DEFAULTS (2026-08-05)](#x12-quantity-silent-defaults-2026-08-05)
 - [X12-SVC-ELEMENT-MAP-OFF-BY-ONE (2026-08-04)](#x12-svc-element-map-off-by-one-2026-08-04)
 - [X12-DECIMAL-BYPASSES-THE-GUARD (2026-08-04)](#x12-decimal-bypasses-the-guard-2026-08-04)
 - [X12-NUMERIC-VALUE-EMITS-EMPTY (2026-08-03)](#x12-numeric-value-emits-empty-2026-08-03)
@@ -39,6 +40,142 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 - [PHI commit-gate armed (2026-06-28)](#phi-commit-gate-armed-2026-06-28)
 - [Published scope: the 270 and 276 gap](#published-scope-the-270-and-276-gap)
 - [ASSETS-P8: the attw wrapper](#assets-p8-the-attw-wrapper)
+
+## X12-QUANTITY-SILENT-DEFAULTS (2026-08-05)
+
+- **🩺 THE DEFECT: `elementDecimalOrZero` TURNED A PRESENT, UNPARSEABLE DECIMAL INTO
+  `X12Decimal.ZERO` WITH NO DIAGNOSTIC ON ANY CHANNEL.** `X12Decimal.fromString` correctly returns
+  `undefined` for anything outside `[+-]?digits(.digits?)?`, and the helper then defaulted it to
+  `X12Decimal.ZERO`. So a payer amount of `1,234.56` (a thousands separator, which X12 forbids in an R-type
+  element), `$450.00`, `450.00USD`, `1.2.3`, `450-` or `N/A` read back as `0`, indistinguishable from
+  a payer that paid nothing. **A fabricated amount presented as read**, which is the same harm class
+  as `#64`'s mis-read count. `PRE-EXISTING`, surfaced by `#64`'s refuter, filed then fixed here.
+
+- **The milder half is the same root cause one type away.** `elementDecimal` answered `undefined`
+  for BOTH "the sender omitted this element" and "the sender sent bytes this library could not
+  read", also unwarned, so `undefined` at a quantity site meant "not decoded" rather than "absent"
+  and no consumer could tell which.
+
+- **🩺 MEASURE THE BASE, PROBE BY PROBE, AND KEEP THE ENUMERATION.** Nine probes, one per site class,
+  each substituting a single numeric token into a committed fixture, run against `5a73b37` and
+  against head:
+
+  | Probe | Base | Head |
+  | --- | --- | --- |
+  | 835 `BPR-02` `1,234.56` | `totalActualPayment` `0`, only `X12_835_REMIT_BALANCE_MISMATCH` | + `X12_UNPARSEABLE_DECIMAL` at element 2 |
+  | 835 `CLP-04` `450.00USD` | `totalPaymentAmount` `0`, only 2x `X12_835_REMIT_BALANCE_MISMATCH` | + `X12_UNPARSEABLE_DECIMAL` at element 4 |
+  | 835 `SVC-05` `1.2.3` | `paidUnitsOfService` `undefined`, **`warnings: []`** | `X12_UNPARSEABLE_DECIMAL` at element 5 |
+  | 837 `CLM-02` `$150` | `totalCharge` `0`, **`warnings: []`** | `X12_UNPARSEABLE_DECIMAL` at element 2 |
+  | 837 `SV1-04` `N/A` | `units` `0`, **`warnings: []`** | `X12_UNPARSEABLE_DECIMAL` at element 4 |
+  | 277 `STC-04` `1,50` | **`warnings: []`** | `X12_UNPARSEABLE_DECIMAL` at element 4 |
+  | 271 `EB-07` `1 000` | **`warnings: []`** | `X12_UNPARSEABLE_DECIMAL` at element 7 |
+  | 820 `BPR-02` `12,500.00` | `totalPremiumAmount` `0`, **`warnings: []`** | `X12_UNPARSEABLE_DECIMAL` at element 2 |
+  | 834 `AMT-02` `125.00USD` | **`warnings: []`** | `X12_UNPARSEABLE_DECIMAL` on that member |
+
+  **Seven of nine were completely silent at base.** The two that were not are the 835's, and their
+  only signal was the balance invariant, **which names an equation and never an element, and exists
+  in no other reader**. Do not upgrade that into "the 835 already caught it": it fires only for
+  amounts that are terms of a §1.10.2 invariant, so 835 `SVC-05` was silent too.
+
+- **🩺 ONE MESSAGE, NO DISCRIMINANT, AND THAT WAS A CORRECTION MID-BUILD.** A first draft used a
+  `DECIMAL_FALLBACKS` discriminant (`ZERO` / `NOT_DECODED`) so the message could say what landed in
+  the slot. It was measurably wrong at three sites: 835 `CAS`, 835 `PLB` and 837 `CAS` read with
+  `elementDecimal` and then apply `?? X12Decimal.ZERO`, so the `NOT_DECODED` wording would have
+  claimed `undefined` where the model shows `0`, and where the triple is skipped neither wording is
+  true. **The message now states only what is true of every site: no value was decoded, and whatever
+  occupies the slot is a stand-in.** The reader's downstream choice is visible on the model; the
+  warning does not try to predict it.
+
+- **The warning is a property of the READ, not of the USE.** It fires whether the decoded slot
+  reaches the model, is discarded, or is replaced. That is what makes it countable against the input
+  instead of against the walker's control flow, and it is why no control flow changed.
+
+- **NO CONTROL FLOW CHANGED, ON PURPOSE.** The `CAS` / `PLB` skip test is still
+  `if (reasonCode === undefined && amount === undefined) continue`. Switching it to a tri-state read
+  would have surfaced a fabricated 0-amount adjustment row out of unparseable bytes: a retention
+  increase that mints a row nobody sent. The bytes are already on `tx.segments`.
+
+- **🩺 THE MODEL IS UNCHANGED AND THE RESIDUAL IS DISCLOSED, NOT CLAIMED AWAY.** A slot typed
+  `X12Decimal` still reads `X12Decimal.ZERO`. A consumer that reads only the model and never looks at
+  `.warnings` sees exactly what it saw before. Closing that means `X12Decimal | undefined` on every
+  monetary model slot, which ripples into `balance.ts` and all nine builders: a breaking model change
+  and its own slice. **Do not restate this slice as "an unparseable amount can no longer read as
+  zero".** It can. It can no longer do so *silently*.
+
+- **AN ABSENT ELEMENT DOES NOT WARN, AND THAT IS DELIBERATE.** "Missing means zero" is the documented
+  convention of the slots using `elementDecimalOrZero`, and warning on it would fire on almost every
+  real 835. Pinned both ways, because the value of the new warning is entirely in it being rare.
+
+- **THE PUBLIC HELPERS TAKE THE SINK AS AN OPTIONAL 4TH ARGUMENT AND ARE SILENT WITHOUT IT.** That
+  keeps every existing 3-argument caller compiling. The library's own silence is prevented by
+  `test/parser-decimal-silent-defaults.test.ts`, which counts the top-level arguments of every
+  `elementDecimal` / `elementDecimalOrZero` call under `src/transactions/` by walking balanced
+  parens, after stripping comments. **It keys on the ARGUMENT COUNT, never on a `, sink)` regex** -
+  the sink binding is named by its caller, and a name-matching scan is exactly the shape that went
+  slack twice in `X12-BUILDER-BOUNDS`. Negative controls run both ways, plus a vacuity check that
+  each reader file still contains at least one decimal read.
+
+- **`readElementDecimal` is the pure primitive and the two warning wrappers are thin over it.** One
+  place decides what "unparseable" means; the helpers only decide what to do about it. That is what
+  makes the tri-state public without a second implementation to drift.
+
+- **🩺 The 834's sink is the MEMBER's warning list, not the transaction's.** `get834Enrollments`
+  streams and accumulates per `INS` loop, so the sink is built inside the `AMT` case from
+  `current.warnings`. Building it at the top of the walk with a transaction-level array does not
+  compile there, and scoping it to the member matches `X12_834_UNKNOWN_MAINTENANCE_TYPE`.
+
+- **The 277's sink is built inside `decodeStc`,** which already carried `warnings` + `position`;
+  every other reader builds one per segment at the top of its walk loop.
+
+- **The existing suite stayed green through the whole change** (1,236 tests before the two expected
+  snapshot updates). That is not evidence the fix works: **no committed fixture contains an
+  unparseable decimal**, which is exactly why the defect survived. The evidence is the nine probes
+  above and the literal-EDI cases in the new file, and **a round trip could not have produced any of
+  them** - `X12-DECIMAL-BYPASSES-THE-GUARD` made the builders refuse to emit an unparseable decimal,
+  so only bytes can make this input.
+
+- **🩺 PASS 1 REFUTED, AND BOTH `INTRODUCED` FINDINGS WERE CLAIM DEFECTS, NOT CODE DEFECTS.** The
+  parser change graded correct and complete against the item's bar on the first pass; what failed was
+  what shipped alongside it. That is this repo's standing pattern and it held again.
+
+  1. **major - the slice published the INVERSE guarantee, and it is false.** Three consumer-facing
+     artifacts said, unqualified, that "a `0` with no warning is a zero the sender sent", one of them
+     paired with "gate on the warning". **The warning is a property of a decimal READ; a slot a
+     reader never READ cannot warn and still holds whatever its accumulator was seeded with.**
+     Measured at head: `get837Claims` seeds `charge` / `units` at `X12Decimal.ZERO`
+     (`get-837.ts:1114`) and `decodeSv1` / `decodeSv2` / `decodeSv3` each return before reading
+     anything when `acc.variant` does not match, so a wire `8500` / `4 UN` reads back `0` / `0` with
+     `warnings: []` - reachable from the wire (ST-03 `005010X222A2` on a file whose lines are `SV2`)
+     and from `get837Claims(d, tx, { type: "P" })`. **`PRE-EXISTING`, identical at base, filed as its
+     own item, NOT fixed here.** The remedy was to correct the claim, never to grow the guard: the
+     guarantee is now stated as **unwarned `0` AT AN ELEMENT A READER DECODED**.
+  2. **minor - the published outcome census was three and the true number is four.** The docs
+     enumerated `ZERO` slot / optional slot / dropped `CAS`-`PLB` row and asserted "all three". A
+     fourth: an `AMT` or `ADX` row is dropped WHOLE even with its qualifier present
+     (`AMT*B6*1,234.56` in an 835 line, `ADX*-25.00USD*53*AZ*…` in an 820). The factory's own JSDoc
+     had it right in the same commit ("or drop the row entirely") and the shipped prose was narrower.
+     **This is `X12-NUMERIC-VALUE-EMITS-EMPTY` verbatim: the remedy is to CUT THE CLAIM BACK, not to
+     grow the census. No census is published now.**
+  3. **minor - the message asserted a spec fact nobody here has grounded.** It said the bytes "are
+     not an X12 R-type decimal". Neither the message, the factory JSDoc, nor `X12_DECIMAL_RE`'s
+     comment cites a clause of X12.6, and the test pins `"1e3"` as undecoded. **If type R permits an
+     exponent, `1E3` is a conformant 1000 this library reads as `0`** - `PRE-EXISTING` behaviour in
+     `X12Decimal.fromString`, untouched, but a NEW assertion. The message now says "could not decode
+     as a decimal" and the JSDoc says outright that no clause is cited.
+
+- **Findings the pass raised that are NOT this slice's, each reproduced at base and disclosed here,
+  NOT fixed and - as pass 2 measured - NOT YET FILED. Each is owed its own umbrella backlog ID, and
+  this repo cannot write one; the coordinator must. Do not read "disclosed" as "tracked":** the 837 variant/`SVx` silent `0` above (major, and the same harm class as this item);
+  `X12Decimal.fromString` refusing a space-padded numeric (` 450.00`), so a fixed-width-padding
+  sender's every amount reads `0`; and `get820Payments` dropping an `RMR` or `ADX` row when its
+  leading qualifier elements are empty (`RMR***PI*500.00*500.00` loses a $500.00 row, `warnings: []`).
+  Also queued out-of-repo: the `healthcare-integration:x12-transaction-author` crew skill claims
+  `serialize(parse(s)) === s`, which this repo's own `CLAUDE.md` and `KNOWN-LIMITATIONS.md` deny.
+
+- **A sibling changeset was corrected in the same commit.** `.changeset/sour-bottles-repeat.md`
+  (`#64`) said `undefined` at a quantity site "raises no warning", which this slice makes false in
+  the same release. `KNOWN-LIMITATIONS.md`'s SVC entry said the same and was corrected too.
+  **Correct the disclosure in the same commit as the fix that makes the new wording true.**
 
 ## X12-SVC-ELEMENT-MAP-OFF-BY-ONE (2026-08-04)
 
