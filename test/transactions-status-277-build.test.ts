@@ -138,6 +138,7 @@ const CANONICAL_SPEC: Build277Spec = {
                           modifiers: ["25"],
                           lineChargeAmount: dec("150.00"),
                           linePaymentAmount: dec("120.00"),
+                          unitsOfService: dec("2"),
                           statuses: [{ statuses: [{ categoryCode: "F2", statusCode: "65" }] }],
                           references: [{ qualifier: "FJ", value: "LINE001" }],
                         },
@@ -216,6 +217,7 @@ describe("build277 - round-trip fidelity", () => {
     expect(line?.modifiers).toEqual(["25"]);
     expect(line?.lineChargeAmount?.toString()).toBe("150.00");
     expect(line?.linePaymentAmount?.toString()).toBe("120.00");
+    expect(line?.unitsOfService?.toString()).toBe("2");
     expect(line?.statuses[0]?.statuses[0]).toMatchObject({ categoryCode: "F2", statusCode: "65" });
     expect(line?.references[0]).toMatchObject({ qualifier: "FJ", value: "LINE001" });
   });
@@ -742,10 +744,17 @@ describe("build277 - optional-field defaults", () => {
                       claims: [
                         {
                           // trace with no originating-company / supplemental id; no
-                          // claim-level statuses; a bare service line carrying a
-                          // single category-only STC
+                          // claim-level statuses; a service line carrying a single
+                          // category-only STC and nothing else optional. SVC-07 is
+                          // present because X212 REQUIRES it; the 005010X214
+                          // counterpart in the SVC-07 suite drops it.
                           trace: { traceTypeCode: "2", referenceId: "CLAIM001" },
-                          serviceLines: [{ statuses: [{ statuses: [{ categoryCode: "A2" }] }] }],
+                          serviceLines: [
+                            {
+                              unitsOfService: dec("1"),
+                              statuses: [{ statuses: [{ categoryCode: "A2" }] }],
+                            },
+                          ],
                         },
                       ],
                       // dependent with no member NM1

@@ -269,6 +269,8 @@ export interface Build277DateSpec {
  * const l: Build277ServiceLineSpec = {
  *   serviceIdQualifier: "HC", procedureCode: "99213", modifiers: ["25"],
  *   lineChargeAmount: X12Decimal.fromString("150.00")!,
+ *   // SVC-07 is required in 005010X212, so `build277` refuses a line without it.
+ *   unitsOfService: X12Decimal.fromString("1")!,
  *   statuses: [{ statuses: [{ categoryCode: "F2", statusCode: "65" }] }],
  * };
  * ```
@@ -286,6 +288,19 @@ export interface Build277ServiceLineSpec {
   readonly linePaymentAmount?: X12Decimal;
   /** SVC-04 - revenue code. */
   readonly revenueCode?: string;
+  /**
+   * SVC-07 - units of service count (data element 380).
+   *
+   * **Usage differs by TR3 and so does the builder.** In `005010X212` the
+   * element is REQUIRED, so {@link "./build-277.js".build277} REFUSES a
+   * service line that omits it rather than emit a document short a required
+   * element. In `005010X214` it is SITUATIONAL, so
+   * {@link "./build-277.js".build277CA} emits it when supplied and omits it
+   * otherwise. Nothing is ever defaulted: a count the caller did not supply
+   * is a count nobody sent, and inventing one would put a quantity on the
+   * wire that no submitter stands behind.
+   */
+  readonly unitsOfService?: X12Decimal;
   /** Loop 2220 STC statuses. */
   readonly statuses?: readonly Build277StatusSpec[];
   /** Loop 2220 REF identifiers. */

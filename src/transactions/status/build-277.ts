@@ -14,6 +14,13 @@
  * inconsistent hierarchy is therefore unrepresentable, and the SE-01
  * segment count is correct by construction.
  *
+ * The two variants do NOT share every element usage, and the builder
+ * follows the TR3 rather than a single house rule: SVC-07, the units of
+ * service count, is REQUIRED in `005010X212` and SITUATIONAL in
+ * `005010X214`, so `build277` refuses a service line that omits it and
+ * `build277CA` emits the same line happily. A count is never defaulted in
+ * either direction.
+ *
  * The read side ({@link "./get-277.js".get277Status}) is lenient - a real
  * 277 with a broken HL parent pointer is WARNED, never rejected. The builder
  * takes the opposite stance: it REFUSES rather than emit a hierarchy a
@@ -166,7 +173,7 @@ function buildClaimStatus(version: ClaimStatusVersion, spec: Build277Spec): X12I
 
   // ---- Structural preconditions (refuse an impossible spine) ------------
 
-  enforceStructuralSpec(spec);
+  enforceStructuralSpec(version, spec);
 
   // ---- Delimiter resolution + escape helper -----------------------------
 
@@ -278,10 +285,12 @@ function buildClaimStatus(version: ClaimStatusVersion, spec: Build277Spec): X12I
  * spine (no sources / childless source / receiver / provider; a subscriber
  * with neither claims nor dependents; a dependent with no claims) and the
  * per-claim / per-status preconditions (a claim that would not materialize
- * on read; a status whose first composite has no category code). PHI-clean:
- * messages carry indices + counts, never names / member ids. @internal
+ * on read; a status whose first composite has no category code; under
+ * `005010X212` only, a service line with no SVC-07 units of service count).
+ * PHI-clean: messages carry indices + counts, never names / member ids.
+ * @internal
  */
-function enforceStructuralSpec(spec: Build277Spec): void {
+function enforceStructuralSpec(version: ClaimStatusVersion, spec: Build277Spec): void {
   const sources = requireCallerArray(
     spec.informationSources,
     "build277: spec.informationSources",
@@ -339,7 +348,7 @@ function enforceStructuralSpec(spec: Build277Spec): void {
         for (let u = 0; u < subscribers.length; u += 1) {
           const subscriber = subscribers[u];
           if (subscriber === undefined) continue;
-          enforceSubscriber(subscriber, `${locator}.subscriber[${String(u)}]`);
+          enforceSubscriber(version, subscriber, `${locator}.subscriber[${String(u)}]`);
         }
       }
     }
@@ -347,7 +356,11 @@ function enforceStructuralSpec(spec: Build277Spec): void {
 }
 
 /** @internal */
-function enforceSubscriber(subscriber: Build277SubscriberSpec, locator: string): void {
+function enforceSubscriber(
+  version: ClaimStatusVersion,
+  subscriber: Build277SubscriberSpec,
+  locator: string,
+): void {
   const claims = requireCallerArray(
     subscriber.claims,
     `build277: subscriber at ${locator}: claims`,
@@ -366,7 +379,8 @@ function enforceSubscriber(subscriber: Build277SubscriberSpec, locator: string):
   }
   for (let c = 0; c < claims.length; c += 1) {
     const claim = claims[c];
-    if (claim !== undefined) enforceClaim(claim, `${locator}.claim[${String(c)}]`, c === 0);
+    if (claim !== undefined)
+      enforceClaim(version, claim, `${locator}.claim[${String(c)}]`, c === 0);
   }
   for (let d = 0; d < dependents.length; d += 1) {
     const dependent = dependents[d];
@@ -385,7 +399,8 @@ function enforceSubscriber(subscriber: Build277SubscriberSpec, locator: string):
     }
     for (let c = 0; c < depClaims.length; c += 1) {
       const claim = depClaims[c];
-      if (claim !== undefined) enforceClaim(claim, `${depLocator}.claim[${String(c)}]`, c === 0);
+      if (claim !== undefined)
+        enforceClaim(version, claim, `${depLocator}.claim[${String(c)}]`, c === 0);
     }
   }
 }
@@ -395,9 +410,19 @@ function enforceSubscriber(subscriber: Build277SubscriberSpec, locator: string):
  * statuses AND no service lines) and any status whose first composite lacks
  * a category code. Only a TRN opens a new Loop 2200 on read, so every claim
  * past the first under a subscriber / dependent MUST carry a trace - without
- * one its STC / REF / DTP would silently fold into the prior claim. @internal
+ * one its STC / REF / DTP would silently fold into the prior claim.
+ *
+ * Also refuses a service line with no SVC-07 units of service count, but
+ * ONLY under `005010X212`, where that element is REQUIRED. Under
+ * `005010X214` it is SITUATIONAL and a line without it is conformant, so
+ * `build277CA` is deliberately unaffected. @internal
  */
-function enforceClaim(claim: Build277ClaimSpec, locator: string, isFirst: boolean): void {
+function enforceClaim(
+  version: ClaimStatusVersion,
+  claim: Build277ClaimSpec,
+  locator: string,
+  isFirst: boolean,
+): void {
   const statuses = requireCallerArray(
     claim.statuses,
     `build277: claim at ${locator}: statuses`,
@@ -426,6 +451,12 @@ function enforceClaim(claim: Build277ClaimSpec, locator: string, isFirst: boolea
   for (let l = 0; l < serviceLines.length; l += 1) {
     const line = serviceLines[l];
     if (line === undefined) continue;
+    if (version === "005010X212" && line.unitsOfService === undefined) {
+      throw new ClaimStatus277BuildError(
+        CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_SPEC,
+        `build277: service line at ${locator}.line[${String(l)}] has no unitsOfService, and SVC-07 is a required element in 005010X212. Supply the submitted count; it is never defaulted. In 005010X214 it is situational, so build277CA accepts the same line.`,
+      );
+    }
     const lineStatuses = requireCallerArray(
       line.statuses,
       `build277: claim at ${locator}.line[${String(l)}]: statuses`,
@@ -578,7 +609,15 @@ function emitClaim(claim: Build277ClaimSpec, body: string[], ctx: EmitContext): 
   for (const line of claim.serviceLines ?? []) emitServiceLine(line, body, ctx);
 }
 
-/** Emit a Loop 2220 service line (SVC + its STC / REF / DTP). @internal */
+/**
+ * Emit a Loop 2220 service line (SVC + its STC / REF / DTP).
+ *
+ * SVC-05 (Quantity) and SVC-06 (a second composite procedure identifier) are
+ * NOT USED in both `005010X212` and `005010X214`, so they are emitted empty
+ * and hold the place for SVC-07, the units of service count. `seg` trims
+ * trailing empty elements, so a 277CA line with no units emits no placeholder
+ * at all. @internal
+ */
 function emitServiceLine(line: Build277ServiceLineSpec, body: string[], ctx: EmitContext): void {
   const svc01 = ctx.comp([
     line.serviceIdQualifier ?? "",
@@ -592,6 +631,9 @@ function emitServiceLine(line: Build277ServiceLineSpec, body: string[], ctx: Emi
       line.lineChargeAmount === undefined ? "" : escDec(line.lineChargeAmount, ctx.esc),
       line.linePaymentAmount === undefined ? "" : escDec(line.linePaymentAmount, ctx.esc),
       ctx.esc(line.revenueCode ?? ""),
+      "",
+      "",
+      line.unitsOfService === undefined ? "" : escDec(line.unitsOfService, ctx.esc),
     ]),
   );
   for (const status of line.statuses ?? []) emitStatus(status, body, ctx);
