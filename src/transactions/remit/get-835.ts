@@ -23,6 +23,7 @@ import {
   elementDecimalOrZero,
   elementOptional,
   elementValue,
+  type X12DecimalWarningSink,
   type X12Segment,
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
@@ -120,9 +121,12 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
     if (seg === undefined) continue;
     // 1-based segment position inside the body for warning positional context.
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
+    // Every decimal read below routes its `X12_UNPARSEABLE_DECIMAL` here; the
+    // helper narrows the position to the failing element itself.
+    const sink: X12DecimalWarningSink = { warnings, position };
     switch (seg.id) {
       case "BPR": {
-        payment = decodeBpr(seg, delimiters);
+        payment = decodeBpr(seg, delimiters, sink);
         // The remit-total invariant compares BPR-02 against the claims, so the
         // BPR is the segment its warning should point at. Recorded on the last
         // BPR seen, matching `payment` itself, which the same assignment
@@ -209,7 +213,7 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
       case "CLP": {
         flushClaim();
         lastParty = undefined;
-        currentClaim = openClaim(seg, delimiters, position.segmentIndex);
+        currentClaim = openClaim(seg, delimiters, position.segmentIndex, sink);
         currentNm1Provider = undefined;
         currentNm1Person = undefined;
         break;
@@ -288,7 +292,7 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
         break;
       }
       case "AMT": {
-        const amount = decodeAmt(seg, delimiters);
+        const amount = decodeAmt(seg, delimiters, sink);
         if (amount === undefined) break;
         if (currentServiceLine !== undefined) currentServiceLine.amounts.push(amount);
         else if (currentClaim !== undefined) currentClaim.amounts.push(amount);
@@ -309,12 +313,12 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
       }
       case "SVC": {
         flushServiceLine();
-        currentServiceLine = openServiceLine(seg, delimiters);
+        currentServiceLine = openServiceLine(seg, delimiters, sink);
         break;
       }
       case "PLB": {
         flushClaim();
-        for (const p of decodePlb(seg, delimiters)) providerAdjustments.push(p);
+        for (const p of decodePlb(seg, delimiters, sink)) providerAdjustments.push(p);
         break;
       }
       default: {
@@ -427,10 +431,14 @@ interface NM1ProviderAccumulator {
 // ---------------------------------------------------------------------------
 
 /** @internal */
-function decodeBpr(seg: X12Segment, delimiters: Delimiters): X12RemitPaymentHeader {
+function decodeBpr(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): X12RemitPaymentHeader {
   return Object.freeze({
     transactionHandlingCode: elementValue(seg, 1, delimiters),
-    totalActualPayment: elementDecimalOrZero(seg, 2, delimiters),
+    totalActualPayment: elementDecimalOrZero(seg, 2, delimiters, sink),
     creditDebitFlag: elementValue(seg, 3, delimiters),
     method: elementValue(seg, 4, delimiters),
     paymentFormatCode: elementOptional(seg, 5, delimiters),
@@ -501,8 +509,12 @@ function decodePer(seg: X12Segment, delimiters: Delimiters): X12RemitContact {
 }
 
 /** @internal */
-function decodeAmt(seg: X12Segment, delimiters: Delimiters): X12RemitAmount | undefined {
-  const amount = elementDecimal(seg, 2, delimiters);
+function decodeAmt(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): X12RemitAmount | undefined {
+  const amount = elementDecimal(seg, 2, delimiters, sink);
   if (amount === undefined) return undefined;
   return Object.freeze({
     qualifier: elementValue(seg, 1, delimiters),
@@ -564,13 +576,14 @@ function decodeCasAdjustments(
   warnings: X12ParseWarning[],
   position: X12Position,
 ): readonly X12RemitAdjustment[] {
+  const sink: X12DecimalWarningSink = { warnings, position };
   const groupCode = elementValue(seg, 1, delimiters);
   const out: X12RemitAdjustment[] = [];
   for (let triple = 0; triple < 6; triple += 1) {
     const base = 2 + triple * 3;
     const reasonCode = elementOptional(seg, base, delimiters);
-    const amount = elementDecimal(seg, base + 1, delimiters);
-    const quantity = elementDecimal(seg, base + 2, delimiters);
+    const amount = elementDecimal(seg, base + 1, delimiters, sink);
+    const quantity = elementDecimal(seg, base + 2, delimiters, sink);
     if (reasonCode === undefined && amount === undefined) continue;
     const code = reasonCode ?? "";
     const entry = code === "" ? undefined : lookupCarc(code);
@@ -637,6 +650,7 @@ function openClaim(
   seg: X12Segment,
   delimiters: Delimiters,
   clpSegmentIndex: number,
+  sink: X12DecimalWarningSink,
 ): ClaimAccumulator {
   const claimStatusCode = elementValue(seg, 2, delimiters);
   const claimStatusDescription = lookupClpStatus(claimStatusCode)?.description;
@@ -648,9 +662,9 @@ function openClaim(
     patientControlNumber: elementValue(seg, 1, delimiters),
     claimStatusCode,
     claimStatusDescription,
-    totalChargeAmount: elementDecimalOrZero(seg, 3, delimiters),
-    totalPaymentAmount: elementDecimalOrZero(seg, 4, delimiters),
-    patientResponsibilityAmount: elementDecimalOrZero(seg, 5, delimiters),
+    totalChargeAmount: elementDecimalOrZero(seg, 3, delimiters, sink),
+    totalPaymentAmount: elementDecimalOrZero(seg, 4, delimiters, sink),
+    patientResponsibilityAmount: elementDecimalOrZero(seg, 5, delimiters, sink),
     claimFilingIndicatorCode: elementOptional(seg, 6, delimiters),
     payerClaimControlNumber: elementOptional(seg, 7, delimiters),
     facilityTypeCode,
@@ -671,7 +685,11 @@ function openClaim(
 }
 
 /** Open a fresh Loop 2110 accumulator from an SVC segment. @internal */
-function openServiceLine(seg: X12Segment, delimiters: Delimiters): ServiceLineAccumulator {
+function openServiceLine(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): ServiceLineAccumulator {
   const productServiceIdQualifier = componentOptional(seg, 1, 1, delimiters) ?? "";
   const productServiceId = componentOptional(seg, 1, 2, delimiters) ?? "";
   const modifiers: string[] = [];
@@ -683,16 +701,16 @@ function openServiceLine(seg: X12Segment, delimiters: Delimiters): ServiceLineAc
   // SVC-05 is the Units of Service PAID Count (element 380, Quantity); SVC-07
   // is the ORIGINAL (submitted) units, only sent when it differs from SVC-05.
   const revenueCode = elementOptional(seg, 4, delimiters);
-  const paidUnitsOfService = elementDecimal(seg, 5, delimiters);
-  const originalUnitsOfService = elementDecimal(seg, 7, delimiters);
+  const paidUnitsOfService = elementDecimal(seg, 5, delimiters, sink);
+  const originalUnitsOfService = elementDecimal(seg, 7, delimiters, sink);
   const originalServiceIdQualifier = componentOptional(seg, 6, 1, delimiters);
   const originalServiceId = componentOptional(seg, 6, 2, delimiters);
   return {
     productServiceIdQualifier,
     productServiceId,
     modifiers,
-    chargeAmount: elementDecimalOrZero(seg, 2, delimiters),
-    paymentAmount: elementDecimalOrZero(seg, 3, delimiters),
+    chargeAmount: elementDecimalOrZero(seg, 2, delimiters, sink),
+    paymentAmount: elementDecimalOrZero(seg, 3, delimiters, sink),
     revenueCode,
     paidUnitsOfService,
     originalUnitsOfService,
@@ -744,13 +762,17 @@ function attachServiceLineDtm(
  * each composite carrying reason-code + optional reference identifier
  * across two components. @internal
  */
-function decodePlb(seg: X12Segment, delimiters: Delimiters): readonly X12RemitProviderAdjustment[] {
+function decodePlb(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): readonly X12RemitProviderAdjustment[] {
   const providerId = elementValue(seg, 1, delimiters);
   const fiscalPeriodDate = elementValue(seg, 2, delimiters);
   const out: X12RemitProviderAdjustment[] = [];
   for (let pair = 0; pair < 6; pair += 1) {
     const composite = 3 + pair * 2;
-    const amount = elementDecimal(seg, composite + 1, delimiters);
+    const amount = elementDecimal(seg, composite + 1, delimiters, sink);
     const reasonCode = componentOptional(seg, composite, 1, delimiters);
     const subCode = componentOptional(seg, composite, 2, delimiters);
     if (amount === undefined && reasonCode === undefined) continue;

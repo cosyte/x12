@@ -28,6 +28,7 @@ import {
   elementDecimal,
   elementOptional,
   elementValue,
+  type X12DecimalWarningSink,
   type X12Segment,
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
@@ -247,7 +248,12 @@ export async function* get834Enrollments(
       }
       case "AMT": {
         if (currentCoverage === undefined) break;
-        const amount = decodeAmt(seg, delimiters);
+        // The 834 accumulates warnings per MEMBER, not per transaction, so the
+        // decimal sink is the in-flight enrollment's own list: an unparseable
+        // AMT-02 is scoped to the member it was read from, exactly like
+        // `X12_834_UNKNOWN_MAINTENANCE_TYPE`.
+        const sink: X12DecimalWarningSink = { warnings: current.warnings, position };
+        const amount = decodeAmt(seg, delimiters, sink);
         if (amount !== undefined) currentCoverage.amounts.push(amount);
         break;
       }
@@ -445,8 +451,12 @@ function decodeDtp(seg: X12Segment, delimiters: Delimiters): X12EnrollmentDate |
 }
 
 /** @internal */
-function decodeAmt(seg: X12Segment, delimiters: Delimiters): X12EnrollmentAmount | undefined {
-  const amount = elementDecimal(seg, 2, delimiters);
+function decodeAmt(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): X12EnrollmentAmount | undefined {
+  const amount = elementDecimal(seg, 2, delimiters, sink);
   if (amount === undefined) return undefined;
   return Object.freeze({
     qualifier: elementValue(seg, 1, delimiters),

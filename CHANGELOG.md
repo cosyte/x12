@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🩺 `X12_UNPARSEABLE_DECIMAL`, the 23rd Tier-2 warning code, plus `readElementDecimal` and
+  `X12DecimalWarningSink`** (`X12-QUANTITY-SILENT-DEFAULTS`). A decimal element that is **present**
+  and is not an X12 R-type decimal now says so; see `### Fixed` for what it was doing instead.
+  `readElementDecimal(seg, n, delimiters)` is the pure primitive underneath both existing helpers and
+  returns `{ value, status }` with `status` one of `"decoded"` / `"absent"` / `"unparseable"`, which
+  is the distinction a bare `undefined` could not carry. `elementDecimal` and `elementDecimalOrZero`
+  each gained an optional 4th `X12DecimalWarningSink` argument (`{ warnings, position }`); the helper
+  narrows the position to the failing `elementIndex` itself, so a caller passes the position of the
+  segment and never has to remember to do it per element. Existing 3-argument calls still compile and
+  are still silent, on purpose.
+
 - **`X12RemitServiceLine.originalUnitsOfService` / `Build835ServiceLineSpec.originalUnitsOfService`**,
   the 835 SVC-07 Original Units of Service Count: the units as **submitted**, which a payer sends only
   when they differ from the paid count in SVC-05. It is not a convenience field - without it the
@@ -181,6 +192,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   code changed and no published type changed.
 
 ### Fixed
+
+- **🩺 An unparseable decimal no longer becomes a confident zero in silence
+  (`X12-QUANTITY-SILENT-DEFAULTS`).** `elementDecimalOrZero` returned `X12Decimal.ZERO` for an
+  element that was **present** and did not decode, with no warning on any channel. A payer amount of
+  `1,234.56` (a thousands separator, which X12 forbids in an R-type element), `$450.00`, `450.00USD`
+  or `N/A` read back as `0` and was indistinguishable from a payer that paid nothing. A fabricated
+  amount presented as read is the same harm class as a mis-read quantity: a number nobody sent,
+  arriving as though somebody had.
+
+  The same root cause one type away: `elementDecimal` answered `undefined` for **both** "the sender
+  omitted this element" and "the sender sent bytes this library could not read", also unwarned, so
+  `undefined` at a quantity site meant "not decoded" rather than "absent" and no consumer could tell
+  which.
+
+  Every decimal read in all six transaction readers (835, 837P/I/D, 277 / 277CA, 271, 834, 820) now
+  routes through a sink and emits `X12_UNPARSEABLE_DECIMAL` at the failing `position.elementIndex`.
+  Measured on nine probes across those readers, one per site class, each substituting a single
+  numeric token in a committed fixture: at `0.0.9` **seven of the nine were completely silent**, and
+  the two that were not were the 835's `BPR-02` and `CLP-04`, which produced only
+  `X12_835_REMIT_BALANCE_MISMATCH` - a warning that names an equation, never an element, and that
+  exists in no other reader. All nine now carry `X12_UNPARSEABLE_DECIMAL` naming the element.
+
+  **What did NOT change, deliberately.** The model is unchanged: a slot typed `X12Decimal` still
+  reads `X12Decimal.ZERO`, an optional slot still reads `undefined`, and a `CAS` / `PLB` triple whose
+  reason code is also absent is still dropped. A slot typed `X12Decimal` cannot express "did not
+  decode", and changing every such slot to `X12Decimal | undefined` is a breaking model change that
+  belongs in its own slice. So a consumer that reads only the model and never looks at `.warnings`
+  sees exactly what it saw before. **Gate on the warning.** Also unchanged: an **absent** element
+  still returns `X12Decimal.ZERO` and still does **not** warn, because "missing means zero" is the
+  documented convention of those slots. `KNOWN-LIMITATIONS.md` carries the residual in full.
 
 - **A number passed where a builder's types say `string` no longer emits an EMPTY element. It is now
   REFUSED, and it is deliberately not coerced.** `escapeRelease` opened with

@@ -16,6 +16,33 @@ model.
 
 ## Data / decode boundaries
 
+- **🩺 An unparseable decimal still lands on the model as a stand-in; what changed is that it warns.**
+  A decimal element that is present and is not an X12 R-type decimal (`1,234.56`, `$450.00`, `N/A`)
+  decodes to no value, and the reader has to put something in the slot. Where the slot is typed
+  `X12Decimal` it gets `X12Decimal.ZERO`; where it is optional it gets `undefined`; on a `CAS` or
+  `PLB` triple whose reason code is also absent the row is dropped. **All three now emit
+  `X12_UNPARSEABLE_DECIMAL` at the failing `position.elementIndex`, and none of the three is
+  otherwise changed.** So a consumer that reads only the model, and never looks at `.warnings`, sees
+  exactly what it saw before: a `0` where the payer sent something unreadable. **That is the residual,
+  stated plainly.** Closing it further means changing every `X12Decimal` model slot to
+  `X12Decimal | undefined`, which is a breaking model change and is deliberately not in this slice.
+  Gate on the warning, or read `readElementDecimal` yourself.
+
+  Two scoping facts that are easy to get wrong in the other direction:
+  - **An ABSENT element does not warn.** "Missing means zero" is the documented convention of the
+    slots that use `elementDecimalOrZero` and is unchanged, so a `0` with no warning is a zero the
+    sender actually sent (or omitted), not an unread one.
+  - **The public helpers are silent without a sink.** `elementDecimal` / `elementDecimalOrZero` take
+    an optional 4th `X12DecimalWarningSink`. Every reader inside this library passes one, and a
+    source scan in `test/parser-decimal-silent-defaults.test.ts` keeps it that way. **A consumer
+    calling them directly and omitting it gets the old silent behaviour**, which is deliberate: it
+    keeps the existing signature working. `readElementDecimal` is the sink-free way to get the
+    distinction in-band.
+  - **The scan is a syntactic tripwire, not a proof.** It counts the arguments of every
+    `elementDecimal` / `elementDecimalOrZero` call under `src/transactions/` after stripping
+    comments. It says nothing about a decimal decoded some other way, and no exhaustive census of
+    such routes is published here, on purpose.
+
 - **🩺 BREAKING, in the release after `0.0.9`: the 835 Loop 2110 SVC element map was off by one, in
   BOTH directions, and is corrected.** Through `0.0.9` `get835` read the revenue code from **SVC-05**
   and the paid units from **SVC-07**, and `build835` wrote them to the same two places while leaving
@@ -80,10 +107,11 @@ Code"`, `SVC05 / 380 / "Units of Service Paid Count"`, `SVC06 / C003`,
   This reader leaves `paidUnitsOfService` `undefined` regardless, because fabricating a count the
   sender did not send is inventing data.
 
-  **`undefined` on either quantity means "not decoded", not "absent".** The element may have been
-  missing, or present and unparseable as a decimal; the two are not distinguished and neither raises
-  a warning. Pre-existing at every quantity site in this reader, not introduced here. Read the
-  verbatim element off `tx.segments` if you need to tell them apart.
+  **`undefined` on either quantity still means "not decoded", not "absent".** The element may have
+  been missing, or present and unparseable as a decimal; the two share one `undefined` on the model.
+  They no longer share a silence: as of `X12-QUANTITY-SILENT-DEFAULTS` the unparseable case raises
+  `X12_UNPARSEABLE_DECIMAL` at that `position.elementIndex` and the absent case raises nothing, so a
+  warning at the element is what tells them apart. The verbatim element is still on `tx.segments`.
 
   **If you archived 835s this library EMITTED at `0.0.9` or earlier, they are non-conformant on the
   wire and should be re-emitted.** Their revenue code sits in SVC-05, so this library now reads it

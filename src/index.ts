@@ -54,6 +54,7 @@ export {
   unknownHiQualifier,
   unknownMaintenanceType,
   unknownRarc,
+  unparseableDecimal,
 } from "./parser/warnings.js";
 export type {
   X12BalanceInvariant,
@@ -94,8 +95,14 @@ export {
   elementValue,
   getAllSegmentValues,
   getSegmentValue,
+  readElementDecimal,
 } from "./parser/segment.js";
-export type { X12Segment } from "./parser/segment.js";
+export type {
+  X12DecimalRead,
+  X12DecimalStatus,
+  X12DecimalWarningSink,
+  X12Segment,
+} from "./parser/segment.js";
 
 // Phase 2 - loop-spec authoring surface (dogfooded by built-in transaction
 // specs in Phases 3+).

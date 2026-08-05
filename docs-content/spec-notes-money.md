@@ -55,6 +55,58 @@ X12Decimal.fromString("450.00")!.toString(); // => "450.00"
 X12Decimal.fromString("not a number"); // => undefined
 ```
 
+## An amount this library cannot read never reads as `0` in silence
+
+`X12Decimal.fromString` returning `undefined` is only half the story. The readers have to put
+*something* on the model, and a slot typed `X12Decimal` (a claim's `totalPaymentAmount`, a service
+line's `chargeAmount`, an 837's `totalCharge`) cannot express "did not decode". Those slots fall back
+to `X12Decimal.ZERO`.
+
+That fallback is now **announced**. Any element that is present and is not an X12 R-type decimal
+emits **`X12_UNPARSEABLE_DECIMAL`**, carrying the failing element in `position.elementIndex`:
+
+```ts runnable
+import { parseX12, get835, WARNING_CODES } from "@cosyte/x12";
+
+// BPR-02 carries a thousands separator, which X12 forbids in an R-type element.
+const raw =
+  "ISA*00*          *00*          *ZZ*PAYER          *ZZ*PROVIDER       " +
+  "*260601*1200*^*00501*000000001*0*P*:~" +
+  "GS*HP*PAYER*PROVIDER*20260601*1200*1*X*005010X221A1~" +
+  "ST*835*0001~" +
+  "BPR*I*1,234.56*C*ACH*CCP*01*1*DA*1*1*20260601~" +
+  "TRN*1*T1*1~" +
+  "SE*4*0001~GE*1*1~IEA*1*000000001~";
+
+const ix = parseX12(raw);
+const tx = ix.groups[0]!.transactions[0]!;
+const remit = get835(ix.delimiters, tx)!;
+
+// The slot still reads 0, because its type cannot say anything else...
+remit.payment.totalActualPayment.toString(); // => "0"
+
+// ...but that 0 is now contradicted on the warning channel.
+remit.warnings.some((w) => w.code === WARNING_CODES.X12_UNPARSEABLE_DECIMAL); // => true
+```
+
+Three things to hold onto:
+
+- **The `0` is a stand-in, not a reading.** Gate on the warning before you post, exactly as you would
+  on a balance mismatch. Nothing about the model changed; what changed is that the fabrication is no
+  longer silent.
+- **An *absent* element is a different fact and does not warn.** "Missing means zero" is the
+  documented convention of those slots and is unchanged. The warning fires only when the sender put
+  bytes there and this library could not read them.
+- **On an optional slot the same warning disambiguates `undefined`.** A `paidUnitsOfService` of
+  `undefined` used to mean either "the payer omitted it" or "the payer sent something unreadable".
+  With a warning at that element index, it means the second; without one, the first.
+
+The bytes themselves are never in the message (they are consumer-controlled, and a monetary element
+is exactly where a mis-mapped identifier lands). Read them off `tx.segments[…].raw` when you need
+them. If you are walking segments yourself rather than using a `get*` reader, `readElementDecimal`
+gives you the same distinction in-band, as `{ value, status }` with `status` one of `"decoded"` /
+`"absent"` / `"unparseable"`.
+
 ## The operations you need
 
 `X12Decimal` covers the arithmetic a posting or balance check requires, all exact, all returning new

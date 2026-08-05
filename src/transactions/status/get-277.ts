@@ -34,6 +34,7 @@ import {
   elementDecimal,
   elementOptional,
   elementValue,
+  type X12DecimalWarningSink,
   type X12Segment,
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
@@ -186,6 +187,9 @@ function walk277(delimiters: Delimiters, tx: X12TransactionSet): X12ClaimStatusR
     const seg = body[i];
     if (seg === undefined) continue;
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
+    // Every decimal read below routes its `X12_UNPARSEABLE_DECIMAL` here; the
+    // helper narrows the position to the failing element itself.
+    const sink: X12DecimalWarningSink = { warnings, position };
     switch (seg.id) {
       case "HL": {
         flushClaim();
@@ -268,7 +272,7 @@ function walk277(delimiters: Delimiters, tx: X12TransactionSet): X12ClaimStatusR
       case "SVC": {
         flushServiceLine();
         if (currentClaim === undefined) currentClaim = openClaim();
-        currentServiceLine = openServiceLine(seg, delimiters);
+        currentServiceLine = openServiceLine(seg, delimiters, sink);
         break;
       }
       case "REF": {
@@ -407,6 +411,7 @@ function decodeStc(
   warnings: X12ParseWarning[],
   position: X12Position,
 ): X12StatusInfo {
+  const sink: X12DecimalWarningSink = { warnings, position };
   const statuses: X12StatusCode[] = [];
   for (const elementIndex of [1, 10, 11]) {
     const code = decodeStatusComposite(seg, elementIndex, delimiters, warnings, position);
@@ -415,8 +420,8 @@ function decodeStc(
   return Object.freeze({
     statusEffectiveDate: elementOptional(seg, 2, delimiters),
     actionCode: elementOptional(seg, 3, delimiters),
-    totalChargeAmount: elementDecimal(seg, 4, delimiters),
-    paymentAmount: elementDecimal(seg, 5, delimiters),
+    totalChargeAmount: elementDecimal(seg, 4, delimiters, sink),
+    paymentAmount: elementDecimal(seg, 5, delimiters, sink),
     adjudicationDate: elementOptional(seg, 6, delimiters),
     message: elementOptional(seg, 12, delimiters),
     statuses: Object.freeze(statuses),
@@ -459,7 +464,11 @@ function decodeStatusComposite(
 }
 
 /** @internal */
-function openServiceLine(seg: X12Segment, delimiters: Delimiters): ServiceLineAccumulator {
+function openServiceLine(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): ServiceLineAccumulator {
   const modifiers: string[] = [];
   for (let comp = 3; comp <= 6; comp += 1) {
     const m = componentOptional(seg, 1, comp, delimiters);
@@ -469,8 +478,8 @@ function openServiceLine(seg: X12Segment, delimiters: Delimiters): ServiceLineAc
     serviceIdQualifier: componentOptional(seg, 1, 1, delimiters),
     procedureCode: componentOptional(seg, 1, 2, delimiters),
     modifiers,
-    lineChargeAmount: elementDecimal(seg, 2, delimiters),
-    linePaymentAmount: elementDecimal(seg, 3, delimiters),
+    lineChargeAmount: elementDecimal(seg, 2, delimiters, sink),
+    linePaymentAmount: elementDecimal(seg, 3, delimiters, sink),
     revenueCode: elementOptional(seg, 4, delimiters),
     statuses: [],
     references: [],

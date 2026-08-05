@@ -51,6 +51,7 @@ describe("public API: WARNING_CODES surface is stable", () => {
         "X12_UNKNOWN_CLAIM_STATUS_CATEGORY",
         "X12_UNKNOWN_HI_QUALIFIER",
         "X12_UNKNOWN_RARC",
+        "X12_UNPARSEABLE_DECIMAL",
       ]
     `);
   });
@@ -59,8 +60,8 @@ describe("public API: WARNING_CODES surface is stable", () => {
     for (const [k, v] of Object.entries(WARNING_CODES)) expect(k).toBe(v);
   });
 
-  it("Phase 8 expanded the registry from 21 to 22 Tier-2 warning codes (additions-only)", () => {
-    expect(Object.keys(WARNING_CODES)).toHaveLength(22);
+  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS)", () => {
+    expect(Object.keys(WARNING_CODES)).toHaveLength(23);
   });
 });
 

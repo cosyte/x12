@@ -34,6 +34,7 @@ import {
   elementOptional,
   elementValue,
   getAllSegmentValues,
+  type X12DecimalWarningSink,
   type X12Segment,
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
@@ -139,6 +140,9 @@ export function get271Eligibility(
     const seg = body[i];
     if (seg === undefined) continue;
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
+    // Every decimal read below routes its `X12_UNPARSEABLE_DECIMAL` here; the
+    // helper narrows the position to the failing element itself.
+    const sink: X12DecimalWarningSink = { warnings, position };
     switch (seg.id) {
       case "HL": {
         const hl = decodeHl(seg, delimiters);
@@ -244,7 +248,7 @@ export function get271Eligibility(
       case "EB": {
         flushBenefit();
         if (currentSubscriber === undefined && currentDependent === undefined) break;
-        currentBenefit = openBenefit(seg, delimiters);
+        currentBenefit = openBenefit(seg, delimiters, sink);
         break;
       }
       case "MSG": {
@@ -444,7 +448,11 @@ function decodeDtp(seg: X12Segment, delimiters: Delimiters): X12EligibilityDate 
 }
 
 /** @internal */
-function openBenefit(seg: X12Segment, delimiters: Delimiters): BenefitAccumulator {
+function openBenefit(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  sink: X12DecimalWarningSink,
+): BenefitAccumulator {
   const serviceTypeCodes: X12EligibilityServiceType[] = [];
   for (const code of getAllSegmentValues(seg, "03", delimiters)) {
     if (code === "") continue;
@@ -459,10 +467,10 @@ function openBenefit(seg: X12Segment, delimiters: Delimiters): BenefitAccumulato
     insuranceTypeCode: elementOptional(seg, 4, delimiters),
     planCoverageDescription: elementOptional(seg, 5, delimiters),
     timePeriodQualifier: elementOptional(seg, 6, delimiters),
-    monetaryAmount: elementDecimal(seg, 7, delimiters),
-    percent: elementDecimal(seg, 8, delimiters),
+    monetaryAmount: elementDecimal(seg, 7, delimiters, sink),
+    percent: elementDecimal(seg, 8, delimiters, sink),
     quantityQualifier: elementOptional(seg, 9, delimiters),
-    quantity: elementDecimal(seg, 10, delimiters),
+    quantity: elementDecimal(seg, 10, delimiters, sink),
     authorizationRequired: elementOptional(seg, 11, delimiters),
     inPlanNetwork: elementOptional(seg, 12, delimiters),
     references: [],

@@ -28,7 +28,7 @@
 
 import { RELEASE_CHAR, splitWithRelease, unescapeRelease } from "./release.js";
 import type { Delimiters, X12Position } from "./types.js";
-import { danglingReleaseChar, type X12ParseWarning } from "./warnings.js";
+import { danglingReleaseChar, unparseableDecimal, type X12ParseWarning } from "./warnings.js";
 
 /**
  * Immutable decoded X12 segment. `elements` is 1-indexed: `elements[0]` is
@@ -444,9 +444,104 @@ export function componentOptional(
 }
 
 /**
+ * Why a decimal read produced no {@link X12Decimal}, or that it produced
+ * one. The three states are spec-distinct and were previously collapsed
+ * onto a single `undefined`:
+ *
+ * - `"decoded"` - the element held a valid X12 R-type decimal.
+ * - `"absent"` - the element was missing or empty. The sender said nothing.
+ * - `"unparseable"` - the element held bytes that are NOT an X12 R-type
+ *   decimal. The sender said something and this library could not read it,
+ *   which is a materially different fact from `"absent"`.
+ *
+ * @example
+ * ```ts
+ * import type { X12DecimalStatus } from "@cosyte/x12";
+ * const status: X12DecimalStatus = "unparseable";
+ * ```
+ */
+export type X12DecimalStatus = "decoded" | "absent" | "unparseable";
+
+/**
+ * The tri-state result of {@link readElementDecimal}: the decoded value
+ * (when there is one) alongside the reason there is not.
+ *
+ * @example
+ * ```ts
+ * import { readElementDecimal } from "@cosyte/x12";
+ * const read = readElementDecimal(seg, 2, delim);
+ * if (read.status === "unparseable") {
+ *   // the element was PRESENT and did not decode - do not read it as absent
+ * }
+ * ```
+ */
+export interface X12DecimalRead {
+  /** The decoded decimal, or `undefined` for both non-`"decoded"` states. */
+  readonly value: X12Decimal | undefined;
+  /** Which of the three spec-distinct outcomes this read hit. */
+  readonly status: X12DecimalStatus;
+}
+
+/**
+ * Where {@link elementDecimal} / {@link elementDecimalOrZero} put an
+ * `X12_UNPARSEABLE_DECIMAL` warning, and the segment-level position it is
+ * anchored to. The helpers add the failing `elementIndex` themselves, so a
+ * caller passes the position of the SEGMENT it is decoding and never has to
+ * remember to narrow it per element.
+ *
+ * @example
+ * ```ts
+ * import { elementDecimalOrZero, type X12DecimalWarningSink } from "@cosyte/x12";
+ * const sink: X12DecimalWarningSink = { warnings, position: { segmentIndex: 3 } };
+ * elementDecimalOrZero(seg, 2, delim, sink);
+ * ```
+ */
+export interface X12DecimalWarningSink {
+  /** The walker's warning accumulator. Appended to, never read. */
+  readonly warnings: X12ParseWarning[];
+  /** Position of the segment being decoded; `elementIndex` is supplied by the helper. */
+  readonly position: X12Position;
+}
+
+/**
+ * Read element N (1-indexed) as an {@link X12Decimal} and say WHY when
+ * there is no value. This is the chokepoint every decimal read in the
+ * library goes through, and the only surface that distinguishes an element
+ * the sender omitted from one this library could not decode.
+ *
+ * Pure: it never warns and never throws. {@link elementDecimal} and
+ * {@link elementDecimalOrZero} wrap it and add the diagnostic.
+ *
+ * @example
+ * ```ts
+ * import { readElementDecimal } from "@cosyte/x12";
+ * readElementDecimal(seg, 2, delim); // { value: undefined, status: "unparseable" }
+ * ```
+ */
+export function readElementDecimal(
+  seg: X12Segment,
+  n: number,
+  delimiters: Delimiters,
+): X12DecimalRead {
+  const raw = elementOptional(seg, n, delimiters);
+  if (raw === undefined) return { value: undefined, status: "absent" };
+  const value = X12Decimal.fromString(raw);
+  if (value === undefined) return { value: undefined, status: "unparseable" };
+  return { value, status: "decoded" };
+}
+
+/**
  * Read element N (1-indexed) as an {@link X12Decimal}, or `undefined`
  * when absent / empty / malformed. The walker discipline for every
  * monetary or quantity field - NEVER `parseFloat`.
+ *
+ * **`undefined` here means "not decoded", not "absent."** When `sink` is
+ * supplied, a PRESENT element that does not decode emits
+ * `X12_UNPARSEABLE_DECIMAL` carrying `elementIndex: n`, so the two cases are
+ * told apart on the warning channel. Without a sink the ambiguity is
+ * silent, which is why every reader in this library passes one; use
+ * {@link readElementDecimal} when you want the distinction in-band instead.
+ * An ABSENT element returns `undefined` and does NOT warn.
  *
  * @example
  * ```ts
@@ -458,16 +553,32 @@ export function elementDecimal(
   seg: X12Segment,
   n: number,
   delimiters: Delimiters,
+  sink?: X12DecimalWarningSink,
 ): X12Decimal | undefined {
-  const raw = elementOptional(seg, n, delimiters);
-  if (raw === undefined) return undefined;
-  return X12Decimal.fromString(raw);
+  const read = readElementDecimal(seg, n, delimiters);
+  if (read.status === "unparseable" && sink !== undefined) {
+    sink.warnings.push(unparseableDecimal({ ...sink.position, elementIndex: n }));
+  }
+  return read.value;
 }
 
 /**
  * Read element N (1-indexed) as an {@link X12Decimal}, defaulting to
  * `X12Decimal.ZERO` when absent. Convenient for fields the walker treats
  * as "missing means zero" (charge totals, etc.).
+ *
+ * **The `0` this returns for a PRESENT-but-unparseable element is a
+ * stand-in, not a reading.** A slot typed `X12Decimal` cannot express
+ * "did not decode", so a consumer looking only at the model cannot tell
+ * that `0` from a `0` the sender sent: on a paid amount that is a fabricated
+ * amount presented as read. When `sink` is supplied the case emits
+ * `X12_UNPARSEABLE_DECIMAL`, which is the only signal that distinguishes
+ * them. Pass one, or use {@link readElementDecimal} and decide for
+ * yourself.
+ *
+ * An ABSENT element still returns `X12Decimal.ZERO` and does NOT warn: that
+ * is the documented "missing means zero" convention of the slots that use
+ * this helper, and it is unchanged.
  *
  * @example
  * ```ts
@@ -479,8 +590,13 @@ export function elementDecimalOrZero(
   seg: X12Segment,
   n: number,
   delimiters: Delimiters,
+  sink?: X12DecimalWarningSink,
 ): X12Decimal {
-  return elementDecimal(seg, n, delimiters) ?? X12Decimal.ZERO;
+  const read = readElementDecimal(seg, n, delimiters);
+  if (read.status === "unparseable" && sink !== undefined) {
+    sink.warnings.push(unparseableDecimal({ ...sink.position, elementIndex: n }));
+  }
+  return read.value ?? X12Decimal.ZERO;
 }
 
 /**
