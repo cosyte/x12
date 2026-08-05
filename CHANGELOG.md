@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🩺 `X12_837_SERVICE_SEGMENT_WITHOUT_LX`, the 26th Tier-2 warning code, plus the public factory
+  `serviceSegmentWithoutLx(position)`** (`X12-837-LOOP-RESIDUALS`). Raised when an 837 `SV1` / `SV2`
+  / `SV3` arrives with **no Loop 2400 open**, so there is no service line to decode it into and
+  **nothing the segment carries is read** - not its charge, units, procedure code, modifiers, unit of measure or
+  place of service. `position.segmentIndex` names the **service segment itself**, which is the whole
+  reason it is a new code rather than a widening of an existing one: the two service-line codes this
+  library already had are both anchored at an `LX`, and there is no `LX` in scope here to anchor to.
+  **Read that condition literally - it is "no line open", not "the file contains no `LX`":** an `LX`
+  in an earlier claim is still an `LX`. Nothing is fabricated to stand in and no line or claim is
+  synthesized; the segments stay verbatim on `tx.segments`. See `### Fixed` for the silence it ends,
+  and `KNOWN-LIMITATIONS.md` for the measured bounds, including what it does **not** say about how
+  the submission's variant resolved.
+
 - **🩺 `X12ServiceLineStatus.unitsOfService` and `Build277ServiceLineSpec.unitsOfService`, the 277
   Loop 2220 SVC-07 units of service count** (`X12-277-SVC07-NOT-DECODED`). X12 element 380
   (Quantity), decoded as an `X12Decimal` like every other quantity in this library and never via
@@ -239,6 +252,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   code changed and no published type changed.
 
 ### Fixed
+
+- **🩺 An 837 service segment with no Loop 2400 open no longer takes a charge, a quantity and a
+  procedure code off the model in silence** (`X12-837-LOOP-RESIDUALS`). Through `0.0.10` - the
+  release published as this was written - an `SV1` / `SV2` / `SV3`
+  arriving with no Loop 2400 open found no service line to decode into, was read into nothing, and
+  reported on **no channel at all**: the claim came back with an empty `serviceLines` and
+  `warnings: []`, indistinguishable from a claim that genuinely had no lines. It now raises
+  `X12_837_SERVICE_SEGMENT_WITHOUT_LX` at the service segment itself.
+
+  **The segment is still not decoded into any line, and that is deliberate.** `SV1-02` and `SV2-03`
+  are both the line charge, so reading a service segment into a line the walker never opened
+  mis-reads money. Refusing to read is the safe half; doing it silently was the defect. **This says
+  nothing about how the variant resolved**, and `KNOWN-LIMITATIONS.md` now discloses why: a caller's
+  `type` option wins first, and absent one, where `ST-03` names none of the three known
+  implementation conventions, the reader falls back to the first `SVx` in the transaction body,
+  orphans included, so a stray `SV2` re-types the whole submission. That is pre-existing behaviour, measured identical at `0.0.10`, and is deliberately
+  not narrowed here.
+
+  **Nothing else about the walk changed, and the other two codes are unmoved.** An `LX` that opened
+  no Loop 2400 still reports once, at the `LX`, and the service segments inside that dropped loop
+  stay quiet rather than naming the same loss twice under two codes; the suppression is scoped to
+  that loop, so a later orphan in the same transaction is still reported. A line that IS on the
+  model with an undecoded `SVx` still raises `X12_837_SERVICE_LINE_NOT_DECODED` and nothing else.
+  **This does not touch the model:** `charge` and `units` are still typed `X12Decimal`, and an
+  absent `SV1-02` on a line that DID open still reads a confident `0`, which closes only with the
+  deferred `X12Decimal | undefined` change.
 
 - **🩺 An X212 277 this library emitted with a service line was short a required element, and every
   277 it read silently discarded the submitted units** (`X12-277-SVC07-NOT-DECODED`). `get277Status`

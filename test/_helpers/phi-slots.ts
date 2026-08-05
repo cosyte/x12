@@ -727,6 +727,20 @@ export const PHI_SLOTS: readonly DiagnosticSlot<string>[] = [
     expectCode: WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
   },
   {
+    name: "SV1-01-2 procedure code on a service segment no LX ever opened",
+    // own: X12_837_SERVICE_SEGMENT_WITHOUT_LX is raised on exactly this
+    // segment. Removing the LX leaves the SVx as the ONLY segment the
+    // diagnostic has to name, which is what makes quoting it back tempting -
+    // and on a real 837 it is the procedure billed for a named patient.
+    plant: (m) =>
+      swap(
+        swap(G_837P, "~LX*1~", "~"),
+        "~SV1*HC:99213:25*150*UN*1***1~",
+        `~SV1*HC:${m}:25*150*UN*1***1~`,
+      ),
+    expectCode: WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
+  },
+  {
     name: "HL-01 hierarchical id number",
     // own: X12_HL_PARENT_MISMATCH is raised because HL-02 on the next level
     // no longer resolves to this HL-01.

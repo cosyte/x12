@@ -33,7 +33,7 @@ Pre-alpha `0.0.x`, **published** to npm from a public repo. **Never quote a vers
   count reconciliation) on the general builder.
 - **🩺 The 270 and 276 inquiry directions have NO typed model on either side** - no `get270` /
   `get276`, no `build270` / `build276`, no 270 or 276 dispatch anywhere in `src/`. They parse into
-  segments and dot-paths like any other input and nothing decodes them further. **Never describe the
+  segments and dot-paths like any other input. **Never describe the
   v1 read or emit scope as "270/271" or "276/277" complete** - that claim was on the README and the
   docs site until `ASSETS-P8` corrected it.
   Why: `documentation/agent-notes.md#published-scope-the-270-and-276-gap`
@@ -92,7 +92,7 @@ the published `@cosyte/*` config packages, not by copying files. The source of t
 - Immutable by default. Mutation only via explicit methods (`setElement`, `addSegment`, `addLoopIteration`, `removeSegment`).
 - No `console.*` in library code. Throw typed errors or return results.
 - Short, testable functions over big parsing blobs.
-- Postel's Law: parser is liberal (lenient default + warnings with stable codes and positional context); serializer is conservative. Be exact about what that means, because the README said it loosely until ASSETS-P8: the domain builders emit spec-clean X12 by construction, but `serializeX12` is **byte-faithful by default only for the segments the parser recorded on the model**, which is narrower than it sounds: `serialize(parse(s)) === s` is NOT guaranteed, and "my file has no line breaks" is not sufficient to make it hold (see `KNOWN-LIMITATIONS.md`, which holds the canonical list of what is not reproduced; most of it needs no line break, and most of it is silent). `{ specClean: true }` reconciles the envelope and warns; `{ specClean: true, recomputeCounts: true }` also emits the corrected counts. `recomputeCounts` is inert without `specClean`. Nothing is ever silently corrected.
+- Postel's Law: parser is liberal (lenient default + warnings with stable codes and positional context); serializer is conservative. Be exact about what that means, because the README said it loosely until ASSETS-P8: the domain builders emit spec-clean X12 by construction, but `serializeX12` is **byte-faithful by default only for the segments the parser recorded on the model**. `serialize(parse(s)) === s` is NOT guaranteed, and "my file has no line breaks" is not sufficient to make it hold - `KNOWN-LIMITATIONS.md` holds the canonical list of what is not reproduced, most of which needs no line break and is silent. `{ specClean: true }` reconciles the envelope and warns; `{ specClean: true, recomputeCounts: true }` also emits the corrected counts. `recomputeCounts` is inert without `specClean`. Nothing is ever silently corrected.
 - Fatal errors only for unrecoverable structural corruption (4 Tier-3 codes: `X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`, `X12_INVALID_DELIMITERS`, `X12_EMPTY_INPUT`). Everything else is a warning.
 - Coverage target: ≥ 90% on `src/parser/`, `src/envelope/`, `src/transactions/`, `src/helpers/`.
 - Built-in loop specs + profiles must be authored through the same public API (`defineLoopSpec()`, `defineProfile()`): dogfooding gate.
@@ -105,6 +105,23 @@ the published `@cosyte/*` config packages, not by copying files. The source of t
 **Every one of these was paid for, and each `###` names the section carrying its measurement, its
 sources and its refutation history. Do not act on a line here without reading that section.**
 **🩺 marks a trap where getting it wrong mis-states a clinical or financial value on the wire.**
+
+### 🩺 `X12-837-LOOP-RESIDUALS` (2026-08-05) · `documentation/agent-notes.md#x12-837-loop-residuals-2026-08-05`
+
+- **🩺 THREE CODES, ONE FAMILY; THE ANCHOR SEPARATES THEM.** `NOT_DECODED` = the line IS on the model
+  with seeded zeros; `DROPPED` = an `LX` put it on NO claim; **`SERVICE_SEGMENT_WITHOUT_LX` = an
+  `SVx` with NO LINE OPEN**, through `0.0.10` on NO channel. The first two anchor at the `LX`; the
+  third **cannot**, so it takes the segment, once each. **Never one twice - one document CAN carry
+  all three.** **Its condition is "no line open", NEVER "the file has no `LX`"** - an earlier claim's
+  `LX` is still one, and a draft of every surface said otherwise.
+- **🩺 NEVER DECODE THE ORPHAN `SVx`** (`SV1-02`/`SV2-03` are the charge; reading one into a line
+  never opened mis-READS money). **But NEVER write it does not name the VARIANT - measured false:**
+  with no caller `type` and an `ST-03` outside the three known conventions, the fallback is the first
+  `SVx` in the body, orphans included, so a stray `SV2` re-types the submission and every conformant
+  line reads `0`. `PRE-EXISTING`, not narrowed.
+- **The suppression is SCOPED, not latched** - a flag set beside each `serviceLineDropped` and
+  cleared in `flushServiceLine`, the one place `currentServiceLine` is. **A latching one silences
+  every later orphan.** Both halves have a red negative control.
 
 ### 🩺 `X12-277-SVC07-NOT-DECODED` (2026-08-05) · `documentation/agent-notes.md#x12-277-svc07-not-decoded-2026-08-05`
 
@@ -122,27 +139,24 @@ sources and its refutation history. Do not act on a line here without reading th
   package declares the table, and read through `Object.hasOwn` where it does not.** A literal
   inherits `Object.prototype`, so EVERY OWN PROPERTY of it resolved TRUTHY. **`Object.freeze` DOES
   NOT HELP and is why this passed review** - it seals OWN properties only. **🩺 NAME THE SET, NEVER
-  THE MEMBERS:** a draft published EIGHT across five docs and the shipped JSDoc; the engine has
-  TWELVE. **Cut back, never grow a census.**
+  THE MEMBERS:** a draft published EIGHT across six surfaces; the engine has TWELVE. **Cut back,
+  never grow a census.**
 - **🩺 It destroyed strictly more than `#67`: an ST-03 of `constructor` made `variant` a FUNCTION, so
-  `openServiceLine` answered `undefined` and EVERY Loop 2400 left the model with `warnings: []`.**
-  It also made a `lookupCarc` `description` a function (suppressing `X12_UNKNOWN_CARC`), suppressed
-  `X12_UNKNOWN_HI_QUALIFIER`, and FABRICATED an `X12_HL_PARENT_LEVEL_INVALID`. **🩺 `in` IS NOT THE
-  SAFE FORM** - it walks the prototype chain. Reach for `Object.hasOwn`.
+  EVERY Loop 2400 left the model with `warnings: []`.** Four more sites, probe by probe, in the
+  agent-notes section. **🩺 `in` IS NOT THE SAFE FORM** - it walks the prototype chain. Reach for
+  `Object.hasOwn`.
 - **271 / 277 / 278 were NEVER exposed and their literal tables are LEFT ALONE:** `shared/hl.ts` has
   always guarded with `hasOwnProperty`; the 837's LOCAL `validateHl` copy did not. **Do not "finish
   the job" there.** **NO SOURCE SCAN SHIPS, DELIBERATELY** - a scan cannot separate a wire-keyed
   table from a discriminant-keyed one and `warnings.ts` has four of the latter, so it needs a
   per-TABLE allowlist (`#51`'s failure mode). The defence derives its keys from
   `Object.getOwnPropertyNames(Object.prototype)` AT RUN TIME, UNFILTERED.
-- **`X12_837_SERVICE_LINE_DROPPED` is the 25th code, NOT `#67`'s renamed.** `NOT_DECODED` = the line
-  IS on the model with seeded zeros; `DROPPED` = it is on NO claim. Two routes (no `CLM` open, or the
-  variant is not P/I/D), one message, no discriminant, anchored at the `LX`. **Nothing is
-  fabricated** - no synthesized claim, no guessed variant.
+- **`X12_837_SERVICE_LINE_DROPPED` is a NEW code, NOT `#67`'s renamed.** Two routes (no `CLM` open,
+  or the variant is not P/I/D), one message, no discriminant. The family is the trap below.
 - **🩺 STATE ITS THREE BOUNDS; DRAFTS PUBLISHED ALL THREE FALSE.** It does **NOT** travel with
   `X12_837_UNKNOWN_VARIANT` (an out-of-enum caller `type` reaches route 2 without it - read
-  `submission.variant`); an **`SVx` with NO `LX` at all is STILL SILENT**, so **never write "the
-  channel will tell you a line went missing"**; and a trailing `DTP`/`AMT`/`NTE`/`REF` is
+  `submission.variant`); an **`SVx` with NO `LX` at all is a DIFFERENT code** (the trap below); and a
+  trailing `DTP`/`AMT`/`NTE`/`REF` is
   **ROUTE-DEPENDENT** (claim open: onto the claim; no claim: discarded, or the `REF` onto the last
   named party). **Never state that unqualified** - two drafts did, opposite ways.
 - **🩺 DO NOT RESTRUCTURE THE `LX` CASE.** Its control flow is the base's; the two `warnings.push` are
@@ -154,8 +168,8 @@ sources and its refutation history. Do not act on a line here without reading th
   appears nowhere" was published twice, false both times, the second inside the fix for the first.
 - **Every guard has its own red negative control. Re-derive a red/green census by RUNNING head's
   suite against a base checkout, never by arithmetic** - a partitioned form was wrong four ways, and
-  a suite total quoted here goes stale the next slice. `phi-slots` **84** - the dropped `LX-01` and
-  its `SV1-01-2`, both OWN.
+  a suite total quoted here goes stale the next slice - as the `phi-slots` count that stood here did,
+  one slice later. Derive it.
 - **🩺 An ABSENT `SV1-02` still reads a confident `0`, unwarned. Left open on purpose** - it closes
   only with the deferred `X12Decimal | undefined` slice.
 
@@ -170,8 +184,8 @@ sources and its refutation history. Do not act on a line here without reading th
   three comments said units and were corrected), so that mis-READS money. `opts.type` is a caller
   instruction, so **the warning attributes nothing**: a `type` can disagree with a clean document.
 - **Anchor the `LX`, never the `SVx`** (the no-`SVx` case has none); no `elementIndex`.
-- **🩺 THE RESIDUAL TEST DID NOT GO RED, AND THAT IS THE FINDING.** It pinned `0`/`0` + no
-  `X12_UNPARSEABLE_DECIMAL`, still true. **Pin the WHOLE channel, BOTH sides.**
+- **🩺 THE RESIDUAL TEST DID NOT GO RED, AND THAT IS THE FINDING.** **Pin the WHOLE channel, BOTH
+  sides.**
 - **Only bytes make these; no round trip can.** 4 leak probes + 2 controls, both ways: deleting one
   flag-set reds a control.
 
@@ -263,11 +277,8 @@ sources and its refutation history. Do not act on a line here without reading th
   `{ length: undefined }` runs **zero** iterations and reports every segment clean. Iterate with
   `for...of`, which throws. **The scanner is not comment-stripped for that rule**, so writing the bad
   shape in a comment reds it too.
-- **Pinned counts:** `esc` **406** invocations on **377** lines; same-line `esc(x.toString())` is
-  **5**, and those five are the `escDec` declarations. `build-837` also declares `decStr` (`escDec`
-  without the escape) because HI's components go through `ctx.comp`, which maps `esc`.
-- **"X12 code source 715" is wrong.** 715 is the _data element_ number and its values are a code
-  **list**; `src/transactions/ack/codes.ts` had it right all along.
+- **The pinned `esc` counts, and why "X12 code source 715" was wrong, are in the agent-notes
+  section.** Both are measurements, not rules; read them there before quoting either.
 
 ### 🩺 `X12-NUMERIC-VALUE-EMITS-EMPTY` (2026-08-03) · `documentation/agent-notes.md#x12-numeric-value-emits-empty-2026-08-03`
 
@@ -342,7 +353,7 @@ sources and its refutation history. Do not act on a line here without reading th
 ### 🩺 `X12-CALLER-VALUE-RESIDUALS` (2026-08-02) · `documentation/agent-notes.md#x12-caller-value-residuals-2026-08-02`
 
 - **All twenty-three caller-value holes across twelve `src/profiles/validate.ts` refusal sites route
-  through `renderCallerValue` or `renderCallerJson`** (360,181 characters at base, 431 at head).
+  through `renderCallerValue` or `renderCallerJson`**.
 - **`renderCallerJson` keeps `JSON.stringify` and bounds its OUTPUT**, because the value's TYPE is
   what is wrong at those sites (`null` and `"null"` are different mistakes). It never throws
   (circular, `BigInt`, hostile `toJSON`) and fabricates no closing quote.
@@ -350,7 +361,7 @@ sources and its refutation history. Do not act on a line here without reading th
   would stop it matching what the consumer passed.
 - **🩺 Every indexed loop bound in a builder comes from a `requireCallerArray` binding.** A forged
   `{ length: "9".repeat(120000) }` coerces to `Infinity` and the builder **spins forever instead of
-  refusing** - 16 of 19 probes HUNG at base. 32 indexed loops across 7 builder modules.
+  refusing**; most probes HUNG at base. Both censuses are in the agent-notes section.
 - **`requireCallerArray` takes the module's own `refuse` callback, never a shared throw**, because
   each builder owns a distinct error class and code consumers branch on.
 - **`requireCallerArray` answers `null` as ABSENT.** Every site it replaced read `x.dates ?? []`, so
@@ -382,9 +393,9 @@ sources and its refutation history. Do not act on a line here without reading th
 - **Every caller-supplied value in a `build*` refusal message goes through `renderCallerValue`**
   (`src/builder/caller-value.ts`), capping the rendered **fragment** at
   `BUILD_REFUSAL_VALUE_MAX_RENDERED` = **90**. All three names are public.
-- **23 sites, 28 holes.** The census in the item was sixteen; seven more were found only by
-  adversarial review over two passes, four of them `number`-typed AK9 counts - **a type is not a
-  runtime guarantee.** **State a ceiling as a ceiling and a measurement as a measurement:** 90 is the
+- **23 sites, 28 holes** where the item's census said sixteen; the rest came only from adversarial
+  review, four of them `number`-typed AK9 counts - **a type is not a runtime guarantee.** **State a
+  ceiling as a ceiling and a measurement as a measurement:** 90 is the
   ceiling on the FRAGMENT, and three published figures were wrong in the first draft.
 - **This is NOT `PHI-WARNING-MESSAGE-LEAK` on the emit side.** There the value was the DOCUMENT's, so
   bounding it was redaction; here the caller passed it in and still holds it. Escaping was considered
@@ -468,11 +479,9 @@ sources and its refutation history. Do not act on a line here without reading th
   68 green ones are the point of writing the table before the fix.** Registry membership is asserted separately, so a factory that
   starts interpolating again fails without anyone extending the table.
 - **`^0.0.1` resolves EXACTLY on npm for a `0.0.x`.** The `@cosyte/test-utils` pin had to move.
-- **The shipped disclosure was wrong in five places** (README, `docs-content/troubleshooting.md`,
-  `spec-notes-tolerance.md`, `cookbook.md`, `KNOWN-LIMITATIONS.md`): it called messages PHI-free by
-  construction and told consumers to log the whole `.warnings` array, naming `.snippet` (**not a
-  field on a warning**) as the exception. **Correct the disclosure in the same commit as the fix that
-  makes the new wording true.**
+- **The shipped disclosure was wrong in five places at once** (the five are listed in the
+  agent-notes section). **Correct the disclosure in the same commit as the fix that makes the new
+  wording true.**
 
 ### 🩺 Per-transaction invariants that shipped with the phases
 
@@ -488,11 +497,10 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   real-but-irrelevant fixture cannot slip past. A generic Medicare-FFS profile was DEFERRED rather
   than invented. Built-ins reach consumers only through the `profiles` namespace, never the top-level
   export.
-- **The profile API DIVERGES from `hl7` by design, and the divergences are conscious, not drift.**
-  `describe()` returns a structured `X12ProfileDescription` bucketed by effect
-  (`relaxes` / `adds` / `requires`), **deliberately DATA and not hl7's formatted string**; the input
-  type is `X12ProfileSpec`; and `partitionWarnings` is x12-only. Driven by x12's lossless-lenient
-  reality. **"Symmetry is a feature" does not license collapsing these back onto hl7's shapes.**
+- **The profile API DIVERGES from `hl7` by design, and the divergences are conscious, not drift**
+  (`describe()` returning DATA and not hl7's formatted string, `X12ProfileSpec`, the x12-only
+  `partitionWarnings`), driven by x12's lossless-lenient reality. **"Symmetry is a feature" does not
+  license collapsing these back onto hl7's shapes.**
 - **🩺 The 820 carries no TR3 balance equation.** `build820` emits all monetary amounts VERBATIM and
   NEVER raises a balance-mismatch refusal - a deliberate contrast with `build835`.
 - **🩺 Maintenance type is the 834's safety primitive: emit verbatim, refuse the unknown.** The
@@ -568,11 +576,10 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   PHI guarantee; it is a guarantee about the builder's own templates.**
 - **The `?`-release escape is honored losslessly** (`?~`->`~`, `?*`->`*`, `??`->`?`); dot-path
   traversal walks elements, composites (`-N`, 1-indexed) and repetitions (`[N]`, 0-indexed).
-- **Known read-side limitations, documented not accidental:** claim-/line-level provider addresses
-  (837 Loop 2310 / 2420 N3/N4) do not round-trip, though the NM1 fields do; and the 837's Loop 2320
-  other-subscriber / other-payer is captured at the SURFACE level only, with the detailed CAS / OI /
-  MOA inside 2320 deferred. `get834Enrollments` streams one member per `INS` loop, but **the file is
-  still parsed into `tx.segments` up front** - an honest v1 limitation, not a streaming parser.
+- **Known read-side limitations, documented not accidental, and enumerated in
+  `KNOWN-LIMITATIONS.md`:** the 837's Loop 2310 / 2420 provider addresses and its Loop 2320
+  other-subscriber depth, and `get834Enrollments` streaming per `INS` loop over a file **still parsed
+  into `tx.segments` up front** - an honest v1 limitation, not a streaming parser.
 
 ### 🩺 PHI commit-gate · `documentation/agent-notes.md#phi-commit-gate-armed-2026-06-28`
 
@@ -610,7 +617,7 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
 - **`test/scripts/attw-gate.test.ts` pins the upstream exit-0 itself**, so an `attw` upgrade that
   rewords the sentence or fixes the exit code reds the suite instead of letting the net go quietly
   slack. It also pins a negative control on a well-formed package and that a real `attw` failure still
-  fails. 11 of its 13 cases go red with `scripts/attw.mjs` removed.
+  fails.
 - **The port is NOT finished org-wide, including `config/scripts/parser-template/`, which
   `scaffold-parser.mjs` mints new parsers from** - a port that skips the template leaves the defect
   being re-minted. Derive the current set rather than trusting a count:

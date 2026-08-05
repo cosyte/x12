@@ -84,6 +84,7 @@ export const WARNING_CODES = {
   X12_UNPARSEABLE_DECIMAL: "X12_UNPARSEABLE_DECIMAL",
   X12_837_SERVICE_LINE_NOT_DECODED: "X12_837_SERVICE_LINE_NOT_DECODED",
   X12_837_SERVICE_LINE_DROPPED: "X12_837_SERVICE_LINE_DROPPED",
+  X12_837_SERVICE_SEGMENT_WITHOUT_LX: "X12_837_SERVICE_SEGMENT_WITHOUT_LX",
 } as const;
 
 /**
@@ -328,6 +329,8 @@ const WARNING_MESSAGES = {
     "837 service line with no decoded service segment: the Loop 2400 line opened at `position.segmentIndex` is followed by no SV1 / SV2 / SV3 matching the variant this submission resolved to, so NOTHING carried by the service segment was read. The line's `charge` and `units` hold 0 as a stand-in and are NOT values the sender supplied; its procedure code, modifiers, unit of measure and place of service are equally undecoded. Two common causes: the line carries no SVx at all, or it carries one for a different 837 variant than ST-03 (or the caller's `type` option) named. Which side is wrong is NOT decided here, because a caller-supplied `type` can disagree with a perfectly conformant document. The verbatim segments are preserved on the transaction set; read them there before acting on the charge or the quantity.",
   X12_837_SERVICE_LINE_DROPPED:
     "837 service line dropped from the typed model: the LX at `position.segmentIndex` opened no Loop 2400, so no line appears on any claim's `serviceLines` for it and the SV1 / SV2 / SV3 that followed - its charge, units, procedure code and modifiers - was read into nothing. Compare `X12_837_SERVICE_LINE_NOT_DECODED`, where the line IS on the model and only its service segment went unread. Two causes: no Loop 2300 (CLM) is open at this LX, so there is no claim to attach a line to; or the submission's variant is not one of P / I / D, so no variant-specific line shape could be built. Read `submission.variant` and `submission.claims` to tell them apart; do NOT expect `X12_837_UNKNOWN_VARIANT` alongside this code, because a caller-supplied `type` outside P / I / D reaches the second cause without it. Nothing is fabricated to stand in for the missing line and no claim is synthesized. What becomes of a DTP / AMT / NTE / REF that follows the dropped LX depends on the route and this message does not say; see KNOWN-LIMITATIONS.md. The verbatim segments are preserved on the transaction set; read them there before concluding the claim had no service lines.",
+  X12_837_SERVICE_SEGMENT_WITHOUT_LX:
+    "837 service segment with no Loop 2400 to read it into: no service line was open at the SV1 / SV2 / SV3 at `position.segmentIndex`, so NOTHING it carries - its charge, units, procedure code, modifiers, unit of measure and place of service - was read. Read that literally: an LX may well appear earlier in the transaction, and what this reports is that none of them had opened a Loop 2400 still current at this segment. No line appears on any claim's `serviceLines` for it and nothing is fabricated to stand in. Compare the two codes anchored at an LX: `X12_837_SERVICE_LINE_DROPPED`, where an LX IS present and opened no line, and `X12_837_SERVICE_LINE_NOT_DECODED`, where the line is on the model and only its service segment went unread. Neither of those can report the SAME service segment as this code, because both are raised at an LX and this one only where no Loop 2400 is open; a document with several claims can still carry all three. This says NOTHING about how the submission's variant resolved: absent a caller-supplied `type` option, and where ST-03 names no known implementation convention, the reader falls back to the first SV1 / SV2 / SV3 in the transaction, and a segment reported here is eligible for that fallback like any other, so a stray one can decide the variant every line is read against. Read `submission.variant`. The verbatim segments are preserved on the transaction set; read them there before concluding the claim had no service lines.",
 } as const;
 
 /**
@@ -899,6 +902,43 @@ export function serviceLineDropped(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
     message: WARNING_MESSAGES.X12_837_SERVICE_LINE_DROPPED,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_837_SERVICE_SEGMENT_WITHOUT_LX` warning. Emitted by the 837
+ * helper when an SV1 / SV2 / SV3 arrives with no Loop 2400 open, so there is
+ * no service line to decode it into and nothing the segment carries is read.
+ * `position` names the service segment itself, because it is the only
+ * segment the case has: the other two 837 service-line codes both anchor at
+ * an LX, and there is no LX in scope here to anchor to. An LX may still
+ * appear elsewhere in the transaction - in an earlier claim, say - so read
+ * the condition as "no line was open", not as "the file has no LX".
+ *
+ * The three do not overlap on one segment. {@link serviceLineDropped} is
+ * raised at an LX that opened no line, {@link serviceLineNotDecoded} at an
+ * LX whose line was retained undecoded, and this one only where no line is
+ * open. Nothing is fabricated to stand in and no line or claim is
+ * synthesized; the segments stay verbatim on the transaction set.
+ *
+ * It says nothing about the submission's variant. A caller-supplied `type`
+ * option wins first; absent one, and where ST-03 names no known
+ * implementation convention, the reader falls back to the first
+ * SV1 / SV2 / SV3 in the transaction, and a segment reported here is
+ * eligible for that fallback like any other - pre-existing behaviour,
+ * documented in `KNOWN-LIMITATIONS.md`.
+ *
+ * @example
+ * ```ts
+ * import { serviceSegmentWithoutLx } from "@cosyte/x12";
+ * const w = serviceSegmentWithoutLx({ segmentIndex: 8, transactionIndex: 0 });
+ * ```
+ */
+export function serviceSegmentWithoutLx(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
+    message: WARNING_MESSAGES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
     position,
   };
 }

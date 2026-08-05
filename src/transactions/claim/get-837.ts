@@ -58,6 +58,7 @@ import {
   missingRequiredLoop,
   serviceLineDropped,
   serviceLineNotDecoded,
+  serviceSegmentWithoutLx,
   unknown837Variant,
   unknownCarc,
   unknownHiQualifier,
@@ -263,6 +264,17 @@ export function get837Claims(
   let currentAdjudication: AdjudicationAccumulator | undefined;
   let context: WalkerContext = { kind: "header" };
 
+  /**
+   * True between an LX that opened no Loop 2400 and the next flush. It is
+   * what tells the two silences apart at an SVx that finds no line: this one
+   * has already been reported at its LX, and re-reporting it per service
+   * segment would say the same loss twice under two codes. An SVx reaching
+   * `false` here had no line open, which nothing reported until now. That is
+   * NOT the same as "had no LX": an LX in an earlier claim is still an LX.
+   * @internal
+   */
+  let droppedLineReported = false;
+
   /** Active entity for trailing N3/N4/REF/PER attachment. @internal */
   let activeEntity: ActiveEntity | undefined;
 
@@ -287,6 +299,22 @@ export function get837Claims(
       currentClaim.serviceLines.push(freezeServiceLine(currentServiceLine));
     }
     currentServiceLine = undefined;
+    // The one place `currentServiceLine` is cleared is the one place the
+    // drop flag is cleared, so the two can never disagree about whether the
+    // SVx arriving next belongs to a Loop 2400 anyone tried to open.
+    droppedLineReported = false;
+  };
+
+  /**
+   * Report an SV1 / SV2 / SV3 that found no line to decode into, and only
+   * where nothing has reported that loss already. Hoisted beside the flush
+   * helpers for the same reason they are: one arrow for the whole walk
+   * rather than one per service segment.
+   * @internal
+   */
+  const reportOrphanServiceSegment = (position: X12Position): void => {
+    if (droppedLineReported) return;
+    warnings.push(serviceSegmentWithoutLx(position));
   };
 
   const flushOtherSubscriber = (): void => {
@@ -633,24 +661,50 @@ export function get837Claims(
         // mis-attribution is the wrong direction; do not restructure this.
         if (currentClaim === undefined) {
           warnings.push(serviceLineDropped(position));
+          droppedLineReported = true;
           break;
         }
         currentServiceLine = openServiceLine(seg, delimiters, currentClaim.variant, position);
-        if (currentServiceLine === undefined) warnings.push(serviceLineDropped(position));
+        if (currentServiceLine === undefined) {
+          warnings.push(serviceLineDropped(position));
+          droppedLineReported = true;
+        }
         activeEntity = undefined;
         context = { kind: "loop2400" };
         break;
       }
+      // A service segment with no line open to decode into is a loss the
+      // walker used to take in silence. Two ways to reach it, and only one
+      // was ever reported: an LX that opened nothing already warned at the
+      // LX (`droppedLineReported`), while a segment with no Loop 2400 open
+      // at all had no anchor to warn at and so reported on no channel - a
+      // charge, a quantity, a procedure code and its modifiers off the wire
+      // and onto nothing. `reportOrphanServiceSegment` closes only the
+      // second: it anchors at the service segment itself, because that is
+      // the only segment the case has. Note the condition is "no line open",
+      // NOT "no LX in the file": an LX in an earlier claim is still an LX.
+      //
+      // It does NOT decode the segment. The charge is SV1-02 / SV2-03 and
+      // the units SV1-04 / SV2-05 / SV3-06, so reading a service segment
+      // into a line the walker never opened is how a mis-read charge gets
+      // minted. Refusing to read is the safe half; doing it silently was the
+      // defect. This says nothing about VARIANT resolution, which happens
+      // before the walk and scans every SVx in the body: an orphan segment
+      // is eligible for that fallback like any other, which is pre-existing
+      // and disclosed in KNOWN-LIMITATIONS.md rather than changed here.
       case "SV1": {
         if (currentServiceLine !== undefined) decodeSv1(currentServiceLine, seg, delimiters, sink);
+        else reportOrphanServiceSegment(position);
         break;
       }
       case "SV2": {
         if (currentServiceLine !== undefined) decodeSv2(currentServiceLine, seg, delimiters, sink);
+        else reportOrphanServiceSegment(position);
         break;
       }
       case "SV3": {
         if (currentServiceLine !== undefined) decodeSv3(currentServiceLine, seg, delimiters, sink);
+        else reportOrphanServiceSegment(position);
         break;
       }
       case "TOO": {

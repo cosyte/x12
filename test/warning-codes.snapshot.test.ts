@@ -33,6 +33,7 @@ describe("public API: WARNING_CODES surface is stable", () => {
         "X12_835_REMIT_BALANCE_MISMATCH",
         "X12_837_SERVICE_LINE_DROPPED",
         "X12_837_SERVICE_LINE_NOT_DECODED",
+        "X12_837_SERVICE_SEGMENT_WITHOUT_LX",
         "X12_837_UNKNOWN_VARIANT",
         "X12_CONTROL_NUMBER_MISMATCH",
         "X12_DANGLING_RELEASE_CHAR",
@@ -62,8 +63,8 @@ describe("public API: WARNING_CODES surface is stable", () => {
     for (const [k, v] of Object.entries(WARNING_CODES)) expect(k).toBe(v);
   });
 
-  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE)", () => {
-    expect(Object.keys(WARNING_CODES)).toHaveLength(25);
+  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS)", () => {
+    expect(Object.keys(WARNING_CODES)).toHaveLength(26);
   });
 });
 
