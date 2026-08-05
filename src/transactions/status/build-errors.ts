@@ -33,8 +33,11 @@
  *   structural indices + counts only - never a member id / name.
  * - `X12_277_BUILD_INVALID_SPEC` - a non-hierarchy precondition failed (a
  *   claim that would not materialize on read - no trace, no statuses, no
- *   service lines; a status whose first composite has no category code; an
- *   over-long ISA-13 control number).
+ *   service lines; a status whose first composite has no category code; a
+ *   service line with no SVC-07 units of service count, which `005010X212`
+ *   makes REQUIRED and `005010X214` does not, so this arm fires for
+ *   `build277` and never for `build277CA`; an over-long ISA-13 control
+ *   number).
  *
  * @example
  * ```ts

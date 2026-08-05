@@ -290,10 +290,10 @@ describe("835 and 277 agree on where the revenue code lives", () => {
 
     // The committed 277 fixture, with a revenue code added at SVC-04 only.
     const raw = readFixture("status/277-canonical.edi").replace(
-      "SVC*HC:99213*150*0~",
-      "SVC*HC:99213*150*0*0300~",
+      "SVC*HC:99213*150*0****1~",
+      "SVC*HC:99213*150*0*0300***1~",
     );
-    expect(raw).toContain("SVC*HC:99213*150*0*0300~");
+    expect(raw).toContain("SVC*HC:99213*150*0*0300***1~");
     const ix = parseX12(raw);
     const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "277");
     if (tx === undefined) throw new Error("no 277 transaction");

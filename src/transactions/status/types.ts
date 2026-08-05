@@ -256,6 +256,19 @@ export interface X12ServiceLineStatus {
   readonly lineChargeAmount: X12Decimal | undefined;
   readonly linePaymentAmount: X12Decimal | undefined;
   readonly revenueCode: string | undefined;
+  /**
+   * SVC-07, data element 380 (Quantity). Named "Units of Service Count" by
+   * TR3 `005010X212` and "Original Units of Service Count" by `005010X214`;
+   * the same element in the same position either way, so one field serves
+   * both and the walker never has to know which TR3 it is reading.
+   *
+   * SVC-05 is NOT USED in both TR3s, so unlike the 835 there is no second,
+   * paid quantity to tell this one apart from. `undefined` means **not
+   * decoded**, not "the sender sent zero": an absent element and a present
+   * one that is not an X12 R-type decimal share it, and only the latter
+   * raises `X12_UNPARSEABLE_DECIMAL` at `position.elementIndex` 7.
+   */
+  readonly unitsOfService: X12Decimal | undefined;
   readonly statuses: readonly X12StatusInfo[];
   readonly references: readonly X12StatusReference[];
   readonly dates: readonly X12StatusDate[];

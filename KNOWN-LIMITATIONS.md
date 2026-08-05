@@ -16,6 +16,46 @@ model.
 
 ## Data / decode boundaries
 
+- **🩺 BREAKING for `build277` callers: a 277 service line now REQUIRES `unitsOfService`, because
+  SVC-07 is a required element in `005010X212` and this library was not emitting it at all**
+  (`X12-277-SVC07-NOT-DECODED`). Through the release before this one `get277Status` read SVC-01
+  through SVC-04 and stopped, and `build277` emitted exactly those four, so **every X212 277 this
+  library produced with a Loop 2220 service line was short a required element** and every 277 it read
+  silently discarded the submitted units. Both sides are fixed: `X12ServiceLineStatus.unitsOfService`
+  and `Build277ServiceLineSpec.unitsOfService` carry SVC-07 (X12 element 380, Quantity).
+
+  **The two TR3s disagree about the usage and so do the two builders, on purpose.** In `005010X212`
+  the element is usage **R**, so `build277` now throws `ClaimStatus277BuildError` with code
+  `X12_277_BUILD_INVALID_SPEC` for a service line that omits it. In `005010X214` it is usage **S**,
+  so `build277CA` accepts the identical spec and simply omits the element. Usage read from the pyx12
+  005010 maps (`277.5010.X212.xml`, `277.5010.X214.xml`), which are outside this repository; the two
+  TR3s also name it differently, "Units of Service Count" in X212 and "Original Units of Service
+  Count" in X214, and one model field carries both.
+
+  **The count is never defaulted, in either direction.** A quantity the caller did not supply is a
+  quantity nobody sent, and a units figure is one a payer reprices against; supplying a `1` would be
+  inventing data on the wire. If you are emitting X212 277s today, this is a compile-time-invisible,
+  run-time refusal on the first build after upgrading, and that is the intended shape.
+
+  **SVC-05 is deliberately still unread on the 277, and that is not the same gap.** It is usage **N**
+  in both 277 TR3s. On the **835** SVC-05 is the Units of Service **Paid** Count and is read; reading
+  it on a 277 "for symmetry" would put a quantity on the model that no 277 sender ever wrote. Same
+  element number, different TR3.
+
+  **🩺 Read the scope literally: ONE element's usage was fixed, and an emitted service line is NOT
+  thereby conformant.** This was not a 277 usage audit, and **no census of what remains is published
+  here**, on purpose: other required elements of the same `SVC` are still unguarded, and finding
+  another is expected rather than a new defect. To name two, `SVC-01` (the composite procedure
+  identifier) and `SVC-02` (Line Item Charge Amount) are both usage **R** in X212 and both optional
+  on `Build277ServiceLineSpec`, so a spec supplying only `unitsOfService` still emits
+  `SVC*******1~` with no refusal. **The missing guard is what is pre-existing, not that byte
+  string** - at base the same spec emitted a bare `SVC~`, because the SVC-07 slot did not exist. `SVC-03` (Line Item Payment
+  Amount) is usage **R** in X212 and usage **N** in X214 and is optional in both builders. And the
+  read side is unchanged and still lenient: an X212 277 arriving with no SVC-07 raises **no
+  warning**, because that would need a new Tier-2 registry code and the defect this slice closes is
+  on the emit side. All of it is pre-existing and reproduces at `e3cdf49`; widening the guard would
+  have turned this into that audit, which is its own item.
+
 - **🩺 An unparseable decimal still lands on the model as a stand-in; what changed is that it warns.**
   A decimal element that is present and that this library cannot decode as a decimal (`1,234.56`,
   `$450.00`, `N/A`) yields no value, and the reader has to put something in its place: a slot typed
@@ -215,8 +255,8 @@ Code"`, `SVC05 / 380 / "Units of Service Paid Count"`, `SVC06 / C003`,
   back as a paid quantity (`0300` becomes 300 units) and reports no revenue code, silently and with
   no warning. Re-emitting from the model with this release produces conformant bytes.
 
-  **The 277's SVC-07 (Units of Service Count) is still not decoded** - pre-existing, unchanged by
-  this slice, and separate from the 835 field above.
+  **The 277's SVC-07 is a different element in a different TR3 and is now decoded and emitted in its
+  own right** (`X12-277-SVC07-NOT-DECODED`, below). Do not read either field off the other.
 
 - **Bundled code-list snapshots are pre-launch initial subsets, not the full WPC-published lists.**
   CARC, RARC, Claim-Status-Category (CSCC), Claim-Status (CSC), service-type, CLP-status, and

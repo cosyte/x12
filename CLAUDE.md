@@ -106,6 +106,16 @@ the published `@cosyte/*` config packages, not by copying files. The source of t
 sources and its refutation history. Do not act on a line here without reading that section.**
 **🩺 marks a trap where getting it wrong mis-states a clinical or financial value on the wire.**
 
+### 🩺 `X12-277-SVC07-NOT-DECODED` (2026-08-05) · `documentation/agent-notes.md#x12-277-svc07-not-decoded-2026-08-05`
+
+- **🩺 277 `SVC-07` is usage `R` in X212, `S` in X214.** Read + emitted as `unitsOfService`;
+  `build277` REFUSES a line without it, `build277CA` takes the same spec. An EMPTY one is still
+  short a required element; **defaulting a count is inventing.**
+- **🩺 SVC-05 / SVC-06 are `N` in BOTH 277 TR3s: emitted empty, left UNREAD** (the 835's SVC-05 IS
+  its paid count). The TR3s NAME SVC-07 differently; ONE field carries both.
+- **🩺 ONE usage fixed; a line is NOT thereby conformant. PUBLISH NO CENSUS: `SVC-01`/`SVC-02` are
+  `R` in X212 and STILL optional, `SVC-03` too, READ side silent. CUT BACK, NEVER GUARD MORE.**
+
 ### 🩺 `X12-VARIANT-LOOKUP-PROTOTYPE` (2026-08-05) · `documentation/agent-notes.md#x12-variant-lookup-prototype-2026-08-05`
 
 - **🩺 A lookup keyed by DOCUMENT BYTES is built with `wireLookup` (`Object.create(null)`) where this
@@ -142,10 +152,10 @@ sources and its refutation history. Do not act on a line here without reading th
   value plus the absence of a DIFFERENT code and stayed green. Pair every lying document with an
   honest control. **State the property, never an absolute about a matcher NAME:** "`toContain`
   appears nowhere" was published twice, false both times, the second inside the fix for the first.
-- **38 of the suite's 57 cases red against a clean `a33c208` checkout, 57 green at head; suite
-  1,313 -> 1,370; every guard has its own red negative control. Re-derive by RUNNING head's suite
-  against a base checkout, never by arithmetic** - a partitioned form was wrong four ways.
-  `phi-slots` **84** - the dropped `LX-01` and its `SV1-01-2`, both OWN.
+- **Every guard has its own red negative control. Re-derive a red/green census by RUNNING head's
+  suite against a base checkout, never by arithmetic** - a partitioned form was wrong four ways, and
+  a suite total quoted here goes stale the next slice. `phi-slots` **84** - the dropped `LX-01` and
+  its `SV1-01-2`, both OWN.
 - **🩺 An ABSENT `SV1-02` still reads a confident `0`, unwarned. Left open on purpose** - it closes
   only with the deferred `X12Decimal | undefined` slice.
 
@@ -190,27 +200,20 @@ sources and its refutation history. Do not act on a line here without reading th
 - **🩺 The 835 SVC map is `revenueCode` -> SVC-04 (element 234, the NUBC revenue code, a **string**),
   `paidUnitsOfService` -> SVC-05 (element 380, Units of Service **PAID** Count) and
   `originalUnitsOfService` -> SVC-07 (element 380, **ORIGINAL** Units of Service Count). Never move
-  them back.** The old comment asserting "revenue code is SVC-05 in X221A1; SVC-04 unused" was wrong
-  in both directions.
-- **Never fix a mis-read position while leaving its sibling element unread.** Fixing only the two
-  positions would have left SVC-07 unread and unwritten, converting a mis-read into a **fresh silent
-  drop**. **Retention is non-decreasing, on purpose.**
+  them back.**
+- **Never fix a mis-read position while leaving its sibling element unread** - that converts a
+  mis-read into a **fresh silent drop**. **Retention is non-decreasing, on purpose.**
 - **🩺 A round trip cannot test an element map; only bytes can.** The suite stayed green through the
-  fix: `transactions-remit-835-build.test.ts:532-560` is a `build835` -> `get835` round trip, green
-  for ANY pair of positions the two modules agree on. The map is pinned literally in
-  `test/transactions-remit-835-svc-element-map.test.ts` (11 red at `e3cdf49`). **Never weaken those
-  to round trips.**
+  fix, because a `build835` -> `get835` round trip is green for ANY pair of positions the two modules
+  agree on. `test/transactions-remit-835-svc-element-map.test.ts` pins the map literally. **Never
+  weaken those to round trips.**
 - **🩺 Checking a spec claim against this repo's own implementation is NOT a check** - it only proves
   the two agree, which is exactly how the wrong map survived. Ground an element number OUTSIDE the
-  repo (sources linked in `KNOWN-LIMITATIONS.md`). Agreement with the 277 was corroborating, not a
-  source. **TR3 005010X221A1 is paid for and nobody here has read it.**
-- **Never default an absent SVC-05 to one.** X221A1 is _reported_ to assume one (secondhand, from an
-  RFI Description, not a clause read from the TR3). Fabricating a count is inventing.
-- **`undefined` still means "not decoded", not "absent"** - but the unparseable case now warns and
-  the absent case does not, which is what tells them apart (next trap).
-- **The 277's SVC-07 is still not decoded and is usage R in X212**, so an **X212** 277 this library
-  emits with a service line is short a required element. `PRE-EXISTING`, filed not fixed. **Do not
-  widen it:** in **X214** it is usage `S`, so `build277CA` is unaffected.
+  repo (sources in `KNOWN-LIMITATIONS.md`). **TR3 005010X221A1 is paid for and nobody here has read
+  it.**
+- **Never default an absent SVC-05 to one.** X221A1 is _reported_ to assume one, secondhand and not
+  from a clause anyone here read. Fabricating a count is inventing.
+- **`undefined` still means "not decoded", not "absent"** - the next trap says what tells them apart.
 - **🩺 835s this library emitted at `0.0.9` or earlier are non-conformant and should be re-emitted** -
   their revenue code sits in SVC-05, so head reads it back as a paid quantity (`0300` -> 300 units)
   with no warning.

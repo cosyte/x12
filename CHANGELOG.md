@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🩺 `X12ServiceLineStatus.unitsOfService` and `Build277ServiceLineSpec.unitsOfService`, the 277
+  Loop 2220 SVC-07 units of service count** (`X12-277-SVC07-NOT-DECODED`). X12 element 380
+  (Quantity), decoded as an `X12Decimal` like every other quantity in this library and never via
+  `parseFloat`. It had no representation on either side before, which is why an X212 277 this
+  library emitted was short a required element; see `### Fixed`. `undefined` still means **not
+  decoded** rather than absent, and an SVC-07 that is present but does not decode raises
+  `X12_UNPARSEABLE_DECIMAL` at `position.elementIndex` 7 while an absent one raises nothing. **SVC-05
+  stays unread on the 277 on purpose:** it is usage N in both 277 TR3s, unlike the 835 where it is
+  the Units of Service **Paid** Count. The warning registry is unchanged at 25 codes plus 4 Tier-3
+  fatals.
+
 - **🩺 `X12_837_SERVICE_LINE_DROPPED`, the 25th Tier-2 warning code, plus the public factory
   `serviceLineDropped(position)`** (`X12-VARIANT-LOOKUP-PROTOTYPE`). Raised when an 837 `LX` opens
   no Loop 2400 at all, so the service line reaches **no claim's** `serviceLines` - either because no
@@ -86,6 +97,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   document content, verbatim, exactly like `tx.rawSegments`. Log `context` and `segmentIndex`.
 
 ### Changed
+
+- **🩺 BREAKING: `build277` now REFUSES a Loop 2220 service line that carries no `unitsOfService`
+  (`X12-277-SVC07-NOT-DECODED`).** SVC-07 is usage **R** in TR3 `005010X212`, so a service line
+  without it cannot be emitted as a conformant 277. The refusal is the existing
+  `ClaimStatus277BuildError` with code `X12_277_BUILD_INVALID_SPEC`, raised as a precondition before
+  any segment is built, and its message names `SVC-07`, the TR3, and the structural locator of the
+  offending line (indices only, never a member id, name, trace or claim id). **`build277CA` is
+  deliberately unaffected:** in `005010X214` the same element is usage **S**, so the identical spec
+  still builds and simply omits the element. **The count is never defaulted in either direction** -
+  a quantity the caller did not supply is a quantity nobody sent, and a units figure is one a payer
+  reprices against. If you emit X212 277s with service lines, the first build after upgrading throws
+  until you supply the submitted count. Usage taken from the pyx12 005010 maps
+  (`277.5010.X212.xml`, `277.5010.X214.xml`), outside this repository, rather than from this
+  library's own reader.
+
+- **The committed canonical 277 fixture and its serializer golden now carry SVC-07**
+  (`test/fixtures/status/277-canonical.edi`, `test/fixtures/golden/277.edi`). The X212 fixture was
+  itself short the required element, which is part of why nothing in the suite noticed. The other
+  twelve goldens regenerate byte-identically.
 
 - **🩺 BREAKING: the 835 Loop 2110 SVC element map is corrected, in both directions
   (`X12-SVC-ELEMENT-MAP-OFF-BY-ONE`).** Through `0.0.9` `get835` read `revenueCode` from **SVC-05**
@@ -209,6 +239,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   code changed and no published type changed.
 
 ### Fixed
+
+- **🩺 An X212 277 this library emitted with a service line was short a required element, and every
+  277 it read silently discarded the submitted units** (`X12-277-SVC07-NOT-DECODED`). `get277Status`
+  read SVC-01 through SVC-04 and stopped; `build277` emitted exactly those four. SVC-07, the units of
+  service count, is usage **R** in `005010X212`, so **every X212 277 this library produced with a
+  Loop 2220 service line was non-conformant on the wire**, and the count a submitter sent never
+  reached the model on the way back in. Both directions now carry it, and `build277` refuses rather
+  than emit a line without it (see `### Changed`).
+
+  **Only bytes could have caught this.** Every service-line assertion in the suite was a `build277`
+  to `get277Status` round trip through one self-consistent four-element map, so it was green for any
+  subset the two modules agreed on, including a subset missing a required element. A round trip
+  cannot test an element map, and it cannot test an element usage at all. The new pins in
+  `test/transactions-status-277-svc07.test.ts` parse literal EDI and compare literal segment strings:
+  **16 of its 21 cases are red against a clean `c34770c` checkout**, and the five that are green are
+  the negative pins that were already true (SVC-05 stays unread, an absent SVC-07 warns nothing, a
+  277CA line with no units emits no placeholder).
+
+  **🩺 Read the scope literally: ONE element's usage was fixed, and an emitted service line is NOT
+  thereby conformant.** This was not a 277 usage audit and **no census of what remains is published**,
+  on purpose: other required elements of the same `SVC` are still unguarded and finding another is
+  expected rather than a new defect. To name two, `SVC-01` and `SVC-02` are both usage **R** in X212
+  and both optional on `Build277ServiceLineSpec`, so a line supplying only `unitsOfService` still
+  emits `SVC*******1~` with no refusal. **The missing guard is what is pre-existing, not that byte
+  string** - at base the same spec emitted a bare `SVC~`, because the slot did not exist. `SVC-03` is usage **R**
+  in X212 and usage **N** in X214 and is optional in both builders. And the read side still raises
+  **no** warning for an X212 277 that arrives with no SVC-07, because a lenient reader saying so
+  needs a new Tier-2 registry code. All of it is pre-existing and reproduces at `e3cdf49`; widening
+  the guard would have turned this into that audit, which is its own item.
+  `KNOWN-LIMITATIONS.md` carries the same statement.
 
 - **🩺 A lookup keyed by document bytes can no longer be defeated by a key inherited from
   `Object.prototype` (`X12-VARIANT-LOOKUP-PROTOTYPE`).** Several lookup tables were plain object

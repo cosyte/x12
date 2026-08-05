@@ -12,6 +12,7 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 ## Contents
 
 - [CLAUDE-MD-AUDIT (2026-08-04)](#claude-md-audit-2026-08-04)
+- [X12-277-SVC07-NOT-DECODED (2026-08-05)](#x12-277-svc07-not-decoded-2026-08-05)
 - [X12-VARIANT-LOOKUP-PROTOTYPE (2026-08-05)](#x12-variant-lookup-prototype-2026-08-05)
 - [X12-837-SV-SILENT-ZERO (2026-08-05)](#x12-837-sv-silent-zero-2026-08-05)
 - [X12-QUANTITY-SILENT-DEFAULTS (2026-08-05)](#x12-quantity-silent-defaults-2026-08-05)
@@ -73,6 +74,123 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   first and the trap went in against the room it freed. That is the intended shape: **the entry is
   never raised to meet a new trap.** The umbrella owes the matching ratchet drop.
 
+## X12-277-SVC07-NOT-DECODED (2026-08-05)
+
+- **🩺 THE DEFECT: `SVC-07` IS USAGE `R` IN TR3 `005010X212`, AND THIS LIBRARY NEITHER READ NOR
+  EMITTED IT, SO EVERY X212 277 IT PRODUCED WITH A LOOP 2220 SERVICE LINE WAS SHORT A REQUIRED
+  ELEMENT ON THE WIRE.** `get277Status` read SVC-01 through SVC-04 and stopped; `build277` emitted
+  exactly those four. The submitted units count also never reached the model on the way back in.
+  `PRE-EXISTING`, disclosed by `#64` and filed not fixed; reproduces at `e3cdf49`. Fixed here.
+
+### Where the usage came from, and the negative control on that measurement
+
+- **Grounded OUTSIDE this repository, because checking a spec claim against this repo's own
+  implementation is not a check.** The source is pyx12's committed 005010 maps, fetched at
+  `raw.githubusercontent.com/azoner/pyx12/master/pyx12/map/`:
+  - `277.5010.X212.xml` - `SVC01=R`, `SVC02=R`, `SVC03=R`, `SVC04=S`, **`SVC05=N`**, **`SVC06=N`**,
+    **`SVC07=R`**, element `380`, named **"Units of Service Count"**.
+  - `277.5010.X214.xml` - `SVC01=R`, `SVC02=R`, `SVC03=N`, `SVC04=S`, **`SVC05=N`**, **`SVC06=N`**,
+    **`SVC07=S`**, named **"Original Units of Service Count"**.
+  - **Extract by `<seq>`, never by the `xid` attribute.** A first pass keyed on `xid` and concluded
+    the X214 map "has no SVC06 at all"; it has one, and an SVC01, both carried as `<composite>`
+    elements with a `<seq>` and NO `xid`. The claim was published in this file and in the new test
+    file's header and is corrected here. It never reached the code, which emits SVC-06 empty and is
+    right under either reading.
+  - **Corroborated by a SECOND, unrelated publisher**, because three files from pyx12 control for
+    picking the wrong map and not for pyx12 being wrong, and this usage now drives a hard builder
+    refusal: `kputnam/stupidedi`, `lib/stupidedi/transaction_sets/005010/implementations/`, hand
+    authored from the TR3s. `X212-HN277.rb` has SVC07 `Required` "Units of Service Count"; the X214
+    implementation has it `Situational` "Original Units of Service Count". Both agree with pyx12.
+  - `835.5010.X221.A1.xml` - `SVC05=S` "Units of Service **Paid** Count", `SVC07=S` "**Original**
+    Units of Service Count". This is the map the 835 reader already implements.
+- **The negative control is the two wrong maps, and it fires.** Run the same extraction against
+  X214 and X221A1 and SVC-07 comes back `S`, not `R`. That is what makes "usage R" a claim about
+  X212 specifically rather than about the SVC segment generally, and it is why `build277CA` is
+  deliberately untouched. A control that could not distinguish the three maps would have licensed
+  refusing on the 277CA too, which would have been a fresh defect dressed as a fix.
+- **The two TR3s NAME the same element differently** ("Units of Service Count" vs "Original Units of
+  Service Count") and one model field, `unitsOfService`, carries both. Do not rename it to either
+  TR3's wording: the reader is version-agnostic by construction and picking one name would assert
+  the wrong TR3 on half the documents it decodes.
+
+### Why the existing suite could not have caught it
+
+- **Every service-line assertion was a `build277` to `get277Status` round trip through ONE
+  self-consistent four-element map.** A round trip is green for any subset the two modules agree on,
+  including a subset that omits a required element, and it cannot test an element USAGE at all,
+  because usage is a property of the TR3 and not of either module. This is the same shape as
+  `X12-SVC-ELEMENT-MAP-OFF-BY-ONE`: only bytes can test a map, and only an outside source can test a
+  usage.
+- **The committed canonical X212 fixture was ITSELF short the element** (`SVC*HC:99213*150*0~`),
+  which is part of why nothing noticed. It now reads `SVC*HC:99213*150*0****1~` and the serializer
+  golden was regenerated. **The other twelve goldens regenerate byte-identically**, which is the
+  control that the fixture edit changed one document and not the emit surface.
+- **Measured: 16 of the new file's 21 cases are RED against a clean `c34770c` checkout** (head's
+  `test/` tree run against base `src/`), 21 green at head; suite 1,370 to 1,391. **Re-derive by
+  RUNNING head's suite against a base checkout, never by arithmetic.** The five green-at-base are
+  the negative pins that were already true and are listed so nobody reads them as coverage of the
+  fix: SVC-05 stays unread, an absent SVC-07 warns nothing, a 277CA line with no units emits no
+  placeholder, and the two fixture-shape pins (which are red against the BASE fixture and green only
+  because the measurement copies head's `test/` tree wholesale).
+
+### The decisions, and what each one refuses
+
+- **REFUSE, NEVER DEFAULT.** `build277` throws `ClaimStatus277BuildError` /
+  `X12_277_BUILD_INVALID_SPEC` for a line with no `unitsOfService`. Emitting an EMPTY SVC-07 would
+  still be short a required element, so "add the field as optional" does not close the item.
+  Defaulting to `1` was considered and refused for the same reason `X12-SVC-ELEMENT-MAP-OFF-BY-ONE`
+  refused to default an absent 835 SVC-05: a count nobody sent is invented, and a units figure is
+  one a payer reprices against.
+- **THE REFUSAL IS VERSION-GATED, AND THE GATE IS THREADED THROUGH `enforceStructuralSpec`.**
+  `buildClaimStatus` already takes the `ClaimStatusVersion`; it now hands it to
+  `enforceStructuralSpec` to `enforceSubscriber` to `enforceClaim`, and the leaf compares against
+  `"005010X212"` literally rather than through a boolean, so the reason stays legible at the throw.
+  **No new error CODE was added** - the registry stays additions-only and this is the existing
+  non-hierarchy-precondition arm.
+- **SVC-05 AND SVC-06 ARE EMITTED EMPTY AND STAY UNREAD.** Both are usage `N` in both 277 TR3s.
+  `seg` trims trailing empty elements, so a 277CA line with no units emits no placeholder at all
+  (`SVC*HC:99213*150.00~`) while an X212 line with units emits `SVC*HC:99213*150.00*****1~`. Reading
+  SVC-05 "for symmetry with the 835" would put a quantity on the model that no 277 sender ever
+  wrote.
+- **The refusal message carries the structural locator and the loop index only** - `locator` and
+  `String(l)`, both already sanctioned holes in `test/builder-refusal-bounds.test.ts`. The census
+  there moves 84 to 85 sites; the module count stays 11 because `build-277.ts` already raised
+  elsewhere. **`test/_helpers/phi-slots.ts` is deliberately NOT extended:** its header already
+  excludes `SVC-04..07` as purely-numeric body elements, and what covers them is the
+  registry-membership assertion in `test/phi-diagnostic-surface.test.ts`.
+- **ASSERT THE MESSAGE, NEVER THE CLASS.** `ClaimStatus277BuildError` covers seven refusals now, so
+  `expect(run).toThrow(ClaimStatus277BuildError)` passes on any of them. The new cases assert
+  `SVC-07`, `005010X212` and the locator text.
+- **The warning channel is pinned as a WHOLE PROJECTED ARRAY** (`warnings.map(code + position)`
+  compared with `toEqual`), not as a code plus the absence of a different code, which is the shape
+  that let `#67`'s residual stay green. The SVC segment's `position.segmentIndex` is DERIVED from
+  the fixture at module load rather than written as a literal.
+
+### Left open, on purpose
+
+- **🩺 PUBLISH NO CENSUS OF WHAT IS STILL UNGUARDED. ONE element's usage was fixed and an emitted
+  service line is NOT thereby conformant.** A first draft of this slice's changeset, CHANGELOG and
+  `KNOWN-LIMITATIONS.md` opened "Two things this does not fix", and the gate found a third inside
+  the very segment the slice repaired: **`SVC-01` and `SVC-02` are BOTH usage `R` in X212 and BOTH
+  optional on `Build277ServiceLineSpec`**, so a spec carrying only `unitsOfService` emits
+  `SVC*******1~` with no refusal. Loop 2220's `STC` is a required SEGMENT in X212 and the builder
+  emits lines with none. **The remedy was to CUT THE CLAIM BACK, NOT to add guards** - the standing
+  rule from `X12-NUMERIC-VALUE-EMITS-EMPTY`, and adding them would have made this the general 277
+  usage audit the item did not ask for. Finding one more is expected and is not a new finding.
+- **🩺 `SVC-03` is usage `R` in X212 and usage `N` in X214, and both builders treat it as optional in
+  both.** Found while reading the same two maps. `PRE-EXISTING`, reproduces at `e3cdf49`, filed not
+  fixed: a different element with a different asymmetry, X214 forbidding what X212 requires.
+- **🩺 The READ side raises NO warning for an X212 277 that arrives with no SVC-07.** The reader
+  stays lenient and the model simply carries `undefined`. Saying so needs a new Tier-2 registry code
+  and the defect this item names is on the EMIT side. **Do not describe this slice as "the 277 now
+  tells you when a required element is missing"** - it does not.
+- **`REFUSAL-MESSAGE-PHI-ECHO` was NOT folded in.** `requireCallerSegment` still echoes a non-string
+  primitive it refuses, and `build277`'s `seg` routes through it. Untouched here, disclosed, its own
+  open item.
+- **The `X12Decimal | undefined` breaking slice is still deferred** and this slice does not start
+  it. `unitsOfService` is `X12Decimal | undefined` because it is an OPTIONAL slot on a new field,
+  not because the model-wide change landed.
+
 ## X12-VARIANT-LOOKUP-PROTOTYPE (2026-08-05)
 
 - **🩺 THE DEFECT: A LOOKUP TABLE BUILT AS AN OBJECT LITERAL INHERITS `Object.prototype`, SO A KEY
@@ -95,17 +213,17 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   identically at each site;
   `constructor` is quoted as the representative.
 
-  | Probe | Base (`a33c208`) | Head |
-  | --- | --- | --- |
-  | 837 ST-03 `constructor`, SV1 present | `variant` a **function**, `serviceLines` **0**, `warnings: []` | `variant` `"P"` via the SVx fallback, 1 line, charge `8500`, `warnings: []` |
-  | 837 ST-03 `constructor`, no SVx anywhere | `variant` a **function**, 0 lines, `warnings: []` | `["X12_837_UNKNOWN_VARIANT", "X12_837_SERVICE_LINE_DROPPED"]` |
-  | 837, caller `{ type: "p" }`, SV1 present | 0 lines, `warnings: []` | `["X12_837_SERVICE_LINE_DROPPED"]`, **no unknown-variant code** |
-  | 837 HL-03 `constructor` | `["X12_HL_PARENT_LEVEL_INVALID"]` | `[]` (matches HL-03 `99`) |
-  | `lookupCarc("constructor")` | `{ code: "constructor", description: <function Object> }` | `undefined` |
-  | 837 CAS-02 `constructor` | `reasonDescription` a **function**, `warnings: []` | `["X12_UNKNOWN_CARC"]` |
-  | 837 HI-01-1 `constructor` | `codeSystem: "unknown"`, `warnings: []` | `["X12_UNKNOWN_HI_QUALIFIER"]` |
-  | `isClaimAdjustmentGroupCode("constructor")` | `true` | `false` |
-  | 271 / 277 HL-03 `constructor` | `[]` | `[]` (never exposed - see below) |
+  | Probe                                       | Base (`a33c208`)                                               | Head                                                                        |
+  | ------------------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------- |
+  | 837 ST-03 `constructor`, SV1 present        | `variant` a **function**, `serviceLines` **0**, `warnings: []` | `variant` `"P"` via the SVx fallback, 1 line, charge `8500`, `warnings: []` |
+  | 837 ST-03 `constructor`, no SVx anywhere    | `variant` a **function**, 0 lines, `warnings: []`              | `["X12_837_UNKNOWN_VARIANT", "X12_837_SERVICE_LINE_DROPPED"]`               |
+  | 837, caller `{ type: "p" }`, SV1 present    | 0 lines, `warnings: []`                                        | `["X12_837_SERVICE_LINE_DROPPED"]`, **no unknown-variant code**             |
+  | 837 HL-03 `constructor`                     | `["X12_HL_PARENT_LEVEL_INVALID"]`                              | `[]` (matches HL-03 `99`)                                                   |
+  | `lookupCarc("constructor")`                 | `{ code: "constructor", description: <function Object> }`      | `undefined`                                                                 |
+  | 837 CAS-02 `constructor`                    | `reasonDescription` a **function**, `warnings: []`             | `["X12_UNKNOWN_CARC"]`                                                      |
+  | 837 HI-01-1 `constructor`                   | `codeSystem: "unknown"`, `warnings: []`                        | `["X12_UNKNOWN_HI_QUALIFIER"]`                                              |
+  | `isClaimAdjustmentGroupCode("constructor")` | `true`                                                         | `false`                                                                     |
+  | 271 / 277 HL-03 `constructor`               | `[]`                                                           | `[]` (never exposed - see below)                                            |
 
 - **🩺 THE HEADLINE IS THE ONE THE ITEM NAMED, AND IT IS STRICTLY WORSE THAN `#67`'s.** `#67` closed
   a line that shipped a fabricated `0`. **This one shipped NO LINE AT ALL.** `openServiceLine`
@@ -178,7 +296,7 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
      With a `CLM` open, the date, amount and note land among the **claim-level** ones. With **no**
      `CLM` open, the `DTP`, `AMT` and `NTE` are **discarded** and a trailing `REF` attaches to
      whichever party the last `NM1` left active - measured, a line-item control number landing in a
-     *later* claim's `payer.references`. **The remedy was to CUT THE CLAUSE OUT OF THE SHIPPED
+     _later_ claim's `payer.references`. **The remedy was to CUT THE CLAUSE OUT OF THE SHIPPED
      MESSAGE ENTIRELY**, because a registry message cannot carry a conditional and a consumer reading
      one should not have to. `PRE-EXISTING` walker behaviour;
      both routes pinned by tests, and the `REF` mis-attribution is owed its own umbrella item.
@@ -278,14 +396,14 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
 - **🩺 MEASURE THE BASE, PROBE BY PROBE. Four leak paths, two honest controls, run against `d8b5085`
   and against head:**
 
-  | Probe | Base | Head |
-  | --- | --- | --- |
+  | Probe                                         | Base                                                    | Head                                  |
+  | --------------------------------------------- | ------------------------------------------------------- | ------------------------------------- |
   | 837I fixture, ST-03 flipped to `005010X222A2` | 2 lines, `charge` `0` / `units` `0`, **`warnings: []`** | 2x `X12_837_SERVICE_LINE_NOT_DECODED` |
-  | 837I fixture read with `{ type: "P" }` | 2 lines, `0` / `0`, **`warnings: []`** | 2x `X12_837_SERVICE_LINE_NOT_DECODED` |
-  | `LX` with no `SVx` at all | 1 line, `0` / `0`, **`warnings: []`** | 1x `X12_837_SERVICE_LINE_NOT_DECODED` |
-  | 837D fixture read with `{ type: "I" }` | 1 line, `0` / `0`, **`warnings: []`** | 1x `X12_837_SERVICE_LINE_NOT_DECODED` |
-  | 837I fixture read as itself (control) | `charge` `1500`, `units` `1`, `warnings: []` | unchanged, still silent |
-  | 837P fixture read as itself (control) | `charge` `150`, `units` `1`, `warnings: []` | unchanged, still silent |
+  | 837I fixture read with `{ type: "P" }`        | 2 lines, `0` / `0`, **`warnings: []`**                  | 2x `X12_837_SERVICE_LINE_NOT_DECODED` |
+  | `LX` with no `SVx` at all                     | 1 line, `0` / `0`, **`warnings: []`**                   | 1x `X12_837_SERVICE_LINE_NOT_DECODED` |
+  | 837D fixture read with `{ type: "I" }`        | 1 line, `0` / `0`, **`warnings: []`**                   | 1x `X12_837_SERVICE_LINE_NOT_DECODED` |
+  | 837I fixture read as itself (control)         | `charge` `1500`, `units` `1`, `warnings: []`            | unchanged, still silent               |
+  | 837P fixture read as itself (control)         | `charge` `150`, `units` `1`, `warnings: []`             | unchanged, still silent               |
 
   **The controls are half the evidence.** A warning that fired unconditionally passes every row in
   the top half and fails both rows in the bottom half. The negative control ran the other way too:
@@ -357,7 +475,6 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   parser change graded correct and complete against the item's bar on the first pass; the gate could
   not construct a false positive or a false negative, and confirmed the flag cannot be true without
   an attempted read. What failed was, for the fourth item running, the prose shipped alongside it.
-
   1. **minor - the frozen message asserted non-conformance the library cannot establish.** It said
      the two causes were "both non-conformant". One of this slice's own probes is a **conformant**
      837I read with `{ type: "P" }`: the disagreement is the integrator's option, not a wire defect.
@@ -412,17 +529,17 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   each substituting a single numeric token into a committed fixture, run against `5a73b37` and
   against head:
 
-  | Probe | Base | Head |
-  | --- | --- | --- |
-  | 835 `BPR-02` `1,234.56` | `totalActualPayment` `0`, only `X12_835_REMIT_BALANCE_MISMATCH` | + `X12_UNPARSEABLE_DECIMAL` at element 2 |
+  | Probe                    | Base                                                               | Head                                     |
+  | ------------------------ | ------------------------------------------------------------------ | ---------------------------------------- |
+  | 835 `BPR-02` `1,234.56`  | `totalActualPayment` `0`, only `X12_835_REMIT_BALANCE_MISMATCH`    | + `X12_UNPARSEABLE_DECIMAL` at element 2 |
   | 835 `CLP-04` `450.00USD` | `totalPaymentAmount` `0`, only 2x `X12_835_REMIT_BALANCE_MISMATCH` | + `X12_UNPARSEABLE_DECIMAL` at element 4 |
-  | 835 `SVC-05` `1.2.3` | `paidUnitsOfService` `undefined`, **`warnings: []`** | `X12_UNPARSEABLE_DECIMAL` at element 5 |
-  | 837 `CLM-02` `$150` | `totalCharge` `0`, **`warnings: []`** | `X12_UNPARSEABLE_DECIMAL` at element 2 |
-  | 837 `SV1-04` `N/A` | `units` `0`, **`warnings: []`** | `X12_UNPARSEABLE_DECIMAL` at element 4 |
-  | 277 `STC-04` `1,50` | **`warnings: []`** | `X12_UNPARSEABLE_DECIMAL` at element 4 |
-  | 271 `EB-07` `1 000` | **`warnings: []`** | `X12_UNPARSEABLE_DECIMAL` at element 7 |
-  | 820 `BPR-02` `12,500.00` | `totalPremiumAmount` `0`, **`warnings: []`** | `X12_UNPARSEABLE_DECIMAL` at element 2 |
-  | 834 `AMT-02` `125.00USD` | **`warnings: []`** | `X12_UNPARSEABLE_DECIMAL` on that member |
+  | 835 `SVC-05` `1.2.3`     | `paidUnitsOfService` `undefined`, **`warnings: []`**               | `X12_UNPARSEABLE_DECIMAL` at element 5   |
+  | 837 `CLM-02` `$150`      | `totalCharge` `0`, **`warnings: []`**                              | `X12_UNPARSEABLE_DECIMAL` at element 2   |
+  | 837 `SV1-04` `N/A`       | `units` `0`, **`warnings: []`**                                    | `X12_UNPARSEABLE_DECIMAL` at element 4   |
+  | 277 `STC-04` `1,50`      | **`warnings: []`**                                                 | `X12_UNPARSEABLE_DECIMAL` at element 4   |
+  | 271 `EB-07` `1 000`      | **`warnings: []`**                                                 | `X12_UNPARSEABLE_DECIMAL` at element 7   |
+  | 820 `BPR-02` `12,500.00` | `totalPremiumAmount` `0`, **`warnings: []`**                       | `X12_UNPARSEABLE_DECIMAL` at element 2   |
+  | 834 `AMT-02` `125.00USD` | **`warnings: []`**                                                 | `X12_UNPARSEABLE_DECIMAL` on that member |
 
   **Seven of nine were completely silent at base.** The two that were not are the 835's, and their
   only signal was the balance invariant, **which names an equation and never an element, and exists
@@ -452,7 +569,7 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   `.warnings` sees exactly what it saw before. Closing that means `X12Decimal | undefined` on every
   monetary model slot, which ripples into `balance.ts` and all nine builders: a breaking model change
   and its own slice. **Do not restate this slice as "an unparseable amount can no longer read as
-  zero".** It can. It can no longer do so *silently*.
+  zero".** It can. It can no longer do so _silently_.
 
 - **AN ABSENT ELEMENT DOES NOT WARN, AND THAT IS DELIBERATE.** "Missing means zero" is the documented
   convention of the slots using `elementDecimalOrZero`, and warning on it would fire on almost every
@@ -489,7 +606,6 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
 - **🩺 PASS 1 REFUTED, AND BOTH `INTRODUCED` FINDINGS WERE CLAIM DEFECTS, NOT CODE DEFECTS.** The
   parser change graded correct and complete against the item's bar on the first pass; what failed was
   what shipped alongside it. That is this repo's standing pattern and it held again.
-
   1. **major - the slice published the INVERSE guarantee, and it is false.** Three consumer-facing
      artifacts said, unqualified, that "a `0` with no warning is a zero the sender sent", one of them
      paired with "gate on the warning". **The warning is a property of a decimal READ; a slot a

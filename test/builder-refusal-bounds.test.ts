@@ -236,19 +236,21 @@ describe("refusal messages: the source gate", () => {
 
   it("finds the refusing modules and their refusal sites", () => {
     // Re-derived on this tree, not inherited: ELEVEN modules raise a typed
-    // refusal across EIGHTY-FOUR `throw` sites - ten builder modules with 72
-    // sites (59 two slices ago, plus the nine one-line `refuseSpec` /
+    // refusal across EIGHTY-FIVE `throw` sites - ten builder modules with 73
+    // sites (59 three slices ago, plus the nine one-line `refuseSpec` /
     // `refuseHierarchy` throwers that `requireCallerArray` calls back into,
     // plus the FOUR added by `X12-NUMERIC-VALUE-EMITS-EMPTY` so that
     // `buildInterchange`, `build999`, `build271` and `build278` each own a
-    // `refuseSpec` for `makeCallerEscaper` to call back into), and
-    // `src/profiles/validate.ts` with 12. The module count is unchanged at 11
-    // because all four modules already raised elsewhere. Pinned so a module
-    // that stops being scanned (a rename, a moved directory) is a failure
-    // rather than a silently smaller sweep.
+    // `refuseSpec` for `makeCallerEscaper` to call back into, plus the ONE
+    // added by `X12-277-SVC07-NOT-DECODED` in `build-277.ts` for a service
+    // line with no SVC-07 under 005010X212), and `src/profiles/validate.ts`
+    // with 12. The module count is unchanged at 11 because `build-277.ts`
+    // already raised elsewhere. Pinned so a module that stops being scanned
+    // (a rename, a moved directory) is a failure rather than a silently
+    // smaller sweep.
     const raising = new Set(sites.map((s) => s.file));
     expect(raising.size).toBe(11);
-    expect(sites.length).toBe(84);
+    expect(sites.length).toBe(85);
     expect(modules.some((m) => m.endsWith(join("profiles", "validate.ts")))).toBe(true);
   });
 

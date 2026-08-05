@@ -334,6 +334,7 @@ interface ServiceLineAccumulator {
   readonly lineChargeAmount: X12Decimal | undefined;
   readonly linePaymentAmount: X12Decimal | undefined;
   readonly revenueCode: string | undefined;
+  readonly unitsOfService: X12Decimal | undefined;
   readonly statuses: X12StatusInfo[];
   readonly references: X12StatusReference[];
   readonly dates: X12StatusDate[];
@@ -481,6 +482,10 @@ function openServiceLine(
     lineChargeAmount: elementDecimal(seg, 2, delimiters, sink),
     linePaymentAmount: elementDecimal(seg, 3, delimiters, sink),
     revenueCode: elementOptional(seg, 4, delimiters),
+    // SVC-07. SVC-05 (Quantity) and SVC-06 (a second composite) are NOT USED
+    // in both X212 and X214, so they are deliberately left unread rather than
+    // decoded "for symmetry" with the 835, whose SVC-05 IS the paid count.
+    unitsOfService: elementDecimal(seg, 7, delimiters, sink),
     statuses: [],
     references: [],
     dates: [],
@@ -500,6 +505,7 @@ function freezeServiceLine(acc: ServiceLineAccumulator): X12ServiceLineStatus {
     lineChargeAmount: acc.lineChargeAmount,
     linePaymentAmount: acc.linePaymentAmount,
     revenueCode: acc.revenueCode,
+    unitsOfService: acc.unitsOfService,
     statuses: Object.freeze(acc.statuses.slice()),
     references: Object.freeze(acc.references.slice()),
     dates: Object.freeze(acc.dates.slice()),
