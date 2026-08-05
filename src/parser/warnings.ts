@@ -321,7 +321,7 @@ const WARNING_MESSAGES = {
   X12_834_UNKNOWN_MAINTENANCE_TYPE:
     "Unknown 834 maintenance type: the INS-03/HD-01 code is outside the bundled snapshot. The verbatim code is preserved on the enrollment and the action is NEVER inferred.",
   X12_UNPARSEABLE_DECIMAL:
-    "Unparseable decimal: the element at `position.elementIndex` held bytes that are not an X12 R-type decimal, so NO value was decoded from it. Whatever occupies that slot on the model, including 0 and undefined, is a stand-in and is NOT a value the sender supplied. The verbatim bytes are preserved on the segment; read them there before acting on the amount, quantity or percent.",
+    "Unparseable decimal: the element at `position.elementIndex` held bytes this library could not decode as a decimal, so NO value was decoded from it. Whatever occupies that slot on the model, including 0 and undefined, is a stand-in and is NOT a value the sender supplied. The verbatim bytes are preserved on the segment; read them there before acting on the amount, quantity or percent.",
 } as const;
 
 /**
@@ -910,9 +910,12 @@ export function unknownMaintenanceType(position: X12Position): X12ParseWarning {
 
 /**
  * Build an `X12_UNPARSEABLE_DECIMAL` warning. Emitted whenever an element
- * read as a decimal held bytes that are NOT empty and are NOT an X12 R-type
- * decimal (`[+-]?digits(.digits?)?`) - a thousands separator, a currency
- * symbol, `N/A`, two decimal points, a trailing sign, and so on.
+ * read as a decimal held bytes that are NOT empty and do not match the shape
+ * {@link "../decimal.js".X12Decimal} decodes, `[+-]?digits(.digits?)?` - a
+ * thousands separator, a currency symbol, `N/A`, two decimal points, a
+ * trailing sign, and so on. That shape is what this library reads, stated as
+ * such: no clause of X12.6 is cited for it here, so do not read the code as
+ * an assertion about what type R does and does not permit.
  *
  * The warning is a property of the READ, not of what the caller does with
  * the result: it fires whether the decoded slot ends up on the model, is

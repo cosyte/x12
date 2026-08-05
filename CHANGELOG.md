@@ -215,13 +215,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exists in no other reader. All nine now carry `X12_UNPARSEABLE_DECIMAL` naming the element.
 
   **What did NOT change, deliberately.** The model is unchanged: a slot typed `X12Decimal` still
-  reads `X12Decimal.ZERO`, an optional slot still reads `undefined`, and a `CAS` / `PLB` triple whose
-  reason code is also absent is still dropped. A slot typed `X12Decimal` cannot express "did not
+  reads `X12Decimal.ZERO`, an optional slot still reads `undefined`, and some rows are dropped whole.
+  The warning is a property of the READ rather than of what the reader then does with the result, so
+  every one of those outcomes carries it; no list of them is published, because a first draft
+  enumerated three and a review measured a fourth. A slot typed `X12Decimal` cannot express "did not
   decode", and changing every such slot to `X12Decimal | undefined` is a breaking model change that
   belongs in its own slice. So a consumer that reads only the model and never looks at `.warnings`
   sees exactly what it saw before. **Gate on the warning.** Also unchanged: an **absent** element
   still returns `X12Decimal.ZERO` and still does **not** warn, because "missing means zero" is the
-  documented convention of those slots. `KNOWN-LIMITATIONS.md` carries the residual in full.
+  documented convention of those slots. That does **not** make every unwarned `0` trustworthy: the
+  guarantee is exactly that an unwarned `0` **at an element a reader decoded** is a zero the sender
+  sent or omitted, and a slot a reader never read cannot warn. `KNOWN-LIMITATIONS.md` carries the
+  residual and the one measured instance of that inversion in full.
 
 - **A number passed where a builder's types say `string` no longer emits an EMPTY element. It is now
   REFUSED, and it is deliberately not coerced.** `escapeRelease` opened with

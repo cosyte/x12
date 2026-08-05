@@ -89,7 +89,6 @@ export function get820Payments(
     // Every decimal read below routes its `X12_UNPARSEABLE_DECIMAL` here; the
     // helper narrows the position to the failing element itself.
     const sink: X12DecimalWarningSink = { warnings, position };
-    void position;
     switch (seg.id) {
       case "BPR": {
         payment = decodeBpr(seg, delimiters, sink);

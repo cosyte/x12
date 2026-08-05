@@ -77,19 +77,27 @@ function newSink(): { sink: X12DecimalWarningSink; warnings: X12ParseWarning[] }
 }
 
 /**
- * Values that are NOT an X12 R-type decimal but are the shapes real senders
- * actually put in a monetary or quantity element. Every one of them decoded to
- * a confident `0` (or a silent `undefined`) before this slice.
+ * Values `X12Decimal` does not decode, in the shapes real senders actually put
+ * in a monetary or quantity element. Every one of them decoded to a confident
+ * `0` (or a silent `undefined`) before this slice.
+ *
+ * **This list is what this library reads, not a claim about what X12.6 type R
+ * permits.** Nobody here has read X12.6, so the last two entries are pinned as
+ * behaviour rather than as conformance: if type R does allow an exponent, `1e3`
+ * is a conformant 1000 that `X12Decimal.fromString` refuses, and a padded
+ * numeric is arguably a Postel-correct trim. Both are `PRE-EXISTING` in
+ * `X12Decimal.fromString`, both are now at least warned about, and both are
+ * filed rather than changed here.
  */
 const UNPARSEABLE = [
-  "1,234.56", // thousands separator - X12 forbids it in an R-type element
+  "1,234.56", // thousands separator
   "$450.00", // currency symbol
   "450.00USD", // trailing currency code
   "1.2.3", // two decimal points
   "450-", // trailing sign (a fixed-format habit, not X12)
   "N/A", // a word where a number belongs
-  "1e3", // exponent notation
-  " 450.00", // leading space
+  "1e3", // exponent notation - see the caveat above
+  " 450.00", // leading space - see the caveat above
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -378,6 +386,43 @@ describe("get834Enrollments - scoped to the member it was read from", () => {
       seen.push(...codes(enrollment.warnings));
     }
     expect(seen).toContain(WARNING_CODES.X12_UNPARSEABLE_DECIMAL);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3b. The residual, pinned so the disclosure cannot go stale silently.
+// ---------------------------------------------------------------------------
+
+describe("the guarantee is about an element a reader DECODED, not about every 0", () => {
+  it("🩺 an 837 line whose variant disagrees with its SVx reads 0 / 0 with NO warning", () => {
+    // PRE-EXISTING and deliberately NOT fixed here: `openServiceLine` seeds
+    // `charge` / `units` at X12Decimal.ZERO and `decodeSv1` returns before
+    // reading anything when the resolved variant is not "P", so no decimal is
+    // ever read and no sink is ever consulted. This asserts the LEAKING
+    // behaviour on purpose. Closing it turns this test red, which is the
+    // point: it is what stops the corrected disclosure in KNOWN-LIMITATIONS.md
+    // from quietly becoming false in either direction.
+    // The ST-03 implementation-convention reference is the only lever moved:
+    // it says Professional while every service line in the file is an SV2.
+    const mis = substitute(
+      readFixture("claim/837i-canonical.edi"),
+      "ST*837*0001*005010X223A3~",
+      "ST*837*0001*005010X222A2~",
+    );
+    const { tx, delimiters } = txOf(mis, "837");
+    const sub = get837Claims(delimiters, tx);
+
+    const line = sub?.claims[0]?.serviceLines[0];
+    expect(sub?.variant).toBe("P");
+    expect(line?.charge.toString()).toBe("0");
+    expect(line?.units.toString()).toBe("0");
+    expect(codes(sub?.warnings ?? [])).not.toContain(WARNING_CODES.X12_UNPARSEABLE_DECIMAL);
+
+    // The same file read with its own variant decodes the real amounts, which
+    // is what makes the assertion above a defect rather than an empty fixture.
+    const honest = txOf(readFixture("claim/837i-canonical.edi"), "837");
+    const ok = get837Claims(honest.delimiters, honest.tx)?.claims[0]?.serviceLines[0];
+    expect(ok?.charge.toString()).not.toBe("0");
   });
 });
 

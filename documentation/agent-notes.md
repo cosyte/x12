@@ -134,6 +134,43 @@ claim to learn, and several of them name a remedy that was tried and refuted.
   them** - `X12-DECIMAL-BYPASSES-THE-GUARD` made the builders refuse to emit an unparseable decimal,
   so only bytes can make this input.
 
+- **🩺 PASS 1 REFUTED, AND BOTH `INTRODUCED` FINDINGS WERE CLAIM DEFECTS, NOT CODE DEFECTS.** The
+  parser change graded correct and complete against the item's bar on the first pass; what failed was
+  what shipped alongside it. That is this repo's standing pattern and it held again.
+
+  1. **major - the slice published the INVERSE guarantee, and it is false.** Three consumer-facing
+     artifacts said, unqualified, that "a `0` with no warning is a zero the sender sent", one of them
+     paired with "gate on the warning". **The warning is a property of a decimal READ; a slot a
+     reader never READ cannot warn and still holds whatever its accumulator was seeded with.**
+     Measured at head: `get837Claims` seeds `charge` / `units` at `X12Decimal.ZERO`
+     (`get-837.ts:1114`) and `decodeSv1` / `decodeSv2` / `decodeSv3` each return before reading
+     anything when `acc.variant` does not match, so a wire `8500` / `4 UN` reads back `0` / `0` with
+     `warnings: []` - reachable from the wire (ST-03 `005010X222A2` on a file whose lines are `SV2`)
+     and from `get837Claims(d, tx, { type: "P" })`. **`PRE-EXISTING`, identical at base, filed as its
+     own item, NOT fixed here.** The remedy was to correct the claim, never to grow the guard: the
+     guarantee is now stated as **unwarned `0` AT AN ELEMENT A READER DECODED**.
+  2. **minor - the published outcome census was three and the true number is four.** The docs
+     enumerated `ZERO` slot / optional slot / dropped `CAS`-`PLB` row and asserted "all three". A
+     fourth: an `AMT` or `ADX` row is dropped WHOLE even with its qualifier present
+     (`AMT*B6*1,234.56` in an 835 line, `ADX*-25.00USD*53*AZ*…` in an 820). The factory's own JSDoc
+     had it right in the same commit ("or drop the row entirely") and the shipped prose was narrower.
+     **This is `X12-NUMERIC-VALUE-EMITS-EMPTY` verbatim: the remedy is to CUT THE CLAIM BACK, not to
+     grow the census. No census is published now.**
+  3. **minor - the message asserted a spec fact nobody here has grounded.** It said the bytes "are
+     not an X12 R-type decimal". Neither the message, the factory JSDoc, nor `X12_DECIMAL_RE`'s
+     comment cites a clause of X12.6, and the test pins `"1e3"` as undecoded. **If type R permits an
+     exponent, `1E3` is a conformant 1000 this library reads as `0`** - `PRE-EXISTING` behaviour in
+     `X12Decimal.fromString`, untouched, but a NEW assertion. The message now says "could not decode
+     as a decimal" and the JSDoc says outright that no clause is cited.
+
+- **Findings the pass raised that are NOT this slice's, each reproduced at base and filed, not
+  fixed:** the 837 variant/`SVx` silent `0` above (major, and the same harm class as this item);
+  `X12Decimal.fromString` refusing a space-padded numeric (` 450.00`), so a fixed-width-padding
+  sender's every amount reads `0`; and `get820Payments` dropping an `RMR` or `ADX` row when its
+  leading qualifier elements are empty (`RMR***PI*500.00*500.00` loses a $500.00 row, `warnings: []`).
+  Also queued out-of-repo: the `healthcare-integration:x12-transaction-author` crew skill claims
+  `serialize(parse(s)) === s`, which this repo's own `CLAUDE.md` and `KNOWN-LIMITATIONS.md` deny.
+
 - **A sibling changeset was corrected in the same commit.** `.changeset/sour-bottles-repeat.md`
   (`#64`) said `undefined` at a quantity site "raises no warning", which this slice makes false in
   the same release. `KNOWN-LIMITATIONS.md`'s SVC entry said the same and was corrected too.

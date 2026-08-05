@@ -62,8 +62,9 @@ X12Decimal.fromString("not a number"); // => undefined
 line's `chargeAmount`, an 837's `totalCharge`) cannot express "did not decode". Those slots fall back
 to `X12Decimal.ZERO`.
 
-That fallback is now **announced**. Any element that is present and is not an X12 R-type decimal
-emits **`X12_UNPARSEABLE_DECIMAL`**, carrying the failing element in `position.elementIndex`:
+That fallback is now **announced**. Any element that is present and does not match the shape
+`X12Decimal` decodes emits **`X12_UNPARSEABLE_DECIMAL`**, carrying the failing element in
+`position.elementIndex`:
 
 ```ts runnable
 import { parseX12, get835, WARNING_CODES } from "@cosyte/x12";
@@ -96,7 +97,9 @@ Three things to hold onto:
   longer silent.
 - **An *absent* element is a different fact and does not warn.** "Missing means zero" is the
   documented convention of those slots and is unchanged. The warning fires only when the sender put
-  bytes there and this library could not read them.
+  bytes there and this library could not read them. Read the guarantee in exactly that direction:
+  an unwarned `0` **at an element a reader decoded** is a zero the sender sent or omitted. It is not
+  a promise about every `0` on the model, because a slot a reader never read cannot warn.
 - **On an optional slot the same warning disambiguates `undefined`.** A `paidUnitsOfService` of
   `undefined` used to mean either "the payer omitted it" or "the payer sent something unreadable".
   With a warning at that element index, it means the second; without one, the first.

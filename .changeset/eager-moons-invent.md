@@ -31,16 +31,22 @@ helpers, returning `{ value, status }` with `status` one of `"decoded"` / `"abse
 failing element itself. Existing 3-argument calls still compile and are still silent, on purpose.
 
 **What did NOT change, deliberately.** The model is unchanged: a slot typed `X12Decimal` still reads
-`X12Decimal.ZERO`, an optional slot still reads `undefined`, and a `CAS` / `PLB` triple whose reason
-code is also absent is still dropped. A slot typed `X12Decimal` cannot express "did not decode", and
+`X12Decimal.ZERO`, an optional slot still reads `undefined`, and some rows are dropped whole. The
+warning is a property of the READ rather than of what the reader then does with the result, so every
+one of those outcomes carries it; no list of them is published, because a first draft enumerated
+three and a review measured a fourth. A slot typed `X12Decimal` cannot express "did not decode", and
 changing every such slot to `X12Decimal | undefined` is a breaking model change that belongs in its
 own slice. A consumer that reads only the model and never looks at `.warnings` therefore sees exactly
 what it saw before. Gate on the warning.
 
 An **absent** element still returns `X12Decimal.ZERO` and still does **not** warn: "missing means
-zero" is the documented convention of the slots that use that helper and is unchanged. The warning
-fires only where the sender put bytes in the element and this library could not read them, which is
-what makes a `0` with no warning still trustworthy.
+zero" is the documented convention of the slots that use that helper and is unchanged. That does
+**not** make every unwarned `0` trustworthy, and the inversion is the one thing to refuse here: the
+warning is a property of a decimal READ, not of a model slot, so a slot a reader never read cannot
+warn and still holds whatever it was seeded with. `get837Claims` has exactly such a hole today,
+`PRE-EXISTING` and untouched by this change. The guarantee is exactly this: **an unwarned `0` at an
+element a reader decoded is a zero the sender sent or omitted.** `KNOWN-LIMITATIONS.md` carries it
+with the measured instance.
 
 The offending bytes never reach the warning message. They are sender-controlled, and a monetary
 element is exactly where a mis-mapped identifier lands, so the message is a frozen-registry lookup

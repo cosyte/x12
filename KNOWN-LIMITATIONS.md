@@ -17,21 +17,31 @@ model.
 ## Data / decode boundaries
 
 - **🩺 An unparseable decimal still lands on the model as a stand-in; what changed is that it warns.**
-  A decimal element that is present and is not an X12 R-type decimal (`1,234.56`, `$450.00`, `N/A`)
-  decodes to no value, and the reader has to put something in the slot. Where the slot is typed
-  `X12Decimal` it gets `X12Decimal.ZERO`; where it is optional it gets `undefined`; on a `CAS` or
-  `PLB` triple whose reason code is also absent the row is dropped. **All three now emit
-  `X12_UNPARSEABLE_DECIMAL` at the failing `position.elementIndex`, and none of the three is
-  otherwise changed.** So a consumer that reads only the model, and never looks at `.warnings`, sees
-  exactly what it saw before: a `0` where the payer sent something unreadable. **That is the residual,
-  stated plainly.** Closing it further means changing every `X12Decimal` model slot to
-  `X12Decimal | undefined`, which is a breaking model change and is deliberately not in this slice.
-  Gate on the warning, or read `readElementDecimal` yourself.
+  A decimal element that is present and that this library cannot decode as a decimal (`1,234.56`,
+  `$450.00`, `N/A`) yields no value, and the reader has to put something in its place: a slot typed
+  `X12Decimal` gets `X12Decimal.ZERO`, an optional slot gets `undefined`, and some rows are dropped
+  whole. **Every one of those outcomes now emits `X12_UNPARSEABLE_DECIMAL` at the failing
+  `position.elementIndex`, because the warning is a property of the READ rather than of what the
+  reader then does with it. No outcome is otherwise changed.** No list of the outcomes is published
+  here, on purpose: a first draft enumerated three and a review measured a fourth, and the rule is
+  what holds, not the census. So a consumer that reads only the model, and never looks at
+  `.warnings`, sees exactly what it saw before: a `0` where the payer sent something unreadable.
+  **That is the residual, stated plainly.** Closing it further means changing every `X12Decimal`
+  model slot to `X12Decimal | undefined`, which is a breaking model change and is deliberately not in
+  this slice. Gate on the warning, or read `readElementDecimal` yourself.
 
-  Two scoping facts that are easy to get wrong in the other direction:
+  Three scoping facts that are easy to get wrong in the other direction:
   - **An ABSENT element does not warn.** "Missing means zero" is the documented convention of the
-    slots that use `elementDecimalOrZero` and is unchanged, so a `0` with no warning is a zero the
-    sender actually sent (or omitted), not an unread one.
+    slots that use `elementDecimalOrZero` and is unchanged.
+  - **🩺 That does NOT make an unwarned `0` trustworthy in general, and this is the one inversion to
+    refuse.** The warning is a property of a decimal READ, not a property of a model slot. A slot
+    the reader never read at all cannot warn, and it still holds whatever the accumulator was seeded
+    with. `get837Claims` has exactly such a hole today, `PRE-EXISTING` and untouched here: when the
+    resolved variant disagrees with the `SVx` segment actually present (an ST-03 of `005010X222A2`
+    on a file whose lines are `SV2`, or a caller-supplied `{ type: "P" }` over the same), `decodeSv1`
+    returns before reading anything and the line's `charge` and `units` stay at their seeded
+    `X12Decimal.ZERO` with `warnings: []`. **What this slice guarantees is narrower and exact: an
+    unwarned `0` AT AN ELEMENT A READER DECODED is a zero the sender sent or omitted.**
   - **The public helpers are silent without a sink.** `elementDecimal` / `elementDecimalOrZero` take
     an optional 4th `X12DecimalWarningSink`. Every reader inside this library passes one, and a
     source scan in `test/parser-decimal-silent-defaults.test.ts` keeps it that way. **A consumer
