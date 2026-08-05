@@ -12,6 +12,7 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 ## Contents
 
 - [CLAUDE-MD-AUDIT (2026-08-04)](#claude-md-audit-2026-08-04)
+- [X12-VARIANT-LOOKUP-PROTOTYPE (2026-08-05)](#x12-variant-lookup-prototype-2026-08-05)
 - [X12-837-SV-SILENT-ZERO (2026-08-05)](#x12-837-sv-silent-zero-2026-08-05)
 - [X12-QUANTITY-SILENT-DEFAULTS (2026-08-05)](#x12-quantity-silent-defaults-2026-08-05)
 - [X12-SVC-ELEMENT-MAP-OFF-BY-ONE (2026-08-04)](#x12-svc-element-map-off-by-one-2026-08-04)
@@ -71,6 +72,195 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   trap block and `CLAUDE.md` stood at 52,992 against a 53,000 ratchet, so this section moved here
   first and the trap went in against the room it freed. That is the intended shape: **the entry is
   never raised to meet a new trap.** The umbrella owes the matching ratchet drop.
+
+## X12-VARIANT-LOOKUP-PROTOTYPE (2026-08-05)
+
+- **🩺 THE DEFECT: A LOOKUP TABLE BUILT AS AN OBJECT LITERAL INHERITS `Object.prototype`, SO A KEY
+  READ OFF THE WIRE RESOLVES TRUTHY FOR EVERY OWN PROPERTY OF `Object.prototype`.**
+  **`Object.freeze` DOES NOT HELP** and is the reason this looked safe on review: it seals the OWN
+  properties and changes nothing about what the prototype chain contributes to a read.
+  `VARIANT_BY_ICR` was frozen. Found at base by `#67`'s refuter, disclosed in this file, filed as its
+  own item, fixed here.
+
+- **🩺 NAME THE SET, NEVER THE MEMBERS. A DRAFT OF THIS SECTION PUBLISHED EIGHT AND THE ENGINE HAD
+  TWELVE**, in `CLAUDE.md`, the CHANGELOG, `KNOWN-LIMITATIONS.md`, the shipped changeset AND
+  `src/parser/lookup.ts`'s JSDoc, all at once. The four it missed were `__defineGetter__`,
+  `__defineSetter__`, `__lookupGetter__` and `__lookupSetter__`, and all four behave identically to
+  `constructor` at every site measured. This is `X12-NUMERIC-VALUE-EMITS-EMPTY`'s rule arriving in a
+  new place: **the remedy is to cut the claim back, not to grow the census.** The set is engine- and
+  version-dependent, so the only durable form is "every own property of `Object.prototype`".
+
+- **🩺 WHAT IT COST, MEASURED AT `a33c208`, PROBE BY PROBE.** Every row is a literal-EDI probe run
+  against the base sha and against head. Every own property of `Object.prototype` behaves
+  identically at each site;
+  `constructor` is quoted as the representative.
+
+  | Probe | Base (`a33c208`) | Head |
+  | --- | --- | --- |
+  | 837 ST-03 `constructor`, SV1 present | `variant` a **function**, `serviceLines` **0**, `warnings: []` | `variant` `"P"` via the SVx fallback, 1 line, charge `8500`, `warnings: []` |
+  | 837 ST-03 `constructor`, no SVx anywhere | `variant` a **function**, 0 lines, `warnings: []` | `["X12_837_UNKNOWN_VARIANT", "X12_837_SERVICE_LINE_DROPPED"]` |
+  | 837, caller `{ type: "p" }`, SV1 present | 0 lines, `warnings: []` | `["X12_837_SERVICE_LINE_DROPPED"]`, **no unknown-variant code** |
+  | 837 HL-03 `constructor` | `["X12_HL_PARENT_LEVEL_INVALID"]` | `[]` (matches HL-03 `99`) |
+  | `lookupCarc("constructor")` | `{ code: "constructor", description: <function Object> }` | `undefined` |
+  | 837 CAS-02 `constructor` | `reasonDescription` a **function**, `warnings: []` | `["X12_UNKNOWN_CARC"]` |
+  | 837 HI-01-1 `constructor` | `codeSystem: "unknown"`, `warnings: []` | `["X12_UNKNOWN_HI_QUALIFIER"]` |
+  | `isClaimAdjustmentGroupCode("constructor")` | `true` | `false` |
+  | 271 / 277 HL-03 `constructor` | `[]` | `[]` (never exposed - see below) |
+
+- **🩺 THE HEADLINE IS THE ONE THE ITEM NAMED, AND IT IS STRICTLY WORSE THAN `#67`'s.** `#67` closed
+  a line that shipped a fabricated `0`. **This one shipped NO LINE AT ALL.** `openServiceLine`
+  answers `undefined` for any variant that is not `P` / `I` / `D`, so with `variant` a function the
+  `LX` opened no accumulator, the `SVx` after it found nothing to decode into, and the line was
+  never pushed onto the claim. Charge, units, procedure code, modifiers, dates, amounts, notes and
+  line adjudications, all gone, on every line of every claim, with an empty warning channel.
+
+- **THE FIX IS THE ONE THE ITEM MANDATED, AND THE CHOICE BETWEEN ITS TWO SHAPES IS PRINCIPLED, NOT
+  TASTE.** `Object.create(null)` where this package DECLARES the table (`src/parser/lookup.ts`'s
+  `wireLookup`, used by the 837's three); `Object.hasOwn` at the read where the table is SUPPLIED to
+  the reader and cannot be re-declared (`makeLookup` receives a `CodeListSnapshot`; `HI_QUALIFIERS`
+  and `CLAIM_ADJUSTMENT_GROUP_CODES` are `as const` and their keys ARE the exported union type, so
+  re-declaring them would destroy the typing). **The table form is preferred wherever it is
+  available**, because it protects read sites nobody has written yet; a read-site guard protects
+  only the reads that exist today, which is exactly how this survived.
+
+- **🩺 `in` IS NOT THE SAFE FORM AND IT LOOKS LIKE ONE.** `isClaimAdjustmentGroupCode` used
+  `value in CLAIM_ADJUSTMENT_GROUP_CODES`. **The `in` operator walks the prototype chain**, so it
+  narrowed `constructor` / `toString` / `__proto__` to `ClaimAdjustmentGroupCode`. Anyone reaching
+  for a membership test here must reach for `Object.hasOwn`.
+
+- **THE 271 / 277 / 278 READERS WERE NEVER EXPOSED, AND THE REASON IS THE FINDING.** Their
+  `EXPECTED_PARENT_LEVEL` tables have the identical literal shape, but they are read only through
+  `src/transactions/shared/hl.ts`, whose `validateHl` has always guarded with
+  `Object.prototype.hasOwnProperty.call`. **The 837 carries its own local copy of `validateHl` and
+  that copy did not.** Measured both ways: 271 and 277 answer `[]` for a `constructor` HL-03 at base
+  AND at head. **Their tables are deliberately left as literals** - converting them would be churn
+  with no behaviour change, and a diff that changes nothing is a diff a reviewer has to prove
+  changes nothing. Do not "finish the job" there without a reason.
+
+- **NO SOURCE SCAN SHIPS, AND THAT IS A DECISION, NOT AN OMISSION.** This repo's instinct is a
+  syntactic tripwire (`test/builder-array-bounds.test.ts`, `test/builder-refusal-bounds.test.ts`).
+  **It does not work for this shape.** A scan cannot tell a table keyed by DOCUMENT BYTES from one
+  keyed by a LIBRARY-OWNED DISCRIMINANT, and `src/parser/warnings.ts` holds four of the latter
+  (`CONTROL_NUMBER_PAIR_MESSAGES`, `UNEXPECTED_SEGMENT_MESSAGES`, `BALANCE_INVARIANT_MESSAGES`,
+  `REQUIRED_LOOP_MESSAGES`) which are legitimately object literals and must stay that way. Any scan
+  would therefore need a per-TABLE allowlist, which is the `#51` allowlist failure mode twice over.
+  **The defence is behavioural instead, and it is exhaustive where a scan would not be:** the suite
+  derives its key list from `Object.getOwnPropertyNames(Object.prototype)` **at run time**, so a
+  future engine adding an inherited member widens the suite with nobody editing a list.
+
+- **THE SECOND FINDING FOLDED IN: AN `LX` THAT OPENS NO LOOP 2400 NOW SAYS SO, AND IT COVERS TWO
+  ROUTES.** Route 1, an `LX` before any `CLM` (`claims: []`, `warnings: []` at base, with a
+  real charge and units on the wire). Route 2, the residual of the headline fix: a variant that
+  honestly does not resolve, where `openServiceLine` answers `undefined` and the line was silently
+  never opened even though `X12_837_UNKNOWN_VARIANT` fired for the submission. **Route 2 is why this
+  belongs in THIS slice rather than its own** - fixing the lookup converts the prototype case into
+  the honest-unknown case, and the honest-unknown case was silent too.
+
+- **🩺 THE CODE HAS THREE BOUNDS AND A DRAFT PUBLISHED ALL THREE WRONG. A REFUTER MEASURED EACH.**
+  1. **It does NOT travel with `X12_837_UNKNOWN_VARIANT`.** That code fires only for
+     `variant === "unknown"`; route 2 fires for `variant` outside `P` / `I` / `D`. A JavaScript or
+     `JSON.parse`d caller passing `{ type: "p" }` against a clean 837P gets `variant "p"`, zero
+     lines, and `["X12_837_SERVICE_LINE_DROPPED"]` alone. The shipped message and two docs asserted
+     the two codes travel together; since the code deliberately carries NO discriminant, that
+     parenthetical was the only route-splitter a consumer had and it pointed at the wrong route.
+     **`submission.variant` is the discriminant. Say that.** Same class as `#67`'s refutation: a
+     caller-supplied `type` is a caller instruction and the warning must attribute nothing.
+  2. **An `SVx` with NO `LX` at all is STILL DROPPED IN SILENCE.** The code is anchored at the `LX`,
+     so a service segment that never had one reports nothing on any channel - `$8,500` and 4 units,
+     gone, `warnings: []`, with and without an open `CLM`. `PRE-EXISTING`, identical at base,
+     disclosed and NOT fixed; it is owed its own umbrella backlog ID. **Never write that the warning
+     channel is a complete account of how a service line can go missing.** A draft of the cookbook
+     and of `KNOWN-LIMITATIONS.md` did.
+  3. **What becomes of a line-level `DTP` / `AMT` / `NTE` / `REF` after a dropped `LX` is
+     ROUTE-DEPENDENT, and TWO successive drafts stated it unqualified in OPPOSITE directions.**
+     Draft one said the data was "absent"; the remedy for that said it "attaches to the enclosing
+     claim"; both were measured false, because each is true on exactly one of the code's two routes.
+     With a `CLM` open, the date, amount and note land among the **claim-level** ones. With **no**
+     `CLM` open, the `DTP`, `AMT` and `NTE` are **discarded** and a trailing `REF` attaches to
+     whichever party the last `NM1` left active - measured, a line-item control number landing in a
+     *later* claim's `payer.references`. **The remedy was to CUT THE CLAUSE OUT OF THE SHIPPED
+     MESSAGE ENTIRELY**, because a registry message cannot carry a conditional and a consumer reading
+     one should not have to. `PRE-EXISTING` walker behaviour;
+     both routes pinned by tests, and the `REF` mis-attribution is owed its own umbrella item.
+
+- **🩺 THE `LX` CASE'S CONTROL FLOW IS THE BASE'S, AND THE ONE TIME IT WAS NOT, IT MINTED SILENT
+  CORRUPTION.** A draft returned early on route 2 and thereby skipped `activeEntity = undefined`, so
+  a trailing bare `N3` / `N4` / `PER` attached its address to whichever party the last `NM1` had left
+  active - measured, an address landing on a named other-subscriber that had none at base, with no
+  warning. **Trading a warned omission for a silent mis-attribution is the direction
+  `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` forbids.** The two `warnings.push` calls are now the
+  entire behavioural difference from base, and a test reds if the early return comes back.
+
+- **`X12_837_SERVICE_LINE_DROPPED` IS THE 25TH CODE, AND IT IS NOT A RENAME OF `#67`'s.**
+  Additions-only, 24 -> 25. **The two report different losses and must never be merged:**
+  `X12_837_SERVICE_LINE_NOT_DECODED` means the line **IS** on the model holding seeded zeros;
+  `X12_837_SERVICE_LINE_DROPPED` means it is on **no claim at all**. Reusing `#67`'s code would have
+  falsified its own shipped message, which states the line is retained. A test pins that exactly one
+  of the two fires per `LX`.
+
+- **ONE MESSAGE, NO DISCRIMINANT, FOR THE THIRD ITEM RUNNING.** A `no-claim` / `no-variant`
+  discriminant was available and library-owned and was not taken: `submission.variant` and
+  `submission.claims` already carry which route fired, and the previous two slices' discriminants
+  were each measured wrong at three or more sites. The message names both causes in prose.
+
+- **NOTHING IS FABRICATED FOR A DROPPED LINE.** No claim is synthesized to hold an orphan `LX` and
+  no variant is guessed. Both were available and both would put structure on the model the sender
+  did not send, which is the failure mode this reader exists to avoid. **Retention is unchanged, not
+  increased:** the segments were already verbatim on `tx.segments` and still are.
+
+- **THE MESSAGE ATTRIBUTES NOTHING.** Same discipline as `#67` and `#66`. An `LX` outside a Loop
+  2300 is structurally impossible in a conformant 837, but the message describes what THIS LIBRARY
+  did (the line is on no claim) rather than what the sender did wrong, because the route-2 half of
+  the same code fires on documents that may be perfectly conformant and merely unrecognized.
+
+- **🩺 THE `#67` TRAP WAS THE DESIGN CONSTRAINT ON THE SUITE, AND IT IS WHY EVERY CASE USES
+  `toEqual` ON THE WHOLE CHANNEL.** `#67`'s residual test pinned a value plus the absence of a
+  DIFFERENT code, both of which stayed true when the leak closed, so every surface predicted a red
+  that never came. `dicom`'s carve-out fixture had the identical hole. **Every assertion on the
+  warning channel is `toEqual` on the whole array.** **STATE THE PROPERTY, NEVER AN ABSOLUTE ABOUT A
+  MATCHER NAME.** "`toContain` appears nowhere in the new suite" was published twice and measured
+  false BOTH times - the second time in the very commit that corrected the first, which had itself
+  added a new `not.toContain` on an array. The underlying defect the first measurement found was
+  real and is fixed: a control read `expect([true, false]).toContain(<boolean>)`, **which passes for
+  any boolean**, inside a case titled "still accepts the four spec codes"; it now drives off the
+  exported table. **The lesson is that a claim about which matchers a file contains has to be
+  re-measured on every edit, so do not make one.** Every
+  lying document is paired with an honest
+  control in the same slot - an ordinary unrecognized ST-03, an ordinary unknown HL-03, an ordinary
+  unknown CARC - because the whole claim is that an inherited key is now INDISTINGUISHABLE from any
+  other unrecognized value, and a guard that over-fired would pass the lying half and red the
+  control.
+
+- **MEASURED, AND RE-MEASURED TWICE AS THE SUITE GREW: the WHOLE suite is 57 cases, 38 RED against a
+  clean `a33c208` checkout and 57 green at head.** Take that as one figure over the whole file and
+  do not partition it: a first form said "33 of the first 49", which was wrong four ways at once
+  (three of the added cases are ST-03 cases in section 1, not appended; four of the added cases are
+  red at base, not three). **Re-derive it by RUNNING the head suite against a base checkout, never
+  by arithmetic on an older number.** The pre-existing suite went 1,313 -> 1,370, and the only
+  two reds through the whole change were `warning-codes.snapshot.test.ts`'s inline snapshot and its
+  length assertion, which is expected for an additions-only registry change and is **not** evidence
+  the fix works.
+
+- **EVERY GUARD HAS ITS OWN RED NEGATIVE CONTROL, RUN ONE AT A TIME.** Neutering `wireLookup` back
+  to a frozen literal reds 17; removing the `makeLookup` guard reds 8; the `hi-qualifiers` guard, 2;
+  reverting `cagc` to `in`, 1; removing the `serviceLineDropped` push, 9 (and 1 in
+  `phi-diagnostic-surface`). A guard whose removal reds nothing is a guard the suite is not testing.
+
+- **PHI: `phi-slots.ts` IS 84 SLOTS, AND BOTH NEW ONES ARE OWN SLOTS.** The `LX-01` of a dropped
+  line and the `SV1-01-2` procedure code riding on it. The dropped `SVx` is precisely the text a
+  future "helpful" message would echo (`dropped: <bytes>`) and on a real 837 it is the procedure
+  billed for a named patient. The new message is a frozen registry literal with no interpolation and
+  the suite asserts a planted marker appears in no message on any warning.
+
+- **WHAT IS LEFT OPEN, DELIBERATELY.** An **absent** required `SV1-02` still reads a confident `0`
+  with no warning (probed at head: `charge` `0`, `warnings: []`). That is unchanged and closes only
+  with the deferred `X12Decimal | undefined` breaking model slice, which ripples into `balance.ts`
+  and all nine builders. **Never write that an 837 charge can no longer read a fabricated 0.** It
+  can, from that route.
+
+- **NO CODE-LIST CONTENT AND NO MESSAGE TEXT CHANGED**, and no model shape changed. The `makeLookup`
+  guard runs before the existing `description === undefined` check rather than replacing it, so a
+  snapshot that ever declares an own key with an `undefined` value still answers `undefined`.
 
 ## X12-837-SV-SILENT-ZERO (2026-08-05)
 

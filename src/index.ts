@@ -44,6 +44,7 @@ export {
   pre005010,
   remitBalanceMismatch,
   segmentCountMismatch,
+  serviceLineDropped,
   serviceLineNotDecoded,
   trailingGarbage,
   transactionCountMismatch,

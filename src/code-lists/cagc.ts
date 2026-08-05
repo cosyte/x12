@@ -80,5 +80,10 @@ export type ClaimAdjustmentGroupCode =
  * ```
  */
 export function isClaimAdjustmentGroupCode(value: string): value is ClaimAdjustmentGroupCode {
-  return value in CLAIM_ADJUSTMENT_GROUP_CODES;
+  // `Object.hasOwn`, never `in`: the `in` operator WALKS THE PROTOTYPE
+  // CHAIN, so at `a33c208` a CAS-01 of `constructor` / `toString` /
+  // `valueOf` / `__proto__` answered `true` and type-narrowed a value that
+  // is not one of the four spec-defined group codes to
+  // `ClaimAdjustmentGroupCode`. `in` looks like the safe form and is not.
+  return Object.hasOwn(CLAIM_ADJUSTMENT_GROUP_CODES, value);
 }

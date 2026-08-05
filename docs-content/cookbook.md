@@ -230,6 +230,16 @@ before you post a line amount, alongside `X12_UNPARSEABLE_DECIMAL` (the `SVx` de
 itself did not); neither is a complete account of every way a `0` can reach the model, and
 [Decimal-exact money](./spec-notes-money) states the guarantee in the only direction it holds.
 
+A third code covers one more way a line goes missing: `X12_837_SERVICE_LINE_DROPPED`, raised at an
+`LX` that opened no Loop 2400, either because no `CLM` was open or because the variant is not one of
+`P` / `I` / `D`. **An empty `serviceLines` is therefore not on its own evidence that the claim had
+none** - check the warning channel before concluding it. Read that code's scope literally: it is
+anchored at the `LX`, so an `SVx` arriving with **no `LX` at all** is still dropped silently; it does
+**not** travel with `X12_837_UNKNOWN_VARIANT` (a caller-supplied `type` outside the union reaches the
+same route without it, so read `submission.variant`); and what becomes of a `DTP` / `AMT` /
+`NTE` / `REF` after a dropped `LX` is route-dependent, so do not assume it is simply absent (see
+[Troubleshooting](./troubleshooting) and the package's `KNOWN-LIMITATIONS.md`).
+
 ```ts
 import { parseX12, get837Claims, HL_LEVEL_CODES, WARNING_CODES } from "@cosyte/x12";
 

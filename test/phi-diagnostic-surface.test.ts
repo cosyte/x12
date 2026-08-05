@@ -39,7 +39,7 @@ const LONG_MARKER = PHI_MARKER_UNIT.repeat(64);
 describe("PHI: no consumer-controlled input reaches a diagnostic surface", () => {
   /**
    * The suite-wide `testTimeout` is 10s and this one sweep is not reliably
-   * inside it: 82 slots, each planted at several marker lengths, each a full
+   * inside it: 84 slots, each planted at several marker lengths, each a full
    * parse of a golden interchange. The ceiling is set here rather than by
    * raising the global timeout, so a slot table that starts genuinely hanging
    * still fails somewhere, and so no other suite silently gets a longer leash.
