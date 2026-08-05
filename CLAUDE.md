@@ -102,9 +102,8 @@ the published `@cosyte/*` config packages, not by copying files. The source of t
 
 ## Traps
 
-**Every one of these was paid for.** Each `###` names its relocated section in
-`documentation/agent-notes.md`; the anchor is on the heading, and the full measurement, the sources,
-and the refutation history are there. **Do not act on a line here without reading its section.**
+**Every one of these was paid for, and each `###` names the section carrying its measurement, its
+sources and its refutation history. Do not act on a line here without reading that section.**
 **🩺 marks a trap where getting it wrong mis-states a clinical or financial value on the wire.**
 
 ### 🩺 `X12-837-SV-SILENT-ZERO` (2026-08-05) · `documentation/agent-notes.md#x12-837-sv-silent-zero-2026-08-05`
@@ -113,14 +112,15 @@ and the refutation history are there. **Do not act on a line here without readin
   `X12_837_SERVICE_LINE_NOT_DECODED` at its `LX`.** BOTH causes: a foreign `SVx`, and none at all.
 - **🩺 The model is UNCHANGED - `charge`/`units` still read `0`. Never write "an 837 line can no
   longer read a fabricated 0".** It can; not silently. `X12Decimal | undefined` is still its slice.
-- **🩺 NEVER decode the `SVx` that IS present, nor let it flip the line's variant.** `SV1-02` and
-  `SV2-03` are both the charge, so that mis-READS money; `opts.type` is a caller instruction.
-- **Anchor the `LX`, never the `SVx`** (the no-`SVx` case has none); no `elementIndex`, nothing was
-  read; one message, no discriminant.
+- **🩺 NEVER decode the `SVx` that IS present, nor let it flip the line's variant.** The charge is
+  `SV1-02`/`SV2-03` and the units `SV1-04`/`SV2-05`/**`SV3-06`** (`SV3-05` is the prosthesis code -
+  three comments said units and were corrected), so that mis-READS money; `opts.type` is a caller
+  instruction, so **the warning attributes nothing**: a `type` can disagree with a clean document.
+- **Anchor the `LX`, never the `SVx`** (the no-`SVx` case has none); no `elementIndex`, nothing read.
 - **🩺 THE RESIDUAL TEST DID NOT GO RED, AND THAT IS THE FINDING.** It pinned `0`/`0` + no
-  `X12_UNPARSEABLE_DECIMAL`, both still true. **Pin the WHOLE warning channel, on BOTH sides.**
-- **Only bytes make these cases; no `build837` round trip can.** 4 leak probes + 2 honest controls,
-  measured both ways: deleting one flag-set reds a control. `phi-slots` 82 - the ignored `SVx`, OWN.
+  `X12_UNPARSEABLE_DECIMAL`, still true. **Pin the WHOLE warning channel, BOTH sides.**
+- **Only bytes make these; no round trip can.** 4 leak probes + 2 controls, both ways: deleting one
+  flag-set reds a control. `phi-slots` 82 - the ignored `SVx`, OWN.
 
 ### 🩺 `X12-QUANTITY-SILENT-DEFAULTS` (2026-08-05) · `documentation/agent-notes.md#x12-quantity-silent-defaults-2026-08-05`
 

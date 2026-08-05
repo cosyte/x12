@@ -150,6 +150,50 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   slots now; the `13 of 81 red` figure in `PHI-WARNING-MESSAGE-LEAK` below is a measurement of that
   slice against its own base and is not restated.
 
+- **WHERE THE ELEMENT NUMBERS COME FROM, STATED HONESTLY.** The positions this section leans on
+  (`SV1-02` / `SV2-03` charge; `SV1-04` / `SV2-05` / `SV3-06` units; `SV3-05` prosthesis / crown /
+  inlay) are **this library's own read and emit sides agreeing with each other**, which
+  `X12-SVC-ELEMENT-MAP-OFF-BY-ONE` established is NOT a check of a spec claim. **Nobody here has
+  read TR3 005010X222A2 / X223A3 / X224A2.** The load-bearing claim survives that gap because it is
+  a claim about THIS library: `decodeSv1` and `decodeSv2` read the charge from **different** element
+  indexes, so decoding an `SV2` through the `SV1` path mis-reads money whatever the TR3 says. The
+  gate's independent read of the 005010 `SVx` layouts corroborated all five positions. **Anything
+  stronger than that needs a source outside this repo** (pyx12's `837.5010.X222.A1.xml`, the base
+  005010 element dictionary, a published payer companion guide).
+
+- **🩺 PASS 1 NOT REFUTED, AND ALL THREE `INTRODUCED` FINDINGS WERE CLAIM DEFECTS AGAIN.** The
+  parser change graded correct and complete against the item's bar on the first pass; the gate could
+  not construct a false positive or a false negative, and confirmed the flag cannot be true without
+  an attempted read. What failed was, for the fourth item running, the prose shipped alongside it.
+
+  1. **minor - the frozen message asserted non-conformance the library cannot establish.** It said
+     the two causes were "both non-conformant". One of this slice's own probes is a **conformant**
+     837I read with `{ type: "P" }`: the disagreement is the integrator's option, not a wire defect.
+     **The message attributes nothing now** and says outright that which side is wrong is not decided
+     here. Same discipline as the previous slice's "assert nothing about what X12.6 type R permits".
+  2. **minor - a new `KNOWN-LIMITATIONS.md` bullet published an absolute the base can falsify.** It
+     said an unresolvable variant "raises `X12_837_UNKNOWN_VARIANT`" full stop. `VARIANT_BY_ICR` is a
+     frozen **object literal**, so it still inherits `Object.prototype`: an ST-03 of `constructor` /
+     `valueOf` / `__proto__` resolves truthy, no unknown-variant warning fires, and **every service
+     line leaves the model silently**. `PRE-EXISTING`, filed not fixed, and the disclosure is scoped
+     rather than the guard grown.
+  3. **minor - the cookbook named this code as THE line-amount gate**, omitting
+     `X12_UNPARSEABLE_DECIMAL` and the absent-element case. Widened, and pointed at the one page that
+     states the guarantee in the only direction it holds.
+
+- **Findings the pass raised that are NOT this slice's, each reproduced at base, disclosed here and
+  NOT fixed. Each is owed its own umbrella backlog ID; this repo cannot write one:** the
+  prototype-key ST-03 hole above (**major, and it destroys strictly more than the defect this slice
+  closed** - every line, every charge, silently); an `LX` / `SVx` arriving before any `CLM` is
+  dropped whole with `claims: []` and `warnings: []`; and an absent required `SV1-02` still reading
+  a confident `0`, which the deferred `X12Decimal | undefined` slice is where it closes.
+  `operations/roadmaps/x12.md` also carries no `Provenance:` field where sibling roadmaps do.
+
+- **Three stale `SV3-05` comments were corrected to the code in this slice, not left.** Two in
+  `build-837.ts` and one in this file said `units` sits at `SV3-05`; both the emit and `decodeSv3`
+  have always used element 6. The slice was newly publishing `SV3-06`, and shipping both readings in
+  one repo is exactly the shape that let the 835 SVC map survive being wrong.
+
 - **Only bytes can produce any of these cases, so the new suite is literal EDI.** `build837` emits
   the `SVx` matching the variant it was asked for, so no round trip can build a line with a foreign
   one or with none at all. The pre-existing suite stayed green through the whole change except the
@@ -488,9 +532,12 @@ i += 1)` over a forged `{ length: undefined }` array-like compares `0` against
   **Counts that moved and are pinned:** `esc` invocations **411 -> 406** on
   **378 -> 377** lines; same-line `esc(x.toString())` **36 -> 5**, and those five
   are the `escDec` declarations themselves. `build-837` also declares `decStr`
-  (`escDec` without the escape) because SV1-04/SV2-05/SV3-05 share one `units`
+  (`escDec` without the escape) because SV1-04/SV2-05/SV3-06 share one `units`
   read and HI's components go through `ctx.comp`, which maps `esc` - escaping
-  there would double-release.
+  there would double-release. (That third position read `SV3-05` here and in two
+  `build-837.ts` comments until `X12-837-SV-SILENT-ZERO` corrected the prose to
+  the code: both the emit and `decodeSv3` have always used element 6, and
+  SV3-05 is the prosthesis/crown/inlay code.)
 
   **Prose defects `#60` shipped, now fixed:** a `## Six limits` heading over five
   limits; "no total is published" asserted while publishing one; the count
