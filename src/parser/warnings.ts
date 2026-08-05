@@ -838,10 +838,14 @@ export function missingRequiredLoop(position: X12Position, loop: X12RequiredLoop
  * walker does its best on shared structure (envelope, HL, claim header) and
  * skips variant-specific service-line decoding.
  *
+ * `get837Claims` anchors this at the **ST**, which is `tx.segments[0]` and
+ * carries the ST-03 the resolution reads. Through `0.0.10` it passed
+ * `segmentIndex: 1`, which is the BHT and has no part in resolving a variant.
+ *
  * @example
  * ```ts
  * import { unknown837Variant } from "@cosyte/x12";
- * const w = unknown837Variant({ segmentIndex: 1, groupIndex: 0, transactionIndex: 0 });
+ * const w = unknown837Variant({ segmentIndex: 0, groupIndex: 0, transactionIndex: 0 });
  * ```
  */
 export function unknown837Variant(position: X12Position): X12ParseWarning {

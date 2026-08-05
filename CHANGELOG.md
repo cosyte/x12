@@ -253,6 +253,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **🩺 A `REF`, `N3`, `N4` or `PER` after a dropped 837 `LX` no longer attaches itself to the last
+  named party** (`X12-837-LOOP-RESIDUALS`). Through `0.0.10`, the release published as this was
+  written, an `LX` arriving with **no `CLM` open** reported the dropped service line and then left
+  the previous `NM1`'s party still addressable, so the trailing segments were filed against it.
+  Because the payer accumulator is what the **next** `CLM` opens against, the values surfaced on a
+  **later claim**: measured, a line-item control number in `payer.references`, a street address in
+  `payer.address`, and a contact in `payer.contacts`, none of which the sender put there. On that
+  route all seven of `DTP` / `AMT` / `NTE` / `REF` / `N3` / `N4` / `PER` are discarded; the
+  `DTP` / `AMT` / `NTE` already were at `0.0.10`, and the other four are what changed.
+  **The route-dependence is unchanged and still matters:** with a `CLM` open, a trailing `DTP` /
+  `AMT` / `NTE` / `REF` still lands on the enclosing claim.
+  **If you parsed with `0.0.10` or earlier and read an entity's `address`, `contacts` or
+  `references`, those slots could be carrying line-level values from a dropped Loop 2400.**
+
+  **🩺 This is a trade, and the cost is that a conformant entity segment can now be dropped.** The
+  TR3s nest Loop 2400 inside Loop 2300 and say nothing about an `LX` elsewhere, so which party a
+  segment following a **stray** `LX` belongs to is not derivable from the spec in either direction.
+  Where the `LX` was injected into an **entity** loop, the segments after it really were that
+  entity's: measured, a payer that kept its `PO BOX` address, its `2U` secondary id and its contact
+  at `0.0.10` now comes back with `address: undefined`, `references: []` and `contacts: []`. The
+  direction was chosen because a mis-attribution puts a value on an object the sender never put it
+  on and is indistinguishable from real data, whereas the bytes of a discarded segment are still on
+  `tx.segments`. **The discard is SILENT. No warning code was added, removed or widened, and none
+  names this loss:** `X12_837_SERVICE_LINE_DROPPED` at that `LX` reports the **service line**, not
+  an entity's address, id or contact. Both the loss and the silence are pinned by tests;
+  `KNOWN-LIMITATIONS.md` states them. Warning on it would be a new guard and is owed its own
+  change.
+
+- **🩺 `X12_837_UNKNOWN_VARIANT` now anchors at the `ST` instead of the `BHT`**
+  (`X12-837-LOOP-RESIDUALS`). The warning's `position.segmentIndex` was `1`, which in a
+  transaction-scoped position is `tx.segments[1]` and in an 837 is the **BHT**, a segment with no
+  part in resolving a variant. It is now `0`, the **ST**, which carries the ST-03 the resolution
+  reads. A consumer joining this warning back to the document therefore gets a different segment
+  than it did on `0.0.10`. No `elementIndex` is set, deliberately: one of the two routes into this
+  warning is an ST-03 that is absent entirely, and on that route the `ST` has no element 3 to name.
+
 - **🩺 An 837 service segment with no Loop 2400 open no longer takes a charge, a quantity and a
   procedure code off the model in silence** (`X12-837-LOOP-RESIDUALS`). Through `0.0.10` - the
   release published as this was written - an `SV1` / `SV2` / `SV3`

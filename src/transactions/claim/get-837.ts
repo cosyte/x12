@@ -236,7 +236,17 @@ export function get837Claims(
     explicitType ?? variantFromIcr ?? variantFromSegment ?? "unknown";
 
   if (variant === "unknown") {
-    warnings.push(unknown837Variant({ segmentIndex: 1, transactionIndex: 0 }));
+    // Anchor the ST, which is `tx.segments[0]` and carries the ST-03 this
+    // resolution reads. Through `93b2428` the index was 1, which in a
+    // transaction-scoped position is `tx.segments[1]` - the BHT, a segment
+    // that has nothing to do with variant resolution and that the walk below
+    // never even visits for this purpose. `segmentIndex: 0` is NOT a neutral
+    // sentinel here; it names a real segment, and that segment is the right
+    // one. No `elementIndex` is set on purpose: one of this code's two routes
+    // is an ST-03 that is absent or empty, where `ST*837*0001~` has no
+    // element 3 at all, so naming one would point a consumer at a slot that
+    // is not on the wire.
+    warnings.push(unknown837Variant({ segmentIndex: 0, transactionIndex: 0 }));
   }
 
   // Hierarchy + entity accumulators.
@@ -652,16 +662,53 @@ export function get837Claims(
         // or guessing a variant would invent structure the sender did not
         // send, which is the failure mode this reader exists to avoid.
         //
-        // The control flow below is the base's, unchanged: the two
-        // `warnings.push` calls are the whole behavioural difference. An
-        // earlier draft returned early on the second route and thereby
-        // skipped the `activeEntity` reset, which let a trailing bare
-        // `N3` / `N4` / `PER` attach its address to whatever party the last
-        // `NM1` had left active. Trading a warned omission for a silent
-        // mis-attribution is the wrong direction; do not restructure this.
+        // DO NOT RESTRUCTURE THIS CASE, AND DO NOT LET ANY ROUTE OUT OF IT
+        // SKIP `activeEntity = undefined`. That is the whole rule. No count of
+        // how many statements this case differs from some earlier base by is
+        // stated here: two successive drafts published one, both were wrong,
+        // and the number is worthless to a reader anyway - `git log -p` is
+        // exact and never goes stale. What matters is why: an earlier draft
+        // returned early on the SECOND route and skipped that route's reset,
+        // which let a trailing bare `N3` / `N4` / `PER` attach its address to
+        // whatever party the last `NM1` had left active, and route 1 was doing
+        // the same thing through `93b2428`. Trading a warned omission for a
+        // silent mis-attribution is the wrong direction.
         if (currentClaim === undefined) {
           warnings.push(serviceLineDropped(position));
           droppedLineReported = true;
+          // Route 1 is the one path out of this case that used to skip the
+          // reset below, and skipping it is the mirror image of the draft the
+          // comment above warns about: through `93b2428` a trailing
+          // `REF` / `N3` / `N4` / `PER` after a dropped `LX` attached to
+          // whichever party the last `NM1` left active - measured, a line-item
+          // control number, a street address and a contact landing on a LATER
+          // claim's payer, silently.
+          //
+          // THIS IS A TRADE, NOT A FREE WIN, AND THE COST IS MEASURED. The
+          // TR3s nest Loop 2400 inside Loop 2300 and say nothing about an `LX`
+          // anywhere else, so which party a segment after a STRAY `LX` belongs
+          // to is not spec-derivable in either direction. Where the `LX` was
+          // injected into an entity loop, the segments that follow it really
+          // were that entity's, and discarding them LOSES a conformant
+          // address, secondary id and contact that base attributed correctly -
+          // pinned as a residual test.
+          //
+          // 🩺 AND THE DISCARD IS SILENT. NO WARNING IN THIS LIBRARY NAMES IT.
+          // `X12_837_SERVICE_LINE_DROPPED` is on the channel at this `LX`, but
+          // it reports the SERVICE LINE's loss and names no entity segment.
+          // Do NOT cite `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` as licensing
+          // this: that item warns AND retains on the model through
+          // `recordOrphan`, so the warning and the retained segment can never
+          // disagree, and it is the precedent for a WARNED omission - the
+          // opposite qualifier. A draft cited it here and was refuted. The
+          // honest statement is narrower: the direction is chosen because a
+          // mis-attribution puts a value on an object the sender never put it
+          // on, indistinguishable from real data, whereas the bytes of a
+          // discarded segment are still on `tx.segments`; and NO precedent in
+          // this repo backs the SILENCE. Warning on it is a guard change and
+          // is owed its own item rather than this one.
+
+          activeEntity = undefined;
           break;
         }
         currentServiceLine = openServiceLine(seg, delimiters, currentClaim.variant, position);

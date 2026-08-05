@@ -108,20 +108,21 @@ sources and its refutation history. Do not act on a line here without reading th
 
 ### 🩺 `X12-837-LOOP-RESIDUALS` (2026-08-05) · `documentation/agent-notes.md#x12-837-loop-residuals-2026-08-05`
 
-- **🩺 THREE CODES, ONE FAMILY; THE ANCHOR SEPARATES THEM.** `NOT_DECODED` = the line IS on the model
-  with seeded zeros; `DROPPED` = an `LX` put it on NO claim; **`SERVICE_SEGMENT_WITHOUT_LX` = an
+- **🩺 THREE CODES, ONE FAMILY; THE ANCHOR SEPARATES THEM.** `NOT_DECODED` = line IS on the model,
+  seeded zeros; `DROPPED` = an `LX` put it on NO claim; **`SERVICE_SEGMENT_WITHOUT_LX` = an
   `SVx` with NO LINE OPEN**, through `0.0.10` on NO channel. The first two anchor at the `LX`; the
-  third **cannot**, so it takes the segment, once each. **Never one twice - one document CAN carry
-  all three.** **Its condition is "no line open", NEVER "the file has no `LX`"** - an earlier claim's
-  `LX` is still one, and a draft of every surface said otherwise.
-- **🩺 NEVER DECODE THE ORPHAN `SVx`** (`SV1-02`/`SV2-03` are the charge; reading one into a line
-  never opened mis-READS money). **But NEVER write it does not name the VARIANT - measured false:**
-  with no caller `type` and an `ST-03` outside the three known conventions, the fallback is the first
-  `SVx` in the body, orphans included, so a stray `SV2` re-types the submission and every conformant
-  line reads `0`. `PRE-EXISTING`, not narrowed.
-- **The suppression is SCOPED, not latched** - a flag set beside each `serviceLineDropped` and
-  cleared in `flushServiceLine`, the one place `currentServiceLine` is. **A latching one silences
-  every later orphan.** Both halves have a red negative control.
+  third **cannot**, so it takes the segment. **Never one twice - one document CAN carry all three.**
+  **Its condition is "no line open", NEVER "the file has no `LX`"** - an earlier claim's `LX` is one.
+- **🩺 NEVER DECODE THE ORPHAN `SVx`** (reading one into a line never opened mis-READS money).
+  **But NEVER write it does not name the VARIANT - measured false:** the fallback scans the whole
+  body, orphans included, so a stray `SV2` re-types it. `PRE-EXISTING`, not narrowed.
+- **The suppression is SCOPED, not latched** - a flag beside each `serviceLineDropped`, cleared in
+  `flushServiceLine`. **A latching one silences every later orphan.** Red control on both.
+- **🩺 ANCHOR `X12_837_UNKNOWN_VARIANT` AT THE `ST` (`tx.segments[0]`), NEVER THE `BHT`; NO
+  `elementIndex` (an absent ST-03 has no element 3). ROUTE 1's DISCARD IS A TRADE: a stray `LX` in
+  an ENTITY loop now LOSES its `N3`/`N4`/`REF`/`PER`, SILENTLY. NEVER write "nothing after an `LX`
+  addresses the last party", and NEVER cite `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` - it WARNS
+  and retains.**
 
 ### 🩺 `X12-277-SVC07-NOT-DECODED` (2026-08-05) · `documentation/agent-notes.md#x12-277-svc07-not-decoded-2026-08-05`
 
@@ -156,12 +157,10 @@ sources and its refutation history. Do not act on a line here without reading th
 - **🩺 STATE ITS THREE BOUNDS; DRAFTS PUBLISHED ALL THREE FALSE.** It does **NOT** travel with
   `X12_837_UNKNOWN_VARIANT` (an out-of-enum caller `type` reaches route 2 without it - read
   `submission.variant`); an **`SVx` with NO `LX` at all is a DIFFERENT code** (the trap below); and a
-  trailing `DTP`/`AMT`/`NTE`/`REF` is
-  **ROUTE-DEPENDENT** (claim open: onto the claim; no claim: discarded, or the `REF` onto the last
-  named party). **Never state that unqualified** - two drafts did, opposite ways.
-- **🩺 DO NOT RESTRUCTURE THE `LX` CASE.** Its control flow is the base's; the two `warnings.push` are
-  the whole difference. A draft returned early on route 2, skipped the `activeEntity` reset, and a
-  trailing bare `N3`/`N4` silently addressed the last active party.
+  trailing `DTP`/`AMT`/`NTE`/`REF` is **ROUTE-DEPENDENT** (claim open: onto the claim; no claim: all
+  four discarded). **Never state that unqualified** - two drafts did, opposite ways.
+- **🩺 DO NOT RESTRUCTURE THE `LX` CASE; LET NO ROUTE OUT OF IT SKIP `activeEntity = undefined`**
+  (trap below). **State no count of how it differs from a base - two drafts did, both wrong.**
 - **🩺 EVERY WARNING-CHANNEL ASSERTION IS `toEqual` ON THE WHOLE ARRAY** - `#67`'s residual pinned a
   value plus the absence of a DIFFERENT code and stayed green. Pair every lying document with an
   honest control. **State the property, never an absolute about a matcher NAME:** "`toContain`

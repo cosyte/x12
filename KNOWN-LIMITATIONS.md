@@ -123,6 +123,12 @@ model.
     lookup was a plain object literal and its absence therefore proved nothing, is **withdrawn: that
     hole is closed** (see the next entry). Checking `submission.variant` against the set you expect
     is still worth doing, as a cheap assertion rather than as a defence.
+    **🩺 Its anchor moved, so a consumer joining on `position.segmentIndex` gets a different
+    segment than it did on `0.0.10`.** `X12_837_UNKNOWN_VARIANT` now points at the **`ST`**
+    (`tx.segments[0]`), which carries the ST-03 the resolution reads. Through `0.0.10` it pointed at
+    `tx.segments[1]`, the **`BHT`** - a segment with no part in variant resolution. No
+    `elementIndex` is set, deliberately: one of the two routes into this warning is an ST-03 that is
+    absent entirely, and on that route the `ST` has no element 3 to name.
 
 - **🩺 An 837 `LX` that opens no Loop 2400 at all raises `X12_837_SERVICE_LINE_DROPPED`, the 25th
   Tier-2 warning code.** Distinct from `X12_837_SERVICE_LINE_NOT_DECODED` above, where the line IS
@@ -135,16 +141,39 @@ model.
   - **It does not travel with `X12_837_UNKNOWN_VARIANT`.** A caller-supplied `type` outside
     `"P" | "I" | "D"` - which only a JavaScript or `JSON.parse`d caller can pass - reaches the second
     cause with no unknown-variant warning at all. Read `submission.variant`, not the other code.
-  - **What becomes of a line-level `DTP` / `AMT` / `NTE` / `REF` after a dropped `LX` depends on
-    the route, and is not simply "absent" on either. Two drafts stated it unqualified, in opposite
-    directions, and both were wrong.**
+  - **What becomes of a `DTP` / `AMT` / `NTE` / `REF` / `N3` / `N4` / `PER` after a dropped `LX`
+    depends on the route, and is not simply "absent" on either. Two drafts stated it unqualified,
+    in opposite directions, and both were wrong.**
     With a `CLM` open (the variant route), the line service date, amount and note land among the
-    **claim-level** ones, indistinguishable from them. With **no** `CLM` open, the `DTP`, `AMT` and
-    `NTE` are **discarded** and a trailing `REF` attaches to whichever party the last `NM1` left
-    active, so a line-item control number can land on an entity's `references` - measured, in a
-    _later_ claim's payer. Both are pre-existing walker behaviour, unchanged here and pinned by
-    tests; the `REF` mis-attribution is owed its own item. **Read the segments off
+    **claim-level** ones, indistinguishable from them, and a trailing `REF` lands among the
+    claim-level references. With **no** `CLM` open, **all seven are discarded**: nothing following
+    that `LX` attaches to the party named BEFORE it. (A `NM1` arriving AFTER that `LX` names a
+    party normally, and its own trailing segments attach; the reset is not a latch.) The `DTP` / `AMT` / `NTE` already were
+    discarded on that route at `0.0.10`; the `REF` / `N3` / `N4` / `PER` are what changed. **Read the segments off
     `tx.segments[…].raw` rather than inferring either outcome.**
+    **🩺 CHANGED, and the change moves values off the model that `0.0.10` put on it.** Through
+    `0.0.10` - the current release as this was written, so a consumer on it has the old behaviour -
+    the no-claim route did not discard these: they attached to whichever party the last `NM1` left
+    active, so a line-item control number surfaced in an entity's `references` (measured, in a
+    _later_ claim's `payer.references`) and an `N3` / `N4` / `PER` gave that party a street address
+    and a contact it never had. **If you read `0.0.10` or earlier and relied on an entity's
+    `address`, `contacts` or `references`, those slots could carry line-level values from a dropped
+    Loop 2400.**
+  - **🩺 That change is a TRADE, and its cost is that a conformant entity segment can now be
+    dropped.** The TR3s nest Loop 2400 inside Loop 2300 and say nothing about an `LX` elsewhere, so
+    which party a segment following a **stray** `LX` belongs to is not derivable from the spec in
+    either direction. Where the `LX` was injected into an **entity** loop, the `N3` / `N4` / `REF` /
+    `PER` after it really were that entity's, and they are now discarded: measured, a payer that
+    kept its `PO BOX` address, its `2U` secondary id and its contact at `0.0.10` comes back with
+    `address: undefined`, `references: []` and `contacts: []`. The direction was chosen on this
+    library's own invariant, not on a clause: a mis-attribution puts a value on an object the sender
+    never put it on, indistinguishable from real data, whereas the bytes of a discarded segment are
+    still on `tx.segments`.
+    **🩺 The discard is SILENT and no warning names this loss.** No code was added or removed by
+    the change, and `X12_837_SERVICE_LINE_DROPPED` at that `LX` reports the **service line**, not
+    the entity's address, id or contact. **The warning channel is therefore not an account of this
+    one:** `tx.segments` is. Both the loss and the silence are pinned by tests. Warning on it would
+    be a new guard and is owed its own change.
   - **An `SVx` with no `LX` at all raises `X12_837_SERVICE_SEGMENT_WITHOUT_LX`, the 26th Tier-2
     code, anchored at the service segment itself.** Through `0.0.10` it was dropped in SILENCE:
     both codes above are anchored at the `LX`, so a service segment that never had one had nothing
