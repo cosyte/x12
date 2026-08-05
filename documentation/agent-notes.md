@@ -115,10 +115,10 @@ being one.
   `VARIANT_BY_ICR`, falls back to **the first `SVx` segment id anywhere in `body`** -
   orphans included. Measured on both trees, with an `ST-03` of `005010X222A1`:
 
-  | Document | `variant` | The conformant line |
-  | --- | --- | --- |
-  | `CLM~ SV2~ LX*1~ SV1~` | `"I"` | `charge` **0**, `units` **0** |
-  | `CLM~ LX*1~ SV1~` (control) | `"P"` | `charge` **8500**, `units` **4** |
+  | Document                    | `variant` | The conformant line              |
+  | --------------------------- | --------- | -------------------------------- |
+  | `CLM~ SV2~ LX*1~ SV1~`      | `"I"`     | `charge` **0**, `units` **0**    |
+  | `CLM~ LX*1~ SV1~` (control) | `"P"`     | `charge` **8500**, `units` **4** |
 
   So one stray `SV2` re-types the whole submission and every conformant `SV1` line in it
   reads zero. **`PRE-EXISTING`, identical at `0899813`** - the slice neither introduced nor
@@ -156,6 +156,10 @@ being one.
   returned early on the second route, skipped the `activeEntity` reset, and let a trailing
   bare `N3` / `N4` address the last active party. The only additions here are the two flag
   assignments beside the existing warnings.
+  **▶ SUPERSEDED as of "The two original residuals, closed" below**, which added
+  `activeEntity = undefined` to route 1. The RULE (do not restructure; let no route skip
+  the reset) still holds; the sentence counting what was added does not, and counting is
+  what got refuted twice. Do not restore a count here.
 
 - **THE RED/GREEN CENSUS, RUN NOT DERIVED - AND RE-RUN AFTER THE REMEDY ADDED CASES, WHICH
   IS THE ONLY REASON IT IS RIGHT.** Head's final suite against a base checkout of
@@ -186,6 +190,138 @@ being one.
   in `get-837.ts` and `get-835.ts`, so for a second `ST` in a group the join key names the
   wrong transaction. The new code follows that uniform convention rather than diverging from
   it.
+
+### The two original residuals, closed (2026-08-05)
+
+Both of the residuals this item carried from `#67` / `#69` are **mis-ATTRIBUTION, not loss.**
+Neither changed which warning the walker reports: **no code is added, removed, widened or
+narrowed** by either, on every case measured. Say CODE and not "channel": residual 2 changes
+the `position` the variant warning carries, and a whole-array `toEqual` on the warnings IS
+the channel by this repo's own rule, so "the channel is identical" is false as written. What
+moved is where a value, or a warning, is said to be. That framing is the whole reason no new warning code was minted for either.
+
+- **🩺 RESIDUAL 1, MEASURED AT `93b2428`: A DROPPED `LX` LEFT THE LAST `NM1` ADDRESSABLE.**
+  Route 1 of `X12_837_SERVICE_LINE_DROPPED` (no `CLM` open) `break`s out of the `LX` case
+  **before** the `activeEntity = undefined` the other two routes run, so every trailing
+  segment that attaches to a named party attached to whichever party the last `NM1` left
+  active. Because the payer accumulator is what the NEXT `CLM` opens against, the values
+  surfaced on a **later claim's `payer`**, silently. Measured at base on one document:
+  `payer.references` carried `{ qualifier: "6R", value: "LINE-CTRL-1" }`, `payer.address`
+  carried `1 ORPHAN WAY / SPRINGFIELD IL 62701`, and `payer.contacts` carried a contact.
+  At head all three are empty.
+
+- **🩺 IT IS NOT ONLY THE `REF`, AND THE ITEM'S OWN WORDING WOULD HAVE UNDER-STATED IT.**
+  The backlog names the `REF` because that is the instance `#69` measured. `N3`, `N4` and
+  `PER` reach the same entity mutators through the same `activeEntity` and mis-attributed
+  identically. **All four are pinned.** This is the same defect `#69` recorded as a
+  rejected DRAFT on route 2, sitting unnoticed on route 1 the whole time - which is why
+  the `LX` bullet in `CLAUDE.md` now names route 1 explicitly instead of asserting the
+  case is byte-for-byte the base's.
+
+- **🩺 THE DISCARD IS A TRADE AND THE PASS-1 REFUTER MEASURED ITS PRICE. "NOTHING FOLLOWING
+  AN `LX` IS STILL ADDRESSED TO THE LAST NAMED PARTY" WAS PUBLISHED IN FOUR PLACES AS
+  THOUGH IT WERE A FACT ABOUT DOCUMENTS, AND IT IS A PARSER POLICY WITH NO TR3 CLAUSE
+  BEHIND IT.** The TR3s nest Loop 2400 inside Loop 2300 and say nothing about an `LX`
+  anywhere else, so which party a segment after a **stray** `LX` belongs to is not
+  spec-derivable in either direction. Worse, base mis-attributes **only** when an `NM1`
+  precedes the `LX` with no intervening `HL` or `CLM` - which is exactly the
+  entity-loop-with-injected-`LX` shape, so **the motivating document class IS the ambiguous
+  one.** Measured at head on a stray `LX` inside Loop 2010BB whose following segments are
+  conformant payer content: the payer loses `address` (`PO BOX 1 / PAYERTOWN IL 62701`),
+  its `2U` `references` entry and its `contacts` entry, all three of which base got right.
+  **The loss has its own residual test.** What decides the direction is narrower than a
+  clause and narrower than a precedent: a mis-attribution puts a value on an object the
+  sender never put it on, indistinguishable from real data, whereas the bytes of a
+  discarded segment are still on `tx.segments`.
+
+- **🩺 DO NOT CITE `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` FOR THIS. A PASS-2 REFUTER
+  MEASURED THAT THE CITATION POINTS THE OTHER WAY.** A draft of this section wrote
+  "trading silent corruption for a retained omission is the direction
+  `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` sets". That item WARNS and retains **on the
+  model**, through the one `recordOrphan` chokepoint, so the warning and the retained
+  segment can never disagree; its own record in this file states the rule with the
+  opposite qualifier ("trading a **warned** omission for a silent mis-attribution is the
+  direction it FORBIDS"), and it singles out the one construct dropped with no diagnostic
+  as a deficiency rather than a norm. **This slice's route-1 discard is UNWARNED**, and its
+  "retention" is `tx.segments`, which is unconditional, identical at base, and contributed
+  by no part of this change. **No precedent in this repo backs the SILENCE.** It is
+  disclosed, not licensed.
+
+- **🩺 AND NO WARNING NAMES THAT LOSS - "THE LOSS IS ALREADY REPORTED AT THAT `LX`" WAS
+  ALSO PUBLISHED IN FOUR PLACES AND IS FALSE.** `X12_837_SERVICE_LINE_DROPPED`'s registry
+  message reports the **service line's** loss, enumerates only a `DTP` / `AMT` / `NTE` /
+  `REF` following the dropped `LX`, and **never mentions `N3` / `N4` / `PER` at all.** A
+  different loss plus a pointer to a doc is not the same as reporting this one. **No code
+  was minted**, because this item's scope is the two pinned residuals and a Tier-2 addition
+  is a guard change; the silence is disclosed and pinned instead, on the same case that
+  pins the loss. **Warning on the discard is owed its own item, and a pass-2 refuter named
+  it as the alternative exit rather than a defect.** All seven trailing kinds are discarded
+  on the no-claim route; a pass-2 refuter re-derived that from the walker rather than from
+  the tests, which is the honest grounding, because no single committed case carries all
+  seven.
+
+- **THE ROUTE-DEPENDENCE SURVIVES AND MUST KEEP BEING STATED.** With a `CLM` open the
+  trailing `DTP` / `AMT` / `NTE` / `REF` still land on the enclosing claim; only the
+  no-claim route moved. What changed is that the no-claim route is no longer split
+  **within itself** (`DTP`/`AMT`/`NTE` discarded but `REF` re-attributed) - that
+  within-route split is the thing three successive drafts got wrong, and it is now gone
+  rather than reworded a fourth time.
+
+- **🩺 RESIDUAL 2: `X12_837_UNKNOWN_VARIANT` ANCHORED AT THE `BHT`.** It was built with
+  `segmentIndex: 1`. In a transaction-scoped position that is `tx.segments[1]`, and in an
+  837 that is the **BHT** - a segment with no part in variant resolution. The variant is
+  resolved from **ST-03**, which is `tx.segments[0]`. Verified by resolving the index back
+  through `tx.segments` rather than by reading the literal: at base
+  `tx.segments[w.position.segmentIndex].id` was `"BHT"`, at head it is `"ST"`. Note
+  `segmentIndex: 0` is **not** a neutral sentinel on the read side (the `X12-BUILDER-BOUNDS`
+  trap); it names a real segment, and here that segment is the right one.
+
+- **NO `elementIndex`, AND THAT IS MEASURED RATHER THAN PREFERRED.** ST-03 is element 3, so
+  an `elementIndex: 3` looks obviously right. It is not: one of this code's two routes is
+  an **ST-03 that is absent entirely**, and there `tx.st.elements` is `["ST", "837", "0001"]`
+  with `elements[3] === undefined`. Naming an element that is not on the wire is the
+  over-claim class this repo keeps being refuted on, so the position stays segment-level.
+  Both routes are pinned, including the absent one.
+
+- **THE PASS-1 REFUTER ALSO CAUGHT THE SOURCE COMMENT THE SLICE FORGOT.** The `LX` case's
+  header still read "the control flow below is the base's, unchanged: the two
+  `warnings.push` calls are the whole behavioural difference" - true at `a33c208`, false at
+  head, sitting 21 lines above the statement that falsifies it and inside a block ending
+  "do not restructure this." The `CLAUDE.md` bullet and this section had been corrected;
+  **the comment a future agent reads FIRST had not.** Corrected prose in the internal docs
+  does not correct the code. The comment now states the RULE and no count, because a
+  count of it was published three times and was wrong every time; do not restore one.
+
+- **THE CENSUS, RUN NOT DERIVED, AND RE-RUN AFTER THE LAST TEST WAS ADDED.** Head's whole
+  suite against a base checkout of `src/transactions/claim/get-837.ts` (replaced, not
+  overlaid): **10 of 1,431 red across 2 files.** 9 of the new suite's 19, plus **1
+  pre-existing case**: `transactions-claim-837-variant-lookup.test.ts` pinned the `REF`
+  landing on the last party, so closing the residual turned it red exactly as it was
+  written to. It was rewritten to pin the corrected behaviour, and the bound that is still
+  true - the route-dependence itself - is kept. The 10 green in the new suite are exactly
+  the controls plus the retention and downstream-decode pins, which is the point of
+  writing them before the fix. Head is **1,431 passed across 68 files**. **Every figure in
+  this section was re-derived after the pass-1 refuter's two cases were added; the
+  pre-refuter set (9 of 1,429, 8 of 17, controls at 6 and 3) is superseded, and it is
+  recorded here only because this item's rule is that a corrected claim is a NEW claim.**
+
+- **A RED NEGATIVE CONTROL PER GUARD, WHOLE-SUITE.** Removing route 1's
+  `activeEntity = undefined` reds **7**; reverting the anchor to `segmentIndex: 1` reds
+  **3**. Neither guard is asserted only by the case that motivated it.
+
+- **🩺 ONE FULL-SUITE RUN IN SIX WENT RED ON AN UNIDENTIFIED CASE AND DID NOT REPRODUCE.**
+  Recorded rather than dismissed. This box was running ten concurrent workers, and
+  `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX` above says exactly what to suspect: the 10 MB+
+  834 stream sits AT the global 10 s `testTimeout` and is green only on its own per-test
+  ceiling, so a loaded box can tip it. **Do not read a local green as authoritative under
+  fleet load** - the PR's own check runs are.
+
+- **WHAT IS STILL OPEN, AND WAS NOT TOUCHED.** The absent `SV1-02` still reading a
+  confident `0` (the deferred `X12Decimal | undefined` slice, explicitly not to be started
+  inside another item); the `SVx` variant fallback still scanning the whole body, orphans
+  included, so one stray `SV2` re-types a submission (warned, not silent, and narrowing it
+  would change how already-published documents decode); a duplicate or foreign `SVx`
+  **inside** an opened Loop 2400 still silent; and `transactionIndex` still hard-coded `0`.
 
 ## X12-277-SVC07-NOT-DECODED (2026-08-05)
 
@@ -421,6 +557,9 @@ being one.
   warning. **Trading a warned omission for a silent mis-attribution is the direction
   `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` forbids.** The two `warnings.push` calls are now the
   entire behavioural difference from base, and a test reds if the early return comes back.
+  **▶ THAT LAST SENTENCE IS SUPERSEDED** by "The two original residuals, closed", which added
+  `activeEntity = undefined` to route 1 for the same reason this bullet gives about route 2. The
+  test still reds if the early return comes back. Do not restore a count of the difference.
 
 - **`X12_837_SERVICE_LINE_DROPPED` IS THE 25TH CODE, AND IT IS NOT A RENAME OF `#67`'s.**
   Additions-only, 24 -> 25. **The two report different losses and must never be merged:**

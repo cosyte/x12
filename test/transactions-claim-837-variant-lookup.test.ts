@@ -550,11 +550,20 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: the bounds of X12_837_SERVICE_LINE_DROPP
     expect(sub.claims[0]?.notes).toHaveLength(1);
   });
 
-  it("with NO claim open, the same trailing segments are discarded and a REF lands on the last party", () => {
-    // The other half of the route-dependent behaviour `KNOWN-LIMITATIONS.md`
-    // states. Two drafts of this slice published the conditional unqualified,
-    // in opposite directions, because each is true on exactly one route.
-    // Pre-existing at `a33c208`; pinned so the disclosure cannot go stale.
+  it("with NO claim open, EVERY trailing segment is discarded - the REF included", () => {
+    // The other half of the route-dependent behaviour. This case used to pin
+    // the REF landing on whichever party the last NM1 left active - a
+    // line-item control number surfacing in the payer of the claim that opens
+    // AFTER it. That was the residual `X12-837-LOOP-RESIDUALS` left open, and
+    // closing it turned this assertion red, as it was written to. What is
+    // pinned now is the corrected behaviour: on this route the REF goes where
+    // the date, the amount and the note already went, which is nowhere.
+    //
+    // The ROUTE-DEPENDENCE itself is unchanged and is still real, so
+    // `KNOWN-LIMITATIONS.md` must keep stating it: with a CLM open, the
+    // trailing values do land on the enclosing claim, which is the case
+    // directly above. Only the no-claim route moved. Full coverage of the
+    // correction lives in `test/transactions-claim-837-loop-residuals.test.ts`.
     const sub = parse837("005010X222A2", [
       ...noClaimBody([
         "LX*1~",
@@ -566,14 +575,14 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: the bounds of X12_837_SERVICE_LINE_DROPP
       ]),
       "CLM*PT-ACCT-901*8500***11:B:1*Y*A*Y*Y~",
     ]).sub;
+    // The whole channel, and it is what it was at base: correcting an
+    // attribution added no code and lost none.
     expect(channel(sub)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
-    // The date, the amount and the note went nowhere at all.
     expect(sub.claims[0]?.dates).toEqual([]);
     expect(sub.claims[0]?.amounts).toEqual([]);
     expect(sub.claims[0]?.notes).toEqual([]);
-    // The REF did not: it attached to whichever party the last NM1 left
-    // active, which here is the payer of the claim that opens AFTER it.
-    expect(sub.claims[0]?.payer?.references.map((r) => r.value)).toContain("LINE-CTRL-99");
+    expect(sub.claims[0]?.payer?.references).toEqual([]);
+    expect(sub.claims[0]?.references).toEqual([]);
   });
 
   it("🩺 an SVx with NO LX at all is reported by a DIFFERENT code, not by this one", () => {
