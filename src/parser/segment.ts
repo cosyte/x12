@@ -448,11 +448,14 @@ export function componentOptional(
  * one. The three states are spec-distinct and were previously collapsed
  * onto a single `undefined`:
  *
- * - `"decoded"` - the element held a valid X12 R-type decimal.
+ * - `"decoded"` - the element matched the shape {@link "../decimal.js".X12Decimal}
+ *   decodes, `[+-]?digits(.digits?)?`.
  * - `"absent"` - the element was missing or empty. The sender said nothing.
- * - `"unparseable"` - the element held bytes that are NOT an X12 R-type
- *   decimal. The sender said something and this library could not read it,
- *   which is a materially different fact from `"absent"`.
+ * - `"unparseable"` - the element held bytes outside that shape. The sender
+ *   said something and this library could not read it, which is a materially
+ *   different fact from `"absent"`. **That shape is what this library reads;
+ *   no clause of X12.6 is cited for it, so do not read this as an assertion
+ *   about what type R does and does not permit.**
  *
  * @example
  * ```ts

@@ -40,7 +40,8 @@ model.
     resolved variant disagrees with the `SVx` segment actually present (an ST-03 of `005010X222A2`
     on a file whose lines are `SV2`, or a caller-supplied `{ type: "P" }` over the same), `decodeSv1`
     returns before reading anything and the line's `charge` and `units` stay at their seeded
-    `X12Decimal.ZERO` with `warnings: []`. **What this slice guarantees is narrower and exact: an
+    `X12Decimal.ZERO` with `warnings: []`. Pinned as a residual test, so closing it turns that test
+    red rather than leaving this paragraph quietly false. **What this slice guarantees is narrower and exact: an
     unwarned `0` AT AN ELEMENT A READER DECODED is a zero the sender sent or omitted.**
   - **The public helpers are silent without a sink.** `elementDecimal` / `elementDecimalOrZero` take
     an optional 4th `X12DecimalWarningSink`. Every reader inside this library passes one, and a

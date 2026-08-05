@@ -163,8 +163,9 @@ claim to learn, and several of them name a remedy that was tried and refuted.
      `X12Decimal.fromString`, untouched, but a NEW assertion. The message now says "could not decode
      as a decimal" and the JSDoc says outright that no clause is cited.
 
-- **Findings the pass raised that are NOT this slice's, each reproduced at base and filed, not
-  fixed:** the 837 variant/`SVx` silent `0` above (major, and the same harm class as this item);
+- **Findings the pass raised that are NOT this slice's, each reproduced at base and disclosed here,
+  NOT fixed and - as pass 2 measured - NOT YET FILED. Each is owed its own umbrella backlog ID, and
+  this repo cannot write one; the coordinator must. Do not read "disclosed" as "tracked":** the 837 variant/`SVx` silent `0` above (major, and the same harm class as this item);
   `X12Decimal.fromString` refusing a space-padded numeric (` 450.00`), so a fixed-width-padding
   sender's every amount reads `0`; and `get820Payments` dropping an `RMR` or `ADX` row when its
   leading qualifier elements are empty (`RMR***PI*500.00*500.00` loses a $500.00 row, `warnings: []`).

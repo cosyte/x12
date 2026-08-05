@@ -123,8 +123,8 @@ and the refutation history are there. **Do not act on a line here without readin
   can; not _silently_. Closing it is `X12Decimal | undefined` everywhere: its own slice.
 - **🩺 NEVER INVERT IT INTO "an unwarned `0` is a zero the sender sent". A slot a reader never read
   cannot warn** - `get837Claims` leaves `charge`/`units` at their seeded `ZERO`, `warnings: []`, on
-  a variant/`SVx` disagreement (`PRE-EXISTING`, filed). Three shipped docs carried the bare form.
-  The guarantee is: unwarned `0` **at an element a reader decoded**.
+  a variant/`SVx` disagreement (`PRE-EXISTING`, UNFILED). Three shipped docs carried the bare form.
+  Guarantee: unwarned `0` **at an element a reader decoded**.
 - **PUBLISH NO CENSUS OF THE FALLBACK OUTCOMES.** A draft said three, a refuter measured four. The
   RULE holds: it is a property of the READ, not the USE - so no control flow changed.
 - **ONE message, NO discriminant** - a `ZERO`/`NOT_DECODED` pair was wrong at 835 `CAS`, 835 `PLB`,
