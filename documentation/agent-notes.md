@@ -246,6 +246,11 @@ undefined` check, and the flag can only hold where no claim is open, so neither 
   `KNOWN-LIMITATIONS.md` is not in `package.json`'s `files`, so it is not in the tarball - but it IS
   public on GitHub and the shipped warning message points readers at it. **Fix it in its own item;
   the fix is to DELETE the parenthetical, not to reword it a fourth time.**
+  **▶ CLOSED** by "The documentation residual, closed (2026-08-06)" under `X12-837-LOOP-RESIDUALS`,
+  which deleted it, found three more copies of the same universal (one of them in a pending
+  changeset, so it would have shipped into the release body), and put `KNOWN-LIMITATIONS.md` in the
+  tarball. **The "not in `files`" half of this bullet is now false and is left standing as the
+  record of what was measured on 2026-08-06, not as a current fact.**
 
 - **PHI: the new code has a slot in the table, and it is name-bearing.**
   `test/_helpers/phi-slots.ts` gained a slot planting the marker in an `N3` street address
@@ -502,6 +507,173 @@ moved is where a value, or a warning, is said to be. That framing is the whole r
   would change how already-published documents decode); a duplicate or foreign `SVx`
   **inside** an opened Loop 2400 still silent; and `transactionIndex` still hard-coded `0`.
 
+### The documentation residual, closed (2026-08-06)
+
+`#73`'s pass-4 record filed one `PRE-EXISTING` major against this item: `KNOWN-LIMITATIONS.md`
+contradicted itself about one construct, ninety lines apart. This closes it, and the sweep it
+implied. **No source file changed. The whole slice is prose plus one `files` entry plus one
+packaging gate.**
+
+- **THE CONTRADICTION, RE-VERIFIED HERE RATHER THAN INHERITED.** `git log -S` on the phrase
+  attributes it to `d3b36d9` alone, `git show d3b36d9:KNOWN-LIMITATIONS.md` and
+  `git show 2397cf2:KNOWN-LIMITATIONS.md` both carry it at line 150, and `#73`'s diff of that file
+  touches only 169-180 and 225-262. **Do not take a line number from a handoff.** The parenthetical
+  claimed "a `NM1` arriving AFTER that `LX` names a party normally, and its own trailing segments
+  attach"; line 244, written by `#73`, says the later party's trailing segments are silent and that
+  **whether they attach is a separate question**. The second is the true one.
+
+- **🩺 THE UNIVERSAL IS FALSE IN THE SOURCE, NOT ONLY IN THE PROSE, AND THAT IS WHERE IT WAS
+  MEASURED.** `attachContact` has an explicit no-op arm for `patient`, `payToAddress`, `payToPlan`,
+  `otherSubscriber`, `otherPayer` and `lineProvider` ("PER is not surfaced on these entities in
+  Phase 5"), and `get-837.ts:302` says it in the walker's own words: a later party's trailing
+  segments are silent "whether or not they attach (some kinds reach no party on any release)". A
+  probe was not needed and would have added nothing a `v8 ignore`d switch arm does not already say
+  outright.
+
+- **DELETED, NOT REWORDED A FIFTH TIME.** The parenthetical goes; nothing replaces it. The scope
+  question it was reaching for is already answered, **ninety lines below** (which is the same
+  distance the item calls the defect), in the entry for the code that owns it, and that entry was
+  graded at full strength across four passes. **Writing a fifth wording is the failure mode this
+  lineage has paid for four times.**
+
+- **🩺 THE PAST-TENSE FORM IS THE ONE THAT KEEPS SURVIVING, AND MY FIRST SWEEP MISSED TWO OF IT.**
+  `#73`'s pass-1 remedy cut "every release through `0.0.10` attached them" back to "wherever this
+  reader surfaces that segment kind on that party at all" in `KNOWN-LIMITATIONS.md` and
+  troubleshooting row 70, and left the bare form standing elsewhere. Found by my own sweep:
+  `KNOWN-LIMITATIONS.md` ("they attached to whichever party the last `NM1` left active"),
+  `CHANGELOG.md` ("so the trailing segments were filed against it"), and
+  `.changeset/olive-pumas-repeat.md`, **which is what renders into the GitHub release body**, so it
+  would have shipped the false form to consumers who never open the repo. **Found only by the
+  refuter, after I had claimed the sweep was complete:** the COUNTERFACTUAL in the headline of that
+  same changeset and of the `CHANGELOG.md` bullet ("no longer attaches itself to the last named
+  party" asserts that it previously did, for every party), on the very line I had just retyped; and
+  a copy in **this file**, eight lines above one I had open. **A grep for one phrasing is not a
+  sweep for a claim.** The forms this universal has taken so far, so the next sweep greps for all of
+  them: "attach", "attached to whichever party", "filed against it", "lands on", "no longer
+  attaches".
+
+- **THE REMEDY DIRECTION DIFFERS BY FORM, ON PURPOSE.** The present-tense parenthetical is
+  DELETED, because it had been reworded twice. Past-tense copies take the **already-graded**
+  qualifier verbatim; where the measured instance sits beside the claim, the claim is cut back to
+  that instance instead, and the instance is named as what it is (**a payer**, which does surface
+  all three of an address, a reference and a contact). Counterfactual headlines lose the
+  counterfactual only: "no longer attaches itself" becomes "does not attach itself", which is true
+  on both routes and asserts nothing about `0.0.10`. **Propagating a graded form is not writing a
+  new one - but propagating HALF of one is**, which is what the first attempt did at
+  `KNOWN-LIMITATIONS.md`: it added the qualifier to the antecedent and left the consequent ("gave
+  that party a street address and a contact") universal.
+
+- **`cookbook.md`, `README.md`, `CLAUDE.md` and the warning factories were clean.** The cookbook
+  was fixed by `#73`'s passes 3 and 4 and now states the true form outright; the
+  `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX` message already said "it does not claim it would have
+  reached one". The bullet in this file beginning "RESIDUAL 1, MEASURED AT `93b2428`" is **not** a
+  copy: it is scoped by "every trailing segment **that attaches to a named party**". Do not
+  "correct" it.
+
+- **THE SAME WORDING IS STILL IN `src/` COMMENTS AND IN TEST-FILE HEADERS, AND IS DELIBERATELY LEFT.**
+  `get-837.ts`'s `LX` case says a trailing segment "attached to whichever party the last `NM1` left
+  active" in two comments, and several 837 test files open the same way. Neither is a
+  warning-message factory and neither was in the item's sweep list; touching them would make this a
+  source change and cost the "no source file changed" property that makes this slice cheap to grade.
+  **`PRE-EXISTING`, filed not fixed, and named here so the next sweep does not have to rediscover
+  it.**
+
+- **`KNOWN-LIMITATIONS.md` IS IN `files` NOW, AND THE ARGUMENT IS THE RUNTIME CITATION ALONE.** Two
+  shipped registry messages name it ("see KNOWN-LIMITATIONS.md", one clause before each message
+  closes - **neither message ENDS there**, both end by sending the reader to `tx.segments`), and the
+  tarball did not carry it. Two remedies were available and the choice is recorded rather than
+  assumed: **the citation is correct and the packaging was wrong**, because that document is the
+  canonical account of what this reader does not reproduce and a consumer holding a code, a
+  `position` and a message is exactly who needs it. Deleting the pointer would have left that
+  consumer with strictly less, and it would have touched the frozen registry table, a public surface
+  with tests on it, to make a documentation problem go away. **The shipped `README.md`'s two
+  relative links to this file are NOT part of the argument** and were removed from it: they are
+  equally true of `docs-content/`, which stays out, so leaning on them would have been special
+  pleading for one file and against another.
+
+- **THE COST IS REAL AND IS NOT ARGUED AWAY: a tarball is immutable per version**, so every claim
+  in that document is now permanent at the version carrying it. This document has demonstrably
+  carried a wrong claim through four releases. That is an argument for the refuter gate, not for
+  withholding the file from the people the warning sends to it.
+
+- **THE LINE IS RUNTIME OUTPUT, AND IT IS DRAWN DELIBERATELY NARROW.** `docs-content/` is cited
+  from JSDoc (`envelope.ts:103`) and from `README.md` prose only, never from a message a caller
+  sees, so it stays out of `files` and the shipped `README.md`'s relative links to
+  `./docs-content/cookbook.md` and `./docs-content/troubleshooting.md` **still do not resolve inside
+  an install**. `PRE-EXISTING`, unchanged here, filed not fixed: putting the docs site in the
+  tarball is a bigger decision than this item.
+
+- **`test/package-files-cite.test.ts` IS THE TRIPWIRE, AND IT READS THE REGISTRY, NOT THE SOURCE.**
+  It scans `ALL_WARNING_MESSAGES` for repo-root `*.md` citations and asserts **both halves**: the
+  name is in `files`, AND a file of that name is on disk. Either alone passes while a consumer
+  still cannot read the file, which is how the first draft was refuted: it checked membership only,
+  so deleting the document from disk left all five green. It deliberately does **not** scan JSDoc,
+  comments or `build*` refusal templates: those are not what the library says to a caller, and
+  widening it would turn a statement about runtime output into a syntactic scan of prose (`#51`'s
+  failure mode). **The pattern is case-INSENSITIVE on purpose** - the first draft matched
+  SHOUTY-case names only, so a future message citing `cookbook.md` would have passed in silence.
+  Measured against the shipped registry, it matches exactly one name. The helpers are free functions
+  over their inputs so the controls can drive them with a table this package does not ship.
+  **Measured: removing the `files` entry reds 2 of 6, moving the file off disk reds 1 of 6**; a
+  vacuity pin asserts the registry really does cite a document, so the check cannot pass by finding
+  nothing.
+
+- **WHAT THE GATE DOES NOT DO, STATED RATHER THAN LEFT TO BE FOUND:** it reads the `files` ARRAY,
+  not a built tarball, so it is a statement about the manifest. A directory or glob entry covering a
+  cited file would be reported even though `npm pack` would ship it. No such entry exists, and the
+  failure direction is a false refusal rather than a false pass, which is the right way round.
+  `npm pack --dry-run` was run by hand once and does list the file.
+
+- **THE CHANGESET WAS RENDERED, NOT READ.** `collectHeadlines` + `renderNotes` +
+  `assertPublishableNotes` from `cosyte/.github`'s real `scripts/release-notes.mjs`, driven over
+  this repo's actual `.changeset/` directory. The bullet renders with **no 🩺** and reads as a
+  packaging and documentation change, which is what it is. A consumer-shaped headline here would
+  have published a documentation correction as a defect in the parser. **Re-rendered after the
+  pass-1 remedy**, because that remedy edited the first sentence of a pending changeset, which is
+  exactly the text the renderer turns into a bullet.
+
+- **🩺 THE PASS-1 REFUTER REFUTED THIS SLICE, AND THE LESSON IS THE ONE THE LINEAGE KEEPS BUYING.**
+  Two `INTRODUCED` majors, both the same shape: my `CHANGELOG.md` entry claimed the false statement
+  "is removed from this file" while the file still carried it in a headline three lines from my own
+  edit, and the sweep missed a copy in this file. **A completeness claim about a sweep is itself a
+  claim, and it gets refuted like any other.** The entry now says what was cut and names what was
+  deliberately left, instead of claiming the class is closed.
+
+- **🩺 PASS 2 NOT REFUTED, ALL EIGHT CLOSED AGAINST SOURCE, AND ITS ONE MINOR IS THE SAME SHAPE A
+  THIRD TIME: A NAVIGATION CLAIM.** The pass-1 remedy replaced a false universal with a POINTER,
+  and the pointer said the `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX` entry states which kinds
+  this reader surfaces on which parties. **It states no such thing and says the opposite** -
+  "whether they ATTACH is a separate question this code does not answer" - and no per-kind,
+  per-party map is published in the documents this package ships. Corrected to say what that entry
+  does state, in all three copies, one of which renders into the release body. **The standing
+  lesson: when you delete a claim, whatever you leave pointing at its place is a NEW claim and is
+  graded as one.** Do not close the gap with a cross-reference you have not opened and read.
+
+- **PASS 3 NOT REFUTED, ON THE PASS-2 REMEDY DIFF ONLY, AND IT IS THE CAP. THERE IS NO PASS 4.**
+  Pass 2 was NOT REFUTED, so pass 3 existed only because the pass-2 remedy would otherwise have
+  shipped ungraded; it opened no new attacks and found no blocker and no major. **Its two minors
+  were the SAME defect a fourth time, one of them inside the sentence written to fix the third.**
+  The pass-2 remedy denied that a per-kind, per-party map is published "anywhere in this package's
+  documentation" while **this very section**, 121 lines below, prints complete negative rows for
+  `PER` and for `REF` off the `attach*` switch arms. Scoped to "the documents this package ships",
+  which is what the two tarball-scoped copies already said and is true. The second: this bullet
+  originally recorded a pass-3 verdict **before pass 3 had returned**, written by the graded party.
+  It is rewritten here from what pass 3 actually returned. **Do not pre-write a gate's verdict, even
+  one you expect** - the agent that wrote the work cannot grade it, and a verdict that happens to
+  land true is still a verdict nobody issued.
+
+- **WHAT IS STILL OPEN AND WAS DELIBERATELY NOT TOUCHED.** The `X12Decimal | undefined` breaking
+  slice (an absent `SV1-02` still reading a confident `0`) was named as not-to-be-started inside
+  another item and was not; the one-stray-`SVx`-re-types-a-whole-submission finding is warned and
+  filed; no source scan was proposed for the prototype defence; and `docs-content/` stays out of
+  the tarball, so the shipped `README.md`'s relative links into it still do not resolve inside an
+  install. Pass 2 additionally filed one `PRE-EXISTING` backlog line: under a **non-conformant**
+  repeated `NM1*87` inside one Loop 2000A, `attachAddressLines`' `payToAddress` arm APPENDS to the
+  surviving accumulator rather than replacing it, so address lines from after a stray `LX` can
+  merge with lines from before it. Narrow (an `HL*20` resets `payToAddress`), exotic input, and
+  **the sentence that would have to change to describe it is the one the item forbids rewording
+  again**, so it belongs in the entry that owns the question, in its own item.
+
 ## X12-277-SVC07-NOT-DECODED (2026-08-05)
 
 - **🩺 THE DEFECT: `SVC-07` IS USAGE `R` IN TR3 `005010X212`, AND THIS LIBRARY NEITHER READ NOR
@@ -723,8 +895,11 @@ moved is where a value, or a warning, is said to be. That framing is the whole r
      claim"; both were measured false, because each is true on exactly one of the code's two routes.
      With a `CLM` open, the date, amount and note land among the **claim-level** ones. With **no**
      `CLM` open, the `DTP`, `AMT` and `NTE` are **discarded** and a trailing `REF` attaches to
-     whichever party the last `NM1` left active - measured, a line-item control number landing in a
-     _later_ claim's `payer.references`. **The remedy was to CUT THE CLAUSE OUT OF THE SHIPPED
+     whichever party the last `NM1` left active **wherever this reader surfaces that segment kind on
+     that party at all** - measured, a line-item control number landing in a _later_ claim's
+     `payer.references`, and `attachReference` has a no-op arm for `payToAddress` / `payToPlan` /
+     `otherSubscriber` / `otherPayer` / `lineProvider`, so after an `NM1*87` it reached no party.
+     **The remedy was to CUT THE CLAUSE OUT OF THE SHIPPED
      MESSAGE ENTIRELY**, because a registry message cannot carry a conditional and a consumer reading
      one should not have to. `PRE-EXISTING` walker behaviour;
      both routes pinned by tests, and the `REF` mis-attribution is owed its own umbrella item.

@@ -139,6 +139,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`KNOWN-LIMITATIONS.md` now ships in the published tarball** (`X12-837-LOOP-RESIDUALS`). Two
+  shipped warning messages, `X12_837_SERVICE_LINE_DROPPED` and
+  `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, name that document ("see KNOWN-LIMITATIONS.md", each
+  one clause before its close), but it was absent from `package.json`'s `files`. An installed copy
+  therefore carried a runtime message naming a file that was not beside it. **The citation is what
+  was kept and the packaging is what moved:** that document is the canonical account of what this
+  reader does not reproduce, and a consumer holding a code, a `position` and a message is precisely
+  the consumer who needs it. **The cost is named rather than argued away:** a file in the tarball is
+  a published artifact, permanent at the version carrying it, so every claim in that document is now
+  held to a published surface's bar. The line is drawn at what the library says to a caller **at
+  runtime**, so `docs-content/` is deliberately still not in `files`; the shipped `README.md`'s
+  relative links to `./docs-content/cookbook.md` and `./docs-content/troubleshooting.md` therefore
+  still do not resolve inside an install, which is pre-existing, unchanged here, and its own
+  decision. `test/package-files-cite.test.ts` refuses a shipped warning message that names a
+  repo-root `.md` file `files` does not carry, and separately asserts the cited file is on disk, so
+  the gate cannot pass on a `files` entry that names nothing. It reads the exported warning registry
+  and nothing else, not JSDoc, not source comments, and not the `build*` refusal templates. No code,
+  type, warning code or warning message changed.
+
+- **A statement about pre-`0.0.10` behaviour that was false as written is cut back in the documents
+  this package publishes** (`X12-837-LOOP-RESIDUALS`). "The trailing segments were filed against
+  it", "they attached to whichever party the last `NM1` left active", and the counterfactual carried
+  by "no longer attaches itself to the last named party" all read as all four of `N3` / `N4` /
+  `PER` / `REF` having reached every party through `0.0.10`. They did not: `attachContact` has no
+  route for a patient or a pay-to address and `attachReference` none for a pay-to address, so those
+  segments reached no party on any release. That is why
+  `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX` reports a segment reached **no** party and never that
+  it would otherwise have reached one. `KNOWN-LIMITATIONS.md` additionally carried, ninety lines
+  from the entry contradicting it, a fourth wording of the same universal in the present tense: "a
+  `NM1` arriving AFTER that `LX` names a party normally, and its own trailing segments attach".
+  **That parenthetical is deleted rather than given a fifth wording**, and the past-tense copies
+  either take the qualifier already written beside the code's own entry or are cut back to the
+  measurement beside them, rather than being given a new wording. What a party named after such an
+  `LX` does is unchanged, and that code's own entry still states its scope and says outright that
+  whether a later party's trailing segments attach is a separate question it does not answer. **No
+  per-kind, per-party map is published, here or in that entry.** Nothing about the
+  parser changed, and the measured instances each statement rested on, every one of them on a payer,
+  are unchanged and stay. **The same wording survives in `src/` comments and in test-file headers,
+  neither of which this change swept or fixed.**
+
 - **🩺 BREAKING: `build277` now REFUSES a Loop 2220 service line that carries no `unitsOfService`
   (`X12-277-SVC07-NOT-DECODED`).** SVC-07 is usage **R** in TR3 `005010X212`, so a service line
   without it cannot be emitted as a conformant 277. The refusal is the existing
@@ -281,13 +321,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **🩺 A `REF`, `N3`, `N4` or `PER` after a dropped 837 `LX` no longer attaches itself to the last
+- **🩺 A `REF`, `N3`, `N4` or `PER` after a dropped 837 `LX` does not attach itself to the last
   named party** (`X12-837-LOOP-RESIDUALS`). Through `0.0.10`, the release published as this was
   written, an `LX` arriving with **no `CLM` open** reported the dropped service line and then left
-  the previous `NM1`'s party still addressable, so the trailing segments were filed against it.
-  Because the payer accumulator is what the **next** `CLM` opens against, the values surfaced on a
-  **later claim**: measured, a line-item control number in `payer.references`, a street address in
-  `payer.address`, and a contact in `payer.contacts`, none of which the sender put there. On that
+  the previous `NM1`'s party still addressable. Because the payer accumulator is what the **next**
+  `CLM` opens against, the values surfaced on a **later claim**: measured, a line-item control
+  number in `payer.references`, a street address in `payer.address`, and a contact in
+  `payer.contacts`, none of which the sender put there. On that
   route all seven of `DTP` / `AMT` / `NTE` / `REF` / `N3` / `N4` / `PER` are discarded; the
   `DTP` / `AMT` / `NTE` already were at `0.0.10`, and the other four are what changed.
   **The route-dependence is unchanged and still matters:** with a `CLM` open, a trailing `DTP` /
