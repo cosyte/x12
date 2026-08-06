@@ -242,6 +242,16 @@ same route without it, so read `submission.variant`); and what becomes of a `DTP
 `NTE` / `REF` after a dropped `LX` is route-dependent, so do not assume it is simply absent (see
 [Troubleshooting](./troubleshooting) and the package's `KNOWN-LIMITATIONS.md`).
 
+A fifth code covers the cost of that route. Where the dropped `LX` had **no `CLM` open** and landed
+inside an entity loop, it closes that loop, so an `N3` / `N4` / `PER` / `REF` following it reaches no
+party at all while nothing since has opened a loop, which the next `NM1` / `HL` / `CLM` does. Each such segment raises
+`X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, anchored at the segment itself. Read its bound literally:
+it reports only that route, and only for that stretch, so it is not a
+general "this segment reached no party" report. It reports that the segment reached **no** party, and
+not that it would otherwise have reached one: this reader surfaces neither a `PER` on a patient nor
+one on a pay-to address on any release, so on those the alternative was also no party. The bytes stay verbatim on `tx.segments`, which is
+still the only complete account of the document.
+
 ```ts
 import { parseX12, get837Claims, HL_LEVEL_CODES, WARNING_CODES } from "@cosyte/x12";
 

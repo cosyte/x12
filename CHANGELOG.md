@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🩺 `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, the 27th Tier-2 warning code, plus the public
+  factory `entitySegmentDiscardedAfterLx(position)`** (`X12-DISCARD-AFTER-STRAY-LX`). Raised for
+  each 837 `N3` / `N4` / `PER` / `REF` that reached **no party at all** because an earlier `LX` with
+  **no `CLM` open** dropped its Loop 2400 and closed the entity loop those segments belonged to.
+  `position.segmentIndex` names the **discarded segment itself**, not the `LX`: the loss is per
+  segment, so two `N3`s are two warnings, and the segment is what a consumer resolves back through
+  `tx.segments`. It ends the silence disclosed under `### Fixed` by the change that introduced that
+  discard, which is in this same unreleased block, so no published release ever had the discard
+  without the warning.
+
+  **🩺 Read its bound literally: this is NOT a general "entity segment reached no party" code**, and
+  nothing about it should be restated that way. It reports only a segment discarded after such an
+  `LX`, and only until the next `NM1` / `HL` / `CLM` opens a loop - a party named after that `LX` is
+  outside this code's scope again, and stays silent whether or not this reader surfaces its trailing segments on it. Every other route to an
+  unattached `N3` / `N4` / `PER` / `REF` is exactly as silent as before: no entity loop open at the
+  `LX` at all, an `NM1` this reader cannot route, an intervening `HL` or `CLM`, and the other
+  dropped-`LX` route where a claim **is** open. A `DTP` / `AMT` / `NTE` on that route is discarded
+  too and is deliberately **not** reported, because those never attach to a party on any route.
+  Each of those bounds is a test, and each is one a widened guard would fail.
+
+  **It reports that a segment reached NO party, not that it would have reached one.** This reader
+  does not surface every one of the four kinds on every party (a `PER` on a patient, or a pay-to
+  address), so the code can fire where nothing this library's own reset lost. That is fail-safe and
+  is stated rather than narrowed.
+
+  Nothing about the model changed: the segments are still discarded, still verbatim on
+  `tx.segments`, and the message carries positional metadata only, never a value off the wire.
+
 - **🩺 `X12_837_SERVICE_SEGMENT_WITHOUT_LX`, the 26th Tier-2 warning code, plus the public factory
   `serviceSegmentWithoutLx(position)`** (`X12-837-LOOP-RESIDUALS`). Raised when an 837 `SV1` / `SV2`
   / `SV3` arrives with **no Loop 2400 open**, so there is no service line to decode it into and
@@ -275,11 +303,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   at `0.0.10` now comes back with `address: undefined`, `references: []` and `contacts: []`. The
   direction was chosen because a mis-attribution puts a value on an object the sender never put it
   on and is indistinguishable from real data, whereas the bytes of a discarded segment are still on
-  `tx.segments`. **The discard is SILENT. No warning code was added, removed or widened, and none
-  names this loss:** `X12_837_SERVICE_LINE_DROPPED` at that `LX` reports the **service line**, not
-  an entity's address, id or contact. Both the loss and the silence are pinned by tests;
-  `KNOWN-LIMITATIONS.md` states them. Warning on it would be a new guard and is owed its own
-  change.
+  `tx.segments`. **That discard shipped SILENT in the change above and no longer is:** it now raises
+  `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX` at each discarded segment, listed under `### Added`
+  and never released without it. `X12_837_SERVICE_LINE_DROPPED` at that `LX` still reports the
+  **service line** and not an entity's address, id or contact, so it never named this loss. The loss
+  itself is unchanged and is still pinned by tests; `KNOWN-LIMITATIONS.md` states both.
 
 - **🩺 `X12_837_UNKNOWN_VARIANT` now anchors at the `ST` instead of the `BHT`**
   (`X12-837-LOOP-RESIDUALS`). The warning's `position.segmentIndex` was `1`, which in a

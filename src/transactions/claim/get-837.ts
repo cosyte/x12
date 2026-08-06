@@ -53,6 +53,7 @@ import {
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
 import {
   REQUIRED_LOOPS,
+  entitySegmentDiscardedAfterLx,
   hlParentLevelInvalid,
   hlParentMismatch,
   missingRequiredLoop,
@@ -288,6 +289,25 @@ export function get837Claims(
   /** Active entity for trailing N3/N4/REF/PER attachment. @internal */
   let activeEntity: ActiveEntity | undefined;
 
+  /**
+   * True between an LX that dropped its line with no CLM open AND had an
+   * entity loop open at it, and the next segment that opens a loop of any
+   * kind. It is what lets the walker report the cost of that reset: while it
+   * holds, an N3 / N4 / PER / REF reaches no party, and that discard is this
+   * package's own doing rather than the document's shape.
+   *
+   * SCOPED, NOT LATCHED, for the same reason `droppedLineReported` is: it is
+   * cleared beside every other assignment to `activeEntity` (HL, SBR's Loop
+   * 2320 branch, NM1, CLM, and the LX routes that open a line), so a party
+   * named after the stray LX is outside this scope again and its own trailing
+   * segments are silent, whether or not they attach (some kinds reach no party
+   * on any release). A latching flag would report every later unattached
+   * segment in the transaction, including shapes that were silent before this
+   * code existed.
+   * @internal
+   */
+  let entityLoopClosedByStrayLx = false;
+
   const flushAdjudication = (): void => {
     if (currentAdjudication !== undefined && currentServiceLine !== undefined) {
       currentServiceLine.adjudications.push(freezeAdjudication(currentAdjudication));
@@ -325,6 +345,24 @@ export function get837Claims(
   const reportOrphanServiceSegment = (position: X12Position): void => {
     if (droppedLineReported) return;
     warnings.push(serviceSegmentWithoutLx(position));
+  };
+
+  /**
+   * Report an N3 / N4 / PER / REF discarded because a stray LX closed the
+   * entity loop it belonged to.
+   *
+   * The flag alone is the condition, and that is sound only because of the
+   * invariant beside it: it is cleared next to EVERY other assignment to
+   * `activeEntity`, so while it holds, `activeEntity` is undefined and the
+   * attach the caller just performed was a no-op. **A new `activeEntity`
+   * assignment site that does not clear it would make this message false**,
+   * which is why the clears sit beside the assignments rather than in one
+   * place remote from them.
+   * @internal
+   */
+  const reportDiscardedEntitySegment = (position: X12Position): void => {
+    if (!entityLoopClosedByStrayLx) return;
+    warnings.push(entitySegmentDiscardedAfterLx(position));
   };
 
   const flushOtherSubscriber = (): void => {
@@ -443,6 +481,7 @@ export function get837Claims(
           context = { kind: "header" };
         }
         activeEntity = undefined;
+        entityLoopClosedByStrayLx = false;
         break;
       }
       case "SBR": {
@@ -461,6 +500,13 @@ export function get837Claims(
             otherPayer: undefined,
           };
           activeEntity = { kind: "otherSubscriber" };
+          // Beside the assignment, per the invariant on the flag - but note
+          // this branch cannot run while the flag holds, because Loop 2320
+          // requires an open claim and the flag requires none. It has no red
+          // control for that reason, and it is here so the invariant survives
+          // a later change to either condition rather than because a document
+          // can reach it today.
+          entityLoopClosedByStrayLx = false;
         }
         break;
       }
@@ -478,6 +524,13 @@ export function get837Claims(
       case "NM1": {
         const qualifier = elementValue(seg, 1, delimiters);
         const entity = decodeNm1(seg, delimiters);
+        // Every route below assigns `activeEntity`, including the final
+        // `else`, so the stray-LX scope ends here whatever this NM1 resolves
+        // to. Clearing once at the top of the case is what keeps the flag
+        // scoped rather than latched: a party named after the stray LX is
+        // addressable again, and an NM1 this walker cannot route leaves the
+        // following segments as silent as they were before this code existed.
+        entityLoopClosedByStrayLx = false;
         // Route the NM1 by qualifier + context.
         if (qualifier === NM1_QUALIFIERS.SUBMITTER) {
           submitter = entity;
@@ -538,16 +591,19 @@ export function get837Claims(
       case "N3": {
         const lines = collectElementValues(seg, 1, 2, delimiters);
         attachAddressLines(lines, activeEntity, entityMutators);
+        reportDiscardedEntitySegment(position);
         break;
       }
       case "N4": {
         const partial = decodeN4(seg, delimiters);
         attachAddressFields(partial, activeEntity, entityMutators);
+        reportDiscardedEntitySegment(position);
         break;
       }
       case "PER": {
         const contact = decodePer(seg, delimiters);
         attachContact(contact, activeEntity, entityMutators);
+        reportDiscardedEntitySegment(position);
         break;
       }
       case "REF": {
@@ -558,7 +614,12 @@ export function get837Claims(
         } else if (currentClaim !== undefined) {
           currentClaim.references.push(ref);
         } else {
+          // The one REF route that can reach no party. The other two land on
+          // a line or a claim, and neither is reachable while the flag holds
+          // (the stray-LX route requires no CLM open, and a CLM clears it),
+          // so the report belongs here rather than at the top of the case.
           attachReference(ref, activeEntity, entityMutators);
+          reportDiscardedEntitySegment(position);
         }
         break;
       }
@@ -602,6 +663,7 @@ export function get837Claims(
           sink,
         );
         activeEntity = undefined;
+        entityLoopClosedByStrayLx = false;
         context = { kind: "loop2300" };
         break;
       }
@@ -693,21 +755,44 @@ export function get837Claims(
           // address, secondary id and contact that base attributed correctly -
           // pinned as a residual test.
           //
-          // 🩺 AND THE DISCARD IS SILENT. NO WARNING IN THIS LIBRARY NAMES IT.
-          // `X12_837_SERVICE_LINE_DROPPED` is on the channel at this `LX`, but
-          // it reports the SERVICE LINE's loss and names no entity segment.
-          // Do NOT cite `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` as licensing
-          // this: that item warns AND retains on the model through
-          // `recordOrphan`, so the warning and the retained segment can never
-          // disagree, and it is the precedent for a WARNED omission - the
-          // opposite qualifier. A draft cited it here and was refuted. The
-          // honest statement is narrower: the direction is chosen because a
+          // 🩺 THE DISCARD IS NO LONGER SILENT, AND THAT IS A DIFFERENT CODE
+          // AT A DIFFERENT SEGMENT. `X12_837_SERVICE_LINE_DROPPED`, pushed
+          // just above, reports the SERVICE LINE's loss and names no entity
+          // segment; it is not and never was a report of this discard, and a
+          // draft that said the loss was "already reported at that LX" was
+          // measured false. What reports it is
+          // `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, raised at each
+          // discarded `N3` / `N4` / `PER` / `REF` itself, because the loss is
+          // per segment and the segment is what a consumer resolves back
+          // through `tx.segments`. The flag set below is what scopes it.
+          //
+          // Do NOT cite `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` here even
+          // now that both warn: that item warns and RETAINS on the model
+          // through `recordOrphan`, so its warning and its retained segment
+          // can never disagree, and nothing in this route puts the discarded
+          // segment on the typed model. A draft cited it as licensing the
+          // silence and was refuted; it is no better as a precedent for the
+          // warning. The direction is still chosen on this library's own
+          // invariant rather than on a precedent or a clause: a
           // mis-attribution puts a value on an object the sender never put it
           // on, indistinguishable from real data, whereas the bytes of a
-          // discarded segment are still on `tx.segments`; and NO precedent in
-          // this repo backs the SILENCE. Warning on it is a guard change and
-          // is owed its own item rather than this one.
+          // discarded segment are still on `tx.segments`.
 
+          // Only where an entity loop was actually open: with none open at
+          // ANY stray `LX` in this scope, the segments that follow reached no
+          // party in released `0.0.10` either, and that silence is not this
+          // code's to break.
+          //
+          // 🩺 `||=`, NEVER `=`. A SECOND stray `LX` finds `activeEntity`
+          // already `undefined` - the first one nulled it on the next line -
+          // so a plain assignment would CLEAR a scope that is still in force
+          // and re-silence the exact loss this code exists to name. Measured
+          // on `NM1*PR ~ LX ~ LX ~ N3 ~ REF ~ PER`: the payer keeps its
+          // address, `2U` id and contact in `0.0.10` and loses all three
+          // here, so the loss is real and a cleared flag would report none of
+          // it - while six surfaces say the scope ends only where a loop is
+          // opened, and a stray `LX` opens none. Its own red control.
+          entityLoopClosedByStrayLx ||= activeEntity !== undefined;
           activeEntity = undefined;
           break;
         }
@@ -717,6 +802,11 @@ export function get837Claims(
           droppedLineReported = true;
         }
         activeEntity = undefined;
+        // Same note as the SBR branch: this tail is past the `currentClaim`
+        // check above, so it cannot run while the flag holds, and it has no
+        // red control. Kept beside the assignment so the invariant does not
+        // depend on that coincidence holding forever.
+        entityLoopClosedByStrayLx = false;
         context = { kind: "loop2400" };
         break;
       }

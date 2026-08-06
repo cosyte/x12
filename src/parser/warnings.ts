@@ -85,6 +85,7 @@ export const WARNING_CODES = {
   X12_837_SERVICE_LINE_NOT_DECODED: "X12_837_SERVICE_LINE_NOT_DECODED",
   X12_837_SERVICE_LINE_DROPPED: "X12_837_SERVICE_LINE_DROPPED",
   X12_837_SERVICE_SEGMENT_WITHOUT_LX: "X12_837_SERVICE_SEGMENT_WITHOUT_LX",
+  X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX: "X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX",
 } as const;
 
 /**
@@ -331,6 +332,8 @@ const WARNING_MESSAGES = {
     "837 service line dropped from the typed model: the LX at `position.segmentIndex` opened no Loop 2400, so no line appears on any claim's `serviceLines` for it and the SV1 / SV2 / SV3 that followed - its charge, units, procedure code and modifiers - was read into nothing. Compare `X12_837_SERVICE_LINE_NOT_DECODED`, where the line IS on the model and only its service segment went unread. Two causes: no Loop 2300 (CLM) is open at this LX, so there is no claim to attach a line to; or the submission's variant is not one of P / I / D, so no variant-specific line shape could be built. Read `submission.variant` and `submission.claims` to tell them apart; do NOT expect `X12_837_UNKNOWN_VARIANT` alongside this code, because a caller-supplied `type` outside P / I / D reaches the second cause without it. Nothing is fabricated to stand in for the missing line and no claim is synthesized. What becomes of a DTP / AMT / NTE / REF that follows the dropped LX depends on the route and this message does not say; see KNOWN-LIMITATIONS.md. The verbatim segments are preserved on the transaction set; read them there before concluding the claim had no service lines.",
   X12_837_SERVICE_SEGMENT_WITHOUT_LX:
     "837 service segment with no Loop 2400 to read it into: no service line was open at the SV1 / SV2 / SV3 at `position.segmentIndex`, so NOTHING it carries - its charge, units, procedure code, modifiers, unit of measure and place of service - was read. Read that literally: an LX may well appear earlier in the transaction, and what this reports is that none of them had opened a Loop 2400 still current at this segment. No line appears on any claim's `serviceLines` for it and nothing is fabricated to stand in. Compare the two codes anchored at an LX: `X12_837_SERVICE_LINE_DROPPED`, where an LX IS present and opened no line, and `X12_837_SERVICE_LINE_NOT_DECODED`, where the line is on the model and only its service segment went unread. Neither of those can report the SAME service segment as this code, because both are raised at an LX and this one only where no Loop 2400 is open; a document with several claims can still carry all three. This says NOTHING about how the submission's variant resolved: absent a caller-supplied `type` option, and where ST-03 names no known implementation convention, the reader falls back to the first SV1 / SV2 / SV3 in the transaction, and a segment reported here is eligible for that fallback like any other, so a stray one can decide the variant every line is read against. Read `submission.variant`. The verbatim segments are preserved on the transaction set; read them there before concluding the claim had no service lines.",
+  X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX:
+    "837 entity segment read into nothing after a dropped LX: the N3 / N4 / PER / REF at `position.segmentIndex` arrived while no entity loop was open, because an earlier LX in this transaction opened no Loop 2400 (no CLM was open at it) and closed the entity loop that was current there. NOTHING this segment carries reached the model: no party's `address`, `contacts` or `references` was written from it, and no party, claim or line was synthesized to hold it. This is the code that names THAT loss; `X12_837_SERVICE_LINE_DROPPED` is raised at the LX itself and names the SERVICE LINE's loss, never an entity segment, so the two report different things about the same stretch of the document. Read the bound literally, because this code does NOT report every unattached entity segment: it reports one discarded after such an LX and only while nothing since has opened a new loop, so an N3 / N4 / PER / REF that reaches no party by any other route is still silent, and one arriving after a later NM1 is outside this code's scope, whether or not this reader surfaces that segment kind on that party. It reports that the segment reached NO party; it does not claim it would have reached one had the LX been absent, because this reader does not surface every one of these segment kinds on every party (a PER on a patient or a pay-to address, for one). Which party a segment following a stray LX belongs to is not derivable from the TR3s in either direction, so it is discarded rather than attributed: see KNOWN-LIMITATIONS.md. The verbatim segments are preserved on the transaction set; read them there before concluding a party had no address, no secondary identifier or no contact.",
 } as const;
 
 /**
@@ -943,6 +946,42 @@ export function serviceSegmentWithoutLx(position: X12Position): X12ParseWarning 
   return {
     code: WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
     message: WARNING_MESSAGES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX` warning. Emitted by
+ * the 837 helper for an `N3` / `N4` / `PER` / `REF` that reached no party
+ * because an earlier `LX` with no `CLM` open closed the entity loop that was
+ * current at it. `position` names the discarded segment itself, not the `LX`:
+ * the loss is per segment (two `N3`s are two losses), and the segment is the
+ * one thing a consumer needs to resolve back through `tx.segments`.
+ *
+ * It is the narrow companion to {@link serviceLineDropped}, which is raised at
+ * that same `LX` and reports the SERVICE LINE. Neither reports what the other
+ * does, and both can be on one transaction's channel.
+ *
+ * **Read its bound literally: this is not a general "unattached entity
+ * segment" code.** It fires only after such an `LX` and only while nothing has
+ * opened a new loop since, so an `N3` / `N4` / `PER` / `REF` that reaches no
+ * party by any other route stays silent, exactly as it did before this code
+ * existed. Widening it is a guard change and would be its own decision.
+ *
+ * It reports that the segment reached no party, NOT that it would have reached
+ * one: this reader surfaces neither a `PER` on a patient nor one on a pay-to
+ * address, on any release.
+ *
+ * @example
+ * ```ts
+ * import { entitySegmentDiscardedAfterLx } from "@cosyte/x12";
+ * const w = entitySegmentDiscardedAfterLx({ segmentIndex: 8, transactionIndex: 0 });
+ * ```
+ */
+export function entitySegmentDiscardedAfterLx(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX,
+    message: WARNING_MESSAGES.X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX,
     position,
   };
 }

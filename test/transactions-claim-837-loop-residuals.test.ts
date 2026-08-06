@@ -55,15 +55,20 @@
  * it on, indistinguishable from real data, while a discard leaves the bytes
  * verbatim on `tx.segments`.
  *
- * **What is deliberately NOT here.** No warning code is added, and no
- * existing one is widened. `X12_837_SERVICE_LINE_DROPPED` is on the channel at
- * that `LX`, but read its scope honestly: **it reports the SERVICE LINE's loss
- * and names no entity segment, so it does not report the discard above.**
- * Minting a code is a guard change, and this item's standing direction is to
- * cut a claim back rather than grow a guard. And no `elementIndex`
- * is added to the variant warning: one of that code's two routes is an ST-03
- * that is absent entirely, where the `ST` has no element 3 to name. That is
- * measured below, not assumed.
+ * **What this suite does NOT own, and what changed under it.** `#72` added no
+ * warning code, and the discard above shipped SILENT. That silence was the
+ * `X12-DISCARD-AFTER-STRAY-LX` residual and it is now CLOSED: each discarded
+ * `N3` / `N4` / `PER` / `REF` raises
+ * `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, anchored at the discarded
+ * segment. The channel assertions below carry it because they are whole-array
+ * assertions, which is exactly what they are for. **The code and its bound are
+ * owned by `transactions-claim-837-discard-after-stray-lx.test.ts`, not here**;
+ * what this suite still owns is the ATTRIBUTION, and that is unchanged.
+ * `X12_837_SERVICE_LINE_DROPPED` still reports the SERVICE LINE's loss and
+ * names no entity segment, so it never reported the discard and does not now.
+ * And no `elementIndex` is added to the variant warning: one of that code's two
+ * routes is an ST-03 that is absent entirely, where the `ST` has no element 3
+ * to name. That is measured below, not assumed.
  *
  * 🩺 **Still open and NOT touched here:** an absent `SV1-02` on a line that
  * DID open still reads a confident `0`, which closes only with the deferred
@@ -167,23 +172,35 @@ describe("X12-837-LOOP-RESIDUALS: a dropped LX no longer leaves the last NM1 add
     // At `93b2428` this was [{ qualifier: "6R", value: "LINE-CTRL-1" }] - a
     // line-item control number filed as a property of the payer.
     expect(sub.claims[0]?.payer?.references).toEqual([]);
-    // The whole channel, and it is IDENTICAL to base. The `LX` still reports
-    // the dropped line and nothing new was added for the trailing segment.
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
+    // The whole channel. The `LX` still reports the dropped line, and the
+    // discarded `REF` is now reported at itself as well - the residual
+    // `X12-DISCARD-AFTER-STRAY-LX` closed after `#72` shipped this fix.
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
+      WARNING_CODES.X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX,
+    ]);
   });
 
   it("🩺 a trailing N3 / N4 no longer gives a later claim's payer an address", () => {
     const sub = parse837(misfiled([TRAILING_N3, TRAILING_N4]));
     // At `93b2428`: { lines: ["1 ORPHAN WAY"], city: "SPRINGFIELD", ... }.
     expect(sub.claims[0]?.payer?.address).toBeUndefined();
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
+    // One warning per discarded segment: the `N3` and the `N4` are two losses.
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
+      WARNING_CODES.X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX,
+      WARNING_CODES.X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX,
+    ]);
   });
 
   it("🩺 a trailing PER no longer gives a later claim's payer a contact", () => {
     const sub = parse837(misfiled([TRAILING_PER]));
     // At `93b2428`: [{ contactFunctionCode: "IC", name: "ORPHAN CONTACT", … }].
     expect(sub.claims[0]?.payer?.contacts).toEqual([]);
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
+      WARNING_CODES.X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX,
+    ]);
   });
 
   it("🩺 all four together leave the payer byte-identical to one that never saw them", () => {
@@ -193,8 +210,14 @@ describe("X12-837-LOOP-RESIDUALS: a dropped LX no longer leaves the last NM1 add
     const withTrailing = parse837(misfiled([TRAILING_REF, TRAILING_N3, TRAILING_N4, TRAILING_PER]));
     const without = parse837(misfiled([]));
     expect(withTrailing.claims[0]?.payer).toEqual(without.claims[0]?.payer);
-    expect(channel(withTrailing)).toEqual(channel(without));
-    expect(channel(withTrailing)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
+    // The MODEL is indistinguishable; the CHANNEL is not, and must not be -
+    // four discarded segments are four reports, and the document without them
+    // has nothing to report. That difference is the whole point of the code.
+    expect(channel(without)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
+    expect(channel(withTrailing)).toEqual([
+      WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
+      ...Array<string>(4).fill(WARNING_CODES.X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX),
+    ]);
   });
 
   it("🩺 the trailing segments are DISCARDED, not re-filed onto the following claim", () => {
@@ -260,11 +283,16 @@ describe("X12-837-LOOP-RESIDUALS: the cost of the reset, pinned as a residual", 
     expect(sub.claims[0]?.payer?.address).toBeUndefined();
     expect(sub.claims[0]?.payer?.references).toEqual([]);
     expect(sub.claims[0]?.payer?.contacts).toEqual([]);
-    // 🩺 And the channel does NOT name this loss. `X12_837_SERVICE_LINE_DROPPED`
-    // reports the service line, not the payer's address - so a consumer cannot
-    // learn from the warnings that these three slots were dropped. Pinned so
-    // the disclosure in `KNOWN-LIMITATIONS.md` cannot quietly go stale.
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
+    // 🩺 And the channel DOES name this loss now, once per discarded segment.
+    // `X12_837_SERVICE_LINE_DROPPED` still reports only the service line;
+    // what tells a consumer these four segments reached no party is
+    // `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX` at each of them. Pinned here
+    // as well as in its own suite so the disclosure in `KNOWN-LIMITATIONS.md`
+    // cannot quietly go stale in either direction.
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
+      ...Array<string>(4).fill(WARNING_CODES.X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX),
+    ]);
   });
 
   it("the discarded entity segments are still verbatim on tx.segments", () => {
@@ -366,7 +394,13 @@ describe("X12-837-LOOP-RESIDUALS: the controls the reset must NOT change", () =>
     expect(payer?.address?.lines).toEqual(["9 PAYER PLAZA"]);
     expect(payer?.references).toEqual([{ qualifier: "2U", value: "PAYER-ID-2" }]);
     expect(sub.claims[0]?.serviceLines).toHaveLength(1);
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
+    // The discarded `REF*6R` before the new `NM1` is reported; nothing after
+    // it is, because that `NM1` ended the scope. The reset is not a latch and
+    // neither is the warning.
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
+      WARNING_CODES.X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX,
+    ]);
   });
 });
 

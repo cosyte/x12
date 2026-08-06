@@ -34,6 +34,7 @@ export {
   WARNING_CODES,
   controlNumberMismatch,
   danglingReleaseChar,
+  entitySegmentDiscardedAfterLx,
   groupCountMismatch,
   hlParentLevelInvalid,
   hlParentMismatch,

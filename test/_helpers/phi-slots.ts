@@ -741,6 +741,16 @@ export const PHI_SLOTS: readonly DiagnosticSlot<string>[] = [
     expectCode: WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
   },
   {
+    name: "N3-01 street address on an entity segment discarded after a stray LX",
+    // own: X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX is raised on exactly this
+    // N3. An LX inserted into the payer's own loop, before any CLM, drops its
+    // line and closes that loop, so this address reaches no party at all -
+    // which is what makes quoting it back tempting ("discarded: <bytes>"). On
+    // a real 837 an unplaced N3 is still somebody's street address.
+    plant: (m) => swap(G_837P, "~N3*789 PAYER BLVD~", `~LX*9~N3*${m}~`),
+    expectCode: WARNING_CODES.X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX,
+  },
+  {
     name: "HL-01 hierarchical id number",
     // own: X12_HL_PARENT_MISMATCH is raised because HL-02 on the next level
     // no longer resolves to this HL-01.

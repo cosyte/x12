@@ -575,9 +575,16 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: the bounds of X12_837_SERVICE_LINE_DROPP
       ]),
       "CLM*PT-ACCT-901*8500***11:B:1*Y*A*Y*Y~",
     ]).sub;
-    // The whole channel, and it is what it was at base: correcting an
-    // attribution added no code and lost none.
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
+    // The whole channel. Correcting the attribution added no code and lost
+    // none, but the follow-up residual `X12-DISCARD-AFTER-STRAY-LX` since
+    // added one for the discarded ENTITY segments: the trailing `REF` here is
+    // reported at itself by `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`. The
+    // `DTP` / `AMT` / `NTE` are not, and that is the code's stated bound
+    // rather than an omission - they never attach to a party on any route.
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
+      WARNING_CODES.X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX,
+    ]);
     expect(sub.claims[0]?.dates).toEqual([]);
     expect(sub.claims[0]?.amounts).toEqual([]);
     expect(sub.claims[0]?.notes).toEqual([]);

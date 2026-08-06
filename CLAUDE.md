@@ -37,9 +37,9 @@ Pre-alpha `0.0.x`, **published** to npm from a public repo. **Never quote a vers
   v1 read or emit scope as "270/271" or "276/277" complete** - that claim was on the README and the
   docs site until `ASSETS-P8` corrected it.
   Why: `documentation/agent-notes.md#published-scope-the-270-and-276-gap`
-- **Warning registry: 25 codes + 4 Tier-3 fatals.** Additions-only. **Derive the count rather than
-  trusting this line** - the codes are exported as `ALL_WARNING_MESSAGES`, and the four fatals are
-  enumerated under Engineering Guardrails below.
+- **Warning registry: additions-only, and NEVER quote its size here** - the count on this line was
+  stale twice. Derive it: the codes are exported as `ALL_WARNING_MESSAGES`, and the four Tier-3
+  fatals are enumerated under Engineering Guardrails below.
 - **Profile system** (`defineProfile()`, `profiles` namespace) shipped Phase 9. **PHI commit-gate**
   armed (`pnpm phi-scan`).
 - **Shipped-phase histories (Phases 1 through 9) are in `documentation/agent-notes.md`.** Read the
@@ -110,8 +110,8 @@ sources and its refutation history. Do not act on a line here without reading th
 
 - **🩺 THREE CODES, ONE FAMILY; THE ANCHOR SEPARATES THEM.** `NOT_DECODED` = line IS on the model,
   seeded zeros; `DROPPED` = an `LX` put it on NO claim; **`SERVICE_SEGMENT_WITHOUT_LX` = an
-  `SVx` with NO LINE OPEN**, through `0.0.10` on NO channel. The first two anchor at the `LX`; the
-  third **cannot**, so it takes the segment. **Never one twice - one document CAN carry all three.**
+  `SVx` with NO LINE OPEN**. The first two anchor at the `LX`; the third **cannot**, so it takes
+  the segment. **Never one twice - one document CAN carry all three.**
   **Its condition is "no line open", NEVER "the file has no `LX`"** - an earlier claim's `LX` is one.
 - **🩺 NEVER DECODE THE ORPHAN `SVx`** (reading one into a line never opened mis-READS money).
   **But NEVER write it does not name the VARIANT - measured false:** the fallback scans the whole
@@ -120,9 +120,10 @@ sources and its refutation history. Do not act on a line here without reading th
   `flushServiceLine`. **A latching one silences every later orphan.** Red control on both.
 - **🩺 ANCHOR `X12_837_UNKNOWN_VARIANT` AT THE `ST` (`tx.segments[0]`), NEVER THE `BHT`; NO
   `elementIndex` (an absent ST-03 has no element 3). ROUTE 1's DISCARD IS A TRADE: a stray `LX` in
-  an ENTITY loop now LOSES its `N3`/`N4`/`REF`/`PER`, SILENTLY. NEVER write "nothing after an `LX`
-  addresses the last party", and NEVER cite `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` - it WARNS
-  and retains.**
+  an ENTITY loop LOSES its `N3`/`N4`/`REF`/`PER`, each WARNED AT ITSELF
+  (`X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`); NEVER WIDEN IT, other unattached routes stay
+  SILENT. NEVER write "nothing after an `LX` addresses the last party", and NEVER cite
+  `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` - it WARNS and retains.**
 
 ### 🩺 `X12-277-SVC07-NOT-DECODED` (2026-08-05) · `documentation/agent-notes.md#x12-277-svc07-not-decoded-2026-08-05`
 
@@ -163,8 +164,8 @@ sources and its refutation history. Do not act on a line here without reading th
   (trap below). **State no count of how it differs from a base - two drafts did, both wrong.**
 - **🩺 EVERY WARNING-CHANNEL ASSERTION IS `toEqual` ON THE WHOLE ARRAY** - `#67`'s residual pinned a
   value plus the absence of a DIFFERENT code and stayed green. Pair every lying document with an
-  honest control. **State the property, never an absolute about a matcher NAME:** "`toContain`
-  appears nowhere" was published twice, false both times, the second inside the fix for the first.
+  honest control. **State the property, never an absolute about a matcher
+  NAME** - published twice, false both times, the second inside the fix for the first.
 - **Every guard has its own red negative control. Re-derive a red/green census by RUNNING head's
   suite against a base checkout, never by arithmetic** - a partitioned form was wrong four ways, and
   a suite total quoted here goes stale the next slice - as the `phi-slots` count that stood here did,
@@ -304,12 +305,12 @@ sources and its refutation history. Do not act on a line here without reading th
 ### `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX` (2026-08-03) · `documentation/agent-notes.md#parser-testtimeout-asserts-an-idle-box-2026-08-03`
 
 - **No timeout value changed, and that is the finding, not an omission.**
-- **Count BOTH trees, and never reuse one census for the other.** A first draft ported the head
-  census onto the base state in five places - the "a remedy's prose does not port with its code"
-  trap, committed while quoting the rule.
+- **Count BOTH trees, and never reuse one census for the other** - a draft ported the head census
+  onto the base state, the "a remedy's prose does not port with its code" trap, committed while
+  quoting the rule.
 - **Re-derive this box's capacity; never inherit a figure.** The item's numbers are stale.
-- **Interleave BASE/HEAD runs, two rounds each.** A first attempt compared runs an hour apart and
-  showed a 2.4x win that was mostly the box getting quieter.
+- **Interleave BASE/HEAD runs, two rounds each** - the agent-notes section measures what runs an
+  hour apart showed instead.
 - **The `tsx` -> `node` substitution is pinned as an EQUIVALENCE, not assumed** (same violator, same
   clean file, same exit code / stdout / stderr). Nothing else enforces erasable-only syntax and the
   Node 22.18 floor is unenforced. **Scope it:** the case drives `paths` mode only.
