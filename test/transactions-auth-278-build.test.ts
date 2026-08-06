@@ -34,6 +34,8 @@ import {
   build278Response,
   get278Request,
   get278Response,
+  parseX12,
+  serializeX12,
   ServicesReview278BuildError,
   type Build278Spec,
   type X12Interchange,
@@ -367,6 +369,144 @@ describe("build278 - nested service review", () => {
     expect(eventHl?.hasChild).toBe("1");
     expect(serviceHl?.parentHlId).toBe(eventHl?.hlId);
     expect(review.reviews.map((r) => r.requestCategoryCode)).toEqual(["AR", "HS"]);
+  });
+});
+
+describe("build278 - the review HL-03 level code (REFUSAL-MESSAGE-PHI-ECHO)", () => {
+  // `levelCode` is the ONE caller-supplied HL-03 in the library; every other
+  // level on every builder's spine is a module constant selected by tree
+  // position. It is typed `"EV" | "SS"`, and `esc` type-checks and escapes it
+  // but never constrained the VALUE, so a JS / JSON caller reached the wire
+  // with anything.
+
+  const withLevel = (level: unknown): Build278Spec =>
+    ({
+      ...CANONICAL_SPEC,
+      subscriber: {
+        member: { entityIdentifierCode: "IL", entityTypeQualifier: "1", lastName: "DOE" },
+        reviews: [
+          {
+            levelCode: level,
+            requestCategoryCode: "HS",
+            certificationTypeCode: "I",
+            decision: { actionCode: "A1", reviewIdentificationNumber: "AUTH123456" },
+          },
+        ],
+      },
+    }) as unknown as Build278Spec;
+
+  it("MEASURES the harm on bytes, because only bytes can make it", () => {
+    // The honest document and the lying one differ by one element. Built with
+    // the builder, then edited, because the builder now refuses to make the
+    // second - which is the whole point of the slice.
+    const honest = serializeX12(build278Response(withLevel("EV")));
+    const lying = honest.replace("*EV*", "*ZZ*");
+    expect(lying).not.toBe(honest);
+
+    const readBack = (bytes: string): X12ServicesReview => {
+      const tx = parseX12(bytes).groups[0]?.transactions[0];
+      if (tx === undefined) throw new Error("no transaction");
+      const model = get278Response(parseX12(bytes).delimiters, tx);
+      if (model === undefined) throw new Error("get278Response did not recognize it");
+      return model;
+    };
+
+    const good = readBack(honest);
+    expect(good.reviews).toHaveLength(1);
+    expect(good.reviews[0]?.decision?.actionCode).toBe("A1");
+    expect(good.warnings).toEqual([]);
+
+    // FAILS TO DECODE, and that is the precise claim. The review loop never
+    // opens, so the review and its HCR-01 certification decision are absent
+    // from the model. Nothing is mis-READ: no decision comes back as a
+    // DIFFERENT decision, and the bytes are still on the model.
+    const bad = readBack(lying);
+    expect(bad.reviews).toEqual([]);
+    expect(bad.reviews.map((r) => r.decision)).toEqual([]);
+    expect(bad.warnings).toEqual([]);
+    const badTx = parseX12(lying).groups[0]?.transactions[0];
+    expect(badTx?.segments.some((seg) => seg.id === "HCR")).toBe(true);
+    // And the level itself is still visible on the HL spine, which is why this
+    // is a decode gap and not a data loss.
+    expect(bad.hierarchies.map((h) => h.levelCode)).toContain("ZZ");
+  });
+
+  it("refuses the out-of-enum level rather than emitting it, on BOTH directions", () => {
+    // Assert the MESSAGE, not the class: `toThrow(ServicesReview278BuildError)`
+    // passes just as happily on an unrelated refusal, which is how four of six
+    // cases went vacuous in `X12-DECIMAL-BYPASSES-THE-GUARD`.
+    for (const build of [build278Request, build278Response]) {
+      const spec = withLevel("ZZ");
+      // `build278Request` refuses an HCR decision first, so drive it without one.
+      const forDirection =
+        build === build278Request
+          ? ({
+              ...spec,
+              subscriber: {
+                ...spec.subscriber,
+                reviews: [{ levelCode: "ZZ", requestCategoryCode: "HS" }],
+              },
+            } as unknown as Build278Spec)
+          : spec;
+      try {
+        build(forDirection);
+        throw new Error("expected build278 to refuse an out-of-enum HL-03");
+      } catch (err) {
+        expect(err).toBeInstanceOf(ServicesReview278BuildError);
+        const { message } = err as ServicesReview278BuildError;
+        expect((err as ServicesReview278BuildError).code).toBe(
+          AUTH_278_BUILD_ERROR_CODES.X12_278_BUILD_INVALID_SPEC,
+        );
+        expect(message).toContain('has HL-03 level code "ZZ"');
+        expect(message).toContain('must be "EV" (patient event) or "SS" (service)');
+      }
+    }
+  });
+
+  it("reaches a NESTED service review and a DEPENDENT review, not only the first", () => {
+    // `enforceReview` recurses, and a guard that only saw the top review would
+    // leave the same document reachable one level down.
+    const nested = {
+      ...CANONICAL_SPEC,
+      subscriber: {
+        member: { entityIdentifierCode: "IL", entityTypeQualifier: "1", lastName: "DOE" },
+        reviews: [
+          {
+            levelCode: "EV",
+            requestCategoryCode: "AR",
+            reviews: [{ levelCode: "XX", requestCategoryCode: "HS" }],
+          },
+        ],
+      },
+    } as unknown as Build278Spec;
+    expect(() => build278Request(nested)).toThrow(/HL-03 level code "XX"/u);
+
+    const dependent = {
+      ...CANONICAL_SPEC,
+      subscriber: {
+        member: { entityIdentifierCode: "IL", entityTypeQualifier: "1", lastName: "DOE" },
+        reviews: [{ levelCode: "EV", requestCategoryCode: "AR" }],
+        dependent: {
+          member: { entityIdentifierCode: "QC", entityTypeQualifier: "1", lastName: "JUNIOR" },
+          reviews: [{ levelCode: "99", requestCategoryCode: "HS" }],
+        },
+      },
+    } as unknown as Build278Spec;
+    expect(() => build278Request(dependent)).toThrow(/HL-03 level code "99"/u);
+  });
+
+  it("leaves EV, SS and an ABSENT level exactly as they were, which is the regression half", () => {
+    // The refusal is the narrowest thing that closes the gap: an absent
+    // `levelCode` still defaults to `EV`, and both real codes still build.
+    expect(() => build278Response(withLevel("EV"))).not.toThrow();
+    expect(() => build278Response(withLevel("SS"))).not.toThrow();
+    expect(() => build278Response(withLevel(undefined))).not.toThrow();
+    const defaulted = responseOf(build278Response(withLevel(undefined)));
+    expect(defaulted.hierarchies.map((h) => h.levelCode)).toEqual(["20", "21", "22", "EV"]);
+    expect(defaulted.reviews[0]?.decision?.actionCode).toBe("A1");
+    // A `null` level from a JSON caller is absent, not forged - `?? "EV"`
+    // treats it the way every other optional in this builder does.
+    expect(() => build278Response(withLevel(null))).not.toThrow();
   });
 });
 

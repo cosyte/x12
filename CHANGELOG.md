@@ -254,6 +254,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **🩺 A builder refusal no longer echoes the value it refused, so a `claimId` or a member id from a
+  JSON-driven caller cannot reach `Error.message`** (`REFUSAL-MESSAGE-PHI-ECHO`). Every domain builder
+  documents, on its own error codes, that its refusal message carries structural locators, counts and
+  X12 control codes only and **never a `claimId` (patient-account number), member id, member name,
+  trace or diagnosis code**. That held for the refusal TEMPLATES and did not hold underneath them. A
+  guarantee that is true on one path and false on another is not a guarantee, so it was made true
+  rather than reworded.
+
+  **Measured in the source, not inferred from the prose.** The four shared caller guards
+  (`caller-string.ts`, `caller-segment.ts`, `caller-decimal.ts`, `caller-array.ts`) described a
+  wrong-typed value by rendering it through `renderCallerValue` - bounded to 90 characters, and **not
+  redacted**. On `4a5a943`, with the kind of spec `@cosyte/cli` builds from `JSON.parse`:
+
+  ```text
+  build835({ claims: [{ patientControlNumber: 900412345678, ... }] })
+    -> build835: every element value must be a string, but received a number ("900412345678"). ...
+  build834({ members: [{ member: { idCode: 700998877, ... } }] })
+    -> build834: every element value must be a string, but received a number ("700998877"). ...
+  ```
+
+  **The shipped disclosure named the wrong guard.** It said `requireCallerSegment` echoes the
+  primitive and quoted `build835: CLP-01 must be a string, but received a number (...)`. CLP-01 routes
+  through `esc`, so `requireCallerString` refuses first and its message names only the builder. The
+  echo was on both, and on the two other guards as well.
+
+  **The remedy is a property, not a list: no caller guard echoes what a caller put in a document
+  ELEMENT.** The string, segment and decimal guards report the offending TYPE, and so does the array
+  guard's primitive arm; the segment guard keeps its spec-shaped slot locator beside it
+  (`build999: "AK9"-01 must be a string, but received a number.`). A guard standing on every element
+  of every builder cannot know whether the primitive in front of it is a control number or a patient
+  identifier, which is exactly why it may not echo one. The decimal guard went with them because an
+  `X12Decimal` slot IS an element slot, and because its message's own fixed text already names
+  `0.30000000000000004` / `1e+21` / `NaN` as what a raw number does, so no diagnosis was lost.
+  "An `X12Decimal` slot holds no identifier today" would have been the wrong kind of argument: a fact
+  about today's slots rather than a property of the guard.
+
+  **Two things that property does NOT say, and both were drafted as absolutes first.** The array
+  guard still renders a forged array-like's `length` and its class tag through `renderCallerValue`,
+  bounded: those describe the SHAPE a caller forged rather than an element's contents, and they are
+  the whole diagnostic for `{ length: "9".repeat(120000) }`. And **only the segment-join guard names
+  the SLOT** - `esc` and `escDec` name the BUILDER, a limit `caller-string.ts` already recorded, so on
+  those two the echoed value used to stand in for a locator and now nothing does. That is a real
+  diagnostic cost and it is disclosed rather than argued away.
+
+  **The segment guard's slot locator is now bounded by GRAMMAR rather than by length.** `parts[0]` is
+  caller-supplied in `buildInterchange`, which takes `[segmentId, ...elements]` wholesale, so it is
+  admitted only when it matches the X12 segment-id grammar (two or three uppercase alphanumerics
+  opening with a letter) and otherwise degrades to `element N`. A length bound redacts nothing when
+  the thing being bounded has a grammar.
+
+  **What did NOT change, stated because deleting a claim leaves a new one in its place.** The caller
+  values a builder's own template names by field are still rendered, still bounded, still not escaped,
+  and still not redacted: control numbers, the 834's INS-03 / HD-01 maintenance type, the 837's
+  service-line variant, the TA1-05 note code, the 999's AK9 counts and acknowledged ST-02. That has
+  always been documented as robustness and log hygiene rather than redaction, and it remains so.
+  `renderCallerValue`, `BUILD_REFUSAL_VALUE_MAX_LENGTH` and `BUILD_REFUSAL_VALUE_MAX_RENDERED` are
+  unchanged and still exported. `X12ParseError.snippet` on the four Tier-3 fatals is unchanged and
+  still the one deliberate place a document's bytes are copied.
+
+  **Behaviour change for callers who read a value back out of one of those four messages.** Nothing in
+  the library did; the values are gone from the message and unchanged on the spec the caller still
+  holds.
+
 - **The PHI scanner refuses an in-scope entry that is not a regular file, on both of its enumerating
   routes.** A symbolic link under a scan root pointing at a PHI-bearing file used to scan CLEAN on
   both, so the pre-commit gate and CI both reported "no hits" over a capture the scan never read.
@@ -320,6 +383,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   code changed and no published type changed.
 
 ### Fixed
+
+- **🩺 `build278Request` / `build278Response` refuse a review whose HL-03 level code is outside `EV`
+  and `SS`, instead of emitting a review its own reader cannot decode**
+  (`REFUSAL-MESSAGE-PHI-ECHO`). `Build278ReviewSpec.levelCode` is the **one** caller-supplied HL-03 in
+  the library: every other level on every builder's spine is a module constant selected by tree
+  position. It is typed `"EV" | "SS"`, but a JS or JSON caller reaches it with anything, and `esc`
+  type-checks and escapes without constraining the value.
+
+  **State the failure mode precisely rather than escalating it: it FAILS TO DECODE, it does not decode
+  WRONGLY.** The read side is deliberately tolerant at these two levels (they attach under a
+  subscriber or a dependent, so they are absent from the expected-parent map), so an out-of-enum HL-03
+  falls to the walker's `else` arm, the review loop never opens, and `get278Response` returns the
+  review **and its HCR-01 certification decision** as absent, with `warnings: []`. Nothing is
+  mis-read: no decision comes back as a different decision, and the bytes stay on `tx.segments`. That
+  is the better of the two failure modes. It is still not one to emit, because HCR-01 is a
+  safety-critical field this library places verbatim and never infers, so the builder refuses exactly
+  as `build834` refuses a maintenance type it cannot name. Reuses `X12_278_BUILD_INVALID_SPEC`; no
+  error code was added.
+
+  **The guard resolves the level through the same `?? "EV"` expression the emitter uses**, rather than
+  testing `!== undefined`, so a `null` from a `JSON.parse`d spec is absent rather than forged. Testing
+  `undefined` alone refused a spec the emitter would have defaulted and built, which is
+  `X12-CALLER-VALUE-RESIDUALS`' recorded regression running the other way; the slice's own test caught
+  it before it shipped. It reaches nested service reviews and dependent reviews, not only the first.
+
+  **No caller who was getting the review into the document is broken.** An out-of-enum level never
+  produced a decodable review, so there is no value that worked and stops working, and a TypeScript
+  caller could not reach the arm at all. `PRE-EXISTING` at `4a5a943` and disclosed there as filed not
+  fixed; this closes it.
 
 - **🩺 A `REF`, `N3`, `N4` or `PER` after a dropped 837 `LX` does not attach itself to the last
   named party** (`X12-837-LOOP-RESIDUALS`). Through `0.0.10`, the release published as this was

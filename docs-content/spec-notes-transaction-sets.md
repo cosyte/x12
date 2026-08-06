@@ -77,6 +77,17 @@ emitted something its own reader could not read back would be caught by the roun
 The builders are **pure functions**: they never auto-send, open a socket, or touch the filesystem, and
 they **refuse** a structurally impossible spec with a typed error rather than emitting corruption.
 
+**One place that symmetry is enforced by a value check rather than by construction: the 278's review
+level.** Every HL-03 in the library is a library constant chosen by tree position, with a single
+exception - `Build278ReviewSpec.levelCode`, which you supply and which the TR3s limit to `EV` (patient
+event) and `SS` (service). A level outside those two emits a perfectly well-formed document, but the
+review loop it opens is one no reader opens, so `get278Response` returns the review **and its `HCR-01`
+certification decision** as absent, with no warning. Nothing is mis-read - no decision comes back as a
+different decision, and the bytes stay on `tx.segments` - but the certification action is the field
+this library places verbatim and never infers, so `build278Request` / `build278Response` **refuse** an
+out-of-enum level (`X12_278_BUILD_INVALID_SPEC`) rather than emit a document that loses it. An omitted
+`levelCode` still defaults to `EV`.
+
 ## What is out of scope (v1)
 
 - **Non-healthcare sets**: 850 (purchase order), 856 (ASN), 810 (invoice), 204 (load tender), etc.

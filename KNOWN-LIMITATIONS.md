@@ -506,7 +506,7 @@ Code"`, `SVC05 / 380 / "Units of Service Paid Count"`, `SVC06 / C003`,
   reader for arbitrarily large files.
 
 - **A builder refusal message shows at most 63 characters of a value you passed in, and it is bounded
-  but not escaped.** Twenty-three sites across ten builder modules interpolate such a value into the
+  but not escaped.** Twenty-four sites across ten builder modules interpolate such a value into the
   thrown message. Every one routes through `renderCallerValue`, so the rendered **fragment** never exceeds
   `BUILD_REFUSAL_VALUE_MAX_RENDERED` (**90** characters: 63 of your value, two quotes, an ellipsis, and
   the ` (N characters)` suffix at its widest). Both constants and the function are exported, so you can
@@ -518,7 +518,7 @@ Code"`, `SVC05 / 380 / "Units of Service Paid Count"`, `SVC06 / C003`,
   `X12BuildError.message` from `buildInterchange` before this change and produces a **150-character**
   one now. Do not read 90 as a message length.
 
-  Over-long values are the point of nine of the twenty-three sites (the `control number "…" exceeds the
+  Over-long values are the point of nine of the twenty-four sites (the `control number "…" exceeds the
 N-char spec limit` refusal, one per emitting module, where the branch fires **because** the value is
   over-long). Seven more had no length gate at all: `build999`'s ST-02 trace twice, `buildInterchange`'s
   transaction-set id, `build837`'s service-line variant, `build834`'s INS-03 and HD-01 maintenance
@@ -535,6 +535,26 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   error envelopes. The surviving characters are **not escaped** either: they are whatever you supplied,
   including a newline or a segment terminator, so a refusal message is bounded but not guaranteed to be
   a single log line.
+
+  **The sites that applies to are the ones whose own template names the field:** a control number, an
+  X12 control code, a count. A refusal will not show you a `claimId`, a member id, a member name, a
+  trace or a diagnosis code. That was true of the templates and **not** of the shared type guards
+  underneath them until the release after `0.0.10`: those describe a wrong-typed element, they stand
+  on **every element of every builder**, and they used to render the offending primitive
+  (`a number ("900412345678")` for a `JSON.parse`d `patientControlNumber`) bounded to 90 characters
+  and not redacted. A guard that cannot tell which slot it is standing on cannot decide that echoing
+  is safe, so the string, segment and decimal guards report the TYPE and never the value, and so does
+  the array guard's primitive arm. If you were reading a value back out of one of those messages, that
+  is a behaviour change.
+
+  **Two things that sentence does NOT say, both deliberate.** The array guard still reports the
+  `length` and the class tag of a forged array-like, bounded through the same renderer: those describe
+  the SHAPE you forged rather than the contents of a document element, and they are the whole
+  diagnostic for `{ length: "9".repeat(120000) }`. And only the segment-join guard names the SLOT
+  alongside the type (`build999: "AK9"-01 must be a string, ...`), because it holds the whole segment;
+  the escape-helper and `X12Decimal` guards name the **builder**, so on those two the value used to
+  stand in for a locator and now nothing does. That is a real diagnostic cost, and it is written down
+  rather than hidden.
 
 - **`defineProfile()` refusals are bounded on the same terms, since `0.0.6`.** `X12ProfileError.message`
   used to interpolate your profile name, quirk id, effect, fixture path and expected-warning codes
@@ -603,6 +623,11 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   > joiner.** A number, `null`, `undefined`, a boolean or an object in an element slot draws that
   > builder's own typed, code-tagged refusal, naming the slot the way the spec does
   > (`build999: "AK9"-01 must be a string, …`).
+
+  The slot in that locator is itself admitted only when it matches the X12 segment-id grammar (two or
+  three uppercase alphanumerics opening with a letter), because `buildInterchange` takes
+  `[segmentId, ...elements]` from you wholesale. Free text in element 0 degrades to `element N` rather
+  than reaching the message.
 
   **Read the "through a builder's segment joiner" qualifier literally.** `buildTA1` does not use one,
   and is therefore **not covered**: it emits its five caller-supplied elements with a direct join, no

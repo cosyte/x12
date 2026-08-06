@@ -65,14 +65,24 @@ import { renderCallerValue } from "./caller-value.js";
 const NONE: readonly never[] = Object.freeze([]);
 
 /**
- * Describe a forged value without echoing it unbounded.
+ * Describe a forged value without echoing what the caller put in the slot.
  *
- * Everything that can reach the message goes through
- * {@link renderCallerValue}, including the class name, because
- * `Object.prototype.toString` reads `Symbol.toStringTag` and a caller can set
- * that to a 120,000-character string. Bounding the value and then splicing an
- * unbounded tag beside it would reintroduce the very hole the sibling module
- * closes. Reading `.length` is itself wrapped, because a getter can throw.
+ * Two different things reach this message and they are treated differently on
+ * purpose, which `REFUSAL-MESSAGE-PHI-ECHO` settled:
+ *
+ * - **The primitive arm is redacted to its type**, matching the three sibling
+ *   guards. A caller who puts a scalar where a list belongs has put *slot data*
+ *   there - `dates: "20260601"`, `members: 700998877` - and a slot-generic
+ *   guard cannot tell a date of service or a member id from anything else. The
+ *   type is the whole diagnosis: you passed a scalar, a list is required.
+ * - **The `length` and the class tag are NOT slot data and are kept**, bounded
+ *   through {@link renderCallerValue}. They describe the SHAPE the caller
+ *   forged rather than the content of a document element, and they are the only
+ *   reason this refusal is actionable at all
+ *   (`{ length: "9".repeat(120000) }` is the input that used to hang the
+ *   builder). The tag is bounded because `Object.prototype.toString` reads
+ *   `Symbol.toStringTag` and a caller can set that to a 120,000-character
+ *   string. Reading `.length` is itself wrapped, because a getter can throw.
  * @internal
  */
 function describeShape(value: unknown): string {
@@ -81,7 +91,7 @@ function describeShape(value: unknown): string {
   // be unreachable, and an unreachable arm in a guard is a small lie about
   // what the guard does.
   if (typeof value !== "object") {
-    return `a ${typeof value} (${renderCallerValue(value as string)})`;
+    return `a ${typeof value}`;
   }
   let length: unknown;
   try {

@@ -247,16 +247,19 @@ describe("requireCallerSegment", () => {
     ).toThrow("buildX: element 1 must be a string, but received a number");
   });
 
-  it("describes every wrong type a JSON or JS caller can produce", () => {
+  it("describes every wrong type a JSON or JS caller can produce, by TYPE alone", () => {
+    // The primitive arms read `a number ("1")`, `a boolean ("true")` and
+    // `a bigint ("10")` until `REFUSAL-MESSAGE-PHI-ECHO`. `object` and
+    // `function` were type-only from the start, and now everything is.
     const cases: readonly [unknown, string][] = [
-      [1, 'a number ("1")'],
+      [1, "a number"],
       [null, "null"],
       [undefined, "undefined"],
-      [true, 'a boolean ("true")'],
+      [true, "a boolean"],
       [[], "an array"],
       [{}, "an object"],
       [(): void => undefined, "a function"],
-      [10n, 'a bigint ("10")'],
+      [10n, "a bigint"],
     ];
     for (const [value, described] of cases) {
       expect(() =>
@@ -265,19 +268,79 @@ describe("requireCallerSegment", () => {
     }
   });
 
-  it("bounds what it says about the offending value AND the segment id", () => {
-    // Both go through `renderCallerValue`, so neither can blow up a log line.
+  it("redacts the offending value, and admits the segment id only by GRAMMAR", () => {
+    // Two different holes, closed two different ways.
+    //
+    // The VALUE is gone: this guard stands on every element of every segment, so
+    // the thing in front of it is as likely to be `NM1-09` (the member id) as a
+    // control number, and a bound is not a redaction.
+    const memberId = 700_998_877;
+    expect(() =>
+      requireCallerSegment(
+        [
+          "NM1",
+          "IL",
+          "1",
+          "DOE",
+          "JANE",
+          "",
+          "",
+          "",
+          "MI",
+          memberId,
+        ] as unknown as readonly string[],
+        "buildX",
+        refuse,
+      ),
+    ).toThrow('buildX: "NM1"-09 must be a string, but received a number.');
+    try {
+      requireCallerSegment(
+        [
+          "NM1",
+          "IL",
+          "1",
+          "DOE",
+          "JANE",
+          "",
+          "",
+          "",
+          "MI",
+          memberId,
+        ] as unknown as readonly string[],
+        "buildX",
+        refuse,
+      );
+      throw new Error("expected a refusal");
+    } catch (err) {
+      expect((err as Error).message).not.toContain(String(memberId));
+    }
+
+    // The segment ID is the one caller-supplied string that can still appear,
+    // because `buildInterchange` takes a `SegmentSpec` wholesale. It is admitted
+    // only when it matches the X12 segment-id grammar, which caps it at three
+    // `[A-Z0-9]` and cannot carry an identifier. A `renderCallerValue` bound
+    // was the draft and it redacted nothing: 90 characters of free text in
+    // element 0 is 90 characters of whatever the caller parked there.
     const huge = "Z".repeat(120_000);
     // A huge but well-typed value is not this guard's business and passes.
     expect(() => requireCallerSegment(["NM1", huge], "buildX", refuse)).not.toThrow();
-    try {
-      requireCallerSegment([huge, 1] as unknown as readonly string[], "buildX", refuse);
-      throw new Error("expected a refusal");
-    } catch (err) {
-      const { message } = err as Error;
-      expect(message).not.toContain(huge);
-      expect(message).toContain("(120000 characters)");
-      expect(message.length).toBeLessThan(BUILD_REFUSAL_VALUE_MAX_RENDERED + 500);
+    for (const id of [huge, "MBR0001-JANE-DOE", "nm1", "N", "NM12"]) {
+      try {
+        requireCallerSegment([id, 1] as unknown as readonly string[], "buildX", refuse);
+        throw new Error("expected a refusal");
+      } catch (err) {
+        const { message } = err as Error;
+        expect(message).toContain("buildX: element 1 must be a string, but received a number.");
+        expect(message).not.toContain(id);
+        expect(message.length).toBeLessThan(BUILD_REFUSAL_VALUE_MAX_RENDERED + 500);
+      }
+    }
+    // And a real segment id still names the slot the way the spec does, which
+    // is the diagnostic the grammar check exists to keep.
+    for (const id of ["GS", "HL", "AK9", "NM1", "SVC", "TA1"]) {
+      expect(() =>
+        requireCallerSegment([id, 1] as unknown as readonly string[], "buildX", refuse),
+      ).toThrow(`buildX: "${id}"-01 must be a string, but received a number.`);
     }
   });
 

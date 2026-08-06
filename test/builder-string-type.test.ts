@@ -412,11 +412,12 @@ describe("requireCallerString", () => {
   });
 
   it("bounds what it says about the offending value", () => {
-    // Naming the value is itself a caller-value interpolation, so it goes
-    // through the same renderer the two sibling gates use. A guard that fixed a
-    // dropped element by opening a 120,000-character message would have traded
-    // one defect for another. A `bigint` is the reachable way to make a
-    // non-string, non-object value this long.
+    // Naming the value was itself a caller-value interpolation, so it went
+    // through the same renderer the two sibling gates use, bounded to 90.
+    // `REFUSAL-MESSAGE-PHI-ECHO` went further and removed the value: a bound is
+    // not a redaction, and this guard stands on every string element of every
+    // builder, `CLP-01` and `NM1-09` included. A `bigint` is the reachable way
+    // to make a non-string, non-object value this long.
     const huge = BigInt("9".repeat(120_000));
     let message = "";
     try {
@@ -424,8 +425,11 @@ describe("requireCallerString", () => {
     } catch (err) {
       message = (err as Error).message;
     }
-    expect(message).toContain("(120000 characters)");
+    expect(message).toContain("but received a bigint.");
+    expect(message).not.toContain("(120000 characters)");
     expect(message).not.toContain("9".repeat(120_000));
+    // Nothing caller-derived is left, so the message is its fixed text and the
+    // ceiling no longer depends on the input at all.
     expect(message.length).toBeLessThan(BUILD_REFUSAL_VALUE_MAX_RENDERED + 300);
   });
 
@@ -998,7 +1002,13 @@ describe("every builder with an escaper refuses a number in an element", () => {
     // silently-dropped element gives them nothing to branch on at all.
     expect(typeof (thrown as { code?: unknown }).code).toBe("string");
     expect((thrown as Error).message).toContain("every element value must be a string");
-    expect((thrown as Error).message).toContain('a number ("1")');
+    // `REFUSAL-MESSAGE-PHI-ECHO`: the type, never the value. Two of the slots
+    // driven above are the exact ones the PHI claim named - `build837P`'s
+    // `claim.claimId` (CLM-01) and `build834`'s `member.member.idCode`
+    // (NM1-09) - which is why the redaction is asserted here and not only in
+    // the dedicated file.
+    expect((thrown as Error).message).toContain("but received a number.");
+    expect((thrown as Error).message).not.toContain('("1")');
     expect((thrown as Error).message.length).toBeLessThan(400);
   });
 });
@@ -1138,7 +1148,7 @@ describe("string-typed slots that never called esc: now routed, and refusing", (
       build999(
         asJsCaller({ envelope: ENVELOPE, functionalGroup: { ...ACK_GROUP, disposition: 12_345 } }),
       ),
-    ).toThrow(/build999: every element value must be a string, but received a number \("12345"\)/u);
+    ).toThrow(/build999: every element value must be a string, but received a number\./u);
   });
 
   it("escapes a delimiter in a control number, which the type guard could not", () => {
@@ -1262,7 +1272,7 @@ describe("esc slots that read .toString(): the class X12-DECIMAL-BYPASSES-THE-GU
     });
     expect(() => build837P(spec)).toThrow(Claim837BuildError);
     expect(() => build837P(spec)).toThrow(
-      /build837: every numeric element value must be an X12Decimal, but received a number \("0\.30000000000000004"\)/u,
+      /build837: every numeric element value must be an X12Decimal, but received a number\./u,
     );
   });
 

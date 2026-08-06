@@ -189,8 +189,10 @@
  *   comment-stripped on this tree, `ctx.esc(...)` included, and pinned by the
  *   gate so the figure cannot drift); threading a per-slot locator through every
  *   one of them would be 406 opportunities to mislabel a slot, which is a worse
- *   trade than a message that names the builder and echoes the offending value
- *   bounded. Stated as a limit rather than claimed away. **An earlier draft
+ *   trade than a message that names the builder and the offending TYPE. Stated
+ *   as a limit rather than claimed away, and `REFUSAL-MESSAGE-PHI-ECHO` made it
+ *   a sharper limit rather than a smaller one: the echoed value used to stand in
+ *   for the slot, and it no longer does. **An earlier draft
  *   published "378 call sites", which is the LINE count.**
  *   {@link "./caller-segment.js".requireCallerSegment} does **not** carry this
  *   limit - it holds the whole segment, so it derives `"HL-03"` from `parts[0]`
@@ -204,22 +206,41 @@
 import type { Delimiters } from "../parser/types.js";
 import { escapeRelease } from "../parser/release.js";
 
-import { renderCallerValue } from "./caller-value.js";
-
 /**
- * Describe a wrong-typed element value without echoing it unbounded.
+ * Describe a wrong-typed element value without echoing it at all.
  *
  * Deliberately a second describer rather than a reuse of
  * `caller-array.ts`'s `describeShape`: that one exists to explain why a value
  * is not a *list* ("an array-like object with length 3"), and its phrasings
- * would read as nonsense here. What is shared is the part that matters -
- * {@link renderCallerValue}, so the bound on what reaches an `Error.message` is
- * one number in one place.
+ * would read as nonsense here.
  *
- * An `object` or `function` is described by type ALONE and never echoed.
- * `Object.prototype.toString` reads `Symbol.toStringTag`, and a caller can set
- * that to a 120,000-character string; `String(value)` runs a caller-supplied
- * `toString`. Neither is worth running to name a type that is already wrong.
+ * **Every value is described by type ALONE and never echoed, and that is
+ * `REFUSAL-MESSAGE-PHI-ECHO`'s decision rather than a style choice.** An
+ * `object` or `function` was already type-only, because
+ * `Object.prototype.toString` reads `Symbol.toStringTag` and a caller can set
+ * that to a 120,000-character string, and `String(value)` runs a
+ * caller-supplied `toString`. A *primitive* used to render its value through
+ * {@link "./caller-value.js".renderCallerValue} - bounded to 90 characters, but
+ * **not redacted** -
+ * and this is the guard that stands on **every string element of every
+ * builder**, `CLP-01` and `NM1-09` included. Measured on this tree: a
+ * `JSON.parse`d 835 spec whose `patientControlNumber` arrived as the number
+ * `900412345678` refused with that patient-account number inside
+ * `Error.message`, and an 834 whose member `idCode` arrived as a number put the
+ * member id there. A slot-generic guard cannot know which slot it is standing
+ * on, so it cannot know whether the primitive it is about to echo is a control
+ * number or a patient identifier - which is exactly why it may not echo one.
+ *
+ * The type is what the caller has to act on in any case: the remedy for every
+ * arm here is the same, and it is named in the message.
+ *
+ * **What it costs, stated rather than argued away:** this refusal names the
+ * BUILDER and not the slot (see the limit recorded at the bottom of the module
+ * doc above), so with the value gone a caller holding a large spec has neither.
+ * {@link "./caller-segment.js".requireCallerSegment} names the slot and is the
+ * better diagnostic wherever it is the guard that fires; threading a locator
+ * through every unary `esc` invocation is the trade that module doc rejects,
+ * and this slice did not reopen it.
  * @internal
  */
 function describeCallerValue(value: unknown): string {
@@ -228,9 +249,7 @@ function describeCallerValue(value: unknown): string {
   const type = typeof value;
   if (type === "object") return Array.isArray(value) ? "an array" : "an object";
   if (type === "function") return "a function";
-  // `renderCallerValue` coerces in a try/catch and never throws, so a `symbol`
-  // (which a template literal would throw on) and a `bigint` are both safe.
-  return `a ${type} (${renderCallerValue(value as string)})`;
+  return `a ${type}`;
 }
 
 /**
