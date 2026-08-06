@@ -300,41 +300,54 @@ sources and its refutation history. Do not act on a line here without reading th
 - **`test/scripts/attw-gate.test.ts` is deliberately left alone** - pinning the REAL binary is the
   point of it.
 
-### 🩺 The `phi-scan` gate · `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (2026-08-03) + `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` (2026-08-06) · `documentation/agent-notes.md#phi-scan-symlink-blind-on-both-routes-2026-08-03`, `documentation/agent-notes.md#phi-scan-rename-blind-at-precommit-2026-08-06`
+### 🩺 The `phi-scan` gate · `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (2026-08-03), `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` + `PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL` (2026-08-06) · one `agent-notes.md` section per id + `#phi-commit-gate-armed-2026-06-28`
 
-- **🩺 Both enumerating routes REFUSE a symlink (exit 2), naming every offender.** `walk()` used
-  `Dirent.isFile()` (an **lstat** answer) so a link was neither file nor directory; `--staged` got the
-  link's **target string** from `git show` under mode `120000`. Both exited 0 over PHI.
-- **Neither route FOLLOWS an ENTRY it enumerated.** Say ENTRY, not "anything": **a walk ROOT that is
-  itself a link IS followed** (`existsSync`/`readdirSync` follow). A superset scan, not a blind one.
-- **🩺 A refusal NEVER reports the link target.** Working-tree text that can itself carry PHI: a
-  staged link whose target NAME was a dashed-SSN shape exited 1 and printed that shape. A diagnostic
-  ABOUT a PHI leak is itself a PHI surface, so describe the shape in prose, never exemplify it.
-- **Scope was narrowed, not widened.** `paths` mode was never blind (`readFileSync` follows a link).
-  A gitlink already exited 2 at base: **renamed, not newly caught**.
-- **The enumerate-then-read race is deferred, and the reason is DIRECTION:** its remedy TOLERATES a
-  failed read; this one NARROWS what the enumeration admits. x12 is unreachable today only by a
-  **scope accident** of which walk roots it has. **Any widening reintroduces it verbatim.**
+- **🩺 Both enumerating routes REFUSE a symlink (exit 2), naming every offender**; neither FOLLOWS
+  an ENTRY it enumerated. Say ENTRY, not "anything": **a walk ROOT that is itself a link IS
+  followed** (`existsSync`/`readdirSync`/`statSync` follow) - a superset, not blind. **🔴 AND
+  NOTHING UNDER SUCH A ROOT IS RECONCILED** (its files are outside the `git ls-files` pathspec), so
+  an EMPTIED link target reads **exit 0**. PRE-EXISTING, OPEN: **the closure is "within the
+  declared roots", NOT a universal.** **A refusal NEVER
+  reports the link target:** a diagnostic ABOUT a PHI leak is itself a PHI surface, so describe the
+  shape, never exemplify it.
 - **▶ 🩺 THE `--staged` ARGV IS THE GATE AND EVERY FLAG IN IT IS LOAD-BEARING; NEVER SHORTEN IT. ONE
-  RULE: DO NOT TRUST THE CALLER'S GIT CONFIG.** Five holes, each measured at exit 0 over PHI.
-  `--no-renames` (`R`, and `C` under `diff.renames=copies`, are TWO-PATH and returned by no
-  single-path filter); `--ignore-submodules=none` (`diff.ignoreSubmodules=all` ERASED a staged
-  gitlink); `U` **and** `B` in `--diff-filter=AMTUB`, whose `T` is also what makes the mode check
-  reachable at all. **`U` is closed by the FILTER, not by `--no-renames`; do not conflate them**, and
-  it refuses FIRST with its OWN message, because mode `000000` makes the link/gitlink sentence false
-  for it. **ZERO stride work.** **Never add `-M`, `-C` or `--find-copies-harder`** - each re-empties
-  the route. **No test here may run `git merge`**: it resolves the committer identity up front, so it
-  passes locally and reds on CI on its own premise. Stage the conflict with `update-index`.
+  RULE: DO NOT TRUST THE CALLER'S GIT CONFIG.** Five holes, all exit 0 over PHI, closed by
+  `--no-renames --ignore-submodules=none --diff-filter=AMTUB`. `T` is what
+  makes the mode check reachable. **`U` is closed by the FILTER, not `--no-renames`; never conflate
+  them**, and it refuses FIRST with its OWN message (mode `000000`). **ZERO stride work. Never add `-M`, `-C` or `--find-copies-harder`** - each
+  re-empties the route. **No test may run `git merge`** - it reds on CI on its own premise; stage the
+  conflict with `update-index`.
 - **▶ 🩺 QUOTE THE CLASSIFICATION, NEVER THE LETTER: `--diff-filter` classifies a broken pair as `B`
-  WHATEVER LETTER IT PRINTS.** `-B` prints **`M`** with a break score, one path, which `RAW_RECORD`
-  parses happily. **It is the PERMISSIVE half of a directive** and the old pin was on a RENAME, the
-  one shape it leaves alone. **A short fixture does NOT break; the case needs bulk.** **NEVER RECORD
-  A SIMILARITY SCORE** - it drifts with the fixture; **DELETE a drifting number, never correct it.**
-  **"Strict superset" is REFUTED; EQUAL absent a rename, copy, gitlink or unmerged path.**
-- **▶ 🩺 STILL OPEN, MEASURED HERE - NEVER PORT A SIBLING'S RESIDUAL LIST:** observed-nothing reads
-  clean; a tracked file directly under `test/` is seen by NEITHER route; an index entry AT a scan
-  root's own path matches no clause (each tests a `<root>/` PREFIX). **A walk root replaced by a
-  regular file exits 1 by UNCAUGHT `ENOTDIR`; `hl7` measures 2. Re-measure per repo.**
+  WHATEVER LETTER IT PRINTS** - `-B` prints **`M`** + a score, one path, which `RAW_RECORD` parses
+  happily. **A short fixture does NOT break; the case needs bulk. NEVER RECORD A SIMILARITY
+  SCORE** - it drifts; **DELETE a drifting number, never correct it.**
+  **"Strict superset" REFUTED; EQUAL absent a rename/copy/gitlink/unmerged path.**
+- **▶ 🩺 ALL MODE OWES AN ACCOUNT OF ITS ROOTS. TWO RULES, NEITHER IMPLIES THE OTHER, BECAUSE
+  EXISTENCE IS NOT OBSERVATION:** a root must BE a directory, and every tracked non-`.md` file under
+  one must have been ENUMERATED, checked against `git ls-files`. Both exit 2.
+  **A COUNT CANNOT DO IT** - an emptied root gives zero and a total still looks whole.
+  **SAY "A DIRECTORY", NEVER "ENUMERABLE"** - a TYPE check; an unreadable one still throws
+  uncaught at **exit 1** (PRE-EXISTING). **CUT THE CLAIM BACK, NEVER
+  GROW THE GUARD.** Such a root's OWN index entry is EXEMPT (the walk yields `<root>/<name>`, never
+  `<root>`), else that superset scan turns exit 1 into a refusal; **its control MUST COMMIT its
+  corpus.**
+  `git check-ignore` reads the INDEX: a TRACKED ignored file is SCANNED, its absence REFUSES. No git:
+  REFUSE. **RE-DERIVE EVERY EXIT CODE PER REPO** - the regular-file root is **2** here (was **1**,
+  uncaught), **2** in `hl7`, **1** in `terminology` by a DIFFERENT mechanism; `hl7` measured two
+  ported residuals as NOT OPEN at all.
+- **Synthetic tokens are POSITIVELY DECLARED in `scripts/phi-allow-list.txt`** (byte-strict: no
+  inline header, as DICOM's `.dcm`); **a whole-file bypass needs `--allow-fixture` AND an entry in
+  `phi-scan-overrides.md`.**
+- **▶ 🩺 STILL OPEN, MEASURED HERE - NEVER PORT A SIBLING'S RESIDUAL LIST:** a tracked file directly
+  under `test/` is seen by NEITHER route, and an index entry AT a root's own path matches no
+  `--staged` clause (each tests a `<root>/` PREFIX). **THE RECONCILIATION REACHES NEITHER** - it
+  compares WITHIN the declared scope. **Widening the roots buys only the `scanCommonShapes` floor -
+  THREE detectors, not the two a draft named**: the `REF*SY` **UNDASHED** SSN is NOT segment-aware
+  either; **derive it from the source, never prose** (`.ts` fixtures are literals, so
+  `looksLikeX12` is false). **Widen the RECOGNISER too, not
+  instead. The enumerate-then-read race is deferred; the reason is DIRECTION:** its remedy TOLERATES
+  a failed read, these NARROW what the enumeration admits. x12 escapes it only by a **scope
+  accident** of its walk roots: **any widening reintroduces it verbatim.**
 
 ### 🩺 `X12-CALLER-VALUE-RESIDUALS` (2026-08-02) · `documentation/agent-notes.md#x12-caller-value-residuals-2026-08-02`
 
@@ -573,16 +586,6 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   `KNOWN-LIMITATIONS.md`:** the 837's Loop 2310 / 2420 provider addresses and its Loop 2320
   other-subscriber depth, and `get834Enrollments` streaming per `INS` loop over a file **still parsed
   into `tx.segments` up front** - an honest v1 limitation, not a streaming parser.
-
-### 🩺 PHI commit-gate · `documentation/agent-notes.md#phi-commit-gate-armed-2026-06-28`
-
-- **`scripts/phi-scan.ts` (`pnpm phi-scan`) refuses fixtures and `src/` carrying real-PHI-shaped
-  tokens**: NM1 person names + SSN qualifier `34`, MI member-id / XX NPI shapes, DMG dates of birth,
-  pre-2024 DTP/DTM/BHT/GS dates, dashed SSN / `REF*SY` / non-test email.
-- **X12 is byte-strict, so synthetic tokens are positively declared in
-  `scripts/phi-allow-list.txt`**, never with an inline header (same model as DICOM's binary `.dcm`).
-- **A whole-file bypass needs `--allow-fixture` AND an audit entry in `phi-scan-overrides.md`.**
-  Runs at pre-commit (`simple-git-hooks --staged`) and in CI (`run-phi-scan: true`).
 
 ### `ASSETS-P8`: the `attw` gate lies · `documentation/agent-notes.md#assets-p8-the-attw-wrapper`
 

@@ -12,9 +12,10 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 ## Contents
 
 - [CLAUDE-MD-AUDIT (2026-08-04)](#claude-md-audit-2026-08-04)
-- [Tech stack: the shared @cosyte/* standard](#tech-stack-the-shared-cosyte-standard)
+- [Tech stack: the shared @cosyte/\* standard](#tech-stack-the-shared-cosyte-standard)
 - [v1 scope snapshot](#v1-scope-snapshot)
 - [PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT (2026-08-06)](#phi-scan-rename-blind-at-precommit-2026-08-06)
+- [PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL (2026-08-06)](#phi-scan-observed-nothing-is-global-2026-08-06)
 - [REFUSAL-MESSAGE-PHI-ECHO (2026-08-06)](#refusal-message-phi-echo-2026-08-06)
 - [X12-DISCARD-AFTER-STRAY-LX (2026-08-06)](#x12-discard-after-stray-lx-2026-08-06)
 - [X12-837-LOOP-RESIDUALS (2026-08-05)](#x12-837-loop-residuals-2026-08-05)
@@ -185,7 +186,7 @@ out of v1 scope.
   - **AN UNMERGED PATH.** Returned by neither `AM` nor `AMT`. Recorded at one or
     more of stages 1/2/3 and never at stage 0, so
     `git show :<path>` fails outright (`fatal: path ... is in the index, but not
-    at stage 0`). **Exit 0** over an index the route could not read. Git refuses
+at stage 0`). **Exit 0** over an index the route could not read. Git refuses
     to commit while a path is unmerged, so this was **never a route to a
     committed leak**; what it was is a gate attesting clean over a state it never
     observed, and this command is run by hand and from scripts too.
@@ -215,7 +216,7 @@ out of v1 scope.
   **THE REMEDY IS ONE RULE, NOT FIVE FIXES: STOP TRUSTING THE CALLER'S GIT
   CONFIG.** The argv is now
   `git diff --cached --raw -z --no-renames --ignore-submodules=none
-  --diff-filter=AMTUB`. `--no-renames` makes a two-path record UNEMITTABLE, so
+--diff-filter=AMTUB`. `--no-renames` makes a two-path record UNEMITTABLE, so
   the rename and copy destinations arrive as single-path `A` and the sources as
   `D` the filter drops. **The two-field stride is therefore STRUCTURAL rather
   than conditional**, and the unparseable-record refusal stays as a backstop, not
@@ -252,28 +253,297 @@ out of v1 scope.
   not about the scanner), the old-equals-new enumeration case, and an unmerged
   path OUTSIDE the route's scope, which must still NOT refuse.
 
-  **STILL OPEN HERE, MEASURED RATHER THAN INHERITED. Do not port a sibling's
-  residual list over these:**
-  - **a scan that observed NOTHING is still reported clean.** With
-    `test/fixtures` absent, or with BOTH walk roots absent, all-mode prints
-    `OK - no hits` at **exit 0** (`PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL`);
+  **OPEN AT THE TIME, MEASURED RATHER THAN INHERITED. Do not port a sibling's
+  residual list over these. Two are SINCE CLOSED and are marked so rather than
+  deleted, because the measurement is what a later reader needs:**
+  - **CLOSED (2026-08-06, the section below): a scan that observed NOTHING was
+    still reported clean.** With `test/fixtures` absent, or with BOTH walk roots
+    absent, all-mode printed `OK - no hits` at **exit 0**
+    (`PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL`);
   - **a tracked file directly under `test/` is enumerated by NEITHER route** -
     exit 0 on `--staged` and on the all-mode walk over a payload that hits as an
-    ordinary fixture (`PHI-SCAN-WALK-ROOT-SCOPE`);
+    ordinary fixture (`PHI-SCAN-WALK-ROOT-SCOPE`). **STILL OPEN**, and the
+    section below says why the reconciliation there does not reach it;
   - **an index entry at exactly a scan root's own path matches no `--staged`
     clause**, because every clause tests a `<root>/` PREFIX. A regular blob
-    staged at exactly `test/fixtures` carrying the payload: **exit 0**;
-  - **🩺 x12's exit code for a WALK ROOT replaced by a regular file is 1, and it
-    is an UNCAUGHT `ENOTDIR` from `readdirSync`, not a refusal.** `hl7` measured
-    **2** and `terminology` **1** for their versions of this shape. **Measure it
-    per repo; the number is not portable and neither is the mechanism.** It is
-    nonzero, so it is not a false clean, but it is not the clean refusal the
-    symlink work established either;
+    staged at exactly `test/fixtures` carrying the payload: **exit 0**. **STILL
+    OPEN**, same reason;
+  - **CLOSED (2026-08-06, the section below). 🩺 x12's exit code for a WALK ROOT
+    replaced by a regular file was 1, and it was an UNCAUGHT `ENOTDIR` from
+    `readdirSync`, not a refusal.** `hl7` measured **2** and `terminology` **1**
+    for their versions of this shape. **Measure it per repo; the number is not
+    portable and neither is the mechanism.** It was nonzero, so it was not a
+    false clean, but it was not the clean refusal the symlink work established
+    either. It is now **exit 2**, named;
   - the **enumerate-then-read race** in all mode, unchanged, for the reason the
     symlink section gives: its remedy TOLERATES a failed read while this one
-    NARROWS what the enumeration admits.
+    NARROWS what the enumeration admits. **STILL OPEN.**
 
   No library code changed and no published type changed.
+
+## PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL (2026-08-06)
+
+### The defect: the sweep could not tell "found nothing" from "opened nothing"
+
+`pnpm phi-scan` with no arguments is the all-mode sweep, and it is the BACKSTOP
+for everything the pre-commit route misses. It walks two roots, `test/fixtures`
+and `src`, collects hits, and prints `OK - no hits` at exit 0 when the hit list
+is empty. **An empty hit list was produced identically by a corpus it read and
+found clean and by a corpus it never opened.**
+
+Every figure below is measured in **this** repository, on a throwaway repo laid
+out like this one, against a synthetic `.edi` payload whose NM1 person name, DMG
+date of birth, PER phone and `REF*SY` SSN are **hits at exit 1** when the
+same bytes are actually read. **Nothing is ported.** Three shapes:
+
+- **a MISSING root.** With both walk roots absent, and with `test/fixtures`
+  alone absent, `walk()` returned at its `existsSync` guard and the sweep printed
+  `OK - no hits` at **exit 0**. **This is the shape that can be true for the
+  entire life of a repository:** a root that never existed makes the gate read
+  clean on every run it ever makes, and no run looks wrong. `terminology` is the
+  worst instance of it anywhere in the org, where `test/fixtures` had never
+  existed at all;
+- **an EMPTIED root.** With both roots present but their files removed from disk
+  while still in the index, **exit 0** over a corpus whose committed bytes are
+  hits. Also measured one file at a time: a single tracked fixture removed from
+  disk, the rest of the corpus present and clean, **exit 0**;
+- **a root that is NOT A DIRECTORY.** With `test/fixtures` replaced by a regular
+  file carrying the payload, `readdirSync` threw an **UNCAUGHT `ENOTDIR`** and
+  the process ended at **exit 1**. Same for `src`. A root that is a **FIFO** ends
+  the same way (`statSync` on a FIFO does not block; only opening one does), so
+  the gate does not hang. **🩺 EXIT 1 IS THIS SCANNER'S CODE FOR "HITS FOUND",**
+  so a caller that branches on the code reads a crash as a finding, and what it
+  gets on stderr is a Node stack trace rather than anything actionable.
+
+### 🩺 THE NUMBER AND THE MECHANISM ARE BOTH NON-PORTABLE
+
+`hl7` measures **2** for its version of the regular-file root and `terminology`
+measures **1** by a **different** mechanism. **x12 measured 1, by an uncaught
+`ENOTDIR` from `readdirSync`, and measures 2 since the remedy below.** Read all
+three as measurements of three different scanners rather than as one fact about
+the shape, and re-derive every one of them per repo rather than quoting this
+line. The same warning applies in the other direction: `hl7` measured two ported
+residuals as **not open there at all**.
+
+### The remedy: two rules, and the second is not implied by the first
+
+**EXISTENCE IS NOT OBSERVATION.** Refusing a MISSING root leaves the other half,
+because an emptied root exists and still opens nothing; and reconciling only
+leaves the first half, because a root that never existed has nothing tracked
+under it to reconcile. So both ship together:
+
+1. **`refuseUnusableRoots()`** requires each declared root in `WALK_ROOTS` to BE
+   a directory, before the walk starts. `rootProblem` uses a single `statSync` in
+   a try/catch rather than `existsSync`, **because `existsSync` answers the wrong
+   question in both directions that matter**: it is TRUE for a regular-file root
+   (which `readdirSync` then throws on) and FALSE for a dangling symlink (which
+   is a missing root, not a present one). `err.code` is an engine-owned token;
+   `statKind` is a closed set.
+2. **`reconcileObserved()`** requires every tracked, non-`.md` file under a root
+   to have been one of the files the walk actually enumerated, comparing the
+   walk's output against `git ls-files -z -- test/fixtures src`.
+
+Both refuse at **exit 2** and **name every offender**, which is the rule
+`refuseUnscannable` already follows: a developer who has to re-run the gate once
+per file learns to distrust it.
+
+### 🩺 SAY "BE A DIRECTORY", NEVER "BE ENUMERABLE"
+
+**A draft of this slice said "enumerable" and a refuter measured it FALSE.** The
+count of places it said so is deliberately not recorded: it drifted between three
+surfaces before anyone noticed, and this repo's rule is to delete a drifting
+number rather than correct it. `refuseUnusableRoots` asks `isDirectory()`, which is a check on the
+root's TYPE and not on whether the root can be read. Measured, `test/fixtures` at
+mode `000` over a committed PHI payload: **uncaught `EACCES` from `readdirSync`,
+exit 1, identically at base and at head** - verbatim the shape the regular-file
+root used to have. An unreadable **subdirectory** under a root, and the window
+between `refuseUnusableRoots` and `walk`, end the same way.
+
+**That class is PRE-EXISTING and is DISCLOSED, not closed.** Closing it means
+tolerating or classifying a failed directory read, which is the deferred
+enumerate-then-read remedy pulling in the same direction. **The claim was CUT
+BACK to what the code checks; the guard was NOT grown.** That is the same
+discipline `X12-NUMERIC-VALUE-EMITS-EMPTY` and `X12-DECIMAL-BYPASSES-THE-GUARD`
+already cost this repo.
+
+### 🩺 A TRACKED WALK-ROOT SYMLINK: THE ROOT'S OWN INDEX ENTRY IS EXEMPT
+
+**A root that is itself a symbolic link to a directory is STILL FOLLOWED.**
+`statSync` follows, deliberately, exactly as `existsSync` and `readdirSync` do.
+
+**The first draft broke that, and a refuter measured it.** With the link
+COMMITTED, `git ls-files -- test/fixtures` returns the link's **own** path
+`test/fixtures`, and the walk only ever yields `test/fixtures/<name>`, so the
+reconciliation could never observe it: base **exit 1** (the documented superset
+scan, hitting the target's files) became head **exit 2**. Fail-safe, but it
+traded a working scan for a refusal and falsified four surfaces saying the
+behaviour was unchanged.
+
+`reconcileObserved` now **exempts an index entry at exactly a declared root's own
+path**, because such an entry IS the root and not a file under it. **It opens no
+clean path:** a root that is a tracked regular file, or a link to one, is refused
+by `refuseUnusableRoots` before this runs. It is also the same boundary the
+`--staged` route already draws, where an entry at a root's own path matches no
+clause; that residual stays open.
+
+**🔴 "IT OPENS NO CLEAN PATH" IS REFUTED. THE CLAIM IS CUT BACK; THE GUARD IS
+NOT GROWN.** The sentence above is true about the ROOT ENTRY and was drafted as
+though it were true about the whole tree. It is not. When a root is a tracked
+link to a DIRECTORY, everything the walk reads through it lives under the
+TARGET's own names, and those names are outside the
+`git ls-files -- test/fixtures src` pathspec, so the index side of the
+comparison is empty for **all of it** rather than for one entry. Measured at
+head, `test/fixtures -> ../elsewhere` with a committed `elsewhere/violator.edi`:
+present, **exit 1**; removed from disk but still in the index, `OK - no hits` at
+**exit 0**, with `git ls-files -- test/fixtures src` returning only
+`src/ordinary.ts` and `test/fixtures`. **That is verbatim the EMPTIED-ROOT shape
+this section exists to close, alive through the exempted path**, and it is the
+one shape the slice ships a dedicated control for.
+
+It is **PRE-EXISTING** - base is exit 0 over the same tree - so it is not a
+regression, and it is **disclosed, not closed**: covering it means reconciling
+against a second pathspec derived from the link target, which is the same widening
+decision as the `test/` scope work below. **So state the closure as "within the
+declared roots, as git names them" and NEVER as a universal over any corpus.**
+This repo has deleted a self-contradicting universal before (`4a5a943`); the
+lesson is that a headline universal with one live counterexample is worse than a
+narrower headline, because the counterexample is the shape nobody re-checks.
+
+**🛑 THE CONTROL THAT HOLDS THIS COMMITS ITS CORPUS.** The first draft's control
+called `makeRepo()` and never `git add`ed, so `git ls-files` was empty, the
+reconciliation was satisfied trivially, and the case was **green by construction
+of an untracked corpus** rather than because the property held. That is this
+org's `dicom`-lost-four-blockers failure mode wearing a control's clothes. The
+case now asserts the premise off raw git first, and it reds if the exemption is
+removed.
+
+### 🔴 A DENOMINATOR DOES NOT DETECT THIS, AND THAT REMEDY WAS REFUTED IN `ncpdp`
+
+**A count counts the roots that DID exist.** An emptied root contributes zero and
+a total still looks like a total, so `71` against a healthy `122` reads fine. The
+only thing that separates "read it and found nothing" from "never opened it" is
+naming the corpus from a source OUTSIDE the walk and checking the walk against
+it. The index is that source. **This is why the second rule reads `git ls-files`
+and not a threshold.**
+
+### 🩺 THE IGNORE RULE, STATED EXACTLY, BECAUSE ITS SHORT FORM IS FALSE
+
+The obvious sentence is "the walk skips gitignored paths, so the reconciliation
+does too". **Measured here, that is not what either side does for a TRACKED
+path.** `git check-ignore` consults the index by default and answers
+**NOT-ignored** for a tracked path even when a `.gitignore` rule names it; only
+`--no-index` says otherwise, and this scanner does not pass it. So:
+
+- the walk **SCANS** a tracked-and-ignored file, and the reconciliation
+  **REFUSES** when one is missing from disk. That pair is consistent, and **both
+  halves are asserted in one test** because the consistency is the claim;
+- what the ignore rule really exempts is the **UNTRACKED** ignored file, and such
+  a path is never in `git ls-files` at all, so it leaves the expected set on that
+  ground rather than through the filter.
+
+**This was found by a negative control, not by reading the code.** The control
+was written asserting the short form, went red, and the code turned out to be
+right and the claim wrong.
+
+### The one behaviour change outside a git checkout
+
+Where `git ls-files` cannot answer (not a git repository), the sweep now
+**refuses at exit 2** where it previously reported clean. **"git could not tell
+me" and "git told me there is nothing" are the two answers this whole check
+exists to keep apart**, so the first is never allowed to render as the second.
+`scripts/` is not in `package.json`'s `files`, so the scanner is not in the
+published tarball and every caller is inside a checkout of this repository.
+
+### 🩺 WHY THE `test/` SCOPE RESIDUAL IS NOT CLOSED HERE, AND WHAT CLOSING IT COSTS
+
+`PHI-SCAN-WALK-ROOT-SCOPE` is **still open** and was **re-measured**, not
+inherited: a tracked file directly under `test/` is **exit 0 on both routes**,
+and an index entry at exactly a scan root's own path is **exit 0 on `--staged`**.
+
+**IT READS AS THOUGH THE RECONCILIATION SHOULD HAVE CLOSED IT, AND IT DOES NOT.**
+The reconciliation compares the walk against the index **within the declared
+scope**. A path nothing declares in scope is absent from **both** sides of the
+comparison, so the check is silent on it. Widening the scope is the remedy, and
+it is a slice of its own for three reasons, each measured:
+
+1. **🛑 ENUMERATING THE FILES BUYS THE `scanCommonShapes` FLOOR AND NOTHING
+   ELSE.** The recognisers assume **the file IS the document**: `looksLikeX12`
+   requires the text to start with `ISA`, and the files under `test/` are `.ts`
+   sources whose fixtures are **string literals**. So NM1, DMG, PER and the
+   service-date cutoff never run on them, and only `scanCommonShapes` does.
+
+   **🔴 THAT FLOOR IS THREE DETECTORS AND A DRAFT CALLED IT TWO.** Four surfaces
+   of this slice said "the dashed-SSN and email floor" and a refuter measured it
+   false: `REF*SY` matches `/REF.SY.([0-9]{9})\b/` over raw text, is **not**
+   segment-aware, and fires on a bare string literal exactly as the other two do.
+   Measured at head, a `.ts` file in a scanned root containing
+   `"REF*SY*<nine digits>~"` as an array element: **exit 1**. The wording
+   understated the deferred `test/` scope by **precisely the shape a dashed-SSN
+   regex cannot see** - an UNDASHED nine-digit SSN - which is the worst direction
+   for the disclosure to be wrong in. The census two paragraphs down contained the
+   counterexample the whole time: the 8 shapes are 6 dashed-SSN, **1 `REF*SY`**
+   and 1 email. **Derive the floor from `scanCommonShapes`, never from prose,
+   this sentence included.** **Widening the walk roots and widening the recogniser
+   are TWO SIDES, each in addition to the other, never instead of it.** `ncpdp`
+   shipped both together for this reason; `mllp` walks `test/` but **excludes
+   `.ts`**, which would have closed **none** of `deid`'s 38 files. This cost
+   `deid` three refutations.
+
+2. **there is no exclusion surface for the scanner's own corpus.** Measured on
+   this package at this commit, a measurement and not a standing figure: the
+   current recogniser over the 78 tracked non-fixture files under `test/` finds
+   **8 shapes in exactly one file**,
+   `test/scripts/phi-scan.test.ts`, which is where this gate's own violator
+   payloads live. A whole-file override cannot be wired into `pnpm phi-scan`,
+   because a bare `--allow-fixture` **seeds the positional path set and selects
+   `paths` mode** (`scanPaths = paths.length > 0 ? paths : [...allowFixtures]`),
+   so the gate would scan that one file and nothing else.
+3. **the symlink section's standing warning applies:** x12 is out of reach of the
+   enumerate-then-read race today only by a **scope accident** of which walk
+   roots it has, and **any widening reintroduces it verbatim**. That deferred
+   slice would have to be taken with it or disclosed again.
+
+**This change does NOT change that race's reachability:** the reconciliation runs
+on the ENUMERATION, before any target is read, and it neither widens a root nor
+reads a file.
+
+### The census, derived by running head's suite against base
+
+**17 new cases. 9 RED on the base scanner, 8 green on both.** Never arithmetic:
+this is head's test file run against `b07c367`'s `scripts/phi-scan.ts`, re-run
+after each round of refutation remedies landed. It was 15 / 8 / 7 before the
+second refuter pass added the unmerged-dedup case and the symlinked-root
+disclosure; **re-derive it rather than quoting either figure.**
+
+The 8 green-on-both are deliberate held-in-place controls: the symlinked-root
+case (the documented superset direction), the symlinked-root DISCLOSURE (an
+emptied link target still reading clean, which is green on both because it is
+pre-existing and is here to flip when the scope work lands), a fully-opened
+corpus still reporting its hits, a healthy corpus still clean, an untracked extra
+file, a staged deletion, the `.md` exemption, and an untracked gitignored file.
+**Green on both trees is NOT the same as inert:** the symlinked-root case reds
+against head with the walk-root exemption removed, which is what makes it a
+control rather than a decoration.
+
+**Each rule is independently load-bearing, measured one at a time.** Dropping
+only `refuseUnusableRoots()` reds **4**; dropping only `reconcileObserved()` reds
+**5**; the two sets are **disjoint** and sum to the 9. Dropping ONLY
+`--deduplicate` from the `git ls-files` argv reds exactly **1**, its own case, so
+that flag is pinned separately from the rule that uses it. Note that the
+missing-root case reds under the first drop on its **message**, not its exit
+code, because the reconciliation catches that particular shape too when something
+IS tracked under the root. **The case that is a genuine false clean without rule
+1 is the NEVER-EXISTED root**, which has nothing tracked under it, and that is
+why the two rules ship together rather than one.
+
+**Every case carries an identifier and a non-vacuity assertion.** The
+unopened-file cases assert **exit 1 with the payload present** before removing
+it, so a green is never green by construction. The refusal messages are asserted
+to contain **no** PHI token, and the regular-file-root case additionally asserts
+the stderr contains neither `ENOTDIR` nor `readdirSync`, so a crash cannot pass
+as a refusal.
+
+No library code changed and no published type changed.
 
 ## REFUSAL-MESSAGE-PHI-ECHO (2026-08-06)
 
@@ -2108,10 +2378,13 @@ positionally recoverable. **The filed 835 case reproduces exactly**:
   with `--no-renames`, at zero stride cost, along with three more holes of the
   same family. Read that section, not this paragraph, for the measurements; the
   R-score quoted here was deleted rather than corrected, because a similarity
-  score drifts with the fixture. **Still open from this slice:** there is no
-  refuse-a-scan-that-observed-nothing rule (`ccda#80`'s, which `terminology`
-  never had either), and **all-mode remains the backstop** for what pre-commit
-  misses, so a gap here is a gap at pre-commit and not in CI.
+  score drifts with the fixture. **Also inherited as disclosure and SINCE
+  CLOSED:** this slice left no refuse-a-scan-that-observed-nothing rule
+  (`ccda#80`'s, which `terminology` never had either);
+  `PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL` (2026-08-06) closes it, together with the
+  regular-file walk root, and that section carries the measurements. **Still true
+  and unchanged:** **all-mode remains the backstop** for what pre-commit misses,
+  so a gap there is a gap at pre-commit and not in CI.
 
   **Negative controls both ways:** dropping the walk's non-regular branch reds 6
   tests, and `AMT` → `AM` reds the 2 typechange tests. No library code changed
