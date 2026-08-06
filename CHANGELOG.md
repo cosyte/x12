@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **🩺 Read its bound literally: this is NOT a general "entity segment reached no party" code**, and
   nothing about it should be restated that way. It reports only a segment discarded after such an
   `LX`, and only until the next `NM1` / `HL` / `CLM` opens a loop - a party named after that `LX` is
-  addressable again and its own trailing segments attach and stay silent. Every other route to an
+  outside this code's scope again, and stays silent whether or not this reader surfaces its trailing segments on it. Every other route to an
   unattached `N3` / `N4` / `PER` / `REF` is exactly as silent as before: no entity loop open at the
   `LX` at all, an `NM1` this reader cannot route, an intervening `HL` or `CLM`, and the other
   dropped-`LX` route where a claim **is** open. A `DTP` / `AMT` / `NTE` on that route is discarded

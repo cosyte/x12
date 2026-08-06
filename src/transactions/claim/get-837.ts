@@ -299,8 +299,9 @@ export function get837Claims(
    * SCOPED, NOT LATCHED, for the same reason `droppedLineReported` is: it is
    * cleared beside every other assignment to `activeEntity` (HL, SBR's Loop
    * 2320 branch, NM1, CLM, and the LX routes that open a line), so a party
-   * named after the stray LX is addressable again and its own trailing
-   * segments are silent. A latching flag would report every later unattached
+   * named after the stray LX is outside this scope again and its own trailing
+   * segments are silent, whether or not they attach (some kinds reach no party
+   * on any release). A latching flag would report every later unattached
    * segment in the transaction, including shapes that were silent before this
    * code existed.
    * @internal

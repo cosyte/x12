@@ -240,8 +240,12 @@ model.
   warnings at two positions, so a consumer can name both. Four bounds, each a committed test:
   - **🩺 It is NOT a general "this entity segment reached no party" report, and it must never be
     restated as one.** It reports one discarded after such an `LX`, and only until the next
-    `NM1` / `HL` / `CLM` opens a loop. A party named after that `LX` is addressable again and its
-    own trailing segments attach normally and silently: the scope is a scope, not a latch.
+    `NM1` / `HL` / `CLM` opens a loop. A party named after that `LX` is outside this code's
+    scope again and its trailing segments are silent: the scope is a scope, not a latch.
+    **Whether they ATTACH is a separate question this code does not answer**, and for some party
+    and segment kinds the answer is no on every release - a `PER` reaches neither a patient nor a
+    pay-to address on any of them. **This code reports that a segment reached NO party, never that
+    it would otherwise have reached one.**
   - **Every other route to an unattached `N3` / `N4` / `PER` / `REF` is exactly as silent as it was
     before this code existed**, and that is deliberate rather than an oversight: no entity loop open
     at the stray `LX` at all (nothing was lost by this library's doing, since those segments reached

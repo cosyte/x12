@@ -181,6 +181,18 @@ undefined` check, and the flag can only hold where no claim is open, so neither 
   `0.0.10` attached them" universal was cut back to "wherever this reader surfaces that segment kind
   on that party at all". **Do not restore the universal.**
 
+- **PASS 2 NOT REFUTED, AND ITS ONE `INTRODUCED` FINDING WAS THE OTHER HALF OF THE SAME CLAIM.**
+  The pass-1 remedy narrowed "every release through `0.0.10` attached them" and left its twin
+  standing on five surfaces, the SHIPPED WARNING MESSAGE among them: "one arriving after a later
+  `NM1` attaches to that party normally". Measured false by pass 2 on a fully surfaced party - a
+  `PER` after `NM1*QC` in Loop 2000C gives `patient.contacts: []` with an empty channel, and the
+  same holds for a pay-to address - for the SAME root cause as finding 2, which is that
+  `attachContact` and `attachReference` have no route for several `ActiveEntity` kinds. Deleted on
+  all five surfaces rather than reworded a second time: the scope statement now says the later
+  party is outside this code's scope and its trailing segments are silent, and says nothing about
+  whether they attach. **THE PATTERN IS NOW THREE PASSES FOR THREE: the code graded correct every
+  time and a UNIVERSAL in the prose was wrong every time.** Write the scoped form first.
+
 - **PHI: the new code has a slot in the table, and it is name-bearing.**
   `test/_helpers/phi-slots.ts` gained a slot planting the marker in an `N3` street address
   inside a payer loop an inserted `LX` then closes, so the marker rides in a segment the
