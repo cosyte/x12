@@ -330,7 +330,7 @@ sources and its refutation history. Do not act on a line here without reading th
   parses happily. **It is the PERMISSIVE half of a directive** and the old pin was on a RENAME, the
   one shape it leaves alone. **A short fixture does NOT break; the case needs bulk.** **NEVER RECORD
   A SIMILARITY SCORE** - it drifts with the fixture; **DELETE a drifting number, never correct it.**
-  **"Strict superset" is REFUTED; they are EQUAL absent all four shapes, not just renames.**
+  **"Strict superset" is REFUTED; EQUAL absent a rename, copy, gitlink or unmerged path.**
 - **▶ 🩺 STILL OPEN, MEASURED HERE - NEVER PORT A SIBLING'S RESIDUAL LIST:** observed-nothing reads
   clean; a tracked file directly under `test/` is seen by NEITHER route; an index entry AT a scan
   root's own path matches no clause (each tests a `<root>/` PREFIX). **A walk root replaced by a

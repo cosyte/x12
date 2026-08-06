@@ -158,16 +158,19 @@ out of v1 scope.
     **exit 2** (the link, by kind) and **exit 1** (the surname, on the NM1 name
     detector).
     **▶ NO SIMILARITY SCORE IS RECORDED ANYWHERE IN THIS SLICE, ON PURPOSE, AND
-    THAT INCLUDES AN EXACT-MATCH `100`.** The score moves with the fixture: this
-    repo's substituted-name case measured a different score from the number
-    `hl7` published for its own, which is the exact porting trap that fired on
-    `terminology` (`R098` vs `R097`, quoted here only to name the trap and never
-    as this repo's measurement). **A score that drifts with the fixture has no
-    right value, so it is DELETED rather than corrected.** A draft of this slice
-    kept `R100`/`C100` beside the absolute that denies recording any score, in
-    four artifacts at once; a refuter measured the contradiction. **The absolute
-    is the thing worth keeping, so the digits went, not the absolute.** What is
-    load-bearing is that the record has TWO PATHS.
+    THAT INCLUDES AN EXACT-MATCH ONE.** A score moves with the fixture: this
+    repo's substituted-name case measured a different one from the number `hl7`
+    published for its own, and the ecosystem has already paid once for a score
+    ported between two repos whose fixtures differ. **A score that drifts with
+    the fixture has no right value, so it is DELETED rather than corrected.**
+    What is load-bearing is that the record has TWO PATHS.
+    **▶ AND THE ABSOLUTE IS WHAT A DRAFT KEPT BREAKING.** Successive drafts wrote
+    this sentence while recording exact-match scores in the same paragraph, in
+    four artifacts at once, then wrote it again while recording the scores from
+    the FIRST contradiction as evidence of it. Two refuter passes measured it.
+    **The absolute is the thing worth keeping, so the digits go - including the
+    digits in a sentence about digits. Do not reintroduce one to illustrate this
+    rule.**
   - **`C` (copy).** Under `diff.renames=copies`, copying a PHI-bearing file from
     outside the roots INTO `test/fixtures/` staged as a genuine two-path `C`
     record and was dropped identically. **A distinct hole, not the same one:**

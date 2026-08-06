@@ -51,9 +51,10 @@ const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
  * start-up.
  *
  * EVERY FIGURE BELOW IS A MEASUREMENT TAKEN WHEN THE SUBSTITUTION LANDED, NOT A
- * DESCRIPTION OF THIS FILE TODAY. It is written in the past tense on purpose: a
- * case count, a spawn count and a wall clock all move with the next slice, and a
- * present-tense census here went stale exactly once before anyone noticed. The
+ * DESCRIPTION OF THIS FILE TODAY. Read every figure that way whatever tense the
+ * sentence around it happens to use: a case count, a spawn count and a wall
+ * clock all move with the next slice, and a census here went stale exactly once
+ * before anyone noticed. The
  * rule is `CLAUDE.md`'s: derive a count, never recall one. What survives as a
  * RULE is the last paragraph, and the equivalence case is what enforces it.
  *
@@ -807,11 +808,15 @@ describe("phi-scan: --staged enumerates a staged RENAME and COPY", () => {
     }
   });
 
-  it("the new enumeration EQUALS the old one when nothing is renamed or copied", () => {
+  it("the new enumeration EQUALS the old one absent a rename, copy, gitlink or unmerged path", () => {
     // The relation is a superset, NOT a strictly larger set, and the loose form
-    // of that sentence has been refuted in this ecosystem before. On an index
-    // with no rename, copy, gitlink or unmerged path the two argvs return the
-    // same bytes, so nothing the old one enumerated stopped being enumerated.
+    // of that sentence has been refuted in this ecosystem before. STATE THE
+    // PRECONDITION IN FULL, including in this title, which is the string a
+    // reporter prints: "when nothing is renamed or copied" is `--no-renames`'s
+    // half of it and is FALSE with an unmerged path, or with a gitlink under
+    // `diff.ignoreSubmodules=all`, in the index. On an index carrying none of
+    // the four the two argvs return the same bytes, so nothing the old one
+    // enumerated stopped being enumerated.
     const root = makeRepo();
     writeFileSync(join(root, "test", "fixtures", "added.edi"), SYNTHETIC_PHI);
     writeFileSync(join(root, "src", "another.ts"), "export const b = 1;\n");
