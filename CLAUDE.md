@@ -306,14 +306,12 @@ sources and its refutation history. Do not act on a line here without reading th
 
 - **No timeout value changed, and that is the finding, not an omission.**
 - **Count BOTH trees, and never reuse one census for the other** - a draft ported the head census
-  onto the base state, the "a remedy's prose does not port with its code" trap, committed while
-  quoting the rule.
+  onto the base state while quoting the rule against it.
 - **Re-derive this box's capacity; never inherit a figure.** The item's numbers are stale.
 - **Interleave BASE/HEAD runs, two rounds each** - the agent-notes section measures what runs an
   hour apart showed instead.
-- **The `tsx` -> `node` substitution is pinned as an EQUIVALENCE, not assumed** (same violator, same
-  clean file, same exit code / stdout / stderr). Nothing else enforces erasable-only syntax and the
-  Node 22.18 floor is unenforced. **Scope it:** the case drives `paths` mode only.
+- **The `tsx` -> `node` substitution is pinned as an EQUIVALENCE, not assumed.** Nothing else
+  enforces erasable-only syntax; the Node 22.18 floor is unenforced. **Scope it:** `paths` mode only.
 - **The global `testTimeout` stays at 10 s on purpose.** The 10 MB+ 834 stream sits AT it and is green
   only on its own 120 s per-test ceiling. **Do not upgrade the `10.0 s` reading into a proven
   crossing** - the reporter rounds. Raising the global hands the same leash to all 1,100-odd tests.
@@ -321,8 +319,8 @@ sources and its refutation history. Do not act on a line here without reading th
   **NO VERDICT AT ALL** and wedges the worker. A liveness regression here reads as an ABSENT verdict,
   not a red one, and no value of `testTimeout` changes that. The defence is the source scan in
   `test/builder-array-bounds.test.ts`.
-- **`test/scripts/attw-gate.test.ts` is deliberately left alone.** Pinning the REAL binary is the
-  point of that gate.
+- **`test/scripts/attw-gate.test.ts` is deliberately left alone** - pinning the REAL binary is the
+  point of it.
 
 ### 🩺 `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (2026-08-03) · `documentation/agent-notes.md#phi-scan-symlink-blind-on-both-routes-2026-08-03`
 
@@ -572,12 +570,15 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   verbatim by TR3 005010X231A1) and `buildTA1` its TA1-05 note code (see "the caller-vs-document
   dichotomy is NOT categorical" above). **The negative list is NOT an absolute PHI guarantee; it is a
   guarantee about the builder's own TEMPLATES**, which still render control numbers and control codes.
-- **🩺 NO SLOT-GENERIC CALLER GUARD ECHOES A VALUE - all four (string/segment/decimal/array) report
-  the TYPE only.** They stand on every element, so a `JSON.parse`d spec put a NUMERIC `claimId` or
-  member id in the message, bounded to 90, NOT redacted. **The old disclosure named
-  `requireCallerSegment`; `requireCallerString` fires for `CLP-01`, and both echoed.** A guard that
-  cannot know its slot may not echo: **never re-add a value, never fold the decimal one back out.**
-  The segment locator admits `parts[0]` by the segment-id GRAMMAR, not by length.
+- **🩺 NO CALLER GUARD ECHOES WHAT A CALLER PUT IN AN ELEMENT** - string/segment/decimal and the
+  array guard's PRIMITIVE arm report the TYPE only. A `JSON.parse`d spec used to put a NUMERIC
+  `claimId` or member id in the message, bounded to 90, NOT redacted. **The old disclosure named
+  `requireCallerSegment`; `requireCallerString` fires for `CLP-01`, and both echoed. Never re-add a
+  value, never fold the decimal one back out. And state the two things this does NOT say, both
+  drafted false once:** the array guard STILL renders a forged array-like's `length` and class tag
+  (SHAPE, not element contents); and **only the SEGMENT guard names the slot** - `esc`/`escDec` name
+  the BUILDER, so there nothing replaces the value as a locator. Its locator admits `parts[0]` by the
+  segment-id GRAMMAR, never by length.
 - **The `?`-release escape is honored losslessly** (`?~`->`~`, `?*`->`*`, `??`->`?`); dot-path
   traversal walks elements, composites (`-N`, 1-indexed) and repetitions (`[N]`, 0-indexed).
 - **Known read-side limitations, documented not accidental, and enumerated in
@@ -614,7 +615,7 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   preflight structurally cannot: declarations on disk but excluded from the tarball by
   `files`/`.npmignore`. No instance of that second case has occurred in this repo yet.
 - **The post-check reads a string, so anything that could hide it is REFUSED by option name,
-  wholesale, not by value** (four routes, measured; a nonexistent `--config-path` blinds nothing).
+  wholesale, not by value** (four routes; a nonexistent `--config-path` blinds nothing).
 - **`test/scripts/attw-gate.test.ts` pins the upstream exit-0 itself**, so an `attw` upgrade that
   rewords the sentence or fixes the exit code reds the suite instead of letting the net go quietly
   slack. It also pins a negative control on a well-formed package and that a real `attw` failure still

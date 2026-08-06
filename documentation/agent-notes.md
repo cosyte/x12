@@ -138,20 +138,32 @@ other two as well; the disclosure was measured against the prose rather than the
 
 A guarantee that is true on one path and false on another is not a guarantee. The two honest options
 were to make it true or to stop stating it, and stopping would have left a published healthcare
-package with strictly less to promise about a `claimId` in an error message. So: **no slot-generic
-caller guard echoes a value.** All four report the TYPE, and the segment guard keeps its spec-shaped
-slot locator beside it. A guard standing on every element of every builder cannot know whether the
+package with strictly less to promise about a `claimId` in an error message. So: **no caller guard
+echoes what a caller put in a document ELEMENT.** The string, segment and decimal guards report the
+TYPE, and so does the array guard's primitive arm; the segment guard keeps its spec-shaped slot
+locator beside it. A guard standing on every element of every builder cannot know whether the
 primitive in front of it is a control number or a patient identifier, which is exactly why it may not
 echo one.
+
+**Pass 1 refuted the FIRST draft of that sentence and was right.** It read "no SLOT-GENERIC caller
+guard echoes a value", published on six surfaces, and `describeShape`'s two OBJECT arms falsify it:
+`{ length: "700998877" }` reports `an array-like object with length "700998877"`, and a
+`Symbol.toStringTag` of `"900412345678"` reports `a non-array "[object 900412345678]"` - caller text,
+bounded to 90, not redacted, from a guard the same sentence says cannot know its slot. The echo
+BEHAVIOUR is `PRE-EXISTING` and byte-identical at `4a5a943`; the ABSOLUTE was new, so it was an
+introduced overclaim, and the remedy was to correct the sentence rather than grow the guard. **That
+is the fifth time in this lineage that the sentence written to fix a claim was itself the finding.**
+The line that holds is element contents versus forged-object metadata.
 
 **The decimal guard was the closest call and went with its siblings.** The argument for keeping it:
 `X12-DECIMAL-BYPASSES-THE-GUARD` exists because a raw `number` renders as `0.30000000000000004` /
 `1e+21` / `NaN` on the wire, and showing the value looked like the fastest diagnosis. It went anyway,
 because (1) the message's own fixed text already names those three renderings, so the diagnosis is
 intact and the remedy (`X12Decimal.fromString()` at the call site) is identical either way, and (2)
-"no slot-generic guard echoes EXCEPT this one" is a census with one entry, and a census is the
-instrument this package has had measured false five times. An `X12Decimal` slot holding no identifier
-is a fact about today's slots, not a property of the guard.
+an `X12Decimal` slot IS an element slot, so it is inside the line above. **"An `X12Decimal` slot
+holds no identifier today" was the tempting argument and is the wrong KIND of argument** - a fact
+about today's slots rather than a property of the guard - and it is also what pass 1 caught the
+first draft applying inconsistently: refused here, accepted for `describeShape`'s `length`.
 
 **The segment guard's slot locator is bounded by GRAMMAR now, not by length.** `parts[0]` is
 caller-supplied in `buildInterchange`, which takes `[segmentId, ...elements]` wholesale, so it was the
@@ -171,10 +183,12 @@ what `PHI-WARNING-MESSAGE-LEAK` did to `X12Segment.id` on the parse side.
 - `caller-array.ts` keeps the `length` and class-tag arms, bounded. They describe the SHAPE a caller
   forged rather than the content of a document element, and a forged `length` is the input the guard
   exists to stop.
-- The `esc` refusal still names the BUILDER and not the slot. That limit was already recorded; this
-  slice made it sharper rather than smaller, because the echoed value used to stand in for the slot.
-  Threading a locator through 406 unary `esc` invocations is the trade `caller-string.ts` rejects and
-  this slice did not reopen it.
+- The `esc` refusal still names the BUILDER and not the slot, and `escDec` likewise. That limit was
+  already recorded; this slice made it sharper rather than smaller, because the echoed value used to
+  stand in for the slot. Threading a locator through 406 unary `esc` invocations is the trade
+  `caller-string.ts` rejects and this slice did not reopen it. **Only the SEGMENT guard names a slot,
+  and any surface that says "the type and the slot" unqualified is wrong** - pass 1 measured four
+  consumer-facing surfaces saying exactly that, one of them illustrating it with a slot-less message.
 
 ### The 278's HL-03, folded into the same slice
 
@@ -387,20 +401,20 @@ undefined` check, and the flag can only hold where no claim is open, so neither 
   - **`docs-content/cookbook.md` was never in the pass-2 sweep at all** and still carried the
     counterfactual ("rather than attaching to the one named before it"), the exact claim pass 1
     cut back everywhere else.
-  **A UNIVERSAL IN THE PROSE WAS WRONG ON ALL FOUR PASSES. THE CODE WAS NOT: pass 1 found a GUARD
-  defect** (`=` for `||=`), and writing "the code graded correct every pass" over that is how a
-  lineage talks itself into believing its gate found nothing. ADR 0016's four-pass raise rests on
-  slices "refused on claim-width, none on behaviour", so a record that overstates the prose share
-  feeds that evidence base a false point. The lesson has stopped being "write the scoped form
-  first" and is now **sweep every surface for the phrase before claiming a claim was deleted** -
-  three separate passes each found one more copy of the same sentence, in a file the pass before it
-  had open.
+    **A UNIVERSAL IN THE PROSE WAS WRONG ON ALL FOUR PASSES. THE CODE WAS NOT: pass 1 found a GUARD
+    defect** (`=` for `||=`), and writing "the code graded correct every pass" over that is how a
+    lineage talks itself into believing its gate found nothing. ADR 0016's four-pass raise rests on
+    slices "refused on claim-width, none on behaviour", so a record that overstates the prose share
+    feeds that evidence base a false point. The lesson has stopped being "write the scoped form
+    first" and is now **sweep every surface for the phrase before claiming a claim was deleted** -
+    three separate passes each found one more copy of the same sentence, in a file the pass before it
+    had open.
 
 - **PASS 4 NOT REFUTED, ON THE REMEDY DIFF ONLY, AND IT IS THE CAP.** ADR 0016's 2026-08-02
   amendment raised the ceiling to four for exactly this shape: a slice refused on claim width, whose
   last prose fix would otherwise ship ungraded. It graded `2e80705..865eb3d` and nothing else. Four
   minors, all prose, all fixed here: the cookbook's terminator had been weakened to "opens one"
-  ("one" resolves to *party*, and no `HL` or `CLM` opens a party); the pass-3 record dropped the
+  ("one" resolves to _party_, and no `HL` or `CLM` opens a party); the pass-3 record dropped the
   word OTHER from "every other `activeEntity` assignment site is covered by a clear", which as
   written invites a maintainer to add a clear at `:796` and silence the feature; the same record
   claimed "the code graded correct every pass" over pass 1's guard defect; and the troubleshooting

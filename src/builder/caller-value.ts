@@ -127,7 +127,7 @@ export const BUILD_REFUSAL_VALUE_MAX_RENDERED =
  * Render a caller-supplied value as a bounded, quoted fragment for a `build*`
  * refusal message. **This is the only sanctioned route a caller value takes
  * into a thrown message**, and `test/builder-refusal-bounds.test.ts` scans
- * `src/` for any other route - a twenty-fourth refusal site that interpolates a
+ * `src/` for any other route - a twenty-fifth refusal site that interpolates a
  * value directly reds that test. That scan keys on `throw new *BuildError(` and
  * on template-literal holes, so it is a strong tripwire for the shape this
  * library uses rather than a proof over every shape one could write.

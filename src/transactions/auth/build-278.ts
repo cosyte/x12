@@ -97,8 +97,27 @@ const HL_LEVEL = {
 const DEFAULT_REVIEW_LEVEL = "EV";
 
 /**
- * The only two HL-03 level codes a 278 review may carry: `EV` patient event and
- * `SS` service (X12 code source 0735, as the X217 / X216 TR3s use it).
+ * The only two HL-03 level codes a 278 review may carry: `EV` at Loop 2000E and
+ * `SS` at Loop 2000F.
+ *
+ * **Grounded OUTSIDE this repo, because checking a spec claim against this
+ * package's own reader is not a check** (`X12-SVC-ELEMENT-MAP-OFF-BY-ONE`), and
+ * this guard now REJECTS callers. TR3 005010X217 is a paid X12 document and
+ * nobody here has read it. The source used is a published payer implementation
+ * of X217, the Indiana Medicaid FFS / Kepro "278 Health Care Services Review
+ * Information - Request" guide, whose per-loop HL03 tables each read
+ * `Total Codes: 250, Included: 1`:
+ *
+ * ```text
+ * Loop 2000A -> 20 Information Source      Loop 2000D -> 23 Dependent
+ * Loop 2000B -> 21 Information Receiver    Loop 2000E -> EV Event
+ * Loop 2000C -> 22 Subscriber              Loop 2000F -> SS Services
+ * ```
+ *
+ * **The negative control is in that table.** The same extraction over the same
+ * document answers something DIFFERENT at four of the six loops, so it is not a
+ * source that returns the same thing for every input - which is the test
+ * `X12-277-SVC07-NOT-DECODED` set for any usage or code-list claim here.
  *
  * This is the one HL-03 in the library the caller supplies. Every other level
  * on every builder's spine is a module constant selected by tree position, so

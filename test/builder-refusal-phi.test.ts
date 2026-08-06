@@ -31,9 +31,21 @@
  *
  * **A guarantee that is true on one path and false on another is not a
  * guarantee**, and the remedy chosen was to make it true rather than to reword
- * it: the guards report the TYPE and never the value. The reasoning, including
- * why the decimal guard went the same way when the float rendering looked like
- * a diagnostic worth keeping, is in `src/builder/caller-decimal.ts`.
+ * it: **no caller guard echoes what a caller put in a document ELEMENT.** The
+ * string, segment and decimal guards report the TYPE, and so does the array
+ * guard's primitive arm. The reasoning, including why the decimal guard went the
+ * same way when the float rendering looked like a diagnostic worth keeping, is in
+ * `src/builder/caller-decimal.ts`.
+ *
+ * **Read that line literally, because the first draft of it was an absolute and
+ * a refuter measured it false.** It said "no SLOT-GENERIC caller guard echoes a
+ * value", and `describeShape`'s two OBJECT arms falsify that: they still render a
+ * forged array-like's `length` and its class tag, bounded and not redacted. Those
+ * describe the SHAPE a caller forged rather than an element's contents, they are
+ * `PRE-EXISTING` and unchanged, and the case below pins them KEPT. Separately,
+ * only the SEGMENT guard names the slot - `esc` and `escDec` name the builder -
+ * so "the type and the slot" is wrong over the family and was published on four
+ * consumer surfaces before it was caught.
  *
  * ## Why this file exists beside `test/builder-refusal-bounds.test.ts`
  *
@@ -416,9 +428,11 @@ describe("the other shared caller guards redact too, which is what makes it a pr
     expect(message).toContain("spec.members[0].healthCoverages");
     expect(message).toContain("a string");
     expect(message).not.toContain(String(MEMBER_ID));
-    // The shape half is KEPT and is not slot data: a forged `length` is the
-    // whole reason this guard exists, and it is what makes the refusal
-    // actionable.
+    // The SHAPE half is KEPT deliberately and is pinned so nobody "finishes the
+    // job" here: a forged `length` is the whole reason this guard exists, and it
+    // is what makes the refusal actionable. It is metadata about the object the
+    // caller forged, not the contents of a document element, which is where the
+    // property draws its line. `PRE-EXISTING` and byte-identical at `4a5a943`.
     let forged = "";
     try {
       build834(asJsCaller(spec({ length: "9".repeat(120_000) })));
@@ -432,9 +446,12 @@ describe("the other shared caller guards redact too, which is what makes it a pr
 
   it("the DECIMAL guard: a numeric amount, redacted with its siblings", () => {
     // An `X12Decimal` slot holds money or a quantity rather than an identifier,
-    // which is the argument for having kept the echo here. It went anyway: "no
-    // slot-generic guard echoes EXCEPT this one" is a census with one entry,
-    // and this package has had a census measured false five times.
+    // which is the argument for having kept the echo here. It went anyway,
+    // because an `X12Decimal` slot IS an element slot and so falls inside the
+    // line the property draws. "It holds no identifier today" is a fact about
+    // today's slots rather than a property of the guard, and reaching for it
+    // here while refusing it for `describeShape`'s `length` is the inconsistency
+    // a refuter caught in the first draft.
     const spec = (amount: unknown): unknown => ({
       envelope: ENVELOPE,
       payment: {

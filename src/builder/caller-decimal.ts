@@ -126,12 +126,15 @@ import { X12Decimal } from "../decimal.js";
  *    fixed text. Nothing about the diagnosis depends on echoing the caller's
  *    particular number, and the remedy (`X12Decimal.fromString()` at the call
  *    site) is identical either way.
- * 2. **One exception is how a claim in this area goes wrong.** The property
- *    `REFUSAL-MESSAGE-PHI-ECHO` bought is that **no slot-generic caller guard
- *    echoes a value**. "No slot-generic guard except this one" is a census with
- *    one entry, and a census is the instrument this package has had measured
- *    false five times. An `X12Decimal` slot holding no identifier is a fact
- *    about today's slots, not a property of the guard.
+ * 2. **The line is drawn at what a caller puts in a document ELEMENT, and an
+ *    `X12Decimal` slot is one.** That is the whole rule
+ *    `REFUSAL-MESSAGE-PHI-ECHO` bought, and it is what makes the array guard's
+ *    surviving arms consistent rather than an exception: `caller-array.ts`
+ *    still reports a forged array-like's `length` and class tag, which describe
+ *    the SHAPE a caller forged and not an element's contents. "An `X12Decimal`
+ *    slot holds no identifier" would have been an argument of a different kind
+ *    - a fact about today's slots rather than a property of the guard - and
+ *    this package has had that kind of census measured false five times.
  *
  * `object` and `function` were already type-only, for the reason
  * `caller-string.ts` gives.

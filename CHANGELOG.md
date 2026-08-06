@@ -279,14 +279,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   through `esc`, so `requireCallerString` refuses first and its message names only the builder. The
   echo was on both, and on the two other guards as well.
 
-  **The remedy is a property, not a list: no slot-generic caller guard echoes a value.** All four
-  report the offending TYPE, and the segment guard keeps its spec-shaped slot locator beside it
+  **The remedy is a property, not a list: no caller guard echoes what a caller put in a document
+  ELEMENT.** The string, segment and decimal guards report the offending TYPE, and so does the array
+  guard's primitive arm; the segment guard keeps its spec-shaped slot locator beside it
   (`build999: "AK9"-01 must be a string, but received a number.`). A guard standing on every element
   of every builder cannot know whether the primitive in front of it is a control number or a patient
-  identifier, which is exactly why it may not echo one. The decimal guard went with its siblings even
-  though an `X12Decimal` slot holds no identifier today: "no guard except this one" is a census with
-  one entry, and its message's own fixed text already names `0.30000000000000004` / `1e+21` / `NaN` as
-  what a raw number does, so no diagnosis was lost.
+  identifier, which is exactly why it may not echo one. The decimal guard went with them because an
+  `X12Decimal` slot IS an element slot, and because its message's own fixed text already names
+  `0.30000000000000004` / `1e+21` / `NaN` as what a raw number does, so no diagnosis was lost.
+  "An `X12Decimal` slot holds no identifier today" would have been the wrong kind of argument: a fact
+  about today's slots rather than a property of the guard.
+
+  **Two things that property does NOT say, and both were drafted as absolutes first.** The array
+  guard still renders a forged array-like's `length` and its class tag through `renderCallerValue`,
+  bounded: those describe the SHAPE a caller forged rather than an element's contents, and they are
+  the whole diagnostic for `{ length: "9".repeat(120000) }`. And **only the segment-join guard names
+  the SLOT** - `esc` and `escDec` name the BUILDER, a limit `caller-string.ts` already recorded, so on
+  those two the echoed value used to stand in for a locator and now nothing does. That is a real
+  diagnostic cost and it is disclosed rather than argued away.
 
   **The segment guard's slot locator is now bounded by GRAMMAR rather than by length.** `parts[0]` is
   caller-supplied in `buildInterchange`, which takes `[segmentId, ...elements]` wholesale, so it is
