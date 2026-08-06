@@ -147,18 +147,22 @@ model.
     With a `CLM` open (the variant route), the line service date, amount and note land among the
     **claim-level** ones, indistinguishable from them, and a trailing `REF` lands among the
     claim-level references. With **no** `CLM` open, **all seven are discarded**: nothing following
-    that `LX` attaches to the party named BEFORE it. (A `NM1` arriving AFTER that `LX` names a
-    party normally, and its own trailing segments attach; the reset is not a latch.) The `DTP` / `AMT` / `NTE` already were
-    discarded on that route at `0.0.10`; the `REF` / `N3` / `N4` / `PER` are what changed. **Read the segments off
-    `tx.segments[…].raw` rather than inferring either outcome.**
+    that `LX` attaches to the party named BEFORE it. The `DTP` / `AMT` / `NTE` already were
+    discarded on that route at `0.0.10`; the `REF` / `N3` / `N4` / `PER` are what changed. **Read
+    the segments off `tx.segments[…].raw` rather than inferring either outcome.**
     **🩺 CHANGED, and the change moves values off the model that `0.0.10` put on it.** Through
     `0.0.10` - the current release as this was written, so a consumer on it has the old behaviour -
-    the no-claim route did not discard these: they attached to whichever party the last `NM1` left
-    active, so a line-item control number surfaced in an entity's `references` (measured, in a
-    _later_ claim's `payer.references`) and an `N3` / `N4` / `PER` gave that party a street address
-    and a contact it never had. **If you read `0.0.10` or earlier and relied on an entity's
-    `address`, `contacts` or `references`, those slots could carry line-level values from a dropped
-    Loop 2400.**
+    the no-claim route did not discard these. Measured, on a payer: a line-item control number
+    surfaced in a _later_ claim's `payer.references`, and an `N3` / `N4` / `PER` gave that payer a
+    street address and a contact it never had. **Never read that as all four kinds on every party** -
+    this reader does not surface every one of those kinds on every party, and a `PER` on a patient
+    or a pay-to address reached the model on no release. **No per-kind, per-party map is published
+    in this document, deliberately**, and the `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX` entry
+    below does not carry one either: it says outright that whether such a segment would have
+    attached is a separate question it does not answer. `tx.segments` is what settles it for a
+    given document. **If you read `0.0.10` or earlier and relied on an
+    entity's `address`, `contacts` or `references`, those slots could carry line-level values from a
+    dropped Loop 2400.**
   - **🩺 That change is a TRADE, and its cost is that a conformant entity segment can now be
     dropped.** The TR3s nest Loop 2400 inside Loop 2300 and say nothing about an `LX` elsewhere, so
     which party a segment following a **stray** `LX` belongs to is not derivable from the spec in
