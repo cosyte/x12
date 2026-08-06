@@ -376,11 +376,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   after this change landed, with the all-mode sweep as the backstop. It is closed by the change below,
   which is unreleased alongside this one. **Do not read "the same unreleased block" as "no published
   release had it"**: this whole file sits under one `[Unreleased]` heading, so that inference is true
-  of the file and false of the registry. Also unclosed at the time, and still open: a scan that
-  observed nothing is reported clean rather than refused; and the enumerate-then-read window in all
-  mode is untouched, because tolerating a failed read pulls the opposite way from narrowing what the
-  enumeration admits and belongs in its own change. No library code changed and no published type
-  changed.
+  of the file and false of the registry. Also unclosed at the time: a scan that observed nothing was
+  reported clean rather than refused, which the last entry in this section closes, unreleased
+  alongside this one and subject to the same warning about what "the same unreleased block" does and
+  does not prove. Still open: the enumerate-then-read window in all mode is untouched, because
+  tolerating a failed read pulls the opposite way from narrowing what the enumeration admits and
+  belongs in its own change. No library code changed and no published type changed.
 
 - **🩺 The PHI scanner's `--staged` route stops trusting the caller's git config, so five kinds of
   staged change can no longer disappear from the pre-commit gate's list without a byte of the index
@@ -434,12 +435,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   argv
   enumerated stopped being enumerated, and that equality is asserted as a test.
 
-  **Not closed here, and measured rather than assumed**: a scan that observed nothing is still
-  reported clean; a tracked file directly under `test/` is enumerated by neither route; an index
-  entry at exactly a scan root's own path matches no `--staged` clause, because every clause tests a
-  `<root>/` prefix; and an all-mode walk root replaced by a regular file still dies on an unhandled
-  directory read rather than refusing cleanly. Each is a scope decision belonging in its own change.
-  No library code changed and no published type changed.
+  **Not closed here, and measured rather than assumed**: a scan that observed nothing was still
+  reported clean, and an all-mode walk root replaced by a regular file still died on an unhandled
+  directory read rather than refusing cleanly. Both are closed by the entry below, unreleased
+  alongside this one. **Still open after both**: a tracked file directly under `test/` is enumerated
+  by neither route, and an index entry at exactly a scan root's own path matches no `--staged`
+  clause, because every clause tests a `<root>/` prefix. Each is a scope decision belonging in its
+  own change. No library code changed and no published type changed.
+
+- **🩺 The PHI scanner's all-mode sweep can no longer report clean over a corpus it never opened**
+  (`PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL`). `pnpm phi-scan` with no arguments walks two roots,
+  `test/fixtures` and `src`, and prints `OK - no hits` at exit 0 when it finds nothing. **Finding
+  nothing and opening nothing were indistinguishable.** Each shape is measured on a throwaway
+  repository laid out like this one, against a synthetic `.edi` payload whose NM1 person name, DMG
+  date of birth, PER phone and `REF*SY` SSN are four hits at exit 1 when the same bytes are read:
+  - **a missing root.** With BOTH walk roots absent, and with `test/fixtures` alone absent, the walk
+    returned immediately and the sweep printed `OK - no hits` at **exit 0**. **A root a repository
+    never had is the worst shape of it**, because the gate then reads clean on every run it ever
+    makes and no run looks wrong;
+  - **an emptied root.** With the roots present but emptied on disk while their files stayed in the
+    index, the sweep printed `OK - no hits` at **exit 0** over a corpus whose committed bytes are
+    hits;
+  - **a root that is not a directory.** With a walk root replaced by a regular file, `readdirSync`
+    threw an **uncaught `ENOTDIR`** and the process ended at **exit 1**, which is this scanner's own
+    code for "hits found", as a stack trace rather than a refusal. A root that is a FIFO ended the
+    same way. **That exit code is NOT portable and neither is the mechanism** (`hl7` measures **2**
+    for its version of this shape, `terminology` **1** by a different route), so it was re-measured
+    here rather than carried over.
+
+  **The remedy is two rules, and the second is not implied by the first, because existence is not
+  observation.** A declared walk root must BE a directory (`refuseUnusableRoots`), and every
+  tracked, non-`.md` file under a root must have been one of the files the walk actually enumerated
+  (`reconcileObserved`). Both refuse at **exit 2** and name **every** offender, the same rule the
+  not-a-regular-file refusal already follows. **Each is independently load-bearing**: dropping either
+  reds 4 of the 15 new cases, and they are a different 4.
+
+  **🩺 SAY "BE A DIRECTORY", NEVER "BE ENUMERABLE".** A draft of this entry said the second and a
+  refuter measured it false: a root that IS a directory the process cannot open (mode `000`) passes
+  the type check and then throws an **uncaught `EACCES`** out of `readdirSync`, at **exit 1**,
+  identically at base and at head. An unreadable **subdirectory** under a root, and the window
+  between the root check and the walk, end the same way. **That class is PRE-EXISTING, disclosed and
+  NOT closed here**, because closing it means tolerating or classifying a failed directory read,
+  which is the deferred enumerate-then-read remedy pulling the same way. The claim was **cut back to
+  what the code checks**, not the guard grown.
+
+  **A root that is itself a symbolic link to a directory is still followed**, as before, and where
+  that link is TRACKED, `reconcileObserved` **exempts the root's own index entry**. Without that
+  exemption the sweep refused (exit 2) over a tree the base scanner scans as a documented superset at
+  exit 1, because `git ls-files` returns the link's own path `test/fixtures` while the walk only ever
+  yields `test/fixtures/<name>`. It opens no clean path: a root that is a tracked regular file, or a
+  link to one, is refused by the root check first. **The case that holds this commits its corpus**,
+  because on an uncommitted one `git ls-files` is empty and the case would be green by construction.
+
+  **A COUNT DOES NOT CLOSE THIS, WHICH IS WHY THE SECOND RULE READS THE INDEX.** An emptied root
+  contributes zero and a total still looks like a total, so a denominator measures the roots that DID
+  exist. Only naming the corpus from a source OUTSIDE the walk separates "read it and found nothing"
+  from "never opened it".
+
+  **The ignore rule is stated exactly, because its short form is false.** `git check-ignore` consults
+  the index by default, so it answers NOT-ignored for a path that is tracked even when a `.gitignore`
+  rule names it (only `--no-index` says otherwise, and this scanner does not pass it). So the walk
+  SCANS a tracked-and-ignored file and this check correspondingly REFUSES when one is missing from
+  disk. Both halves of that pair are asserted; what the rule really exempts is the UNTRACKED ignored
+  file, which is never in `git ls-files` at all.
+
+  **One behaviour outside a git checkout changed and is stated rather than buried**: where
+  `git ls-files` cannot answer, the sweep now refuses at exit 2 instead of reporting clean, because
+  "git could not tell me" and "git told me there is nothing" are the two answers this check exists to
+  keep apart. `scripts/` is not in the published tarball, so every caller is inside a checkout.
+
+  **Not closed here, measured rather than assumed, and both a scope decision rather than this one**:
+  a tracked file directly under `test/` is enumerated by NEITHER route (exit 0 over a payload that
+  hits as an ordinary fixture), and an index entry at exactly a scan root's own path matches no
+  `--staged` clause (exit 0 over the same payload). **NEITHER IS CLOSED BY THE RECONCILIATION ABOVE,
+  and the reason is worth stating because it reads as though it should be**: the reconciliation
+  compares the walk against the index WITHIN the declared scope, so a path nothing declares in scope
+  is absent from both sides of the comparison. Widening the scope is its own change, because
+  **enumerating those files buys only the dashed-SSN and email floor**: they are `.ts` sources whose
+  fixtures are string literals, so `looksLikeX12` is false and the NM1 / DMG / PER / service-date
+  recognisers never run. **Widening the enumeration and widening the recogniser are two sides of it,
+  each in addition to the other.** Measured on this package's own corpus, the current recogniser over
+  the tracked non-fixture files under `test/` finds 8 shapes in exactly one file,
+  `test/scripts/phi-scan.test.ts`, which is this scanner's own negative-control corpus; excusing it
+  needs an exclusion surface that does not exist, because a bare `--allow-fixture` seeds the
+  positional path set and selects `paths` mode. The **enumerate-then-read window** is likewise
+  untouched, and the reconciliation does not change its reachability: it runs on the enumeration,
+  before any target is read, and it neither widens a root nor reads a file. No library code changed
+  and no published type changed.
 
 ### Fixed
 

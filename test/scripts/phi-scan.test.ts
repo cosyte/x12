@@ -993,3 +993,309 @@ describe("phi-scan: the argv the two-field stride is coupled to", () => {
     expect(r.stdout ?? "").toMatch(/OK - no hits/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// All mode owes an account of its roots, and existence is not observation
+// ---------------------------------------------------------------------------
+//
+// Two rules, and the second is not implied by the first. A declared walk root
+// must BE a directory, and every tracked, non-`.md`, non-gitignored file under
+// one must actually have been enumerated by the walk. Both refuse at exit 2 and
+// name every offender.
+//
+// SAY "A DIRECTORY", NEVER "AN ENUMERABLE DIRECTORY", HERE MOST OF ALL. The
+// stronger wording was measured FALSE and cut back everywhere else, and a suite
+// that keeps it tells a reader these cases cover a root that cannot be READ.
+// THEY DO NOT: a root at mode `000` throws an uncaught `EACCES` at exit 1,
+// identically at base and at head, and that class is disclosed and deliberately
+// left open. Nothing below asserts it, on purpose.
+//
+// The cases split that way on purpose, because the two failures are different
+// shapes with the same symptom. A MISSING root reads clean forever and no run
+// looks wrong; an EMPTIED root passes the root check and still contributes
+// nothing, which is why a count of what the sweep opened cannot separate them
+// (an emptied root contributes zero and a total still looks like a total). Only
+// naming the corpus from a source OUTSIDE the walk, the index, tells them apart.
+//
+// Every case runs against a throwaway git repository and every payload carries
+// real identifier shapes, so a green here is never green by construction: the
+// controls assert the same bytes are exit 1 when the sweep does open them.
+
+describe("phi-scan: a declared walk root must be a directory", () => {
+  it("refuses a root that does not exist, over PHI still in the index (exit 2)", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "violator.edi"), SYNTHETIC_PHI);
+    git(root, ["add", "."]);
+    commit(root, "base");
+
+    // Non-vacuity: with the root present, this same index is a hit.
+    expect(runIn(root, []).code, "premise: the committed payload is detectable").toBe(1);
+
+    rmSync(join(root, "test", "fixtures"), { recursive: true });
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures");
+    expect(r.stderr).toContain("does not exist");
+    expect(r.stdout).not.toMatch(/OK/);
+    expectNoPhi(r.stderr);
+  });
+
+  it("refuses a root that NEVER existed, which is the shape that reads clean forever", () => {
+    // A root a repository never had makes the gate print clean on every run it
+    // ever makes, and nothing about that run looks wrong. Nothing is tracked
+    // under it, so the reconciliation below is silent on it: this rule is what
+    // catches it, which is why both rules ship together.
+    const root = makeRepo();
+    rmSync(join(root, "test", "fixtures"), { recursive: true });
+    rmSync(join(root, "test"), { recursive: true });
+    git(root, ["add", "."]);
+    commit(root, "base");
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures");
+    expect(r.stdout).not.toMatch(/OK - no hits/);
+
+    // Non-vacuity: the root is a real scan root, so restoring it and putting the
+    // payload back gives the hit its absence was suppressing.
+    mkdirSync(join(root, "test", "fixtures"), { recursive: true });
+    writeFileSync(join(root, "test", "fixtures", "violator.edi"), SYNTHETIC_PHI);
+    expect(runIn(root, []).code).toBe(1);
+  });
+
+  it("refuses a root REPLACED BY A REGULAR FILE rather than dying on ENOTDIR (exit 2)", () => {
+    // Measured on this package at `b07c367`: `readdirSync` threw an UNCAUGHT
+    // `ENOTDIR` and the process ended at exit 1, which is this scanner's code
+    // for "hits found", as a stack trace rather than a refusal. THAT NUMBER IS
+    // NOT PORTABLE: `hl7` measures 2 for its version of this shape and
+    // `terminology` 1 by a different mechanism. It is re-measured here rather
+    // than carried over.
+    const root = makeRepo();
+    rmSync(join(root, "test", "fixtures"), { recursive: true });
+    writeFileSync(join(root, "test", "fixtures"), SYNTHETIC_PHI);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures (a regular file)");
+    // A refusal, not a crash: no stack trace, and no engine internals.
+    expect(r.stderr).not.toContain("ENOTDIR");
+    expect(r.stderr).not.toContain("readdirSync");
+    // The root's own bytes are the payload, and they are never echoed.
+    expectNoPhi(r.stderr);
+  });
+
+  it("refuses the src root the same way", () => {
+    const root = makeRepo();
+    rmSync(join(root, "src"), { recursive: true });
+    writeFileSync(join(root, "src"), SYNTHETIC_PHI);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("src (a regular file)");
+    expectNoPhi(r.stderr);
+  });
+
+  it("still FOLLOWS a root that is itself a symbolic link to a directory (exit 1)", () => {
+    // The documented superset behaviour, held in place: `existsSync` and
+    // `readdirSync` both follow, and the new check stats through the link for
+    // exactly that reason.
+    //
+    // THE CORPUS IS COMMITTED, AND THAT IS THE POINT OF THE CASE. On an
+    // uncommitted tree `git ls-files` is empty, so the reconciliation is
+    // satisfied trivially and this case would be green by construction rather
+    // than because the property holds. Committed, `git ls-files` returns the
+    // LINK'S OWN path `test/fixtures`, which the walk can never enumerate (it
+    // yields `test/fixtures/<name>`), so without the walk-root exemption in
+    // `reconcileObserved` the sweep refuses at exit 2 and this documented
+    // superset scan is lost. The premise is asserted off raw git first.
+    const root = makeRepo();
+    mkdirSync(join(root, "elsewhere"));
+    writeFileSync(join(root, "elsewhere", "violator.edi"), SYNTHETIC_PHI);
+    rmSync(join(root, "test", "fixtures"), { recursive: true });
+    symlinkSync(join("..", "elsewhere"), join(root, "test", "fixtures"));
+    git(root, ["add", "-A"]);
+    commit(root, "base");
+
+    expect(
+      gitOut(root, ["ls-files", "--", "test/fixtures"]).trim(),
+      "premise: the index carries the link's OWN path, not a path under it",
+    ).toBe("test/fixtures");
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("RIVERA");
+    expect(r.stderr).not.toContain("not opened by the sweep");
+  });
+});
+
+describe("phi-scan: the sweep is reconciled against the index, not merely counted", () => {
+  it("refuses when a tracked in-scope file was never opened (exit 2)", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "violator.edi"), SYNTHETIC_PHI);
+    git(root, ["add", "."]);
+    commit(root, "base");
+
+    // Non-vacuity, both directions: present, it is a hit on the NAME detector.
+    const before = runIn(root, []);
+    expect(before.code, `stderr: ${before.stderr}`).toBe(1);
+    expect(before.stderr).toContain("person-name token not in synthetic allow-list");
+
+    // Removed from disk, still in the index. The root still exists, so the root
+    // check above passes and the walk simply finds one file fewer.
+    rmSync(join(root, "test", "fixtures", "violator.edi"));
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures/violator.edi");
+    expect(r.stderr).toContain("not opened by the sweep");
+    expect(r.stdout).not.toMatch(/OK - no hits/);
+    expectNoPhi(r.stderr);
+  });
+
+  it("names EVERY unopened file, not just the first", () => {
+    // Same rule as the non-regular-entry refusal: a developer who has to re-run
+    // the gate once per file learns to distrust it.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "violator.edi"), SYNTHETIC_PHI);
+    git(root, ["add", "."]);
+    commit(root, "base");
+
+    rmSync(join(root, "test", "fixtures", "violator.edi"));
+    rmSync(join(root, "test", "fixtures", "ordinary.edi"));
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures/violator.edi");
+    expect(r.stderr).toContain("test/fixtures/ordinary.edi");
+    expect(r.stderr).toContain("2 tracked in-scope files");
+  });
+
+  it("refuses when git cannot list the index at all (exit 2)", () => {
+    // "git could not tell me" and "git told me there is nothing" are the two
+    // answers this whole reconciliation exists to keep apart, so the first is
+    // never allowed to render as the second. `scripts/` is not in the published
+    // tarball, so every caller is inside a checkout of this repository.
+    const root = mkdtempSync(join(tmpdir(), "x12-phi-scan-nogit-"));
+    repos.push(root);
+    mkdirSync(join(root, "scripts"));
+    mkdirSync(join(root, "src"));
+    mkdirSync(join(root, "test", "fixtures"), { recursive: true });
+    copyFileSync(
+      join(REPO_ROOT, "scripts", "phi-allow-list.txt"),
+      join(root, "scripts", "phi-allow-list.txt"),
+    );
+    writeFileSync(join(root, "src", "ordinary.ts"), "export const answer = 42;\n");
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("git ls-files failed");
+    expect(r.stdout).not.toMatch(/OK - no hits/);
+  });
+
+  it("does not mask a hit: a corpus fully opened still reports its hits (exit 1)", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "violator.edi"), SYNTHETIC_PHI);
+    git(root, ["add", "."]);
+    commit(root, "base");
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("RIVERA");
+    expect(r.stderr).not.toContain("not opened by the sweep");
+  });
+
+  it("a healthy committed corpus is still clean (exit 0)", () => {
+    const root = makeRepo();
+    git(root, ["add", "."]);
+    commit(root, "base");
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK - no hits/);
+  });
+
+  it("an UNTRACKED extra file does not trip it: the check is one-directional", () => {
+    const root = makeRepo();
+    git(root, ["add", "."]);
+    commit(root, "base");
+    writeFileSync(
+      join(root, "test", "fixtures", "untracked.edi"),
+      interchange("NM1*IL*1*TEST*PATIENT****MI*MEMBER001~"),
+    );
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+  });
+
+  it("a STAGED deletion does not trip it: it is out of the index", () => {
+    const root = makeRepo();
+    writeFileSync(
+      join(root, "test", "fixtures", "extra.edi"),
+      interchange("NM1*IL*1*TEST*PATIENT****MI*MEMBER001~"),
+    );
+    git(root, ["add", "."]);
+    commit(root, "base");
+    git(root, ["rm", "-q", "test/fixtures/extra.edi"]);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+  });
+
+  it("mirrors the walk's `.md` exemption: a tracked `.md` missing from disk is exempt", () => {
+    // The expected set is the walk's admissions, not a second stricter boundary.
+    // `.md` is exempt in the walk (docs may legitimately describe violators), so
+    // it is exempt here. Getting it wrong would refuse a clean tree.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "notes.md"), "# a doc, not a fixture\n");
+    git(root, ["add", "."]);
+    commit(root, "base");
+
+    rmSync(join(root, "test", "fixtures", "notes.md"));
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK - no hits/);
+  });
+
+  it("an UNTRACKED gitignored file is exempt, because it is not in `git ls-files`", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, ".gitignore"), "test/fixtures/ignored.edi\n");
+    git(root, ["add", "."]);
+    commit(root, "base");
+    writeFileSync(join(root, "test", "fixtures", "ignored.edi"), SYNTHETIC_PHI);
+
+    // The walk already skips it, so it is clean despite carrying the payload.
+    // That is PRE-EXISTING behaviour, held in place rather than introduced.
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+  });
+
+  it("a TRACKED gitignored file is NOT exempt, and the pair is consistent on purpose", () => {
+    // The short form of the ignore rule is false and it is worth pinning which
+    // way. `git check-ignore` consults the index by default: measured here, it
+    // answers NOT-IGNORED for a path that is tracked even when a `.gitignore`
+    // rule names it. So the walk SCANS such a file, and this check must refuse
+    // when it is missing. Both halves are asserted, because the consistency is
+    // the claim, not either verdict on its own.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "ignored.edi"), SYNTHETIC_PHI);
+    writeFileSync(join(root, ".gitignore"), "test/fixtures/ignored.edi\n");
+    git(root, ["add", "-f", "."]);
+    commit(root, "base");
+
+    // Premise, off raw git: check-ignore does not call the tracked path ignored.
+    expect(gitOut(root, ["check-ignore", "--no-index", "test/fixtures/ignored.edi"])).toContain(
+      "test/fixtures/ignored.edi",
+    );
+    expect(gitOut(root, ["check-ignore", "test/fixtures/ignored.edi"])).toBe("");
+
+    // Half one: the walk scans it, so the payload is a hit.
+    const present = runIn(root, []);
+    expect(present.code, `stderr: ${present.stderr}`).toBe(1);
+    expect(present.stderr).toContain("RIVERA");
+
+    // Half two: removed from disk, the sweep never opened it, so it refuses.
+    rmSync(join(root, "test", "fixtures", "ignored.edi"));
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures/ignored.edi");
+    expectNoPhi(r.stderr);
+  });
+});
