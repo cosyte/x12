@@ -243,14 +243,16 @@ describe("refusal messages: the source gate", () => {
     // `buildInterchange`, `build999`, `build271` and `build278` each own a
     // `refuseSpec` for `makeCallerEscaper` to call back into, plus the ONE
     // added by `X12-277-SVC07-NOT-DECODED` in `build-277.ts` for a service
-    // line with no SVC-07 under 005010X212), and `src/profiles/validate.ts`
-    // with 12. The module count is unchanged at 11 because `build-277.ts`
+    // line with no SVC-07 under 005010X212, plus the ONE added by
+    // `REFUSAL-MESSAGE-PHI-ECHO` in `build-278.ts` for a review HL-03 level
+    // code outside `EV` / `SS`), and `src/profiles/validate.ts` with 12. The
+    // module count is unchanged at 11 because `build-277.ts` and `build-278.ts`
     // already raised elsewhere. Pinned so a module that stops being scanned
     // (a rename, a moved directory) is a failure rather than a silently
     // smaller sweep.
     const raising = new Set(sites.map((s) => s.file));
     expect(raising.size).toBe(11);
-    expect(sites.length).toBe(85);
+    expect(sites.length).toBe(86);
     expect(modules.some((m) => m.endsWith(join("profiles", "validate.ts")))).toBe(true);
   });
 
@@ -265,7 +267,7 @@ describe("refusal messages: the source gate", () => {
     expect(findings).toEqual([]);
   });
 
-  it("counts the builder's twenty-three caller-value slots, unchanged by this slice", () => {
+  it("counts the builder's twenty-four caller-value slots", () => {
     // The item named SIXTEEN, and sixteen is the count of caller-supplied
     // STRING slots: nine over-long control numbers (one per emitting module)
     // plus seven with no length gate at all (`build999`'s ST-02 trace twice,
@@ -281,16 +283,27 @@ describe("refusal messages: the source gate", () => {
     // `{ length: "9".repeat(120_000) }` drove to 120,152 characters, larger
     // than the figure the item itself was filed on.
     //
+    // ONE more arrived with `REFUSAL-MESSAGE-PHI-ECHO`: `build-278.ts`'s
+    // review HL-03 level code. It is a caller value on purpose and belongs
+    // here - an X12 code source 0735 level code is a control code, the same
+    // footing as `build834`'s INS-03 maintenance type, and naming it is how a
+    // caller finds which of several reviews they mis-typed. **That slice moved
+    // the count the OTHER way everywhere else**: the four shared caller guards
+    // stopped echoing entirely, so they render no value at all now. They never
+    // appeared in this census, because they refuse through a callback rather
+    // than at a `throw` site the scan can see - a limit this gate has always
+    // recorded and which `test/builder-refusal-phi.test.ts` is the answer to.
+    //
     // Count SITES and HOLES separately: they are not the same number, and
-    // conflating them is how this census went wrong the first time. 23 sites
-    // carry a caller value and hold 28 holes between them, because the AK9
+    // conflating them is how this census went wrong the first time. 24 sites
+    // carry a caller value and hold 29 holes between them, because the AK9
     // non-negative refusal names all three counts in one message and three
     // more name two each.
     const builderSites = sites.filter((s) => !s.file.includes(`${sep}profiles${sep}`));
     const boundedSites = builderSites.filter((s) => s.holes.some(isBounded));
     const boundedHoles = builderSites.flatMap((s) => s.holes).filter(isBounded);
-    expect(boundedSites.length).toBe(23);
-    expect(boundedHoles.length).toBe(28);
+    expect(boundedSites.length).toBe(24);
+    expect(boundedHoles.length).toBe(29);
   });
 
   it("counts the profile subsystem's twelve refusal sites and twenty-three holes", () => {

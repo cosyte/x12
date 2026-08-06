@@ -245,10 +245,10 @@ sources and its refutation history. Do not act on a line here without reading th
   `requireCallerSegment` type-checks every element of every segment emitted **through a builder's
   `seg`/`joinSeg` helper**. A `string` carrying an active delimiter in a slot that skipped `esc` is
   still emitted verbatim.
-- **The raw slots that were routed through `esc`, and are therefore delimiter-safe and type-checked
-  but NOT value-constrained:** `build999`'s GS-06/GE-02, ST-02/SE-02, AK9-01, IK5-01 and GS-07;
+- **The raw slots routed through `esc`: delimiter-safe and type-checked, and value-constrained only
+  where a trap below says so.** `build999`'s GS-06/GE-02, ST-02/SE-02, AK9-01, IK5-01 and GS-07;
   `groupDate`/`groupTime` (GS-04/GS-05) in **all seven** domain builders, not just the 999;
-  `build278`'s **HL-03**; `build837`'s LX-01. **Only the slots named here were routed.** **The
+  `build278`'s **HL-03** (the one that IS, `EV`/`SS`); `build837`'s LX-01. **Only these were routed.** **The
   residual delimiter injection is NOT stop-the-line: these fail at the receiver, they do not mint a
   wrong clinical value.** Do not escalate it as if they did.
 - **`buildTA1` uses NEITHER `seg` NOR `joinSeg`** - it joins its five caller-supplied elements
@@ -526,19 +526,20 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   structurally inconsistent hierarchy is _unrepresentable_ and SE-01 is correct by construction.
   **There is no level field on `Build271Spec` or `Build277Spec` and none should be added** - that
   would destroy the guarantee, not close a gap.
-- **🩺 The one exception is the 278's EV/SS REVIEW level, whose HL-03 is caller-supplied**
-  (`review.levelCode`, typed `"EV" | "SS"`, defaulted to `EV`, routed through `esc` as a raw slot -
-  it is on the raw-slot list above as `build278`'s HL-03). `esc` type-checks for `string` and escapes
-  delimiters; **it does not constrain the value to `EV`/`SS`**. Combined with the read side's
-  deliberate tolerance below, an out-of-enum level from a JS/JSON caller emits without refusal and
-  the review, **including its HCR-01 certification decision, silently does not decode.**
-  `PRE-EXISTING`, identical at base and head, filed not fixed. **Do not restate this as a property of
-  `build278`'s HL-03 generally, and do not write "every builder that has one" over it** - the UMO,
-  requester, subscriber and dependent levels are library constants like every other builder's.
+- **🩺 The one caller-supplied HL-03 is the 278's EV/SS REVIEW level** (`review.levelCode`, default
+  `EV`; `esc` never constrained the value). **Both entry points now REFUSE anything else**
+  (`X12_278_BUILD_INVALID_SPEC`, no new code): the emit is well-formed but opens a loop no reader
+  opens, so the review **and its HCR-01 decision FAIL TO DECODE - they are NOT decoded WRONGLY**, and
+  never write the stronger form. **Resolve via the emitter's own `?? "EV"`, NEVER `!== undefined`** -
+  `null` is absent, and `undefined`-only refused a spec the emitter would have built. Reaches nested
+  and dependent reviews. **Do not restate this as a property of `build278`'s HL-03 generally, and do
+  not write "every builder that has one" over it** - the UMO, requester, subscriber and dependent
+  levels are library constants like every other builder's.
 - **🩺 On the READ side the walker NEVER silently re-numbers a broken HL pointer** - it emits
   `X12_HL_PARENT_MISMATCH` / `X12_HL_PARENT_LEVEL_INVALID`. The 278 `EV` / `SS` levels are
   deliberately tolerant (omitted from the expected-parent map), which is why nothing on the read side
-  catches the out-of-enum HL-03 named above.
+  catches an out-of-enum HL-03 on a document this library did not emit. Untouched; a warning needs a
+  new registry code.
 - **Emit the envelope INLINE, not via `buildInterchange`, in any domain builder that composes a
   composite element** (835, 837), so a pre-composed composite is never double-escaped. Composites
   escape each component then join with the RAW component separator.
@@ -566,14 +567,17 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
 - **🩺 Every DOMAIN builder's own refusal message carries structural locators, counts and numeric
   totals only** - never a `claimId` (patient-account number), member id, member name, trace, or
   diagnosis code. `build834` additionally names the offending maintenance code, an X12 control code
-  and never PHI. **State this per builder, as base did, never as a property of every builder.** Two standing exceptions: the **ack path**, where `build999` interpolates the
-  acknowledged ST-02 (AK2-02, verbatim by TR3 005010X231A1) and `buildTA1` its TA1-05 note code (see
-  "the caller-vs-document dichotomy is NOT categorical" above); and the **shared segment guard**,
-  where `requireCallerSegment` echoes a non-string primitive it refuses, so a `JSON.parse`d spec with
-  a NUMERIC `claimId` or member id puts that identifier in the message
-  (`build835: CLP-01 must be a string, but received a number (…)`) - bounded to 90, not redacted.
-  `PRE-EXISTING`, identical at base and head, filed not fixed. **The negative list is not an absolute
-  PHI guarantee; it is a guarantee about the builder's own templates.**
+  and never PHI. **State this per builder, as base did, never as a property of every builder.** One
+  standing exception, the **ack path**: `build999` interpolates the acknowledged ST-02 (AK2-02,
+  verbatim by TR3 005010X231A1) and `buildTA1` its TA1-05 note code (see "the caller-vs-document
+  dichotomy is NOT categorical" above). **The negative list is NOT an absolute PHI guarantee; it is a
+  guarantee about the builder's own TEMPLATES**, which still render control numbers and control codes.
+- **🩺 NO SLOT-GENERIC CALLER GUARD ECHOES A VALUE - all four (string/segment/decimal/array) report
+  the TYPE only.** They stand on every element, so a `JSON.parse`d spec put a NUMERIC `claimId` or
+  member id in the message, bounded to 90, NOT redacted. **The old disclosure named
+  `requireCallerSegment`; `requireCallerString` fires for `CLP-01`, and both echoed.** A guard that
+  cannot know its slot may not echo: **never re-add a value, never fold the decimal one back out.**
+  The segment locator admits `parts[0]` by the segment-id GRAMMAR, not by length.
 - **The `?`-release escape is honored losslessly** (`?~`->`~`, `?*`->`*`, `??`->`?`); dot-path
   traversal walks elements, composites (`-N`, 1-indexed) and repetitions (`[N]`, 0-indexed).
 - **Known read-side limitations, documented not accidental, and enumerated in
@@ -609,19 +613,14 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   interval and NAMES the missing file. The **post-check** on the untyped sentence catches what the
   preflight structurally cannot: declarations on disk but excluded from the tarball by
   `files`/`.npmignore`. No instance of that second case has occurred in this repo yet.
-- **The post-check reads a string, so anything that could hide that string is REFUSED by option name,
-  wholesale, not by value:** `--quiet`, `--format json`, a `.attw.json` setting, `--config-path`.
-  All four were measured against this repo's own binary handing back exit 0 with the sentence absent.
-  `--config-path` at a **nonexistent** path blinds nothing (`readConfig()` swallows the `ENOENT`), so
-  the test uses the real-file form.
+- **The post-check reads a string, so anything that could hide it is REFUSED by option name,
+  wholesale, not by value** (four routes, measured; a nonexistent `--config-path` blinds nothing).
 - **`test/scripts/attw-gate.test.ts` pins the upstream exit-0 itself**, so an `attw` upgrade that
   rewords the sentence or fixes the exit code reds the suite instead of letting the net go quietly
   slack. It also pins a negative control on a well-formed package and that a real `attw` failure still
   fails.
 - **The port is NOT finished org-wide, including `config/scripts/parser-template/`, which
-  `scaffold-parser.mjs` mints new parsers from** - a port that skips the template leaves the defect
-  being re-minted. Derive the current set rather than trusting a count:
-  `/usr/bin/grep -rl '"attw":' --include=package.json --exclude-dir=node_modules /workspace`.
+  `scaffold-parser.mjs` mints new parsers from.** Derive the set; never trust a count.
 
 ## Sibling Project
 

@@ -97,9 +97,22 @@ const HL_LEVEL = {
 const DEFAULT_REVIEW_LEVEL = "EV";
 
 /**
+ * The only two HL-03 level codes a 278 review may carry: `EV` patient event and
+ * `SS` service (X12 code source 0735, as the X217 / X216 TR3s use it).
+ *
+ * This is the one HL-03 in the library the caller supplies. Every other level
+ * on every builder's spine is a module constant selected by tree position, so
+ * `Build278ReviewSpec.levelCode` is the only place an out-of-enum level can
+ * enter - which is why the guard is a two-member list here and nothing
+ * anywhere else. @internal
+ */
+const REVIEW_LEVEL_CODES: readonly string[] = Object.freeze(["EV", "SS"]);
+
+/**
  * `build278Request` - assemble a 005010X217 278 Request for Review around the
  * supplied spec. Refuses any review carrying an HCR `decision` (HCR is
- * response-only).
+ * response-only), and any review whose HL-03 `levelCode` is outside
+ * `EV` / `SS`.
  *
  * @example
  * ```ts
@@ -129,7 +142,10 @@ export function build278Request(spec: Build278Spec): X12Interchange {
  * `build278Response` - assemble a 005010X216 278 Response around the supplied
  * spec. The HCR `actionCode` on each review's `decision` is emitted VERBATIM
  * (never inferred), so the response round-trips the exact certification
- * outcome through {@link "./get-278.js".get278Response}.
+ * outcome through {@link "./get-278.js".get278Response}. A review whose HL-03
+ * `levelCode` is outside `EV` / `SS` is REFUSED, because that round trip is
+ * what an out-of-enum level breaks: the emitted review loop is one no reader
+ * opens, so the decision fails to decode.
  *
  * @example
  * ```ts
@@ -295,10 +311,11 @@ function buildServicesReview(
 /**
  * Refuse a structurally impossible spec before any emit. Covers the HL spine
  * (a subscriber with neither a review nor a dependent; a dependent with no
- * review) and the per-review preconditions (a review with no
- * `requestCategoryCode`; a request review carrying an HCR decision; a response
- * review whose decision `actionCode` is empty). PHI-clean: messages carry
- * indices + counts, never names / member ids / traces. @internal
+ * review) and the per-review preconditions (an HL-03 level code outside
+ * `EV` / `SS`; a review with no `requestCategoryCode`; a request review
+ * carrying an HCR decision; a response review whose decision `actionCode` is
+ * empty). PHI-clean: messages carry structural indices, counts and X12 control
+ * codes, never names / member ids / traces. @internal
  */
 function enforceStructuralSpec(spec: Build278Spec, direction: "request" | "response"): void {
   const subscriber = spec.subscriber;
@@ -338,15 +355,54 @@ function enforceStructuralSpec(spec: Build278Spec, direction: "request" | "respo
 }
 
 /**
- * Refuse a review with no request category code, a request review carrying an
- * HCR decision (response-only), or a response decision with an empty action
- * code. Recurses into nested service reviews. @internal
+ * Refuse a review whose HL-03 level code is outside `EV` / `SS`, a review with
+ * no request category code, a request review carrying an HCR decision
+ * (response-only), or a response decision with an empty action code. Recurses
+ * into nested service reviews.
+ *
+ * **The HL-03 arm is `REFUSAL-MESSAGE-PHI-ECHO`'s second half, and its failure
+ * mode is worth stating precisely rather than escalating.** `levelCode` is
+ * typed `"EV" | "SS"`, but a JS or JSON caller reaches this with anything, and
+ * `esc` only type-checks and escapes - it never constrained the value. The read
+ * side is deliberately tolerant at these two levels (they attach under a
+ * subscriber OR a dependent, so they are absent from `get-278.ts`'s
+ * expected-parent map), so an out-of-enum HL-03 falls to its `else` arm, the
+ * review loop never opens, and the review **fails to decode**. It does not
+ * decode WRONGLY: nothing is mis-read, no certification decision comes back as
+ * a different decision, and the bytes stay on `tx.segments`. That is the better
+ * of the two failure modes - but the HCR-01 certification action is a
+ * safety-critical field this library places verbatim and never infers, and
+ * emitting a document in which it silently disappears is the emit side being
+ * lenient on the strict half of Postel's Law. So the builder refuses, exactly
+ * as `build834` refuses a maintenance type it cannot name.
+ *
+ * **No caller who was getting the review into the document is broken by it.**
+ * An out-of-enum level never produced a decodable review, so there is no value
+ * that worked and stops working; a TypeScript caller could not reach the arm at
+ * all. An ABSENT `levelCode` still defaults to `EV` and is untouched. @internal
  */
 function enforceReview(
   review: Build278ReviewSpec,
   locator: string,
   direction: "request" | "response",
 ): void {
+  // Resolved through the SAME `?? DEFAULT_REVIEW_LEVEL` expression `emitReview`
+  // uses, deliberately, rather than testing `review.levelCode !== undefined`.
+  // `null` is what a `JSON.parse`d spec carries for an absent optional, and
+  // `??` answers it as absent; a guard that tested `undefined` alone refused a
+  // spec the emitter would have defaulted to `EV` and built cleanly. That is
+  // `X12-CALLER-VALUE-RESIDUALS`' recorded regression in the other direction,
+  // and this file's own test caught it before it shipped.
+  const resolvedLevel = review.levelCode ?? DEFAULT_REVIEW_LEVEL;
+  if (!REVIEW_LEVEL_CODES.includes(resolvedLevel)) {
+    throw new ServicesReview278BuildError(
+      AUTH_278_BUILD_ERROR_CODES.X12_278_BUILD_INVALID_SPEC,
+      `build278: review at ${locator} has HL-03 level code ${renderCallerValue(resolvedLevel)}; ` +
+        `a review level must be "EV" (patient event) or "SS" (service). A level outside those two ` +
+        `emits a well-formed document whose review loop no reader opens, so the review and its HCR-01 ` +
+        `certification decision would not decode.`,
+    );
+  }
   if (review.requestCategoryCode === "") {
     throw new ServicesReview278BuildError(
       AUTH_278_BUILD_ERROR_CODES.X12_278_BUILD_INVALID_SPEC,

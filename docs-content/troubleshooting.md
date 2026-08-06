@@ -96,10 +96,22 @@ library-owned discriminant and an integer), not `o.raw` or `o.segment.elements`.
 
 **The builders are a different surface, and the guarantee there is weaker on purpose.** A `build*`
 function that refuses a spec throws a typed error. Most of those messages carry structural locators
-and numeric totals only; twenty-three sites across ten builder modules also name a value you passed in,
-so you can tell which control number, count, maintenance code or note code was refused.
+and numeric totals only; twenty-four sites across ten builder modules also name a value you passed in,
+so you can tell which control number, count, maintenance code, review level code or note code was
+refused.
 
-Since `0.0.4` every one of those twenty-three goes through `renderCallerValue`, and the fragment it produces
+**The values a refusal names are the ones its own template names by field, and nothing else.** A
+builder's message will show you a control number, an X12 control code or a count. It will not show you
+a `claimId`, a member id, a member name, a trace or a diagnosis code, whatever type you sent them as.
+That second half used to be false and was fixed in the release after `0.0.10`: the shared guards that
+check the TYPE of an element - the ones that fire when a JSON-driven caller sends a number where the
+types say string - used to describe the value as `a number ("900412345678")`, bounded to 90 characters
+and not redacted. They stand on **every element of every builder**, so the value in front of them was
+as often `CLP-01` or `NM1-09` as a control number. They report the type and the slot now
+(`build835: every element value must be a string, but received a number.`) and never the value. If you
+were parsing a value back out of one of those messages, that is the change to know about.
+
+Since `0.0.4` every one of those twenty-four goes through `renderCallerValue`, and the fragment it produces
 is capped at `BUILD_REFUSAL_VALUE_MAX_RENDERED` (90 characters: up to
 `BUILD_REFUSAL_VALUE_MAX_LENGTH` = 63 of your value, then an ellipsis and the true length). All three
 are exported, so you can assert the ceiling instead of trusting it.
@@ -161,6 +173,9 @@ published a counted list of the slots that escaped the check and both were measu
 the check moved to the place every element of those segments has to pass, the joiner. A number,
 `null`, `undefined`, a boolean or an object in a slot that goes through one draws that builder's
 typed refusal, naming the slot the way the spec does: `build999: "AK9"-01 must be a string, …`.
+It names the slot and the TYPE and never the value, per the redaction above; the slot itself is
+admitted only when it matches the X12 segment-id grammar, so free text you park in element 0 of a
+`buildInterchange` segment spec degrades to `element N` rather than being echoed.
 `buildTA1` does not use a segment joiner and is not covered; see below.
 
 **Monetary and quantity slots have their own guard on top of that**, because a raw `number` answers

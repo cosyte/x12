@@ -12,6 +12,7 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 ## Contents
 
 - [CLAUDE-MD-AUDIT (2026-08-04)](#claude-md-audit-2026-08-04)
+- [REFUSAL-MESSAGE-PHI-ECHO (2026-08-06)](#refusal-message-phi-echo-2026-08-06)
 - [X12-DISCARD-AFTER-STRAY-LX (2026-08-06)](#x12-discard-after-stray-lx-2026-08-06)
 - [X12-837-LOOP-RESIDUALS (2026-08-05)](#x12-837-loop-residuals-2026-08-05)
 - [X12-277-SVC07-NOT-DECODED (2026-08-05)](#x12-277-svc07-not-decoded-2026-08-05)
@@ -75,6 +76,176 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   trap block and `CLAUDE.md` stood at 52,992 against a 53,000 ratchet, so this section moved here
   first and the trap went in against the room it freed. That is the intended shape: **the entry is
   never raised to meet a new trap.** The umbrella owes the matching ratchet drop.
+
+## REFUSAL-MESSAGE-PHI-ECHO (2026-08-06)
+
+### The defect: a stated PHI guarantee that was true on one path and false on another
+
+Every domain builder documents, on its own error codes and in this repo's `CLAUDE.md`, that its
+refusal message carries **structural locators, counts and X12 control codes only, and never a
+`claimId` (patient-account number), member id, member name, trace, or diagnosis code**.
+
+That is true of the refusal TEMPLATES. Enumerated in the source at `4a5a943`, the 24 sites that
+render a caller value through `renderCallerValue` / `renderCallerJson` name: nine over-long control
+numbers (one per emitting module), `buildTA1`'s TA1-05 note code, `build834`'s INS-03 and HD-01
+maintenance types, `build837`'s service-line variant, `buildInterchange`'s transaction-set id, and
+`build999`'s AK9 counts and acknowledged ST-02s. **Not one names an identifier.**
+
+It was **false underneath them.** The four shared caller guards each described a wrong-typed value by
+rendering the primitive through `renderCallerValue` - bounded to 90 characters, and **not redacted**:
+
+- `src/builder/caller-string.ts` `describeCallerValue`, on every value routed through a builder's
+  `esc`, which is every string element of every builder;
+- `src/builder/caller-segment.ts` `describeSegmentValue`, on every element of every segment joined;
+- `src/builder/caller-decimal.ts` `describeCallerDecimal`, on every `X12Decimal` slot;
+- `src/builder/caller-array.ts` `describeShape`, primitive arm, on every guarded list.
+
+### Measured, with a payload that actually carries an identifier
+
+Run against `dist/` built from `4a5a943`, with the shape `@cosyte/cli` produces from `JSON.parse`:
+
+```text
+build835({ claims: [{ patientControlNumber: 900412345678, ... }] })
+  -> build835: every element value must be a string, but received a number ("900412345678"). ...
+     code = X12_835_BUILD_INVALID_SPEC
+
+build834({ members: [{ member: { idCode: 700998877, ... } }] })
+  -> build834: every element value must be a string, but received a number ("700998877"). ...
+     code = X12_834_BUILD_INVALID_SPEC
+```
+
+**A vacuity note that is the whole reason the payload looks like this.** The sibling `dicom` repo has
+lost this class of blocker four times to fixtures that carried no identifier, so the test proved
+nothing. Every case in `test/builder-refusal-phi.test.ts` therefore asserts four things: that a
+refusal happened, that it is typed with a string `code`, that it still names the offending type, and
+only then that the identifier is absent. The identifiers were also chosen against the templates'
+own fixed text: the decimal guard's message names `1e21` and `0.30000000000000004` outright, so a
+payload of `1` or `0.1 + 0.2` makes the absence assertion meaningless. A first draft of the array
+case used `review.dates` on the 278 and passed at BASE, for the wrong reason - that slot is an
+optional leaf read with `?? []`, outside `requireCallerArray`'s scope, so the string was iterated
+character by character and a different guard refused first. It uses `member.healthCoverages` now,
+which `requireCallerArray` really does guard.
+
+### The shipped disclosure named the wrong guard
+
+`CLAUDE.md` said the exception was **`requireCallerSegment`**, and quoted
+`build835: CLP-01 must be a string, but received a number (...)`. CLP-01 routes through `esc`, so
+**`requireCallerString` refuses first**, and its message names only the builder, not the slot. The
+library never emitted the quoted string for that case. The echo was real on both guards, and on the
+other two as well; the disclosure was measured against the prose rather than the source.
+
+### The remedy, and why it is "make it true" rather than "reword it"
+
+A guarantee that is true on one path and false on another is not a guarantee. The two honest options
+were to make it true or to stop stating it, and stopping would have left a published healthcare
+package with strictly less to promise about a `claimId` in an error message. So: **no slot-generic
+caller guard echoes a value.** All four report the TYPE, and the segment guard keeps its spec-shaped
+slot locator beside it. A guard standing on every element of every builder cannot know whether the
+primitive in front of it is a control number or a patient identifier, which is exactly why it may not
+echo one.
+
+**The decimal guard was the closest call and went with its siblings.** The argument for keeping it:
+`X12-DECIMAL-BYPASSES-THE-GUARD` exists because a raw `number` renders as `0.30000000000000004` /
+`1e+21` / `NaN` on the wire, and showing the value looked like the fastest diagnosis. It went anyway,
+because (1) the message's own fixed text already names those three renderings, so the diagnosis is
+intact and the remedy (`X12Decimal.fromString()` at the call site) is identical either way, and (2)
+"no slot-generic guard echoes EXCEPT this one" is a census with one entry, and a census is the
+instrument this package has had measured false five times. An `X12Decimal` slot holding no identifier
+is a fact about today's slots, not a property of the guard.
+
+**The segment guard's slot locator is bounded by GRAMMAR now, not by length.** `parts[0]` is
+caller-supplied in `buildInterchange`, which takes `[segmentId, ...elements]` wholesale, so it was the
+one caller string that could still reach a message. It is admitted only when it matches
+`/^[A-Z][A-Z0-9]{1,2}$/`, which caps it at three `[A-Z0-9]` and cannot carry an identifier; anything
+else degrades to `element N`. A `renderCallerValue` bound was the draft and redacted nothing: 90
+characters of free text in element 0 is 90 characters of whatever the caller parked there. Mirrors
+what `PHI-WARNING-MESSAGE-LEAK` did to `X12Segment.id` on the parse side.
+
+### What did NOT change, because whatever points at a deleted claim's place is a new claim
+
+- **The templates still render the values they name by field**, still bounded, still not escaped,
+  still not redacted. `README.md`, `KNOWN-LIMITATIONS.md` and `troubleshooting.md` all keep the
+  "robustness and log hygiene, not redaction" framing, which was always true and still is.
+- `renderCallerValue`, `BUILD_REFUSAL_VALUE_MAX_LENGTH` and `BUILD_REFUSAL_VALUE_MAX_RENDERED` are
+  unchanged and still exported. `X12ParseError.snippet` on the four Tier-3 fatals is unchanged.
+- `caller-array.ts` keeps the `length` and class-tag arms, bounded. They describe the SHAPE a caller
+  forged rather than the content of a document element, and a forged `length` is the input the guard
+  exists to stop.
+- The `esc` refusal still names the BUILDER and not the slot. That limit was already recorded; this
+  slice made it sharper rather than smaller, because the echoed value used to stand in for the slot.
+  Threading a locator through 406 unary `esc` invocations is the trade `caller-string.ts` rejects and
+  this slice did not reopen it.
+
+### The 278's HL-03, folded into the same slice
+
+`Build278ReviewSpec.levelCode` is the **one** caller-supplied HL-03 in the library. Every other level
+on every builder's spine is a module constant selected by tree position. It is typed `"EV" | "SS"`,
+defaulted to `EV`, and routed through `esc` - which type-checks for `string` and escapes delimiters
+and **never constrained the value**.
+
+**The failure mode, stated as precisely as it deserves and no more.** `get-278.ts` omits `EV` and `SS`
+from `EXPECTED_PARENT_LEVEL` deliberately (they attach under a subscriber OR a dependent and
+clearinghouses vary), so an out-of-enum HL-03 falls to the walker's `else` arm, `context` becomes
+`"other"`, and the review loop never opens. Measured on bytes, honest document vs the same document
+with `*EV*` replaced by `*ZZ*`:
+
+```text
+EV : reviews = 1, decision.actionCode = "A1", warnings = []
+ZZ : reviews = 0, decision           = absent, warnings = []
+     the HCR segment is still on tx.segments; the HL still reads levelCode "ZZ"
+```
+
+**It FAILS TO DECODE. It does not decode WRONGLY.** No certification decision comes back as a
+different decision, nothing is mis-read, and the bytes are retained. That is the better of the two
+failure modes and it should never be written up as the worse one. It is still not a document to emit,
+because HCR-01 is a safety-critical field this library places verbatim and never infers, so the
+builder refuses - the same stance `build834` takes on a maintenance type it cannot name. Reuses
+`X12_278_BUILD_INVALID_SPEC`; no registry or error code was added.
+
+**The guard resolves through the emitter's own `?? DEFAULT_REVIEW_LEVEL`, not `!== undefined`.** That
+is not a style point: `null` is what a `JSON.parse`d spec carries for an absent optional, `??` answers
+it as absent, and a guard testing `undefined` alone refused a spec the emitter would have defaulted to
+`EV` and built cleanly. That is `X12-CALLER-VALUE-RESIDUALS`' recorded regression running the other
+way, and this slice's own test caught it before it shipped. Deriving the guard from the same
+expression the emitter uses is what keeps the two from disagreeing.
+
+**No caller who was getting the review into the document is broken.** An out-of-enum level never
+produced a decodable review, so there is no value that worked and stops working, and a TypeScript
+caller cannot reach the arm at all. An omitted or `null` `levelCode` still defaults to `EV`.
+
+**The read side is untouched and its tolerance still matters.** A payer document carrying an
+out-of-enum review level still decodes exactly as it did, silently, and closing that needs a new
+Tier-2 registry code. Deferred, and named here rather than implied away.
+
+### Red census, derived by running head's suite against a base checkout of `src/`
+
+**25 of the changed and new cases red at base**, across six files. The greens are the honest controls
+and are the point of running it: `build835`'s "the same spec builds with a string", the 278's
+"leaves EV, SS and an ABSENT level exactly as they were", the byte-level measurement of the decode
+gap (which describes base behaviour and must NOT move), and both "the caller values a builder
+TEMPLATE names by field are still shown" cases. In `test/builder-refusal-phi.test.ts` alone the split
+is 7 red / 3 green.
+
+### Counts that moved and are pinned
+
+`test/builder-refusal-bounds.test.ts` pins the throw-site and caller-value censuses so they cannot
+drift. Both moved by exactly one, from the 278 guard's own `throw`: **85 -> 86 throw sites**, and
+**23 -> 24 caller-value sites / 28 -> 29 holes**. The four shared guards never appeared in that census
+and still do not - they refuse through a callback rather than at a `throw` site the scan can see,
+which is a limit the gate has always recorded and is exactly where the hole was.
+`test/builder-refusal-phi.test.ts` is the behavioural answer to that limit: it drives the published
+entry points, so it observes what a consumer's `catch` block observes.
+
+### A release-body trap that cost a rewrite, and is not trapped anywhere
+
+`.github/scripts/release-notes.mjs` strips an item identifier from a changeset only when it starts
+with a known `PROJECT_PREFIXES` entry. `REFUSAL-MESSAGE-PHI-ECHO` does not, so the first draft of both
+changesets rendered `(REFUSAL-MESSAGE-PHI-ECHO)` **straight into the public GitHub release body**,
+while the `X12-*` ones beside them were translated away. The gate passed it, because the gate enforces
+the known banned set and its own header says no rule could catch an unregistered prefix. Caught by
+running the real renderer against a simulated version commit before committing; the identifier was
+removed from the changeset text. **Anything named with a prefix this ecosystem has not registered has
+to be kept out of the changeset by hand.**
 
 ## X12-DISCARD-AFTER-STRAY-LX (2026-08-06)
 
@@ -786,7 +957,9 @@ packaging gate.**
   tells you when a required element is missing"** - it does not.
 - **`REFUSAL-MESSAGE-PHI-ECHO` was NOT folded in.** `requireCallerSegment` still echoes a non-string
   primitive it refuses, and `build277`'s `seg` routes through it. Untouched here, disclosed, its own
-  open item.
+  open item. **[Closed 2026-08-06 by that item](#refusal-message-phi-echo-2026-08-06); the sentence
+  above describes the state at `b7d82ca` and the guard named in it was not even the one that fires
+  for `CLP-01`.**
 - **The `X12Decimal | undefined` breaking slice is still deferred** and this slice does not start
   it. `unitsOfService` is `X12Decimal | undefined` because it is an OPTIONAL slot on a new field,
   not because the model-wide change landed.

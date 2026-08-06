@@ -298,7 +298,17 @@ export interface Build278DecisionSpec {
  * ```
  */
 export interface Build278ReviewSpec {
-  /** HL-03 - review level code (`EV` patient event / `SS` service). Default `"EV"`. */
+  /**
+   * HL-03 - review level code (`EV` patient event / `SS` service). Default
+   * `"EV"`.
+   *
+   * The only caller-supplied HL-03 in the library; every other level on every
+   * builder's spine is a module constant selected by tree position. A value
+   * outside `EV` / `SS` is **refused** (`X12_278_BUILD_INVALID_SPEC`) rather
+   * than emitted: it produces a well-formed document whose review loop no
+   * reader opens, so the review and its HCR-01 certification decision would
+   * fail to decode. An absent value still defaults to `EV`.
+   */
   readonly levelCode?: "EV" | "SS";
   /** UM-01 - request category code (required; a review with none is refused). */
   readonly requestCategoryCode: string;

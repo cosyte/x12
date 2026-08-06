@@ -226,29 +226,59 @@ describe("requireCallerDecimal", () => {
     );
   });
 
-  it("refuses every non-decimal a JSON or JS caller can produce", () => {
-    // `renderCallerValue` always quotes what it echoes, so the number arm reads
-    // `a number ("1")` and not `a number (1)`. Kept verbatim rather than
-    // loosened to a regex: the quoting is what bounds a 120,000-character
-    // `toString`, and a change to it should red this.
+  it("refuses every non-decimal a JSON or JS caller can produce, by TYPE alone", () => {
+    // These arms read `a number ("1")`, `a number ("0.30000000000000004")` and
+    // so on until `REFUSAL-MESSAGE-PHI-ECHO`. The value is gone from all of
+    // them now, and the negative control is below: no case here may contain
+    // the value it was handed.
+    //
+    // The decimal guard was the closest call of the four, because the float
+    // rendering looked like the diagnosis. It is not: the message's own fixed
+    // text already names `0.30000000000000004` / `1e+21` / `NaN` as what a raw
+    // number does, and the remedy is `X12Decimal.fromString()` either way. It
+    // went with its siblings so the property has no exception (`caller-decimal.ts`
+    // carries the reasoning).
     const cases: readonly [unknown, string][] = [
-      [1, 'a number ("1")'],
-      [0.1 + 0.2, 'a number ("0.30000000000000004")'],
-      [1e21, 'a number ("1e+21")'],
-      [Number.NaN, 'a number ("NaN")'],
-      ["450.00", 'a string ("450.00")'],
+      [1, "a number"],
+      [0.1 + 0.2, "a number"],
+      [1e21, "a number"],
+      [Number.NaN, "a number"],
+      ["450.00", "a string"],
       [null, "null"],
       [undefined, "undefined"],
-      [true, 'a boolean ("true")'],
+      [true, "a boolean"],
       [[], "an array"],
       [{}, "an object"],
       [(): void => undefined, "a function"],
-      [10n, 'a bigint ("10")'],
+      [10n, "a bigint"],
     ];
     for (const [value, described] of cases) {
       expect(() => requireCallerDecimal(value as X12Decimal, "buildX", refuse)).toThrow(
         `buildX: every numeric element value must be an X12Decimal, but received ${described}.`,
       );
+    }
+  });
+
+  it("never echoes the value it refused, which is the PHI half", () => {
+    // Non-vacuity: each of these is a value a caller could actually have in a
+    // decimal slot, and each is checked to be absent from the message the
+    // guard produced for it. A test whose payload is `1` proves nothing,
+    // because "1" is a substring of the fixed text's `1e21` - and for the same
+    // reason `0.1 + 0.2` cannot be probed here at all: the message's own fixed
+    // text names `0.30000000000000004` as the illustration, so an
+    // absence assertion over it can never pass and would not mean anything if
+    // it did. That collision is the point of checking the payload against the
+    // template before trusting the test.
+    const values: readonly unknown[] = [900_412_345_678, "700998877", 12_345_678_901n];
+    for (const value of values) {
+      let message = "";
+      try {
+        requireCallerDecimal(value as X12Decimal, "buildX", refuse);
+      } catch (err) {
+        message = (err as Error).message;
+      }
+      expect(message).toContain("must be an X12Decimal");
+      expect(message).not.toContain(String(value));
     }
   });
 

@@ -65,21 +65,49 @@
  * not the slot, because `esc` is unary and threading a locator through every
  * invocation would be that many chances to mislabel one. The join does not have
  * that problem: it holds the whole segment, so `parts[0]` is the segment id and
- * index `i` is element `i` by the X12 1-indexed convention. `"build999: HL-03"`
- * costs nothing here and is derived, so it cannot drift out of step with the
- * emitted order the way a hand-written locator would.
+ * index `i` is element `i` by the X12 1-indexed convention.
+ * `build999: "HL"-03` costs nothing here and is derived, so it cannot drift out
+ * of step with the emitted order the way a hand-written locator would. **An
+ * earlier revision of this paragraph wrote the locator as `HL-03`, unquoted,
+ * which is not what the code emits** - the quotes are around the segment id and
+ * have been since the guard shipped.
+ *
+ * ## It says the TYPE and never the value (`REFUSAL-MESSAGE-PHI-ECHO`)
+ *
+ * The primitive it refuses used to be echoed into the message, bounded to 90
+ * characters and not redacted, and the same was true of `caller-string.ts` and
+ * `caller-decimal.ts`. These guards stand on every element of every segment, so
+ * the value in front of them is as likely to be `CLP-01` (the patient-account
+ * number) or `NM1-09` (the member id) as a control number. **A guard that
+ * cannot tell which slot it is on cannot decide that echoing is safe**, so none
+ * of the three echoes now. What is left is the type and the slot, which is what
+ * a caller acts on. The values that still reach a refusal message are the ones
+ * a builder's own template names by field - control numbers, X12 control codes,
+ * counts - and those are bounded, not redacted, exactly as
+ * `caller-value.ts` says.
  *
  * @see `test/builder-segment-type.test.ts` - the source gate that requires
  * every builder's segment joiner to run this check.
  */
 
-import { renderCallerValue } from "./caller-value.js";
+/**
+ * The X12 segment-id grammar: two or three uppercase alphanumerics opening with
+ * a letter (`GS`, `HL`, `AK9`, `NM1`, `SVC`). Mirrors the bound
+ * `PHI-WARNING-MESSAGE-LEAK` put on `X12Segment.id` for the same reason, on the
+ * other side of the library. @internal
+ */
+const SEGMENT_ID_RE = /^[A-Z][A-Z0-9]{1,2}$/u;
 
 /**
- * Describe a wrong-typed element without echoing it unbounded. Same shape and
- * same reasoning as the sibling describers in `caller-string.ts` and
- * `caller-decimal.ts`; shares {@link renderCallerValue} so the bound on what
- * reaches an `Error.message` stays one number in one place.
+ * Describe a wrong-typed element without echoing it at all.
+ *
+ * Same shape and same reasoning as the sibling describers in
+ * `caller-string.ts` and `caller-decimal.ts`: `REFUSAL-MESSAGE-PHI-ECHO`
+ * redacted the primitive arm in all three, because a slot-generic guard cannot
+ * know whether the value in front of it is a control number or a patient
+ * identifier, and this one stands on **every element of every segment** a
+ * builder joins. The type is what the caller acts on, and the slot is named
+ * beside it by {@link locateSlot}.
  * @internal
  */
 function describeSegmentValue(value: unknown): string {
@@ -88,25 +116,33 @@ function describeSegmentValue(value: unknown): string {
   const type = typeof value;
   if (type === "object") return Array.isArray(value) ? "an array" : "an object";
   if (type === "function") return "a function";
-  return `a ${type} (${renderCallerValue(value as string)})`;
+  return `a ${type}`;
 }
 
 /**
- * Name a slot the way the X12 spec does - `"HL-03"`, `"AK9-01"` - from the
+ * Name a slot the way the X12 spec does - `"HL"-03`, `"AK9"-01` - from the
  * segment id at `parts[0]` and the element's own index.
  *
  * The segment id is caller-influenced only in `buildInterchange`, where a
  * {@link "./types.js".SegmentSpec} is `[segmentId, ...elements]` supplied
- * wholesale. So it is bounded through {@link renderCallerValue} rather than
- * interpolated, and a non-string id degrades to a positional locator instead of
- * rendering as `"undefined-03"`.
+ * wholesale, so it is **the one caller-supplied string this guard would put in
+ * a message.** It is admitted only when it matches {@link SEGMENT_ID_RE}, which
+ * caps it at three characters of `[A-Z0-9]` and therefore cannot carry an
+ * identifier; anything else - a non-string, an empty string, or free text a
+ * caller parked in element 0 - degrades to a positional locator rather than
+ * rendering as `"undefined-03"` or echoing the text.
+ *
+ * A draft bounded it through `renderCallerValue` instead, which caps the length
+ * at 90 but redacts nothing: `["<a member id>", 1]` reported that member id.
+ * A grammar is the right instrument here and a length bound is not, because the
+ * thing being named has a grammar.
  * @internal
  */
 function locateSlot(parts: readonly string[], index: number): string {
   const id = parts[0];
   const position = String(index).padStart(2, "0");
-  if (typeof id !== "string" || id.length === 0) return `element ${String(index)}`;
-  return `${renderCallerValue(id)}-${position}`;
+  if (typeof id !== "string" || !SEGMENT_ID_RE.test(id)) return `element ${String(index)}`;
+  return `"${id}"-${position}`;
 }
 
 /**

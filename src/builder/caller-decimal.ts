@@ -112,17 +112,29 @@
 
 import { X12Decimal } from "../decimal.js";
 
-import { renderCallerValue } from "./caller-value.js";
-
 /**
- * Describe a wrong-typed decimal element value without echoing it unbounded.
+ * Describe a wrong-typed decimal element value without echoing it at all.
  *
- * Deliberately narrower than `caller-string.ts`'s `describeCallerValue`: the
- * overwhelmingly likely mistake here is a `number`, and naming the value it
- * would have emitted is the fastest possible diagnosis ("received a number
- * (0.30000000000000004)"). Shares {@link renderCallerValue} so the bound on
- * what reaches an `Error.message` stays one number in one place, and never
- * echoes an `object` or `function` for the same reason that module gives.
+ * **This one was the closest call in `REFUSAL-MESSAGE-PHI-ECHO`, and it went
+ * the same way as its two siblings.** The argument for keeping the echo was
+ * real: the overwhelmingly likely mistake here is a raw `number`, and
+ * `X12-DECIMAL-BYPASSES-THE-GUARD` exists because a `number` renders as
+ * `"0.30000000000000004"` / `"1e+21"` / `"NaN"` on the wire, so showing the
+ * value looked like the fastest diagnosis. It was kept anyway because:
+ *
+ * 1. **The three renderings are already in the message**, as library-owned
+ *    fixed text. Nothing about the diagnosis depends on echoing the caller's
+ *    particular number, and the remedy (`X12Decimal.fromString()` at the call
+ *    site) is identical either way.
+ * 2. **One exception is how a claim in this area goes wrong.** The property
+ *    `REFUSAL-MESSAGE-PHI-ECHO` bought is that **no slot-generic caller guard
+ *    echoes a value**. "No slot-generic guard except this one" is a census with
+ *    one entry, and a census is the instrument this package has had measured
+ *    false five times. An `X12Decimal` slot holding no identifier is a fact
+ *    about today's slots, not a property of the guard.
+ *
+ * `object` and `function` were already type-only, for the reason
+ * `caller-string.ts` gives.
  * @internal
  */
 function describeCallerDecimal(value: unknown): string {
@@ -131,7 +143,7 @@ function describeCallerDecimal(value: unknown): string {
   const type = typeof value;
   if (type === "object") return Array.isArray(value) ? "an array" : "an object";
   if (type === "function") return "a function";
-  return `a ${type} (${renderCallerValue(value as string)})`;
+  return `a ${type}`;
 }
 
 /**

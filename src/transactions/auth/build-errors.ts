@@ -31,10 +31,12 @@
  *   dependent with no review). The message carries structural indices +
  *   counts only - never a member id / name.
  * - `X12_278_BUILD_INVALID_SPEC` - a non-hierarchy precondition failed (a
- *   review with no `requestCategoryCode`; a request spec carrying an `HCR`
- *   certification decision - `HCR` is response-only; a response review with a
- *   decision whose `actionCode` is empty; an over-long ISA-13 control
- *   number).
+ *   review whose HL-03 `levelCode` is outside `EV` / `SS`; a review with no
+ *   `requestCategoryCode`; a request spec carrying an `HCR` certification
+ *   decision - `HCR` is response-only; a response review with a decision whose
+ *   `actionCode` is empty; an over-long ISA-13 control number). The message
+ *   carries structural indices, counts and X12 control codes - never a member
+ *   id / name.
  *
  * @example
  * ```ts
