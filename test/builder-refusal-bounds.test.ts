@@ -236,7 +236,7 @@ describe("refusal messages: the source gate", () => {
 
   it("finds the refusing modules and their refusal sites", () => {
     // Re-derived on this tree, not inherited: ELEVEN modules raise a typed
-    // refusal across EIGHTY-FIVE `throw` sites - ten builder modules with 73
+    // refusal across EIGHTY-SIX `throw` sites - ten builder modules with 74
     // sites (59 three slices ago, plus the nine one-line `refuseSpec` /
     // `refuseHierarchy` throwers that `requireCallerArray` calls back into,
     // plus the FOUR added by `X12-NUMERIC-VALUE-EMITS-EMPTY` so that
