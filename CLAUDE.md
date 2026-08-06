@@ -47,43 +47,21 @@ Pre-alpha `0.0.x`, **published** to npm from a public repo. **Never quote a vers
 
 ## v1 Scope Snapshot
 
-HIPAA healthcare transaction sets at version **005010** (with errata hooks for `005010X279A1`, `005010X221A1`, etc.). **This is the v1 SCOPE declaration, not a list of what has SHIPPED** (see Status above: the 270 and 276 inquiry directions have no typed model on either side):
-
-- **270 / 271** Eligibility Inquiry / Response
-- **276 / 277** Claim Status Inquiry / Response (incl. 277CA)
-- **278** Services Review (Request + Response)
-- **820** Premium Payment
-- **834** Benefit Enrollment & Maintenance
-- **835** Healthcare Claim Payment/Advice (ERA)
-- **837P / 837I / 837D** Professional / Institutional / Dental Claims
-- **999** Implementation Acknowledgment (parse + build)
-- **TA1** Interchange Acknowledgment (parse + build)
-
-Non-healthcare (850/856/810/204), EDIFACT, AS2/SFTP transport, and pre-005010 are out of v1 scope.
+HIPAA transaction sets at **005010** (errata hooks for `005010X279A1`, `005010X221A1`, etc.). The
+nine-line list is `documentation/agent-notes.md#v1-scope-snapshot`; non-healthcare (850/856/810/204),
+EDIFACT, AS2/SFTP transport and pre-005010 are out of scope. **It is the v1 SCOPE declaration, NOT a
+list of what has SHIPPED** - see Status above: the 270 and 276 inquiry directions have no typed model
+on either side.
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 
-x12 mirrors `@cosyte/hl7` (the reference parser) and inherits the canonical toolchain by depending on
-the published `@cosyte/*` config packages, not by copying files. The source of truth is the meta-repo's
-`documentation/conventions.md`. This is a summary.
-
-- **Language:** TypeScript (strict, full rigor set incl. `noUncheckedIndexedAccess`) via
-  `@cosyte/tsconfig`. **Target ES2023**. The shared base sets `verbatimModuleSyntax: false`.
-- **Build:** dual ESM + CJS + `.d.ts` via `tsup` (`@cosyte/tsup-config`); `attw` is a publish gate
-  (per-condition types: `.d.ts` for `import`, `.d.cts` for `require`). The `attw` script is
-  **`scripts/attw.mjs`, not the bare CLI**: see the trap below, because the CLI reports a
-  missing `dist/` as "does not contain types" and **exits 0**.
-- **Node:** **>= 22** (CI matrix 22 + 24, via the reusable pipeline).
-- **Package manager:** `pnpm@10`.
-- **Lint/format:** **ESLint 10** + unified `typescript-eslint` (type-checked) via
-  `@cosyte/eslint-config`; Prettier via `@cosyte/prettier-config`. Lint at `--max-warnings=0`.
-- **Testing:** **Vitest 4** + v8 coverage (`@cosyte/vitest-config`), per-directory >= 90 gates
-  (armed globally now; per-dir gates get listed in `vitest.config.ts` once parser code lands).
-- **CI/CD:** thin callers of the reusable `cosyte/.github` workflows. Migrated in Phase E; the
-  per-directory ≥90 coverage gate was first armed on `src/parser/`.
-  `documentation/agent-notes.md#phase-e-shared-engineering-standard`
-- **Runtime deps:** **Zero.** Node stdlib only.
-- **License:** MIT
+x12 mirrors `@cosyte/hl7` (the reference parser) and **inherits the canonical toolchain by depending
+on the published `@cosyte/*` config packages, not by copying files.** The source of truth is the
+meta-repo's `documentation/conventions.md`; the per-tool summary (language, build, Node floor, package
+manager, lint, testing, CI) is `documentation/agent-notes.md#tech-stack-the-shared-cosyte-standard`.
+**The `attw` script is `scripts/attw.mjs`, NEVER the bare CLI** - the CLI reports a missing `dist/` as
+"does not contain types" and **exits 0**. See the `ASSETS-P8` trap below. **Runtime deps: ZERO**, Node
+stdlib only. MIT.
 
 ## Engineering Guardrails
 
@@ -322,31 +300,41 @@ sources and its refutation history. Do not act on a line here without reading th
 - **`test/scripts/attw-gate.test.ts` is deliberately left alone** - pinning the REAL binary is the
   point of it.
 
-### 🩺 `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (2026-08-03) · `documentation/agent-notes.md#phi-scan-symlink-blind-on-both-routes-2026-08-03`
+### 🩺 The `phi-scan` gate · `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (2026-08-03) + `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` (2026-08-06) · `documentation/agent-notes.md#phi-scan-symlink-blind-on-both-routes-2026-08-03`, `documentation/agent-notes.md#phi-scan-rename-blind-at-precommit-2026-08-06`
 
 - **🩺 Both enumerating routes REFUSE a symlink (exit 2), naming every offender.** `walk()` used
   `Dirent.isFile()` (an **lstat** answer) so a link was neither file nor directory; `--staged` got the
   link's **target string** from `git show` under mode `120000`. Both exited 0 over PHI.
 - **Neither route FOLLOWS an ENTRY it enumerated.** Say ENTRY, not "anything": **a walk ROOT that is
-  itself a link IS followed**, because `existsSync`/`readdirSync` both follow. That is a superset
-  scan, not a blind one, and is left alone.
-- **The staged filter is `--diff-filter=AMT`, and the route reads `--raw -z`, not `--name-only`.**
-  `AM` **drops status `T`**: replacing a tracked regular file with a link is neither add nor modify,
-  so the record died before any mode was read. The destination mode is the only thing separating a
-  staged regular file from a link or a gitlink. Dropping the `T` reds exactly two tests.
-- **🩺 A refusal NEVER reports the link target.** That is working-tree text that can itself carry PHI:
-  measured, a staged link whose target NAME was a dashed-SSN shape exited 1 and printed that shape. A
-  diagnostic ABOUT a PHI leak is itself a PHI surface, so the shape is described in prose, never
-  exemplified.
-- **Scope was narrowed, not widened.** `paths` mode is deliberately untouched because it was never
-  blind (`readFileSync` follows a link). A gitlink already exited 2 at base and is **renamed, not
-  newly caught**.
-- **The enumerate-then-read race is deliberately deferred, and the reason is direction:** its remedy
-  TOLERATES a failed read; this one NARROWS what the enumeration admits. x12 is unreachable today
-  only by a **scope accident** of which walk roots it has. **Any widening reintroduces it verbatim.**
-- **`R`/`C` rename/copy are still not enumerated by `--staged` at all**, and there is still no
-  refuse-a-scan-that-observed-nothing rule. Renaming a fixture while substituting a real name returns
-  zero rows. **All-mode is the backstop**, so the gap is at pre-commit, not in CI.
+  itself a link IS followed** (`existsSync`/`readdirSync` follow). A superset scan, not a blind one.
+- **🩺 A refusal NEVER reports the link target.** Working-tree text that can itself carry PHI: a
+  staged link whose target NAME was a dashed-SSN shape exited 1 and printed that shape. A diagnostic
+  ABOUT a PHI leak is itself a PHI surface, so describe the shape in prose, never exemplify it.
+- **Scope was narrowed, not widened.** `paths` mode was never blind (`readFileSync` follows a link).
+  A gitlink already exited 2 at base: **renamed, not newly caught**.
+- **The enumerate-then-read race is deferred, and the reason is DIRECTION:** its remedy TOLERATES a
+  failed read; this one NARROWS what the enumeration admits. x12 is unreachable today only by a
+  **scope accident** of which walk roots it has. **Any widening reintroduces it verbatim.**
+- **▶ 🩺 THE `--staged` ARGV IS THE GATE AND EVERY FLAG IN IT IS LOAD-BEARING; NEVER SHORTEN IT. ONE
+  RULE: DO NOT TRUST THE CALLER'S GIT CONFIG.** Five holes, each measured at exit 0 over PHI.
+  `--no-renames` (`R`, and `C` under `diff.renames=copies`, are TWO-PATH and returned by no
+  single-path filter); `--ignore-submodules=none` (`diff.ignoreSubmodules=all` ERASED a staged
+  gitlink); `U` **and** `B` in `--diff-filter=AMTUB`, whose `T` is also what makes the mode check
+  reachable at all. **`U` is closed by the FILTER, not by `--no-renames`; do not conflate them**, and
+  it refuses FIRST with its OWN message, because mode `000000` makes the link/gitlink sentence false
+  for it. **ZERO stride work.** **Never add `-M`, `-C` or `--find-copies-harder`** - each re-empties
+  the route. **No test here may run `git merge`**: it resolves the committer identity up front, so it
+  passes locally and reds on CI on its own premise. Stage the conflict with `update-index`.
+- **▶ 🩺 QUOTE THE CLASSIFICATION, NEVER THE LETTER: `--diff-filter` classifies a broken pair as `B`
+  WHATEVER LETTER IT PRINTS.** `-B` prints **`M`** with a break score, one path, which `RAW_RECORD`
+  parses happily. **It is the PERMISSIVE half of a directive** and the old pin was on a RENAME, the
+  one shape it leaves alone. **A short fixture does NOT break; the case needs bulk.** **NEVER RECORD
+  A SIMILARITY SCORE** - it drifts with the fixture; **DELETE a drifting number, never correct it.**
+  **"Strict superset" is REFUTED; EQUAL absent a rename, copy, gitlink or unmerged path.**
+- **▶ 🩺 STILL OPEN, MEASURED HERE - NEVER PORT A SIBLING'S RESIDUAL LIST:** observed-nothing reads
+  clean; a tracked file directly under `test/` is seen by NEITHER route; an index entry AT a scan
+  root's own path matches no clause (each tests a `<root>/` PREFIX). **A walk root replaced by a
+  regular file exits 1 by UNCAUGHT `ENOTDIR`; `hl7` measures 2. Re-measure per repo.**
 
 ### 🩺 `X12-CALLER-VALUE-RESIDUALS` (2026-08-02) · `documentation/agent-notes.md#x12-caller-value-residuals-2026-08-02`
 

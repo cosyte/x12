@@ -48,11 +48,22 @@ const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
  * The scanner runs under the SAME Node that is running vitest, not under `tsx`.
  *
  * Nearly every case here spawns the scanner, so what this file pays for is
- * start-up. Counted at runtime with a `spawnSync` shim on BOTH trees, because the
- * two censuses are different and quoting one for the other is the easy mistake:
- * before, **32 spawns across 32 cases, every one under `tsx`**; now, **36 spawns
- * across 33 cases, 34 under `node` and 2 under `tsx`**. So 30 `tsx` start-ups are
- * gone and 2 are kept on purpose, in the equivalence case below. The scanner is a
+ * start-up.
+ *
+ * EVERY FIGURE BELOW IS A MEASUREMENT TAKEN WHEN THE SUBSTITUTION LANDED, NOT A
+ * DESCRIPTION OF THIS FILE TODAY. Read every figure that way whatever tense the
+ * sentence around it happens to use: a case count, a spawn count and a wall
+ * clock all move with the next slice, and a census here went stale exactly once
+ * before anyone noticed. The
+ * rule is `CLAUDE.md`'s: derive a count, never recall one. What survives as a
+ * RULE is the last paragraph, and the equivalence case is what enforces it.
+ *
+ * Counted at runtime with a `spawnSync` shim on BOTH trees, because the two
+ * censuses were different and quoting one for the other is the easy mistake:
+ * before, **32 spawns across 32 cases, every one under `tsx`**; at that commit,
+ * **36 spawns across 33 cases, 34 under `node` and 2 under `tsx`**. So 30 `tsx`
+ * start-ups went and 2 were kept on purpose, in the equivalence case below. Both
+ * numbers have since grown with the cases this file has gained. The scanner is a
  * few hundred lines of type-annotated Node that needs erasing and nothing more, and
  * Node 22.18 or newer strips types itself, so `tsx`'s esbuild pipeline buys nothing
  * here and costs a process launch. **That floor is not enforced anywhere:**
@@ -75,7 +86,8 @@ const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
  * In-suite under `pnpm test:coverage`, interleaved BASE/HEAD two rounds each so the
  * arms share a load condition rather than being compared across a drifting one:
  * this file went **17.2 s / 17.5 s to 8.6 s / 8.6 s**. Do not restate that as a
- * whole-suite win: the run's critical path is now `test/scripts/attw-gate.test.ts`,
+ * whole-suite win: the run's critical path was, at that commit,
+ * `test/scripts/attw-gate.test.ts`,
  * so what this bought the suite is about 8.6 s of CPU, not 8.6 s of wall clock.
  * `vitest.config.ts` carries the full profile and the reasoning.
  *
@@ -641,5 +653,343 @@ describe("phi-scan: paths mode was never blind and is unchanged", () => {
     const r = runIn(root, ["test/fixtures/leak.edi"]);
     expect(r.code, `stderr: ${r.stderr}`).toBe(1);
     expect(r.stderr).toContain("RIVERA");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The `--staged` argv does not trust the caller's git config
+// ---------------------------------------------------------------------------
+//
+// Five ways an index the pre-commit hook was handed could disappear from
+// `git diff --cached --raw` without a byte of it changing: a rename, a copy, a
+// gitlink under `diff.ignoreSubmodules=all`, an unmerged path, and a broken pair
+// under `-B`. Each case below asserts the PREMISE off raw git first (so it fails
+// loudly rather than quietly if git's behaviour ever moves) and then the
+// scanner's verdict. Every one of them returned exit 0 before this change.
+
+function commit(root: string, message: string): void {
+  git(root, ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm", message]);
+}
+
+/**
+ * Stage `path` at merge stages 2 and 3 with no stage 0, which is exactly the
+ * index state a conflicted merge leaves behind.
+ *
+ * DELIBERATELY NOT `git merge`. A sibling measured that one: `git merge`
+ * resolves the committer identity up front and exits 128 where no identity is
+ * configured, so a test built on it passes on a developer box and reds on CI on
+ * its own premise rather than on the thing it is testing. `update-index` needs
+ * no identity, no branch names and no merge driver, and it states the premise
+ * (stages 2 and 3, never stage 0) directly instead of arriving at it.
+ */
+function stageUnmerged(root: string, path: string, ours: string, theirs: string): void {
+  const hash = (content: string): string => {
+    const r = spawnSync("git", ["hash-object", "-w", "--stdin"], {
+      cwd: root,
+      input: content,
+      encoding: "utf8",
+      shell: false,
+    });
+    if ((r.status ?? -1) !== 0) throw new Error(`git hash-object failed: ${r.stderr ?? ""}`);
+    return (r.stdout ?? "").trim();
+  };
+  const info = `100644 ${hash(ours)} 2\t${path}\n100644 ${hash(theirs)} 3\t${path}\n`;
+  const r = spawnSync("git", ["update-index", "--index-info"], {
+    cwd: root,
+    input: info,
+    encoding: "utf8",
+    shell: false,
+  });
+  if ((r.status ?? -1) !== 0) throw new Error(`git update-index failed: ${r.stderr ?? ""}`);
+}
+
+/** A body long enough for git's break detection to have something to measure. */
+function bulkBody(lead: string): string {
+  return Array.from({ length: 200 }, (_, i) => `NTE*ADD*${lead} ${String(i)}~`).join("\n");
+}
+
+describe("phi-scan: --staged enumerates a staged RENAME and COPY", () => {
+  it("refuses a link `git mv`d into the fixture root (exit 2), where the old filter saw nothing", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+    symlinkSync(TARGET_NAME, join(root, "leak.edi"));
+    git(root, ["add", "leak.edi", "test/fixtures/ordinary.edi", "src/ordinary.ts"]);
+    commit(root, "base");
+    git(root, ["mv", "leak.edi", "test/fixtures/leak.edi"]);
+
+    // The premise: git raises this as a single TWO-PATH record, and the
+    // superseded filter returned nothing at all for it.
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"]).trim()).toBe("");
+    expect(gitOut(root, ["diff", "--cached", "--raw"])).toContain("test/fixtures/leak.edi");
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures/leak.edi");
+    expect(r.stderr).toContain("a symbolic link");
+    expectNoPhi(r.stderr);
+  });
+
+  it("scans a fixture renamed WITH a real-looking name substituted into it (exit 1)", () => {
+    // The shape the item was actually filed for: the rename is the carrier, and
+    // the bytes that arrive are a hit. No similarity score is asserted, because
+    // it moves with the fixture and a number copied from a sibling is wrong.
+    const root = makeRepo();
+    writeFileSync(
+      join(root, "test", "fixtures", "claim.edi"),
+      interchange("NM1*IL*1*TEST*PATIENT****MI*MEMBER001~"),
+    );
+    git(root, ["add", "."]);
+    commit(root, "base");
+    git(root, ["mv", "test/fixtures/claim.edi", "test/fixtures/renamed.edi"]);
+    writeFileSync(
+      join(root, "test", "fixtures", "renamed.edi"),
+      interchange("NM1*IL*1*RIVERA*JUANITA****MI*MEMBER001~"),
+    );
+    git(root, ["add", "test/fixtures/renamed.edi"]);
+
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"]).trim()).toBe("");
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("test/fixtures/renamed.edi");
+    expect(r.stderr).toContain("person-name token not in synthetic allow-list");
+  });
+
+  it("scans a COPY into the fixture root under `diff.renames=copies` (exit 1)", () => {
+    // The `C` half is a distinct hole from the `R` half: the source stays put,
+    // so nothing is moved, and a PHI-bearing file from outside the roots simply
+    // appears inside one.
+    const root = makeRepo();
+    git(root, ["config", "diff.renames", "copies"]);
+    writeFileSync(join(root, "outside.edi"), SYNTHETIC_PHI);
+    git(root, ["add", "."]);
+    commit(root, "base");
+    copyFileSync(join(root, "outside.edi"), join(root, "test", "fixtures", "copied.edi"));
+    // Copy detection only considers sources touched by the same diff.
+    appendFileSync(join(root, "outside.edi"), "NTE*ADD*trailing~\n");
+    git(root, ["add", "test/fixtures/copied.edi", "outside.edi"]);
+
+    expect(gitOut(root, ["diff", "--cached", "--raw"])).toMatch(/\bC\d*\t/);
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"])).not.toContain(
+      "test/fixtures/copied.edi",
+    );
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("test/fixtures/copied.edi");
+    expect(r.stderr).toContain("RIVERA");
+  });
+
+  it("is INDEPENDENT of `diff.renames` and `diff.renameLimit`, not merely correct by default", () => {
+    // `--no-renames` is what makes the two-field stride structural. Each setting
+    // must yield the same single-path `A` for the moved link and the same
+    // refusal, or the gate's behaviour is a property of the developer's config.
+    for (const setting of ["true", "copies", "false", "1"]) {
+      const root = makeRepo();
+      git(root, ["config", "diff.renames", setting]);
+      git(root, ["config", "diff.renameLimit", "1"]);
+      writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+      symlinkSync(TARGET_NAME, join(root, "leak.edi"));
+      git(root, ["add", "."]);
+      commit(root, "base");
+      git(root, ["mv", "leak.edi", "test/fixtures/leak.edi"]);
+
+      const raw = gitOut(root, [
+        "diff",
+        "--cached",
+        "--raw",
+        "--no-renames",
+        "--ignore-submodules=none",
+        "--diff-filter=AMTUB",
+      ]);
+      expect(raw, `diff.renames=${setting}`).toContain("A\ttest/fixtures/leak.edi");
+      const r = runIn(root, ["--staged"]);
+      expect(r.code, `diff.renames=${setting} stderr: ${r.stderr}`).toBe(2);
+    }
+  });
+
+  it("the new enumeration EQUALS the old one absent a rename, copy, gitlink or unmerged path", () => {
+    // The relation is a superset, NOT a strictly larger set, and the loose form
+    // of that sentence has been refuted in this ecosystem before. STATE THE
+    // PRECONDITION IN FULL, including in this title, which is the string a
+    // reporter prints: "when nothing is renamed or copied" is `--no-renames`'s
+    // half of it and is FALSE with an unmerged path, or with a gitlink under
+    // `diff.ignoreSubmodules=all`, in the index. On an index carrying none of
+    // the four the two argvs return the same bytes, so nothing the old one
+    // enumerated stopped being enumerated.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "added.edi"), SYNTHETIC_PHI);
+    writeFileSync(join(root, "src", "another.ts"), "export const b = 1;\n");
+    git(root, ["add", "test/fixtures/added.edi", "src/another.ts", "src/ordinary.ts"]);
+
+    const before = gitOut(root, ["diff", "--cached", "--raw", "-z", "--diff-filter=AMT"]);
+    const after = gitOut(root, [
+      "diff",
+      "--cached",
+      "--raw",
+      "-z",
+      "--no-renames",
+      "--ignore-submodules=none",
+      "--diff-filter=AMTUB",
+    ]);
+    expect(after).toBe(before);
+    expect(before).not.toBe("");
+  });
+});
+
+describe("phi-scan: --staged is not blinded by diff.ignoreSubmodules", () => {
+  it("refuses a staged gitlink even under `diff.ignoreSubmodules=all` (exit 2)", () => {
+    const root = makeRepo();
+    git(root, ["config", "diff.ignoreSubmodules", "all"]);
+    const nested = join(root, "test", "fixtures", "nested");
+    mkdirSync(nested);
+    git(nested, ["init", "-q", "."]);
+    writeFileSync(join(nested, "payload.edi"), SYNTHETIC_PHI);
+    git(nested, ["add", "payload.edi"]);
+    commit(nested, "n");
+    git(root, ["add", "test/fixtures/nested"]);
+
+    // The premise: the config really does erase the record from raw git.
+    expect(gitOut(root, ["diff", "--cached", "--raw"]).trim()).toBe("");
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--ignore-submodules=none"])).toContain(
+      "test/fixtures/nested",
+    );
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures/nested");
+    expect(r.stderr).toContain("a gitlink");
+    expectNoPhi(r.stderr);
+  });
+});
+
+describe("phi-scan: --staged refuses an UNMERGED in-scope path", () => {
+  it("refuses (exit 2) rather than reporting clean over an index it cannot read", () => {
+    const root = makeRepo();
+    git(root, ["add", "."]);
+    commit(root, "base");
+    stageUnmerged(
+      root,
+      "test/fixtures/conflict.edi",
+      interchange("NM1*IL*1*TEST*PATIENT****MI*MEMBER002~"),
+      interchange("NM1*IL*1*RIVERA*JUANITA****MI*MEMBER001~"),
+    );
+
+    // The premises: the path really has no stage-0 blob (so `git show :<path>`
+    // cannot answer), and the superseded filter returned no record for it.
+    expect(gitOut(root, ["ls-files", "-u", "test/fixtures/conflict.edi"]).trim()).not.toBe("");
+    expect(gitOut(root, ["ls-files", "-s", "test/fixtures/conflict.edi"])).not.toMatch(/ 0\t/);
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"]).trim()).toBe("");
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("test/fixtures/conflict.edi");
+    expect(r.stderr).toContain("unmerged");
+    // The unmerged refusal must not borrow the link/gitlink sentence, which is
+    // false for it, nor echo anything out of the conflicting stages.
+    expect(r.stderr).not.toContain("a symbolic link");
+    expect(r.stderr).not.toContain("a git mode-000000 entry");
+    expectNoPhi(r.stderr);
+  });
+
+  it("an unmerged path OUTSIDE the route's scope does not refuse (the scope is unchanged)", () => {
+    const root = makeRepo();
+    git(root, ["add", "."]);
+    commit(root, "base");
+    stageUnmerged(root, "notes.txt", "ours\n", "theirs\n");
+
+    expect(gitOut(root, ["ls-files", "-u", "notes.txt"]).trim()).not.toBe("");
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+  });
+});
+
+describe("phi-scan: the argv the two-field stride is coupled to", () => {
+  it("`-M`, `-C` and `--find-copies-harder` each reopen the two-path record", () => {
+    // The guard on the claim the scanner's own comment makes. These three turn
+    // rename/copy detection back on over the top of `--no-renames` and empty the
+    // route again, so none of them may be added to the argv.
+    const root = makeRepo();
+    writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+    symlinkSync(TARGET_NAME, join(root, "leak.edi"));
+    git(root, ["add", "."]);
+    commit(root, "base");
+    git(root, ["mv", "leak.edi", "test/fixtures/leak.edi"]);
+
+    const enumerated = (extra: string[]): string =>
+      gitOut(root, [
+        "diff",
+        "--cached",
+        "--raw",
+        "--no-renames",
+        "--ignore-submodules=none",
+        ...extra,
+        "--diff-filter=AMTUB",
+      ]).trim();
+
+    expect(enumerated([])).toContain("test/fixtures/leak.edi");
+    for (const flag of ["-M", "-C", "--find-copies-harder"]) {
+      expect(enumerated([flag]), `${flag} must not be added to the scanner's argv`).toBe("");
+    }
+    // `-B` is inert for a RENAME, which is the one shape it leaves alone. The
+    // case below is what that does not clear it for.
+    expect(enumerated(["-B"])).toContain("test/fixtures/leak.edi");
+  });
+
+  it("`-B` hides a COMPLETE REWRITE from an `AMTU` filter, and `B` in the filter is why", () => {
+    // The mechanism is sharper than "a `B` record the filter drops": the printed
+    // status LETTER IS STILL `M`, one path, an `M` with a break score that
+    // `RAW_RECORD` parses happily, so a reader checking raw git concludes `AMTU`
+    // keeps it. It does not. The score itself is NOT asserted and no digits are
+    // quoted, because it moves with how much of the old content survives.
+    const root = makeRepo();
+    const target = "test/fixtures/rewrite.edi";
+    writeFileSync(join(root, "test", "fixtures", "rewrite.edi"), interchange(bulkBody("original")));
+    git(root, ["add", "."]);
+    commit(root, "base");
+    writeFileSync(
+      join(root, "test", "fixtures", "rewrite.edi"),
+      interchange(bulkBody("replacement"), "NTE*ADD*SSN 123-45-6789~"),
+    );
+    git(root, ["add", target]);
+
+    const raw = (extra: string[]): string =>
+      gitOut(root, ["diff", "--cached", "--raw", "--no-renames", ...extra]).trim();
+    expect(raw(["-B"]), "git must still break the pair for this premise to hold").toMatch(
+      /\bM\d{3}\b/,
+    );
+    expect(raw(["-B", "--diff-filter=AMTU"]), "the superseded filter loses it").toBe("");
+    expect(raw(["-B", "--diff-filter=AMTUB"])).toContain(target);
+
+    // End to end. The shipped argv catches it because it passes no `-B` at all;
+    // a copy of the scanner WITH `-B` injected catches it only because `B` is in
+    // the filter, and the same copy on an `AMTU` filter exits 0 over the SSN.
+    expect(runIn(root, ["--staged"]).code).toBe(1);
+
+    const source = readFileSync(SCANNER_PATH, "utf8");
+    expect(source).toContain('"--no-renames",');
+    expect(source).toContain('"--diff-filter=AMTUB",');
+    const withB = join(dir, "phi-scan-with-B.ts");
+    writeFileSync(withB, source.replace('"--no-renames",', '"--no-renames",\n        "-B",'));
+    const injected = spawnSync(NODE_BIN, [withB, "--staged"], {
+      cwd: root,
+      encoding: "utf8",
+      shell: false,
+    });
+    expect(injected.status, `stderr: ${injected.stderr ?? ""}`).toBe(1);
+    expect(injected.stderr ?? "").toContain("dashed SSN pattern");
+
+    const blinded = join(dir, "phi-scan-with-B-amtu.ts");
+    writeFileSync(
+      blinded,
+      readFileSync(withB, "utf8").replace('"--diff-filter=AMTUB",', '"--diff-filter=AMTU",'),
+    );
+    const r = spawnSync(NODE_BIN, [blinded, "--staged"], {
+      cwd: root,
+      encoding: "utf8",
+      shell: false,
+    });
+    expect(r.status, "the superseded filter is blinded by `-B`").toBe(0);
+    expect(r.stdout ?? "").toMatch(/OK - no hits/);
   });
 });

@@ -12,6 +12,9 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 ## Contents
 
 - [CLAUDE-MD-AUDIT (2026-08-04)](#claude-md-audit-2026-08-04)
+- [Tech stack: the shared @cosyte/* standard](#tech-stack-the-shared-cosyte-standard)
+- [v1 scope snapshot](#v1-scope-snapshot)
+- [PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT (2026-08-06)](#phi-scan-rename-blind-at-precommit-2026-08-06)
 - [REFUSAL-MESSAGE-PHI-ECHO (2026-08-06)](#refusal-message-phi-echo-2026-08-06)
 - [X12-DISCARD-AFTER-STRAY-LX (2026-08-06)](#x12-discard-after-stray-lx-2026-08-06)
 - [X12-837-LOOP-RESIDUALS (2026-08-05)](#x12-837-loop-residuals-2026-08-05)
@@ -76,6 +79,201 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   trap block and `CLAUDE.md` stood at 52,992 against a 53,000 ratchet, so this section moved here
   first and the trap went in against the room it freed. That is the intended shape: **the entry is
   never raised to meet a new trap.** The umbrella owes the matching ratchet drop.
+
+## Tech stack: the shared `@cosyte/*` standard
+
+Relocated out of `CLAUDE.md` on 2026-08-06, alongside the v1 scope list below, to pay
+for the `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` trap. **The two load-bearing halves stayed
+behind in `CLAUDE.md`**: the toolchain is inherited by depending on the published
+`@cosyte/*` config packages rather than by copying files, and the `attw` script is
+`scripts/attw.mjs` and never the bare CLI. The meta-repo's `documentation/conventions.md`
+is the source of truth for all of it; this was always a summary.
+
+- **Language:** TypeScript (strict, full rigor set incl. `noUncheckedIndexedAccess`) via
+  `@cosyte/tsconfig`. **Target ES2023**. The shared base sets `verbatimModuleSyntax: false`.
+- **Build:** dual ESM + CJS + `.d.ts` via `tsup` (`@cosyte/tsup-config`); `attw` is a
+  publish gate (per-condition types: `.d.ts` for `import`, `.d.cts` for `require`).
+- **Node:** **>= 22** (CI matrix 22 + 24, via the reusable pipeline).
+- **Package manager:** `pnpm@10`.
+- **Lint/format:** **ESLint 10** + unified `typescript-eslint` (type-checked) via
+  `@cosyte/eslint-config`; Prettier via `@cosyte/prettier-config`. Lint at `--max-warnings=0`.
+- **Testing:** **Vitest 4** + v8 coverage (`@cosyte/vitest-config`), per-directory >= 90
+  gates (armed globally; per-dir gates get listed in `vitest.config.ts` as parser code lands).
+- **CI/CD:** thin callers of the reusable `cosyte/.github` workflows. Migrated in Phase E;
+  the per-directory >= 90 coverage gate was first armed on `src/parser/`. See
+  `#phase-e-shared-engineering-standard`.
+- **Runtime deps:** **Zero.** Node stdlib only.
+- **License:** MIT
+
+## v1 scope snapshot
+
+Relocated out of `CLAUDE.md` on 2026-08-06 to pay for the
+`PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` trap, under the standing rule that a new trap
+there is paid for by relocating first. **Its imperative stayed behind in `CLAUDE.md`
+and is the load-bearing half: this is the v1 SCOPE declaration, not a list of what
+has SHIPPED.** The `Status` section carries the sharper form, that the 270 and 276
+inquiry directions have no typed model on either side.
+
+HIPAA healthcare transaction sets at version **005010** (with errata hooks for
+`005010X279A1`, `005010X221A1`, etc.):
+
+- **270 / 271** Eligibility Inquiry / Response
+- **276 / 277** Claim Status Inquiry / Response (incl. 277CA)
+- **278** Services Review (Request + Response)
+- **820** Premium Payment
+- **834** Benefit Enrollment & Maintenance
+- **835** Healthcare Claim Payment/Advice (ERA)
+- **837P / 837I / 837D** Professional / Institutional / Dental Claims
+- **999** Implementation Acknowledgment (parse + build)
+- **TA1** Interchange Acknowledgment (parse + build)
+
+Non-healthcare (850/856/810/204), EDIFACT, AS2/SFTP transport, and pre-005010 are
+out of v1 scope.
+
+## PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT (2026-08-06)
+
+- **🩺 FIVE KINDS OF STAGED CHANGE COULD LEAVE `--staged`'s LIST WITHOUT A BYTE
+  OF THE INDEX CHANGING, AND ALL FIVE EXITED 0 OVER PHI.** The pre-commit hook is
+  `pnpm phi-scan --staged`. It enumerated with
+  `git diff --cached --raw -z --diff-filter=AMT`. Every measurement below was
+  taken on this box at git 2.39.5, on a throwaway repo laid out like this one,
+  against the same synthetic name-bearing `.edi` payload the symlink section
+  uses, which as an ordinary add is a hit at exit 1.
+
+  **RE-DERIVED FOR THIS REPO, NOT PORTED.** Eleven siblings closed this item
+  first and each shipped a different subset of the remedy: `hl7` carries
+  `--no-renames` and `AMTUB` but not `--ignore-submodules=none`,
+  `terminology` carries `--no-renames` and `--ignore-submodules=none` but stops
+  at `AMTU`. x12 measured all five holes open and closes all five. **Two
+  residuals a sibling recorded were measured NOT to apply here in the shape they
+  were written**, which is the whole argument for re-deriving: see the
+  still-open list at the end.
+
+  **THE FIVE, EACH RED BEFORE AND GREEN AFTER:**
+  - **`R` (rename).** Detection is on by default and neither `AM` nor `AMT`
+    returns `R`. `git mv` of an already-committed **link** into
+    `test/fixtures/` staged as a single TWO-PATH record at mode `120000`;
+    renaming a fixture while substituting a real-looking surname staged as a
+    two-path record at mode `100644`. Both: `OK - no hits`, **exit 0**. Now
+    **exit 2** (the link, by kind) and **exit 1** (the surname, on the NM1 name
+    detector).
+    **▶ NO SIMILARITY SCORE IS RECORDED ANYWHERE IN THIS SLICE, ON PURPOSE, AND
+    THAT INCLUDES AN EXACT-MATCH ONE.** A score moves with the fixture: this
+    repo's substituted-name case measured a different one from the number `hl7`
+    published for its own, and the ecosystem has already paid once for a score
+    ported between two repos whose fixtures differ. **A score that drifts with
+    the fixture has no right value, so it is DELETED rather than corrected.**
+    What is load-bearing is that the record has TWO PATHS.
+    **▶ AND THE ABSOLUTE IS WHAT A DRAFT KEPT BREAKING.** Successive drafts wrote
+    this sentence while recording exact-match scores in the same paragraph, in
+    four artifacts at once, then wrote it again while recording the scores from
+    the FIRST contradiction as evidence of it. Two refuter passes measured it.
+    **The absolute is the thing worth keeping, so the digits go - including the
+    digits in a sentence about digits. Do not reintroduce one to illustrate this
+    rule.**
+  - **`C` (copy).** Under `diff.renames=copies`, copying a PHI-bearing file from
+    outside the roots INTO `test/fixtures/` staged as a genuine two-path `C`
+    record and was dropped identically. **A distinct hole, not the same one:**
+    nothing moves and
+    the source stays put. **Copy detection only considers sources touched by the
+    same diff**, so the probe must modify the source too, or git emits a plain
+    `A` and the case proves nothing.
+  - **A GITLINK ERASED BY `diff.ignoreSubmodules=all`.** With that in the
+    caller's config the record vanished from `--raw` ENTIRELY (**exit 0**), where
+    the same index without it is refused at exit 2 by the mode check that already
+    existed. Nothing in the index differs between the two runs.
+  - **AN UNMERGED PATH.** Returned by neither `AM` nor `AMT`. Recorded at one or
+    more of stages 1/2/3 and never at stage 0, so
+    `git show :<path>` fails outright (`fatal: path ... is in the index, but not
+    at stage 0`). **Exit 0** over an index the route could not read. Git refuses
+    to commit while a path is unmerged, so this was **never a route to a
+    committed leak**; what it was is a gate attesting clean over a state it never
+    observed, and this command is run by hand and from scripts too.
+  - **A PAIR BROKEN BY `-B`.**
+
+  **🩺 THE `-B` MECHANISM: QUOTE THE CLASSIFICATION, NOT THE LETTER.** The claim
+  that "a `B` record `AMTU` drops" is WRONG and was corrected upstream by
+  `hl7#86`. Measured here: a wholly rewritten in-scope fixture under `-B` prints
+  `:100644 100644 <sha> <sha> M<score>`, **one path, an `M` with a break score**,
+  which `RAW_RECORD` parses happily, so a reader checking raw git concludes
+  `AMTU` keeps it. **It does not: `--diff-filter` classifies a broken pair as
+  `B` WHATEVER LETTER IT PRINTS.** Same index all three ways:
+  `-B --diff-filter=AMTU` returns EMPTY, `--diff-filter=B` and
+  `--diff-filter=AMTUB` each return the record. End to end, over a staged dashed
+  SSN: the scanner with `-B` injected exits **0** on an `AMTU` filter and **1**
+  on `AMTUB`.
+  **▶ THE BREAK NEEDS BULK.** A short fixture with zero lines in common does NOT
+  break: probes at 6 lines printed a plain `M` under every `-B` spelling tried
+  (`-B`, `-B/10%`, `-B50%/10%`, `-B100%`). The pinned case uses a 200-segment
+  body. **The score is not asserted and no digits are quoted.**
+  **▶ `-B` IS THE PERMISSIVE HALF OF A DIRECTIVE**, which is how a false
+  clearance for it survived elsewhere: a "do not add `-M`/`-C`" paragraph that
+  also says `-B` is inert tells the next porter that injecting it is safe.
+  **Before the broken-pair case existed, injecting `-B` reddened nothing**, so
+  the old pin (`-B` is inert FOR A RENAME, which is true) could not fail.
+
+  **THE REMEDY IS ONE RULE, NOT FIVE FIXES: STOP TRUSTING THE CALLER'S GIT
+  CONFIG.** The argv is now
+  `git diff --cached --raw -z --no-renames --ignore-submodules=none
+  --diff-filter=AMTUB`. `--no-renames` makes a two-path record UNEMITTABLE, so
+  the rename and copy destinations arrive as single-path `A` and the sources as
+  `D` the filter drops. **The two-field stride is therefore STRUCTURAL rather
+  than conditional**, and the unparseable-record refusal stays as a backstop, not
+  the guarantee. Verified under `diff.renames=true|copies|false|1` and
+  `diff.renameLimit=1`: every setting yields the same single-path `A` and the
+  same verdict. **`-M`, `-C` and `--find-copies-harder` each turn detection back
+  on over the top and re-empty the route** (measured; pinned as a test, not left
+  to a comment).
+
+  **▶ "STRICT SUPERSET" IS REFUTED AND IS NOT WRITTEN ANYWHERE IN THIS SLICE.**
+  The two enumerations are **EQUAL** whenever nothing is renamed, copied,
+  unmerged, or a gitlink hidden by `diff.ignoreSubmodules`, and larger only when
+  one of those is present. **State that precondition in FULL:** a draft wrote
+  "when nothing is renamed or copied", which is `--no-renames`'s half of it and
+  is FALSE with an unmerged path or an erased gitlink in the index (measured both
+  ways). Pinned by a test that compares the old argv's bytes with the new argv's
+  on an index carrying none of the four.
+
+  **`U` IS REFUSED, NOT SCANNED, AND HAS ITS OWN MESSAGE.** An unmerged record's
+  destination mode is `000000`, so routing it through `refuseUnscannable` would
+  refuse it with a sentence about symbolic links and gitlinks that is FALSE for
+  it. `refuseUnmerged` runs FIRST and the mode check runs over what is left.
+  Asserted both ways: the unmerged refusal must not contain `a symbolic link` or
+  `a git mode-000000 entry`.
+
+  **`B` COSTS THE ENUMERATION NOTHING TODAY**, because git only breaks a pair
+  when `-B` is given, so with the flag absent `AMTU` and `AMTUB` enumerate
+  identically. That is why it is the remedy rather than a warning: it stops the
+  flag being a silent blindfold if anyone adds it.
+
+  **NEGATIVE CONTROLS.** Seven of the ten new cases are RED on the base scanner
+  and green on head. The three that are green on both are deliberate held-in-
+  place controls: the `-M`/`-C`/`--find-copies-harder` case (a claim about git,
+  not about the scanner), the old-equals-new enumeration case, and an unmerged
+  path OUTSIDE the route's scope, which must still NOT refuse.
+
+  **STILL OPEN HERE, MEASURED RATHER THAN INHERITED. Do not port a sibling's
+  residual list over these:**
+  - **a scan that observed NOTHING is still reported clean.** With
+    `test/fixtures` absent, or with BOTH walk roots absent, all-mode prints
+    `OK - no hits` at **exit 0** (`PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL`);
+  - **a tracked file directly under `test/` is enumerated by NEITHER route** -
+    exit 0 on `--staged` and on the all-mode walk over a payload that hits as an
+    ordinary fixture (`PHI-SCAN-WALK-ROOT-SCOPE`);
+  - **an index entry at exactly a scan root's own path matches no `--staged`
+    clause**, because every clause tests a `<root>/` PREFIX. A regular blob
+    staged at exactly `test/fixtures` carrying the payload: **exit 0**;
+  - **🩺 x12's exit code for a WALK ROOT replaced by a regular file is 1, and it
+    is an UNCAUGHT `ENOTDIR` from `readdirSync`, not a refusal.** `hl7` measured
+    **2** and `terminology` **1** for their versions of this shape. **Measure it
+    per repo; the number is not portable and neither is the mechanism.** It is
+    nonzero, so it is not a false clean, but it is not the clean refusal the
+    symlink work established either;
+  - the **enumerate-then-read race** in all mode, unchanged, for the reason the
+    symlink section gives: its remedy TOLERATES a failed read while this one
+    NARROWS what the enumeration admits.
+
+  No library code changed and no published type changed.
 
 ## REFUSAL-MESSAGE-PHI-ECHO (2026-08-06)
 
@@ -1866,7 +2064,8 @@ positionally recoverable. **The filed 835 case reproduces exactly**:
   with a link is neither add nor modify: measured here, `--diff-filter=AM`
   returned **zero rows** while the unfiltered `--raw` showed
   `:100644 120000 <sha> <sha> T`, so the record died before any mode was read
-  and the hook passed a mode-`120000` blob **green**. The filter is `AMT` and
+  and the hook passed a mode-`120000` blob **green**. That slice set the filter
+  to `AMT` (it is `AMTUB` today, see `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT`) and
   the route reads `--raw -z` rather than `--name-only`, because the destination
   mode is the only thing separating a staged regular file from a link or a
   gitlink. Admitting `T` also closes the reverse typechange (link → real file
@@ -1901,19 +2100,18 @@ positionally recoverable. **The filed 835 case reproduces exactly**:
   which seeded transients inside theirs. Not a measured hang, and **any widening
   of a walk root reintroduces it verbatim.**
 
-  **INHERITED AS DISCLOSURE, NOT SILENTLY RE-CLOSED:** `R`/`C` rename/copy are
-  still **not enumerated by `--staged` at all** (pre-existing; admitting them
-  needs the two-path record shape, a scope decision), and there is still **no
-  refuse-a-scan-that-observed-nothing rule** (`ccda#80`'s, which `terminology`
-  never had either). **Measure the R/C cost rather than inferring it, because it
-  is a live pre-commit hole with a real PHI shape:** renaming a fixture while
-  substituting a real name stages as `:100644 100644 ... R080 <old> <new>`,
-  which **both `AM` and `AMT` return zero rows for**, and `--staged` exits **0**
-  over a payload that is a hit as an ordinary add; `git mv`-ing an
-  already-committed **link** into `test/fixtures/` is `R100` and is likewise not
-  refused. **All-mode is the backstop for both** (exit 1 and exit 2), so the gap
-  is at pre-commit, not in CI. Worth its own item now that the mode check exists
-  to hang it on.
+  **INHERITED AS DISCLOSURE, NOT SILENTLY RE-CLOSED, AND SINCE CLOSED:** this
+  slice left `R`/`C` rename/copy **not enumerated by `--staged` at all**, on the
+  reasoning that admitting them needed the two-path record shape handled and was
+  therefore a scope decision. **That reasoning was wrong and the disclosure is
+  now historical:** `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` (2026-08-06) closes it
+  with `--no-renames`, at zero stride cost, along with three more holes of the
+  same family. Read that section, not this paragraph, for the measurements; the
+  R-score quoted here was deleted rather than corrected, because a similarity
+  score drifts with the fixture. **Still open from this slice:** there is no
+  refuse-a-scan-that-observed-nothing rule (`ccda#80`'s, which `terminology`
+  never had either), and **all-mode remains the backstop** for what pre-commit
+  misses, so a gap here is a gap at pre-commit and not in CI.
 
   **Negative controls both ways:** dropping the walk's non-regular branch reds 6
   tests, and `AMT` → `AM` reds the 2 typechange tests. No library code changed
