@@ -493,22 +493,28 @@ function buildTargetsForStaged(): Target[] {
     // `--no-renames` CLOSES THE RENAME AND COPY HOLE, AND THE FILTER ALONE NEVER
     // COULD. Rename detection is on by default and neither `AM` nor `AMT`
     // returns `R` or `C`, so the record was deleted outright. Measured on this
-    // package: `git mv <link> test/fixtures/<name>` staged as a single `R100`
-    // two-path record at mode 120000 and this route printed `OK - no hits` at
-    // exit 0; renaming a fixture while SUBSTITUTING a real-looking surname
-    // staged as a two-path `R` record (the score moves with how much of the file
-    // survives, so no digits are quoted here) and passed identically, over bytes
-    // that are three hits as an ordinary add; and under `diff.renames=copies`,
-    // copying a PHI-bearing file from outside the roots INTO `test/fixtures/`
-    // staged as `C100` and passed the same way. Turning detection off makes each
-    // destination arrive as an ordinary single-path `A`
-    // (`:000000 <mode> 0000000 <sha> A`) and each source a `D` the filter drops,
-    // so no two-path record shape is needed and the stride below is unchanged.
-    // Verified under `diff.renames=true|copies|false|1` and `diff.renameLimit=1`.
-    // Be exact about the relation between the two enumerations: they are EQUAL
-    // whenever nothing is renamed or copied and larger only when something is,
-    // so it is a superset and NOT a strictly larger set. Nothing the old argv
-    // enumerated stops being enumerated.
+    // package: `git mv <link> test/fixtures/<name>` staged as a single TWO-PATH
+    // `R` record at mode 120000 and this route printed `OK - no hits` at exit 0;
+    // renaming a fixture while SUBSTITUTING a real-looking surname staged as a
+    // two-path `R` record and passed identically, over bytes that are TWO hits
+    // as an ordinary add; and under `diff.renames=copies`, copying a PHI-bearing
+    // file from outside the roots INTO `test/fixtures/` staged as a two-path `C`
+    // record and passed the same way. NO SIMILARITY SCORE IS RECORDED ANYWHERE
+    // IN THIS FILE: a score moves with how much of the old content survives, so
+    // one carried over from another fixture is wrong here. What is load-bearing
+    // is that the record carries TWO PATHS.
+    //
+    // Turning detection off makes each destination arrive as an ordinary
+    // single-path `A` (`:000000 <mode> 0000000 <sha> A`) and each source a `D`
+    // the filter drops, so no two-path record shape is needed and the stride
+    // below is unchanged. Verified under `diff.renames=true|copies|false|1` and
+    // `diff.renameLimit=1`. Be exact about the relation between the two
+    // enumerations: they are EQUAL whenever nothing is renamed, copied, unmerged
+    // or a gitlink hidden by `diff.ignoreSubmodules`, and larger only when one
+    // of those is present. State that precondition in FULL, because
+    // `--no-renames` alone buys only the rename and copy half of it. It is a
+    // superset and NOT a strictly larger set: nothing the old argv enumerated
+    // stops being enumerated.
     //
     // `--ignore-submodules=none` FOR THE SAME REASON: THE CALLER'S GIT CONFIG
     // MUST NOT BE ABLE TO EMPTY THIS LIST. With `diff.ignoreSubmodules=all` set,

@@ -48,11 +48,21 @@ const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
  * The scanner runs under the SAME Node that is running vitest, not under `tsx`.
  *
  * Nearly every case here spawns the scanner, so what this file pays for is
- * start-up. Counted at runtime with a `spawnSync` shim on BOTH trees, because the
- * two censuses are different and quoting one for the other is the easy mistake:
- * before, **32 spawns across 32 cases, every one under `tsx`**; now, **36 spawns
- * across 33 cases, 34 under `node` and 2 under `tsx`**. So 30 `tsx` start-ups are
- * gone and 2 are kept on purpose, in the equivalence case below. The scanner is a
+ * start-up.
+ *
+ * EVERY FIGURE BELOW IS A MEASUREMENT TAKEN WHEN THE SUBSTITUTION LANDED, NOT A
+ * DESCRIPTION OF THIS FILE TODAY. It is written in the past tense on purpose: a
+ * case count, a spawn count and a wall clock all move with the next slice, and a
+ * present-tense census here went stale exactly once before anyone noticed. The
+ * rule is `CLAUDE.md`'s: derive a count, never recall one. What survives as a
+ * RULE is the last paragraph, and the equivalence case is what enforces it.
+ *
+ * Counted at runtime with a `spawnSync` shim on BOTH trees, because the two
+ * censuses were different and quoting one for the other is the easy mistake:
+ * before, **32 spawns across 32 cases, every one under `tsx`**; at that commit,
+ * **36 spawns across 33 cases, 34 under `node` and 2 under `tsx`**. So 30 `tsx`
+ * start-ups went and 2 were kept on purpose, in the equivalence case below. Both
+ * numbers have since grown with the cases this file has gained. The scanner is a
  * few hundred lines of type-annotated Node that needs erasing and nothing more, and
  * Node 22.18 or newer strips types itself, so `tsx`'s esbuild pipeline buys nothing
  * here and costs a process launch. **That floor is not enforced anywhere:**
@@ -75,7 +85,8 @@ const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
  * In-suite under `pnpm test:coverage`, interleaved BASE/HEAD two rounds each so the
  * arms share a load condition rather than being compared across a drifting one:
  * this file went **17.2 s / 17.5 s to 8.6 s / 8.6 s**. Do not restate that as a
- * whole-suite win: the run's critical path is now `test/scripts/attw-gate.test.ts`,
+ * whole-suite win: the run's critical path was, at that commit,
+ * `test/scripts/attw-gate.test.ts`,
  * so what this bought the suite is about 8.6 s of CPU, not 8.6 s of wall clock.
  * `vitest.config.ts` carries the full profile and the reasoning.
  *

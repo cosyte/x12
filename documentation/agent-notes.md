@@ -157,15 +157,21 @@ out of v1 scope.
     two-path record at mode `100644`. Both: `OK - no hits`, **exit 0**. Now
     **exit 2** (the link, by kind) and **exit 1** (the surname, on the NM1 name
     detector).
-    **▶ NO SIMILARITY SCORE IS RECORDED ANYWHERE IN THIS SLICE, ON PURPOSE.**
-    The score moves with the fixture: this repo's substituted-name case measured
-    a different score from the number `hl7` published for its own, which is the
-    exact porting trap that fired on `terminology` (`R098` vs `R097`). **A score
-    that drifts with the fixture has no right value, so it is DELETED rather
-    than corrected.** What is load-bearing is that the record has TWO PATHS.
+    **▶ NO SIMILARITY SCORE IS RECORDED ANYWHERE IN THIS SLICE, ON PURPOSE, AND
+    THAT INCLUDES AN EXACT-MATCH `100`.** The score moves with the fixture: this
+    repo's substituted-name case measured a different score from the number
+    `hl7` published for its own, which is the exact porting trap that fired on
+    `terminology` (`R098` vs `R097`, quoted here only to name the trap and never
+    as this repo's measurement). **A score that drifts with the fixture has no
+    right value, so it is DELETED rather than corrected.** A draft of this slice
+    kept `R100`/`C100` beside the absolute that denies recording any score, in
+    four artifacts at once; a refuter measured the contradiction. **The absolute
+    is the thing worth keeping, so the digits went, not the absolute.** What is
+    load-bearing is that the record has TWO PATHS.
   - **`C` (copy).** Under `diff.renames=copies`, copying a PHI-bearing file from
-    outside the roots INTO `test/fixtures/` staged as a genuine `C100` and was
-    dropped identically. **A distinct hole, not the same one:** nothing moves and
+    outside the roots INTO `test/fixtures/` staged as a genuine two-path `C`
+    record and was dropped identically. **A distinct hole, not the same one:**
+    nothing moves and
     the source stays put. **Copy detection only considers sources touched by the
     same diff**, so the probe must modify the source too, or git emits a plain
     `A` and the case proves nothing.
@@ -217,9 +223,13 @@ out of v1 scope.
   to a comment).
 
   **▶ "STRICT SUPERSET" IS REFUTED AND IS NOT WRITTEN ANYWHERE IN THIS SLICE.**
-  The two enumerations are **EQUAL** whenever nothing is renamed or copied and
-  larger only when something is. Pinned by a test that compares the old argv's
-  bytes with the new argv's on a plain staged add.
+  The two enumerations are **EQUAL** whenever nothing is renamed, copied,
+  unmerged, or a gitlink hidden by `diff.ignoreSubmodules`, and larger only when
+  one of those is present. **State that precondition in FULL:** a draft wrote
+  "when nothing is renamed or copied", which is `--no-renames`'s half of it and
+  is FALSE with an unmerged path or an erased gitlink in the index (measured both
+  ways). Pinned by a test that compares the old argv's bytes with the new argv's
+  on an index carrying none of the four.
 
   **`U` IS REFUSED, NOT SCANNED, AND HAS ITS OWN MESSAGE.** An unmerged record's
   destination mode is `000000`, so routing it through `refuseUnscannable` would

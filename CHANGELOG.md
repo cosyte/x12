@@ -371,13 +371,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   **Not closed by THIS change, and stated rather than implied**: `R` (rename) and `C` (copy) were
   not enumerated by `--staged` at all, so a fixture renamed while a real name was substituted into
-  it, and a `git mv` of an already-committed link into `test/fixtures/`, both passed at exit 0. That
-  disclosure is now historical: the change below in this same unreleased block closes it with
-  `--no-renames`, so no published release carries the widened filter without the rename remedy. Also
-  unclosed at the time, and still open: a scan that observed nothing is reported clean rather than
-  refused; and the enumerate-then-read window in all mode is untouched, because tolerating a failed
-  read pulls the opposite way from narrowing what the enumeration admits and belongs in its own
-  change. No library code changed and no published type changed.
+  it, and a `git mv` of an already-committed link into `test/fixtures/`, both passed at exit 0. **That
+  gap was LIVE at pre-commit through `0.0.7`, `0.0.8`, `0.0.9` and `0.0.10`**, every version published
+  after this change landed, with the all-mode sweep as the backstop. It is closed by the change below,
+  which is unreleased alongside this one. **Do not read "the same unreleased block" as "no published
+  release had it"**: this whole file sits under one `[Unreleased]` heading, so that inference is true
+  of the file and false of the registry. Also unclosed at the time, and still open: a scan that
+  observed nothing is reported clean rather than refused; and the enumerate-then-read window in all
+  mode is untouched, because tolerating a failed read pulls the opposite way from narrowing what the
+  enumeration admits and belongs in its own change. No library code changed and no published type
+  changed.
 
 - **🩺 The PHI scanner's `--staged` route stops trusting the caller's git config, so five kinds of
   staged change can no longer disappear from the pre-commit gate's list without a byte of the index
@@ -390,11 +393,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     already-committed symbolic link into `test/fixtures/` staged as a single TWO-PATH record at mode
     `120000` and the record was deleted before any mode could be read. Renaming a fixture while
     substituting a real-looking surname into it passed identically, over bytes that are two hits as
-    an ordinary add. **No similarity score is quoted here or anywhere in this change**: it moves with
-    the fixture, so a number carried over from one is wrong for the next;
+    an ordinary add. **No similarity score is recorded anywhere in this change**: a score moves with
+    the fixture, so a number carried over from one is wrong for the next. What is load-bearing is
+    that the record carries TWO PATHS;
   - **copy.** Under `diff.renames=copies`, copying a PHI-bearing file from outside the scan roots
-    INTO `test/fixtures/` staged as a genuine `C100` and was dropped the same way. It is a distinct
-    hole rather than the same one, because nothing is moved and the source stays put;
+    INTO `test/fixtures/` staged as a genuine two-path `C` record and was dropped the same way. It is
+    a distinct hole rather than the same one, because nothing is moved and the source stays put;
   - **gitlink.** With `diff.ignoreSubmodules=all` in the caller's git config, a staged gitlink under
     `test/fixtures/` vanished from `--raw` outright, where the same index without that config is
     refused at exit 2 by the existing mode check;
@@ -423,8 +427,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   git only breaks a pair when `-B` is given; it is there so the flag cannot become a silent
   blindfold later, which is why it is a remedy rather than a warning.
 
-  **The two enumerations are EQUAL when nothing is renamed or copied**, and larger only when
-  something is. This is a superset and NOT a strictly larger set: nothing the previous argv
+  **The two enumerations are EQUAL when nothing is renamed, copied, unmerged, or a gitlink under
+  `diff.ignoreSubmodules`**, and larger only when one of those is present. State the precondition in
+  full: `--no-renames` ALONE would make the equality hold on renames and copies only, and the other
+  two flags widen it further. This is a superset and NOT a strictly larger set: nothing the previous
+  argv
   enumerated stopped being enumerated, and that equality is asserted as a test.
 
   **Not closed here, and measured rather than assumed**: a scan that observed nothing is still
