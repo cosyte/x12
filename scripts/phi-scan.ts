@@ -142,8 +142,27 @@
  * scan completes instead of refusing. Both halves are pinned on a committed
  * corpus, because on an uncommitted one the reconciliation is vacuous.
  *
+ * 🩺 SO SAY "WITHIN THE DECLARED ROOTS, AS GIT NAMES THEM", NEVER A UNIVERSAL
+ * OVER ANY CORPUS. What the two rules close is a sweep reporting clean over the
+ * files `git ls-files` returns for `test/fixtures` and `src`. A corpus reached
+ * through a SYMLINKED root is not among them, and the first item below is the
+ * measured counterexample. A draft stated the universal and a refuter broke it
+ * with one tree.
+ *
  * KNOWN AND NOT CLOSED HERE, so a reader does not mistake the above for more
  * than it is:
+ *   - A SYMLINKED WALK ROOT'S TARGET CORPUS IS NOT RECONCILED AT ALL, not merely
+ *     the root entry that `reconcileObserved` exempts. Everything the walk reads
+ *     through the link lives under the target's own names, OUTSIDE the
+ *     `git ls-files -- test/fixtures src` pathspec, so the index side of the
+ *     comparison is empty for all of it. Measured at head with
+ *     `test/fixtures -> ../elsewhere` and a committed `elsewhere/violator.edi`:
+ *     present, exit 1; removed from disk but still in the index, `OK - no hits`
+ *     at EXIT 0. That is the EMPTIED-ROOT shape these rules exist to close,
+ *     alive through the exempted path. It is PRE-EXISTING (base is exit 0 over
+ *     the same tree) and so not a regression, and closing it means reconciling
+ *     against a second pathspec derived from the link target, which is the same
+ *     scope decision as the two below. Disclosed rather than closed.
  *   - A ROOT THAT IS A DIRECTORY THE PROCESS CANNOT READ IS NOT CAUGHT, and this
  *     is the boundary of the first rule rather than a slip in it. Measured
  *     identically at base and at head, with `test/fixtures` at mode `000` over a
@@ -167,12 +186,19 @@
  *     checks the walk against the index WITHIN the declared scope, so a path
  *     nothing declares in scope is absent from both sides of the comparison and
  *     the check is silent on it. Widening the scope is the remedy, and it is a
- *     slice of its own because ENUMERATING THOSE FILES BUYS ONLY THE DASHED-SSN
- *     AND EMAIL FLOOR: they are `.ts` sources whose fixtures are string
+ *     slice of its own because ENUMERATING THOSE FILES BUYS ONLY THE
+ *     `scanCommonShapes` FLOOR: they are `.ts` sources whose fixtures are string
  *     literals, so `looksLikeX12` is false for them and the NM1 name, DMG date
- *     of birth, PER phone and service-date recognisers never run. Widening the
- *     enumeration and widening the recogniser are two sides of it, each in
- *     addition to the other. Measured on this package's own corpus today, the
+ *     of birth, PER phone and service-date recognisers never run. NAME THAT
+ *     FLOOR AS THREE DETECTORS AND NEVER AS TWO. A draft of this header said
+ *     "the dashed-SSN and email floor" and a refuter measured it false: the
+ *     `REF*SY` undashed nine-digit SSN recogniser is NOT segment-aware either,
+ *     and it fires on a bare string literal exactly as the other two do. The
+ *     two-detector wording understated the deferred scope by precisely the
+ *     shape a dashed-SSN regex cannot see, which is the worst direction for it
+ *     to be wrong in. Widening the enumeration and widening the recogniser are
+ *     two sides of it, each in addition to the other. Measured on this
+ *     package's own corpus today, the
  *     current recogniser over the tracked non-fixture files under `test/` finds
  *     8 shapes in exactly one file, `test/scripts/phi-scan.test.ts`, which is
  *     this scanner's own negative-control corpus; excusing it needs an exclusion
@@ -201,8 +227,13 @@ const ALLOW_LIST_PATH = join(REPO_ROOT, "scripts", "phi-allow-list.txt");
 const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 
 // Roots walked in "all" mode. test/fixtures gets the full X12-aware scan;
-// src gets a conservative text pass (dashed-SSN + non-test email only) because
-// it is hand-written code, not data - JSDoc `@example` snippets must not trip it.
+// src gets the conservative `scanCommonShapes` text pass because it is
+// hand-written code, not data - JSDoc `@example` snippets must not trip it.
+// THAT PASS IS THREE DETECTORS, NOT TWO: dashed SSN, the `REF*SY` undashed
+// nine-digit SSN, and a non-test email. This comment used to say "dashed-SSN +
+// non-test email only" and it was measurably false - `REF*SY` is not
+// segment-aware and fires on a bare string literal. Derive the set from
+// `scanCommonShapes` rather than trusting any prose count of it, here included.
 const FIXTURE_ROOT = join(REPO_ROOT, "test", "fixtures");
 const SRC_ROOT = join(REPO_ROOT, "src");
 
@@ -500,14 +531,29 @@ function gitTrackedUnderRoots(): string[] {
   let out: Buffer;
   try {
     // SECURITY: array-form execFileSync, no shell. `--` separates the pathspecs.
-    out = execFileSync("git", ["ls-files", "-z", "--", ...WALK_ROOTS.map((r) => r.rel)], {
-      encoding: "buffer",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    //
+    // `--deduplicate` because an UNMERGED path is returned ONCE PER STAGE. Without
+    // it a single conflicted fixture missing from disk is reported as three
+    // offenders with a count of 3, which falsifies "names every offender" in the
+    // direction that makes a developer distrust the gate. `--staged` learned the
+    // same fact one commit earlier, from the other side of it.
+    out = execFileSync(
+      "git",
+      ["ls-files", "-z", "--deduplicate", "--", ...WALK_ROOTS.map((r) => r.rel)],
+      { encoding: "buffer", stdio: ["ignore", "pipe", "pipe"] },
+    );
   } catch (err) {
+    // NEVER INTERPOLATE THE CHILD'S MESSAGE. `execFileSync` appends git's stderr
+    // verbatim, and git's fatals in this class carry absolute filesystem paths
+    // ("bad config line 9 in file .git/config", ".git/index: index file smaller
+    // than expected"). A diagnostic ABOUT a PHI gate is itself a PHI surface, so
+    // only the engine-owned exit status is reported, which is the same rule
+    // `rootProblem` follows with `err.code`.
+    const status = (err as { status?: number }).status;
     throw new InvocationError(
       "refusing the scan: could not list the tracked files under the scan roots " +
-        `(git ls-files failed: ${err instanceof Error ? err.message : String(err)}). ` +
+        `(git ls-files exited ${status === undefined ? "abnormally" : String(status)}; ` +
+        "run it by hand to see why - its output is deliberately not echoed here). " +
         "Without that list the sweep cannot tell a corpus it read and found clean from a corpus " +
         "it never opened, and reporting the first when it means the second is the failure this " +
         "check exists to prevent.",
@@ -555,11 +601,29 @@ function gitTrackedUnderRoots(): string[] {
  * `test/fixtures/*` names, and that is a documented SUPERSET scan which exits 1
  * over a PHI-bearing target at base. Without this exemption the sweep refused
  * (exit 2) over exactly that tree, which would have traded a working superset
- * scan for a refusal and falsified four surfaces that say it is unchanged. It
- * opens no clean path: a root that is a tracked regular file, or a link to one,
- * is already refused by `refuseUnusableRoots` before this runs. It is also the
- * same boundary the `--staged` route draws, where an entry at a root's own path
- * matches no clause; that residual stays open and is disclosed in the header.
+ * scan for a refusal and falsified four surfaces that say it is unchanged. It is
+ * also the same boundary the `--staged` route draws, where an entry at a root's
+ * own path matches no clause; that residual stays open and is disclosed in the
+ * header.
+ *
+ * 🩺 "IT OPENS NO CLEAN PATH" IS REFUTED, AND THE CUT-BACK CLAIM IS BELOW. A
+ * draft said the exemption opened none, on the ground that a root which is a
+ * tracked regular file, or a link to one, is refused by `refuseUnusableRoots`
+ * first. That is true and it is not the whole of it. When a root is a tracked
+ * link to a DIRECTORY, everything the walk reads through it lives OUTSIDE the
+ * `git ls-files -- test/fixtures src` pathspec, under the target's own names, so
+ * the entire link-target corpus is unreconciled rather than just the root entry.
+ * Measured at head with `test/fixtures -> ../elsewhere` and a committed
+ * `elsewhere/violator.edi`: present, exit 1; deleted from disk but still in the
+ * index, `OK - no hits` at EXIT 0. That is verbatim the EMPTIED-ROOT shape this
+ * function exists to close, surviving through the exempted path.
+ *
+ * It is PRE-EXISTING (base is exit 0 over the same tree) and it is NOT a
+ * regression, so it is disclosed here and in the header rather than closed:
+ * covering it means reconciling against a second pathspec derived from the link
+ * target, which is a wider scope decision and belongs with the other scope work.
+ * WHAT CHANGED IS THE CLAIM, NOT THE GUARD. State the closure as "within the
+ * declared roots, as git names them" and never as a universal over any corpus.
  *
  * Anything the walk enumerated but could not READ has already refused above with
  * a more specific message, so this never fires second on the same path. All-mode

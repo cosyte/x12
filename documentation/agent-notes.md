@@ -12,7 +12,7 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 ## Contents
 
 - [CLAUDE-MD-AUDIT (2026-08-04)](#claude-md-audit-2026-08-04)
-- [Tech stack: the shared @cosyte/* standard](#tech-stack-the-shared-cosyte-standard)
+- [Tech stack: the shared @cosyte/\* standard](#tech-stack-the-shared-cosyte-standard)
 - [v1 scope snapshot](#v1-scope-snapshot)
 - [PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT (2026-08-06)](#phi-scan-rename-blind-at-precommit-2026-08-06)
 - [PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL (2026-08-06)](#phi-scan-observed-nothing-is-global-2026-08-06)
@@ -186,7 +186,7 @@ out of v1 scope.
   - **AN UNMERGED PATH.** Returned by neither `AM` nor `AMT`. Recorded at one or
     more of stages 1/2/3 and never at stage 0, so
     `git show :<path>` fails outright (`fatal: path ... is in the index, but not
-    at stage 0`). **Exit 0** over an index the route could not read. Git refuses
+at stage 0`). **Exit 0** over an index the route could not read. Git refuses
     to commit while a path is unmerged, so this was **never a route to a
     committed leak**; what it was is a gate attesting clean over a state it never
     observed, and this command is run by hand and from scripts too.
@@ -216,7 +216,7 @@ out of v1 scope.
   **THE REMEDY IS ONE RULE, NOT FIVE FIXES: STOP TRUSTING THE CALLER'S GIT
   CONFIG.** The argv is now
   `git diff --cached --raw -z --no-renames --ignore-submodules=none
-  --diff-filter=AMTUB`. `--no-renames` makes a two-path record UNEMITTABLE, so
+--diff-filter=AMTUB`. `--no-renames` makes a two-path record UNEMITTABLE, so
   the rename and copy destinations arrive as single-path `A` and the sources as
   `D` the filter drops. **The two-field stride is therefore STRUCTURAL rather
   than conditional**, and the unparseable-record refusal stays as a backstop, not
@@ -293,7 +293,7 @@ found clean and by a corpus it never opened.**
 
 Every figure below is measured in **this** repository, on a throwaway repo laid
 out like this one, against a synthetic `.edi` payload whose NM1 person name, DMG
-date of birth, PER phone and `REF*SY` SSN are **four hits at exit 1** when the
+date of birth, PER phone and `REF*SY` SSN are **hits at exit 1** when the
 same bytes are actually read. **Nothing is ported.** Three shapes:
 
 - **a MISSING root.** With both walk roots absent, and with `test/fixtures`
@@ -386,6 +386,29 @@ by `refuseUnusableRoots` before this runs. It is also the same boundary the
 `--staged` route already draws, where an entry at a root's own path matches no
 clause; that residual stays open.
 
+**🔴 "IT OPENS NO CLEAN PATH" IS REFUTED. THE CLAIM IS CUT BACK; THE GUARD IS
+NOT GROWN.** The sentence above is true about the ROOT ENTRY and was drafted as
+though it were true about the whole tree. It is not. When a root is a tracked
+link to a DIRECTORY, everything the walk reads through it lives under the
+TARGET's own names, and those names are outside the
+`git ls-files -- test/fixtures src` pathspec, so the index side of the
+comparison is empty for **all of it** rather than for one entry. Measured at
+head, `test/fixtures -> ../elsewhere` with a committed `elsewhere/violator.edi`:
+present, **exit 1**; removed from disk but still in the index, `OK - no hits` at
+**exit 0**, with `git ls-files -- test/fixtures src` returning only
+`src/ordinary.ts` and `test/fixtures`. **That is verbatim the EMPTIED-ROOT shape
+this section exists to close, alive through the exempted path**, and it is the
+one shape the slice ships a dedicated control for.
+
+It is **PRE-EXISTING** - base is exit 0 over the same tree - so it is not a
+regression, and it is **disclosed, not closed**: covering it means reconciling
+against a second pathspec derived from the link target, which is the same widening
+decision as the `test/` scope work below. **So state the closure as "within the
+declared roots, as git names them" and NEVER as a universal over any corpus.**
+This repo has deleted a self-contradicting universal before (`4a5a943`); the
+lesson is that a headline universal with one live counterexample is worse than a
+narrower headline, because the counterexample is the shape nobody re-checks.
+
 **🛑 THE CONTROL THAT HOLDS THIS COMMITS ITS CORPUS.** The first draft's control
 called `makeRepo()` and never `git add`ed, so `git ls-files` was empty, the
 reconciliation was satisfied trivially, and the case was **green by construction
@@ -443,16 +466,29 @@ scope**. A path nothing declares in scope is absent from **both** sides of the
 comparison, so the check is silent on it. Widening the scope is the remedy, and
 it is a slice of its own for three reasons, each measured:
 
-1. **🛑 ENUMERATING THE FILES BUYS THE SSN AND EMAIL FLOOR AND NOTHING ELSE.**
-   The recognisers assume **the file IS the document**: `looksLikeX12` requires
-   the text to start with `ISA`, and the files under `test/` are `.ts` sources
-   whose fixtures are **string literals**. So NM1, DMG, PER and the service-date
-   cutoff never run on them, and only `scanCommonShapes` (dashed SSN, `REF*SY`,
-   non-test email) does. **Widening the walk roots and widening the recogniser
+1. **🛑 ENUMERATING THE FILES BUYS THE `scanCommonShapes` FLOOR AND NOTHING
+   ELSE.** The recognisers assume **the file IS the document**: `looksLikeX12`
+   requires the text to start with `ISA`, and the files under `test/` are `.ts`
+   sources whose fixtures are **string literals**. So NM1, DMG, PER and the
+   service-date cutoff never run on them, and only `scanCommonShapes` does.
+
+   **🔴 THAT FLOOR IS THREE DETECTORS AND A DRAFT CALLED IT TWO.** Four surfaces
+   of this slice said "the dashed-SSN and email floor" and a refuter measured it
+   false: `REF*SY` matches `/REF.SY.([0-9]{9})\b/` over raw text, is **not**
+   segment-aware, and fires on a bare string literal exactly as the other two do.
+   Measured at head, a `.ts` file in a scanned root containing
+   `"REF*SY*<nine digits>~"` as an array element: **exit 1**. The wording
+   understated the deferred `test/` scope by **precisely the shape a dashed-SSN
+   regex cannot see** - an UNDASHED nine-digit SSN - which is the worst direction
+   for the disclosure to be wrong in. The census two paragraphs down contained the
+   counterexample the whole time: the 8 shapes are 6 dashed-SSN, **1 `REF*SY`**
+   and 1 email. **Derive the floor from `scanCommonShapes`, never from prose,
+   this sentence included.** **Widening the walk roots and widening the recogniser
    are TWO SIDES, each in addition to the other, never instead of it.** `ncpdp`
    shipped both together for this reason; `mllp` walks `test/` but **excludes
    `.ts`**, which would have closed **none** of `deid`'s 38 files. This cost
    `deid` three refutations.
+
 2. **there is no exclusion surface for the scanner's own corpus.** Measured on
    this package at this commit, a measurement and not a standing figure: the
    current recogniser over the 78 tracked non-fixture files under `test/` finds
@@ -473,21 +509,27 @@ reads a file.
 
 ### The census, derived by running head's suite against base
 
-**15 new cases. 8 RED on the base scanner, 7 green on both.** Never arithmetic:
+**17 new cases. 9 RED on the base scanner, 8 green on both.** Never arithmetic:
 this is head's test file run against `b07c367`'s `scripts/phi-scan.ts`, re-run
-after the refutation remedies landed.
+after each round of refutation remedies landed. It was 15 / 8 / 7 before the
+second refuter pass added the unmerged-dedup case and the symlinked-root
+disclosure; **re-derive it rather than quoting either figure.**
 
-The 7 green-on-both are deliberate held-in-place controls: the symlinked-root
-case (the documented superset direction), a fully-opened corpus still reporting
-its hits, a healthy corpus still clean, an untracked extra file, a staged
-deletion, the `.md` exemption, and an untracked gitignored file. **Green on both
-trees is NOT the same as inert:** the symlinked-root case reds against head with
-the walk-root exemption removed, which is what makes it a control rather than a
-decoration.
+The 8 green-on-both are deliberate held-in-place controls: the symlinked-root
+case (the documented superset direction), the symlinked-root DISCLOSURE (an
+emptied link target still reading clean, which is green on both because it is
+pre-existing and is here to flip when the scope work lands), a fully-opened
+corpus still reporting its hits, a healthy corpus still clean, an untracked extra
+file, a staged deletion, the `.md` exemption, and an untracked gitignored file.
+**Green on both trees is NOT the same as inert:** the symlinked-root case reds
+against head with the walk-root exemption removed, which is what makes it a
+control rather than a decoration.
 
 **Each rule is independently load-bearing, measured one at a time.** Dropping
 only `refuseUnusableRoots()` reds **4**; dropping only `reconcileObserved()` reds
-**4**; the two sets are **disjoint** and sum to the 8. Note that the
+**5**; the two sets are **disjoint** and sum to the 9. Dropping ONLY
+`--deduplicate` from the `git ls-files` argv reds exactly **1**, its own case, so
+that flag is pinned separately from the rule that uses it. Note that the
 missing-root case reds under the first drop on its **message**, not its exit
 code, because the reconciliation catches that particular shape too when something
 IS tracked under the root. **The case that is a genuine false clean without rule

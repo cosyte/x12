@@ -1126,6 +1126,49 @@ describe("phi-scan: a declared walk root must be a directory", () => {
     expect(r.stderr).toContain("RIVERA");
     expect(r.stderr).not.toContain("not opened by the sweep");
   });
+
+  it("DISCLOSED RESIDUAL: nothing under a symlinked root is reconciled (exit 0)", () => {
+    // 🔴 A refuter broke the universal "the sweep can no longer report clean
+    // over a corpus it never opened" with this one tree, so it is pinned here
+    // rather than left to be rediscovered.
+    //
+    // The exemption above spares the ROOT'S OWN index entry. It is not the whole
+    // of it: everything the walk reads THROUGH the link lives under the target's
+    // own names, which are outside the `git ls-files -- test/fixtures src`
+    // pathspec, so the index side of the comparison is empty for ALL of it. An
+    // emptied link target is therefore the emptied-root shape these rules exist
+    // to close, still reading clean.
+    //
+    // PRE-EXISTING (base is exit 0 over the same tree), so this is a disclosure
+    // and not a regression. Closing it means reconciling against a second
+    // pathspec derived from the link target, which is the same widening decision
+    // as `PHI-SCAN-WALK-ROOT-SCOPE`. WHEN THAT SLICE IS TAKEN, THIS CASE MUST
+    // FLIP TO A REFUSAL - it is here to make that visible, not to bless it.
+    const root = makeRepo();
+    mkdirSync(join(root, "elsewhere"));
+    writeFileSync(join(root, "elsewhere", "violator.edi"), SYNTHETIC_PHI);
+    rmSync(join(root, "test", "fixtures"), { recursive: true });
+    symlinkSync(join("..", "elsewhere"), join(root, "test", "fixtures"));
+    git(root, ["add", "-A"]);
+    commit(root, "base");
+
+    // Non-vacuity: read through the link, the payload really is a hit.
+    expect(runIn(root, []).code, "premise: the payload is detectable").toBe(1);
+
+    // Premise, off raw git: the target's files are NOT under the reconciled
+    // pathspec, which is exactly why the reconciliation cannot see them go.
+    expect(
+      gitOut(root, ["ls-files", "--", "test/fixtures", "src"])
+        .split("\n")
+        .filter((l) => l.length > 0),
+      "premise: the index names the link, never a path under it",
+    ).toEqual(["src/ordinary.ts", "test/fixtures"]);
+
+    rmSync(join(root, "elsewhere", "violator.edi"));
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK - no hits/);
+  });
 });
 
 describe("phi-scan: the sweep is reconciled against the index, not merely counted", () => {
@@ -1186,8 +1229,50 @@ describe("phi-scan: the sweep is reconciled against the index, not merely counte
 
     const r = runIn(root, []);
     expect(r.code, `stderr: ${r.stderr}`).toBe(2);
-    expect(r.stderr).toContain("git ls-files failed");
+    expect(r.stderr).toContain("could not list the tracked files under the scan roots");
     expect(r.stdout).not.toMatch(/OK - no hits/);
+    // The child's own stderr is NOT echoed. git's fatals in this class carry
+    // absolute filesystem paths, and a diagnostic about a PHI gate is itself a
+    // PHI surface, so only the engine-owned exit status is reported.
+    expect(r.stderr).not.toContain("fatal:");
+    expect(r.stderr).not.toContain(".git/");
+    expectNoPhi(r.stderr);
+  });
+
+  it("names an UNMERGED path ONCE, not once per stage (exit 2)", () => {
+    // `git ls-files` returns an unmerged path once per stage, so without
+    // `--deduplicate` one conflicted fixture is three offenders and a count of
+    // three, which falsifies "names every offender" in the direction that makes
+    // a developer distrust the gate.
+    //
+    // DELIBERATELY NOT `git merge`, for the reason `stageUnmerged` documents: it
+    // resolves the committer identity up front and reds on CI on its own premise,
+    // and a sibling measured a staged real conflict NOT leaving the path unmerged
+    // on a newer git at all. `update-index --index-info` is deterministic on any
+    // version and needs no identity.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "conflict.edi"), SYNTHETIC_PHI);
+    git(root, ["add", "."]);
+    commit(root, "base");
+
+    // Non-vacuity: the committed payload is a hit while it is on disk.
+    expect(runIn(root, []).code, "premise: the payload is detectable").toBe(1);
+
+    stageUnmerged(root, "test/fixtures/conflict.edi", "ISA*ours~\n", "ISA*theirs~\n");
+    rmSync(join(root, "test", "fixtures", "conflict.edi"));
+
+    // Premise, off raw git: the path really is in the index more than once. The
+    // exact number is the stage count and is deliberately not pinned.
+    const staged = gitOut(root, ["ls-files", "--", "test/fixtures/conflict.edi"])
+      .split("\n")
+      .filter((l) => l.length > 0);
+    expect(staged.length, "premise: unmerged, so once per stage").toBeGreaterThan(1);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("1 tracked in-scope file is in the index");
+    expect(r.stderr.match(/test\/fixtures\/conflict\.edi/g)).toHaveLength(1);
+    expectNoPhi(r.stderr);
   });
 
   it("does not mask a hit: a corpus fully opened still reports its hits (exit 1)", () => {

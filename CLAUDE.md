@@ -300,17 +300,19 @@ sources and its refutation history. Do not act on a line here without reading th
 - **`test/scripts/attw-gate.test.ts` is deliberately left alone** - pinning the REAL binary is the
   point of it.
 
-### 🩺 The `phi-scan` gate · `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (2026-08-03), `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` + `PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL` (2026-08-06) · one `agent-notes.md` section per id (`#<id-lower>-<date>`) + `#phi-commit-gate-armed-2026-06-28`
+### 🩺 The `phi-scan` gate · `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (2026-08-03), `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` + `PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL` (2026-08-06) · one `agent-notes.md` section per id + `#phi-commit-gate-armed-2026-06-28`
 
 - **🩺 Both enumerating routes REFUSE a symlink (exit 2), naming every offender**; neither FOLLOWS
   an ENTRY it enumerated. Say ENTRY, not "anything": **a walk ROOT that is itself a link IS
-  followed** (`existsSync`/`readdirSync`/`statSync` follow). A superset, not blind. **A refusal NEVER
+  followed** (`existsSync`/`readdirSync`/`statSync` follow) - a superset, not blind. **🔴 AND
+  NOTHING UNDER SUCH A ROOT IS RECONCILED** (its files are outside the `git ls-files` pathspec), so
+  an EMPTIED link target reads **exit 0**. PRE-EXISTING, OPEN: **the closure is "within the
+  declared roots", NOT a universal.** **A refusal NEVER
   reports the link target:** a diagnostic ABOUT a PHI leak is itself a PHI surface, so describe the
-  shape, never exemplify it. **Scope was NARROWED, not widened**; `paths` was never blind, and a
-  gitlink already exited 2 at base (**renamed, not newly caught**).
+  shape, never exemplify it.
 - **▶ 🩺 THE `--staged` ARGV IS THE GATE AND EVERY FLAG IN IT IS LOAD-BEARING; NEVER SHORTEN IT. ONE
   RULE: DO NOT TRUST THE CALLER'S GIT CONFIG.** Five holes, all exit 0 over PHI, closed by
-  `--no-renames --ignore-submodules=none --diff-filter=AMTUB`; the section has each. `T` is what
+  `--no-renames --ignore-submodules=none --diff-filter=AMTUB`. `T` is what
   makes the mode check reachable. **`U` is closed by the FILTER, not `--no-renames`; never conflate
   them**, and it refuses FIRST with its OWN message (mode `000000`). **ZERO stride work. Never add `-M`, `-C` or `--find-copies-harder`** - each
   re-empties the route. **No test may run `git merge`** - it reds on CI on its own premise; stage the
@@ -322,28 +324,30 @@ sources and its refutation history. Do not act on a line here without reading th
   **"Strict superset" REFUTED; EQUAL absent a rename/copy/gitlink/unmerged path.**
 - **▶ 🩺 ALL MODE OWES AN ACCOUNT OF ITS ROOTS. TWO RULES, NEITHER IMPLIES THE OTHER, BECAUSE
   EXISTENCE IS NOT OBSERVATION:** a root must BE a directory, and every tracked non-`.md` file under
-  one must have been ENUMERATED, checked against `git ls-files`. Both exit 2, naming every one.
-  **A COUNT CANNOT DO IT** - an emptied root gives zero and a total still looks like a total.
-  **SAY "A DIRECTORY", NEVER "ENUMERABLE"** - a draft said the latter; it is a TYPE check, and an
-  unreadable one still throws uncaught at **exit 1** (PRE-EXISTING). **CUT THE CLAIM BACK, NEVER
-  GROW THE GUARD.** A TRACKED walk-root symlink's OWN index entry is EXEMPT from
-  the reconciliation (the walk yields `<root>/<name>`, never `<root>`), else a superset scan turns
-  from exit 1 into a refusal; **its control MUST COMMIT its corpus** or it greens vacuously.
+  one must have been ENUMERATED, checked against `git ls-files`. Both exit 2.
+  **A COUNT CANNOT DO IT** - an emptied root gives zero and a total still looks whole.
+  **SAY "A DIRECTORY", NEVER "ENUMERABLE"** - a TYPE check; an unreadable one still throws
+  uncaught at **exit 1** (PRE-EXISTING). **CUT THE CLAIM BACK, NEVER
+  GROW THE GUARD.** Such a root's OWN index entry is EXEMPT (the walk yields `<root>/<name>`, never
+  `<root>`), else that superset scan turns exit 1 into a refusal; **its control MUST COMMIT its
+  corpus.**
   `git check-ignore` reads the INDEX: a TRACKED ignored file is SCANNED, its absence REFUSES. No git:
   REFUSE. **RE-DERIVE EVERY EXIT CODE PER REPO** - the regular-file root is **2** here (was **1**,
   uncaught), **2** in `hl7`, **1** in `terminology` by a DIFFERENT mechanism; `hl7` measured two
   ported residuals as NOT OPEN at all.
-- **Synthetic tokens are POSITIVELY DECLARED in `scripts/phi-allow-list.txt`** (X12 is byte-strict,
-  so no inline header; DICOM's `.dcm` model); **a whole-file bypass needs `--allow-fixture` AND an
-  entry in `phi-scan-overrides.md`.** Derive the detector census from the source, never quote it.
+- **Synthetic tokens are POSITIVELY DECLARED in `scripts/phi-allow-list.txt`** (byte-strict: no
+  inline header, as DICOM's `.dcm`); **a whole-file bypass needs `--allow-fixture` AND an entry in
+  `phi-scan-overrides.md`.**
 - **▶ 🩺 STILL OPEN, MEASURED HERE - NEVER PORT A SIBLING'S RESIDUAL LIST:** a tracked file directly
   under `test/` is seen by NEITHER route, and an index entry AT a root's own path matches no
   `--staged` clause (each tests a `<root>/` PREFIX). **THE RECONCILIATION REACHES NEITHER** - it
-  compares WITHIN the declared scope. **Widening the roots buys only the SSN/email floor** (`.ts`
-  fixtures are string literals, so `looksLikeX12` is false): **widen the RECOGNISER too, not
-  instead**. **The enumerate-then-read race is deferred; the reason is DIRECTION:** its remedy
-  TOLERATES a failed read, these NARROW what the enumeration admits, and x12 is out of reach only by
-  a **scope accident** of which walk roots it has. **Any widening reintroduces it verbatim.**
+  compares WITHIN the declared scope. **Widening the roots buys only the `scanCommonShapes` floor -
+  THREE detectors, not the two a draft named**: the `REF*SY` **UNDASHED** SSN is NOT segment-aware
+  either; **derive it from the source, never prose** (`.ts` fixtures are literals, so
+  `looksLikeX12` is false). **Widen the RECOGNISER too, not
+  instead. The enumerate-then-read race is deferred; the reason is DIRECTION:** its remedy TOLERATES
+  a failed read, these NARROW what the enumeration admits. x12 escapes it only by a **scope
+  accident** of its walk roots: **any widening reintroduces it verbatim.**
 
 ### 🩺 `X12-CALLER-VALUE-RESIDUALS` (2026-08-02) · `documentation/agent-notes.md#x12-caller-value-residuals-2026-08-02`
 

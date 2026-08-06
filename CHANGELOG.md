@@ -443,12 +443,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   clause, because every clause tests a `<root>/` prefix. Each is a scope decision belonging in its
   own change. No library code changed and no published type changed.
 
-- **🩺 The PHI scanner's all-mode sweep can no longer report clean over a corpus it never opened**
+- **🩺 The PHI scanner's all-mode sweep can no longer report clean over the files it never opened
+  within its declared roots**
   (`PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL`). `pnpm phi-scan` with no arguments walks two roots,
   `test/fixtures` and `src`, and prints `OK - no hits` at exit 0 when it finds nothing. **Finding
   nothing and opening nothing were indistinguishable.** Each shape is measured on a throwaway
   repository laid out like this one, against a synthetic `.edi` payload whose NM1 person name, DMG
-  date of birth, PER phone and `REF*SY` SSN are four hits at exit 1 when the same bytes are read:
+  date of birth, PER phone and `REF*SY` SSN are hits at exit 1 when the same bytes are read (the
+  hit COUNT is deliberately not recorded: a refuter measured the drafted figure short, and this
+  repo's rule is to delete a drifting number rather than correct it):
   - **a missing root.** With BOTH walk roots absent, and with `test/fixtures` alone absent, the walk
     returned immediately and the sweep printed `OK - no hits` at **exit 0**. **A root a repository
     never had is the worst shape of it**, because the gate then reads clean on every run it ever
@@ -467,8 +470,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   observation.** A declared walk root must BE a directory (`refuseUnusableRoots`), and every
   tracked, non-`.md` file under a root must have been one of the files the walk actually enumerated
   (`reconcileObserved`). Both refuse at **exit 2** and name **every** offender, the same rule the
-  not-a-regular-file refusal already follows. **Each is independently load-bearing**: dropping either
-  reds 4 of the 15 new cases, and they are a different 4.
+  not-a-regular-file refusal already follows. **Each is independently load-bearing**: of the 17 new
+  cases, dropping the first reds **4** and dropping the second reds **5**, and the two sets are
+  disjoint. `--deduplicate` on the `git ls-files` argv is pinned separately, by its own case: an
+  unmerged path is returned once per STAGE, so without it one conflicted fixture is named three
+  times and counted as three.
+
+  **Naming every offender needs one thing more than the rule.** `git ls-files` returns an unmerged
+  path **once per merge stage**, so the listing is taken with `--deduplicate`; without it a single
+  conflicted fixture is named three times and counted as three, which falsifies "names every
+  offender" in the direction that teaches a developer to distrust the gate. And a refusal here
+  **never echoes git's own message**: `execFileSync` appends the child's stderr verbatim, and git's
+  fatals in this class carry absolute filesystem paths, so only the engine-owned exit status is
+  reported - the same rule `rootProblem` follows with `err.code`.
 
   **🩺 SAY "BE A DIRECTORY", NEVER "BE ENUMERABLE".** A draft of this entry said the second and a
   refuter measured it false: a root that IS a directory the process cannot open (mode `000`) passes
@@ -483,9 +497,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that link is TRACKED, `reconcileObserved` **exempts the root's own index entry**. Without that
   exemption the sweep refused (exit 2) over a tree the base scanner scans as a documented superset at
   exit 1, because `git ls-files` returns the link's own path `test/fixtures` while the walk only ever
-  yields `test/fixtures/<name>`. It opens no clean path: a root that is a tracked regular file, or a
-  link to one, is refused by the root check first. **The case that holds this commits its corpus**,
-  because on an uncommitted one `git ls-files` is empty and the case would be green by construction.
+  yields `test/fixtures/<name>`. **The case that holds this commits its corpus**, because on an
+  uncommitted one `git ls-files` is empty and the case would be green by construction.
+
+  **🩺 "IT OPENS NO CLEAN PATH" WAS DRAFTED AND IS REFUTED, SO THE CLAIM IS CUT BACK RATHER THAN THE
+  GUARD GROWN.** The draft argued the exemption opened none, because a root that is a tracked regular
+  file, or a link to one, is refused by the root check first. True, and not the whole of it: when a
+  root is a tracked link to a DIRECTORY, everything the walk reads through it lives under the
+  target's own names, OUTSIDE the `git ls-files -- test/fixtures src` pathspec, so the whole
+  link-target corpus is unreconciled rather than just the root entry. Measured at head with
+  `test/fixtures -> ../elsewhere` and a committed `elsewhere/violator.edi`: present, exit 1; removed
+  from disk but still in the index, `OK - no hits` at **exit 0** - verbatim the emptied-root shape
+  these rules exist to close. It is **PRE-EXISTING** (base is exit 0 over the same tree), so it is
+  not a regression; it is **disclosed and not closed**, because covering it means reconciling against
+  a second pathspec derived from the link target, which is the same scope decision as the two below.
+  **State the closure as "within the declared roots, as git names them", never as a universal.**
 
   **A COUNT DOES NOT CLOSE THIS, WHICH IS WHY THE SECOND RULE READS THE INDEX.** An emptied root
   contributes zero and a total still looks like a total, so a denominator measures the roots that DID
@@ -511,9 +537,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the reason is worth stating because it reads as though it should be**: the reconciliation
   compares the walk against the index WITHIN the declared scope, so a path nothing declares in scope
   is absent from both sides of the comparison. Widening the scope is its own change, because
-  **enumerating those files buys only the dashed-SSN and email floor**: they are `.ts` sources whose
+  **enumerating those files buys only the `scanCommonShapes` floor**: they are `.ts` sources whose
   fixtures are string literals, so `looksLikeX12` is false and the NM1 / DMG / PER / service-date
-  recognisers never run. **Widening the enumeration and widening the recogniser are two sides of it,
+  recognisers never run. **🩺 NAME THAT FLOOR AS THREE DETECTORS AND NEVER AS TWO.** A draft of this
+  entry said "the dashed-SSN and email floor" and a refuter measured it false: the `REF*SY` undashed
+  nine-digit SSN recogniser is **not segment-aware either** and fires on a bare string literal
+  exactly as the other two do. The two-detector wording understated the deferred scope by precisely
+  the shape a dashed-SSN regex cannot see, which is the worst direction to be wrong in. Derive the
+  set from `scanCommonShapes`, never from prose - this sentence included. **Widening the enumeration and widening the recogniser are two sides of it,
   each in addition to the other.** Measured on this package's own corpus, the current recogniser over
   the tracked non-fixture files under `test/` finds 8 shapes in exactly one file,
   `test/scripts/phi-scan.test.ts`, which is this scanner's own negative-control corpus; excusing it
