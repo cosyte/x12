@@ -183,15 +183,41 @@ undefined` check, and the flag can only hold where no claim is open, so neither 
 
 - **PASS 2 NOT REFUTED, AND ITS ONE `INTRODUCED` FINDING WAS THE OTHER HALF OF THE SAME CLAIM.**
   The pass-1 remedy narrowed "every release through `0.0.10` attached them" and left its twin
-  standing on five surfaces, the SHIPPED WARNING MESSAGE among them: "one arriving after a later
+  standing, the SHIPPED WARNING MESSAGE among them: "one arriving after a later
   `NM1` attaches to that party normally". Measured false by pass 2 on a fully surfaced party - a
   `PER` after `NM1*QC` in Loop 2000C gives `patient.contacts: []` with an empty channel, and the
   same holds for a pay-to address - for the SAME root cause as finding 2, which is that
-  `attachContact` and `attachReference` have no route for several `ActiveEntity` kinds. Deleted on
-  all five surfaces rather than reworded a second time: the scope statement now says the later
+  `attachContact` and `attachReference` have no route for several `ActiveEntity` kinds. Deleted
+  rather than reworded a second time: the scope statement now says the later
   party is outside this code's scope and its trailing segments are silent, and says nothing about
-  whether they attach. **THE PATTERN IS NOW THREE PASSES FOR THREE: the code graded correct every
-  time and a UNIVERSAL in the prose was wrong every time.** Write the scoped form first.
+  whether they attach. **NO COUNT OF SURFACES IS PUBLISHED HERE.** The pass-2 remedy published one,
+  and pass 3 measured it wrong by finding one more - which is this repo's standing census rule
+  (`X12-NUMERIC-VALUE-EMITS-EMPTY`) arriving in a refutation record rather than in a package doc.
+  Sweep by grepping the phrase; do not trust a number.
+
+- **PASS 3 REFUTED, ON CLAIM WIDTH ONLY, WHICH IS THE SHAPE ADR 0016's FOUR-PASS RAISE NAMES.**
+  The guard was attacked end to end and held: every `activeEntity` assignment site is covered by a
+  clear, the `REF` case cannot reach its other two routes while the flag holds (both need a `CLM`,
+  which clears it), and the fired warning is never false because all four `attach*` helpers return
+  early on `entity === undefined`. Three prose findings, all in one direction:
+  - **The `X12_837_SERVICE_LINE_DROPPED` row of `docs-content/troubleshooting.md` dropped the
+    precondition.** It said each `N3` / `N4` / `PER` / `REF` between that `LX` and the next `NM1`
+    raises the new code. The guard is `entityLoopClosedByStrayLx ||= activeEntity !== undefined`,
+    so with NO entity loop open at the `LX` nothing is raised, and an intervening `HL` ends the
+    scope before the next `NM1` does. **Both are committed fixtures in this slice's own suite**, so
+    the row was refuted by the tests shipping beside it. It taught the inverse inference the rest
+    of the slice exists to forbid - no warning therefore no loss - which is
+    `X12-QUANTITY-SILENT-DEFAULTS`'s "never invert it" in a second reader. The row now states the
+    precondition and points at the code's own row for the bound instead of restating it.
+  - **The pass-2 sweep missed that same row**, which still carried "its own trailing segments do
+    attach". One file, two rows, one edited and one not.
+  - **`docs-content/cookbook.md` was never in the pass-2 sweep at all** and still carried the
+    counterfactual ("rather than attaching to the one named before it"), the exact claim pass 1
+    cut back everywhere else.
+  **THE PATTERN IS NOW FOUR FOR FOUR: the code graded correct every pass, and a UNIVERSAL in the
+  prose was wrong every pass.** The lesson has stopped being "write the scoped form first" and is
+  now **sweep every surface for the phrase before claiming a claim was deleted** - three separate
+  passes each found one more copy of the same sentence, in a file the pass before it had open.
 
 - **PHI: the new code has a slot in the table, and it is name-bearing.**
   `test/_helpers/phi-slots.ts` gained a slot planting the marker in an `N3` street address

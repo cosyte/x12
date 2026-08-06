@@ -244,10 +244,12 @@ same route without it, so read `submission.variant`); and what becomes of a `DTP
 
 A fifth code covers the cost of that route. Where the dropped `LX` had **no `CLM` open** and landed
 inside an entity loop, it closes that loop, so an `N3` / `N4` / `PER` / `REF` following it reaches no
-party at all rather than attaching to the one named before it. Each such segment raises
+party at all until the next `NM1` / `HL` / `CLM` opens one. Each such segment raises
 `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, anchored at the segment itself. Read its bound literally:
-it reports only that route, and only until the next `NM1` / `HL` / `CLM` opens a loop, so it is not a
-general "this segment reached no party" report. The bytes stay verbatim on `tx.segments`, which is
+it reports only that route, and only for that stretch, so it is not a
+general "this segment reached no party" report. It reports that the segment reached **no** party, and
+not that it would otherwise have reached one: this reader surfaces neither a `PER` on a patient nor
+one on a pay-to address on any release, so on those the alternative was also no party. The bytes stay verbatim on `tx.segments`, which is
 still the only complete account of the document.
 
 ```ts
