@@ -63,12 +63,28 @@
  * under their `test/fixtures/*` names and HITS (exit 1). That direction is a
  * superset scan rather than a blind one, so it is left alone here.
  *
- * `--diff-filter=AMT` INCLUDES `T`, AND LEAVING IT OUT MAKES THE MODE CHECK
+ * `--diff-filter=AMTUB` INCLUDES `T`, AND LEAVING IT OUT MAKES THE MODE CHECK
  * UNREACHABLE FOR AN ALREADY-TRACKED FILE. Replacing a TRACKED regular file
  * with a link is neither an add nor a modify: measured here, `git diff --cached
  * --raw --diff-filter=AM` returned ZERO rows for that change while the
  * unfiltered `--raw` showed `:100644 120000 ... T`. Admitting `T` also picks up
  * the reverse typechange, a link replaced by a real file bearing PHI.
+ *
+ * THE `--staged` ARGV DOES NOT TRUST THE CALLER'S GIT CONFIG, AND THAT IS ONE
+ * RULE RATHER THAN THREE FIXES. A caller's `diff.renames`, `diff.renameLimit`
+ * and `diff.ignoreSubmodules` could each empty this route's list without
+ * changing a byte of the index, and the filter alone could not reach any of
+ * them. So the argv pins all three: `--no-renames` (a `git mv` into a scan root
+ * staged as a two-path `R` record that no filter admitting only single-path
+ * statuses can return, whether it moved a link or a fixture with a real name
+ * substituted into it, and a `C` record does the same under
+ * `diff.renames=copies`), `--ignore-submodules=none` (with
+ * `diff.ignoreSubmodules=all`, a staged gitlink vanished from `--raw` outright),
+ * and `U` plus `B` in the filter (an unmerged path has no stage-0 blob to read
+ * and was silently absent; a broken pair is classified `B` whatever letter it
+ * prints, so `-B` blinds an `AMTU` filter). Every one of the five was measured
+ * at exit 0 over a payload that hits as an ordinary add. The argv's own comment
+ * carries each measurement.
  *
  * "In scope" is each route's own existing boundary, not a new one: the walk
  * still excludes a gitignored entry (the same rule that already excludes a
@@ -94,17 +110,16 @@
  *
  * KNOWN AND NOT CLOSED HERE, so a reader does not mistake the above for more
  * than it is:
- *   - `R` (rename) and `C` (copy) are still not enumerated by `--staged` at
- *     all, which is PRE-EXISTING. Admitting them needs the two-path `--raw`
- *     record shape handled, a scope decision rather than this one. Measured, so
- *     the cost is not left to inference: renaming a fixture while substituting a
- *     real name stages as `:100644 100644 ... R080 <old> <new>`, which both
- *     `AM` and `AMT` return zero rows for, and `--staged` exits 0 over a payload
- *     that is a hit as an ordinary add. `git mv`-ing an already-committed link
- *     INTO `test/fixtures/` is `R100` and is likewise not refused. All-mode is
- *     the backstop for both (exit 1 and exit 2 respectively), so the gap is at
- *     pre-commit, not in CI.
  *   - a scan that observed NOTHING is still reported clean rather than refused.
+ *   - the `--staged` route's scope is still `test/fixtures/**` plus `src/**.ts`,
+ *     and the walk's roots are still `test/fixtures` and `src`. Two consequences
+ *     were measured and are left open, both PRE-EXISTING and both a scope
+ *     decision rather than this one: a tracked file directly under `test/` is
+ *     enumerated by NEITHER route (exit 0 over a payload that hits as an
+ *     ordinary fixture), and an index entry at exactly a scan root's own path
+ *     (`test/fixtures`, `src`) matches no `--staged` clause, because every
+ *     clause tests a `<root>/` PREFIX (exit 0 over the same payload staged
+ *     there).
  *   - the enumerate-then-read window in `all` mode is untouched: this scan
  *     lists its roots first and reads each file afterwards, so a file deleted
  *     inside that window makes the read throw and the whole sweep refuse. That
@@ -436,7 +451,27 @@ function gitModeKind(mode: string): string {
 }
 
 /** `:<srcmode> <dstmode> <srcsha> <dstsha> <status>` - the info half of a `--raw -z` record. */
-const RAW_RECORD = /^:(?:\d{6}) (\d{6}) [0-9a-f]+ [0-9a-f]+ [A-Z]\d*$/;
+const RAW_RECORD = /^:(?:\d{6}) (\d{6}) [0-9a-f]+ [0-9a-f]+ ([A-Z])\d*$/;
+
+/**
+ * Refuse (exit 2) over in-scope paths git reports as UNMERGED. Separate from
+ * `refuseUnscannable` because the reason differs in kind: such a path is usually
+ * an ordinary regular file, and what it lacks is a SINGLE staged blob rather
+ * than a readable type. Its destination mode is `000000`, so routing it through
+ * the mode check would name it with a sentence about links and gitlinks that is
+ * false for it.
+ */
+function refuseUnmerged(paths: string[]): void {
+  if (paths.length === 0) return;
+  const lines = paths.map((p) => `  - ${p}`).join("\n");
+  const noun = paths.length === 1 ? "path is unmerged" : "paths are unmerged";
+  throw new InvocationError(
+    `refusing the scan: ${String(paths.length)} in-scope ${noun}:\n${lines}\n` +
+      "An unmerged path is recorded at one or more of stages 1/2/3 and never at stage 0, so " +
+      "`git show :<path>` fails outright and there is no one staged blob for the scan to read. " +
+      "Resolve the conflict and `git add` the result.",
+  );
+}
 
 function buildTargetsForStaged(): Target[] {
   let listBuf: Buffer;
@@ -454,10 +489,84 @@ function buildTargetsForStaged(): Target[] {
     // record died before any mode could be read and the hook passed the link
     // green. Typechange carries a single path, exactly like `A` and `M`, so
     // admitting it costs the two-field stride below nothing.
-    listBuf = execFileSync("git", ["diff", "--cached", "--raw", "-z", "--diff-filter=AMT"], {
-      encoding: "buffer",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    //
+    // `--no-renames` CLOSES THE RENAME AND COPY HOLE, AND THE FILTER ALONE NEVER
+    // COULD. Rename detection is on by default and neither `AM` nor `AMT`
+    // returns `R` or `C`, so the record was deleted outright. Measured on this
+    // package: `git mv <link> test/fixtures/<name>` staged as a single `R100`
+    // two-path record at mode 120000 and this route printed `OK - no hits` at
+    // exit 0; renaming a fixture while SUBSTITUTING a real-looking surname
+    // staged as a two-path `R` record (the score moves with how much of the file
+    // survives, so no digits are quoted here) and passed identically, over bytes
+    // that are three hits as an ordinary add; and under `diff.renames=copies`,
+    // copying a PHI-bearing file from outside the roots INTO `test/fixtures/`
+    // staged as `C100` and passed the same way. Turning detection off makes each
+    // destination arrive as an ordinary single-path `A`
+    // (`:000000 <mode> 0000000 <sha> A`) and each source a `D` the filter drops,
+    // so no two-path record shape is needed and the stride below is unchanged.
+    // Verified under `diff.renames=true|copies|false|1` and `diff.renameLimit=1`.
+    // Be exact about the relation between the two enumerations: they are EQUAL
+    // whenever nothing is renamed or copied and larger only when something is,
+    // so it is a superset and NOT a strictly larger set. Nothing the old argv
+    // enumerated stops being enumerated.
+    //
+    // `--ignore-submodules=none` FOR THE SAME REASON: THE CALLER'S GIT CONFIG
+    // MUST NOT BE ABLE TO EMPTY THIS LIST. With `diff.ignoreSubmodules=all` set,
+    // a staged gitlink under `test/fixtures/` vanished from `--raw` entirely and
+    // this route exited 0 over it, where the same index without that config is
+    // refused at exit 2 by the mode check below. The flag pins the behaviour to
+    // git's default instead of the caller's, which is the whole family rule
+    // here: stop trusting the caller's git config.
+    //
+    // `U` (UNMERGED) IS IN THE FILTER SO IT CAN BE REFUSED, NOT SCANNED. Such a
+    // path is recorded at one or more of stages 1/2/3 and never at stage 0, so
+    // `git show :<path>` fails on it; it was returned by neither `AM` nor `AMT`,
+    // and this route reported `OK - no hits` at exit 0 over an index it could
+    // not read (measured, with a real-looking surname in one of the stages). Git
+    // itself refuses to commit while a path is unmerged, so this was never a
+    // route to a committed leak; what it was is a gate attesting clean over a
+    // state it never observed, and `pnpm phi-scan --staged` is run by hand and
+    // from scripts as well as from the hook. `U` carries a single path, so it
+    // costs the stride nothing either.
+    //
+    // `B` (BROKEN PAIR) IS IN THE FILTER BECAUSE `-B` IS NOT INERT. The
+    // mechanism is sharper than "a `B` record the filter drops": the record's
+    // printed status LETTER IS STILL `M`, one path, an `M` with a break score
+    // that `RAW_RECORD` parses happily, so a reader checking the raw output
+    // concludes `AMTU` keeps it. It does not: `--diff-filter` classifies a
+    // broken pair as `B` WHATEVER LETTER IT PRINTS. Measured here on a wholly
+    // rewritten in-scope fixture carrying a staged dashed SSN, same index all
+    // three ways: `-B --diff-filter=AMTU` returns EMPTY while `--diff-filter=B`
+    // and `--diff-filter=AMTUB` each return the record, and the scanner with
+    // `-B` injected exits 0 on the `AMTU` filter and 1 on this one. THE SCORE IS
+    // NOT PINNED AND NO DIGITS ARE QUOTED, because it moves with how much of the
+    // old content survives. Adding `B` costs the enumeration NOTHING today - git
+    // only breaks a pair when `-B` is given, so with the flag absent the two
+    // filters enumerate identically - which is why it is the remedy rather than
+    // a warning: it stops the flag being a silent blindfold if anyone adds it.
+    //
+    // THE STRIDE BELOW IS COUPLED TO THIS ARGV, so read the coupling before
+    // editing it. `--no-renames` is what makes a two-path record impossible, and
+    // `-M`, `-C` and `--find-copies-harder` each turn detection back on over the
+    // top of it: measured on a real rename stage, every one of the three empties
+    // this route again. Do not add them. `-B` may be added without blinding the
+    // route now that `B` is in the filter, but it still buys nothing.
+    listBuf = execFileSync(
+      "git",
+      [
+        "diff",
+        "--cached",
+        "--raw",
+        "-z",
+        "--no-renames",
+        "--ignore-submodules=none",
+        "--diff-filter=AMTUB",
+      ],
+      {
+        encoding: "buffer",
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
   } catch (err) {
     throw new InvocationError(
       `git diff --cached failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -465,18 +574,22 @@ function buildTargetsForStaged(): Target[] {
   }
 
   // `--raw -z` emits `<info>\0<path>\0` per record. `R` (rename) and `C` (copy)
-  // are the only statuses carrying a SECOND path, and the filter excludes both,
-  // so the stride is two fields. If one ever reached here the stride would
-  // desync and the next record would fail to parse, which REFUSES: the same
-  // outcome as any other unparseable record, and the safe one.
+  // are the only statuses carrying a SECOND path, and `--no-renames` above means
+  // git cannot emit either, whatever the caller's `diff.renames` says, so the
+  // stride is two fields STRUCTURALLY rather than by the filter's leave. The
+  // regex still admits a score-suffixed status: if a two-path record ever did
+  // reach here the stride would desync and the next record would fail to parse,
+  // which REFUSES - the same outcome as any other unparseable record, and the
+  // safe one. That is a backstop, not the guarantee.
   //
-  // Excluding `R`/`C` also means this route does not enumerate a staged rename
-  // at all. That is PRE-EXISTING and is not narrowed here: admitting them needs
-  // the two-path record shape handled, which is a scope decision, not this one.
-  // A record that does not parse REFUSES rather than being skipped: a silently
-  // shortened list is exactly the shape this scan must never report clean over.
+  // What this route still does NOT enumerate, stated because the boundary is
+  // narrower than the path prefix alone: the filter drops `D`, a deletion, which
+  // has no staged blob to scan. That is PRE-EXISTING and deliberate. The only
+  // other statuses git documents are `R`/`C` (which `--no-renames` makes
+  // unemittable) and `X` (git's own "this is a bug" marker), so `A`/`M`/`T`/`U`/
+  // `B` plus `D` accounts for every record this invocation can produce.
   const fields = listBuf.toString("utf8").split("\0");
-  const staged: { path: string; mode: string }[] = [];
+  const staged: { path: string; mode: string; status: string }[] = [];
   let i = 0;
   while (i < fields.length) {
     const info = fields[i];
@@ -486,14 +599,15 @@ function buildTargetsForStaged(): Target[] {
     }
     const m = RAW_RECORD.exec(info);
     const mode = m?.[1];
+    const status = m?.[2];
     const path = fields[i + 1];
-    if (mode === undefined || path === undefined || path.length === 0) {
+    if (mode === undefined || status === undefined || path === undefined || path.length === 0) {
       throw new InvocationError(
         "could not read the output of `git diff --cached --raw -z`: unrecognized record. " +
           "Refusing rather than scanning a list that may be short.",
       );
     }
-    staged.push({ path, mode });
+    staged.push({ path, mode, status });
     i += 2;
   }
 
@@ -502,8 +616,15 @@ function buildTargetsForStaged(): Target[] {
       s.path.startsWith("test/fixtures/") || (s.path.startsWith("src/") && s.path.endsWith(".ts")),
   );
 
+  // Unmerged first: such a record's destination mode is `000000`, which the mode
+  // check below would otherwise refuse with a sentence about symbolic links and
+  // gitlinks that is false for it.
+  refuseUnmerged(inScope.filter((s) => s.status === "U").map((s) => s.path));
+
+  const list = inScope.filter((s) => s.status !== "U");
+
   refuseUnscannable(
-    inScope
+    list
       .filter((s) => !REGULAR_BLOB_MODES.has(s.mode))
       .map((s) => ({ path: s.path, kind: gitModeKind(s.mode) })),
     // The `why` covers BOTH modes this refuses, so it must be true of both.
@@ -516,7 +637,7 @@ function buildTargetsForStaged(): Target[] {
     "Unstage it, or replace it with a regular file.",
   );
 
-  return inScope.map(({ path: relPath }) => ({
+  return list.map(({ path: relPath }) => ({
     path: relPath,
     // SECURITY: array-form execFileSync, no shell. `:<path>` is a git pathspec.
     read: (): Buffer =>

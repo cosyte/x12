@@ -348,7 +348,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exited 1 and printed that shape, because `git show` handed the path text straight to the
   cross-cutting shape pass.
 
-  **The `--staged` filter is now `AMT`, and `T` is the one-letter difference that made the mode check
+  **`T` was added to the `--staged` filter, and it is the one letter that made the mode check
   reachable.** Replacing a TRACKED regular file with a link is neither an add nor a modify: measured
   on this tree, `git diff --cached --raw --diff-filter=AM` returned zero rows for that change while
   the unfiltered `--raw` showed `:100644 120000 <sha> <sha> T`. Without `T` the record died before
@@ -369,18 +369,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `readFileSync`, which follows a link, so an explicitly named path that is a link to a PHI-bearing
   file is scanned and hits (measured, exit 1).
 
-  **Not closed here, and stated rather than implied**: `R` (rename) and `C` (copy) are still not
-  enumerated by `--staged` at all, which is pre-existing and needs the two-path `--raw` record shape
-  handled. Measured, so the cost is not left to inference: renaming a fixture while substituting a
-  real name stages as `:100644 100644 <sha> <sha> R080 <old> <new>`, which both `AM` and `AMT` return
-  zero rows for, and `--staged` exits 0 over a payload that is a hit as an ordinary add; `git mv` of
-  an already-committed link into `test/fixtures/` is `R100` and is likewise not refused. The all-mode
-  sweep is the backstop for both (exit 1 and exit 2 respectively), so the gap is at pre-commit, not
-  in CI. Also unclosed: a scan that observed nothing is still reported clean rather than refused; and
-  the
-  enumerate-then-read window in all mode is untouched, because tolerating a failed read pulls the
-  opposite way from narrowing what the enumeration admits and belongs in its own change. No library
-  code changed and no published type changed.
+  **Not closed by THIS change, and stated rather than implied**: `R` (rename) and `C` (copy) were
+  not enumerated by `--staged` at all, so a fixture renamed while a real name was substituted into
+  it, and a `git mv` of an already-committed link into `test/fixtures/`, both passed at exit 0. That
+  disclosure is now historical: the change below in this same unreleased block closes it with
+  `--no-renames`, so no published release carries the widened filter without the rename remedy. Also
+  unclosed at the time, and still open: a scan that observed nothing is reported clean rather than
+  refused; and the enumerate-then-read window in all mode is untouched, because tolerating a failed
+  read pulls the opposite way from narrowing what the enumeration admits and belongs in its own
+  change. No library code changed and no published type changed.
+
+- **🩺 The PHI scanner's `--staged` route stops trusting the caller's git config, so five kinds of
+  staged change can no longer disappear from the pre-commit gate's list without a byte of the index
+  changing** (`PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT`). `pnpm phi-scan --staged` is the pre-commit hook.
+  It enumerated the index with `git diff --cached --raw -z --diff-filter=AMT`, and each of the five
+  below returned exit 0 and `OK - no hits`. Every one is measured on a throwaway repository laid out
+  like this one, against a synthetic `.edi` payload whose NM1 person name, DMG date of birth, PER
+  phone and `REF*SY` SSN are all hits at exit 1 when the same bytes arrive as an ordinary add:
+  - **rename.** Detection is on by default and neither `AM` nor `AMT` returns `R`, so `git mv` of an
+    already-committed symbolic link into `test/fixtures/` staged as a single TWO-PATH record at mode
+    `120000` and the record was deleted before any mode could be read. Renaming a fixture while
+    substituting a real-looking surname into it passed identically, over bytes that are two hits as
+    an ordinary add. **No similarity score is quoted here or anywhere in this change**: it moves with
+    the fixture, so a number carried over from one is wrong for the next;
+  - **copy.** Under `diff.renames=copies`, copying a PHI-bearing file from outside the scan roots
+    INTO `test/fixtures/` staged as a genuine `C100` and was dropped the same way. It is a distinct
+    hole rather than the same one, because nothing is moved and the source stays put;
+  - **gitlink.** With `diff.ignoreSubmodules=all` in the caller's git config, a staged gitlink under
+    `test/fixtures/` vanished from `--raw` outright, where the same index without that config is
+    refused at exit 2 by the existing mode check;
+  - **unmerged path.** Returned by neither `AM` nor `AMT`. Such a path is recorded at one or more of
+    stages 1/2/3 and never at stage 0, so `git show :<path>` fails outright and the route attested
+    clean over an index it could not read. Git refuses to commit while a path is unmerged, so this
+    was never a route to a committed leak; what it was is a gate reporting on a state it never
+    observed, and `pnpm phi-scan --staged` is run by hand and from scripts as well as from the hook;
+  - **broken pair.** A pair broken by `-B` prints status letter **`M`** with a break score, one path,
+    which the record parser reads happily, **but `--diff-filter` classifies a broken pair as `B`
+    whatever letter it prints**, so an `AMTU` filter deletes it and a reader checking the raw output
+    concludes the opposite.
+
+  **The remedy is one rule rather than five fixes.** The argv is now
+  `git diff --cached --raw -z --no-renames --ignore-submodules=none --diff-filter=AMTUB`.
+  `--no-renames` makes a two-path record unemittable whatever `diff.renames` says, so both the rename
+  and the copy destination arrive as an ordinary single-path `A` and the source as a `D` the filter
+  drops; the two-field stride is therefore STRUCTURAL rather than conditional on the caller's
+  configuration. Verified under `diff.renames=true|copies|false|1` and `diff.renameLimit=1`.
+  `-M`, `-C` and `--find-copies-harder` each turn detection back on over the top of it and empty the
+  route again, which is pinned as a test rather than left to a comment.
+
+  **An unmerged path is refused (exit 2) with its own message**, separate from the not-a-regular-file
+  refusal, because its destination mode is `000000` and that refusal's sentence about symbolic links
+  and gitlinks would be false for it. `B` in the filter costs the enumeration nothing today, since
+  git only breaks a pair when `-B` is given; it is there so the flag cannot become a silent
+  blindfold later, which is why it is a remedy rather than a warning.
+
+  **The two enumerations are EQUAL when nothing is renamed or copied**, and larger only when
+  something is. This is a superset and NOT a strictly larger set: nothing the previous argv
+  enumerated stopped being enumerated, and that equality is asserted as a test.
+
+  **Not closed here, and measured rather than assumed**: a scan that observed nothing is still
+  reported clean; a tracked file directly under `test/` is enumerated by neither route; an index
+  entry at exactly a scan root's own path matches no `--staged` clause, because every clause tests a
+  `<root>/` prefix; and an all-mode walk root replaced by a regular file still dies on an unhandled
+  directory read rather than refusing cleanly. Each is a scope decision belonging in its own change.
+  No library code changed and no published type changed.
 
 ### Fixed
 
