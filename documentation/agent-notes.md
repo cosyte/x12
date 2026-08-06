@@ -196,10 +196,12 @@ undefined` check, and the flag can only hold where no claim is open, so neither 
   Sweep by grepping the phrase; do not trust a number.
 
 - **PASS 3 REFUTED, ON CLAIM WIDTH ONLY, WHICH IS THE SHAPE ADR 0016's FOUR-PASS RAISE NAMES.**
-  The guard was attacked end to end and held: every `activeEntity` assignment site is covered by a
-  clear, the `REF` case cannot reach its other two routes while the flag holds (both need a `CLM`,
-  which clears it), and the fired warning is never false because all four `attach*` helpers return
-  early on `entity === undefined`. Three prose findings, all in one direction:
+  The guard was attacked end to end and held: every **other** `activeEntity` assignment site is
+  covered by a clear - say OTHER, because the one at `:796` sits under the SET at `:795` and adding
+  a clear beside it would silence the whole feature - the `REF` case cannot reach its other two
+  routes while the flag holds (both need a `CLM`, which clears it), and the fired warning is never
+  false because all four `attach*` helpers return early on `entity === undefined`. Three prose
+  findings, all in one direction:
   - **The `X12_837_SERVICE_LINE_DROPPED` row of `docs-content/troubleshooting.md` dropped the
     precondition.** It said each `N3` / `N4` / `PER` / `REF` between that `LX` and the next `NM1`
     raises the new code. The guard is `entityLoopClosedByStrayLx ||= activeEntity !== undefined`,
@@ -214,10 +216,36 @@ undefined` check, and the flag can only hold where no claim is open, so neither 
   - **`docs-content/cookbook.md` was never in the pass-2 sweep at all** and still carried the
     counterfactual ("rather than attaching to the one named before it"), the exact claim pass 1
     cut back everywhere else.
-  **THE PATTERN IS NOW FOUR FOR FOUR: the code graded correct every pass, and a UNIVERSAL in the
-  prose was wrong every pass.** The lesson has stopped being "write the scoped form first" and is
-  now **sweep every surface for the phrase before claiming a claim was deleted** - three separate
-  passes each found one more copy of the same sentence, in a file the pass before it had open.
+  **A UNIVERSAL IN THE PROSE WAS WRONG ON ALL FOUR PASSES. THE CODE WAS NOT: pass 1 found a GUARD
+  defect** (`=` for `||=`), and writing "the code graded correct every pass" over that is how a
+  lineage talks itself into believing its gate found nothing. ADR 0016's four-pass raise rests on
+  slices "refused on claim-width, none on behaviour", so a record that overstates the prose share
+  feeds that evidence base a false point. The lesson has stopped being "write the scoped form
+  first" and is now **sweep every surface for the phrase before claiming a claim was deleted** -
+  three separate passes each found one more copy of the same sentence, in a file the pass before it
+  had open.
+
+- **PASS 4 NOT REFUTED, ON THE REMEDY DIFF ONLY, AND IT IS THE CAP.** ADR 0016's 2026-08-02
+  amendment raised the ceiling to four for exactly this shape: a slice refused on claim width, whose
+  last prose fix would otherwise ship ungraded. It graded `2e80705..865eb3d` and nothing else. Four
+  minors, all prose, all fixed here: the cookbook's terminator had been weakened to "opens one"
+  ("one" resolves to *party*, and no `HL` or `CLM` opens a party); the pass-3 record dropped the
+  word OTHER from "every other `activeEntity` assignment site is covered by a clear", which as
+  written invites a maintainer to add a clear at `:796` and silence the feature; the same record
+  claimed "the code graded correct every pass" over pass 1's guard defect; and the troubleshooting
+  row grew a fresh absolute ("the only place to read it from"). **There is no pass 5.**
+
+- **🩺 PASS 4's ONE MAJOR IS `PRE-EXISTING` AND IS `#72`'s, NOT THIS SLICE'S: `KNOWN-LIMITATIONS.md`
+  CONTRADICTS ITSELF ABOUT THIS CONSTRUCT, ~90 LINES APART.** Line 150 still carries a fourth copy
+  of the universal pass 2 measured false - "A `NM1` arriving AFTER that `LX` names a party normally,
+  and its own trailing segments attach" - while line 244, which this slice wrote, says the opposite
+  and is the true one. Byte-identical at `d3b36d9` and untouched by any commit here (`git log -S`
+  attributes it to `d3b36d9`), so amendment B restriction 2 keeps it out of this slice: **filed, not
+  fixed.** It is not `STOP-THE-LINE` (no value is mis-read, the bytes stay on `tx.segments`, and the
+  correct form is on `src/parser/warnings.ts`, `CHANGELOG.md` and troubleshooting row 70), and
+  `KNOWN-LIMITATIONS.md` is not in `package.json`'s `files`, so it is not in the tarball - but it IS
+  public on GitHub and the shipped warning message points readers at it. **Fix it in its own item;
+  the fix is to DELETE the parenthetical, not to reword it a fourth time.**
 
 - **PHI: the new code has a slot in the table, and it is name-bearing.**
   `test/_helpers/phi-slots.ts` gained a slot planting the marker in an `N3` street address

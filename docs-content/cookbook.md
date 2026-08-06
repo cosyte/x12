@@ -244,7 +244,7 @@ same route without it, so read `submission.variant`); and what becomes of a `DTP
 
 A fifth code covers the cost of that route. Where the dropped `LX` had **no `CLM` open** and landed
 inside an entity loop, it closes that loop, so an `N3` / `N4` / `PER` / `REF` following it reaches no
-party at all until the next `NM1` / `HL` / `CLM` opens one. Each such segment raises
+party at all while nothing since has opened a loop, which the next `NM1` / `HL` / `CLM` does. Each such segment raises
 `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, anchored at the segment itself. Read its bound literally:
 it reports only that route, and only for that stretch, so it is not a
 general "this segment reached no party" report. It reports that the segment reached **no** party, and
