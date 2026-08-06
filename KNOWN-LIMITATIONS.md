@@ -169,11 +169,14 @@ model.
     library's own invariant, not on a clause: a mis-attribution puts a value on an object the sender
     never put it on, indistinguishable from real data, whereas the bytes of a discarded segment are
     still on `tx.segments`.
-    **🩺 The discard is SILENT and no warning names this loss.** No code was added or removed by
-    the change, and `X12_837_SERVICE_LINE_DROPPED` at that `LX` reports the **service line**, not
-    the entity's address, id or contact. **The warning channel is therefore not an account of this
-    one:** `tx.segments` is. Both the loss and the silence are pinned by tests. Warning on it would
-    be a new guard and is owed its own change.
+    **🩺 The discard is REPORTED, by a code of its own, at the segment itself.** Each such
+    `N3` / `N4` / `PER` / `REF` raises `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, so the loss is
+    on the warning channel once per discarded segment. `X12_837_SERVICE_LINE_DROPPED` at that `LX`
+    reports the **service line** and not the entity's address, id or contact, so it never named this
+    loss and does not now. **The channel is still not a complete account of the document** -
+    `tx.segments` is - and the loss itself is unchanged: reporting it did not restore it. Both are
+    pinned by tests. **Read the new code's bound in its own entry below before restating it:** it is
+    not a general "this segment reached no party" report.
   - **An `SVx` with no `LX` at all raises `X12_837_SERVICE_SEGMENT_WITHOUT_LX`, the 26th Tier-2
     code, anchored at the service segment itself.** Through `0.0.10` it was dropped in SILENCE:
     both codes above are anchored at the `LX`, so a service segment that never had one had nothing
@@ -221,6 +224,38 @@ model.
     orphans from the fallback would change how existing documents decode and is its own slice. It
     is warned rather than silent (`X12_837_SERVICE_LINE_NOT_DECODED` at each `LX`), and
     `submission.variant` is the field that tells you.
+
+- **🩺 An `N3` / `N4` / `PER` / `REF` discarded after a stray `LX` raises
+  `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, anchored at the discarded segment itself.** This is
+  the code that names the trade recorded in the entry above: where an `LX` with **no `CLM` open**
+  landed inside an entity loop, it closes that loop, so those four segment kinds reach no party on
+  the model. Releases through `0.0.10` attached such a segment to whichever party the last `NM1`
+  left active **wherever this reader surfaces that segment kind on that party at all** - never
+  read that as all four kinds on every party, because a `PER` on a patient or a pay-to address
+  reached the model on no release. Discarding them instead is what stopped a line-level value
+  surfacing as a property of a party the sender never put it on, and this code is what stops that
+  discard being silent. **It reports that the segment reached no party, NOT that it would have
+  reached one**, so it can fire where nothing this library's own reset lost. The
+  anchor is the segment and not the `LX`, because the loss is per segment: two `N3`s are two
+  warnings at two positions, so a consumer can name both. Four bounds, each a committed test:
+  - **🩺 It is NOT a general "this entity segment reached no party" report, and it must never be
+    restated as one.** It reports one discarded after such an `LX`, and only until the next
+    `NM1` / `HL` / `CLM` opens a loop. A party named after that `LX` is addressable again and its
+    own trailing segments attach normally and silently: the scope is a scope, not a latch.
+  - **Every other route to an unattached `N3` / `N4` / `PER` / `REF` is exactly as silent as it was
+    before this code existed**, and that is deliberate rather than an oversight: no entity loop open
+    at the stray `LX` at all (nothing was lost by this library's doing, since those segments reached
+    no party at `0.0.10` either), an `NM1` this reader cannot route, an intervening `HL` or `CLM`,
+    and the other dropped-`LX` route where a claim **is** open. Widening it to those is a guard
+    change and would be its own decision.
+  - **The `DTP` / `AMT` / `NTE` of the seven trailing kinds are NOT reported by it.** They are
+    discarded on that route too, and were at `0.0.10` as well, because they never attach to a party
+    on any route. This code says nothing about them; `X12_837_SERVICE_LINE_DROPPED` at the `LX` is
+    what reports that loop's loss.
+  - **It does not restore anything.** The segments are still discarded, and are still verbatim on
+    `tx.segments`, which remains the only complete account of the document. Which party a segment
+    following a **stray** `LX` belongs to is not derivable from the TR3s in either direction, so the
+    reader refuses to attribute it rather than guessing.
 
 - **🩺 Through `0.0.9`, a lookup keyed by document bytes could be defeated by a key inherited from
   `Object.prototype`, and the affected code paths reported nothing.** The bundled code lists, the

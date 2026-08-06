@@ -12,6 +12,7 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 ## Contents
 
 - [CLAUDE-MD-AUDIT (2026-08-04)](#claude-md-audit-2026-08-04)
+- [X12-DISCARD-AFTER-STRAY-LX (2026-08-06)](#x12-discard-after-stray-lx-2026-08-06)
 - [X12-837-LOOP-RESIDUALS (2026-08-05)](#x12-837-loop-residuals-2026-08-05)
 - [X12-277-SVC07-NOT-DECODED (2026-08-05)](#x12-277-svc07-not-decoded-2026-08-05)
 - [X12-VARIANT-LOOKUP-PROTOTYPE (2026-08-05)](#x12-variant-lookup-prototype-2026-08-05)
@@ -74,6 +75,118 @@ itself on 2026-08-05 to pay for the `X12-837-SV-SILENT-ZERO` trap. Verbatim:
   trap block and `CLAUDE.md` stood at 52,992 against a 53,000 ratchet, so this section moved here
   first and the trap went in against the room it freed. That is the intended shape: **the entry is
   never raised to meet a new trap.** The umbrella owes the matching ratchet drop.
+
+## X12-DISCARD-AFTER-STRAY-LX (2026-08-06)
+
+The `#72` trade's owed half. `X12-837-LOOP-RESIDUALS` closed both of its original residuals
+by making an `LX` with no `CLM` open close the entity loop it interrupted, which stopped a
+line-item control number, a street address and a contact surfacing on a LATER claim's payer.
+The cost, disclosed rather than argued away, was that where the `LX` was stray INSIDE an
+entity loop, that entity's own conformant `N3` / `N4` / `REF` / `PER` are discarded - and
+through `d3b36d9` they were discarded in SILENCE. Six surfaces promised a warning. This is it.
+
+- **THE CODE: `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, the 27th Tier-2 warning, raised at
+  the DISCARDED SEGMENT and not at the `LX`.** Three reasons the anchor is the segment. The
+  loss is **per segment**, so two `N3`s are two losses and one warning at the `LX` could not
+  say how many; the segment is what a consumer resolves back through `tx.segments` to read the
+  bytes; and the `LX` already carries `X12_837_SERVICE_LINE_DROPPED`, which reports the
+  **service line** and names no entity segment. **That last point is the one a draft of `#72`
+  got wrong** - "the loss is already reported at that `LX`" was published in four places and
+  measured false. The two codes now sit on one channel reporting different things about the
+  same stretch of document, and a case pins the whole array in document order:
+  `["LX", "N3", "N4", "REF", "PER"]`, resolved through `tx.segments` rather than by literal.
+
+- **🩺 THE BOUND IS THE DELIVERABLE, NOT THE FIRING. This is NOT a general "entity segment
+  reached no party" code and must never be restated as one.** A general one would fire on
+  shapes that were silent at `0.0.10` and at `d3b36d9`, which is a guard change nobody has
+  decided. The scope is a flag set only on the no-`CLM` `LX` route AND only when an entity
+  loop was actually open there, cleared beside every other assignment to `activeEntity`.
+  Silences it deliberately does not break, each a committed control: no entity loop open at
+  the stray `LX` at all; an `NM1` this walker cannot route (it leaves `activeEntity`
+  undefined, and the `N3` after it was silent at base); an intervening `HL`; an intervening
+  `CLM`; the OTHER dropped-`LX` route, where a claim IS open and the entity loop was never
+  the thing lost; and ordinary attachment with no `LX` in play.
+
+- **THE THREE NON-ENTITY KINDS ARE NOT REPORTED, AND THAT IS THE STATED BOUND.** All seven of
+  `DTP` / `AMT` / `NTE` / `REF` / `N3` / `N4` / `PER` are discarded on the no-claim route, but
+  only the four entity kinds ever attach to a party; the `DTP` / `AMT` / `NTE` were discarded
+  at `0.0.10` too. Reporting them would be a different claim about a different loss, and
+  `X12_837_SERVICE_LINE_DROPPED` at the `LX` is what reports that loop.
+
+- **NOTHING ABOUT THE MODEL MOVED. Never write that the discard was fixed.** The segments are
+  still discarded, still verbatim on `tx.segments`, and the residual test in
+  `transactions-claim-837-loop-residuals.test.ts` that ASSERTS the loss is still green: it
+  gained the new codes in its whole-array channel assertion and kept every model assertion.
+  Which party a segment after a **stray** `LX` belongs to is still not derivable from the TR3s
+  in either direction, so the reader still refuses to attribute it.
+
+- **DO NOT CITE `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED`, EVEN NOW THAT BOTH WARN.** That
+  item warns AND **retains on the model** through one `recordOrphan` chokepoint, so its warning
+  and its retained segment can never disagree; nothing here puts the discarded segment on the
+  typed model, and `tx.segments` retention is unconditional, identical at base, and contributed
+  by no part of either change. A `#72` draft cited it as licensing the silence and a pass-2
+  refuter refuted that; it is no better as a precedent for the warning. The direction is chosen
+  on this library's own invariant, which is that a mis-attribution puts a value on an object
+  the sender never put it on and is indistinguishable from real data.
+
+- **THE RED/GREEN CENSUS, RUN AND NOT DERIVED, AND RE-RUN AFTER THE PASS-1 REMEDY ADDED A CASE -
+  WHICH IS THE ONLY REASON IT IS RIGHT.** Head's suite against a base checkout of `src/`
+  (replaced, not overlaid), across the five files this slice touches: **17 red of 105.** Per
+  file: the new suite **7 of 17**, `transactions-claim-837-loop-residuals` **6 of 19**,
+  `transactions-claim-837-variant-lookup` **1 of 57**, `warning-codes.snapshot` **2 of 5**,
+  `phi-diagnostic-surface` **1 of 7**. **The ten green cases in the new suite are the point of
+  writing it that way** - they are the controls, and a control that goes red at base would be
+  reporting a silence this slice broke. Head whole-suite: **1,448 passed across 69 files.** The
+  pre-remedy figures (16 of 104, the new suite 6 of 16, 1,447 passed) are superseded and are
+  recorded here only because this lineage's rule is that a corrected claim is a NEW claim.
+
+- **A RED NEGATIVE CONTROL PER REACHABLE GUARD, WHOLE-SUITE.** Making the reporter never fire
+  reds **15**; putting `=` back in place of `||=` at the `LX` reds **1** (the pass-1 case, and
+  only it); latching the flag `true` there reds **1**; deleting the clear in the `HL` case reds
+  **1**, in the `NM1` case **3**, in the `CLM` case **1**. **Two clears have NO control and the
+  reason is stated rather than hidden:** the `SBR` Loop 2320 branch and the `LX` tail both sit past a `currentClaim !==
+undefined` check, and the flag can only hold where no claim is open, so neither can run while
+  it holds. They are kept beside their assignments so the invariant does not depend on that
+  coincidence.
+
+- **THE INVARIANT THE MESSAGE RESTS ON, WRITTEN DOWN BECAUSE NOTHING ENFORCES IT.** The
+  reporter tests the flag alone. That is sound only because the flag is cleared next to EVERY
+  other assignment to `activeEntity`, so while it holds, `activeEntity` is undefined and the
+  attach that just ran was a no-op. **A new `activeEntity` assignment site that does not clear
+  it would make the message false** - the segment would have attached, and the warning would
+  say it reached no party. A defensive `activeEntity !== undefined` clause was written and then
+  removed: it is unreachable today, so it would have shipped as a branch no test could red,
+  which this repo's own rule forbids. The invariant is the comment beside the flag and the
+  clears beside the assignments.
+
+- **PASS 1 REFUTED, AND THE FINDING WAS A GUARD DEFECT RATHER THAN A CLAIM DEFECT - THE FIRST IN
+  THIS LINEAGE.** The flag was set with `=`, not `||=`. A SECOND stray `LX` finds `activeEntity`
+  already `undefined` (route 1 nulled it on the first), so the assignment CLEARED a scope still in
+  force and re-silenced the exact loss this code exists to name. Measured by the refuter on
+  `NM1*PR ~ LX ~ LX ~ N3 ~ REF ~ PER`: released `0.0.10` keeps the payer's address, its `2U` id and
+  its contact; base `d3b36d9` and the pre-remedy head both lose all three, and the pre-remedy head
+  reported none of it - while six surfaces say the scope ends only where a loop is OPENED, and a
+  stray `LX` opens none. Nothing pinned it: the whole suite stayed green under the remedy mutation.
+  Fixed with `||=` plus its own red control, which is the only case that reds when the token is put
+  back. **The general lesson: a flag whose SET site can run twice needs the second run tested, not
+  reasoned about.**
+
+- **PASS 1's SECOND FINDING WAS A CLAIM DEFECT, AND THE REMEDY IS A CUT-BACK RATHER THAN A NARROWER
+  GUARD.** The guard also fires where nothing this library's own reset lost: `attachContact` has no
+  `patient` / `payToAddress` / `payToPlan` route at all, so a `PER` in Loop 2000C reached the model
+  on no release. The direction is fail-safe (the "reached no party" half is true on every route it
+  fires), so the guard was left alone and the **claim** was narrowed instead: the registry message,
+  `KNOWN-LIMITATIONS.md` and `docs-content/troubleshooting.md` now say it reports that a segment
+  reached NO party and **not** that it would have reached one, and the "every release through
+  `0.0.10` attached them" universal was cut back to "wherever this reader surfaces that segment kind
+  on that party at all". **Do not restore the universal.**
+
+- **PHI: the new code has a slot in the table, and it is name-bearing.**
+  `test/_helpers/phi-slots.ts` gained a slot planting the marker in an `N3` street address
+  inside a payer loop an inserted `LX` then closes, so the marker rides in a segment the
+  library refuses to place - which is exactly the segment a "helpful" diagnostic would quote
+  back. The factory takes a position and nothing else, and the suite's own non-vacuity check is
+  that the expected code really is on the channel for the planted document.
 
 ## X12-837-LOOP-RESIDUALS (2026-08-05)
 
