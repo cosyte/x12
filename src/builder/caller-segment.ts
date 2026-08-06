@@ -80,8 +80,10 @@
  * the value in front of them is as likely to be `CLP-01` (the patient-account
  * number) or `NM1-09` (the member id) as a control number. **A guard that
  * cannot tell which slot it is on cannot decide that echoing is safe**, so none
- * of the three echoes now. What is left is the type and the slot, which is what
- * a caller acts on. The values that still reach a refusal message are the ones
+ * of the three echoes now. What is left is the type - and, **in THIS guard
+ * only**, the slot beside it. `esc` and `escDec` name the BUILDER, so do not
+ * write "the type and the slot" over the family; a refuter measured four
+ * consumer surfaces doing exactly that. The values that still reach a refusal message are the ones
  * a builder's own template names by field - control numbers, X12 control codes,
  * counts - and those are bounded, not redacted, exactly as
  * `caller-value.ts` says.

@@ -17,7 +17,7 @@
  * {@link SANCTIONED_HOLES}: it walks every `throw new *BuildError(...)` in
  * every builder module, extracts every `${...}` interpolation, and requires
  * each one to be either library-computed or routed through
- * `renderCallerValue`. A twenty-fourth refusal site that echoes a caller value
+ * `renderCallerValue`. A twenty-fifth refusal site that echoes a caller value
  * directly reds this file without anyone remembering to add a case - which is
  * the property the per-site tests cannot have.
  *
