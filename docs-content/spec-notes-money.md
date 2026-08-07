@@ -175,7 +175,7 @@ remit.warnings.map((w) => w.code); // => ["X12_AMOUNT_ROW_DROPPED"]
 remit.warnings.some((w) => w.code === WARNING_CODES.X12_UNPARSEABLE_DECIMAL); // => false
 ```
 
-Three bounds worth reading literally:
+Bounds worth reading literally:
 
 - **It is additive: nothing moved onto it.** An unparseable amount still raises
   `X12_UNPARSEABLE_DECIMAL` at its own element, now alongside this code rather than instead of it,

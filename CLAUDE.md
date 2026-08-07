@@ -61,11 +61,11 @@ copying files.** Source of truth: the meta-repo's `documentation/conventions.md`
 
 - No `any`, no unjustified `as` (use `unknown` and narrow). JSDoc with `@example` on every public export. Immutable by default; mutate only via `setElement` / `addSegment` / `addLoopIteration` / `removeSegment`. No `console.*` in library code - throw typed errors or return results. Short, testable functions over parsing blobs.
 - Postel's Law: parser liberal (lenient default + stable codes with positional context), serializer conservative. **Be exact, because the README said it loosely until ASSETS-P8** (long form: `documentation/agent-notes/claude-md-relocated-narrative.md`). The domain builders emit spec-clean by construction, but `serializeX12` is byte-faithful **only for the segments the parser recorded on the model**: **`serialize(parse(s)) === s` is NOT guaranteed, and "my file has no line breaks" is NOT sufficient** - `KNOWN-LIMITATIONS.md` is the canonical list, most of it needing no line break and silent. `{ specClean: true }` reconciles the envelope and WARNS; `recomputeCounts` is **inert without `specClean`**. Nothing is ever silently corrected.
-- Fatal errors only for unrecoverable structural corruption (4 Tier-3 codes: `X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`, `X12_INVALID_DELIMITERS`, `X12_EMPTY_INPUT`). Everything else is a warning.
+- Fatal only for unrecoverable structural corruption (4 Tier-3 codes: `X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`, `X12_INVALID_DELIMITERS`, `X12_EMPTY_INPUT`). Everything else warns.
 - Coverage target: ≥ 90% on `src/parser/`, `src/envelope/`, `src/transactions/`, `src/helpers/`.
-- Built-in loop specs + profiles must be authored through the same public API (`defineLoopSpec()`, `defineProfile()`): dogfooding gate.
-- HIPAA code lists ship as versioned data snapshots. Code-list updates are a release event, not a runtime fetch. `codeLists.meta.snapshotDate` is the runtime surface for snapshot-freshness checks.
-- Acknowledgments (`build999`, `buildTA1`, `parse999`) are pure functions: they never auto-send, never open sockets, never touch the filesystem.
+- Built-in loop specs + profiles are authored through the same public API (`defineLoopSpec()`, `defineProfile()`): dogfooding gate.
+- HIPAA code lists ship as versioned data snapshots. An update is a release event, never a runtime fetch. `codeLists.meta.snapshotDate` is the freshness surface.
+- Acknowledgments (`build999`, `buildTA1`, `parse999`) are pure: never auto-send, never open a socket, never touch the filesystem.
 - **No em dashes (`U+2014`). Ever.** Founder directive. Gated by `pnpm check:no-emdash` and `.github/workflows/no-emdash.yml`, which scans tracked files **AND your PR title, PR body and commit messages** - this repo squash-merges, so those land on `main`. **Never re-encode the character**: rewrite with a period, colon, comma or parentheses.
 
 ## Traps
@@ -87,9 +87,10 @@ or financial value on the wire.**
   is FALSE** - the 835/837 decode BEFORE looking for somewhere to attach, so an absent amount with no
   claim open DOES warn; the 834/820 return first and stay silent. **An 820 `RMR` is off this channel
   for its OWN reason (it drops on open-item IDENTITY before the amount is read), so NEVER write that
-  its row is RETAINED: `RMR\*\***150.00\*150.00~` is dropped WHOLE and SILENTLY** (`PRE-EXISTING`). A
-Loop 2430 `AMT`under an open`SVD` is discarded silently even when it DECODES, so the report
-  INVERTS there. **An empty filtered array asserts NOTHING - count first.**
+  its row is RETAINED - an `RMR` stating an amount with BOTH identity elements empty is dropped
+  WHOLE and SILENTLY** (`PRE-EXISTING`; byte string in the agent-notes, never here - an asterisk in a
+  code span in a bold span is Prettier-unstable). A Loop 2430 `AMT` under an open `SVD` is discarded
+  silently even when it DECODES, so the report INVERTS. **An empty filtered array asserts NOTHING.**
 
 ### 🩺 `X12-837-SV-UNDEFINED-DECIMAL` (2026-08-07) · `documentation/agent-notes/x12-837-sv-undefined-decimal.md`
 
@@ -580,10 +581,10 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   inconsistent AK9 counts (`X12_ACK_COUNT_MISMATCH`); `buildTA1` REFUSES `A` with a non-`000` note.**
 - **🩺 Every DOMAIN builder's own refusal message carries structural locators, counts and numeric
   totals only** - never a `claimId`, member id, member name, trace or diagnosis code. **State this
-  PER BUILDER, as base did, never as a property of every builder.** Standing exception, the **ack
-  path**: `build999` interpolates the acknowledged ST-02 (AK2-02, verbatim by TR3 005010X231A1) and
-  `buildTA1` its TA1-05 note code. **The negative list is NOT an absolute PHI guarantee; it is a
-  guarantee about the builder's own TEMPLATES**, which still render control numbers and codes.
+  PER BUILDER, never as a property of every builder.** Standing exception, the **ack path**:
+  `build999` interpolates the acknowledged ST-02 and `buildTA1` its TA1-05 note code. **The negative
+  list is NOT an absolute PHI guarantee; it is one about the builder's own TEMPLATES**, which still
+  render control numbers and codes.
 - **🩺 NO CALLER GUARD ECHOES WHAT A CALLER PUT IN AN ELEMENT** - string/segment/decimal and the
   array guard's PRIMITIVE arm report the TYPE only. **Never re-add a value, never fold the decimal
   one back out. And state the two things this does NOT say, both drafted false once:** the array

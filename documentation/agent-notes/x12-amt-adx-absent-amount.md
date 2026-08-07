@@ -96,9 +96,12 @@ pin that must be green on both trees:
   are silent on both trees, deliberately.
 - **1 additions-only pin**: the old one-code gate still fires where it fired.
 
-The pass-1 remedy added four cases and two of them are red at base rather than green, because they
-assert head behaviour: the 837's LINE-level `AMT`, and the "with no claim open an ABSENT amount STILL
-warns" half of the bound. The Loop 2430 case is red at base on its head-only half.
+The pass-1 remedy added four cases. Three are red at base, because they assert head behaviour: the
+837's LINE-level `AMT`, the "with no claim open an ABSENT amount STILL warns" half of the bound, and
+the Loop 2430 inversion, whose head-only half is the report on the undecoded `AMT`. The fourth, the
+820 `RMR` with no identity, is a `PRE-EXISTING` disclosure pin and is green on both trees by
+design. **No count of them is given without its list**, which is the defect pass 2 caught one
+paragraph earlier in a first draft of this same section.
 
 **Negative control:** the same file against an `hl7` tree restored the same way collects all 26 cases
 and passes **none** of them - every one dies at `parseX12 is not a function`, because that package's
