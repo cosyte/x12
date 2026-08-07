@@ -198,10 +198,11 @@ Bounds worth reading literally:
 ## A row the sender DID state, discarded anyway, and the report that says so
 
 The section above is about an amount this library could not read. This one is the opposite case, and
-it is worth keeping distinct because what you can do about it is different: **the amount is
-perfectly legible in the document, and the reader threw the row away for a reason that has nothing
-to do with the amount.** You can recover the value verbatim off `tx.segments[…].raw` and post from
-it; there is nothing to interpret.
+it is worth keeping distinct because the reason the row is gone is different: **the reader threw it
+away for a reason that has nothing to do with the amount, so the amount was never the problem and
+may never even have been looked at.** The bytes are preserved verbatim on `tx.segments[…].raw`;
+decode them yourself before you post from them. **This code does not promise they will decode** -
+see the last bound below.
 
 **`X12_STATED_AMOUNT_DISCARDED` reports it as of `0.0.13`**, anchored at the segment and carrying no
 `position.elementIndex`. Two routes reach it, and the code does not say which:
@@ -250,15 +251,18 @@ Bounds worth reading literally:
   fire on exactly the documents they fired on before. Nothing moved.
 - **The two amount-row codes are disjoint and never name the same segment.** This one requires an
   amount element the sender populated; the other requires one that decoded no value. So the code you
-  get is the discriminant: it tells you whether the money is recoverable from the bytes or merely
-  unreadable there. Gate on both.
+  get is the discriminant: it tells you whether this library failed to read the amount or discarded
+  the row for some other reason. Gate on both.
 - **It reports a segment that arrived while the loop that would carry its row was open.** An `AMT`
   or `ADX` that reaches a reader with no such loop open is a different loss and is still silent: the
   834's `AMT` with no `HD` open, the 820's `ADX` with no remittance open, and the 835's and 837's
   `AMT` before any claim or service line. `KNOWN-LIMITATIONS.md` records those.
-- **It says nothing about whether the amount would have decoded.** On the `RMR` route the row is
-  refused before the decode is attempted, which is why no `X12_UNPARSEABLE_DECIMAL` accompanies it
-  even on unreadable bytes.
+- **🩺 It says nothing about whether the amount would have decoded, and this is the bound to read
+  literally.** On the `RMR` route the row is refused before the decode is attempted, so the code is
+  raised on `RMR****1,234.56~` exactly as on `RMR****150.00*150.00~`, with no
+  `X12_UNPARSEABLE_DECIMAL` beside it in either case. **Do not read an unaccompanied instance as
+  evidence the bytes are postable.** Only route 2 guarantees a decodable amount, because there
+  `AMT-02` decoded before the row was skipped.
 
 ## The operations you need
 

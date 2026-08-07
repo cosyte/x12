@@ -37,6 +37,7 @@ import { describe, expect, it } from "vitest";
 import {
   ALL_WARNING_MESSAGES,
   WARNING_CODES,
+  X12Decimal,
   get820Payments,
   get834Enrollments,
   get835,
@@ -145,16 +146,29 @@ describe("🩺 820 RMR: a row refused on IDENTITY no longer takes a stated amoun
     expect(prem.warnings.map((w) => w.position.segmentIndex)).toEqual([5, 6]);
   });
 
-  it("🩺 unreadable amount bytes raise THIS code and still no X12_UNPARSEABLE_DECIMAL", () => {
-    // The bound that is easiest to state wrongly. This route refuses the row
-    // BEFORE attempting the decode, so it neither raised nor raises the
-    // unparseable report - true on the base tree and unchanged here. The
-    // report is about the ROW being lost, and it deliberately says nothing
-    // about whether those bytes would have decoded.
-    const prem = parse820(["RMR****1,234.56~"]);
-    expect(prem.remittances[0]?.openItems).toEqual([]);
-    expect(codes(prem.warnings)).toEqual([WARNING_CODES.X12_STATED_AMOUNT_DISCARDED]);
-    expect(codes(prem.warnings)).not.toContain(WARNING_CODES.X12_UNPARSEABLE_DECIMAL);
+  it("🩺 unreadable amount bytes raise THIS code, with no X12_UNPARSEABLE_DECIMAL and no promise", () => {
+    // The bound that is easiest to state wrongly, and a first draft of this
+    // slice's prose DID state it wrongly: it published the code as meaning the
+    // amount is legible and postable. On this route it means no such thing.
+    // The row is refused BEFORE the decode is attempted, so the code lands on
+    // bytes this library itself cannot read, indistinguishably from bytes it
+    // can, and no unparseable report accompanies either. That last part is
+    // true on the base tree too and must stay true, which is why it is pinned
+    // rather than described.
+    const unreadable = parse820(["RMR****1,234.56~"]);
+    expect(unreadable.remittances[0]?.openItems).toEqual([]);
+    expect(codes(unreadable.warnings)).toEqual([WARNING_CODES.X12_STATED_AMOUNT_DISCARDED]);
+    expect(codes(unreadable.warnings)).not.toContain(WARNING_CODES.X12_UNPARSEABLE_DECIMAL);
+
+    // And those bytes really are undecodable by this library's own decoder, so
+    // "recover the value verbatim and post it" would be advice to post a value
+    // the library refuses. This assertion is what reds if anyone re-widens the
+    // published claim back to a promise of decodability.
+    expect(X12Decimal.fromString("1,234.56")).toBeUndefined();
+
+    // The two documents are indistinguishable on the warning channel.
+    const readable = parse820(["RMR****150.00*150.00~"]);
+    expect(codes(readable.warnings)).toEqual(codes(unreadable.warnings));
   });
 
   it("BOUND: a bare RMR states nothing and stays silent", () => {
@@ -390,6 +404,21 @@ describe("🩺 the exclusion: no loop open to carry the row is a DIFFERENT loss,
     const remit = parse835([BPR_835, TRN_835, "AMT*B6*500.00~"]);
     expect(remit.claims).toEqual([]);
     expect(discarded(remit.warnings)).toEqual([]);
+  });
+
+  it("🩺 DISCLOSED: the inversion SURVIVES at those excluded sites, PRE-EXISTING", () => {
+    // Stated rather than left to be discovered. With no claim open, the 835's
+    // `AMT` still reports the SMALLER loss and stays silent on the larger one,
+    // exactly as the Loop 2430 site did before this slice. That is the same
+    // shape one loop-context over, it is unchanged on both trees, and closing
+    // it is a retention decision of its own. Every published bound calls these
+    // sites "still silent"; none of them may imply the channel reads the right
+    // way round here.
+    const stated = parse835([BPR_835, TRN_835, "AMT*B6*500.00~"]);
+    const absent = parse835([BPR_835, TRN_835, "AMT*B6~"]);
+    expect(codes(stated.warnings)).not.toContain(WARNING_CODES.X12_AMOUNT_ROW_DROPPED);
+    expect(codes(stated.warnings)).not.toContain(WARNING_CODES.X12_STATED_AMOUNT_DISCARDED);
+    expect(codes(absent.warnings)).toContain(WARNING_CODES.X12_AMOUNT_ROW_DROPPED);
   });
 
   it("BOUND: an 834 AMT with no HD coverage open is silent on both trees", async () => {

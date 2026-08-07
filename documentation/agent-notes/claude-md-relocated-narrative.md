@@ -216,3 +216,16 @@ two rounds each; do not upgrade the `10.0 s` reading into a proven crossing) all
 > Red control on both.
 
 > The suite stayed green through the fix:
+
+### Pass-1 remedy round, four more fragments
+
+The refuter's `INTRODUCED` major forced a wider trap bullet, and it was funded the same way rather
+than by deleting anything. Verbatim:
+
+> `hl7` measured two ported residuals as NOT OPEN at all.
+
+> Opposite duties, opposite answers.
+
+> derive its size there.
+
+> a tripwire this repo has hit repeatedly.

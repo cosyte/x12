@@ -11,11 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **🩺 `X12_STATED_AMOUNT_DISCARDED`, the 31st Tier-2 warning code, plus the public factory
   `statedAmountDiscarded(position)`** (`X12-STATED-AMOUNT-DISCARDED`). The entry below reports a row
-  whose amount this library could not read. This one is the opposite case, and worth telling apart
-  because what you can do about it differs: **the amount is legible in the document and the reader
-  discarded the row for a reason that is not about the amount at all**, so the value can be
-  recovered verbatim off `tx.segments[…].raw` and posted from, with nothing to interpret. Through
-  `0.0.12` both routes were silent on every channel.
+  whose amount this library could not read. This one is the opposite case: **the reader discarded
+  the row for a reason that is not about the amount at all**, so the amount was never the problem
+  and, on one of the two routes, was never even looked at. The bytes stay verbatim on
+  `tx.segments[…].raw`; decode them yourself before posting. Through `0.0.12` both routes were
+  silent on every channel.
 
   **The two routes, enumerated.** An **820 `RMR`** under an open remittance loop whose `RMR-01` and
   `RMR-02` are **both empty** while `RMR-04` or `RMR-05` is populated: `decodeRmr` refuses the open
@@ -47,9 +47,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `HD` open, the 820's `ADX` with no remittance open, and the 835's and the 837's `AMT` before any
   claim or service line. A bare `RMR~` states nothing and is silent, as is an identity-less `RMR`
   carrying only a payment action code. And this code says **nothing** about whether the amount would
-  have decoded: the `RMR` route refuses the row before attempting the decode, so **no
-  `X12_UNPARSEABLE_DECIMAL` accompanies it even where the amount bytes are unreadable**, on this
-  release and on every earlier one.
+  have decoded: the `RMR` route refuses the row before attempting the decode, so it is raised on
+  `RMR****1,234.56~` exactly as on `RMR****150.00*150.00~`, with **no `X12_UNPARSEABLE_DECIMAL`
+  beside it in either case**, on this release and on every earlier one. **Do not read an
+  unaccompanied instance as evidence the bytes are postable.** Only the `AMT` route guarantees a
+  decodable amount, because there `AMT-02` decoded before the row was skipped.
 
 - **🩺 `X12_AMOUNT_ROW_DROPPED`, the 30th Tier-2 warning code, plus the public factory
   `amountRowDropped(position)`** (`X12-AMT-ADX-ABSENT-AMOUNT`). An `AMT` or `ADX` is not a slot on a

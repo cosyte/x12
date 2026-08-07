@@ -45,16 +45,22 @@ Reusing the existing code keeps the consumer predicate surface small, which is t
 here, and the cause differing is **not** on its own a reason to add one. Two things decided against
 it, and neither is "the cause differs":
 
-1. **A consumer must act differently.** On `X12_AMOUNT_ROW_DROPPED` the amount is unreadable: the
-   bytes have to be interpreted, or the file queried, before anything can be posted. On these two
-   the amount is legible and exact, recoverable verbatim off `tx.segments[…].raw`. One is a
-   judgement call and the other is a lookup.
-2. **Reuse would have falsified a separator this package publishes.** The shipped
+1. **Reuse would have falsified a separator this package publishes, and that is the LOAD-BEARING
+   reason.** The shipped
    `X12_AMOUNT_ROW_DROPPED` message tells a consumer that the presence or absence of an
    `X12_UNPARSEABLE_DECIMAL` at the same `position.segmentIndex` is what separates its two routes,
    so an unaccompanied instance means "the sender stated no amount". Folding `AMT*EAF*75.00~` in
    would make that reading **false on money**: unaccompanied, and a stated 75.00. Correcting a
    published separator is a bigger consumer break than adding a code beside it.
+2. **A consumer does act differently, but ONLY on the `AMT` route, and this reason cannot carry the
+   argument on its own.** There AMT-02 decoded before the row was skipped, so the value can be read
+   back exactly. On the `RMR` route nothing of the kind is true: the row is refused before the
+   decode is attempted, so the code lands on `RMR****1,234.56~` exactly as on
+   `RMR****150.00*150.00~`. **A first draft published the recoverability reading as the code's
+   MEANING, on six shipped surfaces including the changeset, and pass 1 refuted it with that one
+   segment.** The remedy was to cut the claim back, not to grow the guard: decoding inside
+   `statesAnAmount` to decide would mint `X12_UNPARSEABLE_DECIMAL` on documents that never raised
+   it, which is the additivity break this whole lineage exists to avoid.
 
 **One code for both routes, one message, no discriminant**, following this repo's own
 `X12_837_SERVICE_LINE_DROPPED` precedent: the two routes call for the same action, so a discriminant
@@ -88,9 +94,12 @@ only RMR-03 loses a payment action code but no amount, and this code is about a 
 - **The `RMR` guard is a PRESENCE test on RMR-04 / RMR-05, not a decode.** Reaching for the decimal
   sink to decide would raise `X12_UNPARSEABLE_DECIMAL` on documents that have never raised it -
   `RMR****1,234.56~` among them - which is precisely the additivity break this lineage was refuted
-  for once. The consequence is worth publishing rather than hiding: on this route **no
-  `X12_UNPARSEABLE_DECIMAL` accompanies the report even where the bytes are unreadable**, and the
-  code deliberately asserts nothing about whether the amount would have decoded.
+  for once. **The consequence is published rather than hidden, and it is the sentence pass 1 was
+  refuted for getting backwards: on this route no `X12_UNPARSEABLE_DECIMAL` accompanies the report
+  even where the bytes are unreadable, so an unaccompanied instance is NOT evidence that the amount
+  is postable.** The code asserts nothing whatever about whether the amount would decode. Pinned by
+  a case that asserts `X12Decimal.fromString("1,234.56")` is `undefined` beside the warning, so
+  re-widening the prose into a promise of decodability reds the suite.
 - **The 837 report is placed AFTER the `amount === undefined` branch, not before it.** An
   `AMT*EAF~` under an open `SVD` raised `X12_AMOUNT_ROW_DROPPED` at base and must keep raising
   exactly that; moving it onto the new code would be the "a widening that moves a case onto a new
@@ -99,24 +108,25 @@ only RMR-03 loses a payment action code but no amount, and this code is about a 
 
 ## The census
 
-**15 of 56 collected cases red** against a base tree restored from `93c1886` **by file copy**
+**15 of 57 collected cases red** against a base tree restored from `93c1886` **by file copy**
 (`git archive | tar -x` into a scratch directory, never `git checkout` in the live tree), with head's
 three affected test files copied over it. The split:
 
-- `test/transactions-stated-amount-discarded.test.ts`: **11 of 25 red.**
+- `test/transactions-stated-amount-discarded.test.ts`: **11 of 26 red.**
 - `test/transactions-amount-row-dropped.test.ts`: **2 red**, both the disclosure pins `#84` wrote for
   these two defects, now inverted to assert the report.
 - `test/warning-codes.snapshot.test.ts`: **2 red**, the code set and the additions-only count.
 
-The 14 green in the new file are exactly the CONTROLs, the BOUNDs and the ADDITIONS-ONLY pins, which
-must be green on both trees. Named, because a count without its list cannot correct itself: the bare
-`RMR`; the RMR-03-only `RMR`; the `RMR` with no remittance loop open; the identified `RMR` that
-builds a row; the identified `RMR` with no amount, whose row survives; the `ADX` with no remittance
-loop open; the ABSENT `AMT-02` under an open `SVD` keeping the old code alone; the UNPARSEABLE
-`AMT-02` under an open `SVD` keeping both old codes; the same `AMT` with no `SVD` open, which lands
-on the line; the `SVD` row itself still decoding; the decoded `AMT` with no claim and no line open;
-the 835's decoded `AMT` before any claim; the 834's `AMT` with no `HD`; and the 835's absent-amount
-document still raising the old code alone.
+The 15 green in the new file are exactly the CONTROLs, the BOUNDs, the ADDITIONS-ONLY pins and the
+one PRE-EXISTING disclosure pin, all of which must be green on both trees. Named, because a count
+without its list cannot correct itself: the bare `RMR`; the RMR-03-only `RMR`; the `RMR` with no
+remittance loop open; the identified `RMR` that builds a row; the identified `RMR` with no amount,
+whose row survives; the `ADX` with no remittance loop open; the ABSENT `AMT-02` under an open `SVD`
+keeping the old code alone; the UNPARSEABLE `AMT-02` under an open `SVD` keeping both old codes; the
+same `AMT` with no `SVD` open, which lands on the line; the `SVD` row itself still decoding; the
+decoded `AMT` with no claim and no line open; the 835's decoded `AMT` before any claim; the 834's
+`AMT` with no `HD`; the 835's absent-amount document still raising the old code alone; and the
+disclosure that the INVERSION survives at those excluded sites.
 
 **An honest caveat about three of those greens.** The 837-no-claim, 835 and 834 exclusion BOUNDs
 assert only the ABSENCE of the new code, and at base `WARNING_CODES.X12_STATED_AMOUNT_DISCARDED` is
@@ -126,10 +136,11 @@ and are load-bearing on both.
 
 **Negative controls, one per guard, both red:** deleting the 820 `RMR` report reds **9** cases;
 deleting the 837 adjudication report reds **7**. Three of those overlap, being the cases that sweep
-both sites.
+both sites. Measured before the pass-1 remedy, on the 25-case form of the file; the remedy added two
+cases and removed none, so the guards' controls are unchanged in kind.
 
 **Wrong-package negative control:** the same file against an `hl7` tree restored the same way
-collects all 25 cases and passes **none** of them, every one dying at `parseX12 is not a function`.
+collects every case and passes **none** of them, every one dying at `parseX12 is not a function`.
 The apparatus is bound to this package's surface and cannot report green against another one.
 
 ## Deliberately not touched
@@ -143,6 +154,14 @@ open), and **SV3-06's TR3 usage, which is still not grounded** - do not claim it
 X222A2 for the Loop 2430 `AMT`, and the argument does not need one: a row the sender wrote left the
 model, which is true whatever the segment's usage is. `AMT*EAF` is named as Remaining Patient
 Liability on the strength of this package's own dogfooded Loop 2430 spec, not of a TR3 clause.
+
+**🔴 The INVERSION survives at the excluded sites, and that is disclosed rather than left to be
+found.** With no claim open, an 835 `AMT*B6~` raises `X12_AMOUNT_ROW_DROPPED` while `AMT*B6*500.00~`
+raises nothing at all: the same backwards reading this slice closed under an open `SVD`, one
+loop-context over. `PRE-EXISTING`, identical on both trees, pinned by a case that asserts both
+halves. Every published bound calls those sites "still silent", which is true; none of them may be
+read as saying the channel reads the right way round there. Closing it is the same retention
+decision as the rest of the no-loop-open family and belongs in its own slice.
 
 **The model is unchanged.** No slot was widened and no row is retained that was not retained before.
 This closes the SILENCE only. Retaining an identity-less `RMR` row, or modelling a Loop 2430 `AMT`,

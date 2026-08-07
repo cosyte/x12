@@ -136,11 +136,11 @@ model.
     `X12_STATED_AMOUNT_DISCARDED`, below, closed that.
 
 - **🩺 A row the sender DID state can still be discarded, and says so as of `0.0.13`.** The code
-  above is about an amount this library could not read. This is the opposite case and a different
-  thing to do about it: **the amount is legible in the document and the reader discarded the row for
-  a reason that is not about the amount at all**, so a consumer can recover the value verbatim off
-  `tx.segments[…].raw` rather than having to interpret unreadable bytes. Through `0.0.12` both
-  routes were silent on every channel. **`X12_STATED_AMOUNT_DISCARDED` reports them**, anchored at
+  above is about an amount this library could not read. This is the opposite case: **the reader
+  discarded the row for a reason that is not about the amount at all**, so the amount was never the
+  problem and, on one of the two routes, was never even looked at. The bytes stay verbatim on
+  `tx.segments[…].raw`; decode them yourself. Through `0.0.12` both routes were silent on every
+  channel. **`X12_STATED_AMOUNT_DISCARDED` reports them**, anchored at
   the segment and carrying **no `elementIndex`**. The two routes, enumerated:
   - An **820 `RMR`** under an open remittance loop whose RMR-01 and RMR-02 are **both empty** while
     RMR-04 or RMR-05 is populated. `decodeRmr` refuses the open item on identity before either
@@ -161,10 +161,15 @@ model.
   - **It reports a segment that arrived while the loop that would carry its row was open.** An
     `AMT` or `ADX` reaching a reader with **no such loop open** is a different loss and is **still
     silent**: the 834's `AMT` with no `HD` open, the 820's `ADX` with no remittance open, and the
-    835's and the 837's `AMT` before any claim or service line is open. And on the `RMR` route this
+    835's and the 837's `AMT` before any claim or service line is open. **🔴 Read "still silent"
+    literally and no wider: at those last two sites the inversion above SURVIVES.** With no claim
+    open an 835 `AMT*B6~` raises `X12_AMOUNT_ROW_DROPPED` while `AMT*B6*500.00~` raises nothing, so
+    the channel still reports the smaller loss there. `PRE-EXISTING` and unchanged by this release. And on the `RMR` route this
     code says nothing about whether the amount would have decoded, because the row is refused before
     the decode is attempted, so **no `X12_UNPARSEABLE_DECIMAL` accompanies it even where the bytes
-    are unreadable.**
+    are unreadable.** It is raised on `RMR****1,234.56~` exactly as on `RMR****150.00*150.00~`, so
+    **never read an unaccompanied instance as evidence the bytes are postable**; only the `AMT`
+    route guarantees a decodable amount, because there AMT-02 decoded before the row was skipped.
 
 - **🩺 An 835 balance invariant with an undecoded term is reported as UNEVALUABLE, not as a
   mismatch.** The three TR3 005010X221A1 §1.10.2 equations (line, claim, top-of-remit) read amounts

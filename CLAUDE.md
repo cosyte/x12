@@ -87,18 +87,21 @@ or financial value on the wire.**
   that DECODED NO VALUE; `X12_STATED_AMOUNT_DISCARDED` needs one the sender POPULATED, discarded for
   a reason that is NOT about the amount. Two routes, ONE message, NO discriminant: an 820 `RMR` with
   BOTH identity elements empty, and an 837 `AMT` under an open `SVD`. SEGMENT, no `elementIndex`.
-  **A SEPARATE CODE BECAUSE THE CONSUMER ACTS DIFFERENTLY - this money is RECOVERABLE VERBATIM from
-  the bytes.** It closed an INVERSION: under an open `SVD` the ABSENT amount warned and the STATED
-  one did not, so the report sat exactly where LESS was lost.
-- **🩺 THE `RMR` GUARD IS A PRESENCE TEST, DELIBERATELY** - it never attempts the decode, so **NO
-  `X12_UNPARSEABLE_DECIMAL` accompanies it even on unreadable bytes**, and decoding to decide would
-  mint that code on documents that never raised it.
+  **SEPARATE BECAUSE REUSE WOULD FALSIFY A PUBLISHED SEPARATOR ON MONEY** (the dropped code's own
+  message says an unaccompanied instance means the sender stated NO amount). It closed an INVERSION:
+  under an open `SVD` the ABSENT amount warned and the STATED one did not, so the report sat exactly
+  where LESS was lost.
+- **🩺 NEVER CLAIM THE BYTES ARE DECODABLE - pass 1 refuted six surfaces.** The `RMR` guard is a
+  PRESENCE test, never a decode, so **NO `X12_UNPARSEABLE_DECIMAL` even on unreadable bytes** and it
+  fires on `1,234.56` too; deciding by decode would mint it where it never fired. Only the `AMT`
+  route guarantees a value.
 - **🩺 STATE THE BOUND AS A PROPERTY OF THE READ, NEVER OF CONTROL FLOW. "Nothing open means silent"
   is FALSE** - the 835/837 decode BEFORE looking for somewhere to attach, so an absent amount with no
   claim open DOES warn; the 834/820 return first and stay silent. **NO LOOP OPEN is a DIFFERENT loss
   and STAYS SILENT** (834 `AMT` no `HD`, 820 `ADX` no remittance, 835/837 `AMT` before any claim), so
   never widen to "a stated amount row is always reported"; a bare `RMR~` and one stating only RMR-03
-  are silent too. **An empty filtered array asserts NOTHING.**
+  are silent too. **The INVERSION SURVIVES there** (`PRE-EXISTING`). **An empty filtered array
+  asserts NOTHING.**
 
 ### 🩺 `X12-837-SV-UNDEFINED-DECIMAL` (2026-08-07) · `documentation/agent-notes/x12-837-sv-undefined-decimal.md`
 
@@ -311,7 +314,7 @@ or financial value on the wire.**
   defeated by a number** - `build-835.ts` refused `patientControlNumber === ""` by name, and a number
   is not `""`, so it passed and became `""` one line later. Check the type, not the sentinel.
 - **The `#51` asymmetry is deliberate, not an inconsistency.** `renderCallerValue` **coerces**;
-  `esc` **refuses**. _Survive anything_ vs _invent nothing_. Opposite duties, opposite answers.
+  `esc` **refuses**. _Survive anything_ vs _invent nothing_.
 - **🩺 NEVER PUBLISH AN EXHAUSTIVE CENSUS OF WHAT BYPASSES THE CHOKEPOINT.** Three drafts did; a
   refuter measured all three false, each time by finding one more. **Cut the claim back, do not grow
   the census. Finding one more is expected and is not a new finding. No total is published.**
@@ -372,8 +375,7 @@ or financial value on the wire.**
   corpus.**
   `git check-ignore` reads the INDEX: a TRACKED ignored file is SCANNED, its absence REFUSES. No git:
   REFUSE. **RE-DERIVE EVERY EXIT CODE PER REPO** - the regular-file root is **2** here (was **1**,
-  uncaught), **2** in `hl7`, **1** in `terminology` by a DIFFERENT mechanism; `hl7` measured two
-  ported residuals as NOT OPEN at all.
+  uncaught), **2** in `hl7`, **1** in `terminology` by a DIFFERENT mechanism.
 - **Synthetic tokens are POSITIVELY DECLARED in `scripts/phi-allow-list.txt`** (byte-strict: no
   inline header, as DICOM's `.dcm`); **a whole-file bypass needs `--allow-fixture` AND an entry in
   `phi-scan-overrides.md`.**
@@ -449,7 +451,7 @@ or financial value on the wire.**
   the builder has no parsed segment stream, so the position is `UNANCHORED_BUILD_POSITION`, inert by
   construction. Fabricating an index would have named a segment no consumer can resolve.
 - **`renderCallerValue` coerces and never throws** (the draft that did not: relocated narrative).
-- **Assert SE-01 outright rather than trusting it** - a tripwire this repo has hit repeatedly.
+- **Assert SE-01 outright rather than trusting it** - a repeatedly-hit tripwire.
 
 ### 🩺 `X12-ORPHAN-REEMIT` (2026-08-02) · `documentation/agent-notes.md#x12-orphan-reemit-2026-08-02`
 
@@ -462,7 +464,7 @@ or financial value on the wire.**
   included in the transaction set, including ST and SE"). Pass 1 counted only `tx.rawSegments`, so
   spec-clean mode **rewrote a CORRECT `SE*4*` down to `SE*3*`**. `segCount` now adds every orphan
   flushed between the `ST` and the `SE`. GE-01/IEA-01 are unaffected: an orphan is never a `GS`.
-- **`KNOWN-LIMITATIONS.md` holds the canonical not-reproduced list; derive its size there.**
+- **`KNOWN-LIMITATIONS.md` holds the canonical not-reproduced list; derive its size.**
 - **Case 6 (the empty-first-element segment `*A*B~` outside a transaction) is deliberately NOT in
   scope.** The walker skips it, so there is nothing to re-emit; closing it is a RETENTION change to
   the `name.length > 0` guard and would mint new `X12_UNEXPECTED_SEGMENT`s.
