@@ -20,8 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The model has **one** pay-to address slot, so it cannot carry two, and this code is the only thing
   that says the document named two. It reports that the **document** repeated the loop; it does not
   report that anything was mis-read, and it says nothing about the subjects of the other 837 codes.
-  An `NM1*87` arriving while a `CLM` is open never reaches the pay-to route at all (it falls through
-  to the Loop 2310 branch), so it neither warns nor arms the warning.
+  An `NM1*87` arriving while a `CLM` is open never reaches the pay-to route at all, so it neither
+  warns nor arms the warning. **Where it lands instead is not stated as one destination, because two
+  were measured:** with a Loop 2400 open it joins that line's `serviceLine.providers` (TR3 Loop
+  2420A-H), and with a claim but no line open it joins `claim.providers` (Loop 2310). Both are
+  pre-existing and identical at `0.0.12`.
 
 - **🩺 `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, the 27th Tier-2 warning code, plus the public
   factory `entitySegmentDiscardedAfterLx(position)`** (`X12-DISCARD-AFTER-STRAY-LX`). Raised for

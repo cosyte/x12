@@ -299,11 +299,23 @@ model.
   `tx.segments` is where its bytes are, and remains the only complete account of the document.
 
   **Two bounds, both measured.** This is scoped to the pay-to route, which lives in Loop 2000A: an
-  `NM1*87` arriving while a `CLM` is open never reaches it, falls through to the Loop 2310 branch and
-  lands on `claim.providers` as a provider role, unchanged and unwarned by this code. And a document
-  with **at most one** `NM1*87` per Loop 2000A is unaffected in every respect, warning channel
-  included - including the pre-existing case of a lone `NM1*87` with a valueless `N3`, which still
-  reads an address with no elements and still re-emits a bare `NM1*87`.
+  `NM1*87` arriving while a `CLM` is open never reaches that route, and is neither resolved nor
+  warned by this code. **Where it lands instead depends on whether a service line is open, and this
+  document does not state a single destination for it**, because two were measured: with a Loop 2400
+  open it joins that line's `serviceLine.providers` (a line-level provider is TR3 Loop 2420A-H), and
+  with a claim but no line open it joins `claim.providers` (Loop 2310). Both are pre-existing and
+  identical at `0.0.12`. And a document with **at most one** `NM1*87` per Loop 2000A is unaffected in
+  every respect, warning channel included - including the pre-existing case of a lone `NM1*87` with a
+  valueless `N3`, which still reads an address with no elements and still re-emits a bare `NM1*87`.
+
+  **🩺 One thing the cost above shares with the shape that refuted remedy 2, stated so the two are
+  not read as different in kind.** In Loop 2010AB the TR3s make `NM1`, `N3` **and** `N4` all Required,
+  so a re-emitted loop carrying only the winning occurrence's `N4` is short a Required `N3`, exactly
+  as a bare `NM1*87` is short both. The difference is not conformance, it is provenance: every
+  element that IS emitted was stated by the occurrence the model kept, where the fused address
+  contained elements no single occurrence stated. Emitting a Loop 2010AB short a Required segment is
+  a pre-existing property of `emitAddress`, reachable at `0.0.12` from a lone `NM1*87` with an
+  `N4` and no `N3`, and is not introduced here.
 
 - **🩺 Through `0.0.9`, a lookup keyed by document bytes could be defeated by a key inherited from
   `Object.prototype`, and the affected code paths reported nothing.** The bundled code lists, the

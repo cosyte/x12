@@ -61,16 +61,18 @@ became false; what changed is that the third remedy shipped.
   a latching one reports a conformant second billing provider as a repeat, and that has its own red
   control.
 
-- **CENSUS, RUN NOT DERIVED: 12 of 26 red** with head's new file run against a base checkout of the
+- **CENSUS, RUN NOT DERIVED: 13 of 27 red** with head's new file run against a base checkout of the
   walker (`src/parser/warnings.ts`, `src/index.ts` and the new `address-segments.ts` copied in so the
   imports resolve; `get-837.ts` and `build-837.ts` left at base). **The 14 green are all labelled
   controls**, and six of them are the "does not erase" model and emit assertions, which MUST be green
   on base: they exist to prove the remedy does not reproduce remedy 1's and remedy 2's refutations,
-  so a red there would mean the fix had reintroduced the erasure.
+  so a red there would mean the fix had reintroduced the erasure. **Both figures are the CORRECTED
+  file's** - the first version of them, 12 of 26, was measured on a file carrying the vacuous test a
+  refuter then found. Re-run, never adjusted by arithmetic.
 
 - **EVERY GUARD HAS ITS OWN RED NEGATIVE CONTROL, and the four are not interchangeable.** Removing
-  the per-occurrence reset reds **6**; committing unconditionally reds **4**; latching the counter
-  reds **1**; pointing `getCurrentPayToAddress` back at the committed slot reds **6**.
+  the per-occurrence reset reds **7**; committing unconditionally reds **4**; latching the counter
+  reds **1**; pointing `getCurrentPayToAddress` back at the committed slot reds **7**.
 
 - **🩺 THE ANCHOR PROBE WAS WRONG ON ITS FIRST RUN AND THE MODEL CORRECTED IT** - this repo's
   standing "a probe that disagrees with the model's own shape measures nothing", hit again. It
@@ -91,10 +93,22 @@ became false; what changed is that the third remedy shipped.
 
 - **Two `PRE-EXISTING` findings carried forward UNCHANGED, both filed by `#80`'s refuters and neither
   this item's:** an `NM1*87` arriving while a `CLM` is open never reaches the pay-to route (the
-  `context.kind === "loop2000A"` guard), falls through to the Loop 2310 branch and lands on
-  `claim.providers` as a provider role; and `attachContact`'s `/* v8 ignore */` comment still calls
+  `context.kind === "loop2000A"` guard) and lands among the claim's provider roles; and
+  `attachContact`'s `/* v8 ignore */` comment still calls
   its `payToAddress` arm "structurally unreachable in v1", which a `PER` after an `NM1*87` reaches.
   **Neither is warned by the new code and the new code does not claim to reach them.**
+
+- **🩺 THE FIRST OF THOSE TWO HAS A DESTINATION THIS SLICE PUBLISHED WRONG ON TWO SHIPPING SURFACES,
+  AND A REFUTER MEASURED IT. NEVER RESTATE IT AS ONE DESTINATION.** The backlog item and the prior
+  slice both say the `CLM`-open `NM1*87` "lands in `claim.providers`". Measured here, head and base:
+  that holds only where **no Loop 2400 is open**. With one open it lands on that line's
+  `serviceLine.providers` instead - `get-837.ts` tests `currentServiceLine` FIRST and only falls to
+  `currentClaim` when no line is open - and a provider at line level is TR3 Loop **2420A-H**, not
+  2310. The unqualified form was corrected on `KNOWN-LIMITATIONS.md`, `docs-content/troubleshooting.md`
+  and the `CHANGELOG` **after** it had shipped in the branch, which is the fifth consecutive slice in
+  this lineage where the parser graded correct and the prose did not. **A pre-existing behaviour
+  re-described more confidently than it is true is an INTRODUCED defect**, because the confidence is
+  new even where the behaviour is not.
 
 - **DEFERRED, EXPLICITLY, AND NOT STARTED HERE: the `X12Decimal | undefined` breaking slice.** An
   absent required `SV1-02` still reads a confident `0`. It is its own unit and touching it inside

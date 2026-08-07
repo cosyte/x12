@@ -37,6 +37,8 @@
  * All fixtures are synthetic. Street names are Springfield / Shelbyville.
  */
 
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -213,23 +215,35 @@ function specWith(payToAddress: Build837AddressSpec | undefined): Build837Spec {
 
 /**
  * The Loop 2010AB segments the emit produced, as a `~`-terminated string, or
- * the empty string when no pay-to loop was emitted at all. The billing
- * provider's own address is filtered out by its (distinct) synthetic values.
+ * the empty string when no pay-to loop was emitted at all.
+ *
+ * No party in `specWith` carries an address, so the pay-to loop's are the
+ * ONLY `N3` / `N4` in the built document and this reads them unambiguously.
+ * That is asserted rather than assumed, by the `emits no other N3/N4`
+ * control below: an earlier revision of this helper filtered on the billing
+ * provider's street values and claimed in a comment to be excluding them,
+ * which was a filter over segments the spec never emits.
  */
 function emitPayToLoop(address: X12ClaimAddress | undefined): string {
   const spec = specWith(address === undefined ? undefined : toBuildSpec(address));
   const segments = serializeX12(build837P(spec)).split("~");
-  const loop = segments
-    .filter(
-      (s) =>
-        s.startsWith("NM1*87") ||
-        s.startsWith("N3*") ||
-        s.startsWith("N4*") ||
-        s === "N3" ||
-        s === "N4",
-    )
-    .filter((s) => !s.includes("BILLING WAY") && !s.includes("CLEVELAND"));
+  const loop = segments.filter(
+    (s) =>
+      s.startsWith("NM1*87") ||
+      s.startsWith("N3*") ||
+      s.startsWith("N4*") ||
+      s === "N3" ||
+      s === "N4",
+  );
   return loop.length === 0 ? "" : `${loop.join("~")}~`;
+}
+
+/** Every `N3` / `N4` the built document carries, pay-to loop included. */
+function allAddressSegments(address: X12ClaimAddress | undefined): string[] {
+  const spec = specWith(address === undefined ? undefined : toBuildSpec(address));
+  return serializeX12(build837P(spec))
+    .split("~")
+    .filter((s) => s.startsWith("N3") || s.startsWith("N4"));
 }
 
 /** Read a document and re-emit whatever pay-to address it resolved to. */
@@ -267,6 +281,17 @@ describe("X12-PAY-TO-FUSION: a repeated NM1*87 no longer fuses two pay-to addres
 
   it("reports the repetition on the warning channel rather than resolving it in silence", () => {
     expect(readPayTo(doc).codes).toEqual([WARNING_CODES.X12_837_PAY_TO_ADDRESS_REPEATED]);
+  });
+
+  it("emits no other N3 or N4, so the extraction above reads the pay-to loop and only it", () => {
+    // The control for `emitPayToLoop`. No party in `specWith` carries an
+    // address, so every N3/N4 in the built document belongs to the pay-to
+    // loop; if that ever stops being true this reds instead of silently
+    // widening what the round-trip assertions above are reading.
+    expect(allAddressSegments(readPayTo(doc).address)).toEqual([
+      "N3*2 SECOND PAY TO WAY",
+      "N4*SHELBYVILLE*IL*62565",
+    ]);
   });
 });
 
@@ -388,14 +413,26 @@ describe("X12-PAY-TO-FUSION: one NM1*87 per Loop 2000A is unchanged and silent",
     expect(readPayTo(doc).codes).toEqual([]);
   });
 
-  it("the canonical 837P fixture's warning channel is unchanged by this slice", () => {
-    // A wrong-shape guard would fire here first. The canonical document has
-    // no NM1*87 at all, so the code must be absent from a real fixture's
-    // whole channel, not merely absent from a constructed one.
-    const doc = docWith(FIRST);
-    for (const w of readPayTo(doc).warnings) {
-      expect(ALL_WARNING_MESSAGES.has(w.message)).toBe(true);
-    }
+  it("the canonical 837P fixture's warning channel does not gain the new code", () => {
+    // The first version of this test ran over a CONSTRUCTED document whose
+    // channel is empty, so its loop body never executed and it asserted
+    // nothing, while its name claimed a real fixture. Read the real file:
+    // a shipped corpus document is the only thing that can show the code is
+    // absent from a document nobody wrote for this slice.
+    const raw = readFileSync(
+      new URL("./fixtures/claim/837p-canonical.edi", import.meta.url),
+      "utf8",
+    );
+    expect(raw).not.toContain("NM1*87");
+    const ix = parseX12(raw);
+    const tx = ix.groups[0]?.transactions[0];
+    if (tx === undefined) throw new Error("canonical 837P fixture has no transaction set");
+    const submission = get837Claims(ix.delimiters, tx);
+    if (submission === undefined) throw new Error("get837Claims did not recognize the fixture");
+    // Non-vacuous by construction: the channel is asserted as a whole, so an
+    // empty one is a pass on a pinned value rather than on an unrun loop.
+    expect(submission.warnings.map((w) => w.code)).toEqual([]);
+    expect(submission.claims.length).toBeGreaterThan(0);
   });
 });
 
