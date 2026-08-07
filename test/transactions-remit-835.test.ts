@@ -52,7 +52,7 @@ describe("get835 - Medicare canonical fixture", () => {
     const remit = readRemitFixture("835-medicare-canonical.edi");
 
     expect(remit.payment.transactionHandlingCode).toBe("I");
-    expect(remit.payment.totalActualPayment.toString()).toBe("450.00");
+    expect(remit.payment.totalActualPayment?.toString()).toBe("450.00");
     expect(remit.payment.creditDebitFlag).toBe("C");
     expect(remit.payment.method).toBe("ACH");
     expect(remit.payment.paymentDate).toBe("20260601");
@@ -76,9 +76,9 @@ describe("get835 - Medicare canonical fixture", () => {
     expect(claim.patientControlNumber).toBe("PT-ACCT-001");
     expect(claim.claimStatusCode).toBe("1");
     expect(claim.claimStatusDescription).toMatch(/Primary/iu);
-    expect(claim.totalChargeAmount.toString()).toBe("500.00");
-    expect(claim.totalPaymentAmount.toString()).toBe("450.00");
-    expect(claim.patientResponsibilityAmount.toString()).toBe("50.00");
+    expect(claim.totalChargeAmount?.toString()).toBe("500.00");
+    expect(claim.totalPaymentAmount?.toString()).toBe("450.00");
+    expect(claim.patientResponsibilityAmount?.toString()).toBe("50.00");
     expect(claim.servicePeriodStart).toBe("20260501");
     expect(claim.servicePeriodEnd).toBe("20260501");
     expect(claim.patient?.lastName).toBe("PATIENT");
@@ -92,12 +92,12 @@ describe("get835 - Medicare canonical fixture", () => {
     if (line === undefined) throw new Error("missing line");
     expect(line.productServiceIdQualifier).toBe("HC");
     expect(line.productServiceId).toBe("99213");
-    expect(line.chargeAmount.toString()).toBe("500.00");
-    expect(line.paymentAmount.toString()).toBe("450.00");
+    expect(line.chargeAmount?.toString()).toBe("500.00");
+    expect(line.paymentAmount?.toString()).toBe("450.00");
     expect(line.adjustments).toHaveLength(1);
     expect(line.adjustments[0]?.groupCode).toBe(CLAIM_ADJUSTMENT_GROUP_CODES.PR);
     expect(line.adjustments[0]?.reasonCode).toBe("1");
-    expect(line.adjustments[0]?.amount.toString()).toBe("50.00");
+    expect(line.adjustments[0]?.amount?.toString()).toBe("50.00");
     expect(line.adjustments[0]?.reasonDescription).toMatch(/Deductible/iu);
 
     expect(remit.warnings).toEqual([]);
@@ -121,17 +121,17 @@ describe("get835 - multi-claim with mixed CO/PR/OA/PI adjustments", () => {
     const claimA = remit.claims[0];
     if (claimA === undefined) throw new Error("missing claim A");
     expect(claimA.patientControlNumber).toBe("PT-A");
-    expect(claimA.totalChargeAmount.toString()).toBe("200.00");
-    expect(claimA.totalPaymentAmount.toString()).toBe("160.00");
+    expect(claimA.totalChargeAmount?.toString()).toBe("200.00");
+    expect(claimA.totalPaymentAmount?.toString()).toBe("160.00");
     const lineA = claimA.serviceLines[0];
     if (lineA === undefined) throw new Error("missing line A");
     expect(lineA.adjustments).toHaveLength(2);
     expect(lineA.adjustments[0]?.groupCode).toBe("CO");
     expect(lineA.adjustments[0]?.reasonCode).toBe("45");
-    expect(lineA.adjustments[0]?.amount.toString()).toBe("30.00");
+    expect(lineA.adjustments[0]?.amount?.toString()).toBe("30.00");
     expect(lineA.adjustments[1]?.groupCode).toBe("PR");
     expect(lineA.adjustments[1]?.reasonCode).toBe("2");
-    expect(lineA.adjustments[1]?.amount.toString()).toBe("10.00");
+    expect(lineA.adjustments[1]?.amount?.toString()).toBe("10.00");
 
     const claimB = remit.claims[1];
     if (claimB === undefined) throw new Error("missing claim B");
@@ -146,12 +146,12 @@ describe("get835 - PLB take-back and top-of-remit balance", () => {
   it("PLB amount reduces BPR-02 (raw EDI sign convention)", () => {
     const remit = readRemitFixture("835-with-plb.edi");
     expect(remit.claims).toHaveLength(1);
-    expect(remit.claims[0]?.totalPaymentAmount.toString()).toBe("100.00");
+    expect(remit.claims[0]?.totalPaymentAmount?.toString()).toBe("100.00");
     expect(remit.providerAdjustments).toHaveLength(1);
     expect(remit.providerAdjustments[0]?.reasonCode).toBe("WO");
     expect(remit.providerAdjustments[0]?.subCode).toBe("PRIOR-CLAIM-X");
-    expect(remit.providerAdjustments[0]?.amount.toString()).toBe("50.00");
-    expect(remit.payment.totalActualPayment.toString()).toBe("50.00");
+    expect(remit.providerAdjustments[0]?.amount?.toString()).toBe("50.00");
+    expect(remit.payment.totalActualPayment?.toString()).toBe("50.00");
     // Σ(CLP-04) - Σ(PLB) = BPR-02 → 100 - 50 == 50; no balance warning.
     expect(
       remit.warnings.filter((w) => w.code === WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH),
@@ -215,9 +215,9 @@ describe("get835 - balance invariants warn loudly, never silently rebalance", ()
     );
     expect(balanceWarnings.length).toBeGreaterThanOrEqual(1);
     // The model is NOT silently rebalanced - the inbound values stand.
-    expect(remit.claims[0]?.totalChargeAmount.toString()).toBe("100.00");
-    expect(remit.claims[0]?.totalPaymentAmount.toString()).toBe("80.00");
-    expect(remit.claims[0]?.serviceLines[0]?.adjustments[0]?.amount.toString()).toBe("10.00");
+    expect(remit.claims[0]?.totalChargeAmount?.toString()).toBe("100.00");
+    expect(remit.claims[0]?.totalPaymentAmount?.toString()).toBe("80.00");
+    expect(remit.claims[0]?.serviceLines[0]?.adjustments[0]?.amount?.toString()).toBe("10.00");
   });
 
   it("gives every out-of-balance claim and service line a distinct position", () => {
@@ -272,7 +272,7 @@ describe("get835 - Tier-2 Availity quirk", () => {
     expect(remit.payer?.name).toBe("AVAILITY-ROUTED COMMERCIAL PAYER");
     expect(remit.payer?.additionalIdentifiers.some((r) => r.qualifier === "2U")).toBe(true);
     expect(remit.claims).toHaveLength(1);
-    expect(remit.claims[0]?.totalChargeAmount.toString()).toBe("150.00");
+    expect(remit.claims[0]?.totalChargeAmount?.toString()).toBe("150.00");
     expect(remit.claims[0]?.serviceLines[0]?.references.some((r) => r.qualifier === "F8")).toBe(
       true,
     );

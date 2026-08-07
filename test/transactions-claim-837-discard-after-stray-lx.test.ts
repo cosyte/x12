@@ -219,7 +219,7 @@ describe("X12-DISCARD-AFTER-STRAY-LX: the discard is reported", () => {
     const sub = parse837(strayInsideEntityLoop([PAYER_N3, PAYER_REF]));
     expect(sub.claims).toHaveLength(1);
     expect(sub.claims[0]?.serviceLines).toHaveLength(1);
-    expect(sub.claims[0]?.serviceLines[0]?.charge.toString()).toBe("8500");
+    expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
   });
 });
 

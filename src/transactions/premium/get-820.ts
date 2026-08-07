@@ -11,11 +11,9 @@
  * Spec source: WPC TR3 `005010X218`.
  */
 
-import { X12Decimal } from "../../decimal.js";
 import {
   collectElementValues,
   elementDecimal,
-  elementDecimalOrZero,
   elementOptional,
   elementValue,
   type X12DecimalWarningSink,
@@ -52,9 +50,9 @@ import type {
  * const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "820");
  * if (tx !== undefined) {
  *   const prem = get820Payments(ix.delimiters, tx);
- *   prem?.payment.totalPremiumAmount.toString();
+ *   prem?.payment.totalPremiumAmount?.toString();
  *   for (const r of prem?.remittances ?? []) {
- *     r.openItems[0]?.amountPaid.toString();
+ *     r.openItems[0]?.amountPaid?.toString();
  *   }
  * }
  * ```
@@ -270,7 +268,7 @@ function decodeBpr(
 ): X12PremiumPaymentHeader {
   return Object.freeze({
     transactionHandlingCode: elementValue(seg, 1, delimiters),
-    totalPremiumAmount: elementDecimalOrZero(seg, 2, delimiters, sink),
+    totalPremiumAmount: elementDecimal(seg, 2, delimiters, sink),
     creditDebitFlag: elementValue(seg, 3, delimiters),
     method: elementValue(seg, 4, delimiters),
     paymentFormatCode: elementOptional(seg, 5, delimiters),
@@ -372,7 +370,7 @@ function decodeRmr(
     qualifier,
     referenceId,
     paymentActionCode: elementOptional(seg, 3, delimiters),
-    amountPaid: elementDecimalOrZero(seg, 4, delimiters, sink),
+    amountPaid: elementDecimal(seg, 4, delimiters, sink),
     amountDue: elementDecimal(seg, 5, delimiters, sink),
   });
 }
@@ -411,7 +409,7 @@ const EMPTY_ADDRESS: X12PremiumAddress = Object.freeze({
 
 const EMPTY_HEADER: X12PremiumPaymentHeader = Object.freeze({
   transactionHandlingCode: "",
-  totalPremiumAmount: X12Decimal.ZERO,
+  totalPremiumAmount: undefined,
   creditDebitFlag: "",
   method: "",
   paymentFormatCode: undefined,

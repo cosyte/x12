@@ -56,14 +56,22 @@ export interface X12Remittance {
  * ```ts
  * import type { X12RemitPaymentHeader } from "@cosyte/x12";
  * declare const p: X12RemitPaymentHeader;
- * p.totalActualPayment.toString(); // "945.00"
+ * p.totalActualPayment?.toString(); // "945.00", or undefined if none decoded
  * p.method;                         // "ACH"
  * p.paymentDate;                    // "20260601" (CCYYMMDD, verbatim)
  * ```
  */
 export interface X12RemitPaymentHeader {
   readonly transactionHandlingCode: string;
-  readonly totalActualPayment: X12Decimal;
+  /**
+   * BPR-02, the amount the bank actually moved. `undefined` where this library decoded no value
+   * from that element - it was absent or empty, or it held bytes that do
+   * not decode as a decimal (which also emits `X12_UNPARSEABLE_DECIMAL` at
+   * its `elementIndex`). Through `0.0.12` both cases read
+   * `X12Decimal.ZERO`, indistinguishable from an amount of zero the sender
+   * did state, and the balance invariants summed that fabricated zero.
+   */
+  readonly totalActualPayment: X12Decimal | undefined;
   /**
    * BPR-03 credit/debit flag. Spec-defined values: `"C"` (credit - money
    * to provider, the normal case) or `"D"` (debit - refund / chargeback,
@@ -210,8 +218,8 @@ export interface X12RemitContact {
  * import type { X12RemitClaim } from "@cosyte/x12";
  * declare const c: X12RemitClaim;
  * c.patientControlNumber;          // "PT-ACCT-001"
- * c.totalChargeAmount.toString();  // "500.00"
- * c.totalPaymentAmount.toString(); // "450.00"
+ * c.totalChargeAmount?.toString();  // "500.00", or undefined if none decoded
+ * c.totalPaymentAmount?.toString(); // "450.00", or undefined if none decoded
  * c.claimStatusCode;               // "1" - Processed as Primary
  * c.serviceLines.length;           // count of SVC loops
  * ```
@@ -220,9 +228,33 @@ export interface X12RemitClaim {
   readonly patientControlNumber: string;
   readonly claimStatusCode: string;
   readonly claimStatusDescription: string | undefined;
-  readonly totalChargeAmount: X12Decimal;
-  readonly totalPaymentAmount: X12Decimal;
-  readonly patientResponsibilityAmount: X12Decimal;
+  /**
+   * CLP-03, the total submitted charge. `undefined` where this library decoded no value
+   * from that element - it was absent or empty, or it held bytes that do
+   * not decode as a decimal (which also emits `X12_UNPARSEABLE_DECIMAL` at
+   * its `elementIndex`). Through `0.0.12` both cases read
+   * `X12Decimal.ZERO`, indistinguishable from an amount of zero the sender
+   * did state, and the balance invariants summed that fabricated zero.
+   */
+  readonly totalChargeAmount: X12Decimal | undefined;
+  /**
+   * CLP-04, the total amount paid on the claim. `undefined` where this library decoded no value
+   * from that element - it was absent or empty, or it held bytes that do
+   * not decode as a decimal (which also emits `X12_UNPARSEABLE_DECIMAL` at
+   * its `elementIndex`). Through `0.0.12` both cases read
+   * `X12Decimal.ZERO`, indistinguishable from an amount of zero the sender
+   * did state, and the balance invariants summed that fabricated zero.
+   */
+  readonly totalPaymentAmount: X12Decimal | undefined;
+  /**
+   * CLP-05, the patient responsibility amount. `undefined` where this library decoded no value
+   * from that element - it was absent or empty, or it held bytes that do
+   * not decode as a decimal (which also emits `X12_UNPARSEABLE_DECIMAL` at
+   * its `elementIndex`). Through `0.0.12` both cases read
+   * `X12Decimal.ZERO`, indistinguishable from an amount of zero the sender
+   * did state, and the balance invariants summed that fabricated zero.
+   */
+  readonly patientResponsibilityAmount: X12Decimal | undefined;
   readonly claimFilingIndicatorCode: string | undefined;
   readonly payerClaimControlNumber: string | undefined;
   readonly facilityTypeCode: string | undefined;
@@ -260,14 +292,22 @@ export interface X12RemitClaim {
  * a.groupCode;             // "PR" (patient responsibility)
  * a.reasonCode;            // "1" (deductible)
  * a.reasonDescription;     // "Deductible Amount"
- * a.amount.toString();     // "50.00"
+ * a.amount?.toString();    // "50.00", or undefined if none decoded
  * ```
  */
 export interface X12RemitAdjustment {
   readonly groupCode: string;
   readonly reasonCode: string;
   readonly reasonDescription: string | undefined;
-  readonly amount: X12Decimal;
+  /**
+   * The CAS adjustment amount for this triple. `undefined` where this library decoded no value
+   * from that element - it was absent or empty, or it held bytes that do
+   * not decode as a decimal (which also emits `X12_UNPARSEABLE_DECIMAL` at
+   * its `elementIndex`). Through `0.0.12` both cases read
+   * `X12Decimal.ZERO`, indistinguishable from an amount of zero the sender
+   * did state, and the balance invariants summed that fabricated zero.
+   */
+  readonly amount: X12Decimal | undefined;
   readonly quantity: X12Decimal | undefined;
 }
 
@@ -391,16 +431,32 @@ export interface X12RemitRemark {
  * declare const s: X12RemitServiceLine;
  * s.productServiceIdQualifier; // "HC"
  * s.productServiceId;          // "99213"
- * s.chargeAmount.toString();   // "150.00"
- * s.paymentAmount.toString();  // "135.00"
+ * s.chargeAmount?.toString();  // "150.00", or undefined if none decoded
+ * s.paymentAmount?.toString(); // "135.00", or undefined if none decoded
  * ```
  */
 export interface X12RemitServiceLine {
   readonly productServiceIdQualifier: string;
   readonly productServiceId: string;
   readonly modifiers: readonly string[];
-  readonly chargeAmount: X12Decimal;
-  readonly paymentAmount: X12Decimal;
+  /**
+   * SVC-02, the line's submitted charge. `undefined` where this library decoded no value
+   * from that element - it was absent or empty, or it held bytes that do
+   * not decode as a decimal (which also emits `X12_UNPARSEABLE_DECIMAL` at
+   * its `elementIndex`). Through `0.0.12` both cases read
+   * `X12Decimal.ZERO`, indistinguishable from an amount of zero the sender
+   * did state, and the balance invariants summed that fabricated zero.
+   */
+  readonly chargeAmount: X12Decimal | undefined;
+  /**
+   * SVC-03, the amount paid on the line. `undefined` where this library decoded no value
+   * from that element - it was absent or empty, or it held bytes that do
+   * not decode as a decimal (which also emits `X12_UNPARSEABLE_DECIMAL` at
+   * its `elementIndex`). Through `0.0.12` both cases read
+   * `X12Decimal.ZERO`, indistinguishable from an amount of zero the sender
+   * did state, and the balance invariants summed that fabricated zero.
+   */
+  readonly paymentAmount: X12Decimal | undefined;
   /** SVC-04 - NUBC revenue code. Absent on a professional line. */
   readonly revenueCode: string | undefined;
   /** SVC-05 - Units of Service Paid Count: what the payer adjudicated. */
@@ -446,7 +502,7 @@ export interface X12RemitServiceLine {
  * p.fiscalPeriodDate; // "20261231"
  * p.reasonCode;       // "WO" (withholding)
  * p.subCode;          // "123456" (related-claim reference)
- * p.amount.toString();// "50.00"
+ * p.amount?.toString();// "50.00", or undefined if none decoded
  * ```
  */
 export interface X12RemitProviderAdjustment {
@@ -454,5 +510,13 @@ export interface X12RemitProviderAdjustment {
   readonly fiscalPeriodDate: string;
   readonly reasonCode: string;
   readonly subCode: string | undefined;
-  readonly amount: X12Decimal;
+  /**
+   * The PLB adjustment amount, with its raw EDI sign. `undefined` where this library decoded no value
+   * from that element - it was absent or empty, or it held bytes that do
+   * not decode as a decimal (which also emits `X12_UNPARSEABLE_DECIMAL` at
+   * its `elementIndex`). Through `0.0.12` both cases read
+   * `X12Decimal.ZERO`, indistinguishable from an amount of zero the sender
+   * did state, and the balance invariants summed that fabricated zero.
+   */
+  readonly amount: X12Decimal | undefined;
 }

@@ -15,8 +15,12 @@
  * 1. **The primitive.** `readElementDecimal` separates the three spec-distinct
  *    outcomes, and the two warning-emitting wrappers fire on exactly one of
  *    them. An ABSENT element still returns `X12Decimal.ZERO` from
- *    `elementDecimalOrZero` and still does NOT warn: "missing means zero" is
- *    the documented convention of those slots and is unchanged by this slice.
+ *    `elementDecimalOrZero` and still does NOT warn: that is the helper's
+ *    documented behaviour and is unchanged. What DID change, one slice later
+ *    under `X12-837-SV-UNDEFINED-DECIMAL`, is that no reader in this library
+ *    calls that helper any more - every model slot it used to feed is
+ *    `X12Decimal | undefined` and reads `undefined`. The reader cases below
+ *    were updated with it; the helper cases were not.
  * 2. **The readers.** Every one of the six transaction readers that decodes a
  *    decimal is driven from literal EDI, not from a round trip. A round trip
  *    cannot exhibit this defect at all, because a builder cannot emit an
@@ -251,9 +255,10 @@ describe("get835 - the headline case: a paid amount that reads 0 and never was",
     const { tx, delimiters } = txOf(raw, "835");
     const remit = get835(delimiters, tx);
 
-    // The model is unchanged: the slot is typed X12Decimal and reads 0. That 0
-    // is precisely what the warning exists to contradict.
-    expect(remit?.payment.totalActualPayment.toString()).toBe("0");
+    // The slot reads `undefined` as of `X12-837-SV-UNDEFINED-DECIMAL`. Through
+    // `0.0.12` it was `X12Decimal.ZERO` and the warning was the ONLY thing
+    // contradicting it; the model now says so in band as well.
+    expect(remit?.payment.totalActualPayment).toBeUndefined();
     expect(codes(remit?.warnings ?? [])).toContain(WARNING_CODES.X12_UNPARSEABLE_DECIMAL);
 
     const w = remit?.warnings.find((x) => x.code === WARNING_CODES.X12_UNPARSEABLE_DECIMAL);
@@ -269,7 +274,7 @@ describe("get835 - the headline case: a paid amount that reads 0 and never was",
     const { tx, delimiters } = txOf(raw, "835");
     const remit = get835(delimiters, tx);
 
-    expect(remit?.claims[0]?.totalPaymentAmount.toString()).toBe("0");
+    expect(remit?.claims[0]?.totalPaymentAmount).toBeUndefined();
     const w = remit?.warnings.find((x) => x.code === WARNING_CODES.X12_UNPARSEABLE_DECIMAL);
     expect(w?.position.elementIndex).toBe(4);
   });
@@ -306,7 +311,7 @@ describe("get837Claims - a submitted charge and a units count", () => {
     const { tx, delimiters } = txOf(raw, "837");
     const sub = get837Claims(delimiters, tx);
 
-    expect(sub?.claims[0]?.totalCharge.toString()).toBe("0");
+    expect(sub?.claims[0]?.totalCharge).toBeUndefined();
     const w = sub?.warnings.find((x) => x.code === WARNING_CODES.X12_UNPARSEABLE_DECIMAL);
     expect(w?.position.elementIndex).toBe(2);
   });
@@ -320,7 +325,7 @@ describe("get837Claims - a submitted charge and a units count", () => {
     const { tx, delimiters } = txOf(raw, "837");
     const sub = get837Claims(delimiters, tx);
 
-    expect(sub?.claims[0]?.serviceLines[0]?.units.toString()).toBe("0");
+    expect(sub?.claims[0]?.serviceLines[0]?.units).toBeUndefined();
     const w = sub?.warnings.find((x) => x.code === WARNING_CODES.X12_UNPARSEABLE_DECIMAL);
     expect(w?.position.elementIndex).toBe(4);
   });
@@ -366,7 +371,7 @@ describe("get820Payments - a premium total", () => {
     const { tx, delimiters } = txOf(raw, "820");
     const prem = get820Payments(delimiters, tx);
 
-    expect(prem?.payment.totalPremiumAmount.toString()).toBe("0");
+    expect(prem?.payment.totalPremiumAmount).toBeUndefined();
     const w = prem?.warnings.find((x) => x.code === WARNING_CODES.X12_UNPARSEABLE_DECIMAL);
     expect(w?.position.elementIndex).toBe(2);
   });
@@ -396,14 +401,16 @@ describe("get834Enrollments - scoped to the member it was read from", () => {
 // ---------------------------------------------------------------------------
 
 describe("the guarantee is about an element a reader DECODED, not about every 0", () => {
-  it("🩺 an 837 line whose variant disagrees with its SVx still reads 0 / 0, now WARNED", () => {
+  it("🩺 an 837 line whose variant disagrees with its SVx reads undefined / undefined, WARNED", () => {
     // This case shipped with `#66` asserting the LEAK: 0 / 0 with no warning
-    // on any channel. `X12-837-SV-SILENT-ZERO` closes the silence, not the 0:
-    // `openServiceLine` still seeds `charge` / `units` at X12Decimal.ZERO and
-    // `decodeSv1` still returns before reading anything when the resolved
-    // variant is not "P", so NO decimal is read and the decimal sink is still
-    // never consulted. What changed is that closing the line now emits
-    // X12_837_SERVICE_LINE_NOT_DECODED, so the stand-in is announced.
+    // on any channel. `X12-837-SV-SILENT-ZERO` closed the silence and left the
+    // 0; `X12-837-SV-UNDEFINED-DECIMAL` closed the 0. `decodeSv1` still
+    // returns before reading anything when the resolved variant is not "P",
+    // so NO decimal is read and the decimal sink is still never consulted -
+    // `openServiceLine` now seeds `charge` / `units` at `undefined` instead of
+    // X12Decimal.ZERO, and closing the line still emits
+    // X12_837_SERVICE_LINE_NOT_DECODED, which is what names WHY they are
+    // empty.
     //
     // 🩺 The absence assertion below is the load-bearing half and it is why
     // this case did NOT go red on its own when the fix landed: it asserted
@@ -424,8 +431,8 @@ describe("the guarantee is about an element a reader DECODED, not about every 0"
 
     const line = sub?.claims[0]?.serviceLines[0];
     expect(sub?.variant).toBe("P");
-    expect(line?.charge.toString()).toBe("0");
-    expect(line?.units.toString()).toBe("0");
+    expect(line?.charge).toBeUndefined();
+    expect(line?.units).toBeUndefined();
     // Still no decimal warning: no decimal was ever read, so the sink cannot
     // fire. The line-level warning is the channel that speaks for this hole.
     expect(codes(sub?.warnings ?? [])).not.toContain(WARNING_CODES.X12_UNPARSEABLE_DECIMAL);
@@ -437,7 +444,8 @@ describe("the guarantee is about an element a reader DECODED, not about every 0"
     const honest = txOf(readFixture("claim/837i-canonical.edi"), "837");
     const honestSub = get837Claims(honest.delimiters, honest.tx);
     const ok = honestSub?.claims[0]?.serviceLines[0];
-    expect(ok?.charge.toString()).not.toBe("0");
+    expect(ok?.charge?.toString()).not.toBe("0");
+    expect(ok?.charge).toBeDefined();
     expect(codes(honestSub?.warnings ?? [])).not.toContain(
       WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED,
     );

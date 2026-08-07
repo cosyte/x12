@@ -43,6 +43,7 @@ import type {
 } from "./types.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange, X12Position } from "../../parser/types.js";
+import { WARNING_CODES, type X12ParseWarning } from "../../parser/warnings.js";
 import type { X12Decimal } from "../../decimal.js";
 import { requireCallerArray } from "../../builder/caller-array.js";
 import { requireCallerDecimal } from "../../builder/caller-decimal.js";
@@ -376,7 +377,19 @@ function enforceStructuralSpec(spec: Build835Spec): void {
  * segment no consumer can resolve. Instead the warning is consumed for
  * `.message` **only**, which the paragraph above establishes is
  * position-independent, so the position is inert by construction rather than
- * merely unused today. @internal
+ * merely unused today.
+ *
+ * **The validators gained a third outcome and this guard answers it.** Since
+ * every balance term on the READ model is `X12Decimal | undefined`, the
+ * validators emit `X12_835_BALANCE_NOT_EVALUABLE` where a term did not
+ * decode. No `Build835Spec` can produce that from TypeScript - every term of
+ * the three invariants is a required `X12Decimal` on the spec types - but a
+ * JS caller can pass `undefined`, and through `0.0.12` that reached the
+ * validators and threw an untyped `TypeError` off `undefined.add`. It is
+ * refused here instead, with `X12_835_BUILD_INVALID_SPEC` rather than
+ * `X12_835_BUILD_BALANCE_MISMATCH`: nothing was measured out of balance, a
+ * required amount is simply missing. The refusal names no value, only the
+ * registry text. @internal
  */
 function enforceBalance(spec: Build835Spec): void {
   const position: X12Position = UNANCHORED_BUILD_POSITION;
@@ -384,12 +397,24 @@ function enforceBalance(spec: Build835Spec): void {
   for (const claim of claims) {
     const claimWarn = checkClaimBalance(claim, position);
     if (claimWarn !== undefined) {
+      if (notEvaluable(claimWarn)) {
+        throw new Remit835BuildError(
+          REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_INVALID_SPEC,
+          `build835 refuses a claim whose balance cannot be checked: ${claimWarn.message}`,
+        );
+      }
       throw new Remit835BuildError(
         REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_BALANCE_MISMATCH,
         `build835 refuses an out-of-balance claim: ${claimWarn.message}`,
       );
     }
     for (const lineWarn of checkServiceLineBalance(claim, position)) {
+      if (notEvaluable(lineWarn)) {
+        throw new Remit835BuildError(
+          REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_INVALID_SPEC,
+          `build835 refuses a service line whose balance cannot be checked: ${lineWarn.message}`,
+        );
+      }
       throw new Remit835BuildError(
         REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_BALANCE_MISMATCH,
         `build835 refuses an out-of-balance service line: ${lineWarn.message}`,
@@ -403,11 +428,28 @@ function enforceBalance(spec: Build835Spec): void {
     position,
   );
   if (totalWarn !== undefined) {
+    if (notEvaluable(totalWarn)) {
+      throw new Remit835BuildError(
+        REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_INVALID_SPEC,
+        `build835 refuses a remit whose balance cannot be checked: ${totalWarn.message}`,
+      );
+    }
     throw new Remit835BuildError(
       REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_BALANCE_MISMATCH,
       `build835 refuses an out-of-balance remit: ${totalWarn.message}`,
     );
   }
+}
+
+/**
+ * True where a balance validator reported that it could not run the equation
+ * at all, rather than that the equation failed. The two are NOT
+ * interchangeable and get different refusal codes: a mismatch is a measured
+ * inequality between amounts the caller supplied, and this one is a term the
+ * caller did not supply. @internal
+ */
+function notEvaluable(warn: X12ParseWarning): boolean {
+  return warn.code === WARNING_CODES.X12_835_BALANCE_NOT_EVALUABLE;
 }
 
 // ---------------------------------------------------------------------------

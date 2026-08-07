@@ -56,28 +56,29 @@ model.
   on the emit side. All of it is pre-existing and reproduces at `e3cdf49`; widening the guard would
   have turned this into that audit, which is its own item.
 
-- **🩺 An unparseable decimal still lands on the model as a stand-in; what changed is that it warns.**
-  A decimal element that is present and that this library cannot decode as a decimal (`1,234.56`,
-  `$450.00`, `N/A`) yields no value, and the reader has to put something in its place: a slot typed
-  `X12Decimal` gets `X12Decimal.ZERO`, an optional slot gets `undefined`, and some rows are dropped
-  whole. **Every one of those outcomes now emits `X12_UNPARSEABLE_DECIMAL` at the failing
-  `position.elementIndex`, because the warning is a property of the READ rather than of what the
-  reader then does with it. No outcome is otherwise changed.** No list of the outcomes is published
-  here, on purpose: a first draft enumerated three and a review measured a fourth, and the rule is
-  what holds, not the census. So a consumer that reads only the model, and never looks at
-  `.warnings`, sees exactly what it saw before: a `0` where the payer sent something unreadable.
-  **That is the residual, stated plainly.** Closing it further means changing every `X12Decimal`
-  model slot to `X12Decimal | undefined`, which is a breaking model change and is deliberately not in
-  this slice. Gate on the warning, or read `readElementDecimal` yourself.
+- **🩺 An unparseable decimal reads `undefined`, and it warns.** A decimal element that is present
+  and that this library cannot decode as a decimal (`1,234.56`, `$450.00`, `N/A`) yields no value,
+  and the reader has to put something in its place. **Through `0.0.12` a slot typed `X12Decimal` got
+  `X12Decimal.ZERO`**, so a consumer that read only the model saw a `0` where the payer sent
+  something unreadable; **as of `0.0.13` no reader substitutes `X12Decimal.ZERO` for a value it did
+  not decode** - every slot that used to get one is `X12Decimal | undefined` and reads `undefined`,
+  which is a breaking type change on the read model and is the point of it. **Read that as a rule
+  about the substitution, not as a census of the model:** an optional slot already read `undefined`,
+  and some rows are still dropped whole, which is a different shape and unchanged here. **Every one of those
+  outcomes emits `X12_UNPARSEABLE_DECIMAL` at the failing `position.elementIndex`, because the
+  warning is a property of the READ rather than of what the reader then does with it.** No list of
+  the outcomes is published here, on purpose: a first draft enumerated three and a review measured a
+  fourth, and the rule is what holds, not the census.
 
   Three scoping facts that are easy to get wrong in the other direction:
-  - **An ABSENT element does not warn.** "Missing means zero" is the documented convention of the
-    slots that use `elementDecimalOrZero` and is unchanged.
-  - **🩺 That does NOT make an unwarned `0` trustworthy in general, and this is the one inversion to
+  - **An ABSENT element does not warn.** It reads `undefined` with no diagnostic, so `undefined`
+    alone does not tell you which of the two happened - the warning at that `elementIndex` does, and
+    `readElementDecimal` gives you the same distinction in band.
+  - **🩺 An unwarned value is not thereby trustworthy in general, and this is the one inversion to
     refuse.** The warning is a property of a decimal READ, not a property of a model slot. A slot
     the reader never read at all cannot warn, and it still holds whatever the accumulator was seeded
-    with. **What this guarantees is narrower and exact: an unwarned `0` AT AN ELEMENT A READER
-    DECODED is a zero the sender sent or omitted.** The known slot of the other kind, an 837 service
+    with. **What this guarantees is narrower and exact: an unwarned value AT AN ELEMENT A READER
+    DECODED is what the sender sent.** The known slot of the other kind, an 837 service
     line whose `SVx` never decoded, is covered by a warning of its own (next entry) rather than by
     this one. **No census of never-read slots is published**, on purpose: the rule is what holds.
   - **The public helpers are silent without a sink.** `elementDecimal` / `elementDecimalOrZero` take
@@ -91,23 +92,46 @@ model.
     comments. It says nothing about a decimal decoded some other way, and no exhaustive census of
     such routes is published here, on purpose.
 
-- **🩺 An 837 service line whose `SVx` never decoded still ships with `charge` and `units` at `0`;
-  what changed is that it warns.** `get837Claims` resolves ONE variant for the submission, from the
+- **🩺 An 835 balance invariant with an undecoded term is reported as UNEVALUABLE, not as a
+  mismatch.** The three TR3 005010X221A1 §1.10.2 equations (line, claim, top-of-remit) read amounts
+  that are all `X12Decimal | undefined` as of `0.0.13`. Where any term of an equation is
+  `undefined`, the equation is not run and `X12_835_BALANCE_NOT_EVALUABLE` is emitted instead of
+  `X12_835_REMIT_BALANCE_MISMATCH`, because nothing was measured out of balance: substituting `0`
+  for the missing term would be this library asserting a total nobody sent. **Through `0.0.12` that
+  substitution is exactly what happened**, so an 835 with an absent `CLP-03` reported a mismatch
+  between the payer's own amounts and an invented zero. Two bounds worth stating:
+  - **An EMPTY list is not an absent term.** A claim carrying no `CAS` really did state no
+    adjustments, and that sums to `X12Decimal.ZERO`. Only a term this library decoded no value from
+    stops the equation.
+  - **`build835` cannot reach it from TypeScript.** Every balance term on `Build835Spec` is a
+    required `X12Decimal`. A JS caller passing `undefined` gets `X12_835_BUILD_INVALID_SPEC` (an
+    untyped `TypeError` through `0.0.12`), deliberately NOT the build-side balance-mismatch code.
+
+- **The public `elementDecimalOrZero` helper still substitutes `X12Decimal.ZERO`, and no reader in
+  this library calls it any more.** Its documented behaviour is unchanged and it stays exported, so
+  a consumer walking segments itself can still opt into the substitution - knowingly, rather than by
+  inheriting a convention the `get*` readers no longer follow. `elementDecimal` and
+  `readElementDecimal` are the honest routes.
+
+- **🩺 An 837 service line whose `SVx` never decoded ships with `charge` and `units` `undefined`,
+  and it warns.** `get837Claims` resolves ONE variant for the submission, from the
   caller's `type` option, else ST-03's implementation-convention reference, else the first `SVx`
   segment present. A Loop 2400 line is then decoded only by the `SV1` / `SV2` / `SV3` that matches
   that variant. When none arrives, because the line carries an `SVx` for a different variant (an
   ST-03 of `005010X222A2` on a file whose lines are `SV2`, or a `{ type: "P" }` over the same) or
   because it carries no `SVx` at all, **nothing on the service segment is read**: the line's
-  `charge` and `units` hold the accumulator's seeded `X12Decimal.ZERO`, and its procedure code,
+  `charge` and `units` hold the accumulator's seeded `undefined`, and its procedure code,
   modifiers, unit of measure and place of service are equally undecoded. **That line now emits
   `X12_837_SERVICE_LINE_NOT_DECODED`, anchored at the `LX` that opened it.** Read the values off
   `tx.segments[…].raw` and decide which of the two disagreeing signals the sender meant.
   - **Ignoring the foreign `SVx` is deliberate and is not the limitation.** `SV1-02` and `SV2-03`
     are both the line charge, so decoding an `SV2` into a Professional line would mis-read money.
     Refusing to read is the safe half; doing it silently was the defect.
-  - **The model is unchanged.** `charge` and `units` are still typed `X12Decimal`, so the stand-in
-    `0` is still what a consumer that never reads `.warnings` sees. Making them
-    `X12Decimal | undefined` is a breaking model change and is deliberately not in this slice.
+  - **`undefined` does not say WHY, which is what the warning is for.** `charge` and `units` are
+    `X12Decimal | undefined` as of `0.0.13` (`X12Decimal` reading a fabricated `0` through
+    `0.0.12`), so a consumer that never reads `.warnings` at least sees that nothing was decoded -
+    but it cannot tell this case, where no `SVx` was read at all, from an `SVx` that WAS read and
+    carried no charge element. Only `X12_837_SERVICE_LINE_NOT_DECODED` separates them.
   - **The line is still retained, and so are the bytes.** Nothing is dropped: the service line is
     on the claim, and every segment, decoded or not, stays verbatim on `tx.segments`.
   - **Neither cause is attributed to the sender.** A `type` option that disagrees with a perfectly
@@ -214,14 +238,15 @@ model.
   - **The segment is NOT decoded into any line.** `SV1-02` and `SV2-03` are both the line charge, so
     reading a service segment into a line the walker never opened mis-reads money. Refusing to read
     is the safe half; doing it silently was the defect. **This does not change the `SV1-02` case
-    above:** an absent `SV1-02` on a line that DID open still reads a confident `0`, which closes
-    only with the deferred `X12Decimal | undefined` model change.
+    above:** an absent `SV1-02` on a line that DID open reads `undefined` as of `0.0.13`, a
+    confident `0` through `0.0.12`, and this code has nothing to do with either.
   - **🩺 IT SAYS NOTHING ABOUT THE VARIANT, AND A FIRST DRAFT OF THIS BOUND CLAIMED IT DID.** Variant
     resolution runs before the walk. A caller-supplied `type` option wins first; absent one, and
     where `ST-03` names none of the three known implementation conventions, it **falls back to the
     first `SVx` segment id anywhere in the transaction body - orphans included**. So a stray `SV2`
     under an `ST-03` of `005010X222A1` re-types the whole submission as Institutional, and every
-    conformant `SV1` line in it then reads `charge` `0`, `units` `0` and an `undefined` procedure
+    conformant `SV1` line in it then reads `charge` `undefined`, `units` `undefined` (both a
+    fabricated `0` through `0.0.12`) and an `undefined` procedure
     code - `undefined`, not `""`, which on such a line is the `revenueCode`. Passing
     `{ type: "P" }` reads the same document correctly. Measured, both trees: `PRE-EXISTING`,
     identical at `0.0.10`, **not** introduced or changed by this code, and **not** narrowed here - excluding

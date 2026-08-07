@@ -148,15 +148,15 @@ sources and its refutation history. Do not act on a line here without reading th
   suite against a base checkout, never by arithmetic** - a partitioned form was wrong four ways, and
   a suite total quoted here goes stale the next slice - as the `phi-slots` count that stood here did,
   one slice later. Derive it.
-- **🩺 An ABSENT `SV1-02` still reads a confident `0`, unwarned. Left open on purpose** - it closes
-  only with the deferred `X12Decimal | undefined` slice.
+- **🩺 The ABSENT `SV1-02` deferred here is CLOSED: `X12-837-SV-UNDEFINED-DECIMAL`, its own trap below.**
 
 ### 🩺 `X12-837-SV-SILENT-ZERO` (2026-08-05) · `documentation/agent-notes.md#x12-837-sv-silent-zero-2026-08-05`
 
 - **🩺 An 837 Loop 2400 line closed with NO `SVx` decoded for the resolved variant warns
   `X12_837_SERVICE_LINE_NOT_DECODED` at its `LX`.** BOTH causes: a foreign `SVx`, and none at all.
-- **🩺 The model is UNCHANGED - `charge`/`units` still read `0`. Never write "an 837 line can no
-  longer read a fabricated 0".** It can; not silently. `X12Decimal | undefined` is still its slice.
+- **🩺 THIS slice closed only the SILENCE; the trap below closed the `0`.** `charge`/`units` read
+  `undefined`, and this warning still says WHY - `undefined` alone does NOT separate it from a
+  decoded `SVx` whose charge element was absent.
 - **🩺 NEVER decode the `SVx` that IS present, nor let it flip the line's variant.** The charge is
   `SV1-02`/`SV2-03` and the units `SV1-04`/`SV2-05`/**`SV3-06`** (`SV3-05` is the prosthesis code -
   three comments said units and were corrected), so that mis-READS money. `opts.type` is a caller
@@ -166,18 +166,19 @@ sources and its refutation history. Do not act on a line here without reading th
   sides.**
 - **Only bytes make these; no round trip can.** 4 leak probes + 2 controls, both ways: deleting one
   flag-set reds a control.
+- **🩺 `X12-837-SV-UNDEFINED-DECIMAL` CLOSED THE `0`. TRAP UNPAID: read
+  `documentation/agent-notes/x12-837-sv-undefined-decimal.md`.**
 
 ### 🩺 `X12-QUANTITY-SILENT-DEFAULTS` (2026-08-05) · `documentation/agent-notes.md#x12-quantity-silent-defaults-2026-08-05`
 
 - **🩺 A PRESENT decimal that does not decode emits `X12_UNPARSEABLE_DECIMAL` at its
   `position.elementIndex`, in all six readers. An ABSENT one emits nothing.** Both pinned.
-- **🩺 The model is UNCHANGED. Never write "an unparseable amount can no longer read as zero".** It
-  can; not _silently_. Closing it is `X12Decimal | undefined` everywhere: its own slice.
-- **🩺 NEVER INVERT IT INTO "an unwarned `0` is a zero the sender sent". A slot a reader never read
-  cannot warn**; three shipped docs carried the bare form. Guarantee: unwarned `0` **at an element a
+- **🩺 THIS slice closed only the SILENCE. The `0` is closed by the trap below**, everywhere.
+- **🩺 NEVER INVERT IT INTO "an unwarned value is one the sender sent". A slot a reader never read
+  cannot warn**; three shipped docs carried the bare form. Guarantee: unwarned **at an element a
   reader decoded**. The 837 instance of the other kind is the trap above.
 - **PUBLISH NO CENSUS OF THE FALLBACK OUTCOMES.** A draft said three, a refuter measured four. The
-  RULE holds: a property of the READ, not the USE - so no control flow changed.
+  RULE holds: a property of the READ, not the USE.
 - **ONE message, NO discriminant** - a `ZERO`/`NOT_DECODED` pair was wrong at 835 `CAS`, 835 `PLB`,
   837 `CAS`. **And assert nothing about what X12.6 type R permits;** nobody here has read it, so the
   message says "could not decode".

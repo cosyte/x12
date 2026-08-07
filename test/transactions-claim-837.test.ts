@@ -76,7 +76,7 @@ describe("get837Claims - Professional Tier-1 (X222A2)", () => {
     expect(claim.variant).toBe("P");
     expect(claim.claimId).toBe("PT-ACCT-001");
     expect(claim.totalCharge).toBeInstanceOf(X12Decimal);
-    expect(claim.totalCharge.toString()).toBe("150");
+    expect(claim.totalCharge?.toString()).toBe("150");
     expect(claim.placeOfServiceCode).toBe("11");
     expect(claim.facilityCodeQualifier).toBe("B");
     expect(claim.claimFrequencyCode).toBe("1");
@@ -112,8 +112,8 @@ describe("get837Claims - Professional Tier-1 (X222A2)", () => {
     expect(sl.procedureQualifier).toBe("HC");
     expect(sl.procedureCode).toBe("99213");
     expect(sl.modifiers).toEqual(["25"]);
-    expect(sl.charge.toString()).toBe("150");
-    expect(sl.units.toString()).toBe("1");
+    expect(sl.charge?.toString()).toBe("150");
+    expect(sl.units?.toString()).toBe("1");
     expect(sl.diagnosisPointers).toEqual(["1"]);
     expect(sl.dates).toContainEqual({ qualifier: "472", formatQualifier: "D8", value: "20260601" });
     expect(sl.references[0]?.qualifier).toBe("6R");
@@ -131,7 +131,7 @@ describe("get837Claims - Institutional Tier-1 (X223A3)", () => {
     const claim = sub.claims[0];
     if (claim === undefined) throw new Error("missing claim");
     expect(claim.variant).toBe("I");
-    expect(claim.totalCharge.toString()).toBe("5000");
+    expect(claim.totalCharge?.toString()).toBe("5000");
     expect(claim.placeOfServiceCode).toBe("111");
     expect(claim.facilityCodeQualifier).toBe("A");
 
@@ -156,14 +156,14 @@ describe("get837Claims - Institutional Tier-1 (X223A3)", () => {
     }
     expect(inpatientLine.revenueCode).toBe("0120");
     expect(inpatientLine.procedureCode).toBe("99221");
-    expect(inpatientLine.charge.toString()).toBe("1500");
+    expect(inpatientLine.charge?.toString()).toBe("1500");
 
     const drugLine = claim.serviceLines[1];
     if (drugLine === undefined || drugLine.variant !== "I") {
       throw new Error("expected I service line 2");
     }
     expect(drugLine.revenueCode).toBe("0260");
-    expect(drugLine.units.toString()).toBe("100");
+    expect(drugLine.units?.toString()).toBe("100");
   });
 });
 

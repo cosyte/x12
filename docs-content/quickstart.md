@@ -47,7 +47,7 @@ const remit = tx ? get835(ix.delimiters, tx) : undefined;
 if (remit === undefined) throw new Error("not an 835");
 
 // Payment header: the money-movement primitive.
-remit.payment.totalActualPayment.toString(); // => "450.00"
+remit.payment.totalActualPayment?.toString(); // => "450.00"
 remit.payment.creditDebitFlag; // => "C"
 remit.payment.method; // => "ACH"
 remit.traces[0]?.referenceId; // => "0012345"
@@ -55,9 +55,9 @@ remit.traces[0]?.referenceId; // => "0012345"
 // Per claim: your account number echoed back, and the charge/paid/responsibility split.
 const claim = remit.claims[0];
 claim?.patientControlNumber; // => "PT-ACCT-001"
-claim?.totalChargeAmount.toString(); // => "500.00"
-claim?.totalPaymentAmount.toString(); // => "450.00"
-claim?.patientResponsibilityAmount.toString(); // => "50.00"
+claim?.totalChargeAmount?.toString(); // => "500.00"
+claim?.totalPaymentAmount?.toString(); // => "450.00"
+claim?.patientResponsibilityAmount?.toString(); // => "50.00"
 
 // Per service line: the CARC adjustment. Group code is the safety-critical field.
 const line = claim?.serviceLines[0];
@@ -65,7 +65,7 @@ line?.productServiceId; // => "99213"
 const adj = line?.adjustments[0];
 adj?.groupCode; // => "PR"
 adj?.reasonCode; // => "1"
-adj?.amount.toString(); // => "50.00"
+adj?.amount?.toString(); // => "50.00"
 ```
 
 The `groupCode` (`PR` = patient responsibility, `CO` = contractual obligation, …) is what tells you
@@ -76,7 +76,11 @@ and raises `X12_UNKNOWN_CARC` (the value is never dropped).
 ## Respect the balance warning
 
 The walker runs the TR3 X221A1 §1.10.2 balance invariants and emits `X12_835_REMIT_BALANCE_MISMATCH`
-on a mismatch. It **never silently rebalances**. Gate your posting on it:
+on a mismatch. It **never silently rebalances**. **Gate on two codes, not one:** where a term of an
+equation is `undefined` the equation cannot be run at all and you get
+`X12_835_BALANCE_NOT_EVALUABLE` instead, which is a document you must not auto-post either. Through
+`0.0.12` that case collapsed to zero and raised the mismatch, so a gate written against the mismatch
+alone stops firing on it when you upgrade.
 
 ```ts runnable
 import { parseX12, get835, WARNING_CODES } from "@cosyte/x12";
@@ -101,13 +105,16 @@ const ix = parseX12(raw);
 const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "835");
 const remit = get835(ix.delimiters, tx!)!;
 
-const outOfBalance = remit.warnings.some(
-  (w) => w.code === WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
+const doNotPost = remit.warnings.some(
+  (w) =>
+    w.code === WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH ||
+    w.code === WARNING_CODES.X12_835_BALANCE_NOT_EVALUABLE,
 );
-outOfBalance; // => false
+doNotPost; // => false
 
-if (outOfBalance) {
-  // Do NOT auto-post. Route to a human: the payer's numbers don't add up.
+if (doNotPost) {
+  // Do NOT auto-post. Route to a human: either the payer's numbers don't add
+  // up, or an amount one of the equations needs did not decode at all.
 }
 ```
 

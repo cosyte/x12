@@ -245,14 +245,19 @@ describe("refusal messages: the source gate", () => {
     // added by `X12-277-SVC07-NOT-DECODED` in `build-277.ts` for a service
     // line with no SVC-07 under 005010X212, plus the ONE added by
     // `REFUSAL-MESSAGE-PHI-ECHO` in `build-278.ts` for a review HL-03 level
-    // code outside `EV` / `SS`), and `src/profiles/validate.ts` with 12. The
+    // code outside `EV` / `SS`, plus the FOUR added by
+    // `X12-837-SV-UNDEFINED-DECIMAL`: one in `build-837.ts` for a service line
+    // with no `units`, and three in `build-835.ts` where each balance check
+    // now refuses a term that did not decode with `X12_835_BUILD_INVALID_SPEC`
+    // rather than reporting an inequality it never computed), and
+    // `src/profiles/validate.ts` with 12. The
     // module count is unchanged at 11 because `build-277.ts` and `build-278.ts`
     // already raised elsewhere. Pinned so a module that stops being scanned
     // (a rename, a moved directory) is a failure rather than a silently
     // smaller sweep.
     const raising = new Set(sites.map((s) => s.file));
     expect(raising.size).toBe(11);
-    expect(sites.length).toBe(86);
+    expect(sites.length).toBe(90);
     expect(modules.some((m) => m.endsWith(join("profiles", "validate.ts")))).toBe(true);
   });
 

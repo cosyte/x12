@@ -162,7 +162,7 @@ describe("build835 → get835 round-trip", () => {
     expect(remit.warnings).toHaveLength(0);
 
     expect(remit.payment.transactionHandlingCode).toBe("I");
-    expect(remit.payment.totalActualPayment.toString()).toBe("450.00");
+    expect(remit.payment.totalActualPayment?.toString()).toBe("450.00");
     expect(remit.payment.creditDebitFlag).toBe("C");
     expect(remit.payment.method).toBe("ACH");
     expect(remit.payment.paymentDate).toBe("20260601");
@@ -186,9 +186,9 @@ describe("build835 → get835 round-trip", () => {
     const claim = remit.claims[0];
     expect(claim?.patientControlNumber).toBe("PT-ACCT-001");
     expect(claim?.claimStatusCode).toBe("1");
-    expect(claim?.totalChargeAmount.toString()).toBe("500.00");
-    expect(claim?.totalPaymentAmount.toString()).toBe("450.00");
-    expect(claim?.patientResponsibilityAmount.toString()).toBe("50.00");
+    expect(claim?.totalChargeAmount?.toString()).toBe("500.00");
+    expect(claim?.totalPaymentAmount?.toString()).toBe("450.00");
+    expect(claim?.patientResponsibilityAmount?.toString()).toBe("50.00");
     expect(claim?.claimFilingIndicatorCode).toBe("MB");
     expect(claim?.payerClaimControlNumber).toBe("ICN-9001");
     // CLP-08 composite round-trips facility type + claim frequency.
@@ -206,14 +206,14 @@ describe("build835 → get835 round-trip", () => {
     expect(line?.productServiceIdQualifier).toBe("HC");
     expect(line?.productServiceId).toBe("99213");
     expect(line?.modifiers).toEqual(["25"]);
-    expect(line?.chargeAmount.toString()).toBe("500.00");
-    expect(line?.paymentAmount.toString()).toBe("450.00");
+    expect(line?.chargeAmount?.toString()).toBe("500.00");
+    expect(line?.paymentAmount?.toString()).toBe("450.00");
     expect(line?.serviceDateStart).toBe("20260501");
     expect(line?.serviceDateEnd).toBe("20260501");
     expect(line?.adjustments).toHaveLength(1);
     expect(line?.adjustments[0]?.groupCode).toBe("PR");
     expect(line?.adjustments[0]?.reasonCode).toBe("1");
-    expect(line?.adjustments[0]?.amount.toString()).toBe("50.00");
+    expect(line?.adjustments[0]?.amount?.toString()).toBe("50.00");
     expect(line?.amounts[0]?.qualifier).toBe("B6");
     expect(line?.remarks[0]?.code).toBe("N4");
   });
@@ -262,7 +262,7 @@ describe("build835 - PLB provider-level adjustment", () => {
     expect(plb?.fiscalPeriodDate).toBe("20261231");
     expect(plb?.reasonCode).toBe("WO");
     expect(plb?.subCode).toBe("PRIOR-CLAIM-X");
-    expect(plb?.amount.toString()).toBe("50.00");
+    expect(plb?.amount?.toString()).toBe("50.00");
   });
 
   it("refuses a remit whose BPR-02 ignores the PLB", () => {
@@ -443,7 +443,7 @@ describe("build835 - envelope + payment overrides", () => {
     expect(ix.groups[0]?.gs.elements[3]).toBe("APPRECV"); // GS-03
     expect(ix.groups[0]?.gs.elements[4]).toBe("20260601"); // GS-04
     expect(ix.groups[0]?.gs.elements[5]).toBe("1230"); // GS-05
-    expect(remitOf(ix).payment.totalActualPayment.toString()).toBe("450.00");
+    expect(remitOf(ix).payment.totalActualPayment?.toString()).toBe("450.00");
   });
 
   it("zero-pads an under-width interchange control number to 9", () => {

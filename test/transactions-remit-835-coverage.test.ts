@@ -167,7 +167,7 @@ describe("get835 coverage - MIA / MOA / AMT / NM1*74", () => {
     const remit = parse835(body, 7);
     if (remit === undefined) throw new Error("undefined remit");
     const adj = remit.claims[0]?.serviceLines[0]?.adjustments[0];
-    expect(adj?.amount.toString()).toBe("100.00");
+    expect(adj?.amount?.toString()).toBe("100.00");
     expect(adj?.quantity?.toString()).toBe("2");
   });
 
@@ -197,7 +197,7 @@ describe("get835 coverage - MIA / MOA / AMT / NM1*74", () => {
     const remit = parse835(body, 8);
     if (remit === undefined) throw new Error("undefined remit");
     expect(remit.providerAdjustments).toHaveLength(1);
-    expect(remit.providerAdjustments[0]?.amount.toString()).toBe("50.00");
+    expect(remit.providerAdjustments[0]?.amount?.toString()).toBe("50.00");
   });
 
   it("PLB with a negative amount (credit to provider) increases BPR-02", () => {
@@ -211,7 +211,7 @@ describe("get835 coverage - MIA / MOA / AMT / NM1*74", () => {
       "PLB*1*20261231*L6*-10.00~\n";
     const remit = parse835(body, 8);
     if (remit === undefined) throw new Error("undefined remit");
-    expect(remit.providerAdjustments[0]?.amount.toString()).toBe("-10.00");
+    expect(remit.providerAdjustments[0]?.amount?.toString()).toBe("-10.00");
     // 100 - (-10) = 110 == BPR-02 → no balance warning.
     expect(
       remit.warnings.filter((w) => w.code === WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH),

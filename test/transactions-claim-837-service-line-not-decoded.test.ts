@@ -4,11 +4,12 @@
  * `X12Decimal.ZERO` with `warnings: []`, indistinguishable from a line the
  * sender really billed at zero. This suite pins the closure.
  *
- * 🩺 **What changed is the silence, not the zero.** The model is untouched:
- * `charge` and `units` are still typed `X12Decimal` and still read `0` on
- * such a line. `X12_837_SERVICE_LINE_NOT_DECODED` is what makes that `0`
- * announce itself as a stand-in. Making the slots `X12Decimal | undefined`
- * is a breaking model change and its own slice.
+ * 🩺 **This slice closed the silence; `X12-837-SV-UNDEFINED-DECIMAL` then
+ * closed the zero.** `charge` and `units` are `X12Decimal | undefined` as of
+ * `0.0.13` and read `undefined` on such a line, so the model reports the hole
+ * in band. `X12_837_SERVICE_LINE_NOT_DECODED` is still what says WHY: an
+ * `undefined` charge alone does not separate "no SVx decoded onto this line"
+ * from "the SVx decoded and carried no charge element".
  *
  * **Only bytes can produce these cases.** A round trip cannot: `build837`
  * emits the SVx that matches the variant it was asked for, so every case
@@ -90,14 +91,15 @@ const SV2 = "SV2*0300*HC:99213*8500*UN*4~";
 const SV3 = "SV3*AD:D1110*8500****4~";
 
 describe("X12-837-SV-SILENT-ZERO: a service line whose SVx never decoded warns", () => {
-  it("🩺 an SV2 on a line the transaction resolved as Professional: 0 / 0, and it says so", () => {
+  it("🩺 an SV2 on a line the transaction resolved as Professional: undefined, and it says so", () => {
     const { sub } = parse837("005010X222A2", claimBody([SV2]));
     const line = sub.claims[0]?.serviceLines[0];
 
-    // The line is retained, and this is the fabricated pair.
+    // The line is retained, and the pair reads as undecoded rather than as a
+    // charge and a count. Through `0.0.12` both read `"0"`.
     expect(line?.variant).toBe("P");
-    expect(line?.charge.toString()).toBe("0");
-    expect(line?.units.toString()).toBe("0");
+    expect(line?.charge).toBeUndefined();
+    expect(line?.units).toBeUndefined();
     // ... which is now announced rather than silent.
     expect(codes(sub.warnings)).toContain(WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED);
   });
@@ -106,7 +108,7 @@ describe("X12-837-SV-SILENT-ZERO: a service line whose SVx never decoded warns",
     const { sub } = parse837("005010X223A3", claimBody([SV1]));
     const line = sub.claims[0]?.serviceLines[0];
     expect(line?.variant).toBe("I");
-    expect(line?.charge.toString()).toBe("0");
+    expect(line?.charge).toBeUndefined();
     expect(codes(sub.warnings)).toContain(WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED);
   });
 
@@ -114,7 +116,7 @@ describe("X12-837-SV-SILENT-ZERO: a service line whose SVx never decoded warns",
     const { sub } = parse837("005010X224A2", claimBody([SV1]));
     const line = sub.claims[0]?.serviceLines[0];
     expect(line?.variant).toBe("D");
-    expect(line?.charge.toString()).toBe("0");
+    expect(line?.charge).toBeUndefined();
     expect(codes(sub.warnings)).toContain(WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED);
   });
 
@@ -124,7 +126,7 @@ describe("X12-837-SV-SILENT-ZERO: a service line whose SVx never decoded warns",
     const { sub } = parse837("005010X223A3", claimBody([SV2]), "P");
     const line = sub.claims[0]?.serviceLines[0];
     expect(sub.variant).toBe("P");
-    expect(line?.charge.toString()).toBe("0");
+    expect(line?.charge).toBeUndefined();
     expect(codes(sub.warnings)).toContain(WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED);
   });
 
@@ -133,8 +135,8 @@ describe("X12-837-SV-SILENT-ZERO: a service line whose SVx never decoded warns",
     // been read into `charge` / `units` and the seeds ship as-is.
     const { sub } = parse837("005010X222A2", claimBody(["DTP*472*D8*20260601~"]));
     const line = sub.claims[0]?.serviceLines[0];
-    expect(line?.charge.toString()).toBe("0");
-    expect(line?.units.toString()).toBe("0");
+    expect(line?.charge).toBeUndefined();
+    expect(line?.units).toBeUndefined();
     expect(codes(sub.warnings)).toContain(WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED);
   });
 });
@@ -145,24 +147,24 @@ describe("X12-837-SV-SILENT-ZERO: the matching SVx decodes and stays silent", ()
   it("SV1 on a Professional line decodes the charge and the units, silently", () => {
     const { sub } = parse837("005010X222A2", claimBody([SV1]));
     const line = sub.claims[0]?.serviceLines[0];
-    expect(line?.charge.toString()).toBe("8500");
-    expect(line?.units.toString()).toBe("4");
+    expect(line?.charge?.toString()).toBe("8500");
+    expect(line?.units?.toString()).toBe("4");
     expect(codes(sub.warnings)).not.toContain(WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED);
   });
 
   it("SV2 on an Institutional line decodes the charge and the units, silently", () => {
     const { sub } = parse837("005010X223A3", claimBody([SV2]));
     const line = sub.claims[0]?.serviceLines[0];
-    expect(line?.charge.toString()).toBe("8500");
-    expect(line?.units.toString()).toBe("4");
+    expect(line?.charge?.toString()).toBe("8500");
+    expect(line?.units?.toString()).toBe("4");
     expect(codes(sub.warnings)).not.toContain(WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED);
   });
 
   it("SV3 on a Dental line decodes the charge and the units, silently", () => {
     const { sub } = parse837("005010X224A2", claimBody([SV3]));
     const line = sub.claims[0]?.serviceLines[0];
-    expect(line?.charge.toString()).toBe("8500");
-    expect(line?.units.toString()).toBe("4");
+    expect(line?.charge?.toString()).toBe("8500");
+    expect(line?.units?.toString()).toBe("4");
     expect(codes(sub.warnings)).not.toContain(WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED);
   });
 });
@@ -225,14 +227,14 @@ describe("X12-837-SV-SILENT-ZERO: retention and counting are unchanged", () => {
     ]);
     expect(sub.claims[0]?.serviceLines).toHaveLength(3);
     expect(notDecoded(sub)).toHaveLength(2);
-    expect(sub.claims[0]?.serviceLines[1]?.charge.toString()).toBe("8500");
+    expect(sub.claims[0]?.serviceLines[1]?.charge?.toString()).toBe("8500");
   });
 
   it("an unresolvable variant emits no service line at all, and is not double-reported", () => {
     // ST-03 is not a known implementation-convention reference and there is
     // no SVx to fall back on, so the submission-level X12_837_UNKNOWN_VARIANT
     // is the diagnostic. `openServiceLine` returns undefined, so there is no
-    // line to warn about and no fabricated 0 on any model slot.
+    // line to warn about and no decimal slot at all.
     const { sub } = parse837("005010X999A9", claimBody(["DTP*472*D8*20260601~"]));
     expect(sub.variant).toBe("unknown");
     expect(sub.claims[0]?.serviceLines ?? []).toHaveLength(0);

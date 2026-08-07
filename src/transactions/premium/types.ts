@@ -53,14 +53,22 @@ export interface X12PremiumPayments {
  * ```ts
  * import type { X12PremiumPaymentHeader } from "@cosyte/x12";
  * declare const p: X12PremiumPaymentHeader;
- * p.totalPremiumAmount.toString(); // "12500.00"
+ * p.totalPremiumAmount?.toString(); // "12500.00", or undefined if none decoded
  * p.method;                         // "ACH"
  * p.paymentDate;                    // "20260601" (CCYYMMDD, verbatim)
  * ```
  */
 export interface X12PremiumPaymentHeader {
   readonly transactionHandlingCode: string;
-  readonly totalPremiumAmount: X12Decimal;
+  /**
+   * BPR-02, the aggregate premium moved. `undefined` where this library decoded no value
+   * from that element - it was absent or empty, or it held bytes that do
+   * not decode as a decimal (which also emits `X12_UNPARSEABLE_DECIMAL` at
+   * its `elementIndex`). Through `0.0.12` both cases read
+   * `X12Decimal.ZERO`, indistinguishable from an amount of zero the sender
+   * did state.
+   */
+  readonly totalPremiumAmount: X12Decimal | undefined;
   /**
    * BPR-03 credit/debit flag. Spec-defined `"C"` (credit) or `"D"` (debit);
    * typed `string` to preserve any verbatim non-spec value from a quirky
@@ -259,14 +267,22 @@ export interface X12PremiumPerson {
  * declare const o: X12PremiumOpenItem;
  * o.qualifier;             // "AZ"
  * o.referenceId;           // "POL-0001"
- * o.amountPaid.toString(); // "250.00"
+ * o.amountPaid?.toString(); // "250.00", or undefined if none decoded
  * ```
  */
 export interface X12PremiumOpenItem {
   readonly qualifier: string;
   readonly referenceId: string;
   readonly paymentActionCode: string | undefined;
-  readonly amountPaid: X12Decimal;
+  /**
+   * RMR-04, the amount paid against this open item. `undefined` where this library decoded no value
+   * from that element - it was absent or empty, or it held bytes that do
+   * not decode as a decimal (which also emits `X12_UNPARSEABLE_DECIMAL` at
+   * its `elementIndex`). Through `0.0.12` both cases read
+   * `X12Decimal.ZERO`, indistinguishable from an amount of zero the sender
+   * did state.
+   */
+  readonly amountPaid: X12Decimal | undefined;
   readonly amountDue: X12Decimal | undefined;
 }
 

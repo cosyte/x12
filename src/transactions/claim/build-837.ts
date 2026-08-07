@@ -454,6 +454,23 @@ function enforceClaim(variant: "P" | "I" | "D", claim: Build837ClaimSpec, locato
         `build837${variant}: claim at ${locator} has a service line at index ${String(l)} with an empty ${line.variant === "I" ? "revenue" : "procedure"} code.`,
       );
     }
+    // The emit-side half of `X12Decimal | undefined`. Through `0.0.12` an
+    // omitted `units` was emitted as the literal `"0"` into SV1-04 / SV2-05 /
+    // SV3-06, so this builder stated a service unit count no caller ever
+    // supplied - the same fabrication the reader was corrected for, in the
+    // other direction. Refusing rather than emitting an empty element is the
+    // stance `build277` already takes for SVC-07: the parser is liberal and
+    // the serializer conservative, and a count is not something a serializer
+    // may leave for the receiver to guess. The message names the slot and no
+    // value.
+    if (line.units === undefined) {
+      throw new Claim837BuildError(
+        CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_SPEC,
+        `build837${variant}: claim at ${locator} has a service line at index ${String(l)} with no units. ` +
+          `This builder will not emit a service unit count the caller did not supply; ` +
+          `set units to an X12Decimal rather than leaving it undefined.`,
+      );
+    }
   }
 }
 
@@ -639,7 +656,11 @@ function emitServiceLine(
   // and `decodeSv3` have always used 6; three comments said 5 and were
   // corrected under `X12-837-SV-SILENT-ZERO` rather than left to become the
   // next `X12-SVC-ELEMENT-MAP-OFF-BY-ONE`.
-  const units = line.units === undefined ? "0" : decStr(line.units);
+  //
+  // No `?? "0"` here any more: `enforceStructuralSpec` has already refused a
+  // line with no units, so this is a required value and `decStr` runs the
+  // caller guard on it like every other decimal slot.
+  const units = decStr(line.units);
   if (line.variant === "P") {
     const proc = ctx.comp([line.procedureQualifier, line.procedureCode, ...(line.modifiers ?? [])]);
     const pointers = ctx.comp(line.diagnosisPointers ?? []);

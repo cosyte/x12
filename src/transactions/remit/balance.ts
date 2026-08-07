@@ -37,6 +37,20 @@
  * > slice with a forward-pointer to this module so the contract stays
  * > consistent.
  *
+ * **A term that did not decode makes the equation UNEVALUABLE, and that is a
+ * third outcome, not a failure.** Every amount these three checks read is
+ * `X12Decimal | undefined` on the model, and `undefined` means this library
+ * decoded no value from that element. Where any term of an invariant is
+ * `undefined` the check emits
+ * {@link "../../parser/warnings.js".WARNING_CODES.X12_835_BALANCE_NOT_EVALUABLE}
+ * and never `X12_835_REMIT_BALANCE_MISMATCH`: the mismatch code asserts a
+ * computed inequality between amounts the sender supplied, and there is no
+ * such computation to report. Substituting `0` for the absent term is what
+ * this library did through `0.0.12`, and it made "the payer paid nothing"
+ * and "the payer said nothing" the same reading. An EMPTY list of
+ * adjustments is NOT that case: it sums to `X12Decimal.ZERO`, because a
+ * claim carrying no CAS really did state no adjustments.
+ *
  * **PHI discipline: the message names the equation and carries no value at
  * all**, not even an amount. An EDI amount is a consumer-controlled element
  * like any other: `CLP-03` is whatever the payer sent, so the spec'd /
@@ -82,6 +96,7 @@
 import { X12Decimal } from "../../decimal.js";
 import {
   BALANCE_INVARIANTS,
+  balanceNotEvaluable,
   remitBalanceMismatch,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
@@ -114,11 +129,13 @@ export function checkClaimBalance(
   position: X12Position,
 ): X12ParseWarning | undefined {
   const claimCasSum = sumAmounts(claim.adjustments);
-  const lineCasSum = claim.serviceLines.reduce<X12Decimal>(
-    (acc: X12Decimal, sl: X12RemitServiceLine) => acc.add(sumAmounts(sl.adjustments)),
-    X12Decimal.ZERO,
+  const lineCasSum = sumOptional(
+    claim.serviceLines.map((sl: X12RemitServiceLine) => sumAmounts(sl.adjustments)),
   );
-  const computed = claim.totalPaymentAmount.add(claimCasSum).add(lineCasSum);
+  const computed = sumOptional([claim.totalPaymentAmount, claimCasSum, lineCasSum]);
+  if (computed === undefined || claim.totalChargeAmount === undefined) {
+    return balanceNotEvaluable(position, BALANCE_INVARIANTS.CLAIM);
+  }
   if (computed.equals(claim.totalChargeAmount)) return undefined;
   return remitBalanceMismatch(position, BALANCE_INVARIANTS.CLAIM);
 }
@@ -145,14 +162,14 @@ export function checkServiceLineBalance(
     const line = claim.serviceLines[i];
     if (line === undefined) continue;
     const lineCasSum = sumAmounts(line.adjustments);
-    const computed = line.paymentAmount.add(lineCasSum);
+    const linePosition = { ...position, segmentIndex: position.segmentIndex + i + 1 };
+    const computed = sumOptional([line.paymentAmount, lineCasSum]);
+    if (computed === undefined || line.chargeAmount === undefined) {
+      out.push(balanceNotEvaluable(linePosition, BALANCE_INVARIANTS.SERVICE_LINE));
+      continue;
+    }
     if (computed.equals(line.chargeAmount)) continue;
-    out.push(
-      remitBalanceMismatch(
-        { ...position, segmentIndex: position.segmentIndex + i + 1 },
-        BALANCE_INVARIANTS.SERVICE_LINE,
-      ),
-    );
+    out.push(remitBalanceMismatch(linePosition, BALANCE_INVARIANTS.SERVICE_LINE));
   }
   return out;
 }
@@ -178,19 +195,16 @@ export function checkServiceLineBalance(
  * ```
  */
 export function checkRemitTotalBalance(
-  bpr02: X12Decimal,
+  bpr02: X12Decimal | undefined,
   claims: readonly X12RemitClaim[],
   providerAdjustments: readonly X12RemitProviderAdjustment[],
   position: X12Position,
 ): X12ParseWarning | undefined {
-  const claimSum = claims.reduce<X12Decimal>(
-    (acc: X12Decimal, c: X12RemitClaim) => acc.add(c.totalPaymentAmount),
-    X12Decimal.ZERO,
-  );
-  const plbSum = providerAdjustments.reduce<X12Decimal>(
-    (acc: X12Decimal, p: X12RemitProviderAdjustment) => acc.add(p.amount),
-    X12Decimal.ZERO,
-  );
+  const claimSum = sumOptional(claims.map((c: X12RemitClaim) => c.totalPaymentAmount));
+  const plbSum = sumOptional(providerAdjustments.map((p: X12RemitProviderAdjustment) => p.amount));
+  if (bpr02 === undefined || claimSum === undefined || plbSum === undefined) {
+    return balanceNotEvaluable(position, BALANCE_INVARIANTS.REMIT_TOTAL);
+  }
   const computed = claimSum.subtract(plbSum);
   if (computed.equals(bpr02)) return undefined;
   return remitBalanceMismatch(position, BALANCE_INVARIANTS.REMIT_TOTAL);
@@ -200,9 +214,24 @@ export function checkRemitTotalBalance(
  * Sum a list of CAS adjustments. Helper for both claim-level + service-
  * line CAS aggregation. @internal
  */
-function sumAmounts(adjustments: readonly X12RemitAdjustment[]): X12Decimal {
-  return adjustments.reduce<X12Decimal>(
-    (acc: X12Decimal, a: X12RemitAdjustment) => acc.add(a.amount),
-    X12Decimal.ZERO,
-  );
+function sumAmounts(adjustments: readonly X12RemitAdjustment[]): X12Decimal | undefined {
+  return sumOptional(adjustments.map((a: X12RemitAdjustment) => a.amount));
+}
+
+/**
+ * Add a list of terms, answering `undefined` the moment ONE of them is
+ * `undefined`. An empty list sums to `X12Decimal.ZERO`, which is the
+ * additive identity and not a stand-in for anything: a claim with no CAS
+ * adjustments really did state no adjustments, whereas a CAS triple whose
+ * amount element did not decode states nothing about its amount. Those are
+ * different facts and only the second one poisons the equation.
+ * @internal
+ */
+function sumOptional(terms: readonly (X12Decimal | undefined)[]): X12Decimal | undefined {
+  let acc = X12Decimal.ZERO;
+  for (const term of terms) {
+    if (term === undefined) return undefined;
+    acc = acc.add(term);
+  }
+  return acc;
 }

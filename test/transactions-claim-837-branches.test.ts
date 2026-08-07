@@ -70,15 +70,17 @@ describe("get837Claims - cross-variant SVx segments are ignored and WARNED, neve
   // 🩺 Ignoring the segment is the right call: SV1-02 and SV2-03 are both the
   // line charge, so reading an SV2 into a P-shaped line would mint a wrong
   // money value. What is NOT acceptable is doing it quietly, which is what
-  // X12-837-SV-SILENT-ZERO closed: the line still ships with `charge` and
-  // `units` at their seeded 0, and X12_837_SERVICE_LINE_NOT_DECODED is the
-  // only channel that says those two are stand-ins rather than reads.
+  // X12-837-SV-SILENT-ZERO closed. The line ships with `charge` and `units`
+  // at their seeded `undefined` (a fabricated `0` through `0.0.12`), and
+  // X12_837_SERVICE_LINE_NOT_DECODED is the channel that says WHY they are
+  // empty - `undefined` alone does not distinguish this from an SVx that
+  // decoded and carried no charge element.
   it("837P line ignores an SV2 segment (institutional revenue code) and warns", () => {
     const sub = build837("005010X222A2", claimBody(["SV2*0300*HC:99213*150*UN*1~"]));
     const line = sub.claims[0]?.serviceLines[0];
     expect(line?.variant).toBe("P");
     expect(line && "revenueCode" in line ? line.revenueCode : undefined).toBeUndefined();
-    expect(line?.charge.toString()).toBe("0");
+    expect(line?.charge).toBeUndefined();
     expect(sub.warnings.map((w) => w.code)).toContain(
       WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED,
     );
@@ -105,8 +107,8 @@ describe("get837Claims - cross-variant SVx segments are ignored and WARNED, neve
   it("the matching SVx decodes and is silent (the control that makes the three above defects)", () => {
     const sub = build837("005010X222A2", claimBody(["SV1*HC:99213*150*UN*1***1~"]));
     const line = sub.claims[0]?.serviceLines[0];
-    expect(line?.charge.toString()).toBe("150");
-    expect(line?.units.toString()).toBe("1");
+    expect(line?.charge?.toString()).toBe("150");
+    expect(line?.units?.toString()).toBe("1");
     expect(sub.warnings.map((w) => w.code)).not.toContain(
       WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED,
     );

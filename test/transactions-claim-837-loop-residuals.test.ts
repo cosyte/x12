@@ -254,8 +254,8 @@ describe("X12-837-LOOP-RESIDUALS: a dropped LX closes the entity loop current at
     const sub = parse837(misfiled([TRAILING_REF, TRAILING_N3, TRAILING_N4, TRAILING_PER]));
     expect(sub.claims).toHaveLength(1);
     expect(sub.claims[0]?.serviceLines).toHaveLength(1);
-    expect(sub.claims[0]?.serviceLines[0]?.charge.toString()).toBe("8500");
-    expect(sub.claims[0]?.serviceLines[0]?.units.toString()).toBe("4");
+    expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
+    expect(sub.claims[0]?.serviceLines[0]?.units?.toString()).toBe("4");
   });
 });
 
