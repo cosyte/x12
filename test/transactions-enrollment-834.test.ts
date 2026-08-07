@@ -173,7 +173,14 @@ describe("get834Enrollments - edge cases", () => {
     // INS-03 is empty - no maintenance type, no description, no warning.
     expect(b?.maintenanceTypeCode).toBe("");
     expect(b?.maintenanceTypeDescription).toBeUndefined();
-    expect(b?.warnings).toHaveLength(1); // the unknown HD maintenance code, below.
+    // Two, and each names a different loss on this member: the unknown HD
+    // maintenance code below, and the `AMT*P3~` under that coverage, whose
+    // absent AMT-02 takes the whole premium row off the model. That second
+    // one was silent through `0.0.12` and is what `X12_AMOUNT_ROW_DROPPED`
+    // now reports, on the member's own channel rather than a roster-level one.
+    expect(b?.warnings).toHaveLength(2);
+    expect(b?.warnings.map((w) => w.code)).toContain(WARNING_CODES.X12_AMOUNT_ROW_DROPPED);
+    expect(b?.healthCoverages[0]?.amounts).toEqual([]);
     // The first IL NM1 wins; the second IL NM1 does not overwrite it.
     expect(b?.member?.idCode).toBe("MBR0011");
     expect(b?.member?.firstName).toBe("JOHN");

@@ -67,8 +67,8 @@ model could not tell that `0` from a zero the sender did state.
 that used to get one is `X12Decimal | undefined` and reads `undefined` instead. That is a breaking
 type change on the read model, and it is the point of it: the two facts are spec-distinct and now
 the model says which one you have. Read it as a rule about the substitution rather than as a census
-of the model: a row whose amount does not decode is sometimes dropped whole instead, and no total is
-published here.
+of the model: a row whose amount does not decode is sometimes dropped whole instead, which has a
+report of its own (`X12_AMOUNT_ROW_DROPPED`, below). No total is published here.
 
 An element that is present and does not match the shape `X12Decimal` decodes also emits
 **`X12_UNPARSEABLE_DECIMAL`**, carrying the failing element in `position.elementIndex`, so the two
@@ -103,9 +103,12 @@ Three things to hold onto:
 - **`undefined` means "this library decoded no value", not "the sender sent nothing".** Both routes
   land there. Gate on the warning to tell them apart, and gate on `undefined` itself before you post
   an amount, exactly as you would on a balance mismatch.
-- **An *absent* element is a different fact and does not warn.** It reads `undefined` with no
-  diagnostic. The warning fires only when the sender put bytes there and this library could not read
-  them. Read the guarantee in exactly that direction:
+- **An *absent* element is a different fact and does not raise this code.** It reads `undefined`,
+  and `X12_UNPARSEABLE_DECIMAL` fires only when the sender put bytes there and this library could
+  not read them. Do not widen that into "an absent element is silent": where the absent element
+  takes a whole `AMT` or `ADX` row off the model, the drop is announced by
+  `X12_AMOUNT_ROW_DROPPED` (below), which is raised on both routes and so separates neither.
+  Read the guarantee in exactly that direction:
   an unwarned value **at an element a reader decoded** is what the sender sent. It is not a promise
   about every slot on the model, because a slot a reader never read cannot warn. The known instance
   of that in this library, an 837 service line whose `SVx` never decoded because it does not match
@@ -125,6 +128,72 @@ is exactly where a mis-mapped identifier lands). Read them off `tx.segments[…]
 them. If you are walking segments yourself rather than using a `get*` reader, `readElementDecimal`
 gives you the same distinction in-band, as `{ value, status }` with `status` one of `"decoded"` /
 `"absent"` / `"unparseable"`.
+
+## An amount row that decodes nothing loses the whole row, and says so
+
+`AMT` and `ADX` are not slots on a bigger record: each one *is* a record, carrying an amount plus the
+thing the amount is about. So when the amount does not decode there is no row to put on the model at
+all, and AMT-01's qualifier or ADX-02's adjustment reason code goes with it. Through `0.0.12` that
+happened in complete silence - `AMT*B6~` gave `claim.amounts: []` and `warnings: []`, which reads
+exactly like a document that never carried the segment.
+
+**`X12_AMOUNT_ROW_DROPPED` reports it**, anchored at the `AMT` / `ADX` itself and carrying **no**
+`position.elementIndex`, because one of the two routes into it is an absent element and an absent
+element has no index to name:
+
+```ts runnable
+import { parseX12, get835, WARNING_CODES } from "@cosyte/x12";
+
+// AMT-02 is absent. The B6 qualifier the payer did send is lost with the row.
+const raw =
+  "ISA*00*          *00*          *ZZ*PAYER          *ZZ*PROVIDER       " +
+  "*260601*1200*^*00501*000000001*0*P*:~" +
+  "GS*HP*PAYER*PROVIDER*20260601*1200*1*X*005010X221A1~" +
+  "ST*835*0001*005010X221A1~" +
+  "BPR*I*450.00*C*ACH*CCP*01*1*DA*1*1512345678**01*1*DA*2*20260601~" +
+  "TRN*1*0012345*1512345678~" +
+  "LX*1~" +
+  "CLP*PT-ACCT-001*1*500.00*450.00*50.00*MC*PAYER-CLAIM-001*11*1~" +
+  "AMT*B6~" +
+  "SVC*HC:99213*500.00*450.00**1~" +
+  "CAS*PR*1*50.00~" +
+  "SE*10*0001~GE*1*1~IEA*1*000000001~";
+
+const ix = parseX12(raw);
+const tx = ix.groups[0]!.transactions[0]!;
+const remit = get835(ix.delimiters, tx)!;
+
+// No row reached the model.
+remit.claims[0]!.amounts.length; // => 0
+
+// And the loss is on the warning channel rather than left for you to notice.
+remit.warnings.map((w) => w.code); // => ["X12_AMOUNT_ROW_DROPPED"]
+
+// The absent route raises this code ALONE. An unparseable AMT-02 raises it
+// alongside X12_UNPARSEABLE_DECIMAL at the failing element, which is what
+// tells the two apart - this code is raised for both and separates neither.
+remit.warnings.some((w) => w.code === WARNING_CODES.X12_UNPARSEABLE_DECIMAL); // => false
+```
+
+Bounds worth reading literally:
+
+- **It is additive: nothing moved onto it.** An unparseable amount still raises
+  `X12_UNPARSEABLE_DECIMAL` at its own element, now alongside this code rather than instead of it,
+  so a gate you already wrote against that code still fires on exactly the documents it fired on.
+  What that gate never saw, on any release, is the absent-amount row above. Gate on both.
+- **It reports a row whose AMOUNT was read and decoded no value, and nothing wider.** It is a
+  property of the READ, not of the walker's control flow. A segment discarded before its amount is
+  read is not on this channel, and neither is one whose amount decoded and then found nothing open
+  to attach the row to. **Do not read that as "nothing open means silent":** the 835 and the 837
+  decode the amount first, so an `AMT` with an absent amount and no claim open does raise this code.
+- **On the 835 and the 837 the lost row may be a LINE-level one.** Those readers attach an `AMT` to
+  the open service line first and to the claim only when there is none, so an unchanged
+  `claim.amounts` is not evidence the warning is stale.
+- **An 820 `RMR` is not on this channel, and not because its row survives.** `decodeRmr` drops on
+  open-item identity (RMR-01 and RMR-02 both empty) **before** RMR-04 is read: an `RMR` that states
+  an open item and no amount keeps its row with `amountPaid` `undefined`, while one that states an
+  amount and **no** open item is dropped whole and silently. That second case is a separate loss,
+  unchanged by this release, and `KNOWN-LIMITATIONS.md` records it.
 
 ## The operations you need
 

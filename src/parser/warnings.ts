@@ -88,6 +88,7 @@ export const WARNING_CODES = {
   X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX: "X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX",
   X12_837_PAY_TO_ADDRESS_REPEATED: "X12_837_PAY_TO_ADDRESS_REPEATED",
   X12_835_BALANCE_NOT_EVALUABLE: "X12_835_BALANCE_NOT_EVALUABLE",
+  X12_AMOUNT_ROW_DROPPED: "X12_AMOUNT_ROW_DROPPED",
 } as const;
 
 /**
@@ -344,6 +345,8 @@ const WARNING_MESSAGES = {
     "837 entity segment read into nothing after a dropped LX: the N3 / N4 / PER / REF at `position.segmentIndex` arrived while no entity loop was open, because an earlier LX in this transaction opened no Loop 2400 (no CLM was open at it) and closed the entity loop that was current there. NOTHING this segment carries reached the model: no party's `address`, `contacts` or `references` was written from it, and no party, claim or line was synthesized to hold it. This is the code that names THAT loss; `X12_837_SERVICE_LINE_DROPPED` is raised at the LX itself and names the SERVICE LINE's loss, never an entity segment, so the two report different things about the same stretch of the document. Read the bound literally, because this code does NOT report every unattached entity segment: it reports one discarded after such an LX and only while nothing since has opened a new loop, so an N3 / N4 / PER / REF that reaches no party by any other route is still silent, and one arriving after a later NM1 is outside this code's scope, whether or not this reader surfaces that segment kind on that party. It reports that the segment reached NO party; it does not claim it would have reached one had the LX been absent, because this reader does not surface every one of these segment kinds on every party (a PER on a patient or a pay-to address, for one). Which party a segment following a stray LX belongs to is not derivable from the TR3s in either direction, so it is discarded rather than attributed: see KNOWN-LIMITATIONS.md. The verbatim segments are preserved on the transaction set; read them there before concluding a party had no address, no secondary identifier or no contact.",
   X12_837_PAY_TO_ADDRESS_REPEATED:
     "837 pay-to address named more than once in one Loop 2000A: the NM1*87 at `position.segmentIndex` is not the first in this Loop 2000A, and the TR3s allow Loop 2010AB at most once there. The model has ONE pay-to address slot, so it cannot carry both, and this code is the only thing that tells you the document named more than one. The reader NEVER merges them: an N3 or N4 after this segment can no longer add a street line to, or fill a blank in, the address an earlier NM1*87 named, which is what this library did through 0.0.12 - it returned a fused address no sender sent, silently. What the slot carries instead is the LAST occurrence that stated an address of its own; an occurrence that states none - one carrying no N3 or N4 at all, or only a valueless N3 or N4 whose elements are empty - does NOT replace one that did, so nothing an earlier occurrence stated is blanked either. Where no occurrence states an address, the slot holds what the FIRST N3 or N4 to arrive under any of them produced, which may be an address with no elements at all, and which is not necessarily the first occurrence's: an occurrence that carries no N3 or N4 writes nothing, so a later one's valueless N3 is the first write and takes a slot still empty. Read that as the corner it is, and never restate it as the first OCCURRENCE winning. Which occurrence the sender meant is NOT decided here and is not derivable from the TR3s, and the losing occurrence's address is NOT on the model in any form. Read the bound literally: this reports repetition within one Loop 2000A, which is where the pay-to route lives, and an NM1*87 arriving while a CLM is open never reaches that route. The verbatim segments are preserved on the transaction set; read them there before acting on where a payment is to be sent.",
+  X12_AMOUNT_ROW_DROPPED:
+    "Amount row dropped from the typed model: the AMT or ADX at `position.segmentIndex` carried no decodable amount (AMT-02, ADX-01), so NO row was built for it and the rest of the segment went with it - its qualifier or adjustment reason code, and any reference qualifier and id. Nothing is fabricated to stand in: a row is not built around a zero this library did not read, which is why the loss is reported rather than papered over. Two routes reach it and this code does not say which: the amount element was ABSENT, or it was present and held bytes that do not decode as a decimal. On this segment only the second route also raises `X12_UNPARSEABLE_DECIMAL`, carrying the failing element in its own `position.elementIndex`, so whether one is present at this `position.segmentIndex` is what separates them - and that code is unchanged by this one, which is raised alongside it rather than in place of it. Read the bound literally: this reports a row whose AMOUNT was read and decoded no value, and it is NOT a general report that an amount segment reached no model. A segment a reader discards before reading its amount is not on this channel, and neither is one whose amount decoded and then found no claim, service line, coverage or remittance open to attach the row to. An 820 RMR is not on it either, for its own reason: that row is dropped on open-item IDENTITY, RMR-01 and RMR-02 both empty, before the amount is read at all, so an RMR that states an open item and no amount keeps its row with amountPaid undefined while one that states an amount and no open item is dropped whole and silently. That second case is a separate loss and this code does not report it. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such amount.",
 } as const;
 
 /**
@@ -1176,6 +1179,51 @@ export function unparseableDecimal(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_UNPARSEABLE_DECIMAL,
     message: WARNING_MESSAGES.X12_UNPARSEABLE_DECIMAL,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_AMOUNT_ROW_DROPPED` warning. Emitted where an `AMT` or `ADX`
+ * decoded no value from its amount element (AMT-02, ADX-01) and the reader
+ * therefore built no row at all, so the qualifier or adjustment reason code
+ * the sender did state is off the model with it.
+ *
+ * `position` names the `AMT` / `ADX` segment itself and carries NO
+ * `elementIndex`: one of the two routes here is an absent element, and an
+ * absent element has no index to name. The element the reader was reading is
+ * fixed by the segment anyway - AMT-02 or ADX-01 - so the segment locates the
+ * loss exactly.
+ *
+ * It is raised for BOTH routes to an undecoded amount, and
+ * {@link unparseableDecimal} is unchanged by it: a present-but-undecodable
+ * element still raises `X12_UNPARSEABLE_DECIMAL` at its own `elementIndex`,
+ * now ALONGSIDE this code rather than instead of it, so a consumer predicate
+ * written against that code alone still fires exactly where it did. The
+ * absent route raises this code and nothing else, which is what tells the two
+ * apart.
+ *
+ * Read the bound literally. This reports a row whose AMOUNT was read and
+ * decoded no value. A segment a reader discards before reading its amount is
+ * not on this channel, and neither is one whose amount decoded and then found
+ * nothing open to attach the row to. An 820 `RMR` is not on it either, for its
+ * own reason: `decodeRmr` drops on open-item IDENTITY, RMR-01 and RMR-02 both
+ * empty, before the amount is read - so an `RMR` that states an open item and
+ * no amount keeps its row with `amountPaid` `undefined`, while one that states
+ * an amount and no open item is dropped whole and silently. That second case
+ * is a separate loss and this code does not report it. Nothing is fabricated
+ * to stand in and the segments stay verbatim on the transaction set.
+ *
+ * @example
+ * ```ts
+ * import { amountRowDropped } from "@cosyte/x12";
+ * const w = amountRowDropped({ segmentIndex: 7, transactionIndex: 0 });
+ * ```
+ */
+export function amountRowDropped(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_AMOUNT_ROW_DROPPED,
+    message: WARNING_MESSAGES.X12_AMOUNT_ROW_DROPPED,
     position,
   };
 }

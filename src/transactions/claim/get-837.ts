@@ -52,6 +52,7 @@ import {
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
 import {
   REQUIRED_LOOPS,
+  amountRowDropped,
   entitySegmentDiscardedAfterLx,
   hlParentLevelInvalid,
   hlParentMismatch,
@@ -767,7 +768,15 @@ export function get837Claims(
       }
       case "AMT": {
         const amount = decodeAmt(seg, delimiters, sink);
-        if (amount === undefined) break;
+        // See the 835's AMT case: a row is never built around an amount this
+        // library did not read, so the whole row - qualifier included - is off
+        // the model and that loss is reported at the AMT itself. This is the
+        // only drop on this channel; the `currentAdjudication` skip below is a
+        // deliberate v1 scope limit, not a failed read, and stays silent.
+        if (amount === undefined) {
+          warnings.push(amountRowDropped(position));
+          break;
+        }
         if (currentAdjudication !== undefined) break;
         if (currentServiceLine !== undefined) currentServiceLine.amounts.push(amount);
         else if (currentClaim !== undefined) currentClaim.amounts.push(amount);

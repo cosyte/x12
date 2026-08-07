@@ -25,6 +25,7 @@ import {
   PREMIUM_820_LOOP_2000A,
   PREMIUM_820_LOOP_2300A,
   PREMIUM_820_LOOP_2310A,
+  WARNING_CODES,
   X12Decimal,
   get820Payments,
   parseX12,
@@ -125,7 +126,12 @@ describe("get820Payments - Tier-1 canonical (X218)", () => {
 describe("get820Payments - edge cases (receiver address, RM remitter, skips)", () => {
   it("decodes a receiver (PE) address + REF and an RM-qualified remitter REF", () => {
     const prem = readPremiumFixture("820-edge.edi");
-    expect(prem.warnings).toHaveLength(0);
+    // One warning, and it belongs to the bare `ADX~` further down this fixture
+    // rather than to anything on this test's own subject: its absent ADX-01
+    // takes the adjustment row off the model, which was silent through
+    // `0.0.12`. Asserted by code rather than by count alone so this case
+    // cannot go quietly green on some other warning appearing here.
+    expect(prem.warnings.map((w) => w.code)).toEqual([WARNING_CODES.X12_AMOUNT_ROW_DROPPED]);
 
     expect(prem.payment.transactionHandlingCode).toBe("D");
     expect(prem.payment.method).toBe("CHK");
@@ -151,9 +157,13 @@ describe("get820Payments - edge cases (receiver address, RM remitter, skips)", (
     expect(rem?.openItems[0]?.referenceId).toBe("POL-EDGE");
     expect(rem?.openItems[0]?.amountPaid?.toString()).toBe("100.00");
     expect(rem?.openItems[0]?.amountDue).toBeUndefined();
-    // The valueless DTM and amount-less ADX produce nothing.
+    // The valueless DTM and amount-less ADX put nothing on the model. They are
+    // not equally quiet about it: the ADX raises `X12_AMOUNT_ROW_DROPPED` at
+    // itself, and the DTM is still silent (a date is not an amount, and this
+    // slice deliberately did not widen past the amount rows).
     expect(rem?.dates).toHaveLength(0);
     expect(rem?.adjustments).toHaveLength(0);
+    expect(prem.warnings.map((w) => w.code)).toEqual([WARNING_CODES.X12_AMOUNT_ROW_DROPPED]);
   });
 });
 
