@@ -93,8 +93,8 @@ became false; what changed is that the third remedy shipped.
 
 - **Two `PRE-EXISTING` findings carried forward UNCHANGED, both filed by `#80`'s refuters and neither
   this item's:** an `NM1*87` arriving while a `CLM` is open never reaches the pay-to route (the
-  `context.kind === "loop2000A"` guard) and lands among the claim's provider roles; and
-  `attachContact`'s `/* v8 ignore */` comment still calls
+  `context.kind === "loop2000A"` guard) and lands among provider roles, at a level the bullet below
+  says never to state as one; and `attachContact`'s `/* v8 ignore */` comment still calls
   its `payToAddress` arm "structurally unreachable in v1", which a `PER` after an `NM1*87` reaches.
   **Neither is warned by the new code and the new code does not claim to reach them.**
 
@@ -103,8 +103,12 @@ became false; what changed is that the third remedy shipped.
   slice both say the `CLM`-open `NM1*87` "lands in `claim.providers`". Measured here, head and base:
   that holds only where **no Loop 2400 is open**. With one open it lands on that line's
   `serviceLine.providers` instead - `get-837.ts` tests `currentServiceLine` FIRST and only falls to
-  `currentClaim` when no line is open - and a provider at line level is TR3 Loop **2420A-H**, not
-  2310. The unqualified form was corrected on `KNOWN-LIMITATIONS.md`, `docs-content/troubleshooting.md`
+  `currentClaim` when no line is open - and a provider at line level is TR3 Loop **2420**, not
+  2310. **NAME THE LOOP, NEVER ITS LETTER SPAN:** a remedy draft wrote `2420A-H`, which is 837P's
+  range, on a sentence generalized over P/I/D whose I and D ranges are shorter - the census shape
+  `X12-VARIANT-LOOKUP-PROTOTYPE` forbids, committed while fixing a different overclaim. Cut back to
+  `2420`, which is how the rest of this repo already writes it.
+  The unqualified form was corrected on `KNOWN-LIMITATIONS.md`, `docs-content/troubleshooting.md`
   and the `CHANGELOG` **after** it had shipped in the branch, which is the fifth consecutive slice in
   this lineage where the parser graded correct and the prose did not. **A pre-existing behaviour
   re-described more confidently than it is true is an INTRODUCED defect**, because the confidence is

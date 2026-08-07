@@ -302,7 +302,7 @@ model.
   `NM1*87` arriving while a `CLM` is open never reaches that route, and is neither resolved nor
   warned by this code. **Where it lands instead depends on whether a service line is open, and this
   document does not state a single destination for it**, because two were measured: with a Loop 2400
-  open it joins that line's `serviceLine.providers` (a line-level provider is TR3 Loop 2420A-H), and
+  open it joins that line's `serviceLine.providers` (a line-level provider is TR3 Loop 2420), and
   with a claim but no line open it joins `claim.providers` (Loop 2310). Both are pre-existing and
   identical at `0.0.12`. And a document with **at most one** `NM1*87` per Loop 2000A is unaffected in
   every respect, warning channel included - including the pre-existing case of a lone `NM1*87` with a

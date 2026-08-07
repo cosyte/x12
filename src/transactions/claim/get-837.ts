@@ -283,8 +283,12 @@ export function get837Claims(
    * Loop 2000A. Reset beside `payToAddress` at the Loop 2000A `HL`, because
    * a first `NM1*87` under a later billing provider is a first and not a
    * repeat. Only the pay-to route sets it, so an `NM1*87` arriving while a
-   * `CLM` is open - which falls through to the Loop 2310 branch and never
-   * reaches this slot - neither warns nor arms the warning.
+   * `CLM` is open never reaches this slot and neither warns nor arms the
+   * warning. **Where it lands instead is not one destination**: with a Loop
+   * 2400 open it joins that line's providers, and with a claim but no line
+   * open the claim's. Both are pre-existing and neither is this code's
+   * business; this comment names no single one because a draft did and a
+   * refuter measured it false.
    *
    * @internal
    */

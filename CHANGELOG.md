@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   An `NM1*87` arriving while a `CLM` is open never reaches the pay-to route at all, so it neither
   warns nor arms the warning. **Where it lands instead is not stated as one destination, because two
   were measured:** with a Loop 2400 open it joins that line's `serviceLine.providers` (TR3 Loop
-  2420A-H), and with a claim but no line open it joins `claim.providers` (Loop 2310). Both are
+  2420), and with a claim but no line open it joins `claim.providers` (Loop 2310). Both are
   pre-existing and identical at `0.0.12`.
 
 - **🩺 `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, the 27th Tier-2 warning code, plus the public
