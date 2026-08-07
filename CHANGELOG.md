@@ -1184,20 +1184,6 @@ string, …` - which `esc` cannot, being unary.
   copy is given a new wording and **no per-kind, per-party map is published.** Counterfactual headings ("no longer attaches", "no longer leaves the last `NM1`
   addressable") lose the counterfactual only. The bullet in `documentation/agent-notes.md` beginning
   "RESIDUAL 1, MEASURED AT `93b2428`", and the identically-scoped paragraph in the test header it was
-  **🩺 The pay-to-address half of this item was CUT BACK OUT of this change and is still open.** The
-  same item files, as `PRE-EXISTING`, that a repeated non-conformant `NM1*87` inside one Loop 2000A
-  fuses two pay-to addresses into one: the `N3` line collector appends and the `N4` merge falls back,
-  so the model carries a street from each and an `N4` field the second address omitted. That
-  reproduces unchanged at `0.0.11` and is **not** fixed here. Two remedies were built and both were
-  refuted for moving the loss rather than removing it, so per ADR 0016 the slice is cut back rather
-  than given a third: clearing the accumulator at the `NM1*87` erases the address a repeat with no
-  `N3` / `N4` of its own did state, and replacing at the first following write erases it on a
-  VALUELESS `N3~` / `N4~`. Neither erasure is a neutral absence, and that is the constraint the next
-  attempt has to start from: `build837P/I/D` emits Loop 2010AB only where the slot is defined and
-  emits `N3` / `N4` only for a non-empty value, so an emptied slot re-emits as **no pay-to loop at
-  all** and a half-emptied one re-emits a bare `NM1*87` with neither. **The emit side is therefore in
-  scope for that fix from the start**, which is what made this a separate unit. `documentation/agent-notes.md` carries the measurements.
-
   written from, are **not** copies - both are scoped by "every trailing segment that attaches to a
   named party" - and are deliberately left alone. Nothing a consumer reads at runtime changed:
   neither the warning registry nor any `docs-content/` page nor the README carried the wording, and
@@ -1210,6 +1196,20 @@ string, …` - which `esc` cannot, being unary.
 > file no longer loses its interchange body. The **round-trip** half still stands: `serializeX12` does
 > not re-emit an orphan, so the warning still does not survive. The two entries are kept separate
 > because they were separate changes, and the sentences below describe the release before this one.
+
+- **🩺 A repeated `NM1*87` inside one 837 Loop 2000A fuses two pay-to addresses into one**
+  (`X12-837-LOOP-RESIDUALS`). The `N3` line collector appends and the `N4` merge falls back, so
+  `X12Claim.payToAddress` carries a street from each of two addresses and an `N4` field the second
+  address omitted. Reproduces unchanged at `0.0.11` and is **not** fixed here: two remedies were
+  built and both were refuted for moving the loss rather than removing it, so per ADR 0016 the unit
+  was cut back rather than given a third. Clearing the accumulator at the `NM1*87` erases the
+  address a repeat with no `N3` / `N4` of its own did state; replacing at the first following write
+  erases it on a VALUELESS `N3~` / `N4~`. **Neither erasure is a neutral absence, and that is the
+  constraint the next attempt starts from:** `build837P/I/D` emits Loop 2010AB only where the slot
+  is defined, and `emitAddress` emits `N3` only for a non-empty `lines` and `N4` only for a defined
+  field, so an emptied slot re-emits as **no pay-to loop at all** and a half-emptied one re-emits a
+  bare `NM1*87` with neither. **The emit side is therefore in scope for that fix from the start**,
+  which is what makes it its own unit. `documentation/agent-notes.md` carries the measurements.
 
 - **A segment that falls outside a transaction is dropped from the model, and its warning does not
   survive a round trip.** The envelope walker keeps body segments only while an ST..SE transaction is

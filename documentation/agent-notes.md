@@ -954,9 +954,13 @@ per ADR 0016 the unit was cut back rather than given a third. The wording half s
   same value. A draft's disclosure claimed the symmetry and was refuted on it.
 
 - **AND DO NOT REACH FOR THE NAME.** A draft justified erasing the first address by saying holding it
-  would put one party's street under another party's name. Measured false: **no name from an `NM1*87`
-  reaches the model at all** - the route computes the entity and discards it, and the builder emits a
-  bare `NM1*87*2`. There is no second party and no second name.
+  would put one party's street under another party's name. Measured false: **no name from an
+  `NM1*87` taken by the Loop 2000A route reaches the model** - that route computes the entity and
+  discards it, and the builder emits a bare `NM1*87*2`. There is no second party and no second name.
+  **Scope it to that route and do not write the unqualified form**, which is false: an `NM1*87`
+  arriving while a `CLM` is open never reaches this route at all (the `context.kind === "loop2000A"`
+  guard), falls through to the Loop 2310 branch, and its name DOES land, on `claim.providers` - the
+  bullet below. A draft published the unqualified form with its own counterexample two bullets down.
 
 - **Two related things measured on the way, neither fixed, neither this item's:** an `NM1*87`
   arriving while a `CLM` is open falls through to the Loop 2310 branch and lands in `claim.providers`

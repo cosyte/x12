@@ -29,6 +29,7 @@ segment that attaches to a named party", are deliberately left alone.
 repeated non-conformant `NM1*87` inside one Loop 2000A still fuses two pay-to addresses into one, at
 `0.0.11` and here. Two remedies were built and both were refuted for moving the loss rather than
 removing it, so the slice is cut back rather than given a third. The constraint the next attempt
-starts from: `build837P/I/D` emits Loop 2010AB only where the slot is defined and emits `N3` / `N4`
-only for a non-empty value, so any remedy that can empty the slot re-emits as no pay-to loop at all.
-The emit side is in scope for that fix from the start.
+starts from: `build837P/I/D` emits Loop 2010AB only where the slot is defined, and `emitAddress`
+emits `N3` only for a non-empty `lines` and `N4` only for a defined field, so a remedy that can
+empty the slot re-emits as no pay-to loop at all and one that can half-empty it re-emits a bare
+`NM1*87` with neither. The emit side is in scope for that fix from the start.
