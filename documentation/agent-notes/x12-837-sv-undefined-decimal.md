@@ -1,5 +1,12 @@
 # X12-837-SV-UNDEFINED-DECIMAL (2026-08-07)
 
+Provenance: this repo's own source tree at `c8e81b4` and at `674f616`, measured (every census, every
+base/head reading and both emitted segments below are runs, not recollections); the registry text in
+`src/parser/warnings.ts`; and the prior slices' sections in `../agent-notes.md`. **No TR3 was read
+and no clause of one is cited here** - `005010X221A1` is named only where this repo's existing code
+and docs already name it, and the two decisions that could have rested on a usage code
+(`SV1-04` / `SV2-05` / `SV3-06`) deliberately do not.
+
 The breaking slice three earlier items deferred by name. Written here rather than in
 `../agent-notes.md`, which was at **249,826** of its 250,000-byte budget when this landed, and
 rather than in `../../CLAUDE.md`, which was at **52,903** of a 52,912 entry. The per-item shape
@@ -29,11 +36,11 @@ Required would be a census, and this repo has been refuted for publishing one fo
 The fabrication census, which IS closed and IS enumerable because it is a property of this source
 tree rather than of a spec:
 
-| route | sites | model slots reached |
-|---|---|---|
-| `elementDecimalOrZero(...)` in a reader | 16 | 12 |
-| `elementDecimal(...) ?? X12Decimal.ZERO` on a `CAS` / `PLB` triple | 3 | 2 |
-| a seeded accumulator or an `EMPTY_HEADER` constant | 4 | 3 (all already above) |
+| route                                                              | sites | model slots reached   |
+| ------------------------------------------------------------------ | ----- | --------------------- |
+| `elementDecimalOrZero(...)` in a reader                            | 16    | 12                    |
+| `elementDecimal(...) ?? X12Decimal.ZERO` on a `CAS` / `PLB` triple | 3     | 2                     |
+| a seeded accumulator or an `EMPTY_HEADER` constant                 | 4     | 3 (all already above) |
 
 Fourteen distinct model slots: `X12Claim.totalCharge` (CLM-02); `X12_837ServiceLineBase.charge` and
 `.units` (SV1-02 / SV2-03 / SV3-02 and SV1-04 / SV2-05 / SV3-06);
@@ -44,10 +51,16 @@ and `.patientResponsibilityAmount` (CLP-03 / 04 / 05); `X12RemitServiceLine.char
 `X12RemitAdjustment.amount` (a `CAS` triple, read by the 837 as well as the 835); and
 `X12RemitProviderAdjustment.amount` (a `PLB` pair).
 
-**`X12ClaimAmount.amount`, `X12RemitAmount.amount` and `X12PremiumAdjustment.amount` were NOT
-widened**, and the reason is worth keeping: their decoders already drop the whole record when the
-amount does not decode (`decodeAmt` / `decodeAdx` return `undefined`), so no fabricated zero could
-reach them. Widening them would have been type churn with no defect behind it.
+**A required `X12Decimal` slot that was NOT widened is not an oversight, and NO LIST OF THEM IS
+PUBLISHED.** The rule is the claim: a slot was widened exactly where a reader could substitute
+`X12Decimal.ZERO` into it. Where a decoder instead drops the whole record when the amount does not
+decode - the `AMT` / `ADX` shape, whose decoders return `undefined` for the row - no fabricated zero
+could ever reach the slot, so widening it would have been type churn with no defect behind it.
+**A first draft of this file named three such slots and pass 1 measured a fourth**
+(`X12EnrollmentAmount.amount`), which is the census failure `CLAUDE.md` records four separate times.
+Finding one more is expected and is not a new finding; the claim was cut back rather than the list
+grown. **Those rows are dropped with no warning at all, on both trees** (`AMT*AU~` gives
+`claim.amounts: []` and `warnings: []`), which is `PRE-EXISTING` and filed below.
 
 ## The emit side, answered rather than mentioned
 
@@ -80,7 +93,7 @@ shape that gets refuted. Two emit-side facts were measured before deciding anyth
 **A term that did not decode makes the equation unevaluable, which is a third outcome and not a
 failure.** Reporting `X12_835_REMIT_BALANCE_MISMATCH` would assert a computed inequality that was
 never computed; reporting nothing would be a REGRESSION in the warning channel, because through
-`0.0.12` an absent `CLP-03` collapsed to zero and *did* raise a mismatch. So the third outcome got
+`0.0.12` an absent `CLP-03` collapsed to zero and _did_ raise a mismatch. So the third outcome got
 its own code, `X12_835_BALANCE_NOT_EVALUABLE`, the 29th Tier-2 code, keyed by the same
 `BALANCE_INVARIANTS` discriminant the mismatch uses.
 
@@ -90,10 +103,15 @@ its own code, `X12_835_BALANCE_NOT_EVALUABLE`, the 29th Tier-2 code, keyed by th
 - **`enforceBalance` branches on the code, not on truthiness**, and raises
   `X12_835_BUILD_INVALID_SPEC` for the not-evaluable verdict rather than its balance-mismatch code.
   A JS caller passing `undefined` in a balance slot got an untyped `TypeError` off `undefined.add`
-  through `0.0.12`; it is a typed refusal now. **A raw `number` in the same slot still throws the
-  untyped `TypeError`**, unchanged, so the dichotomy
-  `test/builder-decimal-type.test.ts` pins ("a slot refuses UNTYPED exactly when the balance guard
-  reads it") did not move: that suite forges `0.1 + 0.2`, never `undefined`.
+  through `0.0.12`; it is a typed refusal now. **A raw `number` in the same slot still throws an
+  untyped `TypeError`, so the dichotomy `test/builder-decimal-type.test.ts` pins ("a slot refuses
+  UNTYPED exactly when the balance guard reads it") did not move** - that suite forges `0.1 + 0.2`,
+  never `undefined`. **State it as "an untyped `TypeError`", not "the same one":** pass 1 measured
+  that on some slots it now comes from `X12Decimal.state()` ("has no internal state - was it
+  tampered with?") where base reached `.add is not a function`, because `sumOptional` calls
+  `X12Decimal.add(term)` rather than `term.add(...)`. Both forms were already in that suite's
+  message regex, which is why it stayed green; the arm a slot lands in is what the rule is about,
+  and no slot changed arm.
 - The refusal was written as six explicit `throw`s rather than one helper taking a `scope` string.
   A helper would have put `${scope}` in a refusal template, and `test/builder-refusal-bounds.test.ts`
   sanctions holes by NAME - admitting a parameter there weakens a gate that has already gone slack
@@ -129,6 +147,18 @@ half is green on both trees precisely so it can catch that later.
   `SVx` never decoded reads `undefined` for the same reason a decoded `SVx` with an empty charge
   element does, and only `X12_837_SERVICE_LINE_NOT_DECODED` tells those apart. Never write that
   `undefined` means "the sender omitted it".
+- **An `AMT` / `ADX` row whose amount element does not decode is dropped with NO warning on any
+  channel.** `AMT*AU~` gives `claim.amounts: []` and `warnings: []`, identically on both trees.
+  `PRE-EXISTING`, measured by pass 1, and its own slice: closing it needs a retention decision and a
+  registry code, neither of which belongs in a type widening.
+- **SV3-06's TR3 usage is NOT grounded, and the emit-side refusal does not claim it is.** `units`
+  became required for all three variants on one argument that needs no usage code (a serializer may
+  not state a count nobody supplied), but nobody here has read X224A2. Pass 1 measured the cost:
+  this repo's own `test/fixtures/golden/837d.edi` carries `SV3*AD:D2391**11*OC:MO:DO*5*1`, which
+  reads `charge: undefined` and `units: 1`, so it cannot be fed straight back through `build837D`
+  without inventing a charge - though `charge` was already a required spec field, so that half is
+  unchanged here. An availability trade, recorded rather than argued away; worth a grounding item if
+  anyone gets the X224A2 text.
 - **The five `PRE-EXISTING` defects filed under `X12-837-RESIDUALS` are untouched** and carried
   forward: the stray `SVx` that re-types a whole submission, the `NM1*87` with a `CLM` open landing
   in `claim.providers`, `attachContact`'s `/* v8 ignore */` `payToAddress` arm, the Loop 2010AB short

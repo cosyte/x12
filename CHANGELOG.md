@@ -28,6 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `X12_835_BUILD_INVALID_SPEC` rather than as its balance-mismatch code, and is unreachable there
   from TypeScript because every balance term on `Build835Spec` is a required `X12Decimal`.
 
+  **🩺 GATE ON BOTH CODES.** A posting gate written against `X12_835_REMIT_BALANCE_MISMATCH` alone
+  **stops firing** on these documents when you upgrade, because through `0.0.12` the undecoded term
+  collapsed to zero and raised the mismatch. This library warns either way; your gate has to look
+  for both. The recipes in `docs-content/quickstart.md` and `docs-content/cookbook.md` and the
+  triage table in `docs-content/troubleshooting.md` were corrected with the code, and a committed
+  test pins that the one-code gate misses a document the two-code gate catches.
+
 - **🩺 `X12_837_PAY_TO_ADDRESS_REPEATED`, the 28th Tier-2 warning code, plus the public factory
   `payToAddressRepeated(position)`** (`X12-PAY-TO-FUSION`). Raised at the **second and each
   subsequent `NM1*87` within one Loop 2000A**, where the TR3s allow Loop 2010AB at most once.
@@ -226,8 +233,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   caller passing `undefined` reached `undefined.add` inside the balance guard. It is now
   `X12_835_BUILD_INVALID_SPEC` with the registry text, and deliberately **not**
   `X12_835_BUILD_BALANCE_MISMATCH`: nothing was measured out of balance, a required amount is simply
-  missing. Passing a raw `number` into a balance term still throws an untyped `TypeError` from the
-  same guard, unchanged and still disclosed in `KNOWN-LIMITATIONS.md`.
+  missing. Passing a raw `number` into a balance term still throws **an** untyped `TypeError` from
+  the same guard, so the documented dichotomy did not move; on some slots the message is now
+  `X12Decimal`'s own tampering text where it used to be `.add is not a function`, which the pinned
+  regex already admitted. Still disclosed in `KNOWN-LIMITATIONS.md`.
 
 - **`KNOWN-LIMITATIONS.md` now ships in the published tarball** (`X12-837-LOOP-RESIDUALS`). Two
   shipped warning messages, `X12_837_SERVICE_LINE_DROPPED` and

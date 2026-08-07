@@ -60,9 +60,11 @@ model.
   and that this library cannot decode as a decimal (`1,234.56`, `$450.00`, `N/A`) yields no value,
   and the reader has to put something in its place. **Through `0.0.12` a slot typed `X12Decimal` got
   `X12Decimal.ZERO`**, so a consumer that read only the model saw a `0` where the payer sent
-  something unreadable; **as of `0.0.13` every such slot is `X12Decimal | undefined` and reads
-  `undefined`**, which is a breaking type change on the read model and is the point of it. An
-  optional slot already read `undefined`, and some rows are still dropped whole. **Every one of those
+  something unreadable; **as of `0.0.13` no reader substitutes `X12Decimal.ZERO` for a value it did
+  not decode** - every slot that used to get one is `X12Decimal | undefined` and reads `undefined`,
+  which is a breaking type change on the read model and is the point of it. **Read that as a rule
+  about the substitution, not as a census of the model:** an optional slot already read `undefined`,
+  and some rows are still dropped whole, which is a different shape and unchanged here. **Every one of those
   outcomes emits `X12_UNPARSEABLE_DECIMAL` at the failing `position.elementIndex`, because the
   warning is a property of the READ rather than of what the reader then does with it.** No list of
   the outcomes is published here, on purpose: a first draft enumerated three and a review measured a

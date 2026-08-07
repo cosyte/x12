@@ -63,9 +63,12 @@ which cannot express "did not decode", so a claim's `totalPaymentAmount`, a serv
 `chargeAmount` and an 837's `totalCharge` all fell back to `X12Decimal.ZERO`. A consumer reading the
 model could not tell that `0` from a zero the sender did state.
 
-**As of `0.0.13` every one of those slots is `X12Decimal | undefined`, and `undefined` is what a
-reader puts there when it decoded no value.** That is a breaking type change on the read model, and
-it is the point of it: the two facts are spec-distinct and now the model says which one you have.
+**As of `0.0.13` no reader substitutes `X12Decimal.ZERO` for a value it did not decode.** Every slot
+that used to get one is `X12Decimal | undefined` and reads `undefined` instead. That is a breaking
+type change on the read model, and it is the point of it: the two facts are spec-distinct and now
+the model says which one you have. Read it as a rule about the substitution rather than as a census
+of the model: a row whose amount does not decode is sometimes dropped whole instead, and no total is
+published here.
 
 An element that is present and does not match the shape `X12Decimal` decodes also emits
 **`X12_UNPARSEABLE_DECIMAL`**, carrying the failing element in `position.elementIndex`, so the two

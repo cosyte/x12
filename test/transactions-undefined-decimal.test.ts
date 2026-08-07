@@ -336,6 +336,34 @@ describe("🩺 835: a term that did not decode makes an invariant UNEVALUABLE, n
     expect(w[0]?.message).toContain("BPR-02");
   });
 
+  it("🩺 a posting gate written against the MISMATCH alone stops firing; both codes are needed", () => {
+    // Pass 1 of the conformance gate refuted the slice on exactly this: the
+    // package's own published "do NOT auto-post" recipe named one code, and
+    // this document moved from that code to the other. The recipe now names
+    // both, and this is what holds it there.
+    const remit = parse835([
+      BPR,
+      TRN,
+      "LX*1~",
+      "CLP*PT-ACCT-001*1**450.00*50.00*MC*PAYER-CLAIM-001*11*1~",
+      SVC,
+      CAS,
+    ]);
+    const mismatchOnly = remit.warnings.some(
+      (w) => w.code === WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
+    );
+    const bothCodes = remit.warnings.some(
+      (w) =>
+        w.code === WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH ||
+        w.code === WARNING_CODES.X12_835_BALANCE_NOT_EVALUABLE,
+    );
+    // Through `0.0.12` the one-code gate caught this document. It no longer
+    // does, and that is the migration cost the CHANGELOG and both recipes now
+    // state rather than leave for a consumer to discover in a posting run.
+    expect(mismatchOnly).toBe(false);
+    expect(bothCodes).toBe(true);
+  });
+
   it("an 835 with no BPR at all reads totalActualPayment as undefined, not 0", () => {
     // The transaction is malformed (X221A1 makes the BPR mandatory) but
     // reachable, and the empty payment header used to seed a confident zero.
