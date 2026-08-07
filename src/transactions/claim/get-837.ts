@@ -57,6 +57,7 @@ import {
   hlParentLevelInvalid,
   hlParentMismatch,
   missingRequiredLoop,
+  payToAddressRepeated,
   serviceLineDropped,
   serviceLineNotDecoded,
   serviceSegmentWithoutLx,
@@ -65,6 +66,7 @@ import {
   unknownHiQualifier,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
+import { statesAnAddress } from "./address-segments.js";
 import type { X12RemitAdjustment } from "../remit/types.js";
 import {
   isDiagnosisQualifier,
@@ -261,6 +263,32 @@ export function get837Claims(
   let receiver: X12ClaimEntity | undefined;
   let billingProvider: X12ClaimEntity | undefined;
   let payToAddress: X12ClaimAddress | undefined;
+  /**
+   * The address the CURRENT `NM1*87` has built so far, reset at each one.
+   *
+   * `payToAddress` is a bare accumulator with no entity object to own it, so
+   * unlike every other party it had nothing to be replaced at a repeated
+   * `NM1*87`: an `N3` / `N4` after the second one wrote onto whatever the
+   * first left, `withLines` appending and `mergeAddress` falling back, and
+   * the model came back holding a street from each of two addresses with
+   * `warnings: []`. This binding is that missing object identity - the two
+   * address arms read and write it, never `payToAddress`, so values from two
+   * occurrences can never meet.
+   *
+   * @internal
+   */
+  let pendingPayToAddress: X12ClaimAddress | undefined;
+  /**
+   * True once an `NM1*87` has been routed to the pay-to slot in the CURRENT
+   * Loop 2000A. Reset beside `payToAddress` at the Loop 2000A `HL`, because
+   * a first `NM1*87` under a later billing provider is a first and not a
+   * repeat. Only the pay-to route sets it, so an `NM1*87` arriving while a
+   * `CLM` is open - which falls through to the Loop 2310 branch and never
+   * reaches this slot - neither warns nor arms the warning.
+   *
+   * @internal
+   */
+  let payToAddressNamed = false;
   let payToPlan: X12ClaimEntity | undefined;
   let currentSubscriberMember: X12ClaimMember | undefined;
   let currentPayer: X12ClaimEntity | undefined;
@@ -419,7 +447,20 @@ export function get837Claims(
       currentPatientMember = { ...(currentPatientMember as X12ClaimMember), entity: next };
     },
     setPayToAddress: (next) => {
-      payToAddress = next;
+      pendingPayToAddress = next;
+      // The commit rule, and the whole reason this slice had to scope the
+      // emit side in from the start. `build837P/I/D` gates Loop 2010AB on
+      // `payToAddress !== undefined` and `emitAddress` writes N3 only for
+      // non-empty lines and N4 only for a defined field, so on this slot an
+      // emptied value is not a neutral absence - it re-emits as no pay-to
+      // loop at all, or as a bare `NM1*87`, both positive statements about
+      // where a payment goes that no sender made. So the current occurrence
+      // takes the slot only when it states an address the emit side would
+      // write at least one segment for. An occurrence that states none
+      // leaves a stated one alone; the `undefined` arm is only the case
+      // where there is nothing to leave alone, and it is what keeps a lone
+      // `NM1*87` + valueless `N3` reading exactly as it did at 0.0.12.
+      if (statesAnAddress(next) || payToAddress === undefined) payToAddress = next;
     },
     setOtherSubscriber: (next) => {
       (currentOtherSubscriber as OtherSubscriberAccumulator).otherSubscriber = next;
@@ -434,7 +475,10 @@ export function get837Claims(
     getCurrentSubscriber: () => currentSubscriberMember?.entity,
     getCurrentPayer: () => currentPayer,
     getCurrentPatient: () => currentPatientMember?.entity,
-    getCurrentPayToAddress: () => payToAddress,
+    // Deliberately the CURRENT occurrence's accumulator, never the committed
+    // slot: this is the getter both address arms build onto, and reading the
+    // committed slot here is exactly what fused two `NM1*87`s.
+    getCurrentPayToAddress: () => pendingPayToAddress,
     getCurrentOtherSubscriber: () => currentOtherSubscriber?.otherSubscriber,
     getCurrentOtherPayer: () => currentOtherSubscriber?.otherPayer,
   };
@@ -462,6 +506,8 @@ export function get837Claims(
           // hold submitter/receiver (header scope) across HLs.
           billingProvider = undefined;
           payToAddress = undefined;
+          pendingPayToAddress = undefined;
+          payToAddressNamed = false;
           payToPlan = undefined;
           context = { kind: "loop2000A" };
         } else if (hl.levelCode === HL_LEVEL_CODES.SUBSCRIBER) {
@@ -549,6 +595,16 @@ export function get837Claims(
           // The 005010 X222A2/X223A3/X224A2 specs use NM1*87 only for the
           // pay-to ADDRESS; the name is preserved on tx.segments but not
           // re-surfaced as a separate entity until a real consumer asks.
+          // The TR3s allow Loop 2010AB at most once per Loop 2000A, and the
+          // model has one slot for it, so a repeat is reported rather than
+          // resolved silently - the resolution below cannot put both
+          // addresses on the model and this is the only thing that says so.
+          if (payToAddressNamed) warnings.push(payToAddressRepeated(position));
+          payToAddressNamed = true;
+          // A fresh accumulator per occurrence: this is the assignment that
+          // ends the fusion. Without it the next N3/N4 builds onto the
+          // previous NM1*87's address instead of onto an empty one.
+          pendingPayToAddress = undefined;
           activeEntity = { kind: "payToAddress" };
         } else if (
           qualifier === NM1_QUALIFIERS.PAY_TO_PLAN &&

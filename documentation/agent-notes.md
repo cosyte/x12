@@ -18,6 +18,7 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 - [PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL (2026-08-06)](#phi-scan-observed-nothing-is-global-2026-08-06)
 - [REFUSAL-MESSAGE-PHI-ECHO (2026-08-06)](#refusal-message-phi-echo-2026-08-06)
 - [X12-DISCARD-AFTER-STRAY-LX (2026-08-06)](#x12-discard-after-stray-lx-2026-08-06)
+- [X12-PAY-TO-FUSION (2026-08-07)](agent-notes/x12-pay-to-fusion.md) - closes the one below
 - [X12-837-LOOP-RESIDUALS: the pay-to-address fusion, cut back (2026-08-07)](#x12-837-loop-residuals-the-pay-to-address-fusion-cut-back-2026-08-07)
 - [X12-837-LOOP-RESIDUALS (2026-08-05)](#x12-837-loop-residuals-2026-08-05)
 - [X12-277-SVC07-NOT-DECODED (2026-08-05)](#x12-277-svc07-not-decoded-2026-08-05)
@@ -918,6 +919,10 @@ undefined` check, and the flag can only hold where no claim is open, so neither 
 **Filed by the slice that finished the wording sweep and did NOT fix this. Read it before the next
 attempt, which should not rediscover any of it.** Two remedies were built and both were refuted, so
 per ADR 0016 the unit was cut back rather than given a third. The wording half shipped alone.
+
+**▶ CLOSED** by [`agent-notes/x12-pay-to-fusion.md`](agent-notes/x12-pay-to-fusion.md). Nothing below
+became false and nothing here was edited: the two refuted remedies are the record this section
+carries.
 
 - **THE DEFECT, MEASURED AT `63a70bc`, WHICH IS PUBLISHED `0.0.11`.** `NM1*87` names the pay-to
   address with no entity object to hold it: `payToAddress` is a bare `X12ClaimAddress` accumulator,

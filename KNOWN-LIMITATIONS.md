@@ -265,6 +265,46 @@ model.
     following a **stray** `LX` belongs to is not derivable from the TR3s in either direction, so the
     reader refuses to attribute it rather than guessing.
 
+- **🩺 An 837 Loop 2000A that names the pay-to address more than once has only ONE slot on the model
+  to put it in, and the model carries one of the addresses rather than both.** The TR3s allow Loop
+  2010AB at most once per Loop 2000A, so a repeated `NM1*87` is a non-conformant document. Each one
+  raises `X12_837_PAY_TO_ADDRESS_REPEATED`, anchored at the repeated `NM1*87`, so the choice below is
+  never made in silence.
+
+  **🩺 Through `0.0.12` the two addresses were FUSED, and that is what changed.** `payToAddress` is a
+  bare accumulator with no entity object to own it, so unlike every other party there was nothing to
+  be replaced at the repeat: `withLines` appended and `mergeAddress` fell back, and two `NM1*87`s
+  each carrying an `N3` and an `N4` read back a street line from **each** address plus a
+  `countryCode` off the **first** `N4`, on an address whose own `N4` names no country, with
+  `warnings: []`. Re-emitted through `build837P` that was one Loop 2010AB naming a payment
+  destination no sender stated. **If you read a repeated `NM1*87` on `0.0.12` or earlier, treat that
+  claim's `payToAddress` as unreliable rather than as either sender's address.**
+
+  **The rule now applied, and it is stated in the emit side's terms because the emit side reads this
+  slot:** occurrences are never merged; the **last occurrence that states an address of its own**
+  takes the slot; and an occurrence that states none - one with no `N3` or `N4` at all, or only a
+  valueless `N3` / `N4` whose elements are empty - **does not blank one that did**. "States an
+  address" means exactly what `emitAddress` would write a segment for, and reader and writer share
+  one predicate so they cannot disagree. That last clause is not a nicety: `build837P/I/D` gates Loop
+  2010AB on `payToAddress !== undefined`, so a slot cleared or blanked by a repeat that stated
+  nothing would re-emit as **no pay-to loop**, or as a **bare `NM1*87`** carrying neither `N3` nor
+  `N4`. Both say something about where a payment goes that the sender did not.
+
+  **🩺 The cost, which is real and is not argued away: a repeat that states only PART of an address
+  puts only that part on the model, and re-emits only that part.** A second `NM1*87` followed by an
+  `N4` and no `N3` reads back that `N4` with `lines: []` and re-emits a Loop 2010AB with no `N3`,
+  where `0.0.12` emitted a complete-looking address assembled from two. Keeping the earlier street
+  lines is the fusion itself, so they are not kept. **Which occurrence the sender meant is not
+  derivable from the TR3s**, and the losing occurrence's address is **not on the model in any form** -
+  `tx.segments` is where its bytes are, and remains the only complete account of the document.
+
+  **Two bounds, both measured.** This is scoped to the pay-to route, which lives in Loop 2000A: an
+  `NM1*87` arriving while a `CLM` is open never reaches it, falls through to the Loop 2310 branch and
+  lands on `claim.providers` as a provider role, unchanged and unwarned by this code. And a document
+  with **at most one** `NM1*87` per Loop 2000A is unaffected in every respect, warning channel
+  included - including the pre-existing case of a lone `NM1*87` with a valueless `N3`, which still
+  reads an address with no elements and still re-emits a bare `NM1*87`.
+
 - **🩺 Through `0.0.9`, a lookup keyed by document bytes could be defeated by a key inherited from
   `Object.prototype`, and the affected code paths reported nothing.** The bundled code lists, the
   837's variant resolution, and the 837's HL parent-level map were built as plain object literals,

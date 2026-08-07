@@ -30,6 +30,7 @@
  */
 
 import { CLAIM_837_BUILD_ERROR_CODES, Claim837BuildError } from "./build-errors.js";
+import { emitsGeographicFields, emitsStreetLines } from "./address-segments.js";
 import type {
   Build837AddressSpec,
   Build837AdjudicationSpec,
@@ -814,15 +815,10 @@ function emitEntity(entity: Build837EntitySpec, body: string[], ctx: EmitContext
 
 /** Emit N3 + N4 for an address block. @internal */
 function emitAddress(address: Build837AddressSpec, body: string[], ctx: EmitContext): void {
-  if (address.lines.length > 0) {
+  if (emitsStreetLines(address)) {
     body.push(ctx.seg(["N3", ...address.lines.map(ctx.esc)]));
   }
-  if (
-    address.city !== undefined ||
-    address.state !== undefined ||
-    address.postalCode !== undefined ||
-    address.countryCode !== undefined
-  ) {
+  if (emitsGeographicFields(address)) {
     body.push(
       ctx.seg([
         "N4",

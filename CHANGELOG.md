@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🩺 `X12_837_PAY_TO_ADDRESS_REPEATED`, the 28th Tier-2 warning code, plus the public factory
+  `payToAddressRepeated(position)`** (`X12-PAY-TO-FUSION`). Raised at the **second and each
+  subsequent `NM1*87` within one Loop 2000A**, where the TR3s allow Loop 2010AB at most once.
+  `position.segmentIndex` names the repeated `NM1*87` itself and carries no `elementIndex`: what is
+  reported is a second occurrence of the segment, not a defect in any element of it. The counter
+  resets at the Loop 2000A `HL`, beside the pay-to slot it guards, so a first `NM1*87` under a later
+  billing provider is a first and not a repeat.
+
+  The model has **one** pay-to address slot, so it cannot carry two, and this code is the only thing
+  that says the document named two. It reports that the **document** repeated the loop; it does not
+  report that anything was mis-read, and it says nothing about the subjects of the other 837 codes.
+  An `NM1*87` arriving while a `CLM` is open never reaches the pay-to route at all (it falls through
+  to the Loop 2310 branch), so it neither warns nor arms the warning.
+
 - **🩺 `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, the 27th Tier-2 warning code, plus the public
   factory `entitySegmentDiscardedAfterLx(position)`** (`X12-DISCARD-AFTER-STRAY-LX`). Raised for
   each 837 `N3` / `N4` / `PER` / `REF` that reached **no party at all** because an earlier `LX` with
@@ -555,6 +569,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and no published type changed.
 
 ### Fixed
+
+- **🩺 A repeated `NM1*87` in one 837 Loop 2000A no longer fuses two pay-to addresses into one the
+  sender never sent** (`X12-PAY-TO-FUSION`). Reproduced at `0.0.12`: `payToAddress` is a bare
+  accumulator with no entity object to own it, cleared only at the next Loop 2000A `HL`. Every other
+  party gets a fresh object at its `NM1`, so a trailing `N3` / `N4` found `address === undefined` and
+  its write replaced; the two pay-to arms had nothing replaced under them and wrote onto whatever the
+  previous `NM1*87` left, `withLines` appending and `mergeAddress` falling back. Two `NM1*87`s each
+  with an `N3` and an `N4` read back **a street line from each of two addresses** plus a
+  `countryCode` taken off the **first** `N4`, on an address whose own `N4` names no country, with
+  `warnings: []`. Re-emitted through `build837P` that became a single Loop 2010AB stating a payment
+  destination no sender had stated.
+
+  **The fix is the missing object identity, not a clear.** Each `NM1*87` now opens a fresh
+  accumulator that the address arms read and write, so values from two occurrences can never meet.
+
+  **🛑 Two earlier remedies were refuted, both for one reason, and it is why the emit side was in
+  scope from the start: on this slot an emptied value is not a neutral absence, because the emit side
+  reads it.** `build837P/I/D` gates Loop 2010AB on `payToAddress !== undefined` and `emitAddress`
+  writes `N3` only for non-empty `lines` and `N4` only for a defined field. Clearing the accumulator
+  at the `NM1*87` therefore erased an address a repeat carrying no `N3` / `N4` did state, re-emitting
+  as **no pay-to loop at all**; a flag consumed by the first write after it did the same on a
+  valueless `N3` or `N4`, re-emitting as a **bare `NM1*87`**. Both are positive statements about
+  where a payment goes that no sender made. So the rule is stated in the emit side's own terms: the
+  current occurrence takes the slot **only when it states an address the emit would write at least
+  one segment for**, and an occurrence that states none leaves a stated one alone. The predicate is a
+  single shared module (`src/transactions/claim/address-segments.ts`) that `emitAddress` also asks,
+  so the reader and the writer cannot drift apart. This is the discipline the 835 already uses, where
+  the emit guard reuses the read side's own balance validators.
+
+  **A document with at most one `NM1*87` per Loop 2000A is byte-for-byte unaffected**, warning
+  channel included, and that is pinned both ways.
+
+  **🩺 The cost, stated rather than argued away: a repeat that states only part of an address now
+  re-emits only that part.** A second `NM1*87` followed by an `N4` and no `N3` reads back that `N4`
+  with `lines: []` and re-emits a Loop 2010AB with no `N3`. Keeping the earlier occurrence's street
+  lines there **is** the fusion: one sender's street under another sender's city. The loop is still
+  present, the warning is on the channel, and what is gone is the fabricated street.
+  `KNOWN-LIMITATIONS.md` records it.
 
 - **🩺 `build278Request` / `build278Response` refuse a review whose HL-03 level code is outside `EV`
   and `SS`, instead of emitting a review its own reader cannot decode**

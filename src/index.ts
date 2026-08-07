@@ -42,6 +42,7 @@ export {
   missingIea,
   missingRequiredLoop,
   missingSe,
+  payToAddressRepeated,
   pre005010,
   remitBalanceMismatch,
   segmentCountMismatch,
