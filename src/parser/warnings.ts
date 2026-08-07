@@ -86,6 +86,7 @@ export const WARNING_CODES = {
   X12_837_SERVICE_LINE_DROPPED: "X12_837_SERVICE_LINE_DROPPED",
   X12_837_SERVICE_SEGMENT_WITHOUT_LX: "X12_837_SERVICE_SEGMENT_WITHOUT_LX",
   X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX: "X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX",
+  X12_837_PAY_TO_ADDRESS_REPEATED: "X12_837_PAY_TO_ADDRESS_REPEATED",
 } as const;
 
 /**
@@ -334,6 +335,8 @@ const WARNING_MESSAGES = {
     "837 service segment with no Loop 2400 to read it into: no service line was open at the SV1 / SV2 / SV3 at `position.segmentIndex`, so NOTHING it carries - its charge, units, procedure code, modifiers, unit of measure and place of service - was read. Read that literally: an LX may well appear earlier in the transaction, and what this reports is that none of them had opened a Loop 2400 still current at this segment. No line appears on any claim's `serviceLines` for it and nothing is fabricated to stand in. Compare the two codes anchored at an LX: `X12_837_SERVICE_LINE_DROPPED`, where an LX IS present and opened no line, and `X12_837_SERVICE_LINE_NOT_DECODED`, where the line is on the model and only its service segment went unread. Neither of those can report the SAME service segment as this code, because both are raised at an LX and this one only where no Loop 2400 is open; a document with several claims can still carry all three. This says NOTHING about how the submission's variant resolved: absent a caller-supplied `type` option, and where ST-03 names no known implementation convention, the reader falls back to the first SV1 / SV2 / SV3 in the transaction, and a segment reported here is eligible for that fallback like any other, so a stray one can decide the variant every line is read against. Read `submission.variant`. The verbatim segments are preserved on the transaction set; read them there before concluding the claim had no service lines.",
   X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX:
     "837 entity segment read into nothing after a dropped LX: the N3 / N4 / PER / REF at `position.segmentIndex` arrived while no entity loop was open, because an earlier LX in this transaction opened no Loop 2400 (no CLM was open at it) and closed the entity loop that was current there. NOTHING this segment carries reached the model: no party's `address`, `contacts` or `references` was written from it, and no party, claim or line was synthesized to hold it. This is the code that names THAT loss; `X12_837_SERVICE_LINE_DROPPED` is raised at the LX itself and names the SERVICE LINE's loss, never an entity segment, so the two report different things about the same stretch of the document. Read the bound literally, because this code does NOT report every unattached entity segment: it reports one discarded after such an LX and only while nothing since has opened a new loop, so an N3 / N4 / PER / REF that reaches no party by any other route is still silent, and one arriving after a later NM1 is outside this code's scope, whether or not this reader surfaces that segment kind on that party. It reports that the segment reached NO party; it does not claim it would have reached one had the LX been absent, because this reader does not surface every one of these segment kinds on every party (a PER on a patient or a pay-to address, for one). Which party a segment following a stray LX belongs to is not derivable from the TR3s in either direction, so it is discarded rather than attributed: see KNOWN-LIMITATIONS.md. The verbatim segments are preserved on the transaction set; read them there before concluding a party had no address, no secondary identifier or no contact.",
+  X12_837_PAY_TO_ADDRESS_REPEATED:
+    "837 pay-to address named more than once in one Loop 2000A: the NM1*87 at `position.segmentIndex` is not the first in this Loop 2000A, and the TR3s allow Loop 2010AB at most once there. The model has ONE pay-to address slot, so it cannot carry both, and this code is the only thing that tells you the document named more than one. The reader NEVER merges them: an N3 or N4 after this segment can no longer add a street line to, or fill a blank in, the address an earlier NM1*87 named, which is what this library did through 0.0.12 - it returned a fused address no sender sent, silently. What the slot carries instead is the LAST occurrence that stated an address of its own; an occurrence that states none - one carrying no N3 or N4 at all, or only a valueless N3 or N4 whose elements are empty - does NOT replace one that did, so nothing an earlier occurrence stated is blanked either. Where no occurrence states an address, the slot holds what the FIRST N3 or N4 to arrive under any of them produced, which may be an address with no elements at all, and which is not necessarily the first occurrence's: an occurrence that carries no N3 or N4 writes nothing, so a later one's valueless N3 is the first write and takes a slot still empty. Read that as the corner it is, and never restate it as the first OCCURRENCE winning. Which occurrence the sender meant is NOT decided here and is not derivable from the TR3s, and the losing occurrence's address is NOT on the model in any form. Read the bound literally: this reports repetition within one Loop 2000A, which is where the pay-to route lives, and an NM1*87 arriving while a CLM is open never reaches that route. The verbatim segments are preserved on the transaction set; read them there before acting on where a payment is to be sent.",
 } as const;
 
 /**
@@ -982,6 +985,45 @@ export function entitySegmentDiscardedAfterLx(position: X12Position): X12ParseWa
   return {
     code: WARNING_CODES.X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX,
     message: WARNING_MESSAGES.X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_837_PAY_TO_ADDRESS_REPEATED` warning. Emitted by the 837
+ * helper at the second and each subsequent `NM1*87` within one Loop 2000A,
+ * where the TR3s allow Loop 2010AB at most once. `position` names the
+ * repeated `NM1*87` itself, which is the segment a consumer resolves back
+ * through `tx.segments`; there is no `elementIndex`, because what is being
+ * reported is a second occurrence of the segment rather than a defect in
+ * any element of it.
+ *
+ * Once per repeat, so two repeats in one Loop 2000A are two warnings. The
+ * counter resets at the Loop 2000A `HL`, beside the pay-to slot it guards -
+ * a first `NM1*87` under a later billing provider is a first, not a repeat.
+ *
+ * It reports that the DOCUMENT named the pay-to address more than once. It
+ * does NOT report that anything was mis-read, and it is not a service-line
+ * or entity-segment code: nothing else on the channel says this, and this
+ * says nothing about the other 837 codes' subjects.
+ *
+ * **The rule the reader applies, because a consumer cannot infer it from a
+ * one-slot model:** occurrences are never merged, the last occurrence that
+ * states an address of its own wins, and an occurrence that states none does
+ * not blank one that did. "States an address" means exactly what the emit
+ * side would write a segment for - see `./address-segments.ts`, which both
+ * sides share so they cannot drift.
+ *
+ * @example
+ * ```ts
+ * import { payToAddressRepeated } from "@cosyte/x12";
+ * const w = payToAddressRepeated({ segmentIndex: 12, transactionIndex: 0 });
+ * ```
+ */
+export function payToAddressRepeated(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_837_PAY_TO_ADDRESS_REPEATED,
+    message: WARNING_MESSAGES.X12_837_PAY_TO_ADDRESS_REPEATED,
     position,
   };
 }
