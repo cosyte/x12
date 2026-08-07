@@ -104,21 +104,37 @@ model.
   `0.0.12` `AMT*B6~` gave `claim.amounts: []` and `warnings: []`, which reads exactly like a document
   that never carried the segment. **`X12_AMOUNT_ROW_DROPPED` now reports it**, anchored at the
   `AMT` / `ADX` and carrying **no `elementIndex`**, because one of its two routes is an absent
-  element and an absent element has no index to name. Four surfaces raise it: the 835's claim-level
-  and line-level `AMT`, the 837's claim-level `AMT`, the 834's coverage `AMT` (on that **member's**
-  own `warnings`, exactly as the decimal sink beside it is scoped) and the 820's `ADX`. Three bounds
-  worth stating:
+  element and an absent element has no index to name. Four surfaces raise it: the 835's `AMT`, the
+  837's `AMT`, the 834's coverage `AMT` (on that **member's** own `warnings`, exactly as the decimal
+  sink beside it is scoped) and the 820's `ADX`. On the 835 and the 837 the `AMT` attaches to the
+  open **service line** first and to the claim only when there is none, so **the row lost may be a
+  line-level one** - do not read an unchanged `claim.amounts` as evidence the warning is stale. Four
+  bounds worth stating:
   - **It is additive, and no case moved onto it.** A present-but-undecodable amount still raises
     `X12_UNPARSEABLE_DECIMAL` at its own `elementIndex`, now alongside this code rather than instead
     of it, so a predicate written against that code fires on exactly the documents it fired on
     before. Whether one accompanies this code at the same `segmentIndex` is what tells the absent
     route from the unparseable one, since this code is raised for both and discriminates neither.
-  - **It reports a row dropped because its AMOUNT did not decode, and nothing wider.** A row dropped
-    because no claim, service line, coverage or remittance was open to attach it to is a different
-    loss, is still silent, and was not widened here.
-  - **An 820 `RMR` is not on this channel at all.** `decodeRmr` drops on open-item identity (RMR-01
-    and RMR-02 both empty), never on the amount: an `RMR` with no RMR-04 keeps its row with
-    `amountPaid` left `undefined`, so no row is dropped and reporting one would be false.
+  - **It reports a row whose AMOUNT was read and decoded no value, and nothing wider.** State it as
+    a property of the READ, not of the walker's control flow. A segment discarded before its amount
+    is read is not on this channel (the 834's `AMT` with no `HD` open, the 820's `ADX` with no
+    remittance open), and neither is one whose amount decoded and then found nothing to attach to
+    (the 835's and the 837's `AMT` before any claim). **Do not write it as "nothing open means
+    silent":** the 835 and the 837 decode first, so an `AMT` with an absent amount and no claim open
+    does raise this code.
+  - **🔴 An 820 `RMR` is not on this channel, and the reason is NOT that its row survives.**
+    `decodeRmr` drops on open-item identity (RMR-01 and RMR-02 both empty), **before** RMR-04 is
+    read. So an `RMR` that states an open item and no amount keeps its row with `amountPaid` left
+    `undefined` and there is nothing to report - but an `RMR` that states an **amount and no open
+    item** is dropped whole and silently, taking a stated payment, its payment-action code and its
+    amount due with it. That is the same harm one segment over, it is `PRE-EXISTING` and unchanged
+    here, and it is **not** this code's shape: nothing failed to decode, so covering it is a
+    retention decision of its own.
+  - **A Loop 2430 `AMT` under an open `SVD` is discarded outright, and the report INVERTS there.**
+    With a claim and a line open, the 837's adjudication skip drops an `AMT` that decoded perfectly
+    well, in silence, while one that decoded nothing raises this code - the warning is present
+    exactly where less was lost. A v1 scope limit on the adjudication model, disclosed rather than
+    widened.
 
 - **🩺 An 835 balance invariant with an undecoded term is reported as UNEVALUABLE, not as a
   mismatch.** The three TR3 005010X221A1 §1.10.2 equations (line, claim, top-of-remit) read amounts

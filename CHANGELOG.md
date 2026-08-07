@@ -18,10 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `warnings: []`, which reads exactly like a document that never carried the segment. It is now
   reported, at the `AMT` / `ADX` itself.
 
-  Raised by four surfaces: the 835's claim-level and service-line `AMT`, the 837's claim-level
-  `AMT`, the 834's coverage `AMT` and the 820's `ADX`. The 834's lands on that **member's** own
-  `warnings`, the same per-member scoping the decimal sink beside it already used, because a
-  roster-level report would say a premium was lost without saying whose.
+  Raised by four surfaces: the 835's `AMT`, the 837's `AMT`, the 834's coverage `AMT` and the 820's
+  `ADX`. The 834's lands on that **member's** own `warnings`, the same per-member scoping the
+  decimal sink beside it already used, because a roster-level report would say a premium was lost
+  without saying whose. **On the 835 and the 837 the `AMT` attaches to the open SERVICE LINE first
+  and to the claim only when there is none, so the row lost may be a line-level one** - an unchanged
+  `claim.amounts` is not evidence the warning is stale.
 
   **It carries no `position.elementIndex`**, deliberately. One of its two routes is an absent
   element, and an absent element has no index to name; the segment fixes which element was being
@@ -37,12 +39,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   troubleshooting table were corrected with the code, and a committed test pins both halves - that
   the one-code gate misses the absent-amount document, and that it still fires where it always did.
 
-  **Two bounds, stated because the wider reading is the tempting one.** A row dropped because no
-  claim, service line, coverage or remittance was open to attach it to is a **different** loss, is
-  still silent, and was not widened here. And an 820 `RMR` is not on this channel at all:
-  `decodeRmr` drops on open-item identity (`RMR-01` and `RMR-02` both empty), never on the amount,
-  so an `RMR` with no `RMR-04` keeps its row with `amountPaid` left `undefined` and there is no
-  dropped row to report.
+  **Bounds, stated because the wider reading is the tempting one, and stated as properties of the
+  READ rather than of the walker's control flow.** What is reported is a row whose amount was read
+  and decoded no value. A segment discarded **before** its amount is read is not on this channel
+  (the 834's `AMT` with no `HD` open, the 820's `ADX` with no remittance open), and neither is one
+  whose amount decoded and then found nothing open to attach the row to. **Do not shorten that to
+  "nothing open means silent"** - the 835 and the 837 decode first, so an `AMT` with an absent
+  amount and no claim open does raise this code. An 820 `RMR` is not on this channel either, and
+  **not** because its row survives: `decodeRmr` drops on open-item identity (`RMR-01` and `RMR-02`
+  both empty) **before** `RMR-04` is read, so an `RMR` stating an open item and no amount keeps its
+  row with `amountPaid` left `undefined`, while one stating an amount and **no** open item is
+  dropped whole and silently. That second case, and the 837's Loop 2430 `AMT` which an open `SVD`
+  discards outright, are separate losses recorded in `KNOWN-LIMITATIONS.md` rather than covered
+  here: nothing failed to decode in either, so covering them is a retention decision of its own.
 
 - **🩺 `X12_835_BALANCE_NOT_EVALUABLE`, the 29th Tier-2 warning code, plus the public factory
   `balanceNotEvaluable(position, invariant)`** (`X12-837-SV-UNDEFINED-DECIMAL`). Raised where a term

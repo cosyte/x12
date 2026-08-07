@@ -1,4 +1,4 @@
-# x12 — narrative relocated out of `CLAUDE.md` (2026-08-07)
+# x12 - narrative relocated out of `CLAUDE.md` (2026-08-07)
 
 Relocated to pay for **three** owed trap blocks at once: `X12-PAY-TO-FUSION` and
 `X12-837-SV-UNDEFINED-DECIMAL`, which two consecutive slices left unpaid because the file stood at
@@ -20,7 +20,7 @@ to prevent (meta-repo `documentation/decisions/0023-doc-budgets.md`). The umbrel
 ratchet drop: it lives in `.claude/hooks/doc-budget.mjs`, not in this repo, and it is **LOWERED on a
 shrink, never raised to meet a trap**.
 
-Verbatim, four pieces.
+Verbatim, five pieces.
 
 ## 1. `## Project` - the identity paragraph and the north star
 
@@ -78,10 +78,11 @@ imperative goes back to `CLAUDE.md`.
 > 3. **Crew + knowledgebase feedback loop.** When a standard, decision, or public surface changes,
 >    flag whether a `crew` skill or `knowledgebase` doc needs creating/updating, never silently skip.
 
-## 5. Four per-transaction-invariant bullets, long form
+## 5. Per-transaction-invariant bullets, long form
 
 These are traps, not narrative, so **the imperative of every one of them stayed in `CLAUDE.md`** and
-only the surrounding explanation moved. They are reproduced whole here so nothing is lost. Full
+only the surrounding explanation moved. No count of them is given here: this repo has been wrong
+about a census five separate times and the sections below are the list. They are reproduced whole here so nothing is lost. Full
 detail for all of them is still in the phase sections of `documentation/agent-notes.md`,
 `#phase-9-profiles-and-quirk-attribution` through `#phase-1-envelope-decoder`.
 

@@ -180,6 +180,18 @@ describe("🩺 835 AMT: a row that decodes no amount is reported, not dropped in
     expect(remit.claims).toEqual([]);
     expect(codes(remit.warnings)).not.toContain(WARNING_CODES.X12_AMOUNT_ROW_DROPPED);
   });
+
+  it("BOUND, THE OTHER HALF: with no claim open an ABSENT amount STILL warns", () => {
+    // The qualifier the published bound needs, and pass 1 refuted the slice for
+    // dropping it. The 835 and the 837 decode the amount BEFORE they look for
+    // somewhere to attach the row, so "nothing open" does not make this code
+    // silent - only "the amount decoded" does. The 834 and the 820 return
+    // before reading the amount at all and so ARE silent, which is why the
+    // bound has to be stated per reader or as a property of the READ.
+    const remit = parse835([BPR, TRN, "AMT*B6~"]);
+    expect(remit.claims).toEqual([]);
+    expect(codes(remit.warnings)).toContain(WARNING_CODES.X12_AMOUNT_ROW_DROPPED);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -231,6 +243,44 @@ describe("🩺 837 AMT: the same report on a claim's supplemental amounts", () =
     ]);
     expect(sub.warnings[0]?.position.elementIndex).toBe(2);
     expect(sub.warnings[1]?.position.elementIndex).toBeUndefined();
+  });
+
+  it("a LINE-level AMT reaches the same report, and the loss is the LINE's", () => {
+    // Pass 1 refuted the slice on this: six surfaces called the 837's site
+    // "claim-level", and the walker pushes onto the open service line FIRST.
+    // This package's own dogfooded spec declares AMT situational in Loop 2400
+    // (`loop-spec.ts`), so an X222A1 sales-tax `AMT*T` or postage `AMT*F4` on a
+    // line is exactly the shape being lost. A consumer told to read
+    // `claim.amounts` would find it unchanged and treat the warning as stale.
+    const sub = parse837(["LX*1~", "SV1*HC:99213*500*UN*1***1~", "AMT*T~"]);
+    expect(sub.claims[0]?.serviceLines[0]?.amounts).toEqual([]);
+    expect(sub.claims[0]?.amounts).toEqual([]);
+    expect(codes(sub.warnings)).toEqual([WARNING_CODES.X12_AMOUNT_ROW_DROPPED]);
+  });
+
+  it("BOUND: a Loop 2430 AMT under an open SVD is discarded, and the report INVERTS", () => {
+    // Disclosed rather than widened. With a claim AND a line open, the
+    // adjudication skip discards a Loop 2430 `AMT` outright, so a REMAINING
+    // PATIENT LIABILITY that decoded perfectly well is lost in silence while
+    // one that decoded nothing is reported. The warning is present exactly
+    // where LESS was lost. That is a v1 scope limit on the adjudication model,
+    // not a failed read, and closing it is a retention decision of its own.
+    const decoded = parse837([
+      "LX*1~",
+      "SV1*HC:99213*500*UN*1***1~",
+      "SVD*PAYER01*100.00*HC:99213**1~",
+      "AMT*EAF*75.00~",
+    ]);
+    expect(decoded.claims[0]?.serviceLines[0]?.amounts).toEqual([]);
+    expect(codes(decoded.warnings)).toEqual([]);
+
+    const undecoded = parse837([
+      "LX*1~",
+      "SV1*HC:99213*500*UN*1***1~",
+      "SVD*PAYER01*100.00*HC:99213**1~",
+      "AMT*EAF~",
+    ]);
+    expect(codes(undecoded.warnings)).toEqual([WARNING_CODES.X12_AMOUNT_ROW_DROPPED]);
   });
 
   it("CONTROL: a stated amount and a stated zero both build rows, silently", () => {
@@ -366,15 +416,33 @@ describe("🩺 820 ADX: the amount is element 1, and the same report covers it",
     expect(codes(prem.warnings)).toEqual([]);
   });
 
-  it("BOUND: an 820 RMR is NOT on this channel - its row is retained", () => {
-    // The message says so outright, and this is what holds it. `decodeRmr`
-    // drops on open-item IDENTITY, never on the amount: an RMR with no RMR-04
-    // keeps its row with `amountPaid` undefined, so there is no dropped row to
-    // report and reporting one would be false.
-    const prem = parse820(["RMR*AZ*POL-0001*PI~"]);
-    expect(prem.remittances[0]?.openItems[0]?.referenceId).toBe("POL-0001");
-    expect(prem.remittances[0]?.openItems[0]?.amountPaid).toBeUndefined();
-    expect(codes(prem.warnings)).toEqual([]);
+  it("BOUND: an 820 RMR is NOT on this channel - it drops on IDENTITY, not on its amount", () => {
+    // `decodeRmr` returns undefined when RMR-01 and RMR-02 are BOTH empty,
+    // BEFORE RMR-04 or RMR-05 is read. So an RMR that states an open item and
+    // no amount keeps its row with `amountPaid` undefined - no dropped row, and
+    // reporting one would be false.
+    const kept = parse820(["RMR*AZ*POL-0001*PI~"]);
+    expect(kept.remittances[0]?.openItems[0]?.referenceId).toBe("POL-0001");
+    expect(kept.remittances[0]?.openItems[0]?.amountPaid).toBeUndefined();
+    expect(codes(kept.warnings)).toEqual([]);
+  });
+
+  it("BOUND: an RMR with NO identity is dropped whole and silently, amount and all", () => {
+    // Pass 1 refuted the slice for publishing "an RMR row is retained with its
+    // amounts left undecoded" as if it held for every RMR. It does not, and
+    // this is the case that falsifies it: with RMR-01 and RMR-02 both empty the
+    // row is dropped before the amount is read, so a stated 150.00 payment, its
+    // payment-action code and its amount due are all gone with `warnings: []`.
+    // `PRE-EXISTING` - identical on the base tree - and its own item. It is NOT
+    // this code's shape: nothing failed to decode, so widening this code to
+    // cover it would be the retention decision this slice deliberately defers.
+    const bare = parse820(["RMR~"]);
+    expect(bare.remittances[0]?.openItems).toEqual([]);
+    expect(codes(bare.warnings)).toEqual([]);
+
+    const amountOnly = parse820(["RMR****150.00*150.00~"]);
+    expect(amountOnly.remittances[0]?.openItems).toEqual([]);
+    expect(codes(amountOnly.warnings)).toEqual([]);
   });
 });
 

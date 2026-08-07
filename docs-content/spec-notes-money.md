@@ -181,11 +181,19 @@ Three bounds worth reading literally:
   `X12_UNPARSEABLE_DECIMAL` at its own element, now alongside this code rather than instead of it,
   so a gate you already wrote against that code still fires on exactly the documents it fired on.
   What that gate never saw, on any release, is the absent-amount row above. Gate on both.
-- **It reports a row dropped because its AMOUNT did not decode, and nothing wider.** A row dropped
-  because no claim, service line, coverage or remittance was open to attach it to is a different
-  loss and is still silent.
-- **An 820 `RMR` is not on this channel.** That row is dropped on open-item identity, never on the
-  amount: an `RMR` with no RMR-04 keeps its row with `amountPaid` left `undefined`.
+- **It reports a row whose AMOUNT was read and decoded no value, and nothing wider.** It is a
+  property of the READ, not of the walker's control flow. A segment discarded before its amount is
+  read is not on this channel, and neither is one whose amount decoded and then found nothing open
+  to attach the row to. **Do not read that as "nothing open means silent":** the 835 and the 837
+  decode the amount first, so an `AMT` with an absent amount and no claim open does raise this code.
+- **On the 835 and the 837 the lost row may be a LINE-level one.** Those readers attach an `AMT` to
+  the open service line first and to the claim only when there is none, so an unchanged
+  `claim.amounts` is not evidence the warning is stale.
+- **An 820 `RMR` is not on this channel, and not because its row survives.** `decodeRmr` drops on
+  open-item identity (RMR-01 and RMR-02 both empty) **before** RMR-04 is read: an `RMR` that states
+  an open item and no amount keeps its row with `amountPaid` `undefined`, while one that states an
+  amount and **no** open item is dropped whole and silently. That second case is a separate loss,
+  unchanged by this release, and `KNOWN-LIMITATIONS.md` records it.
 
 ## The operations you need
 

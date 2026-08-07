@@ -1,4 +1,4 @@
-# x12 — the `AMT` / `ADX` absent-amount silent drop (2026-08-07)
+# x12 - the `AMT` / `ADX` absent-amount silent drop (2026-08-07)
 
 `X12-837-RESIDUALS`' `AMT` / `ADX` residual, filed by `#83`'s refuters and deferred there because
 closing it needs a retention decision and a registry code, neither of which belongs in a type
@@ -18,7 +18,7 @@ Reproduced on the base tree at `9db104b`, on all four readers, before anything w
 | reader | segment | amount element | at base |
 |---|---|---|---|
 | `get835` | `AMT` (claim and service line) | AMT-02 | `amounts: []`, `warnings: []` |
-| `get837Claims` | `AMT` (claim) | AMT-02 | `amounts: []`, `warnings: []` |
+| `get837Claims` | `AMT` (claim and service line) | AMT-02 | `amounts: []`, `warnings: []` |
 | `get834Enrollments` | `AMT` (coverage) | AMT-02 | `amounts: []`, member `warnings: []` |
 | `get820Payments` | `ADX` | ADX-01 | `adjustments: []`, `warnings: []` |
 
@@ -38,6 +38,12 @@ Two of this repo's own fixtures already carried the case and the suite asserted 
 `X12_AMOUNT_ROW_DROPPED`, the **30th** Tier-2 code (additions-only), plus the public factory
 `amountRowDropped(position)`.
 
+- **On the 835 and the 837 the row lost may be a LINE-level one.** Both attach an `AMT` to the open
+  service line first and to the claim only when there is none. Pass 1 refuted the slice for calling
+  the 837's site "claim-level" on six surfaces; this package's own dogfooded spec declares `AMT`
+  situational in Loop 2400 (`src/transactions/claim/loop-spec.ts`), so an X222A1 sales-tax `AMT*T` or
+  postage `AMT*F4` on a line is exactly the shape being lost. A consumer told to read `claim.amounts`
+  would have found it unchanged and treated the warning as stale.
 - **Anchored at the `AMT` / `ADX` itself, with NO `elementIndex`.** One of the two routes into it is
   an absent element, and an absent element has no index to name - the same reason
   `X12_837_UNKNOWN_VARIANT` carries none for an absent ST-03. The segment fixes which element was
@@ -76,19 +82,25 @@ spec-note it links to. One phrase, in a paragraph this slice was rewriting anywa
 
 ## The census
 
-**13 of 22 new cases red** against a base tree restored from `9db104b` **by file copy** (`git archive
+**16 of 26 new cases red** against a base tree restored from `9db104b` **by file copy** (`git archive
 | tar -x` into a scratch directory, never `git checkout` in the live tree - that has silently eaten
-uncommitted work twice). The 9 green are exactly the CONTROLs, the BOUNDs, and the additions-only pin
-that must be green on both trees:
+uncommitted work twice). The 10 green are exactly the CONTROLs, the BOUNDs, and the additions-only
+pin that must be green on both trees:
 
-- 4 CONTROLs: a stated amount and a stated zero still build a row and still warn nothing, on the 835,
-  837, 834 and 820. The **stated zero** half is the one that must not collapse into the absent case.
-- 3 BOUNDs: the 835's `AMT` with no claim open, the 834's `AMT` with no `HD` open, and the 820's
-  `RMR`. All three are silent on both trees, deliberately.
-- 1 additions-only pin: the old one-code gate still fires where it fired.
-- 1 registry-membership case whose subject exists only at head.
+- **5 CONTROLs**: a stated amount and a stated zero still build a row and still warn nothing, on the
+  835, 837, 834 and 820. The **stated zero** half is the one that must not collapse into the absent
+  case.
+- **4 BOUNDs**: the 835's `AMT` that DOES decode with no claim open; the 834's `AMT` with no `HD`
+  open; the 820's `RMR` that states an open item and no amount, whose row survives; and the 820's
+  `RMR` that states an amount and NO open item, whose row is dropped whole and silently. All four
+  are silent on both trees, deliberately.
+- **1 additions-only pin**: the old one-code gate still fires where it fired.
 
-**Negative control:** the same file against an `hl7` tree restored the same way collects all 22 cases
+The pass-1 remedy added four cases and two of them are red at base rather than green, because they
+assert head behaviour: the 837's LINE-level `AMT`, and the "with no claim open an ABSENT amount STILL
+warns" half of the bound. The Loop 2430 case is red at base on its head-only half.
+
+**Negative control:** the same file against an `hl7` tree restored the same way collects all 26 cases
 and passes **none** of them - every one dies at `parseX12 is not a function`, because that package's
 barrel has no such export. The apparatus is bound to this package's surface and cannot report green
 against another one.
@@ -101,12 +113,25 @@ vacuous) caught by running the census rather than by reading the file.
 
 ## Bounds, stated because the wider reading is the tempting one
 
-- **It reports a row dropped because its AMOUNT did not decode, and nothing wider.** A row dropped
-  because no claim, service line, coverage or remittance was open to attach it to is a **different**
-  loss. It is still silent and was **not** widened here. Two of the three BOUND cases pin it.
-- **An 820 `RMR` is not on this channel at all.** `decodeRmr` drops on open-item identity (`RMR-01`
-  and `RMR-02` both empty), never on the amount, so an `RMR` with no `RMR-04` keeps its row with
-  `amountPaid` left `undefined`. There is no dropped row, and reporting one would be false.
+- **It reports a row whose AMOUNT was read and decoded no value. State it as a property of the READ,
+  never of the walker's control flow** - that is what pass 1 refuted. A segment discarded BEFORE its
+  amount is read is not on this channel (the 834's `AMT` with no `HD` open, the 820's `ADX` with no
+  remittance open), and neither is one whose amount decoded and then found nothing to attach to. But
+  **"nothing open means silent" is FALSE**: the 835 and the 837 decode first, so an `AMT` with an
+  absent amount and no claim open does raise this code. Measured both ways at head.
+- **🔴 An 820 `RMR` is not on this channel, and NOT because its row survives.** `decodeRmr` returns
+  `undefined` when `RMR-01` and `RMR-02` are both empty, **before** `RMR-04` is read. So an `RMR`
+  that states an open item and no amount keeps its row with `amountPaid` left `undefined` and there
+  is nothing to report - but `RMR****150.00*150.00~` is dropped whole with `warnings: []`, taking a
+  stated 150.00 payment, its payment-action code and its amount due. **The first draft of this bullet
+  published the retention half as if it held for every `RMR`, and pass 1 falsified it with that one
+  segment.** `PRE-EXISTING`, identical on both trees, filed as its own item: nothing failed to decode
+  there, so covering it is a retention decision this slice defers. Both cases are now pinned.
+- **A Loop 2430 `AMT` under an open `SVD` is discarded outright, and the report INVERTS there.** With
+  a claim and a line open, the 837's adjudication skip drops an `AMT*EAF*75.00~` (Remaining Patient
+  Liability, declared in this package's own Loop 2430 spec) in silence, while `AMT*EAF~` raises this
+  code - the warning is present exactly where LESS was lost. A v1 scope limit on the adjudication
+  model rather than a failed read. Disclosed and pinned, not widened.
 - **The model is unchanged.** No slot was widened, no row is retained that was not retained before.
   This closes the SILENCE only, exactly as `X12-837-SV-SILENT-ZERO` did before
   `X12-837-SV-UNDEFINED-DECIMAL` closed the `0`. Retaining a row with an `amount` of `undefined`

@@ -78,12 +78,18 @@ or financial value on the wire.**
 
 - **🩺 AN `AMT`/`ADX` IS A RECORD, NOT A SLOT: no decoded amount (AMT-02, ADX-01) = NO ROW, qualifier
   and reason code gone with it.** `X12_AMOUNT_ROW_DROPPED` at the SEGMENT, **NO `elementIndex`**; the
-  834's goes on the **MEMBER's** `warnings`. **A `for` over an empty filtered array asserts NOTHING.**
+  834's goes on the **MEMBER's** `warnings`. **The 835 and 837 attach an `AMT` to the open LINE
+  first, so the lost row is often LINE-level; never call that site "claim-level".**
 - **🩺 SAY ABSENT, NEVER "does not decode"** (the wider form cost a pass-2 minor): only ABSENT was
   silent, UNPARSEABLE already warned. **Both raise it, NOTHING MOVED off `X12_UNPARSEABLE_DECIMAL`**,
-  and whether one sits at the same `segmentIndex` separates them. **NEVER WIDEN IT** - a row dropped
-  for having no claim/line/coverage/remittance OPEN stays SILENT, and an 820 `RMR` is NOT on this
-  channel (it drops on open-item IDENTITY and keeps `amountPaid: undefined`).
+  and whether one sits at the same `segmentIndex` separates them.
+- **🩺 STATE THE BOUND AS A PROPERTY OF THE READ, NEVER OF CONTROL FLOW. "Nothing open means silent"
+  is FALSE** - the 835/837 decode BEFORE looking for somewhere to attach, so an absent amount with no
+  claim open DOES warn; the 834/820 return first and stay silent. **An 820 `RMR` is off this channel
+  for its OWN reason (it drops on open-item IDENTITY before the amount is read), so NEVER write that
+  its row is RETAINED: `RMR\*\***150.00\*150.00~` is dropped WHOLE and SILENTLY** (`PRE-EXISTING`). A
+Loop 2430 `AMT`under an open`SVD` is discarded silently even when it DECODES, so the report
+  INVERTS there. **An empty filtered array asserts NOTHING - count first.**
 
 ### 🩺 `X12-837-SV-UNDEFINED-DECIMAL` (2026-08-07) · `documentation/agent-notes/x12-837-sv-undefined-decimal.md`
 
@@ -220,12 +226,12 @@ or financial value on the wire.**
   `paidUnitsOfService` -> SVC-05 (element 380, Units of Service **PAID** Count) and
   `originalUnitsOfService` -> SVC-07 (element 380, **ORIGINAL** Units of Service Count). Never move
   them back.**
-- **Never fix a mis-read position while leaving its sibling element unread** - that converts a
-  mis-read into a **fresh silent drop**. **Retention is non-decreasing, on purpose.**
+- **Never fix a mis-read position while leaving its sibling element unread** - that turns a mis-read
+  into a **fresh silent drop**. **Retention is non-decreasing, on purpose.**
 - **🩺 A round trip cannot test an element map; only bytes can.** The suite stayed green through the
-  fix, because a `build835` -> `get835` round trip is green for ANY pair of positions the two modules
-  agree on. `test/transactions-remit-835-svc-element-map.test.ts` pins the map literally. **Never
-  weaken those to round trips.**
+  fix: a `build835` -> `get835` round trip is green for ANY pair of positions the two modules agree
+  on. `test/transactions-remit-835-svc-element-map.test.ts` pins the map literally. **Never weaken
+  those to round trips.**
 - **🩺 Checking a spec claim against this repo's own implementation is NOT a check** - it only proves
   the two agree, which is exactly how the wrong map survived. Ground an element number OUTSIDE the
   repo (sources in `KNOWN-LIMITATIONS.md`). **TR3 005010X221A1 is paid for and nobody here has read
@@ -388,8 +394,8 @@ or financial value on the wire.**
 - **🩺 Every indexed loop bound in a builder comes from a `requireCallerArray` binding.** A forged
   `{ length: "9".repeat(120000) }` coerces to `Infinity` and the builder **spins forever instead of
   refusing**; most probes HUNG at base. Both censuses are in the agent-notes section.
-- **`requireCallerArray` takes the module's own `refuse` callback, never a shared throw**, because
-  each builder owns a distinct error class and code consumers branch on.
+- **`requireCallerArray` takes the module's own `refuse` callback, never a shared throw** - each
+  builder owns a distinct error class and code consumers branch on.
 - **`requireCallerArray` answers `null` as ABSENT.** Every site it replaced read `x.dates ?? []`, so
   guarding only `undefined` turned a valid 834 into a refusal. `null` is what a `JSON.parse`d payload
   carries for an absent list. **`build835`'s `claims` is the measured exception** (`enforceBalance`
@@ -419,15 +425,14 @@ or financial value on the wire.**
 - **Every caller-supplied value in a `build*` refusal message goes through `renderCallerValue`**
   (`src/builder/caller-value.ts`), capping the rendered **fragment** at
   `BUILD_REFUSAL_VALUE_MAX_RENDERED` = **90**. All three names are public.
-- **23 sites, 28 holes** where the item's census said sixteen; the rest came only from adversarial
-  review, four of them `number`-typed AK9 counts - **a type is not a runtime guarantee.** **State a
-  ceiling as a ceiling and a measurement as a measurement:** 90 is the
-  ceiling on the FRAGMENT, and three published figures were wrong in the first draft.
-- **This is NOT `PHI-WARNING-MESSAGE-LEAK` on the emit side.** There the value was the DOCUMENT's, so
-  bounding it was redaction; here the caller passed it in and still holds it. Escaping was considered
-  and **deliberately not done**, so a refusal message is bounded but **not** guaranteed to be one log
-  line. **The caller-vs-document dichotomy is NOT categorical** - TR3 005010X231A1 requires AK2-02 to
-  copy the acknowledged ST-02 and `buildTA1` echoes an inbound ISA-13.
+- **A type is NOT a runtime guarantee** - four holes the item's census missed were `number`-typed
+  AK9 counts, found only by adversarial review. **State a ceiling as a ceiling and a measurement as a
+  measurement:** 90 is the ceiling on the FRAGMENT, and three published figures were wrong once.
+- **This is NOT `PHI-WARNING-MESSAGE-LEAK` on the emit side:** there the value was the DOCUMENT's so
+  bounding it was redaction; here the caller passed it in and still holds it. Escaping was
+  **deliberately not done**, so a refusal message is bounded but **not** one log line. **The
+  caller-vs-document dichotomy is NOT categorical** - TR3 005010X231A1 has AK2-02 copy the
+  acknowledged ST-02, and `buildTA1` echoes an inbound ISA-13.
 - **`test/builder-refusal-bounds.test.ts` must never allow `String(...)` or `String(<expr>.length)`.**
   Its first allowlist admitted any `String(...)`; its second inspected the property NAME and not the
   operand, so a forged `{length}` sailed through. What remains allowed is a single-letter loop index
@@ -437,9 +442,9 @@ or financial value on the wire.**
   with the code. **The build-side `segmentIndex: 0` was filed as the same defect and is not one** -
   the builder has no parsed segment stream, so the position is `UNANCHORED_BUILD_POSITION`, inert by
   construction. Fabricating an index would have named a segment no consumer can resolve.
-- **`renderCallerValue` coerces and never throws.** A first draft read `.length` where the base
+- **`renderCallerValue` coerces and never throws.** A draft read `.length` where the base
   interpolated into a template literal, turning a typed refusal into an uncaught `TypeError`.
-- **Assert SE-01 outright rather than trusting it** - a tripwire this repo has hit three times.
+- **Assert SE-01 outright rather than trusting it** - a tripwire this repo has hit repeatedly.
 
 ### 🩺 `X12-ORPHAN-REEMIT` (2026-08-02) · `documentation/agent-notes.md#x12-orphan-reemit-2026-08-02`
 
@@ -452,13 +457,12 @@ or financial value on the wire.**
   included in the transaction set, including ST and SE"). Pass 1 counted only `tx.rawSegments`, so
   spec-clean mode **rewrote a CORRECT `SE*4*` down to `SE*3*`**. `segCount` now adds every orphan
   flushed between the `ST` and the `SE`. GE-01/IEA-01 are unaffected: an orphan is never a `GS`.
-- **The canonical not-reproduced list is SIX and silent constructs are FIVE.** `KNOWN-LIMITATIONS.md`
-  holds it.
+- **`KNOWN-LIMITATIONS.md` holds the canonical not-reproduced list; derive its size there.**
 - **Case 6 (the empty-first-element segment `*A*B~` outside a transaction) is deliberately NOT in
-  scope.** The walker skips it, so there is nothing on the model to re-emit; closing it is a
-  RETENTION change to the `name.length > 0` guard and would mint new `X12_UNEXPECTED_SEGMENT`s.
-- **Retention and placement are still not PROMOTION:** no `get*` reader sees an orphan, and a `TA1`
-  inside a group still does not join `ta1Segments`.
+  scope.** The walker skips it, so there is nothing to re-emit; closing it is a RETENTION change to
+  the `name.length > 0` guard and would mint new `X12_UNEXPECTED_SEGMENT`s.
+- **Retention and placement are NOT promotion:** no `get*` reader sees an orphan, and a `TA1` inside
+  a group still does not join `ta1Segments`.
 - **State the four kept regression assertions at the MODEL level, not the byte level.** A
   `ta1-inside-group` orphan IS written back between the `ST` and the `SE`, so "never lands inside a
   transaction" would be simply false.
@@ -482,8 +486,8 @@ or financial value on the wire.**
   the only construct on the list with no diagnostic whatsoever. Inside an open transaction the same
   segment round-trips normally.
 - **Neither a doubled terminator nor a segment with an empty first element is recorded.**
-- **The five `X12_UNEXPECTED_SEGMENT` messages were corrected** - they said the segment was not
-  retained, now false. Registry unchanged at 22 + 4 fatals; nothing became fatal.
+- **The `X12_UNEXPECTED_SEGMENT` messages were corrected** - they said the segment was not retained,
+  now false. Nothing became fatal.
 
 ### 🩺 `PHI-WARNING-MESSAGE-LEAK` (2026-07-31) · `documentation/agent-notes.md#phi-warning-message-leak-2026-07-31`
 
@@ -493,16 +497,16 @@ or financial value on the wire.**
   into a frozen table exported as `ALL_WARNING_MESSAGES`.
 - **🩺 Shape-validate-then-echo CANNOT hold for a control number**, whose grammar is whatever the
   trading partner sent. `X12_CONTROL_NUMBER_MISMATCH` rendered both sides verbatim and unbounded on
-  all six ISA-13 / IEA-02 / GS-06 / GE-02 / ST-02 / SE-02 slots.
+  all six control-number slots.
 - **`snippet` stays on the four Tier-3 fatals and nowhere else** - a strict-mode escalation used to
   carry 64 bytes of the interchange.
-- **`X12Segment.id` is bounded to the X12 segment-id grammar with a `NON_SPEC_SEGMENT_ID`
-  sentinel** - it was an unbounded copy of the segment's first element.
+- **`X12Segment.id` is bounded to the segment-id grammar with a `NON_SPEC_SEGMENT_ID` sentinel** -
+  it was an unbounded copy of the segment's first element.
 - **The deliverable is the SLOT TABLE, not the fix.** `test/_helpers/phi-slots.ts` sweeps every
   consumer-controlled slot via `assertNoDiagnosticPhiLeak`; **the GREEN ones are the point of writing
   the table before the fix** (never quote its size - derive it). Registry membership is asserted
   separately, so a factory that starts interpolating again fails without anyone extending the table.
-- **`^0.0.1` resolves EXACTLY on npm for a `0.0.x`.** The `@cosyte/test-utils` pin had to move.
+- **`^0.0.1` resolves EXACTLY on npm for a `0.0.x`.**
 - **The shipped disclosure was wrong in five places at once** (the five are listed in the
   agent-notes section). **Correct the disclosure in the same commit as the fix that makes the new
   wording true.**
@@ -517,10 +521,10 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   FORBIDDEN. No invented quirks.** Enforced three ways, incl. a per-quirk DEMONSTRATOR registry, so a
   real-but-irrelevant fixture cannot slip past. Built-ins reach consumers ONLY via `profiles`.
 - **The profile API DIVERGES from `hl7` DELIBERATELY** (`describe()` returns DATA, `X12ProfileSpec`,
-  the x12-only `partitionWarnings`). **"Symmetry is a feature" does NOT license collapsing them back.**
-  Long form for all three: `documentation/agent-notes/claude-md-relocated-narrative.md`.
-- **🩺 The 820 carries no TR3 balance equation.** `build820` emits all monetary amounts VERBATIM and
-  NEVER raises a balance-mismatch refusal - a deliberate contrast with `build835`.
+  the x12-only `partitionWarnings`). **"Symmetry is a feature" does NOT license collapsing them
+  back.** Long form for all three: `claude-md-relocated-narrative.md`.
+- **🩺 The 820 carries no TR3 balance equation.** `build820` emits every monetary amount VERBATIM
+  and NEVER raises a balance-mismatch refusal - a deliberate contrast with `build835`.
 - **🩺 Maintenance type is the 834's safety primitive: emit VERBATIM, refuse the unknown.** The
   builder places the caller's INS-03 / HD-01 (code source 875) verbatim and NEVER infers or
   normalizes; where the read side only WARNS (`X12_834_UNKNOWN_MAINTENANCE_TYPE`, **scoped to the
@@ -570,12 +574,10 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   `X12_UNKNOWN_CARC` / `X12_UNKNOWN_RARC` / `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` /
   `X12_UNKNOWN_CLAIM_STATUS` / `X12_UNKNOWN_HI_QUALIFIER` (verbatim qualifier + code, with
   `codeSystem: "unknown"`) / `X12_837_UNKNOWN_VARIANT`.
-- **🩺 Acks are structurally PHI-free by design, and `IK4-04` (`copyOfBadDataElement`) is a
-  caller-supplied surface callers SHOULD omit when the bytes are PHI. The library NEVER
-  auto-populates it.**
+- **🩺 Acks are structurally PHI-free by design, and `IK4-04` (`copyOfBadDataElement`) is a caller
+  surface callers SHOULD omit when the bytes are PHI. The library NEVER auto-populates it.**
 - **`build999` REFUSES `Accept` against a non-empty error list (`X12_ACK_ACCEPT_WITH_ERRORS`) and
-  inconsistent AK9 counts (`X12_ACK_COUNT_MISMATCH`); `buildTA1` REFUSES `A` with a non-`000` note
-  (`X12_TA1_ACCEPT_WITH_NOTE`).**
+  inconsistent AK9 counts (`X12_ACK_COUNT_MISMATCH`); `buildTA1` REFUSES `A` with a non-`000` note.**
 - **🩺 Every DOMAIN builder's own refusal message carries structural locators, counts and numeric
   totals only** - never a `claimId`, member id, member name, trace or diagnosis code. **State this
   PER BUILDER, as base did, never as a property of every builder.** Standing exception, the **ack
@@ -588,8 +590,8 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   guard STILL renders a forged array-like's `length` and class tag (SHAPE, not element contents),
   and **only the SEGMENT guard names the slot** (`esc`/`escDec` name the BUILDER). Long form:
   `claude-md-relocated-narrative.md`.
-- **The `?`-release escape is honored losslessly** (`?~`->`~`, `?*`->`*`, `??`->`?`); dot-path
-  traversal walks elements, composites (`-N`, 1-indexed) and repetitions (`[N]`, 0-indexed).
+- **The `?`-release escape is honored losslessly**; dot-path traversal walks elements, composites
+  (`-N`, 1-indexed) and repetitions (`[N]`, 0-indexed).
 - **Known read-side limitations are documented, not accidental, and `KNOWN-LIMITATIONS.md`
   enumerates them.** One worth knowing here: `get834Enrollments` streams per `INS` loop over a file
   **still parsed into `tx.segments` up front** - an honest v1 limitation, not a streaming parser.
