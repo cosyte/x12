@@ -519,8 +519,11 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: the bounds of X12_837_SERVICE_LINE_DROPP
   it("🩺 a dropped LX still clears the active entity, so a trailing N3/N4 attaches to nobody", () => {
     // The regression control for this slice's own near-miss: returning early
     // from the LX case skipped the `activeEntity` reset, and the address below
-    // silently landed on whichever party the last NM1 left active. Trading a
-    // warned omission for a silent mis-attribution is the wrong direction.
+    // silently landed on the party the last NM1 left active, which on this
+    // document is the Loop 2320 OTHER SUBSCRIBER named just above the `LX` -
+    // an address being one of the kinds this reader does surface on it, which
+    // is why this document can measure the reset at all. Trading a warned
+    // omission for a silent mis-attribution is the wrong direction.
     const sub = parse837("005010XZZZZZ", [
       ...noClaimBody([]),
       "CLM*PT-ACCT-900*8500***11:B:1*Y*A*Y*Y~",

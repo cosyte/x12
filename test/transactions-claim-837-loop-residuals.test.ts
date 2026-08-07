@@ -476,16 +476,15 @@ describe("X12-837-LOOP-RESIDUALS: X12_837_UNKNOWN_VARIANT anchors at the ST, not
 // ---------------------------------------------------------------------------
 
 /**
- * 🩺 **`NM1*87` is the one route in the `NM1` case that named a party without
- * assigning that party's accumulator.** Every other route assigns a fresh
- * entity there, so the `N3` / `N4` that follow a repeated `NM1` find
- * `current.address === undefined` and write onto an empty address. The pay-to
- * address has no entity object behind it - `payToAddress` is a bare
- * `X12ClaimAddress` accumulator, reset only at the next Loop 2000A `HL` - so
- * a second `NM1*87` inside ONE Loop 2000A left the first one's value in place
- * for `withLines` to APPEND to and for `mergeAddress` to fall back on.
+ * 🩺 **`NM1*87` names the pay-to address with no entity object to hold it.**
+ * `payToAddress` is a bare `X12ClaimAddress` accumulator, cleared only at the
+ * next Loop 2000A `HL`. A route that assigns a fresh entity leaves the
+ * trailing `N3` / `N4` a `current.address` of `undefined` to write onto, so
+ * their write replaces; these two arms instead wrote onto whatever the
+ * PREVIOUS `NM1*87` had left, `withLines` APPENDING and `mergeAddress`
+ * falling back.
  *
- * **Measured at `63a70bc`, on the document below:**
+ * **Measured at `63a70bc`, on the first document below:**
  * `{"lines":["1 FIRST PAY TO WAY","2 SECOND PAY TO WAY"],"city":"SHELBYVILLE",`
  * `"state":"IL","postalCode":"62565","countryCode":"US"}` - a street from each
  * of two different addresses, and a `countryCode` carried over from the FIRST
@@ -493,19 +492,31 @@ describe("X12-837-LOOP-RESIDUALS: X12_837_UNKNOWN_VARIANT anchors at the ST, not
  * on that claim**, which is the outcome this reader trades everything else to
  * avoid, and it is indistinguishable from a real one on the model.
  *
- * **The remedy is the assignment the other routes already do**, not a new
- * guard and not a new warning code: clearing the accumulator at the `NM1*87`
- * route makes BOTH attach arms replace, because both start from
- * `EMPTY_ADDRESS` again. The repeat stays as silent as a repeated `NM1*PR` is
- * - replacement warns for no party at this reader, at this head or at any
- * release, and making pay-to alone warn would be the asymmetry, not the fix.
- * That silence is disclosed, not claimed closed.
+ * **The remedy is a flag, and WHERE it fires is the whole design.** The first
+ * `N3` / `N4` after an `NM1*87` starts from `EMPTY_ADDRESS`, so it replaces;
+ * every write after it appends, exactly as two `N3`s under one `NM1` do for
+ * any party. No new guard and no new warning code.
  *
- * **The first address is NOT recovered onto the model**, and that is the same
- * trade the rest of this suite pins: the model carries one pay-to address
- * because `X12Claim.payToAddress` is one slot, and the bytes of the replaced
- * one stay verbatim on `tx.segments`. A repeat carrying no `N3` / `N4` of its
- * own therefore leaves the slot `undefined` rather than the earlier address.
+ * 🩺 **Clearing `payToAddress` at the `NM1*87` itself was the FIRST remedy and
+ * it was measurably worse, which is why the case below pins the difference.**
+ * On a repeat carrying no `N3` / `N4` of its own it erased the address the
+ * document DID state. That erasure is not a neutral absence: `build837P/I/D`
+ * emits Loop 2010AB only where this slot is defined, so a claim read and
+ * re-emitted comes back with **no pay-to loop at all**, which is a positive
+ * statement about where the payment goes rather than a missing one. The
+ * accumulator moves only when a segment gives it a value.
+ *
+ * **This is therefore NOT the entity parties' rule, and must not be restated
+ * as it.** A repeated `NM1*PR` with no `N3` leaves a payer object whose
+ * `address` is `undefined` - the party is still on the model and only its
+ * address is unknown. The pay-to slot has no object, so on it "address
+ * unknown" and "no pay-to loop" are the same value, and only the address the
+ * document actually stated can tell them apart. A repeat that states a new
+ * address does replace, and the replaced one's bytes stay verbatim on
+ * `tx.segments`.
+ *
+ * **The repeat is silent either way**, as every other repeated party is at
+ * this reader; that silence is disclosed, not claimed closed.
  *
  * Only bytes can produce this: `build837P/I/D` emits at most one `NM1*87`.
  * All data is synthetic.
@@ -545,13 +556,41 @@ describe("X12-837-LOOP-RESIDUALS: a repeated NM1*87 replaces the pay-to address"
     expect(channel(sub)).toEqual([]);
   });
 
-  it("🩺 a repeat carrying no N3 / N4 leaves the slot undefined, not the earlier address", () => {
-    // The surprising half, and the reason it is pinned rather than left to be
-    // inferred: a slot that had a value goes to `undefined`. Holding the
-    // earlier address here would put the FIRST party's street on the SECOND
-    // party's name, which is the same fabrication one line smaller.
+  it("🩺 a repeat carrying NO N3 / N4 keeps the address the document did state", () => {
+    // The red control for WHERE the flag fires, and the case that refuted the
+    // first remedy. Clearing `payToAddress` at the `NM1*87` reds this: the
+    // slot went to `undefined`, so a claim carrying one stated pay-to address
+    // read back as carrying none, and re-emitting it drops Loop 2010AB
+    // entirely. Nothing here is fabricated - the address on the model is the
+    // only one this document states.
     const sub = parse837(withPayTo([...FIRST, "NM1*87*2~"]));
-    expect(sub.claims[0]?.payToAddress).toBeUndefined();
+    expect(sub.claims[0]?.payToAddress?.lines).toEqual(["1 FIRST PAY TO WAY"]);
+    expect(sub.claims[0]?.payToAddress?.city).toBe("SPRINGFIELD");
+    expect(channel(sub)).toEqual([]);
+  });
+
+  it("🩺 a repeat carrying only a PER, which no pay-to arm surfaces, keeps it too", () => {
+    // The same case one step subtler: the repeat carries a segment kind this
+    // reader surfaces on no pay-to address at all, so nothing can write and
+    // nothing may move. `attachContact` has no `payToAddress` route.
+    const sub = parse837(withPayTo([...FIRST, "NM1*87*2~", "PER*IC*PAY TO DESK*TE*5555550111~"]));
+    expect(sub.claims[0]?.payToAddress?.lines).toEqual(["1 FIRST PAY TO WAY"]);
+    expect(channel(sub)).toEqual([]);
+  });
+
+  it("🩺 an N4 alone after the repeat replaces the whole address, carrying no earlier field", () => {
+    // The `mergeAddress` arm on its own, with no `N3` beside it to mask it.
+    // Base merged onto the first address, so `lines` and `countryCode` both
+    // survived from it; here the write starts empty, so the address is the
+    // second `N4` and nothing else.
+    const sub = parse837(withPayTo([...FIRST, "NM1*87*2~", "N4*SHELBYVILLE*IL*62565~"]));
+    expect(sub.claims[0]?.payToAddress).toEqual({
+      lines: [],
+      city: "SHELBYVILLE",
+      state: "IL",
+      postalCode: "62565",
+      countryCode: undefined,
+    });
     expect(channel(sub)).toEqual([]);
   });
 

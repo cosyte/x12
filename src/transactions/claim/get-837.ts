@@ -261,6 +261,22 @@ export function get837Claims(
   let receiver: X12ClaimEntity | undefined;
   let billingProvider: X12ClaimEntity | undefined;
   let payToAddress: X12ClaimAddress | undefined;
+  /**
+   * True between an `NM1*87` and the first `N3` / `N4` that writes onto the
+   * pay-to address it names. That first write starts from `EMPTY_ADDRESS`, so
+   * it REPLACES whatever an earlier `NM1*87` in the same Loop 2000A left;
+   * every write after it appends, which is what the entity arms do within one
+   * party. Read and cleared only through `takePayToAddressBase`.
+   *
+   * 🩺 It is a flag rather than a `payToAddress = undefined` at the `NM1*87`
+   * itself because the two differ on a repeat that carries NO `N3` / `N4` of
+   * its own: clearing there erases the address the document DID state, and
+   * `build837P/I/D` emits Loop 2010AB only where this slot is defined, so
+   * that erasure re-emits as the situational no-pay-to-loop reading. This
+   * way the accumulator only ever moves when a segment gives it a value.
+   * @internal
+   */
+  let payToAddressUnwritten = false;
   let payToPlan: X12ClaimEntity | undefined;
   let currentSubscriberMember: X12ClaimMember | undefined;
   let currentPayer: X12ClaimEntity | undefined;
@@ -435,6 +451,13 @@ export function get837Claims(
     getCurrentPayer: () => currentPayer,
     getCurrentPatient: () => currentPatientMember?.entity,
     getCurrentPayToAddress: () => payToAddress,
+    takePayToAddressBase: () => {
+      if (payToAddressUnwritten) {
+        payToAddressUnwritten = false;
+        return EMPTY_ADDRESS;
+      }
+      return payToAddress ?? EMPTY_ADDRESS;
+    },
     getCurrentOtherSubscriber: () => currentOtherSubscriber?.otherSubscriber,
     getCurrentOtherPayer: () => currentOtherSubscriber?.otherPayer,
   };
@@ -530,9 +553,10 @@ export function get837Claims(
         // scoped rather than latched: a party named after the stray LX is
         // outside that scope again, and an NM1 this walker cannot route leaves
         // the following segments as silent as they were before this code
-        // existed. Outside the scope is not the same as addressable - whether
-        // a given trailing segment reaches that party is the per-kind,
-        // per-party question the declaration of the flag above states.
+        // existed. Outside that scope is not the same as addressable: whether
+        // a trailing segment then reaches the party depends on the kind and on
+        // the party, and this reader does not surface every kind on every one
+        // (`attachContact` has no route for a patient or a pay-to address).
         entityLoopClosedByStrayLx = false;
         // Route the NM1 by qualifier + context.
         if (qualifier === NM1_QUALIFIERS.SUBMITTER) {
@@ -549,22 +573,29 @@ export function get837Claims(
           // pay-to ADDRESS; the name is preserved on tx.segments but not
           // re-surfaced as a separate entity until a real consumer asks.
           //
-          // 🩺 CLEAR THE ACCUMULATOR FIRST. This is the one route in this case
-          // that names a party without assigning that party's accumulator -
-          // every other route replaces its entity here, so a repeated `NM1`
-          // gives the trailing `N3` / `N4` a `current.address` of `undefined`
-          // and the attach helpers write onto an empty address. The pay-to
-          // address has no entity object to replace, so without this line a
-          // second `NM1*87` inside one Loop 2000A left the FIRST one's value
-          // in place for `withLines` to append to and for `mergeAddress` to
-          // fall back on: measured at `63a70bc`, two pay-to addresses fused
-          // into one, `lines` carrying a street from each and `countryCode`
-          // carried over from the first `N4` where the second omitted it.
-          // That is a value the sender put on no party at all, which is the
-          // one outcome this reader trades everything else to avoid. The
-          // first address is not recovered onto the model - it is left where
-          // every other replaced party's is, verbatim on `tx.segments`.
-          payToAddress = undefined;
+          // 🩺 ARM THE REPLACEMENT; DO NOT CLEAR THE ACCUMULATOR HERE.
+          // `NM1*87` names the pay-to address with no entity object to hold
+          // it: `payToAddress` is a bare `X12ClaimAddress`. A route that
+          // assigns a fresh entity leaves the trailing `N3` / `N4` a
+          // `current.address` of `undefined` to write onto, so their write
+          // replaces; these arms instead wrote onto whatever the PREVIOUS
+          // `NM1*87` left. Measured at `63a70bc`: two pay-to addresses in one
+          // Loop 2000A fused into one, `lines` carrying a street from each
+          // and `countryCode` falling back to the first `N4` where the second
+          // omitted it. That address is one no sender sent, and on the model
+          // it is indistinguishable from one that was.
+          //
+          // The flag makes the FIRST write after this segment start from
+          // `EMPTY_ADDRESS` and leaves later ones appending, exactly as two
+          // `N3`s under one `NM1` do for any party. Clearing `payToAddress`
+          // here instead is wrong in the other direction, and that was
+          // measured too: a repeat carrying no `N3` / `N4` of its own would
+          // erase the address the document DID state, and since `build837*`
+          // emits Loop 2010AB only where this slot is defined, the erasure
+          // re-emits as the situational no-pay-to-loop reading rather than as
+          // a missing value. The accumulator moves only when a segment gives
+          // it one.
+          payToAddressUnwritten = true;
           activeEntity = { kind: "payToAddress" };
         } else if (
           qualifier === NM1_QUALIFIERS.PAY_TO_PLAN &&
@@ -1587,6 +1618,15 @@ interface EntityMutators {
   getCurrentPayer: () => X12ClaimEntity | undefined;
   getCurrentPatient: () => X12ClaimEntity | undefined;
   getCurrentPayToAddress: () => X12ClaimAddress | undefined;
+  /**
+   * The address the next pay-to write builds on, and the only reader of the
+   * walker's `payToAddressUnwritten` flag: `EMPTY_ADDRESS` for the first
+   * write after an `NM1*87` (so it REPLACES an earlier one in the same Loop
+   * 2000A) and the current accumulator for every write after that (so `N3`s
+   * under one `NM1*87` append). Clears the flag, so call it exactly once per
+   * write.
+   */
+  takePayToAddressBase: () => X12ClaimAddress;
   getCurrentOtherSubscriber: () => X12ClaimEntity | undefined;
   getCurrentOtherPayer: () => X12ClaimEntity | undefined;
 }
@@ -1622,8 +1662,7 @@ function attachAddressLines(
       withCurrent(mut.getCurrentPatient(), apply, mut.setPatient);
       break;
     case "payToAddress": {
-      const addr = mut.getCurrentPayToAddress() ?? EMPTY_ADDRESS;
-      mut.setPayToAddress(withLines(addr, lines));
+      mut.setPayToAddress(withLines(mut.takePayToAddressBase(), lines));
       break;
     }
     case "otherSubscriber":
@@ -1668,8 +1707,7 @@ function attachAddressFields(
       withCurrent(mut.getCurrentPatient(), apply, mut.setPatient);
       break;
     case "payToAddress": {
-      const addr = mut.getCurrentPayToAddress() ?? EMPTY_ADDRESS;
-      mut.setPayToAddress(mergeAddress(addr, fromN4));
+      mut.setPayToAddress(mergeAddress(mut.takePayToAddressBase(), fromN4));
       break;
     }
     case "otherSubscriber":
