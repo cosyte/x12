@@ -2,17 +2,19 @@
 
 ## Project
 
-**`@cosyte/x12`**: a developer-focused ASC X12 EDI parser + utility library for Node.js/TypeScript, published under the Cosyte brand. Open-source (MIT). The payer-side sibling of [`@cosyte/hl7`](../hl7): API shape, profile system, and lenient-parser philosophy are deliberately mirrored.
+**`@cosyte/x12`**: an ASC X12 EDI parser + utility library (Node/TS, MIT), the payer-side sibling of
+**[`@cosyte/hl7`](../hl7)** at `../hl7` - API shape, profile system and lenient-parser philosophy are
+deliberately mirrored, so **when in doubt on an API decision, check how `hl7` solved it.** The
+identity paragraph, the north star and the sibling section are in
+`documentation/agent-notes/claude-md-relocated-narrative.md`.
 
-**North star:** A developer can parse a real-world, vendor-quirky X12 healthcare interchange and pull useful fields out of it in one line, without having read the X12 standard or any TR3 implementation guide.
+## ▶ Read this before you touch the parser: `documentation/agent-notes*`
 
-## ▶ Read this before you touch the parser: `documentation/agent-notes.md`
-
-**Every `###` heading in "Traps" below names the section of
-**[`documentation/agent-notes.md`](documentation/agent-notes.md)** that carries that trap's
-measurement, its sources, and the reasoning - open it before you act on the line.** The narrative
-that once made this file 106,994 bytes lives there, verbatim and unedited; the bound, the per-repo
-ratchet, and why a uniform cap was reversed are in
+**Every `###` heading in "Traps" below names the section carrying that trap's measurement, its
+sources and its reasoning - open it before you act on the line.** Most are in
+[`documentation/agent-notes.md`](documentation/agent-notes.md); **that file is now on its own
+250,000-byte budget too**, so the newest ones are their own files under
+`documentation/agent-notes/`. The bound and the per-repo ratchet are at
 `documentation/agent-notes.md#claude-md-audit-2026-08-04`. **Nothing was deleted - a trap deleted to
 hit a number is the one failure mode this bound exists to prevent.** This file is bounded at write
 time by the umbrella's `.claude/hooks/doc-budget.mjs`; **never quote its number here, read
@@ -25,12 +27,10 @@ Pre-alpha `0.0.x`, **published** to npm from a public repo. **Never quote a vers
 `npm view @cosyte/x12 version` is the only source of truth.
 
 - **Read scope is decoded for** 271, 277 / 277CA, 278, 820, 834, 835, 837P/I/D, 999, TA1.
-- **Emit scope is complete for every transaction that has a reader**: general
-  (`serializeX12` + `buildInterchange`, Phase 8) plus a per-TR3 domain builder (`build835`,
-  `build837P/I/D`, `build271`, `build277` / `build277CA`, `build278Request` / `build278Response`,
-  `build820`, `build834`) and the pure-function `build999` / `buildTA1` acknowledgments, each
-  layering the safety-critical per-TR3 invariants (balance, certification, maintenance-type fidelity,
-  count reconciliation) on the general builder.
+- **Emit scope is complete for every transaction that has a reader**: general (`serializeX12` +
+  `buildInterchange`) plus a per-TR3 domain builder for each, and the pure-function `build999` /
+  `buildTA1`, each layering the safety-critical per-TR3 invariants (balance, certification,
+  maintenance-type fidelity, count reconciliation) on the general builder.
 - **🩺 The 270 and 276 inquiry directions have NO typed model on either side** - no `get270` /
   `get276`, no `build270` / `build276`, no 270 or 276 dispatch anywhere in `src/`. They parse into
   segments and dot-paths like any other input. **Never describe the
@@ -40,49 +40,77 @@ Pre-alpha `0.0.x`, **published** to npm from a public repo. **Never quote a vers
 - **Warning registry: additions-only, and NEVER quote its size here** - the count on this line was
   stale twice. Derive it: the codes are exported as `ALL_WARNING_MESSAGES`, and the four Tier-3
   fatals are enumerated under Engineering Guardrails below.
-- **Profile system** (`defineProfile()`, `profiles` namespace) shipped Phase 9. **PHI commit-gate**
-  armed (`pnpm phi-scan`).
-- **Shipped-phase histories (Phases 1 through 9) are in `documentation/agent-notes.md`.** Read the
-  phase section before changing a surface it built.
+- **Profile system** (`defineProfile()`, `profiles`) shipped Phase 9; **PHI commit-gate** armed
+  (`pnpm phi-scan`). **Phase histories 1-9 are in `documentation/agent-notes.md`** - read the phase
+  section before changing a surface it built.
 
 ## v1 Scope Snapshot
 
-HIPAA transaction sets at **005010** (errata hooks for `005010X279A1`, `005010X221A1`, etc.). The
-nine-line list is `documentation/agent-notes.md#v1-scope-snapshot`; non-healthcare (850/856/810/204),
-EDIFACT, AS2/SFTP transport and pre-005010 are out of scope. **It is the v1 SCOPE declaration, NOT a
-list of what has SHIPPED** - see Status above: the 270 and 276 inquiry directions have no typed model
-on either side.
+HIPAA sets at **005010** (errata hooks); list at `documentation/agent-notes.md#v1-scope-snapshot`.
+Non-healthcare (850/856/810/204), EDIFACT, AS2/SFTP and pre-005010 are out. **It is the v1 SCOPE
+declaration, NOT a list of what SHIPPED** - see Status: the 270 and 276 have no typed model.
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 
-x12 mirrors `@cosyte/hl7` (the reference parser) and **inherits the canonical toolchain by depending
-on the published `@cosyte/*` config packages, not by copying files.** The source of truth is the
-meta-repo's `documentation/conventions.md`; the per-tool summary (language, build, Node floor, package
-manager, lint, testing, CI) is `documentation/agent-notes.md#tech-stack-the-shared-cosyte-standard`.
-**The `attw` script is `scripts/attw.mjs`, NEVER the bare CLI** - the CLI reports a missing `dist/` as
-"does not contain types" and **exits 0**. See the `ASSETS-P8` trap below. **Runtime deps: ZERO**, Node
-stdlib only. MIT.
+**The toolchain is INHERITED by depending on the published `@cosyte/*` config packages, never by
+copying files.** Source of truth: the meta-repo's `documentation/conventions.md`; per-tool summary:
+`documentation/agent-notes.md#tech-stack-the-shared-cosyte-standard`. **The `attw` script is
+`scripts/attw.mjs`, NEVER the bare CLI** (`ASSETS-P8` trap below). **Runtime deps: ZERO.**
 
 ## Engineering Guardrails
 
-- No `any`. No unjustified `as` casts. Use `unknown` and narrow.
-- JSDoc (with `@example`) on every public export: feeds IntelliSense.
-- Immutable by default. Mutation only via explicit methods (`setElement`, `addSegment`, `addLoopIteration`, `removeSegment`).
-- No `console.*` in library code. Throw typed errors or return results.
-- Short, testable functions over big parsing blobs.
-- Postel's Law: parser is liberal (lenient default + warnings with stable codes and positional context); serializer is conservative. Be exact about what that means, because the README said it loosely until ASSETS-P8: the domain builders emit spec-clean X12 by construction, but `serializeX12` is **byte-faithful by default only for the segments the parser recorded on the model**. `serialize(parse(s)) === s` is NOT guaranteed, and "my file has no line breaks" is not sufficient to make it hold - `KNOWN-LIMITATIONS.md` holds the canonical list of what is not reproduced, most of which needs no line break and is silent. `{ specClean: true }` reconciles the envelope and warns; `{ specClean: true, recomputeCounts: true }` also emits the corrected counts. `recomputeCounts` is inert without `specClean`. Nothing is ever silently corrected.
+- No `any`, no unjustified `as` (use `unknown` and narrow). JSDoc with `@example` on every public export. Immutable by default; mutate only via `setElement` / `addSegment` / `addLoopIteration` / `removeSegment`. No `console.*` in library code - throw typed errors or return results. Short, testable functions over parsing blobs.
+- Postel's Law: parser liberal (lenient default + stable codes with positional context), serializer conservative. **Be exact, because the README said it loosely until ASSETS-P8** (long form: `documentation/agent-notes/claude-md-relocated-narrative.md`). The domain builders emit spec-clean by construction, but `serializeX12` is byte-faithful **only for the segments the parser recorded on the model**: **`serialize(parse(s)) === s` is NOT guaranteed, and "my file has no line breaks" is NOT sufficient** - `KNOWN-LIMITATIONS.md` is the canonical list, most of it needing no line break and silent. `{ specClean: true }` reconciles the envelope and WARNS; `recomputeCounts` is **inert without `specClean`**. Nothing is ever silently corrected.
 - Fatal errors only for unrecoverable structural corruption (4 Tier-3 codes: `X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`, `X12_INVALID_DELIMITERS`, `X12_EMPTY_INPUT`). Everything else is a warning.
 - Coverage target: ≥ 90% on `src/parser/`, `src/envelope/`, `src/transactions/`, `src/helpers/`.
 - Built-in loop specs + profiles must be authored through the same public API (`defineLoopSpec()`, `defineProfile()`): dogfooding gate.
 - HIPAA code lists ship as versioned data snapshots. Code-list updates are a release event, not a runtime fetch. `codeLists.meta.snapshotDate` is the runtime surface for snapshot-freshness checks.
 - Acknowledgments (`build999`, `buildTA1`, `parse999`) are pure functions: they never auto-send, never open sockets, never touch the filesystem.
-- **No em dashes (`U+2014`). Ever.** Founder directive, `knowledgebase/06-brand/voice-and-tone.md`. Gated by `pnpm check:no-emdash` (`scripts/check-no-emdash.sh`) and by `.github/workflows/no-emdash.yml`, which checks the tracked files **and your PR title, PR body, and commit messages**, because this repo squash-merges and those become the message that lands on `main`. The fix is never to re-encode the character: rewrite with a period, a colon, a comma, or parentheses.
+- **No em dashes (`U+2014`). Ever.** Founder directive. Gated by `pnpm check:no-emdash` and `.github/workflows/no-emdash.yml`, which scans tracked files **AND your PR title, PR body and commit messages** - this repo squash-merges, so those land on `main`. **Never re-encode the character**: rewrite with a period, colon, comma or parentheses.
 
 ## Traps
 
-**Every one of these was paid for, and each `###` names the section carrying its measurement, its
-sources and its refutation history. Do not act on a line here without reading that section.**
-**🩺 marks a trap where getting it wrong mis-states a clinical or financial value on the wire.**
+**Each was paid for; each `###` names the section carrying its measurement, sources and refutation
+history. Do not act on a line here without reading it. 🩺 = getting it wrong mis-states a clinical
+or financial value on the wire.**
+
+### 🩺 `X12-AMT-ADX-ABSENT-AMOUNT` (2026-08-07) · `documentation/agent-notes/x12-amt-adx-absent-amount.md`
+
+- **🩺 AN `AMT`/`ADX` IS A RECORD, NOT A SLOT: no decoded amount (AMT-02, ADX-01) = NO ROW, qualifier
+  and reason code gone with it.** `X12_AMOUNT_ROW_DROPPED` at the SEGMENT, **NO `elementIndex`**; the
+  834's goes on the **MEMBER's** `warnings`. **A `for` over an empty filtered array asserts NOTHING.**
+- **🩺 SAY ABSENT, NEVER "does not decode"** (the wider form cost a pass-2 minor): only ABSENT was
+  silent, UNPARSEABLE already warned. **Both raise it, NOTHING MOVED off `X12_UNPARSEABLE_DECIMAL`**,
+  and whether one sits at the same `segmentIndex` separates them. **NEVER WIDEN IT** - a row dropped
+  for having no claim/line/coverage/remittance OPEN stays SILENT, and an 820 `RMR` is NOT on this
+  channel (it drops on open-item IDENTITY and keeps `amountPaid: undefined`).
+
+### 🩺 `X12-837-SV-UNDEFINED-DECIMAL` (2026-08-07) · `documentation/agent-notes/x12-837-sv-undefined-decimal.md`
+
+- **🩺 A slot reads `X12Decimal | undefined` EXACTLY where a reader could substitute `ZERO`; a STATED
+  zero still reads `0` and KEEPS ITS LEXICAL FORM. PUBLISH NO SLOT CENSUS.**
+  **`X12_835_BALANCE_NOT_EVALUABLE`: an undecoded TERM makes a §1.10.2 equation UNEVALUABLE, NEVER a
+  mismatch; an EMPTY adjustment list is NOT an absent term** - it sums to `ZERO`.
+- **🛑 A WIDENING THAT MOVES A CASE ONTO A NEW CODE BLINDS EVERY PREDICATE ON THE OLD ONE, AND THIS
+  PACKAGE'S OWN DOCS ARE SUCH A CONSUMER** - the "do NOT auto-post" recipe gated on
+  `X12_835_REMIT_BALANCE_MISMATCH` alone went base `true` / head `false`. **Sweep every recipe, the
+  troubleshooting table and `CHANGELOG.md`; PIN THE SWEEP.**
+- **🩺 `Build837ServiceLineSpec.units` is REQUIRED and the builder REFUSES rather than emitting `0`.
+  SV3-06's TR3 usage is NOT grounded - never claim it is.**
+
+### 🩺 `X12-PAY-TO-FUSION` (2026-08-07) · `documentation/agent-notes/x12-pay-to-fusion.md`
+
+- **🩺 EACH `NM1*87` OPENS ITS OWN ACCUMULATOR; OCCURRENCES ARE NEVER MERGED.** The LAST that STATES
+  an address takes the slot; one that states NONE does **not** blank one that did.
+- **🛑 AN EMPTIED SLOT IS NOT A NEUTRAL ABSENCE - THE EMIT SIDE READS IT** (Loop 2010AB is gated on
+  `payToAddress !== undefined`), so "states an address" IS **what `emitAddress` would write a segment
+  for**, ONE predicate shared both ways. **"A write happened" is a property of the SEGMENT STREAM and
+  was refuted.** Disclosed cost: a repeat stating only PART re-emits only that part, and restoring
+  the earlier occurrence's street lines IS the fusion.
+- **`X12_837_PAY_TO_ADDRESS_REPEATED` at the 2nd+ `NM1*87` in ONE Loop 2000A**, no `elementIndex`,
+  counter reset at that loop's `HL` (a latching one flags a conformant second billing provider).
+  **NEVER write "a second party's NAME" - measured false.** `PRE-EXISTING`: with a `CLM` open it
+  lands in `claim.providers` instead.
 
 ### 🩺 `X12-837-LOOP-RESIDUALS` (2026-08-05) · `documentation/agent-notes.md#x12-837-loop-residuals-2026-08-05`
 
@@ -145,18 +173,17 @@ sources and its refutation history. Do not act on a line here without reading th
   honest control. **State the property, never an absolute about a matcher
   NAME** - published twice, false both times, the second inside the fix for the first.
 - **Every guard has its own red negative control. Re-derive a red/green census by RUNNING head's
-  suite against a base checkout, never by arithmetic** - a partitioned form was wrong four ways, and
-  a suite total quoted here goes stale the next slice - as the `phi-slots` count that stood here did,
-  one slice later. Derive it.
+  suite against a base tree, never by arithmetic** - a partitioned form was wrong four ways, and a
+  suite total quoted here goes stale the next slice. Derive it.
 - **🩺 The ABSENT `SV1-02` deferred here is CLOSED: `X12-837-SV-UNDEFINED-DECIMAL`, its own trap below.**
 
 ### 🩺 `X12-837-SV-SILENT-ZERO` (2026-08-05) · `documentation/agent-notes.md#x12-837-sv-silent-zero-2026-08-05`
 
 - **🩺 An 837 Loop 2400 line closed with NO `SVx` decoded for the resolved variant warns
   `X12_837_SERVICE_LINE_NOT_DECODED` at its `LX`.** BOTH causes: a foreign `SVx`, and none at all.
-- **🩺 THIS slice closed only the SILENCE; the trap below closed the `0`.** `charge`/`units` read
-  `undefined`, and this warning still says WHY - `undefined` alone does NOT separate it from a
-  decoded `SVx` whose charge element was absent.
+- **🩺 THIS slice closed only the SILENCE.** `charge`/`units` read `undefined`, and this warning
+  still says WHY - `undefined` alone does NOT separate it from a decoded `SVx` whose charge element
+  was absent.
 - **🩺 NEVER decode the `SVx` that IS present, nor let it flip the line's variant.** The charge is
   `SV1-02`/`SV2-03` and the units `SV1-04`/`SV2-05`/**`SV3-06`** (`SV3-05` is the prosthesis code -
   three comments said units and were corrected), so that mis-READS money. `opts.type` is a caller
@@ -166,14 +193,13 @@ sources and its refutation history. Do not act on a line here without reading th
   sides.**
 - **Only bytes make these; no round trip can.** 4 leak probes + 2 controls, both ways: deleting one
   flag-set reds a control.
-- **🩺 `X12-837-SV-UNDEFINED-DECIMAL` CLOSED THE `0`. TRAP UNPAID: read
-  `documentation/agent-notes/x12-837-sv-undefined-decimal.md`.**
+- **🩺 `X12-837-SV-UNDEFINED-DECIMAL` CLOSED THE `0`** - its own trap above.
 
 ### 🩺 `X12-QUANTITY-SILENT-DEFAULTS` (2026-08-05) · `documentation/agent-notes.md#x12-quantity-silent-defaults-2026-08-05`
 
 - **🩺 A PRESENT decimal that does not decode emits `X12_UNPARSEABLE_DECIMAL` at its
   `position.elementIndex`, in all six readers. An ABSENT one emits nothing.** Both pinned.
-- **🩺 THIS slice closed only the SILENCE. The `0` is closed by the trap below**, everywhere.
+- **🩺 THIS slice closed only the SILENCE; `X12-837-SV-UNDEFINED-DECIMAL` closed the `0`.**
 - **🩺 NEVER INVERT IT INTO "an unwarned value is one the sender sent". A slot a reader never read
   cannot warn**; three shipped docs carried the bare form. Guarantee: unwarned **at an element a
   reader decoded**. The 837 instance of the other kind is the trap above.
@@ -184,9 +210,9 @@ sources and its refutation history. Do not act on a line here without reading th
   message says "could not decode".
 - **The 835 balance invariant is NOT a net: it names an equation, never an element, and exists in no
   other reader.** 7 of 9 base probes were wholly silent, 835 `SVC-05` among them.
-- **The sink is an OPTIONAL 4th arg; the public helpers stay silent without one.** The library's own
-  silence is held by a source scan counting TOP-LEVEL ARGS, never a `, sink)` regex. **A green suite
-  proved nothing: no fixture holds an unparseable decimal and a round trip CANNOT make one.**
+- **The sink is an OPTIONAL 4th arg; the public helpers stay silent without one**, held by a source
+  scan counting TOP-LEVEL ARGS, never a `, sink)` regex. **A green suite proved nothing: no fixture
+  holds an unparseable decimal and a round trip CANNOT make one.**
 
 ### 🩺 `X12-SVC-ELEMENT-MAP-OFF-BY-ONE` (2026-08-04) · `documentation/agent-notes.md#x12-svc-element-map-off-by-one-2026-08-04`
 
@@ -417,12 +443,11 @@ sources and its refutation history. Do not act on a line here without reading th
 
 ### 🩺 `X12-ORPHAN-REEMIT` (2026-08-02) · `documentation/agent-notes.md#x12-orphan-reemit-2026-08-02`
 
-- **🩺 `serializeX12` places every orphan by `X12OrphanSegment.anchor` and NEVER by `segmentIndex`.**
-  The fix is the anchor, not the re-emission. An anchor names a SLOT of the typed tree
-  (`interchange` / `group` / `transaction`), so it survives both reorderings the emit performs (the
-  `ta1Segments` hoist, the skipped zero-length segment); a raw input index cannot. An index equal to
-  the eventual length means "after the last one"; `segmentOffset` is never `0` because
-  `rawSegments[0]` is the `ST`; the `transaction` kind is reachable only by a `TA1`.
+- **🩺 `serializeX12` places every orphan by `X12OrphanSegment.anchor` and NEVER by `segmentIndex`.
+  The fix is the ANCHOR, not the re-emission.** An anchor names a SLOT of the typed tree, so it
+  survives both reorderings the emit performs; a raw input index cannot. Corners (the length-equal
+  index, `segmentOffset` never `0`, `transaction` reachable only by a `TA1`) in the agent-notes
+  section.
 - **🩺 SE-01 must count the BYTES THE SERIALIZER WRITES, not the model rows** (X12.6: "segments
   included in the transaction set, including ST and SE"). Pass 1 counted only `tx.rawSegments`, so
   spec-clean mode **rewrote a CORRECT `SE*4*` down to `SE*3*`**. `segCount` now adds every orphan
@@ -471,13 +496,12 @@ sources and its refutation history. Do not act on a line here without reading th
   all six ISA-13 / IEA-02 / GS-06 / GE-02 / ST-02 / SE-02 slots.
 - **`snippet` stays on the four Tier-3 fatals and nowhere else** - a strict-mode escalation used to
   carry 64 bytes of the interchange.
-- **`X12Segment.id` is bounded to the X12 segment-id grammar with a `NON_SPEC_SEGMENT_ID` sentinel.**
-  It was an unbounded copy of the segment's first element. This is the `hl7`-to-`deid` layering lesson.
-- **The deliverable is the slot table, not the fix.** `test/_helpers/phi-slots.ts` declared **81
-  consumer-controlled slots** (82 today), driven by `assertNoDiagnosticPhiLeak` from
-  `@cosyte/test-utils@0.0.2`. Measured one slot at a time against base: **13 of 81 red**, and **the
-  68 green ones are the point of writing the table before the fix.** Registry membership is asserted separately, so a factory that
-  starts interpolating again fails without anyone extending the table.
+- **`X12Segment.id` is bounded to the X12 segment-id grammar with a `NON_SPEC_SEGMENT_ID`
+  sentinel** - it was an unbounded copy of the segment's first element.
+- **The deliverable is the SLOT TABLE, not the fix.** `test/_helpers/phi-slots.ts` sweeps every
+  consumer-controlled slot via `assertNoDiagnosticPhiLeak`; **the GREEN ones are the point of writing
+  the table before the fix** (never quote its size - derive it). Registry membership is asserted
+  separately, so a factory that starts interpolating again fails without anyone extending the table.
 - **`^0.0.1` resolves EXACTLY on npm for a `0.0.x`.** The `@cosyte/test-utils` pin had to move.
 - **The shipped disclosure was wrong in five places at once** (the five are listed in the
   agent-notes section). **Correct the disclosure in the same commit as the fix that makes the new
@@ -487,28 +511,20 @@ sources and its refutation history. Do not act on a line here without reading th
 
 Full detail for EVERY bullet below is in the phase sections of `documentation/agent-notes.md`, `#phase-9-profiles-and-quirk-attribution` through `#phase-1-envelope-decoder`. Open the phase that shipped the surface before you change it.
 
-- **🩺 v1 profiles are DESCRIPTIVE: a profile NEVER alters the parse.** `groups`, `warnings` and `isa`
-  are byte-identical with and without one (asserted by a divergence test); it attaches attribution to
-  `ix.profile` and powers the one behavioural hook, `partitionWarnings`.
+- **🩺 v1 profiles are DESCRIPTIVE: a profile NEVER alters the parse.** `groups` / `warnings` / `isa`
+  are byte-identical with and without one (divergence test); `partitionWarnings` is the one hook.
 - **🩺 HARD RULE, LOCKED: a profile quirk with no Tier-2 fixture demonstrating the deviation is
-  FORBIDDEN. No invented quirks.** Enforced three ways: `fixture` is required at the type level,
-  `defineProfile()` rejects a missing or ill-formed fixture path, and the accuracy suite's per-quirk
-  DEMONSTRATOR registry asserts the cited fixture actually exhibits its claimed deviation, so a
-  real-but-irrelevant fixture cannot slip past. A generic Medicare-FFS profile was DEFERRED rather
-  than invented. Built-ins reach consumers only through the `profiles` namespace, never the top-level
-  export.
-- **The profile API DIVERGES from `hl7` by design, and the divergences are conscious, not drift**
-  (`describe()` returning DATA and not hl7's formatted string, `X12ProfileSpec`, the x12-only
-  `partitionWarnings`), driven by x12's lossless-lenient reality. **"Symmetry is a feature" does not
-  license collapsing these back onto hl7's shapes.**
+  FORBIDDEN. No invented quirks.** Enforced three ways, incl. a per-quirk DEMONSTRATOR registry, so a
+  real-but-irrelevant fixture cannot slip past. Built-ins reach consumers ONLY via `profiles`.
+- **The profile API DIVERGES from `hl7` DELIBERATELY** (`describe()` returns DATA, `X12ProfileSpec`,
+  the x12-only `partitionWarnings`). **"Symmetry is a feature" does NOT license collapsing them back.**
+  Long form for all three: `documentation/agent-notes/claude-md-relocated-narrative.md`.
 - **🩺 The 820 carries no TR3 balance equation.** `build820` emits all monetary amounts VERBATIM and
   NEVER raises a balance-mismatch refusal - a deliberate contrast with `build835`.
-- **🩺 Maintenance type is the 834's safety primitive: emit verbatim, refuse the unknown.** The
-  builder places the caller's INS-03 / HD-01 code (X12 code source 875) into the segment VERBATIM and
-  NEVER infers or normalizes it. Where the lenient read side only WARNS
-  (`X12_834_UNKNOWN_MAINTENANCE_TYPE` on the affected member only), the builder REFUSES to emit an
-  action it cannot name. On the read side the code is preserved verbatim and the warning is scoped to
-  the affected member only, so one unknown code never invalidates the roster.
+- **🩺 Maintenance type is the 834's safety primitive: emit VERBATIM, refuse the unknown.** The
+  builder places the caller's INS-03 / HD-01 (code source 875) verbatim and NEVER infers or
+  normalizes; where the read side only WARNS (`X12_834_UNKNOWN_MAINTENANCE_TYPE`, **scoped to the
+  affected member only**, so one unknown code never invalidates the roster) the builder REFUSES.
 - **🩺 The 278 certification decision is response-only and never inferred.** `build278Response` places
   HCR-01 VERBATIM and never normalizes or **upgrades** it; `build278Request` REFUSES a review carrying
   a decision.
@@ -516,16 +532,12 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   its subscriber / dependent, a 277 echoes the 276's onto its claim; the builders place the caller's
   trace into TRN-02 verbatim and NEVER fabricate, normalize, or mutate it. Locked by round-trip
   property tests on both sides.
-- **🩺 The HL spine is computed, never caller-supplied. Base stated this per builder and never as a
-  blanket - keep it that way.** `build837P/I/D` OWNS the 837's safety primitive
-  (`20 -> 22 -> 23`); `build271` (`20 -> 21 -> 22 -> 23`), `build277` / `build277CA`
-  (`20 -> 21 -> 19 -> 22 -> 23`) and `build278Request` / `build278Response`
-  (`20 -> 21 -> 22 -> 23 -> EV/SS`) own theirs. All four compute HL-01, HL-02 and HL-04 from the
-  nested input tree and take HL-03 from a module-level `HL_LEVEL` constant selected by tree position,
-  at every level **except** the 278's EV/SS review level. Where the builder owns the field, a
-  structurally inconsistent hierarchy is _unrepresentable_ and SE-01 is correct by construction.
-  **There is no level field on `Build271Spec` or `Build277Spec` and none should be added** - that
-  would destroy the guarantee, not close a gap.
+- **🩺 The HL spine is COMPUTED, never caller-supplied. State it PER BUILDER, never as a blanket.**
+  All four compute HL-01/02/04 from the nested tree and take HL-03 from a module-level `HL_LEVEL`
+  constant, at every level EXCEPT the 278's EV/SS review level, so an inconsistent hierarchy is
+  _unrepresentable_ and SE-01 is correct by construction. **There is no level field on
+  `Build271Spec` or `Build277Spec` and none should be added** - that destroys the guarantee rather
+  than closing a gap. The four level chains: `claude-md-relocated-narrative.md`.
 - **🩺 The one caller-supplied HL-03 is the 278's EV/SS REVIEW level** (`review.levelCode`, default
   `EV`; `esc` never constrained the value). **Both entry points now REFUSE anything else**
   (`X12_278_BUILD_INVALID_SPEC`, no new code): the emit is well-formed but opens a loop no reader
@@ -565,28 +577,22 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   inconsistent AK9 counts (`X12_ACK_COUNT_MISMATCH`); `buildTA1` REFUSES `A` with a non-`000` note
   (`X12_TA1_ACCEPT_WITH_NOTE`).**
 - **🩺 Every DOMAIN builder's own refusal message carries structural locators, counts and numeric
-  totals only** - never a `claimId` (patient-account number), member id, member name, trace, or
-  diagnosis code. `build834` additionally names the offending maintenance code, an X12 control code
-  and never PHI. **State this per builder, as base did, never as a property of every builder.** One
-  standing exception, the **ack path**: `build999` interpolates the acknowledged ST-02 (AK2-02,
-  verbatim by TR3 005010X231A1) and `buildTA1` its TA1-05 note code (see "the caller-vs-document
-  dichotomy is NOT categorical" above). **The negative list is NOT an absolute PHI guarantee; it is a
-  guarantee about the builder's own TEMPLATES**, which still render control numbers and control codes.
+  totals only** - never a `claimId`, member id, member name, trace or diagnosis code. **State this
+  PER BUILDER, as base did, never as a property of every builder.** Standing exception, the **ack
+  path**: `build999` interpolates the acknowledged ST-02 (AK2-02, verbatim by TR3 005010X231A1) and
+  `buildTA1` its TA1-05 note code. **The negative list is NOT an absolute PHI guarantee; it is a
+  guarantee about the builder's own TEMPLATES**, which still render control numbers and codes.
 - **🩺 NO CALLER GUARD ECHOES WHAT A CALLER PUT IN AN ELEMENT** - string/segment/decimal and the
-  array guard's PRIMITIVE arm report the TYPE only. A `JSON.parse`d spec used to put a NUMERIC
-  `claimId` or member id in the message, bounded to 90, NOT redacted. **The old disclosure named
-  `requireCallerSegment`; `requireCallerString` fires for `CLP-01`, and both echoed. Never re-add a
-  value, never fold the decimal one back out. And state the two things this does NOT say, both
-  drafted false once:** the array guard STILL renders a forged array-like's `length` and class tag
-  (SHAPE, not element contents); and **only the SEGMENT guard names the slot** - `esc`/`escDec` name
-  the BUILDER, so there nothing replaces the value as a locator. Its locator admits `parts[0]` by the
-  segment-id GRAMMAR, never by length.
+  array guard's PRIMITIVE arm report the TYPE only. **Never re-add a value, never fold the decimal
+  one back out. And state the two things this does NOT say, both drafted false once:** the array
+  guard STILL renders a forged array-like's `length` and class tag (SHAPE, not element contents),
+  and **only the SEGMENT guard names the slot** (`esc`/`escDec` name the BUILDER). Long form:
+  `claude-md-relocated-narrative.md`.
 - **The `?`-release escape is honored losslessly** (`?~`->`~`, `?*`->`*`, `??`->`?`); dot-path
   traversal walks elements, composites (`-N`, 1-indexed) and repetitions (`[N]`, 0-indexed).
-- **Known read-side limitations, documented not accidental, and enumerated in
-  `KNOWN-LIMITATIONS.md`:** the 837's Loop 2310 / 2420 provider addresses and its Loop 2320
-  other-subscriber depth, and `get834Enrollments` streaming per `INS` loop over a file **still parsed
-  into `tx.segments` up front** - an honest v1 limitation, not a streaming parser.
+- **Known read-side limitations are documented, not accidental, and `KNOWN-LIMITATIONS.md`
+  enumerates them.** One worth knowing here: `get834Enrollments` streams per `INS` loop over a file
+  **still parsed into `tx.segments` up front** - an honest v1 limitation, not a streaming parser.
 
 ### `ASSETS-P8`: the `attw` gate lies · `documentation/agent-notes.md#assets-p8-the-attw-wrapper`
 
@@ -615,23 +621,16 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
 - **The port is NOT finished org-wide, including `config/scripts/parser-template/`, which
   `scaffold-parser.mjs` mints new parsers from.** Derive the set; never trust a count.
 
-## Sibling Project
-
-**`@cosyte/hl7`** lives at `../hl7` and ships a matching API shape for HL7 v2. When in doubt on an API decision, check how `@cosyte/hl7` solved it. Symmetry is a feature, not an accident.
-
 ## Standing disciplines (every change)
 
-These three bind every change in this repo (mirrored from the cosyte meta-repo's
-`documentation/conventions.md`):
+**Three are the meta-repo's, mirrored from its `documentation/conventions.md`, which is the source of
+truth**: docs follow code; version + changelog (a Changeset, `patch`, `0.0.x`) every meaningful
+change; and the crew / knowledgebase feedback loop. Their full text is in
+`documentation/agent-notes/claude-md-relocated-narrative.md`.
 
-1. **Documentation follows code.** A public-surface / stack / status change isn't done until its
-   docs are: this package's own docs (`docs-content/` + JSDoc), and (in the meta-repo) its
-   `documentation/repos/<repo>.md` and the `ecosystem-map.md` status table.
-2. **Version + changelog every meaningful change.** Add a Changeset (`pnpm changeset`, `patch`
-   during pre-alpha) and keep `CHANGELOG.md`'s `[Unreleased]` current. Stay on `0.0.x` until first alpha.
-3. **Crew + knowledgebase feedback loop.** When a standard, decision, or public surface changes,
-   flag whether a `crew` skill or `knowledgebase` doc needs creating/updating, never silently skip.
-
-**A fourth, added by `CLAUDE-MD-AUDIT`:** narrative from an incident, a refutation or a shipped phase
-goes in **`documentation/agent-notes.md`**; only its imperative comes back here. The ratchet is a
-ceiling, not a target - `hl7`, the parser this one mirrors, is 8 KB.
+**A fourth is this repo's own, added by `CLAUDE-MD-AUDIT`:** narrative from an incident, a refutation
+or a shipped phase goes in **`documentation/agent-notes.md`**, or, once THAT file is on its own
+budget, in **`documentation/agent-notes/<slug>.md`**; only its imperative comes back here. **The
+ratchet is a ceiling, not a target** - `hl7`, the parser this one mirrors, is 8 KB. **Relocate BEFORE
+you write the trap, and pay any trap the last slice left owed** - two consecutive slices did not, and
+by the third there were five bytes left and three traps owed.

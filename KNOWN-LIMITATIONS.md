@@ -64,16 +64,21 @@ model.
   not decode** - every slot that used to get one is `X12Decimal | undefined` and reads `undefined`,
   which is a breaking type change on the read model and is the point of it. **Read that as a rule
   about the substitution, not as a census of the model:** an optional slot already read `undefined`,
-  and some rows are still dropped whole, which is a different shape and unchanged here. **Every one of those
+  and some rows are dropped whole, which is a different shape with a report of its own
+  (`X12_AMOUNT_ROW_DROPPED`, the next entry). **Every one of those
   outcomes emits `X12_UNPARSEABLE_DECIMAL` at the failing `position.elementIndex`, because the
   warning is a property of the READ rather than of what the reader then does with it.** No list of
   the outcomes is published here, on purpose: a first draft enumerated three and a review measured a
   fourth, and the rule is what holds, not the census.
 
   Three scoping facts that are easy to get wrong in the other direction:
-  - **An ABSENT element does not warn.** It reads `undefined` with no diagnostic, so `undefined`
-    alone does not tell you which of the two happened - the warning at that `elementIndex` does, and
-    `readElementDecimal` gives you the same distinction in band.
+  - **An ABSENT element does not raise this code.** It reads `undefined` and
+    `X12_UNPARSEABLE_DECIMAL` is not emitted for it, so `undefined` alone does not tell you which of
+    the two happened - the warning at that `elementIndex` does, and `readElementDecimal` gives you
+    the same distinction in band. Read that as a statement about **this code**, not as "an absent
+    element is silent": where the absent element takes a whole `AMT` / `ADX` row off the model, the
+    drop is reported by `X12_AMOUNT_ROW_DROPPED` at that segment (the next entry), which is
+    raised for both routes and therefore separates neither.
   - **🩺 An unwarned value is not thereby trustworthy in general, and this is the one inversion to
     refuse.** The warning is a property of a decimal READ, not a property of a model slot. A slot
     the reader never read at all cannot warn, and it still holds whatever the accumulator was seeded
@@ -91,6 +96,29 @@ model.
     `elementDecimal` / `elementDecimalOrZero` call under `src/transactions/` after stripping
     comments. It says nothing about a decimal decoded some other way, and no exhaustive census of
     such routes is published here, on purpose.
+
+- **🩺 An `AMT` or `ADX` whose amount does not decode loses its WHOLE row, and says so as of
+  `0.0.13`.** These segments carry an amount plus the thing the amount is about - AMT-01's qualifier,
+  ADX-02's adjustment reason code, ADX-03 / ADX-04's reference. The readers build no row at all when
+  the amount (AMT-02, ADX-01) decodes no value, so what the sender did state goes with it: through
+  `0.0.12` `AMT*B6~` gave `claim.amounts: []` and `warnings: []`, which reads exactly like a document
+  that never carried the segment. **`X12_AMOUNT_ROW_DROPPED` now reports it**, anchored at the
+  `AMT` / `ADX` and carrying **no `elementIndex`**, because one of its two routes is an absent
+  element and an absent element has no index to name. Four surfaces raise it: the 835's claim-level
+  and line-level `AMT`, the 837's claim-level `AMT`, the 834's coverage `AMT` (on that **member's**
+  own `warnings`, exactly as the decimal sink beside it is scoped) and the 820's `ADX`. Three bounds
+  worth stating:
+  - **It is additive, and no case moved onto it.** A present-but-undecodable amount still raises
+    `X12_UNPARSEABLE_DECIMAL` at its own `elementIndex`, now alongside this code rather than instead
+    of it, so a predicate written against that code fires on exactly the documents it fired on
+    before. Whether one accompanies this code at the same `segmentIndex` is what tells the absent
+    route from the unparseable one, since this code is raised for both and discriminates neither.
+  - **It reports a row dropped because its AMOUNT did not decode, and nothing wider.** A row dropped
+    because no claim, service line, coverage or remittance was open to attach it to is a different
+    loss, is still silent, and was not widened here.
+  - **An 820 `RMR` is not on this channel at all.** `decodeRmr` drops on open-item identity (RMR-01
+    and RMR-02 both empty), never on the amount: an `RMR` with no RMR-04 keeps its row with
+    `amountPaid` left `undefined`, so no row is dropped and reporting one would be false.
 
 - **🩺 An 835 balance invariant with an undecoded term is reported as UNEVALUABLE, not as a
   mismatch.** The three TR3 005010X221A1 §1.10.2 equations (line, claim, top-of-remit) read amounts

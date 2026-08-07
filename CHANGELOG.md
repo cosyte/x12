@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🩺 `X12_AMOUNT_ROW_DROPPED`, the 30th Tier-2 warning code, plus the public factory
+  `amountRowDropped(position)`** (`X12-AMT-ADX-ABSENT-AMOUNT`). An `AMT` or `ADX` is not a slot on a
+  bigger record: each one **is** a record, carrying an amount plus the thing the amount is about. So
+  when the amount element (`AMT-02`, `ADX-01`) decodes no value there is no row to build, and
+  `AMT-01`'s qualifier or `ADX-02`'s adjustment reason code is dropped with it. Through `0.0.12`
+  that happened with **no diagnostic on any channel**: `AMT*B6~` gave `claim.amounts: []` and
+  `warnings: []`, which reads exactly like a document that never carried the segment. It is now
+  reported, at the `AMT` / `ADX` itself.
+
+  Raised by four surfaces: the 835's claim-level and service-line `AMT`, the 837's claim-level
+  `AMT`, the 834's coverage `AMT` and the 820's `ADX`. The 834's lands on that **member's** own
+  `warnings`, the same per-member scoping the decimal sink beside it already used, because a
+  roster-level report would say a premium was lost without saying whose.
+
+  **It carries no `position.elementIndex`**, deliberately. One of its two routes is an absent
+  element, and an absent element has no index to name; the segment fixes which element was being
+  read anyway.
+
+  **🩺 It is additive, and no case moved onto it.** An amount that is present and does not decode
+  still raises `X12_UNPARSEABLE_DECIMAL` at its own `elementIndex`, now **alongside** this code
+  rather than instead of it, so a gate you already wrote against that code fires on exactly the
+  documents it fired on before. Whether one accompanies this code at the same `position.segmentIndex`
+  is what separates the absent route from the unparseable one, since this code is raised for both
+  and discriminates neither. What a one-code gate never caught, on any release, is the
+  absent-amount row: **gate on both.** `KNOWN-LIMITATIONS.md`, the money spec-note and the
+  troubleshooting table were corrected with the code, and a committed test pins both halves - that
+  the one-code gate misses the absent-amount document, and that it still fires where it always did.
+
+  **Two bounds, stated because the wider reading is the tempting one.** A row dropped because no
+  claim, service line, coverage or remittance was open to attach it to is a **different** loss, is
+  still silent, and was not widened here. And an 820 `RMR` is not on this channel at all:
+  `decodeRmr` drops on open-item identity (`RMR-01` and `RMR-02` both empty), never on the amount,
+  so an `RMR` with no `RMR-04` keeps its row with `amountPaid` left `undefined` and there is no
+  dropped row to report.
+
 - **🩺 `X12_835_BALANCE_NOT_EVALUABLE`, the 29th Tier-2 warning code, plus the public factory
   `balanceNotEvaluable(position, invariant)`** (`X12-837-SV-UNDEFINED-DECIMAL`). Raised where a term
   of one of the three TR3 005010X221A1 §1.10.2 balance equations is `undefined` on the model, so the
@@ -654,6 +689,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and no published type changed.
 
 ### Fixed
+
+- **🩺 An `AMT` / `ADX` row whose amount decodes nothing is no longer dropped in silence**
+  (`X12-AMT-ADX-ABSENT-AMOUNT`). Reproduced on the base tree at `9db104b` across all four readers,
+  and the report it now raises is the `X12_AMOUNT_ROW_DROPPED` entry under **Added** above. The
+  filing that named this defect stated the bound precisely and it is repeated here because the wider
+  form is false: an **absent** amount element was silent on every channel, while a **present** one
+  holding undecodable bytes was already reported by `X12_UNPARSEABLE_DECIMAL` at its own
+  `elementIndex`. Both now also raise the new code; nothing moved off the old one.
+
+- **A cookbook sentence said an undecoded 837 service line ships `charge` and `units` as `0`.** It
+  reads `undefined` on the same release that made the rest of that page true, so the page contradicted
+  the money spec-note it links to. Corrected in passing while sweeping that paragraph for the new
+  code. This is a documentation correction only; no behaviour changed with it.
 
 - **🩺 A repeated `NM1*87` in one 837 Loop 2000A no longer fuses two pay-to addresses into one the
   sender never sent** (`X12-PAY-TO-FUSION`). Reproduced at `0.0.12`: `payToAddress` is a bare

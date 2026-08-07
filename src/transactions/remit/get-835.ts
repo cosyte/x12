@@ -26,7 +26,12 @@ import {
   type X12Segment,
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
-import { unknownCarc, unknownRarc, type X12ParseWarning } from "../../parser/warnings.js";
+import {
+  amountRowDropped,
+  unknownCarc,
+  unknownRarc,
+  type X12ParseWarning,
+} from "../../parser/warnings.js";
 import { checkClaimBalance, checkRemitTotalBalance, checkServiceLineBalance } from "./balance.js";
 import type {
   X12RemitAdjustment,
@@ -292,7 +297,18 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
       }
       case "AMT": {
         const amount = decodeAmt(seg, delimiters, sink);
-        if (amount === undefined) break;
+        // No decoded amount means no row at all, and the qualifier the sender
+        // did state goes with it. Warn at the AMT rather than let the row
+        // vanish: both routes here (an absent AMT-02, and one holding bytes
+        // that do not decode) leave `claim.amounts` looking like a document
+        // that stated no such amount. The unparseable route keeps its own
+        // `X12_UNPARSEABLE_DECIMAL` at the failing element, raised by the
+        // sink above, so a predicate written against that code still fires
+        // exactly where it did; the absent route has only this one.
+        if (amount === undefined) {
+          warnings.push(amountRowDropped(position));
+          break;
+        }
         if (currentServiceLine !== undefined) currentServiceLine.amounts.push(amount);
         else if (currentClaim !== undefined) currentClaim.amounts.push(amount);
         break;

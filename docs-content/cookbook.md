@@ -231,10 +231,12 @@ an unresolvable one raises `X12_837_UNKNOWN_VARIANT`.
 
 The reference wins over the segments when the two disagree, and the `type` option wins over both. A
 service line whose `SVx` then does not match is **not** decoded (reading an `SV2` into a Professional
-line would mis-read the charge), so its `charge` and `units` ship as `0` and
+line would mis-read the charge), so its `charge` and `units` read `undefined` and
 `X12_837_SERVICE_LINE_NOT_DECODED` is raised against the `LX` that opened it. Gate on that warning
 before you post a line amount, alongside `X12_UNPARSEABLE_DECIMAL` (the `SVx` decoded but the amount
-itself did not); neither is a complete account of every way a `0` can reach the model, and
+itself did not) and `X12_AMOUNT_ROW_DROPPED` (an `AMT` whose own amount decoded nothing, so the
+whole supplemental-amount row is off the claim); none of them is a complete account of every way an
+amount can fail to reach the model, and
 [Decimal-exact money](./spec-notes-money) states the guarantee in the only direction it holds.
 
 A third code covers one more way a line goes missing: `X12_837_SERVICE_LINE_DROPPED`, raised at an

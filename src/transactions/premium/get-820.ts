@@ -20,7 +20,7 @@ import {
   type X12Segment,
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
-import type { X12ParseWarning } from "../../parser/warnings.js";
+import { amountRowDropped, type X12ParseWarning } from "../../parser/warnings.js";
 import type {
   X12PremiumAddress,
   X12PremiumAdjustment,
@@ -175,7 +175,11 @@ export function get820Payments(
       case "ADX": {
         if (current === undefined) break;
         const adjustment = decodeAdx(seg, delimiters, sink);
-        if (adjustment !== undefined) current.adjustments.push(adjustment);
+        // See the 835's AMT case. ADX-01 is the amount, so an ADX that decodes
+        // none takes its adjustment reason code off the model too - a premium
+        // adjustment the remittance no longer records at all.
+        if (adjustment === undefined) warnings.push(amountRowDropped(position));
+        else current.adjustments.push(adjustment);
         break;
       }
       case "REF": {

@@ -32,7 +32,11 @@ import {
   type X12Segment,
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
-import { unknownMaintenanceType, type X12ParseWarning } from "../../parser/warnings.js";
+import {
+  amountRowDropped,
+  unknownMaintenanceType,
+  type X12ParseWarning,
+} from "../../parser/warnings.js";
 import type {
   X12CoordinationOfBenefits,
   X12Enrollment,
@@ -254,7 +258,11 @@ export async function* get834Enrollments(
         // `X12_834_UNKNOWN_MAINTENANCE_TYPE`.
         const sink: X12DecimalWarningSink = { warnings: current.warnings, position };
         const amount = decodeAmt(seg, delimiters, sink);
-        if (amount !== undefined) currentCoverage.amounts.push(amount);
+        // See the 835's AMT case. The dropped-row report follows the same
+        // per-member scoping as the decimal sink beside it: it is the member's
+        // premium that went missing, so it is reported on that member.
+        if (amount === undefined) current.warnings.push(amountRowDropped(position));
+        else currentCoverage.amounts.push(amount);
         break;
       }
       default:
