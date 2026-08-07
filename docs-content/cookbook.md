@@ -256,8 +256,9 @@ before you post a line amount, alongside `X12_UNPARSEABLE_DECIMAL` (the `SVx` de
 itself did not) and `X12_AMOUNT_ROW_DROPPED` (an `AMT` whose own amount decoded nothing, so the
 whole supplemental-amount row is off the model - off the **line** where one is open, and off the
 claim otherwise). Gate on `X12_STATED_AMOUNT_DISCARDED` beside it: an `AMT` arriving while a Loop
-2430 adjudication is open decodes fine and is discarded anyway, so that row is off the model with
-its amount still perfectly readable in the bytes. The two are disjoint and never name the same
+2430 adjudication is open decodes fine and is discarded anyway, so that row is off the model even
+though nothing failed to read. That is specific to this route: read the code's own bounds before
+generalising it, because its other route reports rows whose bytes may not decode at all. The two are disjoint and never name the same
 segment. None of them is a complete account of every way an
 amount can fail to reach the model, and
 [Decimal-exact money](./spec-notes-money) states the guarantee in the only direction it holds.

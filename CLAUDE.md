@@ -91,7 +91,7 @@ or financial value on the wire.**
   message says an unaccompanied instance means the sender stated NO amount). It closed an INVERSION:
   under an open `SVD` the ABSENT amount warned and the STATED one did not, so the report sat exactly
   where LESS was lost.
-- **🩺 NEVER CLAIM THE BYTES ARE DECODABLE - pass 1 refuted six surfaces.** The `RMR` guard is a
+- **🩺 NEVER CLAIM THE BYTES ARE DECODABLE - a pass-1 major.** The `RMR` guard is a
   PRESENCE test, never a decode, so **NO `X12_UNPARSEABLE_DECIMAL` even on unreadable bytes** and it
   fires on `1,234.56` too; deciding by decode would mint it where it never fired. Only the `AMT`
   route guarantees a value.
@@ -100,8 +100,8 @@ or financial value on the wire.**
   claim open DOES warn; the 834/820 return first and stay silent. **NO LOOP OPEN is a DIFFERENT loss
   and STAYS SILENT** (834 `AMT` no `HD`, 820 `ADX` no remittance, 835/837 `AMT` before any claim), so
   never widen to "a stated amount row is always reported"; a bare `RMR~` and one stating only RMR-03
-  are silent too. **The INVERSION SURVIVES there** (`PRE-EXISTING`). **An empty filtered array
-  asserts NOTHING.**
+  are silent too. **The INVERSION SURVIVES at the 835/837 sites ONLY**
+  (`PRE-EXISTING`). **An empty filtered array asserts NOTHING.**
 
 ### 🩺 `X12-837-SV-UNDEFINED-DECIMAL` (2026-08-07) · `documentation/agent-notes/x12-837-sv-undefined-decimal.md`
 
@@ -468,8 +468,8 @@ or financial value on the wire.**
 - **Case 6 (the empty-first-element segment `*A*B~` outside a transaction) is deliberately NOT in
   scope.** The walker skips it, so there is nothing to re-emit; closing it is a RETENTION change to
   the `name.length > 0` guard and would mint new `X12_UNEXPECTED_SEGMENT`s.
-- **Retention and placement are NOT promotion:** no `get*` reader sees an orphan, and a `TA1` inside
-  a group still does not join `ta1Segments`.
+- **Retention and placement are NOT promotion:** no `get*` reader sees an orphan, and a `TA1` in a
+  group still does not join `ta1Segments`.
 - **State the four kept regression assertions at the MODEL level, not the byte level.** A
   `ta1-inside-group` orphan IS written back between the `ST` and the `SE`, so "never lands inside a
   transaction" would be simply false.
