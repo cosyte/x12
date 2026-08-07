@@ -556,43 +556,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **🩺 A repeated `NM1*87` inside one 837 Loop 2000A no longer fuses two pay-to addresses into one**
-  (`X12-837-LOOP-RESIDUALS`). `NM1*87` names the pay-to address with no entity object to hold it:
-  `X12Claim.payToAddress` is a bare address accumulator. A route that assigns a fresh entity leaves
-  the trailing `N3` / `N4` no address on the new object to write onto, so their write replaces; these
-  two arms instead wrote onto whatever the previous `NM1*87` had left, the line collector
-  **appending** and the `N4` merge falling back. Measured at `0.0.11`, the current release as this
-  was written: a document naming two pay-to addresses in one Loop 2000A read back one address
-  carrying **a street line from each**, and a `countryCode` taken from the FIRST address's `N4` on a
-  second address whose own `N4` names no country. **That is an address no sender sent, on a claim,
-  indistinguishable on the model from one that was.**
-
-  **The first `N3` / `N4` after an `NM1*87` now starts from an empty address**, so it REPLACES what
-  an earlier `NM1*87` in the same Loop 2000A left, and every write after it appends, exactly as two
-  `N3`s under one `NM1` do for any party. **Where that fires is the design and not a detail.**
-  Clearing the slot at the `NM1*87` itself was the first remedy and is measurably worse: on a repeat
-  carrying no `N3` / `N4` of its own it erases the address the document DID state, and since
-  `build837P/I/D` emits Loop 2010AB only where the slot is defined, that erasure re-emits as **no
-  pay-to loop at all**, which is a positive statement about where the payment goes rather than a
-  missing one. The accumulator moves only when a segment gives it a value.
-
-  **🩺 This is therefore NOT the entity parties' rule and must not be restated as one.** A repeated
-  `NM1*PR` with no `N3` leaves a payer object whose `address` is `undefined` - the party is on the
-  model and only its address is unknown. The pay-to slot has no object, so on it "address unknown"
-  and "no pay-to loop" are the same value, and only the address the document stated tells them
-  apart. Where a repeat does state a new address, the earlier one is replaced, reaches no other slot,
-  and its bytes stay verbatim on `tx.segments`.
-
-  **Bounds, each a committed test.** Two `N3`s under ONE `NM1*87` still append, which is what every
-  entity arm does within a party and is not what changed. A single `NM1*87` is byte-for-byte
-  unchanged, every `N4` field included. An `N4` alone after a repeat replaces the whole address and
-  carries no field forward. A repeat carrying only a `PER`, a kind no pay-to arm surfaces, moves
-  nothing. A new Loop 2000A `HL` already cleared the accumulator and still does, which is why the
-  defect needed both `NM1*87`s inside one loop. **No warning code was added and the repeat stays
-  silent**, as every other repeated party is at this reader; that silence is disclosed, not claimed
-  closed. No warning code, warning message, model shape or public type changed.
-  `KNOWN-LIMITATIONS.md` records the version boundary for a consumer on `0.0.11`.
-
 - **🩺 `build278Request` / `build278Response` refuse a review whose HL-03 level code is outside `EV`
   and `SS`, instead of emitting a review its own reader cannot decode**
   (`REFUSAL-MESSAGE-PHI-ECHO`). `Build278ReviewSpec.levelCode` is the **one** caller-supplied HL-03 in
@@ -1221,6 +1184,20 @@ string, …` - which `esc` cannot, being unary.
   copy is given a new wording and **no per-kind, per-party map is published.** Counterfactual headings ("no longer attaches", "no longer leaves the last `NM1`
   addressable") lose the counterfactual only. The bullet in `documentation/agent-notes.md` beginning
   "RESIDUAL 1, MEASURED AT `93b2428`", and the identically-scoped paragraph in the test header it was
+  **🩺 The pay-to-address half of this item was CUT BACK OUT of this change and is still open.** The
+  same item files, as `PRE-EXISTING`, that a repeated non-conformant `NM1*87` inside one Loop 2000A
+  fuses two pay-to addresses into one: the `N3` line collector appends and the `N4` merge falls back,
+  so the model carries a street from each and an `N4` field the second address omitted. That
+  reproduces unchanged at `0.0.11` and is **not** fixed here. Two remedies were built and both were
+  refuted for moving the loss rather than removing it, so per ADR 0016 the slice is cut back rather
+  than given a third: clearing the accumulator at the `NM1*87` erases the address a repeat with no
+  `N3` / `N4` of its own did state, and replacing at the first following write erases it on a
+  VALUELESS `N3~` / `N4~`. Neither erasure is a neutral absence, and that is the constraint the next
+  attempt has to start from: `build837P/I/D` emits Loop 2010AB only where the slot is defined and
+  emits `N3` / `N4` only for a non-empty value, so an emptied slot re-emits as **no pay-to loop at
+  all** and a half-emptied one re-emits a bare `NM1*87` with neither. **The emit side is therefore in
+  scope for that fix from the start**, which is what made this a separate unit. `documentation/agent-notes.md` carries the measurements.
+
   written from, are **not** copies - both are scoped by "every trailing segment that attaches to a
   named party" - and are deliberately left alone. Nothing a consumer reads at runtime changed:
   neither the warning registry nor any `docs-content/` page nor the README carried the wording, and

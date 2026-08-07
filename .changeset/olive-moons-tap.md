@@ -2,43 +2,33 @@
 "@cosyte/x12": patch
 ---
 
-🩺 A repeated `NM1*87` inside one 837 Loop 2000A no longer fuses two pay-to addresses into one, and
-the universal about a stray `LX` is cut back where it survived in `src/` comments and 837 test-file
-headers (`X12-837-LOOP-RESIDUALS`).
+The universal about a stray 837 `LX` is cut back where it survived in `src/` comments and 837
+test-file headers (`X12-837-LOOP-RESIDUALS`). Documentation only: no code, type, warning code,
+warning message or model shape changed, and the executable behaviour of the swept comments is nil.
 
-**The pay-to address.** `NM1*87` names the pay-to address with no entity object to hold it:
-`X12Claim.payToAddress` is a bare address accumulator. A route that assigns a fresh entity leaves
-the trailing `N3` / `N4` no address on the new object to write onto, so their write replaces; these
-two arms instead wrote onto whatever the previous `NM1*87` had left, the line collector **appending**
-and the `N4` merge falling back. Measured at `0.0.11`, the current release as this was written: a
-document naming two pay-to addresses in one Loop 2000A read back one address carrying **a street
-line from each**, and a `countryCode` off the FIRST address's `N4` on a second address whose own `N4`
-names no country. That is an address no sender sent, on a claim, and on the model it is
-indistinguishable from one that was.
+The release before this one deleted, from the documents this package publishes, a universal reading
+that all four of `N3` / `N4` / `PER` / `REF` reached every party through `0.0.10`, and disclosed
+rather than claimed closed that the same wording still stood in `src/` comments and 837 test-file
+headers. This is the rest of that sweep. **No count and no completeness claim is published**, because
+both went stale here before: the sites swept are the `NM1` and `LX` case comments in
+`src/transactions/claim/get-837.ts`, and the headers, section comments and case titles of
+`test/transactions-claim-837-loop-residuals.test.ts`,
+`test/transactions-claim-837-discard-after-stray-lx.test.ts` and
+`test/transactions-claim-837-variant-lookup.test.ts`. Each said a trailing `N3` / `N4` / `PER` /
+`REF` "attached to" or "landed on" whichever party the last `NM1` left active, or that a party named
+after the `LX` "is addressable again", all of which read as all four kinds reaching every party. They
+do not: this reader does not surface every one of those kinds on every party. Each copy takes the
+qualifier already graded on the shipped surfaces, "wherever this reader surfaces that segment kind on
+that party at all", or is cut back to the measured instance beside it and that instance is named, a
+payer in every case but one, where it is a Loop 2320 other subscriber. No copy is given a new wording
+and **no per-kind, per-party map is published.** Counterfactual headings lose the counterfactual only.
+The paragraphs that are not copies of the universal, because they are scoped by "every trailing
+segment that attaches to a named party", are deliberately left alone.
 
-The first `N3` / `N4` after an `NM1*87` now starts from an empty address, so it **REPLACES** what an
-earlier `NM1*87` in the same Loop 2000A left, and every write after it appends, exactly as two `N3`s
-under one `NM1` do for any party. **Where that fires is the design.** Clearing the slot at the
-`NM1*87` itself was the first remedy and is measurably worse: on a repeat carrying no `N3` / `N4` of
-its own it erases the address the document DID state, and since `build837P/I/D` emits Loop 2010AB
-only where the slot is defined, that erasure re-emits as **no pay-to loop at all** rather than as a
-missing value. The accumulator moves only when a segment gives it one.
-
-🩺 **This is not the entity parties' rule and must not be restated as one.** A repeated `NM1*PR` with
-no `N3` leaves a payer object whose `address` is `undefined`; the pay-to slot has no object, so on it
-"address unknown" and "no pay-to loop" are the same value. Bounds, each a committed test: two `N3`s
-under one `NM1*87` still append, a single `NM1*87` is unchanged, an `N4` alone after a repeat
-replaces the whole address, a repeat carrying only a `PER` moves nothing, and a new Loop 2000A `HL`
-already cleared the accumulator. **No warning code was added and the repeat stays silent**, as every
-other repeated party is at this reader; that silence is disclosed, not claimed closed. No warning
-code, warning message, model shape or public type changed.
-
-**The wording.** The release before this one deleted, from the documents this package publishes, a
-universal reading that all four of `N3` / `N4` / `PER` / `REF` reached every party, and disclosed
-that the same wording still stood in `src/` comments and 837 test-file headers. Each surviving copy
-now takes the qualifier already graded on the shipped surfaces, "wherever this reader surfaces that
-segment kind on that party at all", or is cut back to the measured instance beside it and that
-instance is named. No copy is given a new wording, **no per-kind, per-party map is published**, and
-the identically-scoped paragraphs that are not copies of it are deliberately left alone. Nothing a
-consumer reads at runtime changed: neither the warning registry nor any `docs-content/` page nor the
-README carried it.
+🩺 **The pay-to-address half of the same item was cut back out of this change and is still open.** A
+repeated non-conformant `NM1*87` inside one Loop 2000A still fuses two pay-to addresses into one, at
+`0.0.11` and here. Two remedies were built and both were refuted for moving the loss rather than
+removing it, so the slice is cut back rather than given a third. The constraint the next attempt
+starts from: `build837P/I/D` emits Loop 2010AB only where the slot is defined and emits `N3` / `N4`
+only for a non-empty value, so any remedy that can empty the slot re-emits as no pay-to loop at all.
+The emit side is in scope for that fix from the start.

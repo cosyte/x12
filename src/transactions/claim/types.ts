@@ -406,16 +406,6 @@ export interface X12Claim {
   readonly variant: X12Claim837Variant;
   readonly hierarchy: X12HierarchicalLevel | undefined;
   readonly billingProvider: X12ClaimEntity | undefined;
-  /**
-   * Loop 2010AB pay-to address, from the `N3` / `N4` following an `NM1*87`
-   * in the enclosing Loop 2000A. The TR3s permit one `NM1*87` per Loop
-   * 2000A; where a non-conformant document repeats it, **the later one
-   * REPLACES the earlier**, exactly as a repeated `NM1` replaces any other
-   * party. A repeat carrying no `N3` / `N4` of its own therefore leaves
-   * this `undefined` rather than the previous address. The replaced
-   * address is not merged and is not surfaced anywhere else on the model;
-   * its bytes stay verbatim on `tx.segments`.
-   */
   readonly payToAddress: X12ClaimAddress | undefined;
   readonly payToPlan: X12ClaimEntity | undefined;
   readonly subscriber: X12ClaimMember | undefined;
