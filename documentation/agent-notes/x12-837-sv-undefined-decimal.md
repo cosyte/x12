@@ -147,10 +147,14 @@ half is green on both trees precisely so it can catch that later.
   `SVx` never decoded reads `undefined` for the same reason a decoded `SVx` with an empty charge
   element does, and only `X12_837_SERVICE_LINE_NOT_DECODED` tells those apart. Never write that
   `undefined` means "the sender omitted it".
-- **An `AMT` / `ADX` row whose amount element does not decode is dropped with NO warning on any
-  channel.** `AMT*AU~` gives `claim.amounts: []` and `warnings: []`, identically on both trees.
-  `PRE-EXISTING`, measured by pass 1, and its own slice: closing it needs a retention decision and a
-  registry code, neither of which belongs in a type widening.
+- **An `AMT` / `ADX` row whose amount element is ABSENT is dropped with NO warning on any channel.**
+  `AMT*AU~` gives `claim.amounts: []` and `warnings: []`, identically on both trees. **Say ABSENT,
+  not "does not decode"** - a first draft of this bullet said the wider thing and pass 2 measured it
+  false: `AMT*AU*N/A~` and `AMT*AU*1,234.56~` also give `claim.amounts: []` but DO emit
+  `X12_UNPARSEABLE_DECIMAL` at `elementIndex` 2, because `decodeAmt` passes the sink. Only the
+  absent element is silent, which is the same bound `X12-QUANTITY-SILENT-DEFAULTS` already states
+  and which this file contradicted for one commit. `PRE-EXISTING`, and its own slice: closing it
+  needs a retention decision and a registry code, neither of which belongs in a type widening.
 - **SV3-06's TR3 usage is NOT grounded, and the emit-side refusal does not claim it is.** `units`
   became required for all three variants on one argument that needs no usage code (a serializer may
   not state a count nobody supplied), but nobody here has read X224A2. Pass 1 measured the cost:
