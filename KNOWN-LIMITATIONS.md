@@ -500,6 +500,21 @@ Code"`, `SVC05 / 380 / "Units of Service Paid Count"`, `SVC06 / C003`,
   provider **identities** (`NM1`) round-trip, but the street-address lines do not decode onto the
   model. Read them from the raw segments if you need them.
 
+- **🩺 A second `NM1*87` inside one Loop 2000A REPLACES the pay-to address, and the first one is
+  then on no model slot.** `X12Claim.payToAddress` is one slot and the TR3s permit one Loop 2010AB
+  per Loop 2000A, so a repeat is non-conformant and the later address wins, exactly as a repeated
+  `NM1` replaces any other party. A repeat carrying no `N3` / `N4` of its own leaves the slot
+  `undefined` rather than the earlier address. **CHANGED, and the change moves a value off the
+  model that `0.0.11` put on it** - the current release as this was written, so a consumer on it has
+  the old behaviour. There the accumulator was not cleared at the second `NM1*87`, so the two
+  addresses fused: `lines` carried a street from each, and an `N4` field the second address omitted
+  fell back to the first one's. That fused address is one no sender sent. **If you read `0.0.11` and
+  relied on `payToAddress` on a document with a repeated `NM1*87`, that slot could carry lines and
+  `N4` fields from two different addresses.** The
+  replacement is as silent as every other party's is; nothing warns on a repeated `NM1` at this
+  reader. The replaced address's bytes stay verbatim on `tx.segments`, which is what settles it for
+  a given document.
+
 - **`get834Enrollments` streams members but still parses the whole file up front.** It yields one
   decoded member per `INS` loop (so a consumer holds one member at a time), but the underlying
   interchange is fully parsed into `tx.segments` before iteration begins. It is not a byte-streaming

@@ -528,8 +528,11 @@ export function get837Claims(
         // `else`, so the stray-LX scope ends here whatever this NM1 resolves
         // to. Clearing once at the top of the case is what keeps the flag
         // scoped rather than latched: a party named after the stray LX is
-        // addressable again, and an NM1 this walker cannot route leaves the
-        // following segments as silent as they were before this code existed.
+        // outside that scope again, and an NM1 this walker cannot route leaves
+        // the following segments as silent as they were before this code
+        // existed. Outside the scope is not the same as addressable - whether
+        // a given trailing segment reaches that party is the per-kind,
+        // per-party question the declaration of the flag above states.
         entityLoopClosedByStrayLx = false;
         // Route the NM1 by qualifier + context.
         if (qualifier === NM1_QUALIFIERS.SUBMITTER) {
@@ -545,6 +548,23 @@ export function get837Claims(
           // The 005010 X222A2/X223A3/X224A2 specs use NM1*87 only for the
           // pay-to ADDRESS; the name is preserved on tx.segments but not
           // re-surfaced as a separate entity until a real consumer asks.
+          //
+          // 🩺 CLEAR THE ACCUMULATOR FIRST. This is the one route in this case
+          // that names a party without assigning that party's accumulator -
+          // every other route replaces its entity here, so a repeated `NM1`
+          // gives the trailing `N3` / `N4` a `current.address` of `undefined`
+          // and the attach helpers write onto an empty address. The pay-to
+          // address has no entity object to replace, so without this line a
+          // second `NM1*87` inside one Loop 2000A left the FIRST one's value
+          // in place for `withLines` to append to and for `mergeAddress` to
+          // fall back on: measured at `63a70bc`, two pay-to addresses fused
+          // into one, `lines` carrying a street from each and `countryCode`
+          // carried over from the first `N4` where the second omitted it.
+          // That is a value the sender put on no party at all, which is the
+          // one outcome this reader trades everything else to avoid. The
+          // first address is not recovered onto the model - it is left where
+          // every other replaced party's is, verbatim on `tx.segments`.
+          payToAddress = undefined;
           activeEntity = { kind: "payToAddress" };
         } else if (
           qualifier === NM1_QUALIFIERS.PAY_TO_PLAN &&
@@ -731,20 +751,23 @@ export function get837Claims(
         // and the number is worthless to a reader anyway - `git log -p` is
         // exact and never goes stale. What matters is why: an earlier draft
         // returned early on the SECOND route and skipped that route's reset,
-        // which let a trailing bare `N3` / `N4` / `PER` attach its address to
-        // whatever party the last `NM1` had left active, and route 1 was doing
-        // the same thing through `93b2428`. Trading a warned omission for a
-        // silent mis-attribution is the wrong direction.
+        // which let a trailing bare `N3` / `N4` / `PER` reach whatever party
+        // the last `NM1` had left active, wherever this reader surfaces that
+        // segment kind on that party at all, and route 1 was doing the same
+        // thing through `93b2428`. Trading a warned omission for a silent
+        // mis-attribution is the wrong direction.
         if (currentClaim === undefined) {
           warnings.push(serviceLineDropped(position));
           droppedLineReported = true;
           // Route 1 is the one path out of this case that used to skip the
           // reset below, and skipping it is the mirror image of the draft the
           // comment above warns about: through `93b2428` a trailing
-          // `REF` / `N3` / `N4` / `PER` after a dropped `LX` attached to
-          // whichever party the last `NM1` left active - measured, a line-item
-          // control number, a street address and a contact landing on a LATER
-          // claim's payer, silently.
+          // `REF` / `N3` / `N4` / `PER` after a dropped `LX` reached whichever
+          // party the last `NM1` left active, wherever this reader surfaces
+          // that segment kind on that party at all - measured on a payer,
+          // which surfaces all three of an address, a reference and a contact:
+          // a line-item control number, a street address and a contact landing
+          // on a LATER claim's payer, silently.
           //
           // THIS IS A TRADE, NOT A FREE WIN, AND THE COST IS MEASURED. The
           // TR3s nest Loop 2400 inside Loop 2300 and say nothing about an `LX`

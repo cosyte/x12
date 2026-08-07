@@ -37,8 +37,11 @@
  * those controls are the routes that must NOT change: with a `CLM` open the
  * trailing `REF` still lands on the enclosing claim, an entity-level `REF`
  * with no `LX` in play still lands on its `NM1`, a real Loop 2400 still takes
- * its own line-level `REF`, and a later claim still attaches normally (the
- * reset is a reset, not a latch). For residual 2 the control is a resolvable
+ * its own line-level `REF`, and a payer named after the stray `LX` still takes
+ * its own `N3` and `REF` (the reset is a reset, not a latch; what a party
+ * OUTSIDE that scope then receives is per kind and per party, which is why
+ * the control measures a payer rather than asserting a general one). For
+ * residual 2 the control is a resolvable
  * ST-03, which raises nothing at all.
  *
  * 🩺 **THE FIX IS A TRADE AND ITS COST IS PINNED, NOT ARGUED AWAY.** The TR3s
@@ -102,7 +105,13 @@ const HEADER: readonly string[] = [
 const CLM = "CLM*PT-ACCT-900*8500***11:B:1*Y*A*Y*Y~";
 const SV1 = "SV1*HC:99213*8500*UN*4***1~";
 
-/** The four trailing segments that attach to a named party. */
+/**
+ * The four trailing entity segment kinds this suite sends after the stray
+ * `LX`. Named for what they are, not for what they would otherwise reach:
+ * which of them this reader surfaces on a given party varies by kind and by
+ * party, and every document below names a payer, which surfaces all three of
+ * an address, a reference and a contact.
+ */
 const TRAILING_REF = "REF*6R*LINE-CTRL-1~";
 const TRAILING_N3 = "N3*1 ORPHAN WAY~";
 const TRAILING_N4 = "N4*SPRINGFIELD*IL*62701~";
@@ -151,11 +160,11 @@ function channel(sub: X12_837Submission): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// Residual 1. A trailing segment after a dropped LX no longer addresses the
+// Residual 1. A trailing segment after a dropped LX does not address the
 // last named party.
 // ---------------------------------------------------------------------------
 
-describe("X12-837-LOOP-RESIDUALS: a dropped LX no longer leaves the last NM1 addressable", () => {
+describe("X12-837-LOOP-RESIDUALS: a dropped LX closes the entity loop current at it", () => {
   /** Dropped `LX` (no CLM open), then trailing segments, then a real claim. */
   const misfiled = (trailing: readonly string[]): readonly string[] => [
     ...HEADER,
@@ -368,7 +377,7 @@ describe("X12-837-LOOP-RESIDUALS: the controls the reset must NOT change", () =>
     expect(channel(sub)).toEqual([]);
   });
 
-  it("CONTROL: the reset is a reset, not a latch - the very next NM1 is addressable again", () => {
+  it("CONTROL: the reset is a reset, not a latch - the next NM1's payer takes its own segments", () => {
     // The failure mode this shape invites, and the same one
     // `droppedLineReported` had to avoid: a dropped `LX` must not make every
     // subsequent party in the transaction unaddressable. No intervening `HL`,
@@ -458,5 +467,166 @@ describe("X12-837-LOOP-RESIDUALS: X12_837_UNKNOWN_VARIANT anchors at the ST, not
     const { sub } = parseWithTx(HEADER, "005010XZZZZZ");
     expect(sub.warnings[0]?.message).toContain("837 variant could not be resolved");
     expect(sub.warnings[0]?.message).not.toContain("005010XZZZZZ");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The residual this item left open at `4a5a943`: a repeated NM1*87 fused two
+// pay-to addresses into one.
+// ---------------------------------------------------------------------------
+
+/**
+ * 🩺 **`NM1*87` is the one route in the `NM1` case that named a party without
+ * assigning that party's accumulator.** Every other route assigns a fresh
+ * entity there, so the `N3` / `N4` that follow a repeated `NM1` find
+ * `current.address === undefined` and write onto an empty address. The pay-to
+ * address has no entity object behind it - `payToAddress` is a bare
+ * `X12ClaimAddress` accumulator, reset only at the next Loop 2000A `HL` - so
+ * a second `NM1*87` inside ONE Loop 2000A left the first one's value in place
+ * for `withLines` to APPEND to and for `mergeAddress` to fall back on.
+ *
+ * **Measured at `63a70bc`, on the document below:**
+ * `{"lines":["1 FIRST PAY TO WAY","2 SECOND PAY TO WAY"],"city":"SHELBYVILLE",`
+ * `"state":"IL","postalCode":"62565","countryCode":"US"}` - a street from each
+ * of two different addresses, and a `countryCode` carried over from the FIRST
+ * `N4` onto an address whose own `N4` omitted it. **No sender put that address
+ * on that claim**, which is the outcome this reader trades everything else to
+ * avoid, and it is indistinguishable from a real one on the model.
+ *
+ * **The remedy is the assignment the other routes already do**, not a new
+ * guard and not a new warning code: clearing the accumulator at the `NM1*87`
+ * route makes BOTH attach arms replace, because both start from
+ * `EMPTY_ADDRESS` again. The repeat stays as silent as a repeated `NM1*PR` is
+ * - replacement warns for no party at this reader, at this head or at any
+ * release, and making pay-to alone warn would be the asymmetry, not the fix.
+ * That silence is disclosed, not claimed closed.
+ *
+ * **The first address is NOT recovered onto the model**, and that is the same
+ * trade the rest of this suite pins: the model carries one pay-to address
+ * because `X12Claim.payToAddress` is one slot, and the bytes of the replaced
+ * one stay verbatim on `tx.segments`. A repeat carrying no `N3` / `N4` of its
+ * own therefore leaves the slot `undefined` rather than the earlier address.
+ *
+ * Only bytes can produce this: `build837P/I/D` emits at most one `NM1*87`.
+ * All data is synthetic.
+ */
+describe("X12-837-LOOP-RESIDUALS: a repeated NM1*87 replaces the pay-to address", () => {
+  /** Loop 2000A, then `blocks`, then a conformant 2000B + claim. */
+  const withPayTo = (blocks: readonly string[]): readonly string[] => [
+    "HL*1**20*1~",
+    "NM1*85*2*BILLING CLINIC INC*****XX*1234567890~",
+    ...blocks,
+    "HL*2*1*22*0~",
+    "SBR*P*18*GROUP123******MB~",
+    "NM1*IL*1*TEST*PATIENT*A***MI*MEMBER001~",
+    "NM1*PR*2*PAYER ONE*****PI*PAYER01~",
+    CLM,
+    "HI*ABK:J20.9~",
+    "LX*1~",
+    SV1,
+  ];
+
+  const FIRST = ["NM1*87*2~", "N3*1 FIRST PAY TO WAY~", "N4*SPRINGFIELD*IL*62701*US~"];
+  const SECOND = ["NM1*87*2~", "N3*2 SECOND PAY TO WAY~", "N4*SHELBYVILLE*IL*62565~"];
+
+  it("🩺 the second NM1*87's address REPLACES the first - no fused lines, no stale N4 field", () => {
+    const sub = parse837(withPayTo([...FIRST, ...SECOND]));
+    // At `63a70bc` this was ["1 FIRST PAY TO WAY", "2 SECOND PAY TO WAY"].
+    expect(sub.claims[0]?.payToAddress?.lines).toEqual(["2 SECOND PAY TO WAY"]);
+    expect(sub.claims[0]?.payToAddress?.city).toBe("SHELBYVILLE");
+    expect(sub.claims[0]?.payToAddress?.postalCode).toBe("62565");
+    // 🩺 The `mergeAddress` half. At `63a70bc` this read "US", off the FIRST
+    // pay-to address's `N4`, on an address whose own `N4` has four elements
+    // and names no country.
+    expect(sub.claims[0]?.payToAddress?.countryCode).toBeUndefined();
+    // The whole channel. Correcting the attribution adds no code and loses
+    // none: a repeated `NM1*87` is non-conformant and this reader is as
+    // silent about it as it is about every other repeated party.
+    expect(channel(sub)).toEqual([]);
+  });
+
+  it("🩺 a repeat carrying no N3 / N4 leaves the slot undefined, not the earlier address", () => {
+    // The surprising half, and the reason it is pinned rather than left to be
+    // inferred: a slot that had a value goes to `undefined`. Holding the
+    // earlier address here would put the FIRST party's street on the SECOND
+    // party's name, which is the same fabrication one line smaller.
+    const sub = parse837(withPayTo([...FIRST, "NM1*87*2~"]));
+    expect(sub.claims[0]?.payToAddress).toBeUndefined();
+    expect(channel(sub)).toEqual([]);
+  });
+
+  it("CONTROL: a single NM1*87 is unchanged - every N4 field included", () => {
+    const sub = parse837(withPayTo(FIRST));
+    expect(sub.claims[0]?.payToAddress).toEqual({
+      lines: ["1 FIRST PAY TO WAY"],
+      city: "SPRINGFIELD",
+      state: "IL",
+      postalCode: "62701",
+      countryCode: "US",
+    });
+    expect(channel(sub)).toEqual([]);
+  });
+
+  it("CONTROL: two N3s under ONE NM1*87 still append, exactly as they do for any party", () => {
+    // The bound. Appending WITHIN a party is what every entity arm does and
+    // is not what changed; only the new-party boundary moved. Reaching for a
+    // fresh address per `N3` instead would red this.
+    const sub = parse837(
+      withPayTo([
+        "NM1*87*2~",
+        "N3*1 FIRST PAY TO WAY~",
+        "N3*SUITE 200~",
+        "N4*SPRINGFIELD*IL*62701~",
+      ]),
+    );
+    expect(sub.claims[0]?.payToAddress?.lines).toEqual(["1 FIRST PAY TO WAY", "SUITE 200"]);
+    expect(channel(sub)).toEqual([]);
+  });
+
+  it("CONTROL: a repeated NM1*PR already replaced, and still does", () => {
+    // The shape this fix makes the pay-to address match, and the ground for
+    // the source comment's claim that every other route assigns its
+    // accumulator. Measured identical at `63a70bc`.
+    const sub = parse837([
+      "HL*1**20*1~",
+      "NM1*85*2*BILLING CLINIC INC*****XX*1234567890~",
+      "HL*2*1*22*0~",
+      "SBR*P*18*GROUP123******MB~",
+      "NM1*IL*1*TEST*PATIENT*A***MI*MEMBER001~",
+      "NM1*PR*2*PAYER ONE*****PI*PAYER01~",
+      "N3*1 FIRST PAYER WAY~",
+      "NM1*PR*2*PAYER TWO*****PI*PAYER02~",
+      "N3*2 SECOND PAYER WAY~",
+      CLM,
+      "HI*ABK:J20.9~",
+      "LX*1~",
+      SV1,
+    ]);
+    expect(sub.claims[0]?.payer?.name).toBe("PAYER TWO");
+    expect(sub.claims[0]?.payer?.address?.lines).toEqual(["2 SECOND PAYER WAY"]);
+    expect(channel(sub)).toEqual([]);
+  });
+
+  it("CONTROL: a new Loop 2000A HL already reset the accumulator, and still does", () => {
+    // Pre-existing and untouched: `payToAddress = undefined` at an
+    // INFORMATION_SOURCE `HL` is what scoped this to ONE Loop 2000A in the
+    // first place, which is why the defect needed both NM1*87s inside one.
+    const sub = parse837([
+      "HL*1**20*1~",
+      "NM1*85*2*BILLING CLINIC INC*****XX*1234567890~",
+      ...FIRST,
+      "HL*3**20*1~",
+      "NM1*85*2*SECOND CLINIC INC*****XX*1234567891~",
+      ...SECOND,
+      "HL*2*3*22*0~",
+      "SBR*P*18*GROUP123******MB~",
+      "NM1*IL*1*TEST*PATIENT*A***MI*MEMBER001~",
+      "NM1*PR*2*PAYER ONE*****PI*PAYER01~",
+      CLM,
+      "HI*ABK:J20.9~",
+      "LX*1~",
+      SV1,
+    ]);
+    expect(sub.claims[0]?.payToAddress?.lines).toEqual(["2 SECOND PAY TO WAY"]);
   });
 });

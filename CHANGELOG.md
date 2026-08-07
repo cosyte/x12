@@ -556,6 +556,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **🩺 A repeated `NM1*87` inside one 837 Loop 2000A no longer fuses two pay-to addresses into one**
+  (`X12-837-LOOP-RESIDUALS`). The `NM1*87` route was the one route in the walker's `NM1` case that
+  named a party without assigning that party's accumulator. Every other route replaces its entity
+  there, so the `N3` / `N4` that follow a repeated `NM1` find no address on the new object and write
+  onto an empty one; `payToAddress` has no entity object behind it, so a second `NM1*87` left the
+  first one's value in place for the line collector to **append** to and for the `N4` merge to fall
+  back on. Measured at `0.0.11`, the current release as this was written: a document naming two
+  pay-to addresses in one Loop 2000A read back one address carrying **a street line from each**, and
+  a `countryCode` taken from the FIRST address's `N4` on a second address whose own `N4` names no
+  country. **That is an address no sender sent, on a claim, indistinguishable on the model from one
+  that was.**
+
+  **The later `NM1*87` now REPLACES the earlier**, exactly as a repeated `NM1` replaces any other
+  party, so both attach paths start from an empty address again. A repeat carrying no `N3` / `N4` of
+  its own therefore leaves `X12Claim.payToAddress` **`undefined`** rather than the earlier address:
+  that is the surprising half and it is pinned, because holding the earlier one would put the first
+  party's street under the second party's name, which is the same fabrication one size smaller. The
+  replaced address is not merged and reaches no other slot; its bytes stay verbatim on
+  `tx.segments`, which is what settles it for a given document.
+
+  **Bounds, each a committed test.** Two `N3`s under ONE `NM1*87` still append, which is what every
+  entity arm does and is not what changed - only the new-party boundary moved. A single `NM1*87` is
+  byte-for-byte unchanged, every `N4` field included. A new Loop 2000A `HL` already cleared the
+  accumulator and still does, which is why the defect needed both `NM1*87`s inside one loop.
+  **No warning code was added and the repeat stays silent**, because replacement warns for no party
+  at this reader and making pay-to alone warn would be an asymmetry rather than a fix; that silence
+  is disclosed, not claimed closed. No warning code, warning message, model shape or public type
+  changed. `KNOWN-LIMITATIONS.md` records the version boundary for a consumer on `0.0.11`.
+
 - **🩺 `build278Request` / `build278Response` refuse a review whose HL-03 level code is outside `EV`
   and `SS`, instead of emitting a review its own reader cannot decode**
   (`REFUSAL-MESSAGE-PHI-ECHO`). `Build278ReviewSpec.levelCode` is the **one** caller-supplied HL-03 in
@@ -1165,6 +1194,27 @@ string, …` - which `esc` cannot, being unary.
   the two things that are discarded. `spec-notes-tolerance.md` presented a three-tier taxonomy with no
   slot for a silent normalization; the tiers now name it, and note that a Tier-2 unexpected segment is
   warned about but not kept.
+
+- **The universal about a stray 837 `LX` is cut back in the last two places it survived, `src/`
+  comments and 837 test-file headers** (`X12-837-LOOP-RESIDUALS`). The release before this one
+  deleted it from the documents this package publishes and disclosed, rather than claimed closed,
+  that it stood in those two places; this is the rest of that sweep. No count is published, because
+  a count without its list cannot self-correct: the sites are the `NM1` and `LX` case comments in
+  `src/transactions/claim/get-837.ts`, and the headers, section comments and case titles of
+  `test/transactions-claim-837-loop-residuals.test.ts` and
+  `test/transactions-claim-837-discard-after-stray-lx.test.ts`. Each said a trailing `N3` / `N4` /
+  `PER` / `REF` "attached to whichever party the last `NM1` left active", or that a party named
+  after the `LX` "is addressable again", both of which read as all four kinds reaching every party. They do not: this reader does not surface every one of those kinds on every
+  party. Each copy takes the qualifier already graded on the shipped surfaces, "wherever this reader
+  surfaces that segment kind on that party at all", or is cut back to the measured instance beside
+  it, which is a payer in every case; no copy is given a new wording and **no per-kind, per-party map
+  is published.** Counterfactual headings ("no longer attaches", "no longer leaves the last `NM1`
+  addressable") lose the counterfactual only. The bullet in `documentation/agent-notes.md` beginning
+  "RESIDUAL 1, MEASURED AT `93b2428`", and the identically-scoped paragraph in the test header it was
+  written from, are **not** copies - both are scoped by "every trailing segment that attaches to a
+  named party" - and are deliberately left alone. Nothing a consumer reads at runtime changed:
+  neither the warning registry nor any `docs-content/` page nor the README carried the wording, and
+  the executable behaviour of the swept comments is nil.
 
 ### Documented, not fixed
 
