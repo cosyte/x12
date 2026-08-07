@@ -51,6 +51,7 @@ export {
   serviceLineDropped,
   serviceLineNotDecoded,
   serviceSegmentWithoutLx,
+  statedAmountDiscarded,
   trailingGarbage,
   transactionCountMismatch,
   unexpectedSegment,

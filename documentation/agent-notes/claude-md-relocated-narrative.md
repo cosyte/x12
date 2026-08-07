@@ -157,3 +157,62 @@ exception and the "guarantee about the TEMPLATES" qualifier all stayed behind.
 >   dichotomy is NOT categorical" above). **The negative list is NOT an absolute PHI guarantee; it is
 >   a guarantee about the builder's own TEMPLATES**, which still render control numbers and control
 >   codes.
+
+## 6. Trap-bullet explanation relocated by `X12-STATED-AMOUNT-DISCARDED` (2026-08-07)
+
+A second round of relocation, to fund that slice's trap block from a file that stood at **52,730 of a
+52,730-byte entry with zero room**. **Every imperative stayed behind in `CLAUDE.md`.** What moved is
+measurement and incident history that the trap line no longer needs in order to be actionable, and
+that is already carried in `documentation/agent-notes.md` or `documentation/repos/x12.md` in the
+meta-repo. **No trap was deleted and no bullet lost its instruction.** Eight pieces, verbatim.
+
+### `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` - the three measured corruption shapes
+
+The bullet still says NEVER replay an orphan at its recorded `segmentIndex`, still says to read the
+refutation first, and still names the addressing scheme as the defect. What moved is what was
+measured when the replay was tried:
+
+> measured, a stray `ZZ` landed INSIDE an 835's `ST..SE` body with **no warning at all**, a stray
+> `SE` closed the transaction early and corrupted SE-01, and with a doubled terminator ahead of it
+> the orphan crossed the IEA. Trading a warned omission for silent structural corruption is the
+> wrong direction under this repo's own invariant.
+
+### `X12-BUILDER-BOUNDS` - the four holes, and the coercion regression
+
+> four holes the item's census missed were `number`-typed AK9 counts, found only by adversarial
+> review.
+
+> A draft read `.length` where the base interpolated into a template literal, turning a typed
+> refusal into an uncaught `TypeError`.
+
+### `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX` - three trailing measurements
+
+The imperatives (count both trees; never reuse one census for the other; interleave BASE/HEAD runs,
+two rounds each; do not upgrade the `10.0 s` reading into a proven crossing) all stayed.
+
+> Raising the global hands the same leash to all 1,100-odd tests.
+
+> a draft ported the head census onto the base state while quoting the rule against it.
+
+> the agent-notes section measures what runs an hour apart showed instead.
+
+### `ASSETS-P8` - what else the gate test pins
+
+> It also pins a negative control on a well-formed package and that a real `attw` failure still
+> fails.
+
+### Per-transaction invariants - how the TRN echo is held
+
+> Locked by round-trip property tests on both sides.
+
+### `X12-QUANTITY-SILENT-DEFAULTS` - two base measurements
+
+> 7 of 9 base probes were wholly silent, 835 `SVC-05` among them.
+
+> A draft said three, a refuter measured four.
+
+### `X12-837-LOOP-RESIDUALS` and `X12-SVC-ELEMENT-MAP-OFF-BY-ONE` - two fragments
+
+> Red control on both.
+
+> The suite stayed green through the fix:

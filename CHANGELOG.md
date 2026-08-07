@@ -9,6 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🩺 `X12_STATED_AMOUNT_DISCARDED`, the 31st Tier-2 warning code, plus the public factory
+  `statedAmountDiscarded(position)`** (`X12-STATED-AMOUNT-DISCARDED`). The entry below reports a row
+  whose amount this library could not read. This one is the opposite case, and worth telling apart
+  because what you can do about it differs: **the amount is legible in the document and the reader
+  discarded the row for a reason that is not about the amount at all**, so the value can be
+  recovered verbatim off `tx.segments[…].raw` and posted from, with nothing to interpret. Through
+  `0.0.12` both routes were silent on every channel.
+
+  **The two routes, enumerated.** An **820 `RMR`** under an open remittance loop whose `RMR-01` and
+  `RMR-02` are **both empty** while `RMR-04` or `RMR-05` is populated: `decodeRmr` refuses the open
+  item on identity **before** either amount element is read, so `RMR****150.00*150.00~` gave
+  `openItems: []` and `warnings: []`, taking a stated payment, a stated amount due and `RMR-03`'s
+  payment action code together. And an **837 `AMT`** arriving while a Loop 2430 line adjudication
+  (`SVD`) is open, whose `AMT-02` decoded: the v1 adjudication model carries no amount row, and
+  attaching one to this submission's own service line would put another payer's figure on it, so
+  `AMT*EAF*75.00~` (Remaining Patient Liability) was skipped in silence.
+
+  **🩺 That second route is where the channel read BACKWARDS, and squaring it is the point.** Under
+  an open `SVD`, `AMT*EAF~` raised `X12_AMOUNT_ROW_DROPPED` and `AMT*EAF*75.00~` raised nothing: the
+  report was present exactly where **less** was lost. Both report now, and which code arrives is
+  what says which loss it was.
+
+  **It carries no `position.elementIndex`.** On the `RMR` route the loss spans `RMR-04` and
+  `RMR-05` and no single element names it; on the `AMT` route the element is fixed by the segment.
+
+  **🩺 It is additive, and nothing moved onto it.** `X12_AMOUNT_ROW_DROPPED` and
+  `X12_UNPARSEABLE_DECIMAL` fire on exactly the documents they fired on before, pinned by committed
+  tests. **The two amount-row codes are disjoint and can never name the same segment**, because this
+  one requires an amount element the sender populated and the other requires one that decoded no
+  value, so the code you get is the discriminant. **Gate on both.** `KNOWN-LIMITATIONS.md`, the
+  money spec-note and the troubleshooting table were corrected with the code.
+
+  **Bounds, stated as properties of the READ.** What is reported is a segment that populated its
+  amount element and arrived **while the loop that would carry its row was open**. One reaching a
+  reader with no such loop open is a different loss and is **still silent**: the 834's `AMT` with no
+  `HD` open, the 820's `ADX` with no remittance open, and the 835's and the 837's `AMT` before any
+  claim or service line. A bare `RMR~` states nothing and is silent, as is an identity-less `RMR`
+  carrying only a payment action code. And this code says **nothing** about whether the amount would
+  have decoded: the `RMR` route refuses the row before attempting the decode, so **no
+  `X12_UNPARSEABLE_DECIMAL` accompanies it even where the amount bytes are unreadable**, on this
+  release and on every earlier one.
+
 - **🩺 `X12_AMOUNT_ROW_DROPPED`, the 30th Tier-2 warning code, plus the public factory
   `amountRowDropped(position)`** (`X12-AMT-ADX-ABSENT-AMOUNT`). An `AMT` or `ADX` is not a slot on a
   bigger record: each one **is** a record, carrying an amount plus the thing the amount is about. So
@@ -49,9 +91,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **not** because its row survives: `decodeRmr` drops on open-item identity (`RMR-01` and `RMR-02`
   both empty) **before** `RMR-04` is read, so an `RMR` stating an open item and no amount keeps its
   row with `amountPaid` left `undefined`, while one stating an amount and **no** open item is
-  dropped whole and silently. That second case, and the 837's Loop 2430 `AMT` which an open `SVD`
-  discards outright, are separate losses recorded in `KNOWN-LIMITATIONS.md` rather than covered
-  here: nothing failed to decode in either, so covering them is a retention decision of its own.
+  dropped whole. That second case, and the 837's Loop 2430 `AMT` which an open `SVD` discards
+  outright, are separate losses: nothing failed to decode in either, so neither is this code's
+  shape, and `X12_STATED_AMOUNT_DISCARDED` above is what reports them.
 
 - **🩺 `X12_835_BALANCE_NOT_EVALUABLE`, the 29th Tier-2 warning code, plus the public factory
   `balanceNotEvaluable(position, invariant)`** (`X12-837-SV-UNDEFINED-DECIMAL`). Raised where a term

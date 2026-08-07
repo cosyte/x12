@@ -61,6 +61,7 @@ import {
   serviceLineDropped,
   serviceLineNotDecoded,
   serviceSegmentWithoutLx,
+  statedAmountDiscarded,
   unknown837Variant,
   unknownCarc,
   unknownHiQualifier,
@@ -770,14 +771,26 @@ export function get837Claims(
         const amount = decodeAmt(seg, delimiters, sink);
         // See the 835's AMT case: a row is never built around an amount this
         // library did not read, so the whole row - qualifier included - is off
-        // the model and that loss is reported at the AMT itself. This is the
-        // only drop on this channel; the `currentAdjudication` skip below is a
-        // deliberate v1 scope limit, not a failed read, and stays silent.
+        // the model and that loss is reported at the AMT itself.
         if (amount === undefined) {
           warnings.push(amountRowDropped(position));
           break;
         }
-        if (currentAdjudication !== undefined) break;
+        // A Loop 2430 adjudication is open, so this AMT belongs to ANOTHER
+        // payer's adjudication of the line and not to the line's own amounts.
+        // The v1 adjudication model has no amount row to carry it, and putting
+        // it on `currentServiceLine.amounts` would attribute another payer's
+        // figure to this submission. So the row is skipped - but an
+        // `AMT*EAF*75.00~` here decoded perfectly well, and through `0.0.12`
+        // the skip was silent while the SMALLER loss one line up (an AMT that
+        // decoded nothing) was reported: the channel read backwards, present
+        // exactly where less was lost. This is the report that squares it.
+        // Different code, because a consumer can recover this amount verbatim
+        // from the segment while an undecodable one has to be interpreted.
+        if (currentAdjudication !== undefined) {
+          warnings.push(statedAmountDiscarded(position));
+          break;
+        }
         if (currentServiceLine !== undefined) currentServiceLine.amounts.push(amount);
         else if (currentClaim !== undefined) currentClaim.amounts.push(amount);
         break;

@@ -20,7 +20,11 @@ import {
   type X12Segment,
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
-import { amountRowDropped, type X12ParseWarning } from "../../parser/warnings.js";
+import {
+  amountRowDropped,
+  statedAmountDiscarded,
+  type X12ParseWarning,
+} from "../../parser/warnings.js";
 import type {
   X12PremiumAddress,
   X12PremiumAdjustment,
@@ -169,7 +173,25 @@ export function get820Payments(
       case "RMR": {
         if (current === undefined) break;
         const item = decodeRmr(seg, delimiters, sink);
-        if (item !== undefined) current.openItems.push(item);
+        if (item !== undefined) {
+          current.openItems.push(item);
+          break;
+        }
+        // `decodeRmr` answers undefined on ONE condition: RMR-01 and RMR-02
+        // are both empty, so the open item has no identity to key on. It
+        // refuses BEFORE reading RMR-04 or RMR-05, so where the sender did
+        // state an amount there, that amount, the amount due beside it and
+        // RMR-03's payment action code all leave the model together and the
+        // remittance reads as one that carried no such open item. Through
+        // `0.0.12` that was silent on every channel. Report it at the RMR.
+        //
+        // The test is a PRESENCE test on the raw elements, deliberately: it
+        // must not reach for the decimal sink, because attempting the decode
+        // here would raise `X12_UNPARSEABLE_DECIMAL` on documents that never
+        // raised it, and the report is about the ROW being lost rather than
+        // about the amount being readable. A bare `RMR~` states nothing and
+        // stays silent - nothing was lost there.
+        if (statesAnAmount(seg, delimiters)) warnings.push(statedAmountDiscarded(position));
         break;
       }
       case "ADX": {
@@ -356,10 +378,27 @@ function decodeNm1(seg: X12Segment, delimiters: Delimiters): X12PremiumPerson {
 }
 
 /**
+ * Whether an `RMR` populated either of its amount elements, RMR-04 (amount
+ * paid) or RMR-05 (amount due). A PRESENCE test on the raw elements and not a
+ * decode: the caller uses it only to decide whether a refused row took a
+ * stated amount with it, and attempting the decode would put
+ * `X12_UNPARSEABLE_DECIMAL` on documents that have never raised it.
+ * @internal
+ */
+function statesAnAmount(seg: X12Segment, delimiters: Delimiters): boolean {
+  return elementValue(seg, 4, delimiters) !== "" || elementValue(seg, 5, delimiters) !== "";
+}
+
+/**
  * Decode an RMR open-item reference. RMR-01 reference qualifier, RMR-02
  * reference id, RMR-03 payment action code, RMR-04 amount paid, RMR-05
  * amount due (terms / original). Skipped if neither qualifier nor reference
  * id is present (an RMR with no open-item identity carries no usable line).
+ *
+ * That skip happens BEFORE RMR-04 and RMR-05 are read, which is why the
+ * caller, not this function, reports the loss: where such a segment did state
+ * an amount, the whole row leaves the model and the caller raises
+ * `X12_STATED_AMOUNT_DISCARDED` at the `RMR`. This decoder stays pure.
  * @internal
  */
 function decodeRmr(

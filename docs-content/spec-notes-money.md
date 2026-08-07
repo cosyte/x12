@@ -58,7 +58,7 @@ X12Decimal.fromString("not a number"); // => undefined
 ## An amount this library cannot read never reads as `0`
 
 `X12Decimal.fromString` returning `undefined` is only half the story: the readers have to put
-*something* on the model. Through `0.0.12` every monetary and quantity slot was typed `X12Decimal`,
+_something_ on the model. Through `0.0.12` every monetary and quantity slot was typed `X12Decimal`,
 which cannot express "did not decode", so a claim's `totalPaymentAmount`, a service line's
 `chargeAmount` and an 837's `totalCharge` all fell back to `X12Decimal.ZERO`. A consumer reading the
 model could not tell that `0` from a zero the sender did state.
@@ -103,7 +103,7 @@ Three things to hold onto:
 - **`undefined` means "this library decoded no value", not "the sender sent nothing".** Both routes
   land there. Gate on the warning to tell them apart, and gate on `undefined` itself before you post
   an amount, exactly as you would on a balance mismatch.
-- **An *absent* element is a different fact and does not raise this code.** It reads `undefined`,
+- **An _absent_ element is a different fact and does not raise this code.** It reads `undefined`,
   and `X12_UNPARSEABLE_DECIMAL` fires only when the sender put bytes there and this library could
   not read them. Do not widen that into "an absent element is silent": where the absent element
   takes a whole `AMT` or `ADX` row off the model, the drop is announced by
@@ -131,7 +131,7 @@ gives you the same distinction in-band, as `{ value, status }` with `status` one
 
 ## An amount row that decodes nothing loses the whole row, and says so
 
-`AMT` and `ADX` are not slots on a bigger record: each one *is* a record, carrying an amount plus the
+`AMT` and `ADX` are not slots on a bigger record: each one _is_ a record, carrying an amount plus the
 thing the amount is about. So when the amount does not decode there is no row to put on the model at
 all, and AMT-01's qualifier or ADX-02's adjustment reason code goes with it. Through `0.0.12` that
 happened in complete silence - `AMT*B6~` gave `claim.amounts: []` and `warnings: []`, which reads
@@ -192,8 +192,73 @@ Bounds worth reading literally:
 - **An 820 `RMR` is not on this channel, and not because its row survives.** `decodeRmr` drops on
   open-item identity (RMR-01 and RMR-02 both empty) **before** RMR-04 is read: an `RMR` that states
   an open item and no amount keeps its row with `amountPaid` `undefined`, while one that states an
-  amount and **no** open item is dropped whole and silently. That second case is a separate loss,
-  unchanged by this release, and `KNOWN-LIMITATIONS.md` records it.
+  amount and **no** open item is dropped whole. That second case is a separate loss with a report of
+  its own, `X12_STATED_AMOUNT_DISCARDED`, in the next section.
+
+## A row the sender DID state, discarded anyway, and the report that says so
+
+The section above is about an amount this library could not read. This one is the opposite case, and
+it is worth keeping distinct because what you can do about it is different: **the amount is
+perfectly legible in the document, and the reader threw the row away for a reason that has nothing
+to do with the amount.** You can recover the value verbatim off `tx.segments[…].raw` and post from
+it; there is nothing to interpret.
+
+**`X12_STATED_AMOUNT_DISCARDED` reports it as of `0.0.13`**, anchored at the segment and carrying no
+`position.elementIndex`. Two routes reach it, and the code does not say which:
+
+- An **820 `RMR`** under an open remittance loop whose RMR-01 and RMR-02 are **both empty** while
+  RMR-04 or RMR-05 is populated. The open item is refused on identity before either amount element
+  is read, so a stated payment, a stated amount due and RMR-03's payment action code leave together.
+- An **837 `AMT`** arriving while a Loop 2430 line adjudication (`SVD`) is open. `AMT-02` decoded,
+  and the v1 adjudication model has no amount row to carry it, so the row is skipped rather than
+  attached to this submission's own service line, which is not whose amount it is.
+
+```ts runnable
+import { parseX12, get820Payments, WARNING_CODES } from "@cosyte/x12";
+
+// RMR-01 and RMR-02 are both empty, so the open item has no identity to key
+// on - but RMR-04 and RMR-05 state 150.00 apiece.
+const raw =
+  "ISA*00*          *00*          *ZZ*EMPLOYER       *ZZ*PLAN           " +
+  "*260601*1200*^*00501*000000001*0*P*:~" +
+  "GS*RA*EMPLOYER*PLAN*20260601*1200*1*X*005010X218~" +
+  "ST*820*0001*005010X218~" +
+  "BPR*C*250.00*C*ACH*CCP*01*1*DA*1*1512345678**01*1*DA*2*20260601~" +
+  "TRN*1*PREM-0001~" +
+  "ENT*1*2J*FI*GRP-0001~" +
+  "RMR****150.00*150.00~" +
+  "SE*6*0001~GE*1*1~IEA*1*000000001~";
+
+const ix = parseX12(raw);
+const tx = ix.groups[0]!.transactions[0]!;
+const prem = get820Payments(ix.delimiters, tx)!;
+
+// The whole open item is gone, payment and amount due with it.
+prem.remittances[0]!.openItems.length; // => 0
+
+// And it is on the warning channel rather than left for you to notice.
+prem.warnings.map((w) => w.code); // => ["X12_STATED_AMOUNT_DISCARDED"]
+
+// This route refuses the row BEFORE attempting the decode, so it raises no
+// unparseable report - true even where the amount bytes are unreadable.
+prem.warnings.some((w) => w.code === WARNING_CODES.X12_UNPARSEABLE_DECIMAL); // => false
+```
+
+Bounds worth reading literally:
+
+- **It is additive, like the code above.** `X12_AMOUNT_ROW_DROPPED` and `X12_UNPARSEABLE_DECIMAL`
+  fire on exactly the documents they fired on before. Nothing moved.
+- **The two amount-row codes are disjoint and never name the same segment.** This one requires an
+  amount element the sender populated; the other requires one that decoded no value. So the code you
+  get is the discriminant: it tells you whether the money is recoverable from the bytes or merely
+  unreadable there. Gate on both.
+- **It reports a segment that arrived while the loop that would carry its row was open.** An `AMT`
+  or `ADX` that reaches a reader with no such loop open is a different loss and is still silent: the
+  834's `AMT` with no `HD` open, the 820's `ADX` with no remittance open, and the 835's and 837's
+  `AMT` before any claim or service line. `KNOWN-LIMITATIONS.md` records those.
+- **It says nothing about whether the amount would have decoded.** On the `RMR` route the row is
+  refused before the decode is attempted, which is why no `X12_UNPARSEABLE_DECIMAL` accompanies it
+  even on unreadable bytes.
 
 ## The operations you need
 

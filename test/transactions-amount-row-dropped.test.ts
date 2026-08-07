@@ -258,13 +258,14 @@ describe("🩺 837 AMT: the same report on a claim's supplemental amounts", () =
     expect(codes(sub.warnings)).toEqual([WARNING_CODES.X12_AMOUNT_ROW_DROPPED]);
   });
 
-  it("BOUND: a Loop 2430 AMT under an open SVD is discarded, and the report INVERTS", () => {
-    // Disclosed rather than widened. With a claim AND a line open, the
-    // adjudication skip discards a Loop 2430 `AMT` outright, so a REMAINING
-    // PATIENT LIABILITY that decoded perfectly well is lost in silence while
-    // one that decoded nothing is reported. The warning is present exactly
-    // where LESS was lost. That is a v1 scope limit on the adjudication model,
-    // not a failed read, and closing it is a retention decision of its own.
+  it("BOUND: a Loop 2430 AMT under an open SVD is on the OTHER code, and this one is unmoved", () => {
+    // With a claim AND a line open, the adjudication skip discards a Loop 2430
+    // `AMT` outright. A REMAINING PATIENT LIABILITY that decoded perfectly
+    // well was lost in silence through `0.0.12` while one that decoded nothing
+    // was reported here, so the report was present exactly where LESS was
+    // lost. `X12_STATED_AMOUNT_DISCARDED` closed that inversion; what this
+    // case pins is that closing it moved NOTHING off this code. The row that
+    // decoded nothing still raises this one and only this one.
     const decoded = parse837([
       "LX*1~",
       "SV1*HC:99213*500*UN*1***1~",
@@ -272,7 +273,7 @@ describe("🩺 837 AMT: the same report on a claim's supplemental amounts", () =
       "AMT*EAF*75.00~",
     ]);
     expect(decoded.claims[0]?.serviceLines[0]?.amounts).toEqual([]);
-    expect(codes(decoded.warnings)).toEqual([]);
+    expect(codes(decoded.warnings)).toEqual([WARNING_CODES.X12_STATED_AMOUNT_DISCARDED]);
 
     const undecoded = parse837([
       "LX*1~",
@@ -427,22 +428,23 @@ describe("🩺 820 ADX: the amount is element 1, and the same report covers it",
     expect(codes(kept.warnings)).toEqual([]);
   });
 
-  it("BOUND: an RMR with NO identity is dropped whole and silently, amount and all", () => {
-    // Pass 1 refuted the slice for publishing "an RMR row is retained with its
-    // amounts left undecoded" as if it held for every RMR. It does not, and
-    // this is the case that falsifies it: with RMR-01 and RMR-02 both empty the
-    // row is dropped before the amount is read, so a stated 150.00 payment, its
-    // payment-action code and its amount due are all gone with `warnings: []`.
-    // `PRE-EXISTING` - identical on the base tree - and its own item. It is NOT
-    // this code's shape: nothing failed to decode, so widening this code to
-    // cover it would be the retention decision this slice deliberately defers.
+  it("BOUND: an RMR with NO identity is on the OTHER code, never on this one", () => {
+    // An earlier pass refuted the slice for publishing "an RMR row is retained
+    // with its amounts left undecoded" as if it held for every RMR. It does
+    // not: with RMR-01 and RMR-02 both empty the row is dropped before the
+    // amount is read, so a stated 150.00 payment, its payment-action code and
+    // its amount due all left the model with `warnings: []` through `0.0.12`.
+    // `X12_STATED_AMOUNT_DISCARDED` reports that now, and this code still does
+    // not, because nothing there failed to decode. A bare `RMR` states nothing
+    // and is silent on both codes.
     const bare = parse820(["RMR~"]);
     expect(bare.remittances[0]?.openItems).toEqual([]);
     expect(codes(bare.warnings)).toEqual([]);
 
     const amountOnly = parse820(["RMR****150.00*150.00~"]);
     expect(amountOnly.remittances[0]?.openItems).toEqual([]);
-    expect(codes(amountOnly.warnings)).toEqual([]);
+    expect(codes(amountOnly.warnings)).toEqual([WARNING_CODES.X12_STATED_AMOUNT_DISCARDED]);
+    expect(dropped(amountOnly.warnings)).toEqual([]);
   });
 });
 

@@ -50,6 +50,7 @@ describe("public API: WARNING_CODES surface is stable", () => {
         "X12_MISSING_SE",
         "X12_PRE_005010",
         "X12_SEGMENT_COUNT_MISMATCH",
+        "X12_STATED_AMOUNT_DISCARDED",
         "X12_TRAILING_GARBAGE",
         "X12_TRANSACTION_COUNT_MISMATCH",
         "X12_UNEXPECTED_SEGMENT",
@@ -67,8 +68,8 @@ describe("public API: WARNING_CODES surface is stable", () => {
     for (const [k, v] of Object.entries(WARNING_CODES)) expect(k).toBe(v);
   });
 
-  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS) -> 27 (X12-DISCARD-AFTER-STRAY-LX) -> 28 (X12-PAY-TO-FUSION) -> 29 (X12-837-SV-UNDEFINED-DECIMAL) -> 30 (X12-AMT-ADX-ABSENT-AMOUNT)", () => {
-    expect(Object.keys(WARNING_CODES)).toHaveLength(30);
+  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS) -> 27 (X12-DISCARD-AFTER-STRAY-LX) -> 28 (X12-PAY-TO-FUSION) -> 29 (X12-837-SV-UNDEFINED-DECIMAL) -> 30 (X12-AMT-ADX-ABSENT-AMOUNT) -> 31 (X12-STATED-AMOUNT-DISCARDED)", () => {
+    expect(Object.keys(WARNING_CODES)).toHaveLength(31);
   });
 });
 
