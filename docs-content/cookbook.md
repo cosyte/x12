@@ -179,14 +179,33 @@ const spec: Build271Spec = {
   },
   informationSources: [
     {
-      entity: { entityIdentifierCode: "PR", entityTypeQualifier: "2", name: "MEDPAY INSURANCE", idQualifier: "PI", idCode: "00123" },
+      entity: {
+        entityIdentifierCode: "PR",
+        entityTypeQualifier: "2",
+        name: "MEDPAY INSURANCE",
+        idQualifier: "PI",
+        idCode: "00123",
+      },
       receivers: [
         {
-          entity: { entityIdentifierCode: "1P", entityTypeQualifier: "2", name: "ANYTOWN CLINIC", idQualifier: "XX", idCode: "1234567890" },
+          entity: {
+            entityIdentifierCode: "1P",
+            entityTypeQualifier: "2",
+            name: "ANYTOWN CLINIC",
+            idQualifier: "XX",
+            idCode: "1234567890",
+          },
           subscribers: [
             {
               traces: [{ traceTypeCode: "2", referenceId: traceFromThe270 }], // echo it back
-              name: { entityIdentifierCode: "IL", entityTypeQualifier: "1", lastName: "DOE", firstName: "JANE", idQualifier: "MI", idCode: "MBR0001" },
+              name: {
+                entityIdentifierCode: "IL",
+                entityTypeQualifier: "1",
+                lastName: "DOE",
+                firstName: "JANE",
+                idQualifier: "MI",
+                idCode: "MBR0001",
+              },
               benefits: [
                 {
                   eligibilityCode: "1", // active coverage
@@ -236,7 +255,11 @@ line would mis-read the charge), so its `charge` and `units` read `undefined` an
 before you post a line amount, alongside `X12_UNPARSEABLE_DECIMAL` (the `SVx` decoded but the amount
 itself did not) and `X12_AMOUNT_ROW_DROPPED` (an `AMT` whose own amount decoded nothing, so the
 whole supplemental-amount row is off the model - off the **line** where one is open, and off the
-claim otherwise); none of them is a complete account of every way an
+claim otherwise). Gate on `X12_STATED_AMOUNT_DISCARDED` beside it: an `AMT` arriving while a Loop
+2430 adjudication is open decodes fine and is discarded anyway, so that row is off the model even
+though nothing failed to read. That is specific to this route: read the code's own bounds before
+generalising it, because its other route reports rows whose bytes may not decode at all. The two are disjoint and never name the same
+segment. None of them is a complete account of every way an
 amount can fail to reach the model, and
 [Decimal-exact money](./spec-notes-money) states the guarantee in the only direction it holds.
 

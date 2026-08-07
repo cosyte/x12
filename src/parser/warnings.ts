@@ -89,6 +89,7 @@ export const WARNING_CODES = {
   X12_837_PAY_TO_ADDRESS_REPEATED: "X12_837_PAY_TO_ADDRESS_REPEATED",
   X12_835_BALANCE_NOT_EVALUABLE: "X12_835_BALANCE_NOT_EVALUABLE",
   X12_AMOUNT_ROW_DROPPED: "X12_AMOUNT_ROW_DROPPED",
+  X12_STATED_AMOUNT_DISCARDED: "X12_STATED_AMOUNT_DISCARDED",
 } as const;
 
 /**
@@ -346,7 +347,9 @@ const WARNING_MESSAGES = {
   X12_837_PAY_TO_ADDRESS_REPEATED:
     "837 pay-to address named more than once in one Loop 2000A: the NM1*87 at `position.segmentIndex` is not the first in this Loop 2000A, and the TR3s allow Loop 2010AB at most once there. The model has ONE pay-to address slot, so it cannot carry both, and this code is the only thing that tells you the document named more than one. The reader NEVER merges them: an N3 or N4 after this segment can no longer add a street line to, or fill a blank in, the address an earlier NM1*87 named, which is what this library did through 0.0.12 - it returned a fused address no sender sent, silently. What the slot carries instead is the LAST occurrence that stated an address of its own; an occurrence that states none - one carrying no N3 or N4 at all, or only a valueless N3 or N4 whose elements are empty - does NOT replace one that did, so nothing an earlier occurrence stated is blanked either. Where no occurrence states an address, the slot holds what the FIRST N3 or N4 to arrive under any of them produced, which may be an address with no elements at all, and which is not necessarily the first occurrence's: an occurrence that carries no N3 or N4 writes nothing, so a later one's valueless N3 is the first write and takes a slot still empty. Read that as the corner it is, and never restate it as the first OCCURRENCE winning. Which occurrence the sender meant is NOT decided here and is not derivable from the TR3s, and the losing occurrence's address is NOT on the model in any form. Read the bound literally: this reports repetition within one Loop 2000A, which is where the pay-to route lives, and an NM1*87 arriving while a CLM is open never reaches that route. The verbatim segments are preserved on the transaction set; read them there before acting on where a payment is to be sent.",
   X12_AMOUNT_ROW_DROPPED:
-    "Amount row dropped from the typed model: the AMT or ADX at `position.segmentIndex` carried no decodable amount (AMT-02, ADX-01), so NO row was built for it and the rest of the segment went with it - its qualifier or adjustment reason code, and any reference qualifier and id. Nothing is fabricated to stand in: a row is not built around a zero this library did not read, which is why the loss is reported rather than papered over. Two routes reach it and this code does not say which: the amount element was ABSENT, or it was present and held bytes that do not decode as a decimal. On this segment only the second route also raises `X12_UNPARSEABLE_DECIMAL`, carrying the failing element in its own `position.elementIndex`, so whether one is present at this `position.segmentIndex` is what separates them - and that code is unchanged by this one, which is raised alongside it rather than in place of it. Read the bound literally: this reports a row whose AMOUNT was read and decoded no value, and it is NOT a general report that an amount segment reached no model. A segment a reader discards before reading its amount is not on this channel, and neither is one whose amount decoded and then found no claim, service line, coverage or remittance open to attach the row to. An 820 RMR is not on it either, for its own reason: that row is dropped on open-item IDENTITY, RMR-01 and RMR-02 both empty, before the amount is read at all, so an RMR that states an open item and no amount keeps its row with amountPaid undefined while one that states an amount and no open item is dropped whole and silently. That second case is a separate loss and this code does not report it. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such amount.",
+    "Amount row dropped from the typed model: the AMT or ADX at `position.segmentIndex` carried no decodable amount (AMT-02, ADX-01), so NO row was built for it and the rest of the segment went with it - its qualifier or adjustment reason code, and any reference qualifier and id. Nothing is fabricated to stand in: a row is not built around a zero this library did not read, which is why the loss is reported rather than papered over. Two routes reach it and this code does not say which: the amount element was ABSENT, or it was present and held bytes that do not decode as a decimal. On this segment only the second route also raises `X12_UNPARSEABLE_DECIMAL`, carrying the failing element in its own `position.elementIndex`, so whether one is present at this `position.segmentIndex` is what separates them - and that code is unchanged by this one, which is raised alongside it rather than in place of it. Read the bound literally: this reports a row whose AMOUNT was read and decoded no value, and it is NOT a general report that an amount segment reached no model. A segment a reader discards before reading its amount is not on this channel, and neither is one whose amount decoded and then found no claim, service line, coverage or remittance open to attach the row to. An 820 RMR is not on it either, for its own reason: that row is dropped on open-item IDENTITY, RMR-01 and RMR-02 both empty, before the amount is read at all, so an RMR that states an open item and no amount keeps its row with amountPaid undefined while one that states an amount and no open item is dropped whole. That second case is a separate loss, and so is an 837 AMT that decoded while a Loop 2430 adjudication was open; `X12_STATED_AMOUNT_DISCARDED` reports both, and this code reports neither. The two can never name the same segment, because this one requires an amount element that decoded no value and that one requires the opposite. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such amount.",
+  X12_STATED_AMOUNT_DISCARDED:
+    "Stated amount discarded: the RMR or AMT at `position.segmentIndex` populated its amount element and this reader built NO row for it, for a reason that is not a failure to decode that amount. What the sender wrote reaches no part of the typed model, so an empty list of open items or amounts is not evidence the sender stated none. Read that as the only claim made here: this code does NOT assert the amount is decodable, and on the RMR route below it is raised without the bytes ever being DECODED, so they may be unreadable, blank-but-present, or a lone component separator. Two routes reach it and this code does not say which. First, an 820 RMR whose RMR-01 and RMR-02 are BOTH empty while a remittance loop is open: the open item is refused on identity before RMR-04 or RMR-05 is read at all, so a stated payment amount, a stated amount due and the payment action code beside them go together. Second, an 837 AMT arriving while a Loop 2430 line adjudication is open: AMT-02 decoded, and the v1 adjudication model carries no amount row to put it on, so the row is skipped. Compare `X12_AMOUNT_ROW_DROPPED`, which reports the other situation on the same segments: there the amount element decoded no value, so there was no row to build at all. The two can never name the same segment. Read the bound literally, as a property of the READ: this reports a segment whose amount element the sender populated, arriving while the loop that would carry its row was open. It does NOT report an AMT or ADX that reaches a reader with no such loop open, which stays silent and is recorded in KNOWN-LIMITATIONS.md. And on the RMR route it says nothing about whether that amount WOULD have decoded, because the row is refused before the decode is attempted, so no `X12_UNPARSEABLE_DECIMAL` accompanies it even where the bytes are unreadable. Nothing is fabricated to stand in. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such amount.",
 } as const;
 
 /**
@@ -1210,9 +1213,11 @@ export function unparseableDecimal(position: X12Position): X12ParseWarning {
  * own reason: `decodeRmr` drops on open-item IDENTITY, RMR-01 and RMR-02 both
  * empty, before the amount is read - so an `RMR` that states an open item and
  * no amount keeps its row with `amountPaid` `undefined`, while one that states
- * an amount and no open item is dropped whole and silently. That second case
- * is a separate loss and this code does not report it. Nothing is fabricated
- * to stand in and the segments stay verbatim on the transaction set.
+ * an amount and no open item is dropped whole. That second case is a separate
+ * loss, as is an 837 `AMT` that decoded while a Loop 2430 adjudication was
+ * open; {@link statedAmountDiscarded} reports both and this code reports
+ * neither. Nothing is fabricated to stand in and the segments stay verbatim on
+ * the transaction set.
  *
  * @example
  * ```ts
@@ -1224,6 +1229,58 @@ export function amountRowDropped(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_AMOUNT_ROW_DROPPED,
     message: WARNING_MESSAGES.X12_AMOUNT_ROW_DROPPED,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_STATED_AMOUNT_DISCARDED` warning. Emitted where a segment
+ * POPULATED its amount element, the loop that would carry its row was open,
+ * and the reader built no row anyway - for a reason that is not a failure to
+ * decode that amount. The money the sender wrote is on no part of the typed
+ * model. **This code asserts nothing about whether that amount is decodable**:
+ * route 2 below decoded it, route 1 never attempted the decode.
+ *
+ * Two routes, enumerated because a count without its list cannot correct
+ * itself:
+ *
+ * 1. An 820 `RMR` under an open remittance loop whose RMR-01 and RMR-02 are
+ *    BOTH empty while RMR-04 or RMR-05 is populated. `decodeRmr` refuses the
+ *    open item on identity before either amount element is read, so a stated
+ *    payment, a stated amount due and the payment action code beside them are
+ *    lost together.
+ * 2. An 837 `AMT` arriving while a Loop 2430 line adjudication (`SVD`) is
+ *    open, whose AMT-02 decoded. The v1 adjudication model carries no amount
+ *    row, so the row is skipped rather than attached to the service line,
+ *    which is this reader's own line and not the other payer's.
+ *
+ * `position` names the `RMR` / `AMT` segment itself and carries NO
+ * `elementIndex`: on the first route the loss spans RMR-04 and RMR-05 and no
+ * single element names it, and on the second the element is fixed by the
+ * segment.
+ *
+ * Read the bound as a property of the READ. This does NOT report an `AMT` or
+ * `ADX` that reaches a reader with no loop open to carry its row at all: the
+ * 834's `AMT` with no `HD` open, the 820's `ADX` with no remittance open, and
+ * the 835's and the 837's `AMT` that decodes before any claim or service line
+ * is open are all still silent, and recorded in `KNOWN-LIMITATIONS.md`. It is
+ * additive: {@link unparseableDecimal} and {@link amountRowDropped} fire on
+ * exactly the documents they fired on before. On route 1 no
+ * `X12_UNPARSEABLE_DECIMAL` accompanies this code even where the amount bytes
+ * are unreadable, because that route never attempts the decode - so never read
+ * an unaccompanied instance as evidence the bytes are postable. Read them off
+ * the segment and decode them yourself.
+ *
+ * @example
+ * ```ts
+ * import { statedAmountDiscarded } from "@cosyte/x12";
+ * const w = statedAmountDiscarded({ segmentIndex: 9, transactionIndex: 0 });
+ * ```
+ */
+export function statedAmountDiscarded(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_STATED_AMOUNT_DISCARDED,
+    message: WARNING_MESSAGES.X12_STATED_AMOUNT_DISCARDED,
     position,
   };
 }

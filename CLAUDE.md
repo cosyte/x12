@@ -74,7 +74,7 @@ copying files.** Source of truth: the meta-repo's `documentation/conventions.md`
 history. Do not act on a line here without reading it. 🩺 = getting it wrong mis-states a clinical
 or financial value on the wire.**
 
-### 🩺 `X12-AMT-ADX-ABSENT-AMOUNT` (2026-08-07) · `documentation/agent-notes/x12-amt-adx-absent-amount.md`
+### 🩺 `X12-AMT-ADX-ABSENT-AMOUNT` + `X12-STATED-AMOUNT-DISCARDED` (2026-08-07) · `documentation/agent-notes/x12-{amt-adx-absent-amount,stated-amount-discarded}.md`
 
 - **🩺 AN `AMT`/`ADX` IS A RECORD, NOT A SLOT: no decoded amount (AMT-02, ADX-01) = NO ROW, qualifier
   and reason code gone with it.** `X12_AMOUNT_ROW_DROPPED` at the SEGMENT, **NO `elementIndex`**; the
@@ -83,14 +83,25 @@ or financial value on the wire.**
 - **🩺 SAY ABSENT, NEVER "does not decode"** (the wider form cost a pass-2 minor): only ABSENT was
   silent, UNPARSEABLE already warned. **Both raise it, NOTHING MOVED off `X12_UNPARSEABLE_DECIMAL`**,
   and whether one sits at the same `segmentIndex` separates them.
+- **🩺 TWO AMOUNT-ROW CODES, DISJOINT, NEVER ONE SEGMENT.** The dropped one needs an amount element
+  that DECODED NO VALUE; `X12_STATED_AMOUNT_DISCARDED` needs one the sender POPULATED, discarded for
+  a reason that is NOT about the amount. Two routes, ONE message, NO discriminant: an 820 `RMR` with
+  BOTH identity elements empty, and an 837 `AMT` under an open `SVD`. SEGMENT, no `elementIndex`.
+  **SEPARATE BECAUSE REUSE WOULD FALSIFY A PUBLISHED SEPARATOR ON MONEY** (the dropped code's own
+  message says an unaccompanied instance means the sender stated NO amount). It closed an INVERSION:
+  under an open `SVD` the ABSENT amount warned and the STATED one did not, so the report sat exactly
+  where LESS was lost.
+- **🩺 NEVER CLAIM THE BYTES ARE DECODABLE - a pass-1 major.** The `RMR` guard is a
+  PRESENCE test, never a decode, so **NO `X12_UNPARSEABLE_DECIMAL` even on unreadable bytes** and it
+  fires on `1,234.56` too; deciding by decode would mint it where it never fired. Only the `AMT`
+  route guarantees a value.
 - **🩺 STATE THE BOUND AS A PROPERTY OF THE READ, NEVER OF CONTROL FLOW. "Nothing open means silent"
   is FALSE** - the 835/837 decode BEFORE looking for somewhere to attach, so an absent amount with no
-  claim open DOES warn; the 834/820 return first and stay silent. **An 820 `RMR` is off this channel
-  for its OWN reason (it drops on open-item IDENTITY before the amount is read), so NEVER write that
-  its row is RETAINED - an `RMR` stating an amount with BOTH identity elements empty is dropped
-  WHOLE and SILENTLY** (`PRE-EXISTING`; byte string in the agent-notes, never here - an asterisk in a
-  code span in a bold span is Prettier-unstable). A Loop 2430 `AMT` under an open `SVD` is discarded
-  silently even when it DECODES, so the report INVERTS. **An empty filtered array asserts NOTHING.**
+  claim open DOES warn; the 834/820 return first and stay silent. **NO LOOP OPEN is a DIFFERENT loss
+  and STAYS SILENT** (834 `AMT` no `HD`, 820 `ADX` no remittance, 835/837 `AMT` before any claim), so
+  never widen to "a stated amount row is always reported"; a bare `RMR~` and one stating only RMR-03
+  are silent too. **The INVERSION SURVIVES at the 835/837 sites ONLY**
+  (`PRE-EXISTING`). **An empty filtered array asserts NOTHING.**
 
 ### 🩺 `X12-837-SV-UNDEFINED-DECIMAL` (2026-08-07) · `documentation/agent-notes/x12-837-sv-undefined-decimal.md`
 
@@ -130,7 +141,7 @@ or financial value on the wire.**
   **But NEVER write it does not name the VARIANT - measured false:** the fallback scans the whole
   body, orphans included, so a stray `SV2` re-types it. `PRE-EXISTING`, not narrowed.
 - **The suppression is SCOPED, not latched** - a flag beside each `serviceLineDropped`, cleared in
-  `flushServiceLine`. **A latching one silences every later orphan.** Red control on both.
+  `flushServiceLine`. **A latching one silences every later orphan.**
 - **🩺 ANCHOR `X12_837_UNKNOWN_VARIANT` AT THE `ST` (`tx.segments[0]`), NEVER THE `BHT`; NO
   `elementIndex` (an absent ST-03 has no element 3). ROUTE 1's DISCARD IS A TRADE: a stray `LX` in
   an ENTITY loop LOSES its `N3`/`N4`/`REF`/`PER`, each WARNED AT ITSELF
@@ -210,13 +221,13 @@ or financial value on the wire.**
 - **🩺 NEVER INVERT IT INTO "an unwarned value is one the sender sent". A slot a reader never read
   cannot warn**; three shipped docs carried the bare form. Guarantee: unwarned **at an element a
   reader decoded**. The 837 instance of the other kind is the trap above.
-- **PUBLISH NO CENSUS OF THE FALLBACK OUTCOMES.** A draft said three, a refuter measured four. The
+- **PUBLISH NO CENSUS OF THE FALLBACK OUTCOMES.** The
   RULE holds: a property of the READ, not the USE.
 - **ONE message, NO discriminant** - a `ZERO`/`NOT_DECODED` pair was wrong at 835 `CAS`, 835 `PLB`,
   837 `CAS`. **And assert nothing about what X12.6 type R permits;** nobody here has read it, so the
   message says "could not decode".
 - **The 835 balance invariant is NOT a net: it names an equation, never an element, and exists in no
-  other reader.** 7 of 9 base probes were wholly silent, 835 `SVC-05` among them.
+  other reader.**
 - **The sink is an OPTIONAL 4th arg; the public helpers stay silent without one**, held by a source
   scan counting TOP-LEVEL ARGS, never a `, sink)` regex. **A green suite proved nothing: no fixture
   holds an unparseable decimal and a round trip CANNOT make one.**
@@ -229,8 +240,7 @@ or financial value on the wire.**
   them back.**
 - **Never fix a mis-read position while leaving its sibling element unread** - that turns a mis-read
   into a **fresh silent drop**. **Retention is non-decreasing, on purpose.**
-- **🩺 A round trip cannot test an element map; only bytes can.** The suite stayed green through the
-  fix: a `build835` -> `get835` round trip is green for ANY pair of positions the two modules agree
+- **🩺 A round trip cannot test an element map; only bytes can.** A `build835` -> `get835` round trip is green for ANY pair of positions the two modules agree
   on. `test/transactions-remit-835-svc-element-map.test.ts` pins the map literally. **Never weaken
   those to round trips.**
 - **🩺 Checking a spec claim against this repo's own implementation is NOT a check** - it only proves
@@ -304,7 +314,7 @@ or financial value on the wire.**
   defeated by a number** - `build-835.ts` refused `patientControlNumber === ""` by name, and a number
   is not `""`, so it passed and became `""` one line later. Check the type, not the sentinel.
 - **The `#51` asymmetry is deliberate, not an inconsistency.** `renderCallerValue` **coerces**;
-  `esc` **refuses**. _Survive anything_ vs _invent nothing_. Opposite duties, opposite answers.
+  `esc` **refuses**. _Survive anything_ vs _invent nothing_.
 - **🩺 NEVER PUBLISH AN EXHAUSTIVE CENSUS OF WHAT BYPASSES THE CHOKEPOINT.** Three drafts did; a
   refuter measured all three false, each time by finding one more. **Cut the claim back, do not grow
   the census. Finding one more is expected and is not a new finding. No total is published.**
@@ -317,16 +327,14 @@ or financial value on the wire.**
 ### `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX` (2026-08-03) · `documentation/agent-notes.md#parser-testtimeout-asserts-an-idle-box-2026-08-03`
 
 - **No timeout value changed, and that is the finding, not an omission.**
-- **Count BOTH trees, and never reuse one census for the other** - a draft ported the head census
-  onto the base state while quoting the rule against it.
+- **Count BOTH trees, and never reuse one census for the other.**
 - **Re-derive this box's capacity; never inherit a figure.** The item's numbers are stale.
-- **Interleave BASE/HEAD runs, two rounds each** - the agent-notes section measures what runs an
-  hour apart showed instead.
+- **Interleave BASE/HEAD runs, two rounds each.**
 - **The `tsx` -> `node` substitution is pinned as an EQUIVALENCE, not assumed.** Nothing else
   enforces erasable-only syntax; the Node 22.18 floor is unenforced. **Scope it:** `paths` mode only.
 - **The global `testTimeout` stays at 10 s on purpose.** The 10 MB+ 834 stream sits AT it and is green
   only on its own 120 s per-test ceiling. **Do not upgrade the `10.0 s` reading into a proven
-  crossing** - the reporter rounds. Raising the global hands the same leash to all 1,100-odd tests.
+  crossing** - the reporter rounds.
 - **🩺 `testTimeout` is NOT the liveness net people assume.** An **infinite synchronous** loop gives
   **NO VERDICT AT ALL** and wedges the worker. A liveness regression here reads as an ABSENT verdict,
   not a red one, and no value of `testTimeout` changes that. The defence is the source scan in
@@ -367,8 +375,7 @@ or financial value on the wire.**
   corpus.**
   `git check-ignore` reads the INDEX: a TRACKED ignored file is SCANNED, its absence REFUSES. No git:
   REFUSE. **RE-DERIVE EVERY EXIT CODE PER REPO** - the regular-file root is **2** here (was **1**,
-  uncaught), **2** in `hl7`, **1** in `terminology` by a DIFFERENT mechanism; `hl7` measured two
-  ported residuals as NOT OPEN at all.
+  uncaught), **2** in `hl7`, **1** in `terminology` by a DIFFERENT mechanism.
 - **Synthetic tokens are POSITIVELY DECLARED in `scripts/phi-allow-list.txt`** (byte-strict: no
   inline header, as DICOM's `.dcm`); **a whole-file bypass needs `--allow-fixture` AND an entry in
   `phi-scan-overrides.md`.**
@@ -426,8 +433,8 @@ or financial value on the wire.**
 - **Every caller-supplied value in a `build*` refusal message goes through `renderCallerValue`**
   (`src/builder/caller-value.ts`), capping the rendered **fragment** at
   `BUILD_REFUSAL_VALUE_MAX_RENDERED` = **90**. All three names are public.
-- **A type is NOT a runtime guarantee** - four holes the item's census missed were `number`-typed
-  AK9 counts, found only by adversarial review. **State a ceiling as a ceiling and a measurement as a
+- **A type is NOT a runtime guarantee** (the four holes the item's census missed: relocated
+  narrative). **State a ceiling as a ceiling and a measurement as a
   measurement:** 90 is the ceiling on the FRAGMENT, and three published figures were wrong once.
 - **This is NOT `PHI-WARNING-MESSAGE-LEAK` on the emit side:** there the value was the DOCUMENT's so
   bounding it was redaction; here the caller passed it in and still holds it. Escaping was
@@ -443,9 +450,8 @@ or financial value on the wire.**
   with the code. **The build-side `segmentIndex: 0` was filed as the same defect and is not one** -
   the builder has no parsed segment stream, so the position is `UNANCHORED_BUILD_POSITION`, inert by
   construction. Fabricating an index would have named a segment no consumer can resolve.
-- **`renderCallerValue` coerces and never throws.** A draft read `.length` where the base
-  interpolated into a template literal, turning a typed refusal into an uncaught `TypeError`.
-- **Assert SE-01 outright rather than trusting it** - a tripwire this repo has hit repeatedly.
+- **`renderCallerValue` coerces and never throws** (the draft that did not: relocated narrative).
+- **Assert SE-01 outright rather than trusting it** - a repeatedly-hit tripwire.
 
 ### 🩺 `X12-ORPHAN-REEMIT` (2026-08-02) · `documentation/agent-notes.md#x12-orphan-reemit-2026-08-02`
 
@@ -458,12 +464,12 @@ or financial value on the wire.**
   included in the transaction set, including ST and SE"). Pass 1 counted only `tx.rawSegments`, so
   spec-clean mode **rewrote a CORRECT `SE*4*` down to `SE*3*`**. `segCount` now adds every orphan
   flushed between the `ST` and the `SE`. GE-01/IEA-01 are unaffected: an orphan is never a `GS`.
-- **`KNOWN-LIMITATIONS.md` holds the canonical not-reproduced list; derive its size there.**
+- **`KNOWN-LIMITATIONS.md` holds the canonical not-reproduced list; derive its size.**
 - **Case 6 (the empty-first-element segment `*A*B~` outside a transaction) is deliberately NOT in
   scope.** The walker skips it, so there is nothing to re-emit; closing it is a RETENTION change to
   the `name.length > 0` guard and would mint new `X12_UNEXPECTED_SEGMENT`s.
-- **Retention and placement are NOT promotion:** no `get*` reader sees an orphan, and a `TA1` inside
-  a group still does not join `ta1Segments`.
+- **Retention and placement are NOT promotion:** no `get*` reader sees an orphan, and a `TA1` in a
+  group still does not join `ta1Segments`.
 - **State the four kept regression assertions at the MODEL level, not the byte level.** A
   `ta1-inside-group` orphan IS written back between the `ST` and the `SE`, so "never lands inside a
   transaction" would be simply false.
@@ -477,10 +483,9 @@ or financial value on the wire.**
   uniformly **double-spaced file lost its ENTIRE interchange body** and returned `groups: []`.
 - **🩺 NEVER replay an orphan at its recorded `segmentIndex`. Read the refutation before touching the
   emit again.** `segmentIndex` indexes the INPUT stream and the emit is not in input order, so replay
-  splices the orphan into whatever occupies that slot: measured, a stray `ZZ` landed INSIDE an 835's
-  `ST..SE` body with **no warning at all**, a stray `SE` closed the transaction early and corrupted
-  SE-01, and with a doubled terminator ahead of it the orphan crossed the IEA. Trading a warned
-  omission for silent structural corruption is the wrong direction under this repo's own invariant.
+  splices the orphan into whatever occupies that slot; the three corruption shapes measured, and why
+  trading a warned omission for silent structural corruption is the wrong direction here, are in
+  `documentation/agent-notes/claude-md-relocated-narrative.md`.
   **The defect is in the ADDRESSING SCHEME and comes straight back if anyone reaches for
   `segmentIndex`.**
 - **A segment with an empty first element, outside a transaction, is dropped with NO warning at all** -
@@ -535,8 +540,7 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   a decision.
 - **🩺 TRN echo is the safety-critical reassociation invariant.** A 271 echoes the 270's TRN-02 onto
   its subscriber / dependent, a 277 echoes the 276's onto its claim; the builders place the caller's
-  trace into TRN-02 verbatim and NEVER fabricate, normalize, or mutate it. Locked by round-trip
-  property tests on both sides.
+  trace into TRN-02 verbatim and NEVER fabricate, normalize, or mutate it.
 - **🩺 The HL spine is COMPUTED, never caller-supplied. State it PER BUILDER, never as a blanket.**
   All four compute HL-01/02/04 from the nested tree and take HL-03 from a module-level `HL_LEVEL`
   constant, at every level EXCEPT the 278's EV/SS review level, so an inconsistent hierarchy is
@@ -619,8 +623,7 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   wholesale, not by value** (four routes; a nonexistent `--config-path` blinds nothing).
 - **`test/scripts/attw-gate.test.ts` pins the upstream exit-0 itself**, so an `attw` upgrade that
   rewords the sentence or fixes the exit code reds the suite instead of letting the net go quietly
-  slack. It also pins a negative control on a well-formed package and that a real `attw` failure still
-  fails.
+  slack.
 - **The port is NOT finished org-wide, including `config/scripts/parser-template/`, which
   `scaffold-parser.mjs` mints new parsers from.** Derive the set; never trust a count.
 
