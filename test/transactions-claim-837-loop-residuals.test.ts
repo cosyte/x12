@@ -37,8 +37,11 @@
  * those controls are the routes that must NOT change: with a `CLM` open the
  * trailing `REF` still lands on the enclosing claim, an entity-level `REF`
  * with no `LX` in play still lands on its `NM1`, a real Loop 2400 still takes
- * its own line-level `REF`, and a later claim still attaches normally (the
- * reset is a reset, not a latch). For residual 2 the control is a resolvable
+ * its own line-level `REF`, and a payer named after the stray `LX` still takes
+ * its own `N3` and `REF` (the reset is a reset, not a latch; what a party
+ * OUTSIDE that scope then receives is per kind and per party, which is why
+ * the control measures a payer rather than asserting a general one). For
+ * residual 2 the control is a resolvable
  * ST-03, which raises nothing at all.
  *
  * 🩺 **THE FIX IS A TRADE AND ITS COST IS PINNED, NOT ARGUED AWAY.** The TR3s
@@ -102,7 +105,13 @@ const HEADER: readonly string[] = [
 const CLM = "CLM*PT-ACCT-900*8500***11:B:1*Y*A*Y*Y~";
 const SV1 = "SV1*HC:99213*8500*UN*4***1~";
 
-/** The four trailing segments that attach to a named party. */
+/**
+ * The four trailing entity segment kinds this suite sends after the stray
+ * `LX`. Named for what they are, not for what they would otherwise reach:
+ * which of them this reader surfaces on a given party varies by kind and by
+ * party, and every document below names a payer, which surfaces all three of
+ * an address, a reference and a contact.
+ */
 const TRAILING_REF = "REF*6R*LINE-CTRL-1~";
 const TRAILING_N3 = "N3*1 ORPHAN WAY~";
 const TRAILING_N4 = "N4*SPRINGFIELD*IL*62701~";
@@ -151,11 +160,11 @@ function channel(sub: X12_837Submission): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// Residual 1. A trailing segment after a dropped LX no longer addresses the
+// Residual 1. A trailing segment after a dropped LX does not address the
 // last named party.
 // ---------------------------------------------------------------------------
 
-describe("X12-837-LOOP-RESIDUALS: a dropped LX no longer leaves the last NM1 addressable", () => {
+describe("X12-837-LOOP-RESIDUALS: a dropped LX closes the entity loop current at it", () => {
   /** Dropped `LX` (no CLM open), then trailing segments, then a real claim. */
   const misfiled = (trailing: readonly string[]): readonly string[] => [
     ...HEADER,
@@ -368,7 +377,7 @@ describe("X12-837-LOOP-RESIDUALS: the controls the reset must NOT change", () =>
     expect(channel(sub)).toEqual([]);
   });
 
-  it("CONTROL: the reset is a reset, not a latch - the very next NM1 is addressable again", () => {
+  it("CONTROL: the reset is a reset, not a latch - the next NM1's payer takes its own segments", () => {
     // The failure mode this shape invites, and the same one
     // `droppedLineReported` had to avoid: a dropped `LX` must not make every
     // subsequent party in the transaction unaddressable. No intervening `HL`,

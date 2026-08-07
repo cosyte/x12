@@ -18,6 +18,7 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 - [PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL (2026-08-06)](#phi-scan-observed-nothing-is-global-2026-08-06)
 - [REFUSAL-MESSAGE-PHI-ECHO (2026-08-06)](#refusal-message-phi-echo-2026-08-06)
 - [X12-DISCARD-AFTER-STRAY-LX (2026-08-06)](#x12-discard-after-stray-lx-2026-08-06)
+- [X12-837-LOOP-RESIDUALS: the pay-to-address fusion, cut back (2026-08-07)](#x12-837-loop-residuals-the-pay-to-address-fusion-cut-back-2026-08-07)
 - [X12-837-LOOP-RESIDUALS (2026-08-05)](#x12-837-loop-residuals-2026-08-05)
 - [X12-277-SVC07-NOT-DECODED (2026-08-05)](#x12-277-svc07-not-decoded-2026-08-05)
 - [X12-VARIANT-LOOKUP-PROTOTYPE (2026-08-05)](#x12-variant-lookup-prototype-2026-08-05)
@@ -911,6 +912,60 @@ undefined` check, and the flag can only hold where no claim is open, so neither 
   library refuses to place - which is exactly the segment a "helpful" diagnostic would quote
   back. The factory takes a position and nothing else, and the suite's own non-vacuity check is
   that the expected code really is on the channel for the planted document.
+
+## X12-837-LOOP-RESIDUALS: the pay-to-address fusion, cut back (2026-08-07)
+
+**Filed by the slice that finished the wording sweep and did NOT fix this. Read it before the next
+attempt, which should not rediscover any of it.** Two remedies were built and both were refuted, so
+per ADR 0016 the unit was cut back rather than given a third. The wording half shipped alone.
+
+- **THE DEFECT, MEASURED AT `63a70bc`, WHICH IS PUBLISHED `0.0.11`.** `NM1*87` names the pay-to
+  address with no entity object to hold it: `payToAddress` is a bare `X12ClaimAddress` accumulator,
+  cleared only at the next Loop 2000A `HL`. A route that assigns a fresh entity leaves the trailing
+  `N3` / `N4` a `current.address` of `undefined` to write onto, so their write replaces; the two
+  `payToAddress` arms instead write onto whatever the previous `NM1*87` left, `withLines` appending
+  and `mergeAddress` falling back. Two `NM1*87`s in one Loop 2000A, each with an `N3` and an `N4`,
+  read back
+  `{"lines":["1 FIRST PAY TO WAY","2 SECOND PAY TO WAY"],"city":"SHELBYVILLE","state":"IL",`
+  `"postalCode":"62565","countryCode":"US"}` - a street from each of two addresses, and a
+  `countryCode` off the FIRST `N4` on an address whose own `N4` names no country. `warnings: []`.
+  That address is one no sender sent.
+
+- **🩺 REMEDY 1, REFUTED: clear `payToAddress` at the `NM1*87`.** It fixes the fusion and erases the
+  address a repeat carrying NO `N3` / `N4` of its own did state, silently. Base kept it.
+
+- **🩺 REMEDY 2, REFUTED INSIDE ITS OWN REMEDY DIFF: replace at the first write after the `NM1*87`,
+  via a flag.** Same erasure on a narrower input, because the flag is consumed by a write whether or
+  not that write carries a value: `N3~`, `N3**~`, `N4~` and `N4****~` after a repeat each replaced a
+  stated address with `{ lines: [] }`, silently. It also falsified the remedy's own shipped
+  invariant, "the accumulator moves only when a segment gives it a value".
+
+- **🩺 THE CONSTRAINT BOTH REMEDIES MISSED, AND WHERE THE NEXT ONE STARTS: AN EMPTIED SLOT IS NOT A
+  NEUTRAL ABSENCE, BECAUSE THE EMIT SIDE READS IT.** `build837P/I/D` gates Loop 2010AB on
+  `payToAddress !== undefined`, and `emitAddress` writes `N3` only for a non-empty `lines` and `N4`
+  only for a defined field. So an emptied slot re-emits as **no pay-to loop at all**, a positive
+  statement about where the payment goes, and a half-emptied one re-emits a bare `NM1*87` with
+  neither `N3` nor `N4`, which is non-conformant where the loop is present. **The emit side is in
+  scope for this fix from the start.** Measured through `build837P` + `serializeX12`.
+
+- **DO NOT RESTATE THIS AS THE ENTITY PARTIES' RULE.** A repeated `NM1*PR` with no `N3` leaves a
+  payer object whose `address` is `undefined` - the party is on the model and only its address is
+  unknown. The pay-to slot has no object, so on it "address unknown" and "no pay-to loop" are the
+  same value. A draft's disclosure claimed the symmetry and was refuted on it.
+
+- **AND DO NOT REACH FOR THE NAME.** A draft justified erasing the first address by saying holding it
+  would put one party's street under another party's name. Measured false: **no name from an
+  `NM1*87` taken by the Loop 2000A route reaches the model** - that route computes the entity and
+  discards it, and the builder emits a bare `NM1*87*2`. There is no second party and no second name.
+  **Scope it to that route and do not write the unqualified form**, which is false: an `NM1*87`
+  arriving while a `CLM` is open never reaches this route at all (the `context.kind === "loop2000A"`
+  guard), falls through to the Loop 2310 branch, and its name DOES land, on `claim.providers` - the
+  bullet below. A draft published the unqualified form with its own counterexample two bullets down.
+
+- **Two related things measured on the way, neither fixed, neither this item's:** an `NM1*87`
+  arriving while a `CLM` is open falls through to the Loop 2310 branch and lands in `claim.providers`
+  as a provider role, identical at base; and `attachContact`'s `/* v8 ignore */` comment calls its
+  `payToAddress` arm "structurally unreachable in v1", which a `PER` after an `NM1*87` reaches.
 
 ## X12-837-LOOP-RESIDUALS (2026-08-05)
 

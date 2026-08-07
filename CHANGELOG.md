@@ -1166,6 +1166,29 @@ string, …` - which `esc` cannot, being unary.
   slot for a silent normalization; the tiers now name it, and note that a Tier-2 unexpected segment is
   warned about but not kept.
 
+- **The universal about a stray 837 `LX` is cut back in the `src/` comments and 837 test-file headers
+  the release before this one disclosed it in** (`X12-837-LOOP-RESIDUALS`). That release deleted it
+  from the documents this package publishes and disclosed, rather than claimed closed, that it still
+  stood in those two places; this is the rest of that sweep. **No count and no completeness claim is
+  published**, because both are what went stale twice here: the sites swept are the `NM1` and `LX`
+  case comments in `src/transactions/claim/get-837.ts`, and the headers, section comments and case
+  titles of `test/transactions-claim-837-loop-residuals.test.ts`,
+  `test/transactions-claim-837-discard-after-stray-lx.test.ts` and
+  `test/transactions-claim-837-variant-lookup.test.ts`. Each said a trailing `N3` / `N4` / `PER` /
+  `REF` "attached to" or "landed on" whichever party the last `NM1` left active, or that a party
+  named after the `LX` "is addressable again", all of which read as all four kinds reaching every
+  party. They do not: this reader does not surface every one of those kinds on every party. Each copy
+  takes the qualifier already graded on the shipped surfaces, "wherever this reader surfaces that
+  segment kind on that party at all", or is cut back to the measured instance beside it and that
+  instance is named - a payer in every case but one, where it is a Loop 2320 other subscriber; no
+  copy is given a new wording and **no per-kind, per-party map is published.** Counterfactual headings ("no longer attaches", "no longer leaves the last `NM1`
+  addressable") lose the counterfactual only. The bullet in `documentation/agent-notes.md` beginning
+  "RESIDUAL 1, MEASURED AT `93b2428`", and the identically-scoped paragraph in the test header it was
+  written from, are **not** copies - both are scoped by "every trailing segment that attaches to a
+  named party" - and are deliberately left alone. Nothing a consumer reads at runtime changed:
+  neither the warning registry nor any `docs-content/` page nor the README carried the wording, and
+  the executable behaviour of the swept comments is nil.
+
 ### Documented, not fixed
 
 > **Superseded in part by the "Fixed" entry above, which ships in the same release.** The model half
@@ -1173,6 +1196,20 @@ string, …` - which `esc` cannot, being unary.
 > file no longer loses its interchange body. The **round-trip** half still stands: `serializeX12` does
 > not re-emit an orphan, so the warning still does not survive. The two entries are kept separate
 > because they were separate changes, and the sentences below describe the release before this one.
+
+- **🩺 A repeated `NM1*87` inside one 837 Loop 2000A fuses two pay-to addresses into one**
+  (`X12-837-LOOP-RESIDUALS`). The `N3` line collector appends and the `N4` merge falls back, so
+  `X12Claim.payToAddress` carries a street from each of two addresses and an `N4` field the second
+  address omitted. Reproduces unchanged at `0.0.11` and is **not** fixed here: two remedies were
+  built and both were refuted for moving the loss rather than removing it, so per ADR 0016 the unit
+  was cut back rather than given a third. Clearing the accumulator at the `NM1*87` erases the
+  address a repeat with no `N3` / `N4` of its own did state; replacing at the first following write
+  erases it on a VALUELESS `N3~` / `N4~`. **Neither erasure is a neutral absence, and that is the
+  constraint the next attempt starts from:** `build837P/I/D` emits Loop 2010AB only where the slot
+  is defined, and `emitAddress` emits `N3` only for a non-empty `lines` and `N4` only for a defined
+  field, so an emptied slot re-emits as **no pay-to loop at all** and a half-emptied one re-emits a
+  bare `NM1*87` with neither. **The emit side is therefore in scope for that fix from the start**,
+  which is what makes it its own unit. `documentation/agent-notes.md` carries the measurements.
 
 - **A segment that falls outside a transaction is dropped from the model, and its warning does not
   survive a round trip.** The envelope walker keeps body segments only while an ST..SE transaction is

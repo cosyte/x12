@@ -3,9 +3,9 @@
  *
  * 🩺 **What `#72` traded.** An `LX` arriving with no `CLM` open drops its
  * whole Loop 2400, and now also closes the entity loop that was current at it,
- * so a trailing `N3` / `N4` / `PER` / `REF` no longer attaches to whichever
- * party the last `NM1` left active. That stopped a line-item control number, a
- * street address and a contact surfacing on a LATER claim's payer. The cost is
+ * so a trailing `N3` / `N4` / `PER` / `REF` reaches no party. That stopped a
+ * line-item control number, a street address and a contact surfacing on a
+ * LATER claim's payer. The cost is
  * that where the `LX` was stray INSIDE an entity loop, that entity's OWN
  * conformant segments are discarded, and through `d3b36d9` they were discarded
  * **silently**: no code named the loss.
@@ -253,7 +253,7 @@ describe("X12-DISCARD-AFTER-STRAY-LX: the silences this code must NOT break", ()
     ]);
   });
 
-  it("CONTROL: the scope ends at the next NM1 - that party's own segments attach and are silent", () => {
+  it("CONTROL: the scope ends at the next NM1 - that payer's own N3 and REF land on it, silently", () => {
     const sub = parse837([
       ...HEADER,
       "LX*1~",

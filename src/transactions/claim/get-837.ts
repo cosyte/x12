@@ -528,8 +528,12 @@ export function get837Claims(
         // `else`, so the stray-LX scope ends here whatever this NM1 resolves
         // to. Clearing once at the top of the case is what keeps the flag
         // scoped rather than latched: a party named after the stray LX is
-        // addressable again, and an NM1 this walker cannot route leaves the
-        // following segments as silent as they were before this code existed.
+        // outside that scope again, and an NM1 this walker cannot route leaves
+        // the following segments as silent as they were before this code
+        // existed. Outside that scope is not the same as addressable: whether
+        // a trailing segment then reaches the party depends on the kind and on
+        // the party, and this reader does not surface every kind on every one
+        // (`attachContact` has no route for a patient or a pay-to address).
         entityLoopClosedByStrayLx = false;
         // Route the NM1 by qualifier + context.
         if (qualifier === NM1_QUALIFIERS.SUBMITTER) {
@@ -731,20 +735,23 @@ export function get837Claims(
         // and the number is worthless to a reader anyway - `git log -p` is
         // exact and never goes stale. What matters is why: an earlier draft
         // returned early on the SECOND route and skipped that route's reset,
-        // which let a trailing bare `N3` / `N4` / `PER` attach its address to
-        // whatever party the last `NM1` had left active, and route 1 was doing
-        // the same thing through `93b2428`. Trading a warned omission for a
-        // silent mis-attribution is the wrong direction.
+        // which let a trailing bare `N3` / `N4` / `PER` reach whatever party
+        // the last `NM1` had left active, wherever this reader surfaces that
+        // segment kind on that party at all, and route 1 was doing the same
+        // thing through `93b2428`. Trading a warned omission for a silent
+        // mis-attribution is the wrong direction.
         if (currentClaim === undefined) {
           warnings.push(serviceLineDropped(position));
           droppedLineReported = true;
           // Route 1 is the one path out of this case that used to skip the
           // reset below, and skipping it is the mirror image of the draft the
           // comment above warns about: through `93b2428` a trailing
-          // `REF` / `N3` / `N4` / `PER` after a dropped `LX` attached to
-          // whichever party the last `NM1` left active - measured, a line-item
-          // control number, a street address and a contact landing on a LATER
-          // claim's payer, silently.
+          // `REF` / `N3` / `N4` / `PER` after a dropped `LX` reached whichever
+          // party the last `NM1` left active, wherever this reader surfaces
+          // that segment kind on that party at all - measured on a payer,
+          // which surfaces all three of an address, a reference and a contact:
+          // a line-item control number, a street address and a contact landing
+          // on a LATER claim's payer, silently.
           //
           // THIS IS A TRADE, NOT A FREE WIN, AND THE COST IS MEASURED. The
           // TR3s nest Loop 2400 inside Loop 2300 and say nothing about an `LX`
