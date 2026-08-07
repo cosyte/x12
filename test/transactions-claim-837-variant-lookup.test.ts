@@ -147,8 +147,8 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: an inherited-key ST-03 resolves like any
       expect(sub.variant).toBe("P");
       // At base this was 0: the entire Loop 2400 left the model.
       expect(sub.claims[0]?.serviceLines).toHaveLength(1);
-      expect(sub.claims[0]?.serviceLines[0]?.charge.toString()).toBe("8500");
-      expect(sub.claims[0]?.serviceLines[0]?.units.toString()).toBe("4");
+      expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
+      expect(sub.claims[0]?.serviceLines[0]?.units?.toString()).toBe("4");
       // The whole channel, not one code. An unrecognized ST-03 that the SVx
       // fallback resolves has never warned, and still does not.
       expect(channel(sub)).toEqual([]);
@@ -164,14 +164,14 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: an inherited-key ST-03 resolves like any
     const { sub } = parse837("005010XZZZZZ", claimBody(["LX*1~", SV1]));
     expect(sub.variant).toBe("P");
     expect(sub.claims[0]?.serviceLines).toHaveLength(1);
-    expect(sub.claims[0]?.serviceLines[0]?.charge.toString()).toBe("8500");
+    expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     expect(channel(sub)).toEqual([]);
   });
 
   it("CONTROL: a recognized ST-03 still resolves from ST-03, silently", () => {
     const { sub } = parse837("005010X223A3", claimBody(["LX*1~", "SV2*0300*HC:99213*8500*UN*4~"]));
     expect(sub.variant).toBe("I");
-    expect(sub.claims[0]?.serviceLines[0]?.charge.toString()).toBe("8500");
+    expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     expect(channel(sub)).toEqual([]);
   });
 });
@@ -301,14 +301,15 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: an LX that opens no service line says so
     const { sub } = parse837("005010X222A2", claimBody(["LX*1~", SV1]));
     expect(sub.claims).toHaveLength(1);
     expect(sub.claims[0]?.serviceLines).toHaveLength(1);
-    expect(sub.claims[0]?.serviceLines[0]?.charge.toString()).toBe("8500");
+    expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     expect(channel(sub)).toEqual([]);
   });
 
   it("the code is NOT raised for a line that is retained but undecoded", () => {
     // `X12_837_SERVICE_LINE_NOT_DECODED` and `X12_837_SERVICE_LINE_DROPPED`
     // report different losses and must never both fire for one LX: here the
-    // line IS on the model, holding the seeded zeros `#67` disclosed.
+    // line IS on the model, holding the seeds `#67` disclosed (a fabricated
+    // `0` through `0.0.12`, `undefined` since).
     const { sub } = parse837("005010X222A2", claimBody(["LX*1~", "SV2*0300*HC:99213*8500*UN*4~"]));
     expect(sub.claims[0]?.serviceLines).toHaveLength(1);
     expect(channel(sub)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED]);

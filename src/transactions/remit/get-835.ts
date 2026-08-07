@@ -12,7 +12,7 @@
  * Spec source: WPC TR3 `005010X221A1` - Health Care Claim Payment/Advice.
  */
 
-import { X12Decimal } from "../../decimal.js";
+import type { X12Decimal } from "../../decimal.js";
 import { lookupCarc } from "../../code-lists/carc.js";
 import { lookupClpStatus } from "../../code-lists/clp-status.js";
 import { lookupRarc } from "../../code-lists/rarc.js";
@@ -20,7 +20,6 @@ import {
   collectElementValues,
   componentOptional,
   elementDecimal,
-  elementDecimalOrZero,
   elementOptional,
   elementValue,
   type X12DecimalWarningSink,
@@ -61,9 +60,9 @@ import type {
  *   for (const tx of group.transactions) {
  *     if (tx.st.elements[1] !== "835") continue;
  *     const remit = get835(ix.delimiters, tx);
- *     remit?.payment.totalActualPayment.toString();
+ *     remit?.payment.totalActualPayment?.toString();
  *     for (const claim of remit?.claims ?? []) {
- *       claim.totalPaymentAmount.toString();
+ *       claim.totalPaymentAmount?.toString();
  *     }
  *   }
  * }
@@ -374,9 +373,9 @@ interface ClaimAccumulator {
   readonly patientControlNumber: string;
   readonly claimStatusCode: string;
   readonly claimStatusDescription: string | undefined;
-  readonly totalChargeAmount: X12Decimal;
-  readonly totalPaymentAmount: X12Decimal;
-  readonly patientResponsibilityAmount: X12Decimal;
+  readonly totalChargeAmount: X12Decimal | undefined;
+  readonly totalPaymentAmount: X12Decimal | undefined;
+  readonly patientResponsibilityAmount: X12Decimal | undefined;
   readonly claimFilingIndicatorCode: string | undefined;
   readonly payerClaimControlNumber: string | undefined;
   readonly facilityTypeCode: string | undefined;
@@ -400,8 +399,8 @@ interface ServiceLineAccumulator {
   readonly productServiceIdQualifier: string;
   readonly productServiceId: string;
   readonly modifiers: string[];
-  readonly chargeAmount: X12Decimal;
-  readonly paymentAmount: X12Decimal;
+  readonly chargeAmount: X12Decimal | undefined;
+  readonly paymentAmount: X12Decimal | undefined;
   readonly revenueCode: string | undefined;
   readonly paidUnitsOfService: X12Decimal | undefined;
   readonly originalUnitsOfService: X12Decimal | undefined;
@@ -438,7 +437,7 @@ function decodeBpr(
 ): X12RemitPaymentHeader {
   return Object.freeze({
     transactionHandlingCode: elementValue(seg, 1, delimiters),
-    totalActualPayment: elementDecimalOrZero(seg, 2, delimiters, sink),
+    totalActualPayment: elementDecimal(seg, 2, delimiters, sink),
     creditDebitFlag: elementValue(seg, 3, delimiters),
     method: elementValue(seg, 4, delimiters),
     paymentFormatCode: elementOptional(seg, 5, delimiters),
@@ -593,7 +592,7 @@ function decodeCasAdjustments(
         groupCode,
         reasonCode: code,
         reasonDescription: entry?.description,
-        amount: amount ?? X12Decimal.ZERO,
+        amount,
         quantity,
       }),
     );
@@ -662,9 +661,9 @@ function openClaim(
     patientControlNumber: elementValue(seg, 1, delimiters),
     claimStatusCode,
     claimStatusDescription,
-    totalChargeAmount: elementDecimalOrZero(seg, 3, delimiters, sink),
-    totalPaymentAmount: elementDecimalOrZero(seg, 4, delimiters, sink),
-    patientResponsibilityAmount: elementDecimalOrZero(seg, 5, delimiters, sink),
+    totalChargeAmount: elementDecimal(seg, 3, delimiters, sink),
+    totalPaymentAmount: elementDecimal(seg, 4, delimiters, sink),
+    patientResponsibilityAmount: elementDecimal(seg, 5, delimiters, sink),
     claimFilingIndicatorCode: elementOptional(seg, 6, delimiters),
     payerClaimControlNumber: elementOptional(seg, 7, delimiters),
     facilityTypeCode,
@@ -709,8 +708,8 @@ function openServiceLine(
     productServiceIdQualifier,
     productServiceId,
     modifiers,
-    chargeAmount: elementDecimalOrZero(seg, 2, delimiters, sink),
-    paymentAmount: elementDecimalOrZero(seg, 3, delimiters, sink),
+    chargeAmount: elementDecimal(seg, 2, delimiters, sink),
+    paymentAmount: elementDecimal(seg, 3, delimiters, sink),
     revenueCode,
     paidUnitsOfService,
     originalUnitsOfService,
@@ -782,7 +781,7 @@ function decodePlb(
         fiscalPeriodDate,
         reasonCode: reasonCode ?? "",
         subCode,
-        amount: amount ?? X12Decimal.ZERO,
+        amount,
       }),
     );
   }
@@ -803,7 +802,7 @@ const EMPTY_ADDRESS: X12RemitAddress = Object.freeze({
 
 const EMPTY_HEADER: X12RemitPaymentHeader = Object.freeze({
   transactionHandlingCode: "",
-  totalActualPayment: X12Decimal.ZERO,
+  totalActualPayment: undefined,
   creditDebitFlag: "",
   method: "",
   paymentFormatCode: undefined,

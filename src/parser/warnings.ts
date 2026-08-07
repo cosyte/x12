@@ -87,6 +87,7 @@ export const WARNING_CODES = {
   X12_837_SERVICE_SEGMENT_WITHOUT_LX: "X12_837_SERVICE_SEGMENT_WITHOUT_LX",
   X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX: "X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX",
   X12_837_PAY_TO_ADDRESS_REPEATED: "X12_837_PAY_TO_ADDRESS_REPEATED",
+  X12_835_BALANCE_NOT_EVALUABLE: "X12_835_BALANCE_NOT_EVALUABLE",
 } as const;
 
 /**
@@ -299,6 +300,12 @@ const WARNING_MESSAGES = {
     "835 balance invariant violated [SVC-03 + Σ(line CAS) == SVC-02]: the service line does not balance. Every amount is preserved verbatim on the model as an X12Decimal and is NEVER silently rebalanced.",
   X12_835_REMIT_BALANCE_MISMATCH_REMIT_TOTAL:
     "835 balance invariant violated [Σ(CLP-04) - Σ(PLB amounts) == BPR-02]: the remittance total does not balance. Every amount is preserved verbatim on the model as an X12Decimal and is NEVER silently rebalanced.",
+  X12_835_BALANCE_NOT_EVALUABLE_CLAIM:
+    "835 balance invariant [CLP-04 + Σ(claim CAS + line CAS) == CLP-03] could not be evaluated: at least one term of it is `undefined` on the model, meaning this library decoded no value from that element. The equation is NOT reported as violated and NOT reported as satisfied, because an absent term has no value to compare - substituting 0 for it would be this library asserting a total the sender never sent. Which term is missing is read off the model, never from this message. Compare `X12_835_REMIT_BALANCE_MISMATCH`, which is raised only where every term decoded and the equation is genuinely out of balance.",
+  X12_835_BALANCE_NOT_EVALUABLE_SERVICE_LINE:
+    "835 balance invariant [SVC-03 + Σ(line CAS) == SVC-02] could not be evaluated: at least one term of it is `undefined` on the model, meaning this library decoded no value from that element. The equation is NOT reported as violated and NOT reported as satisfied, because an absent term has no value to compare - substituting 0 for it would be this library asserting a total the sender never sent. Which term is missing is read off the model, never from this message. Compare `X12_835_REMIT_BALANCE_MISMATCH`, which is raised only where every term decoded and the equation is genuinely out of balance.",
+  X12_835_BALANCE_NOT_EVALUABLE_REMIT_TOTAL:
+    "835 balance invariant [Σ(CLP-04) - Σ(PLB amounts) == BPR-02] could not be evaluated: at least one term of it is `undefined` on the model, meaning this library decoded no value from that element. The equation is NOT reported as violated and NOT reported as satisfied, because an absent term has no value to compare - substituting 0 for it would be this library asserting a total the sender never sent. Which term is missing is read off the model, never from this message. Compare `X12_835_REMIT_BALANCE_MISMATCH`, which is raised only where every term decoded and the equation is genuinely out of balance.",
   X12_UNKNOWN_CARC:
     "Unknown CARC: the claim adjustment reason code is outside the bundled snapshot. The verbatim code is preserved on the adjustment; only its description is unavailable.",
   X12_UNKNOWN_RARC:
@@ -328,7 +335,7 @@ const WARNING_MESSAGES = {
   X12_UNPARSEABLE_DECIMAL:
     "Unparseable decimal: the element at `position.elementIndex` held bytes this library could not decode as a decimal, so NO value was decoded from it. Whatever occupies that slot on the model, including 0 and undefined, is a stand-in and is NOT a value the sender supplied. The verbatim bytes are preserved on the segment; read them there before acting on the amount, quantity or percent.",
   X12_837_SERVICE_LINE_NOT_DECODED:
-    "837 service line with no decoded service segment: the Loop 2400 line opened at `position.segmentIndex` is followed by no SV1 / SV2 / SV3 matching the variant this submission resolved to, so NOTHING carried by the service segment was read. The line's `charge` and `units` hold 0 as a stand-in and are NOT values the sender supplied; its procedure code, modifiers, unit of measure and place of service are equally undecoded. Two common causes: the line carries no SVx at all, or it carries one for a different 837 variant than ST-03 (or the caller's `type` option) named. Which side is wrong is NOT decided here, because a caller-supplied `type` can disagree with a perfectly conformant document. The verbatim segments are preserved on the transaction set; read them there before acting on the charge or the quantity.",
+    "837 service line with no decoded service segment: the Loop 2400 line opened at `position.segmentIndex` is followed by no SV1 / SV2 / SV3 matching the variant this submission resolved to, so NOTHING carried by the service segment was read. The line's `charge` and `units` are `undefined`, which is what this library puts on a decimal slot it decoded no value into; its procedure code, modifiers, unit of measure and place of service are equally undecoded. Two common causes: the line carries no SVx at all, or it carries one for a different 837 variant than ST-03 (or the caller's `type` option) named. Which side is wrong is NOT decided here, because a caller-supplied `type` can disagree with a perfectly conformant document. The verbatim segments are preserved on the transaction set; read them there before acting on the charge or the quantity.",
   X12_837_SERVICE_LINE_DROPPED:
     "837 service line dropped from the typed model: the LX at `position.segmentIndex` opened no Loop 2400, so no line appears on any claim's `serviceLines` for it and the SV1 / SV2 / SV3 that followed - its charge, units, procedure code and modifiers - was read into nothing. Compare `X12_837_SERVICE_LINE_NOT_DECODED`, where the line IS on the model and only its service segment went unread. Two causes: no Loop 2300 (CLM) is open at this LX, so there is no claim to attach a line to; or the submission's variant is not one of P / I / D, so no variant-specific line shape could be built. Read `submission.variant` and `submission.claims` to tell them apart; do NOT expect `X12_837_UNKNOWN_VARIANT` alongside this code, because a caller-supplied `type` outside P / I / D reaches the second cause without it. Nothing is fabricated to stand in for the missing line and no claim is synthesized. What becomes of a DTP / AMT / NTE / REF that follows the dropped LX depends on the route and this message does not say; see KNOWN-LIMITATIONS.md. The verbatim segments are preserved on the transaction set; read them there before concluding the claim had no service lines.",
   X12_837_SERVICE_SEGMENT_WITHOUT_LX:
@@ -382,6 +389,13 @@ const BALANCE_INVARIANT_MESSAGES: Readonly<Record<X12BalanceInvariant, string>> 
   [BALANCE_INVARIANTS.CLAIM]: WARNING_MESSAGES.X12_835_REMIT_BALANCE_MISMATCH_CLAIM,
   [BALANCE_INVARIANTS.SERVICE_LINE]: WARNING_MESSAGES.X12_835_REMIT_BALANCE_MISMATCH_SERVICE_LINE,
   [BALANCE_INVARIANTS.REMIT_TOTAL]: WARNING_MESSAGES.X12_835_REMIT_BALANCE_MISMATCH_REMIT_TOTAL,
+};
+
+/** @internal */
+const BALANCE_NOT_EVALUABLE_MESSAGES: Readonly<Record<X12BalanceInvariant, string>> = {
+  [BALANCE_INVARIANTS.CLAIM]: WARNING_MESSAGES.X12_835_BALANCE_NOT_EVALUABLE_CLAIM,
+  [BALANCE_INVARIANTS.SERVICE_LINE]: WARNING_MESSAGES.X12_835_BALANCE_NOT_EVALUABLE_SERVICE_LINE,
+  [BALANCE_INVARIANTS.REMIT_TOTAL]: WARNING_MESSAGES.X12_835_BALANCE_NOT_EVALUABLE_REMIT_TOTAL,
 };
 
 /** @internal */
@@ -707,6 +721,39 @@ export function remitBalanceMismatch(
 }
 
 /**
+ * Build an `X12_835_BALANCE_NOT_EVALUABLE` warning. Emitted where a term of
+ * a TR3 X221A1 §1.10.2 invariant is `undefined` on the model, so the
+ * equation has nothing to compare on one side. `invariant` names which
+ * equation could not be run.
+ *
+ * This is deliberately a DIFFERENT code from
+ * {@link remitBalanceMismatch}: that one asserts a computed inequality
+ * between amounts the sender supplied, and this one asserts only that the
+ * comparison could not be made. Reading an absent term as `0` is what made
+ * the two indistinguishable before `X12Decimal | undefined`, and it is the
+ * thing this code exists to stop.
+ *
+ * @example
+ * ```ts
+ * import { balanceNotEvaluable, BALANCE_INVARIANTS } from "@cosyte/x12";
+ * const w = balanceNotEvaluable(
+ *   { segmentIndex: 12, groupIndex: 0, transactionIndex: 0 },
+ *   BALANCE_INVARIANTS.CLAIM,
+ * );
+ * ```
+ */
+export function balanceNotEvaluable(
+  position: X12Position,
+  invariant: X12BalanceInvariant,
+): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_835_BALANCE_NOT_EVALUABLE,
+    message: BALANCE_NOT_EVALUABLE_MESSAGES[invariant],
+    position,
+  };
+}
+
+/**
  * Build an `X12_UNKNOWN_CARC` warning. Emitted when a CAS adjustment
  * carries a CARC code outside the bundled snapshot (see
  * {@link "../code-lists/carc.js".CARC}). The verbatim code is preserved on
@@ -869,9 +916,11 @@ export function unknown837Variant(position: X12Position): X12ParseWarning {
  * carries no SVx at all, or it carries one belonging to a different 837
  * variant than ST-03 (or the caller's `type` option) named. The line is
  * still retained, and every segment stays verbatim on the transaction set,
- * but the line's `charge` and `units` are the accumulator's seeded
- * `X12Decimal.ZERO` rather than anything read off the wire. `position`
- * names the LX segment that opened the line.
+ * but the line's `charge` and `units` are `undefined` rather than anything
+ * read off the wire. Through `0.0.12` they were the accumulator's seeded
+ * `X12Decimal.ZERO`, which a consumer could not tell from a charge of zero
+ * the sender did state. `position` names the LX segment that opened the
+ * line.
  *
  * @example
  * ```ts
@@ -1109,11 +1158,13 @@ export function unknownMaintenanceType(position: X12Position): X12ParseWarning {
  *
  * `position.elementIndex` is the 1-indexed element that failed, so a
  * consumer can go read the verbatim bytes off the segment. The message
- * takes NO discriminant and deliberately does not name which stand-in
- * landed: a reader may put `X12Decimal.ZERO` on a slot typed `X12Decimal`,
- * leave an optional slot `undefined`, or drop the row entirely, and the one
- * thing true of all three is that the number now in that slot is not the
- * sender's. Read the model field itself to see which happened.
+ * takes NO discriminant and deliberately does not name what landed in the
+ * slot instead: this library's own readers now either leave the slot
+ * `undefined` or drop the row entirely, and a reader built on
+ * {@link "./segment.js".elementDecimalOrZero} still substitutes
+ * `X12Decimal.ZERO`. The one thing true of all of them is that whatever
+ * occupies that slot is not the sender's. Read the model field itself to
+ * see which happened.
  *
  * @example
  * ```ts

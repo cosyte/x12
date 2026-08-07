@@ -18,6 +18,8 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 - [PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL (2026-08-06)](#phi-scan-observed-nothing-is-global-2026-08-06)
 - [REFUSAL-MESSAGE-PHI-ECHO (2026-08-06)](#refusal-message-phi-echo-2026-08-06)
 - [X12-DISCARD-AFTER-STRAY-LX (2026-08-06)](#x12-discard-after-stray-lx-2026-08-06)
+- [X12-837-SV-UNDEFINED-DECIMAL (2026-08-07)](agent-notes/x12-837-sv-undefined-decimal.md) - closes
+  the `0` left open by the three decimal sections below
 - [X12-PAY-TO-FUSION (2026-08-07)](agent-notes/x12-pay-to-fusion.md) - closes the one below
 - [X12-837-LOOP-RESIDUALS: the pay-to-address fusion, cut back (2026-08-07)](#x12-837-loop-residuals-the-pay-to-address-fusion-cut-back-2026-08-07)
 - [X12-837-LOOP-RESIDUALS (2026-08-05)](#x12-837-loop-residuals-2026-08-05)

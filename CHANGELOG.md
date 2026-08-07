@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🩺 `X12_835_BALANCE_NOT_EVALUABLE`, the 29th Tier-2 warning code, plus the public factory
+  `balanceNotEvaluable(position, invariant)`** (`X12-837-SV-UNDEFINED-DECIMAL`). Raised where a term
+  of one of the three TR3 005010X221A1 §1.10.2 balance equations is `undefined` on the model, so the
+  equation has nothing to compare on one side. `invariant` is the same library-owned
+  `BALANCE_INVARIANTS` discriminant `X12_835_REMIT_BALANCE_MISMATCH` takes, and the message names the
+  equation and carries no amount, like every other warning in this registry.
+
+  **It is a different code from the mismatch on purpose.** The mismatch asserts a computed inequality
+  between amounts the sender supplied; this one asserts only that the comparison could not be made.
+  Through `0.0.12` an undecoded term collapsed to `X12Decimal.ZERO` and the equation then reported a
+  mismatch between the payer's own amounts and a zero this library invented, which is the reading
+  that made an absent `CLP-03` indistinguishable from a claim submitted at zero.
+
+  **An EMPTY list of adjustments is NOT an absent term** and does not raise it: a claim carrying no
+  `CAS` really did state no adjustments, so its sum is `X12Decimal.ZERO`. Only a term this library
+  decoded no value from stops the equation. `build835` reaches the same verdict as
+  `X12_835_BUILD_INVALID_SPEC` rather than as its balance-mismatch code, and is unreachable there
+  from TypeScript because every balance term on `Build835Spec` is a required `X12Decimal`.
+
 - **🩺 `X12_837_PAY_TO_ADDRESS_REPEATED`, the 28th Tier-2 warning code, plus the public factory
   `payToAddressRepeated(position)`** (`X12-PAY-TO-FUSION`). Raised at the **second and each
   subsequent `NM1*87` within one Loop 2000A**, where the TR3s allow Loop 2010AB at most once.
@@ -155,6 +174,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   document content, verbatim, exactly like `tx.rawSegments`. Log `context` and `segmentIndex`.
 
 ### Changed
+
+- **🩺 BREAKING (read model): every monetary, percent and quantity slot the readers used to fill with
+  a fabricated `X12Decimal.ZERO` is now `X12Decimal | undefined`** (`X12-837-SV-UNDEFINED-DECIMAL`).
+  Through `0.0.12` an **absent** `SV1-02` - a monetary field on an 837 claim service line - read back
+  as `X12Decimal.ZERO`, so a consumer could not tell "the sender stated zero" from "the sender stated
+  nothing" and this library presented the second as the first. Fourteen model slots carried that
+  fabrication: `X12Claim.totalCharge` (CLM-02), a service line's `charge` and `units` (SV1-02 /
+  SV2-03 / SV3-02 and SV1-04 / SV2-05 / SV3-06), `X12LineAdjudication.amountPaid` (SVD-02),
+  `X12RemitClaim.totalChargeAmount` / `totalPaymentAmount` / `patientResponsibilityAmount` (CLP-03 /
+  04 / 05), `X12RemitServiceLine.chargeAmount` / `paymentAmount` (SVC-02 / SVC-03),
+  `X12RemitPaymentHeader.totalActualPayment` and `X12PremiumPaymentHeader.totalPremiumAmount`
+  (BPR-02), `X12PremiumOpenItem.amountPaid` (RMR-04), `X12RemitAdjustment.amount` (a `CAS` triple,
+  read by both the 835 and the 837) and `X12RemitProviderAdjustment.amount` (a `PLB` pair).
+
+  **`undefined` means "this library decoded no value from that element", NOT "the element was
+  absent."** A present element holding bytes that do not decode lands there too, and
+  `X12_UNPARSEABLE_DECIMAL` at that `position.elementIndex` is the only thing that separates them.
+  Read it in exactly that direction. A **stated** zero is untouched: it still decodes, still reads
+  `0`, and keeps its lexical form, so `0.00` is still `0.00`.
+
+  **Migrating:** `x.toString()` becomes `x?.toString()` at every one of those slots, and each site is
+  a decision rather than a rewrite - an `undefined` amount is not zero, and a `?? 0` reinstates the
+  defect. If you posted cash off a slot that read `0` on `0.0.12` or earlier without also gating on
+  `.warnings`, re-read those files.
+
+  Two things this did **not** do. `elementDecimalOrZero` is a public export and is unchanged: it
+  still substitutes `X12Decimal.ZERO`, because that is its documented behaviour and a consumer
+  walking segments itself may still want it. What changed is that no reader in this library calls it
+  any more. And the 837's `X12_837_SERVICE_LINE_NOT_DECODED` is still the only thing that says WHY a
+  line's `charge` and `units` are empty: `undefined` alone does not separate "no `SVx` was decoded
+  onto this line" from "an `SVx` was decoded and carried no charge element".
+
+- **🩺 BREAKING (emit side): `Build837ServiceLineSpec.units` is now required, and `build837P` /
+  `build837I` / `build837D` refuse a service line without it** (`X12-837-SV-UNDEFINED-DECIMAL`).
+  Through `0.0.12` an omitted `units` was emitted as the literal `0` into SV1-04 / SV2-05 / SV3-06,
+  so the builder stated a service unit count no caller supplied - the read-side fabrication above,
+  running the other way. Measured on `0.0.12`: a Professional line with no `units` emitted
+  `SV1*HC:99213*8500*UN*0*11**1~`. The refusal is `X12_837_BUILD_INVALID_SPEC`, naming the structural
+  locator (`billing[0].subscriber[0].claim[0]`) and no caller value.
+
+  **Refusing rather than emitting an empty element is the stance, and it is not new here:**
+  `build277` already refuses a service line without `SVC-07` on the same grounds. The parser is
+  liberal and the serializer conservative, and a count is not something a serializer may leave for
+  the receiver to guess at. A caller that supplies `units` is unaffected in every respect, including
+  one that supplies a zero, which is emitted because the caller did state it.
+
+- **`build835` refuses a JS caller's `undefined` balance term as an invalid spec rather than throwing
+  an untyped `TypeError`** (`X12-837-SV-UNDEFINED-DECIMAL`). Unreachable from TypeScript: every term
+  of the three §1.10.2 invariants is a required `X12Decimal` on `Build835Spec`. Through `0.0.12` a JS
+  caller passing `undefined` reached `undefined.add` inside the balance guard. It is now
+  `X12_835_BUILD_INVALID_SPEC` with the registry text, and deliberately **not**
+  `X12_835_BUILD_BALANCE_MISMATCH`: nothing was measured out of balance, a required amount is simply
+  missing. Passing a raw `number` into a balance term still throws an untyped `TypeError` from the
+  same guard, unchanged and still disclosed in `KNOWN-LIMITATIONS.md`.
 
 - **`KNOWN-LIMITATIONS.md` now ships in the published tarball** (`X12-837-LOOP-RESIDUALS`). Two
   shipped warning messages, `X12_837_SERVICE_LINE_DROPPED` and

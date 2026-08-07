@@ -50,20 +50,20 @@ const remit = tx ? get835(ix.delimiters, tx) : undefined;
 if (remit === undefined) throw new Error("not an 835");
 
 // Payment header: the money movement primitive.
-remit.payment.totalActualPayment.toString(); // "450.00"
+remit.payment.totalActualPayment?.toString(); // "450.00"
 remit.payment.creditDebitFlag; // "C"
 remit.payment.method; // "ACH"
 remit.traces[0]?.referenceId; // "0012345": reassociation trace (EFT number)
 
 for (const claim of remit.claims) {
   claim.patientControlNumber; // "PT-ACCT-001": your account number, echoed back
-  claim.totalChargeAmount.toString(); // "500.00"
-  claim.totalPaymentAmount.toString(); // "450.00"
-  claim.patientResponsibilityAmount.toString(); // "50.00"
+  claim.totalChargeAmount?.toString(); // "500.00"
+  claim.totalPaymentAmount?.toString(); // "450.00"
+  claim.patientResponsibilityAmount?.toString(); // "50.00"
 
   for (const line of claim.serviceLines) {
     line.productServiceId; // "99213"
-    line.paymentAmount.toString(); // "450.00"
+    line.paymentAmount?.toString(); // "450.00"
 
     // CARC: Claim Adjustment Reason Code. `reasonDescription` is prefilled
     // from the bundled snapshot; fall back to lookupCarc for the raw entry.
@@ -71,7 +71,7 @@ for (const claim of remit.claims) {
       adj.groupCode; // "PR": patient responsibility (the safety-critical field)
       adj.reasonCode; // "1"
       adj.reasonDescription ?? lookupCarc(adj.reasonCode)?.description; // "Deductible..."
-      adj.amount.toString(); // "50.00"
+      adj.amount?.toString(); // "50.00"
     }
 
     // RARC: Remittance Advice Remark Code (LQ*HE), if present.

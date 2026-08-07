@@ -128,7 +128,7 @@ describe("get837Claims - comprehensive 837P (every walker branch)", () => {
     const adj = line.adjudications[0];
     if (adj === undefined) throw new Error("missing adjudication");
     expect(adj.otherPayerId).toBe("PAYER99");
-    expect(adj.amountPaid.toString()).toBe("50");
+    expect(adj.amountPaid?.toString()).toBe("50");
     expect(adj.procedureCode).toBe("99213");
     expect(adj.dateAdjudicated).toBe("20260520");
     expect(adj.adjustments).toHaveLength(1);

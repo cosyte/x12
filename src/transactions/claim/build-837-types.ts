@@ -388,10 +388,19 @@ export interface Build837ToothSpec {
 export interface Build837ServiceLineBaseSpec {
   /** LX-01 - line number. Default: the 1-based index within the claim. */
   readonly lineNumber?: string;
-  /** SVx charge amount. */
+  /** SVx charge amount - SV1-02 (P), SV2-03 (I) or SV3-02 (D). */
   readonly charge: X12Decimal;
-  /** SVx units of service. */
-  readonly units?: X12Decimal;
+  /**
+   * SVx units of service - SV1-04 (P), SV2-05 (I) or SV3-06 (D).
+   *
+   * **Required as of `0.0.13`.** Through `0.0.12` this was optional and an
+   * omitted value was emitted as the literal `"0"`, so the builder stated a
+   * service unit count the caller never supplied. It now refuses with
+   * `X12_837_BUILD_INVALID_SPEC` instead, the same stance `build277` takes
+   * for SVC-07: this builder will not invent a count, and will not leave the
+   * element empty for the receiver to guess at either.
+   */
+  readonly units: X12Decimal;
   /** SVx unit/basis-of-measurement code (`UN`, `MJ`, …). */
   readonly unitOfMeasure?: string;
   /** DTP service-line dates. */

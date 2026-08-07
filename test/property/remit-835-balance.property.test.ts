@@ -104,9 +104,9 @@ describe("835 balance - imbalanced fixtures warn and never rebalance", () => {
         );
         expect(balanceWarnings.length).toBeGreaterThan(0);
         // Verbatim inbound amounts preserved - never silently rebalanced.
-        expect(remit.claims[0]?.totalChargeAmount.toString()).toBe(charge.toFixed(2));
-        expect(remit.claims[0]?.totalPaymentAmount.toString()).toBe(paidStr);
-        expect(remit.claims[0]?.serviceLines[0]?.adjustments[0]?.amount.toString()).toBe("10.00");
+        expect(remit.claims[0]?.totalChargeAmount?.toString()).toBe(charge.toFixed(2));
+        expect(remit.claims[0]?.totalPaymentAmount?.toString()).toBe(paidStr);
+        expect(remit.claims[0]?.serviceLines[0]?.adjustments[0]?.amount?.toString()).toBe("10.00");
       }),
       { numRuns: 50 },
     );

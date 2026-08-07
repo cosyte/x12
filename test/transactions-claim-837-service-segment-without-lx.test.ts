@@ -43,10 +43,11 @@
  * of this suite claimed it could not.** Variant resolution runs before the
  * walk; a caller-supplied `type` wins first, and absent one it scans every
  * `SVx` in the body. A case below pins that, and its control measures what
- * it costs. `charge` and `units` are still typed
- * `X12Decimal` and an absent `SV1-02` still reads a confident `0` on a line
- * that DID open - that is the deferred `X12Decimal | undefined` slice and is
- * untouched here.
+ * it costs. `charge` and `units` became `X12Decimal | undefined` in
+ * `X12-837-SV-UNDEFINED-DECIMAL`, so an absent `SV1-02` on a line that DID
+ * open now reads `undefined` rather than a confident `0`; that slice is
+ * pinned in `transactions-undefined-decimal.test.ts` and nothing here
+ * depends on it beyond the two readings updated below.
  *
  * Only bytes can produce these cases: no builder emits a Loop 2400 without
  * its `LX`. All data is synthetic.
@@ -153,8 +154,8 @@ describe("X12-837-LOOP-RESIDUALS: a service segment with no LX is reported", () 
   it("CONTROL: the same SV1 with its LX restored decodes and stays silent", () => {
     const sub = parse837(claimBody(["LX*1~", SV1]));
     expect(sub.claims[0]?.serviceLines).toHaveLength(1);
-    expect(sub.claims[0]?.serviceLines[0]?.charge.toString()).toBe("8500");
-    expect(sub.claims[0]?.serviceLines[0]?.units.toString()).toBe("4");
+    expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
+    expect(sub.claims[0]?.serviceLines[0]?.units?.toString()).toBe("4");
     expect(channel(sub)).toEqual([]);
   });
 
@@ -214,7 +215,8 @@ describe("X12-837-LOOP-RESIDUALS: one loss is never reported twice under two cod
   });
 
   it("🩺 a retained but undecoded line reports only X12_837_SERVICE_LINE_NOT_DECODED", () => {
-    // The line IS on the model, holding the seeded zeros `#67` disclosed.
+    // The line IS on the model, holding the seeds `#67` disclosed (a
+    // fabricated `0` through `0.0.12`, `undefined` since).
     // Its SV2 decoded into nothing, but it decoded into a line that exists.
     const sub = parse837(claimBody(["LX*1~", SV2]));
     expect(sub.claims[0]?.serviceLines).toHaveLength(1);
@@ -314,13 +316,14 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     // caller's `type` wins first, and absent one an ST-03 outside the three
     // known conventions falls through to a scan of every SVx in the body,
     // orphans included. So a single stray SV2 re-types the whole submission
-    // and the conformant SV1 line beside it reads 0 / 0 rather than
-    // 8500 / 4. Both halves of that precedence are asserted, because a
-    // remedy that stated only the ST-03 half was itself refuted.
+    // and the conformant SV1 line beside it reads undefined / undefined
+    // rather than 8500 / 4 (it read 0 / 0 through `0.0.12`). Both halves of
+    // that precedence are asserted, because a remedy that stated only the
+    // ST-03 half was itself refuted.
     const stray = parse837([...HEADER, CLM, SV2, "LX*1~", SV1], "005010X222A1");
     expect(stray.variant).toBe("I");
-    expect(stray.claims[0]?.serviceLines[0]?.charge.toString()).toBe("0");
-    expect(stray.claims[0]?.serviceLines[0]?.units.toString()).toBe("0");
+    expect(stray.claims[0]?.serviceLines[0]?.charge).toBeUndefined();
+    expect(stray.claims[0]?.serviceLines[0]?.units).toBeUndefined();
     // `undefined`, NOT `""` - the empty string on such a line is its
     // `revenueCode`, and this repo distinguishes the two by rule.
     expect(stray.claims[0]?.serviceLines[0]?.procedureCode).toBeUndefined();
@@ -334,14 +337,14 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     // rather than the argument.
     const clean = parse837([...HEADER, CLM, "LX*1~", SV1], "005010X222A1");
     expect(clean.variant).toBe("P");
-    expect(clean.claims[0]?.serviceLines[0]?.charge.toString()).toBe("8500");
+    expect(clean.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     expect(channel(clean)).toEqual([]);
 
     // CONTROL: a caller `type` wins ahead of both the ICR and the scan, so
     // the identical bytes read correctly. The orphan is still reported.
     const typed = parse837([...HEADER, CLM, SV2, "LX*1~", SV1], "005010X222A1", { type: "P" });
     expect(typed.variant).toBe("P");
-    expect(typed.claims[0]?.serviceLines[0]?.charge.toString()).toBe("8500");
+    expect(typed.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     expect(typed.claims[0]?.serviceLines[0]?.procedureCode).toBe("99213");
     expect(channel(typed)).toEqual([WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX]);
 
@@ -350,7 +353,7 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     // "the first SVx" for that reason.
     const trailing = parse837([...HEADER, CLM, "LX*1~", SV1, SV2], "005010X222A1");
     expect(trailing.variant).toBe("P");
-    expect(trailing.claims[0]?.serviceLines[0]?.charge.toString()).toBe("8500");
+    expect(trailing.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
   });
 
   it("🩺 the condition is NO LINE OPEN, not 'the file contains no LX'", () => {
@@ -359,7 +362,7 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     // the first claim keeps its decoded line and the second still reports.
     const sub = parse837([...HEADER, CLM, "LX*1~", SV1, CLM, SV1]);
     expect(sub.claims[0]?.serviceLines).toHaveLength(1);
-    expect(sub.claims[0]?.serviceLines[0]?.charge.toString()).toBe("8500");
+    expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     expect(sub.claims[1]?.serviceLines).toEqual([]);
     expect(channel(sub)).toEqual([WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX]);
   });

@@ -397,7 +397,7 @@ export interface X12OtherSubscriber {
  * declare const c: X12Claim;
  * c.variant;                    // "P" / "I" / "D" / "unknown"
  * c.claimId;                    // CLM-01 (patient account number)
- * c.totalCharge.toString();     // CLM-02 as X12Decimal
+ * c.totalCharge?.toString();    // CLM-02 as X12Decimal, or undefined if none decoded
  * c.diagnoses[0]?.codeSystem;   // "ICD-10-CM"
  * c.serviceLines.length;        // count of LX/SVx loops
  * ```
@@ -412,7 +412,15 @@ export interface X12Claim {
   readonly payer: X12ClaimEntity | undefined;
   readonly patient: X12ClaimMember | undefined;
   readonly claimId: string;
-  readonly totalCharge: X12Decimal;
+  /**
+   * CLM-02, the total claim charge. `undefined` where this library decoded
+   * no value from that element - it was absent or empty, or it held bytes
+   * that do not decode as a decimal (which also emits
+   * `X12_UNPARSEABLE_DECIMAL` at its `elementIndex`). Through `0.0.12` both
+   * cases read `X12Decimal.ZERO`, indistinguishable from a claim whose
+   * charge really is zero.
+   */
+  readonly totalCharge: X12Decimal | undefined;
   readonly placeOfServiceCode: string | undefined;
   readonly facilityCodeQualifier: string | undefined;
   readonly claimFrequencyCode: string | undefined;
@@ -459,8 +467,25 @@ export type X12_837ServiceLine =
 /** Fields shared across every service-line variant. @internal */
 export interface X12_837ServiceLineBase {
   readonly lineNumber: string;
-  readonly charge: X12Decimal;
-  readonly units: X12Decimal;
+  /**
+   * The service line's charge - SV1-02 (professional), SV2-03
+   * (institutional) or SV3-02 (dental). `undefined` where this library
+   * decoded no value from that element: it was absent or empty, it held
+   * bytes that do not decode as a decimal (which also emits
+   * `X12_UNPARSEABLE_DECIMAL`), or no SVx for the resolved variant was
+   * decoded onto the line at all (which emits
+   * `X12_837_SERVICE_LINE_NOT_DECODED` at the LX). Through `0.0.12` all
+   * three read `X12Decimal.ZERO`, and a consumer could not tell any of them
+   * from a line the sender charged nothing for.
+   */
+  readonly charge: X12Decimal | undefined;
+  /**
+   * The service line's unit count - SV1-04 (professional), SV2-05
+   * (institutional) or SV3-06 (dental). `undefined` on the same three
+   * conditions as {@link X12_837ServiceLineBase.charge}, and for the same
+   * reason: a fabricated count is a count the sender never sent.
+   */
+  readonly units: X12Decimal | undefined;
   readonly unitOfMeasure: string | undefined;
   readonly placeOfServiceCode: string | undefined;
   readonly dates: readonly X12ClaimDate[];
@@ -620,7 +645,7 @@ export interface X12LineDrug {
  * import type { X12LineAdjudication } from "@cosyte/x12";
  * declare const a: X12LineAdjudication;
  * a.otherPayerId;             // "84320" (the other payer's id)
- * a.amountPaid.toString();    // "50.00"
+ * a.amountPaid?.toString();   // "50.00", or undefined if none decoded
  * a.procedureCode;            // "99213"
  * a.adjustments[0]?.groupCode;// "CO"
  * a.dateAdjudicated;          // "20260520" CCYYMMDD verbatim
@@ -628,7 +653,14 @@ export interface X12LineDrug {
  */
 export interface X12LineAdjudication {
   readonly otherPayerId: string;
-  readonly amountPaid: X12Decimal;
+  /**
+   * SVD-02, the amount the other payer paid on this line. `undefined` where
+   * this library decoded no value from that element - absent, empty, or
+   * bytes that do not decode (which also emits `X12_UNPARSEABLE_DECIMAL`).
+   * Through `0.0.12` both cases read `X12Decimal.ZERO`, indistinguishable
+   * from a payer that adjudicated the line to nothing.
+   */
+  readonly amountPaid: X12Decimal | undefined;
   readonly procedureQualifier: string | undefined;
   readonly procedureCode: string | undefined;
   readonly paidUnits: X12Decimal | undefined;

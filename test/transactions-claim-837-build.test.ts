@@ -266,7 +266,7 @@ describe("build837P → get837Claims round-trip", () => {
     expect(sub.claims).toHaveLength(1);
     const claim = sub.claims[0];
     expect(claim?.claimId).toBe("PT-ACCT-001");
-    expect(claim?.totalCharge.toString()).toBe("150.00");
+    expect(claim?.totalCharge?.toString()).toBe("150.00");
     expect(claim?.placeOfServiceCode).toBe("11");
     expect(claim?.facilityCodeQualifier).toBe("B");
     expect(claim?.claimFrequencyCode).toBe("1");
@@ -310,9 +310,9 @@ describe("build837P → get837Claims round-trip", () => {
     expect(line.procedureQualifier).toBe("HC");
     expect(line.procedureCode).toBe("99213");
     expect(line.modifiers).toEqual(["25"]);
-    expect(line.charge.toString()).toBe("150.00");
+    expect(line.charge?.toString()).toBe("150.00");
     expect(line.unitOfMeasure).toBe("UN");
-    expect(line.units.toString()).toBe("1");
+    expect(line.units?.toString()).toBe("1");
     expect(line.placeOfServiceCode).toBe("11");
     expect(line.diagnosisPointers).toEqual(["1"]);
     expect(line.dates[0]?.qualifier).toBe("472");
@@ -612,7 +612,7 @@ describe("build837I → get837Claims round-trip", () => {
     if (line?.variant !== "I") throw new Error("expected I line");
     expect(line.revenueCode).toBe("0120");
     expect(line.procedureCode).toBe("99221");
-    expect(line.charge.toString()).toBe("1500.00");
+    expect(line.charge?.toString()).toBe("1500.00");
     expect(line.serviceLineRate?.toString()).toBe("100.00");
     expect(line.nonCoveredCharge?.toString()).toBe("0.00");
   });
@@ -697,7 +697,7 @@ describe("build837D → get837Claims round-trip", () => {
     if (line?.variant !== "D") throw new Error("expected D line");
     expect(line.procedureQualifier).toBe("AD");
     expect(line.procedureCode).toBe("D2391");
-    expect(line.charge.toString()).toBe("180.00");
+    expect(line.charge?.toString()).toBe("180.00");
     expect(line.oralCavityArea).toEqual(["10"]);
     expect(line.prosthesisCrownInlayCode).toBe("I");
     expect(line.toothInformation[0]?.toothCode).toBe("14");
@@ -764,7 +764,7 @@ describe("build837 - structural refusals", () => {
   it("refuses a P builder fed an institutional service line", () => {
     const broken = pSpecWithClaim({
       ...P_CLAIM,
-      serviceLines: [{ variant: "I", revenueCode: "0120", charge: dec("10.00") }],
+      serviceLines: [{ variant: "I", revenueCode: "0120", charge: dec("10.00"), units: dec("1") }],
     });
     expect(() => build837P(broken)).toThrow(/every line must be "P"/);
   });
@@ -777,7 +777,7 @@ describe("build837 - structural refusals", () => {
   it("refuses an institutional service line with an empty revenue code", () => {
     const broken = pSpecWithClaim({
       ...P_CLAIM,
-      serviceLines: [{ variant: "I", revenueCode: "", charge: dec("10.00") }],
+      serviceLines: [{ variant: "I", revenueCode: "", charge: dec("10.00"), units: dec("1") }],
     });
     expect(() => build837I(broken)).toThrow(/empty revenue code/);
   });

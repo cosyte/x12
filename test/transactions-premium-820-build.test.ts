@@ -154,7 +154,7 @@ describe("build820 → get820Payments round-trip", () => {
     expect(prem.warnings).toHaveLength(0);
 
     expect(prem.payment.transactionHandlingCode).toBe("I");
-    expect(prem.payment.totalPremiumAmount.toString()).toBe("12500.00");
+    expect(prem.payment.totalPremiumAmount?.toString()).toBe("12500.00");
     expect(prem.payment.creditDebitFlag).toBe("C");
     expect(prem.payment.method).toBe("ACH");
     expect(prem.payment.paymentFormatCode).toBe("CTX");
@@ -190,7 +190,7 @@ describe("build820 → get820Payments round-trip", () => {
     expect(individual?.openItems).toHaveLength(1);
     expect(individual?.openItems[0]?.qualifier).toBe("AZ");
     expect(individual?.openItems[0]?.referenceId).toBe("POL-0001");
-    expect(individual?.openItems[0]?.amountPaid.toString()).toBe("250.00");
+    expect(individual?.openItems[0]?.amountPaid?.toString()).toBe("250.00");
     expect(individual?.openItems[0]?.amountDue?.toString()).toBe("250.00");
   });
 
@@ -202,7 +202,7 @@ describe("build820 → get820Payments round-trip", () => {
     expect(summary?.entity?.idCode).toBe("GRP-0001");
     expect(summary?.individual?.lastName).toBe("SMITH");
     expect(summary?.individual?.idCode).toBe("MBR0002");
-    expect(summary?.openItems[0]?.amountPaid.toString()).toBe("12250.00");
+    expect(summary?.openItems[0]?.amountPaid?.toString()).toBe("12250.00");
     // The 820 has no balance equation - RMR-05 amount due omitted stays undefined.
     expect(summary?.openItems[0]?.amountDue).toBeUndefined();
     expect(summary?.adjustments).toHaveLength(1);
@@ -219,7 +219,7 @@ describe("build820 → get820Payments round-trip", () => {
       payment: { ...CANONICAL_SPEC.payment, totalPremiumAmount: dec("99999.99") },
     };
     const prem = premiumOf(build820(unbalanced));
-    expect(prem.payment.totalPremiumAmount.toString()).toBe("99999.99");
+    expect(prem.payment.totalPremiumAmount?.toString()).toBe("99999.99");
     expect(prem.warnings).toHaveLength(0);
   });
 });

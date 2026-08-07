@@ -46,8 +46,14 @@
  *
  * **A third case, and the one a reviewer should distrust most.** The six
  * monetary slots (`CLP-03`, `CLP-04`, `SVC-02`, `SVC-03`, `CAS-03`, `BPR-02`)
- * are marked own, and they do reach the balance branch: an unparseable amount
- * collapses to zero and the invariant then fails. But `X12Decimal` normalizes
+ * are marked own, and they do reach the balance branch. What they reach
+ * CHANGED with `X12-837-SV-UNDEFINED-DECIMAL`: through `0.0.12` an
+ * unparseable amount collapsed to zero and the invariant then FAILED
+ * (`X12_835_REMIT_BALANCE_MISMATCH`); it now leaves the term `undefined` and
+ * the invariant reports that it could not be evaluated
+ * (`X12_835_BALANCE_NOT_EVALUABLE`). The `expectCode` on all six moved with
+ * it, and the slot is still an own-slot: the marker still drives the
+ * diagnostic, only a different one. But `X12Decimal` normalizes
  * the marker away **before** the message is built, so those six were GREEN at
  * the base commit while that very message was rendering three amounts
  * verbatim. They cannot detect the leak they name, and none of them is among
@@ -580,35 +586,37 @@ export const PHI_SLOTS: readonly DiagnosticSlot<string>[] = [
   },
   {
     name: "CLP-03 total claim charge amount",
-    // own: an unparseable amount collapses to zero and the claim invariant
-    // then fails, which is the branch that used to render the amounts.
+    // own: an unparseable amount leaves the term undefined and the claim
+    // invariant then reports it cannot be evaluated, which is the branch that
+    // used to render the amounts. Through `0.0.12` the amount collapsed to
+    // zero and the branch reached was the MISMATCH one instead.
     plant: (m) => swap(G_835, "CLP*PT-ACCT-001*1*500.00", `CLP*PT-ACCT-001*1*${m}`),
-    expectCode: WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
+    expectCode: WARNING_CODES.X12_835_BALANCE_NOT_EVALUABLE,
   },
   {
     name: "CLP-04 claim payment amount",
     plant: (m) => swap(G_835, "*1*500.00*450.00*50.00*MC*", `*1*500.00*${m}*50.00*MC*`),
-    expectCode: WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
+    expectCode: WARNING_CODES.X12_835_BALANCE_NOT_EVALUABLE,
   },
   {
     name: "SVC-02 service line charge amount",
     plant: (m) => swap(G_835, "~SVC*HC:99213*500.00*450.00**1~", `~SVC*HC:99213*${m}*450.00**1~`),
-    expectCode: WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
+    expectCode: WARNING_CODES.X12_835_BALANCE_NOT_EVALUABLE,
   },
   {
     name: "SVC-03 service line paid amount",
     plant: (m) => swap(G_835, "~SVC*HC:99213*500.00*450.00**1~", `~SVC*HC:99213*500.00*${m}**1~`),
-    expectCode: WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
+    expectCode: WARNING_CODES.X12_835_BALANCE_NOT_EVALUABLE,
   },
   {
     name: "CAS-03 adjustment amount",
     plant: (m) => swap(G_835, "~CAS*PR*1*50.00~", `~CAS*PR*1*${m}~`),
-    expectCode: WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
+    expectCode: WARNING_CODES.X12_835_BALANCE_NOT_EVALUABLE,
   },
   {
     name: "BPR-02 total actual payment amount",
     plant: (m) => swap(G_835, "~BPR*I*450.00*C*ACH*", `~BPR*I*${m}*C*ACH*`),
-    expectCode: WARNING_CODES.X12_835_REMIT_BALANCE_MISMATCH,
+    expectCode: WARNING_CODES.X12_835_BALANCE_NOT_EVALUABLE,
   },
   {
     name: "SVC-01 composite procedure code",

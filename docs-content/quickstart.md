@@ -47,7 +47,7 @@ const remit = tx ? get835(ix.delimiters, tx) : undefined;
 if (remit === undefined) throw new Error("not an 835");
 
 // Payment header: the money-movement primitive.
-remit.payment.totalActualPayment.toString(); // => "450.00"
+remit.payment.totalActualPayment?.toString(); // => "450.00"
 remit.payment.creditDebitFlag; // => "C"
 remit.payment.method; // => "ACH"
 remit.traces[0]?.referenceId; // => "0012345"
@@ -55,9 +55,9 @@ remit.traces[0]?.referenceId; // => "0012345"
 // Per claim: your account number echoed back, and the charge/paid/responsibility split.
 const claim = remit.claims[0];
 claim?.patientControlNumber; // => "PT-ACCT-001"
-claim?.totalChargeAmount.toString(); // => "500.00"
-claim?.totalPaymentAmount.toString(); // => "450.00"
-claim?.patientResponsibilityAmount.toString(); // => "50.00"
+claim?.totalChargeAmount?.toString(); // => "500.00"
+claim?.totalPaymentAmount?.toString(); // => "450.00"
+claim?.patientResponsibilityAmount?.toString(); // => "50.00"
 
 // Per service line: the CARC adjustment. Group code is the safety-critical field.
 const line = claim?.serviceLines[0];
@@ -65,7 +65,7 @@ line?.productServiceId; // => "99213"
 const adj = line?.adjustments[0];
 adj?.groupCode; // => "PR"
 adj?.reasonCode; // => "1"
-adj?.amount.toString(); // => "50.00"
+adj?.amount?.toString(); // => "50.00"
 ```
 
 The `groupCode` (`PR` = patient responsibility, `CO` = contractual obligation, …) is what tells you

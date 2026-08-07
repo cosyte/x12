@@ -55,16 +55,21 @@ X12Decimal.fromString("450.00")!.toString(); // => "450.00"
 X12Decimal.fromString("not a number"); // => undefined
 ```
 
-## An amount this library cannot read never reads as `0` in silence
+## An amount this library cannot read never reads as `0`
 
-`X12Decimal.fromString` returning `undefined` is only half the story. The readers have to put
-*something* on the model, and a slot typed `X12Decimal` (a claim's `totalPaymentAmount`, a service
-line's `chargeAmount`, an 837's `totalCharge`) cannot express "did not decode". Those slots fall back
-to `X12Decimal.ZERO`.
+`X12Decimal.fromString` returning `undefined` is only half the story: the readers have to put
+*something* on the model. Through `0.0.12` every monetary and quantity slot was typed `X12Decimal`,
+which cannot express "did not decode", so a claim's `totalPaymentAmount`, a service line's
+`chargeAmount` and an 837's `totalCharge` all fell back to `X12Decimal.ZERO`. A consumer reading the
+model could not tell that `0` from a zero the sender did state.
 
-That fallback is now **announced**. Any element that is present and does not match the shape
-`X12Decimal` decodes emits **`X12_UNPARSEABLE_DECIMAL`**, carrying the failing element in
-`position.elementIndex`:
+**As of `0.0.13` every one of those slots is `X12Decimal | undefined`, and `undefined` is what a
+reader puts there when it decoded no value.** That is a breaking type change on the read model, and
+it is the point of it: the two facts are spec-distinct and now the model says which one you have.
+
+An element that is present and does not match the shape `X12Decimal` decodes also emits
+**`X12_UNPARSEABLE_DECIMAL`**, carrying the failing element in `position.elementIndex`, so the two
+routes to `undefined` stay distinguishable:
 
 ```ts runnable
 import { parseX12, get835, WARNING_CODES } from "@cosyte/x12";
@@ -83,27 +88,31 @@ const ix = parseX12(raw);
 const tx = ix.groups[0]!.transactions[0]!;
 const remit = get835(ix.delimiters, tx)!;
 
-// The slot still reads 0, because its type cannot say anything else...
-remit.payment.totalActualPayment.toString(); // => "0"
+// The slot decoded nothing, and says so.
+remit.payment.totalActualPayment; // => undefined
 
-// ...but that 0 is now contradicted on the warning channel.
+// The warning says WHY: the sender put bytes there and they did not decode.
 remit.warnings.some((w) => w.code === WARNING_CODES.X12_UNPARSEABLE_DECIMAL); // => true
 ```
 
 Three things to hold onto:
 
-- **The `0` is a stand-in, not a reading.** Gate on the warning before you post, exactly as you would
-  on a balance mismatch. Nothing about the model changed; what changed is that the fabrication is no
-  longer silent.
-- **An *absent* element is a different fact and does not warn.** "Missing means zero" is the
-  documented convention of those slots and is unchanged. The warning fires only when the sender put
-  bytes there and this library could not read them. Read the guarantee in exactly that direction:
-  an unwarned `0` **at an element a reader decoded** is a zero the sender sent or omitted. It is not
-  a promise about every `0` on the model, because a slot a reader never read cannot warn. The known
-  instance of that in this library, an 837 service line whose `SVx` never decoded because it does not
-  match the variant the submission resolved to, is announced by its own warning,
-  **`X12_837_SERVICE_LINE_NOT_DECODED`**, anchored at the `LX` that opened the line. No census of
-  never-read slots is published here, on purpose: the rule is what holds.
+- **`undefined` means "this library decoded no value", not "the sender sent nothing".** Both routes
+  land there. Gate on the warning to tell them apart, and gate on `undefined` itself before you post
+  an amount, exactly as you would on a balance mismatch.
+- **An *absent* element is a different fact and does not warn.** It reads `undefined` with no
+  diagnostic. The warning fires only when the sender put bytes there and this library could not read
+  them. Read the guarantee in exactly that direction:
+  an unwarned value **at an element a reader decoded** is what the sender sent. It is not a promise
+  about every slot on the model, because a slot a reader never read cannot warn. The known instance
+  of that in this library, an 837 service line whose `SVx` never decoded because it does not match
+  the variant the submission resolved to, leaves `charge` and `units` `undefined` and is announced by
+  its own warning, **`X12_837_SERVICE_LINE_NOT_DECODED`**, anchored at the `LX` that opened the line.
+  No census of never-read slots is published here, on purpose: the rule is what holds.
+- **The 835 balance invariants do not sum an absent term.** Where any term of a TR3 X221A1 §1.10.2
+  equation is `undefined`, the equation is reported as **`X12_835_BALANCE_NOT_EVALUABLE`** rather
+  than as a mismatch: nothing was measured out of balance, and substituting `0` for the missing term
+  would be this library asserting a total nobody sent.
 - **On an optional slot the same warning disambiguates `undefined`.** A `paidUnitsOfService` of
   `undefined` used to mean either "the payer omitted it" or "the payer sent something unreadable".
   With a warning at that element index, it means the second; without one, the first.

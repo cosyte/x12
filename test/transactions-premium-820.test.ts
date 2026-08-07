@@ -50,7 +50,7 @@ describe("get820Payments - Tier-1 canonical (X218)", () => {
 
     expect(prem.payment.transactionHandlingCode).toBe("C");
     expect(prem.payment.totalPremiumAmount).toBeInstanceOf(X12Decimal);
-    expect(prem.payment.totalPremiumAmount.toString()).toBe("12500.00");
+    expect(prem.payment.totalPremiumAmount?.toString()).toBe("12500.00");
     expect(prem.payment.creditDebitFlag).toBe("C");
     expect(prem.payment.method).toBe("ACH");
     expect(prem.payment.paymentDate).toBe("20260601");
@@ -95,7 +95,7 @@ describe("get820Payments - Tier-1 canonical (X218)", () => {
     expect(org?.openItems[0]?.qualifier).toBe("AZ");
     expect(org?.openItems[0]?.referenceId).toBe("POL-0001");
     expect(org?.openItems[0]?.amountPaid).toBeInstanceOf(X12Decimal);
-    expect(org?.openItems[0]?.amountPaid.toString()).toBe("250.00");
+    expect(org?.openItems[0]?.amountPaid?.toString()).toBe("250.00");
     expect(org?.openItems[0]?.amountDue?.toString()).toBe("250.00");
     expect(org?.openItems[1]?.referenceId).toBe("POL-0002");
 
@@ -118,7 +118,7 @@ describe("get820Payments - Tier-1 canonical (X218)", () => {
     expect(individual?.individual?.firstName).toBe("JOHN");
     expect(individual?.openItems).toHaveLength(1);
     expect(individual?.openItems[0]?.referenceId).toBe("POL-0003");
-    expect(individual?.openItems[0]?.amountPaid.toString()).toBe("300.00");
+    expect(individual?.openItems[0]?.amountPaid?.toString()).toBe("300.00");
   });
 });
 
@@ -149,7 +149,7 @@ describe("get820Payments - edge cases (receiver address, RM remitter, skips)", (
     // Only the one well-formed RMR survives; the bare `RMR~` is skipped.
     expect(rem?.openItems).toHaveLength(1);
     expect(rem?.openItems[0]?.referenceId).toBe("POL-EDGE");
-    expect(rem?.openItems[0]?.amountPaid.toString()).toBe("100.00");
+    expect(rem?.openItems[0]?.amountPaid?.toString()).toBe("100.00");
     expect(rem?.openItems[0]?.amountDue).toBeUndefined();
     // The valueless DTM and amount-less ADX produce nothing.
     expect(rem?.dates).toHaveLength(0);

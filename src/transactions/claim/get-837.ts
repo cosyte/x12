@@ -44,7 +44,6 @@ import {
   collectElementValues,
   componentOptional,
   elementDecimal,
-  elementDecimalOrZero,
   elementOptional,
   elementValue,
   type X12DecimalWarningSink,
@@ -203,7 +202,7 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = wire
  *     const sub = get837Claims(ix.delimiters, tx);
  *     sub?.variant;                  // "P" / "I" / "D" / "unknown"
  *     for (const claim of sub?.claims ?? []) {
- *       claim.totalCharge.toString();
+ *       claim.totalCharge?.toString();
  *       claim.diagnoses[0]?.codeSystem; // "ICD-10-CM"
  *     }
  *   }
@@ -350,10 +349,12 @@ export function get837Claims(
   const flushServiceLine = (): void => {
     flushAdjudication();
     if (currentServiceLine !== undefined && currentClaim !== undefined) {
-      // A line whose SVx never decoded carries the accumulator's seeded
-      // `X12Decimal.ZERO` in `charge` / `units`. That is a stand-in, not a
-      // read, and no decimal sink was ever consulted for it - so the only
-      // channel that can say so is this warning. Retention is unchanged:
+      // A line whose SVx never decoded leaves `charge` / `units` at the
+      // accumulator's seeded `undefined`; no decimal sink was ever consulted
+      // for it, so nothing on the decimal channel can report it either. The
+      // warning is what names WHY the slots are empty - `undefined` alone
+      // does not distinguish "no SVx decoded onto this line" from "the SVx
+      // decoded and its charge element was absent". Retention is unchanged:
       // the line is still pushed and every segment stays on `tx.segments`.
       if (!currentServiceLine.serviceSegmentDecoded) {
         warnings.push(serviceLineNotDecoded(currentServiceLine.position));
@@ -1225,7 +1226,7 @@ function decodeCas(
         groupCode,
         reasonCode: code,
         reasonDescription: entry?.description,
-        amount: amount ?? X12Decimal.ZERO,
+        amount,
         quantity,
       }),
     );
@@ -1259,7 +1260,7 @@ interface ClaimAccumulator {
   readonly payer: X12ClaimEntity | undefined;
   readonly patient: X12ClaimMember | undefined;
   readonly claimId: string;
-  readonly totalCharge: X12Decimal;
+  readonly totalCharge: X12Decimal | undefined;
   readonly placeOfServiceCode: string | undefined;
   readonly facilityCodeQualifier: string | undefined;
   readonly claimFrequencyCode: string | undefined;
@@ -1294,8 +1295,8 @@ interface ServiceLineBaseAccumulator {
    * ever read, so `charge` / `units` below are seeded stand-ins. @internal
    */
   serviceSegmentDecoded: boolean;
-  charge: X12Decimal;
-  units: X12Decimal;
+  charge: X12Decimal | undefined;
+  units: X12Decimal | undefined;
   unitOfMeasure: string | undefined;
   placeOfServiceCode: string | undefined;
   readonly dates: X12ClaimDate[];
@@ -1348,7 +1349,7 @@ interface OtherSubscriberAccumulator {
 
 interface AdjudicationAccumulator {
   readonly otherPayerId: string;
-  readonly amountPaid: X12Decimal;
+  readonly amountPaid: X12Decimal | undefined;
   readonly procedureQualifier: string | undefined;
   readonly procedureCode: string | undefined;
   readonly paidUnits: X12Decimal | undefined;
@@ -1408,7 +1409,7 @@ function openClaim(
     payer,
     patient,
     claimId: elementValue(seg, 1, delimiters),
-    totalCharge: elementDecimalOrZero(seg, 2, delimiters, sink),
+    totalCharge: elementDecimal(seg, 2, delimiters, sink),
     placeOfServiceCode: componentOptional(seg, 5, 1, delimiters),
     facilityCodeQualifier: componentOptional(seg, 5, 2, delimiters),
     claimFrequencyCode: componentOptional(seg, 5, 3, delimiters),
@@ -1440,8 +1441,8 @@ function openServiceLine(
     lineNumber,
     position,
     serviceSegmentDecoded: false,
-    charge: X12Decimal.ZERO,
-    units: X12Decimal.ZERO,
+    charge: undefined,
+    units: undefined,
     unitOfMeasure: undefined,
     placeOfServiceCode: undefined,
     dates: [],
@@ -1508,9 +1509,9 @@ function decodeSv1(
     if (m !== undefined) mods.push(m);
   }
   acc.modifiers = mods;
-  acc.charge = elementDecimalOrZero(seg, 2, delimiters, sink);
+  acc.charge = elementDecimal(seg, 2, delimiters, sink);
   acc.unitOfMeasure = elementOptional(seg, 3, delimiters);
-  acc.units = elementDecimalOrZero(seg, 4, delimiters, sink);
+  acc.units = elementDecimal(seg, 4, delimiters, sink);
   acc.placeOfServiceCode = elementOptional(seg, 5, delimiters);
   const pointers: string[] = [];
   for (let p = 1; p <= 4; p += 1) {
@@ -1540,9 +1541,9 @@ function decodeSv2(
     if (m !== undefined) mods.push(m);
   }
   acc.modifiers = mods;
-  acc.charge = elementDecimalOrZero(seg, 3, delimiters, sink);
+  acc.charge = elementDecimal(seg, 3, delimiters, sink);
   acc.unitOfMeasure = elementOptional(seg, 4, delimiters);
-  acc.units = elementDecimalOrZero(seg, 5, delimiters, sink);
+  acc.units = elementDecimal(seg, 5, delimiters, sink);
   acc.serviceLineRate = elementDecimal(seg, 6, delimiters, sink);
   acc.nonCoveredCharge = elementDecimal(seg, 7, delimiters, sink);
 }
@@ -1563,7 +1564,7 @@ function decodeSv3(
     if (m !== undefined) mods.push(m);
   }
   acc.modifiers = mods;
-  acc.charge = elementDecimalOrZero(seg, 2, delimiters, sink);
+  acc.charge = elementDecimal(seg, 2, delimiters, sink);
   acc.placeOfServiceCode = elementOptional(seg, 3, delimiters);
   const cavities: string[] = [];
   for (let p = 1; p <= 5; p += 1) {
@@ -1572,7 +1573,7 @@ function decodeSv3(
   }
   acc.oralCavityArea = cavities;
   acc.prosthesisCrownInlayCode = elementOptional(seg, 5, delimiters);
-  acc.units = elementDecimalOrZero(seg, 6, delimiters, sink);
+  acc.units = elementDecimal(seg, 6, delimiters, sink);
 }
 
 function openAdjudication(
@@ -1582,7 +1583,7 @@ function openAdjudication(
 ): AdjudicationAccumulator {
   return {
     otherPayerId: elementValue(seg, 1, delimiters),
-    amountPaid: elementDecimalOrZero(seg, 2, delimiters, sink),
+    amountPaid: elementDecimal(seg, 2, delimiters, sink),
     procedureQualifier: componentOptional(seg, 3, 1, delimiters),
     procedureCode: componentOptional(seg, 3, 2, delimiters),
     paidUnits: elementDecimal(seg, 5, delimiters, sink),

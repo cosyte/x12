@@ -106,7 +106,7 @@ describe("build820 - RMR open-item echo property", () => {
         if (tx === undefined) return false;
         const prem = get820Payments(ix.delimiters, tx);
         const item = prem?.remittances[0]?.openItems[0];
-        return item?.referenceId === reference && item?.amountPaid.toString() === amount;
+        return item?.referenceId === reference && item?.amountPaid?.toString() === amount;
       }),
     );
   });
