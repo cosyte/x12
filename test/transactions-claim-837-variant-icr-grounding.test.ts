@@ -269,7 +269,11 @@ describe("X12-VARIANT-ICR-UNGROUNDED: the references production 837s carry", () 
     expect(dental?.variant).toBe("D");
     expect(dental?.procedureCode).toBe("");
 
-    // I carries `revenueCode` instead, and its `procedureCode` IS absent.
+    // I carries `revenueCode` instead, and its `procedureCode` is a PRESENT
+    // slot reading `undefined` rather than an absent one - `Object.hasOwn`
+    // is true for it. `undefined` means not decoded here, never absent, and
+    // `toBeUndefined()` below cannot tell the two apart, so the comment has
+    // to say which one it is.
     // The union is discriminated on `variant`, so narrow rather than cast:
     // `revenueCode` exists only on the institutional member.
     if (institutional?.variant !== "I") throw new Error("expected an institutional line");

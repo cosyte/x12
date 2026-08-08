@@ -165,7 +165,9 @@ What follows from it, listed as examples and not as a bound:
    **🩺 STATE ONLY THE DECIMAL SLOTS AS `undefined`, AND THE POLARITY REVERSES BY VARIANT.** A pass-2
    refuter measured this and it cost four consumer-facing surfaces. An undecoded line SEEDS its
    identity fields, so on a **P** or **D** line `procedureCode` is **`""`** while `revenueCode` is
-   absent, and on an **I** line `revenueCode` is **`""`** while `procedureCode` is absent. Only
+   absent, and on an **I** line `revenueCode` is **`""`** while `procedureCode` is a PRESENT SLOT
+   READING `undefined` (`Object.hasOwn` is true for it, and false for `revenueCode` on P and D).
+   **The word is load-bearing here** - `undefined` means not decoded, never absent. Only
    `charge` and `units` are `undefined` on all three. **`KNOWN-LIMITATIONS.md`'s standing sentence
    "`undefined`, not `""`, which on such a line is the `revenueCode`" is about the I case and DOES
    NOT PORT to P or D.** A consumer predicate of `procedureCode === undefined` detects this on
