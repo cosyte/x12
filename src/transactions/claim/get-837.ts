@@ -52,6 +52,7 @@ import {
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
 import {
   REQUIRED_LOOPS,
+  ambiguous837Variant,
   amountRowDropped,
   entitySegmentDiscardedAfterLx,
   hlParentLevelInvalid,
@@ -229,11 +230,36 @@ export function get837Claims(
       ? VARIANT_BY_ICR[implementationConventionReference]
       : undefined;
   let variantFromSegment: X12Claim837Variant | undefined;
-  for (const seg of body) {
-    const fromSv = VARIANT_BY_SV_SEGMENT[seg.id];
-    if (fromSv !== undefined) {
-      variantFromSegment = fromSv;
-      break;
+  /**
+   * True where the fall-back resolved the variant AND a later service
+   * segment in the same body names a different one, so the first-wins
+   * choice is a guess between contradictory evidence rather than the only
+   * reading available. It can only be set while the fall-back is what
+   * decides, which is what makes the warning below a claim about the
+   * RESOLUTION and not about the document's shape.
+   * @internal
+   */
+  let serviceSegmentVariantsConflict = false;
+  // Scanned only where the fall-back is what will decide. A caller `type`
+  // and a resolving ST-03 both win ahead of `variantFromSegment`, so where
+  // either is present its value is never read, and skipping the scan is
+  // observationally identical to running it. The scan still stops at the
+  // first DISAGREEMENT rather than reading the whole body, so the added
+  // work is bounded by the distance to it.
+  if (explicitType === undefined && variantFromIcr === undefined) {
+    for (const seg of body) {
+      const fromSv = VARIANT_BY_SV_SEGMENT[seg.id];
+      if (fromSv === undefined) continue;
+      if (variantFromSegment === undefined) {
+        // FIRST WINS, exactly as it did through `0.0.13`. Nothing here
+        // re-orders or narrows the fall-back: an orphan service segment is
+        // eligible for it like any other, and this slice reports that it
+        // was contested rather than changing which one is taken.
+        variantFromSegment = fromSv;
+      } else if (fromSv !== variantFromSegment) {
+        serviceSegmentVariantsConflict = true;
+        break;
+      }
     }
   }
   const variant: X12Claim837Variant =
@@ -251,6 +277,24 @@ export function get837Claims(
     // element 3 at all, so naming one would point a consumer at a slot that
     // is not on the wire.
     warnings.push(unknown837Variant({ segmentIndex: 0, transactionIndex: 0 }));
+  } else if (serviceSegmentVariantsConflict) {
+    // Disjoint from the branch above by construction, not by ordering: the
+    // flag can only be set once `variantFromSegment` is defined, and a
+    // defined `variantFromSegment` cannot leave `variant` "unknown".
+    //
+    // Same anchor as the unknown case and for the same reason. ST-03 is the
+    // element that would have settled the question, and the two codes are
+    // the two outcomes of one resolution. No `elementIndex`: the conflict is
+    // a property of the body rather than of an element, and one route into
+    // this code is an ST-03 that is absent altogether, where `ST*837*0001~`
+    // has no element 3 to name.
+    //
+    // Nothing about the walk below reads this flag. The variant every claim
+    // and line is decoded against is the one first-wins picked, unchanged,
+    // so a consumer's predicate on `X12_837_SERVICE_LINE_NOT_DECODED` or
+    // `X12_837_SERVICE_SEGMENT_WITHOUT_LX` sees exactly the documents it saw
+    // through `0.0.13`. This code is additive on top of them.
+    warnings.push(ambiguous837Variant({ segmentIndex: 0, transactionIndex: 0 }));
   }
 
   // Hierarchy + entity accumulators.

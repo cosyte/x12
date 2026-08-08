@@ -309,7 +309,7 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     }
   });
 
-  it("🩺 PRE-EXISTING: an orphan segment DOES feed the variant fallback when ST-03 resolves to nothing", () => {
+  it("🩺 an orphan segment DOES feed the variant fallback when ST-03 resolves to nothing", () => {
     // Measured identical at `0899813`, and the reason no surface here may
     // say "it does not name the variant". Variant resolution runs before the
     // walk, as `explicitType ?? variantFromIcr ?? variantFromSegment`: a
@@ -320,6 +320,14 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     // rather than 8500 / 4 (it read 0 / 0 through `0.0.12`). Both halves of
     // that precedence are asserted, because a remedy that stated only the
     // ST-03 half was itself refuted.
+    //
+    // 🩺 THE RE-TYPING IS STILL PRE-EXISTING AND STILL UNCHANGED. What is no
+    // longer pre-existing is the SILENCE around it: through `0.0.13` the
+    // channel below held the two line-level codes and nothing that named the
+    // submission-level mis-typing which produced them, so a consumer routing
+    // on `submission.variant` had no signal at all.
+    // `X12_837_AMBIGUOUS_VARIANT` is that signal and is purely additive -
+    // this assertion is the pin that the two codes below did not move.
     const stray = parse837([...HEADER, CLM, SV2, "LX*1~", SV1], "005010X222A1");
     expect(stray.variant).toBe("I");
     expect(stray.claims[0]?.serviceLines[0]?.charge).toBeUndefined();
@@ -328,6 +336,7 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     // `revenueCode`, and this repo distinguishes the two by rule.
     expect(stray.claims[0]?.serviceLines[0]?.procedureCode).toBeUndefined();
     expect(channel(stray)).toEqual([
+      WARNING_CODES.X12_837_AMBIGUOUS_VARIANT,
       WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
       WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED,
     ]);
@@ -354,6 +363,12 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     const trailing = parse837([...HEADER, CLM, "LX*1~", SV1, SV2], "005010X222A1");
     expect(trailing.variant).toBe("P");
     expect(trailing.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
+    // The body is still self-contradictory, so the resolution is still a
+    // guess and still reported - even though first-wins happened to land on
+    // the conformant segment here. The SV2 reaches a line that the SV1
+    // already decoded, so nothing else reports it: that silence is a
+    // separate PRE-EXISTING residual and is untouched.
+    expect(channel(trailing)).toEqual([WARNING_CODES.X12_837_AMBIGUOUS_VARIANT]);
   });
 
   it("🩺 the condition is NO LINE OPEN, not 'the file contains no LX'", () => {
