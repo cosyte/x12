@@ -19,9 +19,21 @@
  * CLM*PT?*ACCT*150.00                                 ->  3 elements (the BODY control: held)
  * ```
  *
- * The blast radius is envelope FRAMING. No dose, code system, monetary amount or
- * patient identifier is mis-read, because the body splitter was already correct -
- * that is why this was not stop-the-line and why it got its own slice.
+ * ## 🛑 The class is SYMMETRIC, and a first draft of this file said it was not
+ *
+ * A `?` immediately before the element separator has two readings, and 005010
+ * does not transmit which the sender meant. Where the sender ESCAPED a
+ * delimiter, base framed it wrongly and head frames it correctly: a CORRECTION.
+ * Where the sender sent a LITERAL `?` as the element's last byte, base framed it
+ * correctly and head merges it with its successor, costing the segment its last
+ * element: a REGRESSION. `X12_CONTROL_NUMBER_MISMATCH` therefore moves in BOTH
+ * directions, and a lost ST-03 re-enters the `SVx` variant fallback, which can
+ * turn a warned non-decode into a decoded charge. All of it is pinned below.
+ *
+ * The tie is broken by CONSISTENCY, not by the spec: `decodeSegment` has always
+ * read BODY elements the second way on every released version, and the emit half
+ * escapes. This makes the envelope obey the package's one rule instead of a
+ * second one. The body control is pinned below and is what makes that a fact.
  *
  * ## Why it is a defect and not a tolerance
  *
@@ -47,7 +59,12 @@
 
 import { describe, expect, it } from "vitest";
 
-import { buildInterchange as buildInterchangeApi, parseX12, serializeX12 } from "../src/index.js";
+import {
+  buildInterchange as buildInterchangeApi,
+  get837Claims,
+  parseX12,
+  serializeX12,
+} from "../src/index.js";
 
 import { buildIsa } from "./_helpers/envelope.js";
 
@@ -177,21 +194,131 @@ describe("X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE: what does NOT change", () => 
     expect(parsed.warnings).toEqual([]);
   });
 
-  it("🛑 NO case moves onto a NEW warning code; the only channel change is a code that STOPS firing", () => {
+  it("🛑 NO case moves onto a NEW warning code, and `X12_CONTROL_NUMBER_MISMATCH` moves BOTH WAYS", () => {
     // The rule this lineage was built on: a widening that moves a case onto a
     // NEW code blinds every consumer predicate written against the old one. This
-    // slice mints no code. The one channel-visible change is SUBTRACTIVE - a
-    // `X12_CONTROL_NUMBER_MISMATCH` that fired only because the parser was
-    // reading a control number out of its neighbour's slot stops firing, because
-    // the control numbers always did agree. Disclosed in `KNOWN-LIMITATIONS.md`:
-    // a consumer that REJECTS on that code will now accept such a document.
-    const shifted = parseX12(ix("GS*HC*SEND?*ER*RECV*20260601*1200*1*X*005010X222A1", ST_PLAIN));
-    expect(shifted.warnings).toEqual([]);
+    // slice mints no code, and that part stands.
+    //
+    // What a first draft of this test claimed and a refuter measured FALSE: that
+    // the channel change is only SUBTRACTIVE. `X12_CONTROL_NUMBER_MISMATCH`
+    // moves in BOTH directions, because the class is symmetric - see the
+    // "reads DIFFERENTLY, both directions" block below.
+    const escaped = parseX12(ix("GS*HC*SEND?*ER*RECV*20260601*1200*1*X*005010X222A1", ST_PLAIN));
+    expect(escaped.warnings).toEqual([]); // base raised it; now silent
 
-    // The control, on the SAME code, so the assertion above is not vacuous: a
-    // genuine GS-06 / GE-02 disagreement still raises it.
+    const literal = parseX12(
+      ix(
+        "GS*HC*SUB1*RCV?*20260601*1200*000000123*X*005010X222A1",
+        ST_PLAIN,
+        "SE*3*0001",
+        "GE*1*000000123",
+      ),
+    );
+    expect(literal.warnings.map((w) => w.code)).toEqual(["X12_CONTROL_NUMBER_MISMATCH"]); // base was silent
+
+    // The control, on the SAME code, so neither assertion above is vacuous: a
+    // genuine GS-06 / GE-02 disagreement still raises it and always did.
     const genuine = parseX12(ix(GS_PLAIN, ST_PLAIN, "SE*3*0001", "GE*1*9"));
     expect(genuine.warnings.map((w) => w.code)).toEqual(["X12_CONTROL_NUMBER_MISMATCH"]);
+  });
+});
+
+describe("X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE: what reads DIFFERENTLY, both directions", () => {
+  // 🛑 THE CLASS IS SYMMETRIC AND SAYING OTHERWISE WAS THIS SLICE'S REFUTED
+  // CLAIM. A `?` immediately before the element separator has two readings and
+  // 005010 does not transmit which the sender meant:
+  //
+  //   - the sender ESCAPED a delimiter (`?*` means a literal `*`). Base framed
+  //     it wrongly, head frames it correctly. A CORRECTION.
+  //   - the sender sent a LITERAL `?` as the last byte of the element. Base
+  //     framed it correctly, head merges the element with its successor and the
+  //     LAST element of the segment is lost. A REGRESSION.
+  //
+  // The tie is broken by consistency, not by the spec: `decodeSegment` has
+  // always read BODY elements the second way, and `buildInterchange` escapes on
+  // emit. The control below is what makes that a fact rather than a preference.
+
+  it("🩺 the BODY splitter has ALWAYS done this, on every released version", () => {
+    // Unchanged by this slice - the reason the envelope rule is now the
+    // package's ONE rule rather than a new one.
+    const parsed = parseX12(
+      ix(GS_PLAIN, ST_PLAIN).replace("CLM*PT?*ACCT*150.00", "REF*EA*RCV?*NEXT"),
+    );
+    const ref = parsed.groups[0]?.transactions[0]?.segments.find((s) => s.id === "REF");
+    expect(ref?.elements).toEqual(["REF", "EA", "RCV?*NEXT"]);
+  });
+
+  it("🛑 REGRESSION DIRECTION: a literal trailing `?` in GS-03 costs the segment its LAST element", () => {
+    const parsed = parseX12(
+      ix(
+        "GS*HC*SUB1*RCV?*20260601*1200*000000123*X*005010X222A1",
+        ST_PLAIN,
+        "SE*3*0001",
+        "GE*1*000000123",
+      ),
+    );
+    const gs = parsed.groups[0]?.gs;
+    expect(gs?.elements).toHaveLength(8); // nine at base
+    expect(gs?.elements[3]).toBe("RCV?*20260601");
+    expect(gs?.elements[6]).toBe("X"); // base read the control number "000000123"
+    expect(gs?.elements[8]).toBeUndefined(); // base read "005010X222A1"
+  });
+
+  it("🛑 REGRESSION DIRECTION: a literal trailing `?` in IEA-01 loses IEA-02 and ADDS a warning", () => {
+    const parsed = parseX12(`${ISA}${GS_PLAIN}~${ST_PLAIN}~SE*2*0001~GE*1*1~IEA*1?*000000001~`);
+    expect(parsed.iea?.elements).toEqual(["IEA", "1?*000000001"]);
+    // Base raised only the group-count mismatch.
+    expect(parsed.warnings.map((w) => w.code)).toEqual([
+      "X12_GROUP_COUNT_MISMATCH",
+      "X12_CONTROL_NUMBER_MISMATCH",
+    ]);
+  });
+
+  it("🩺 REGRESSION DIRECTION, the sharpest: a literal trailing `?` in ST-02 destroys ST-03, and a WARNED non-decode becomes a DECODED charge", () => {
+    // ST-03 is what `X12-VARIANT-ICR-UNGROUNDED` made authoritative for the 837
+    // variant, so losing it re-enters the `SVx` fallback, which the same
+    // lineage documents as able to re-type a whole submission. Measured at base
+    // `1b71733`: variant "P", charge undefined, and
+    // `X12_837_SERVICE_LINE_NOT_DECODED` raised. Here the declaration is gone,
+    // the body's `SV2` decides, and the amount decodes with that warning silent.
+    // This is the fail-safe direction inverted and it is why the disclosure
+    // states the class symmetrically rather than as a correction.
+    const raw =
+      `${ISA}GS*HC*SUB1*RCV*20260601*1200*1*X*005010X222A1~` +
+      "ST*837*0001?*005010X222A1~" +
+      "BHT*0019*00*REF*20260601*1200*CH~" +
+      "HL*1**20*1~NM1*85*2*BILLING ONE*****XX*1234567893~" +
+      "HL*2*1*22*0~SBR*P*18*****CI~NM1*IL*1*TEST*PATIENT****MI*MEMBER001~" +
+      "CLM*PTACCT*150.00***11:B:1*Y*A*Y*Y~" +
+      "LX*1~SV2*0300*HC:99213*150.00*UN*1~" +
+      "SE*13*0001?*005010X222A1~GE*1*1~IEA*1*000000001~";
+    const parsed = parseX12(raw);
+    const tx = parsed.groups[0]?.transactions[0];
+    expect(tx?.st.elements).toEqual(["ST", "837", "0001?*005010X222A1"]);
+    const submission = tx === undefined ? undefined : get837Claims(parsed.delimiters, tx);
+    expect(submission?.variant).toBe("I"); // "P" at base, from the declaration
+    expect(submission?.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("150.00"); // undefined at base
+    expect(submission?.warnings.map((w) => w.code)).not.toContain(
+      "X12_837_SERVICE_LINE_NOT_DECODED",
+    );
+  });
+
+  it("a literal trailing `?` is a DANGLING release character and is NOT warned mid-segment, on either tree", () => {
+    // `decodeSegment` raises `X12_DANGLING_RELEASE_CHAR` only for an odd run of
+    // `?` at the very END of a segment. An envelope element ending in `?`
+    // mid-segment reaches no such check, and neither does a body element -
+    // PRE-EXISTING on both trees and deliberately NOT closed here: adding the
+    // detection would widen a code onto body segments too, which is a decision
+    // of its own and not a side effect of this fix.
+    const parsed = parseX12(
+      ix(
+        "GS*HC*SUB1*RCV?*20260601*1200*000000123*X*005010X222A1",
+        ST_PLAIN,
+        "SE*3*0001",
+        "GE*1*000000123",
+      ),
+    );
+    expect(parsed.warnings.map((w) => w.code)).not.toContain("X12_DANGLING_RELEASE_CHAR");
   });
 });
 

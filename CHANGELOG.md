@@ -950,8 +950,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **🩺 A release-escaped delimiter inside an envelope segment no longer splits it and no longer
-  shifts every element after it** (`X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE`). Reproduced on the base
+- **🩺 A `?` immediately before the element separator inside an envelope segment now frames as ONE
+  element, which fixes a released delimiter and is a SYMMETRIC change**
+  (`X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE`). Reproduced on the base
   tree at `1b71733`. `src/parser/envelope.ts`'s `splitElements` - the splitter for `GS`, `GE`, `ST`,
   `SE`, `IEA` and `TA1` - was a plain `String.prototype.split` on the element separator, so a `?*`
   ended the element anyway and every element after it moved down a slot:
@@ -964,22 +965,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   CLM*PT?*ACCT*150.00~                          three elements - the BODY control, always correct
   ```
 
-  **🩺 Nothing clinical or monetary was ever mis-read by this**, because the body splitter was
-  already release-aware; the blast radius was envelope framing, which is why it was a slice of its
-  own rather than stop-the-line. **What made it a defect rather than a tolerance is that this
-  package's own two halves disagreed inside a single call:** `buildInterchange` maps its release
-  escaper over GS-02 / GS-03 / GS-06 / GS-08 and ST-01 / ST-02 / ST-03, then returns `parseX12` of
-  the bytes it just wrote, so `applicationSenderCode: "SEND*ER"` emitted a correct
-  `GS*HC*SEND?*ER*...` and handed back a model whose GS-08 answered `"X"`, with `warnings: []`.
+  **What made it a defect rather than a tolerance is that this package's own two halves disagreed
+  inside a single call:** `buildInterchange` maps its release escaper over GS-02 / GS-03 / GS-06 /
+  GS-08 and ST-01 / ST-02 / ST-03, then returns `parseX12` of the bytes it just wrote, so
+  `applicationSenderCode: "SEND*ER"` emitted a correct `GS*HC*SEND?*ER*...` and handed back a model
+  whose GS-08 answered `"X"`, with `warnings: []`.
 
-  **🛑 This is a behaviour change on already-published decoding, and the class it changes is exactly
-  one:** an envelope segment carrying a `?` immediately before the element separator. Every other
-  release sequence in an envelope element (`??`, `?:`, `?^`, `?~`, `?A`) framed identically before
-  and after and still does, pinned as invariance controls. **No warning code is added.** One can STOP
-  firing: where the shift displaced a control number, `X12_CONTROL_NUMBER_MISMATCH` was raised
-  against a document whose control numbers always did agree, and it is now silent - so **a consumer
-  that rejects on that code will accept such a document from this release on**. A genuine mismatch
-  still raises it, pinned as its own control.
+  **🛑 READ THE CHANGE AS SYMMETRIC. IT IS NOT ONLY A CORRECTION.** A `?` before the separator has
+  two readings and 005010 does not transmit which the sender meant. Where the sender **escaped** a
+  delimiter, `0.0.14` framed it wrongly and this release frames it correctly: a correction, the rows
+  above. Where the sender sent a **literal `?`** as the element's last byte, `0.0.14` framed it
+  correctly and this release merges the element with its successor, so **the segment loses its LAST
+  element**: a regression. `GS*HC*SUB1*RCV?*20260601*1200*000000123*X*005010X222A1~` read nine
+  entries and reads **eight** here, GS-06 answering `"X"` and GS-08 gone. Every other release
+  sequence in an envelope element (`??`, `?:`, `?^`, `?~`, `?A`) framed identically before and after
+  and still does, pinned as invariance controls.
+
+  **No warning code is added, and `X12_CONTROL_NUMBER_MISMATCH` moves in BOTH DIRECTIONS.** Where the
+  old shift displaced a control number it stops firing, so **a consumer that rejects on that code
+  will now accept such a document**; where a literal `?` newly displaces one it starts firing, so
+  that same consumer **will now reject a document `0.0.14` accepted**. Both are pinned, alongside a
+  genuine mismatch that raises it on either tree.
+
+  **🩺 The regression direction reaches an 837's variant and its money, by one route.** `ST-03`
+  decides the 837 variant, so an `ST-02` ending in a literal `?` destroys `ST-03` and the document
+  falls back to the `SVx` scan. An 837 declaring `005010X222A1` whose only service segment is an
+  `SV2` read `variant` `"P"`, `charge` `undefined` and `X12_837_SERVICE_LINE_NOT_DECODED` at
+  `0.0.14`, and reads `variant` `"I"` with `charge` `150.00` and that warning silent here. **A warned
+  non-decode becomes a decoded amount.** Re-check any routing driven off `submission.variant` if your
+  partners send envelope elements that can end in a literal `?`.
+
+  **Why it was taken anyway, and it is CONSISTENCY rather than a spec clause.** The two readings are
+  mutually exclusive and nothing in 005010 picks between them. `decodeSegment` has read BODY elements
+  the escape-wins way on every released version (`REF*EA*RCV?*NEXT` has always been two elements),
+  and this library escapes a literal `?` as `??` on emit, so its own output is unaffected either way
+  and the exposure is inbound partner bytes only.
 
   **Values are still RAW, pre-`?`-unescape**, exactly as `X12Segment.elements` has always documented:
   `gs.elements[2]` reads `"SEND?*ER"`, not `"SEND*ER"`. `elements.join(separator)` therefore still

@@ -508,8 +508,10 @@ used to split its own segment and shift every element after it, so ST-03 and GS-
 a neighbour's slot, mostly with nothing warned. A **release-escaped** one no longer does: the
 envelope splitter honours the escape, so a sender who escapes correctly is now read correctly. An
 **unescaped** one still ends its element, because that is what a delimiter is, and no refusal here
-can reach it. The behaviour change this landed on already-published decoding is measured in
-`KNOWN-LIMITATIONS.md`.
+can reach it. **And that change is symmetric**: an envelope element ending in a **literal `?`** now
+merges with its successor, which can destroy ST-03 outright and send the document to the `SVx`
+variant fallback. The full behaviour change on already-published decoding, both directions, is
+measured in `KNOWN-LIMITATIONS.md`.
 
 ---
 

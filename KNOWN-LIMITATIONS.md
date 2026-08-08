@@ -80,8 +80,9 @@ model.
       reader falls back to the `SVx` scan on such a file, exactly as it does for any unrecognised
       ST-03.
 
-- **🩺 A RELEASE-ESCAPED delimiter inside an envelope segment no longer splits it, and that is a
-  behaviour change on already-published decoding** (`X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE`).
+- **🩺 A `?` immediately before the element separator inside an envelope segment now frames as ONE
+  element, and that is a SYMMETRIC behaviour change on already-published decoding**
+  (`X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE`).
   Through `0.0.14` the envelope segments' element splitter was a plain `String.prototype.split`, so a
   released element separator (`?*`) still ended the element and SHIFTED every element after it down a
   slot. It was a property of the whole envelope segment and never of one element, so the element a
@@ -95,18 +96,43 @@ model.
   CLM*PT?*ACCT*150.00~                          three elements, CLM-01 held "PT?*ACCT"
   ```
 
-  The body element was the control and was always correct, which is why nothing clinical or monetary
-  was ever mis-read by this: the blast radius was envelope FRAMING. `splitElements` now honours the
-  release character exactly as `decodeSegment` and the segment-terminator scanner already did, so
-  every row above reads one element fewer and the value lands in its own slot.
-  - **🛑 What this changes for a consumer.** Only one input class decodes differently: an envelope
-    segment (`GS`, `GE`, `ST`, `SE`, `IEA`, `TA1`) carrying a `?` immediately before the element
-    separator. Every other release sequence in an envelope element (`??`, `?:`, `?^`, `?~`, `?A`)
-    framed identically before and after and still does. **No warning code is added, and one can STOP
-    firing:** where the shift displaced a control number, `X12_CONTROL_NUMBER_MISMATCH` was raised
-    against a document whose control numbers always did agree, and it is now silent. A consumer that
-    REJECTS on that code will accept such a document from this release on. A genuine mismatch still
-    raises it.
+  The body element was the control and was always correct. `splitElements` now honours the release
+  character exactly as `decodeSegment` and the segment-terminator scanner already did, so every row
+  above reads one element fewer and the value lands in its own slot.
+  - **🛑 READ THE CHANGE AS SYMMETRIC. IT IS NOT ONLY A CORRECTION.** A `?` before the separator has
+    two readings and 005010 does not transmit which the sender meant. Where the sender **escaped** a
+    delimiter, the release before this one framed it wrongly and this one frames it correctly: a
+    correction, the rows above. Where the sender sent a **literal `?`** as the element's last byte,
+    the release before this one framed it correctly and this one merges the element with its
+    successor, so **the segment loses its LAST element**: a regression.
+    `GS*HC*SUB1*RCV?*20260601*1200*000000123*X*005010X222A1~` read nine entries through `0.0.14` and
+    reads **eight** here, with GS-06 answering `"X"` and GS-08 gone.
+  - **🛑 What this changes for a consumer.** One input class decodes differently: an envelope segment
+    (`GS`, `GE`, `ST`, `SE`, `IEA`, `TA1`) carrying a `?` immediately before the element separator.
+    Every other release sequence in an envelope element (`??`, `?:`, `?^`, `?~`, `?A`) framed
+    identically before and after and still does. **No warning code is added, and
+    `X12_CONTROL_NUMBER_MISMATCH` moves in BOTH DIRECTIONS.** Where the old shift displaced a control
+    number it STOPS firing, so a consumer that rejects on that code will now **accept** such a
+    document; where a literal `?` newly displaces one it STARTS firing, so that same consumer will
+    now **reject** a document `0.0.14` accepted. A genuine mismatch still raises it.
+  - **🩺 The regression direction reaches an 837's variant and its money, by one route.** `ST-03` is
+    what decides the 837 variant, so an `ST-02` ending in a literal `?` destroys `ST-03` and the
+    document falls back to the `SVx` scan. An 837 declaring `005010X222A1` whose only service segment
+    is an `SV2` read `variant` `"P"`, `charge` `undefined` and `X12_837_SERVICE_LINE_NOT_DECODED`
+    through `0.0.14`, and here reads `variant` `"I"` with `charge` `150.00` and that warning silent.
+    **A warned non-decode becomes a decoded amount.** If you receive envelope elements that may end
+    in a literal `?`, re-check any routing driven off `submission.variant`.
+  - **Why it was taken anyway, and it is CONSISTENCY rather than a spec clause.** The two readings
+    are mutually exclusive and nothing in 005010 picks between them. `decodeSegment` has read BODY
+    elements the escape-wins way on **every released version** (`REF*EA*RCV?*NEXT` has always been
+    two elements), and this library escapes a literal `?` as `??` on emit, so its own output is
+    unaffected either way and the exposure is inbound partner bytes only. The envelope now obeys the
+    one rule the rest of the package already obeyed, and `buildInterchange` stops disagreeing with
+    itself: at `0.0.14` it released GS-02 on emit and then answered GS-08 as `"X"` from its own
+    return value.
+  - **An envelope element ending in a literal `?` is a dangling release character and is NOT warned.**
+    `X12_DANGLING_RELEASE_CHAR` fires only for an odd run of `?` at the very END of a segment, so a
+    mid-segment one reaches no check. That is true of body elements too and is unchanged here.
   - **Values are still RAW, pre-`?`-unescape**, exactly as `X12Segment.elements` has always
     documented: `gs.elements[2]` on the first row reads `"SEND?*ER"`, not `"SEND*ER"`. Read through
     `getSegmentValue` if you want the logical value. `elements.join(separator)` therefore still

@@ -4,7 +4,12 @@ The envelope segments' element splitter now honours the `?`-release-character es
 behaviour, one function, and the whole slice is the argument for why it is allowed to change how
 already-published documents decode.
 
-Base tree: `1b71733` (`#95`).
+Base tree: `1b71733` (`#95`). Provenance for every spec statement below: ASC X12 .5 (the ISA's
+fixed-width layout) and this package's own already-shipped release handling in
+`src/parser/release.ts` and `src/parser/segment.ts`. **No TR3 is cited and none is needed** - the
+decision rests on the package's internal inconsistency, not on a clause anybody here has read. The
+`?`-as-release-character convention is itself recorded in `release.ts` as a CONVENTION: 005010 does
+not transmit a release character as a fifth ISA delimiter.
 
 ## What was wrong
 
@@ -55,18 +60,36 @@ reasoning is what a future slice should re-read rather than re-derive:
    immediately before the element separator. `??`, `?:`, `?^`, `?~` and `?A` in an envelope element
    frame identically under a plain split and a release-aware split, so they are untouched. Pinned as
    invariance controls that are GREEN on both trees - which is the point of them.
-2. **Every document in that class decoded WRONGLY before.** There is no reading under which a
-   ten-element `GS` is right. A sender writing `?*` means a literal `*`; this is the one thing the
-   release character is for.
-3. **The correction is subtractive on the warning channel, never additive.** No code is minted. The
-   only channel-visible change is that a `X12_CONTROL_NUMBER_MISMATCH` raised *because* of the shift
-   stops firing. That matters and is disclosed: **a consumer that rejects on that code will now
-   accept such a document.** It is the mirror image of the `#83` refutation - there a predicate went
-   blind because a case moved onto a NEW code; here one goes quiet because a spurious warning was
-   removed. Both are consumer-visible; only the second is a correction.
-4. **Nothing clinical or monetary was mis-read either way**, because the body splitter was already
-   right. That is what kept this off the stop-the-line list and is worth restating rather than
-   quietly dropping.
+2. **🛑 THE CLASS IS SYMMETRIC. A first draft of this note said "every document in that class decoded
+   WRONGLY before" and a refuter measured it FALSE.** A `?` before the separator has two readings and
+   005010 does not transmit which the sender meant. Where the sender ESCAPED a delimiter, base framed
+   it wrongly and head frames it correctly: a CORRECTION. Where the sender sent a LITERAL `?` as the
+   element's last byte, base framed it correctly and head merges the element with its successor, so
+   the segment loses its LAST element: a REGRESSION. `GS*HC*SUB1*RCV?*20260601*1200*000000123*X*005010X222A1`
+   reads nine entries at base and **eight** here, GS-06 answering `"X"` and GS-08 gone.
+3. **No code is minted, and `X12_CONTROL_NUMBER_MISMATCH` moves in BOTH DIRECTIONS.** The same first
+   draft claimed the channel change was "subtractive, never additive"; that is false for the same
+   reason. Where the shift displaced a control number it stops firing (**a consumer that rejects on
+   that code now accepts such a document**); where a literal `?` newly displaces one it STARTS firing
+   (**and that consumer now rejects a document `0.0.14` accepted**). Both directions are disclosed
+   and pinned. This is the `#83` class exactly: a predicate written against a code goes wrong when a
+   slice moves cases across it, and the package's own docs are such a consumer.
+4. **🩺 The regression direction reaches money, by one route, and it must not be understated.** ST-03
+   is what `X12-VARIANT-ICR-UNGROUNDED` made authoritative for the 837 variant, so an ST-02 ending in
+   a literal `?` destroys ST-03 and the document re-enters the `SVx` fallback. Measured: an 837
+   declaring `005010X222A1` whose only service segment is an `SV2` read `variant` `"P"`, `charge`
+   `undefined` and `X12_837_SERVICE_LINE_NOT_DECODED` at base, and reads `variant` `"I"` with
+   `charge` `150.00` and that warning SILENT here. **A warned non-decode became a decoded amount**,
+   which is the fail-safe direction inverted. Pinned.
+5. **What the decision actually rests on, and it is CONSISTENCY rather than the spec.** The two
+   readings are mutually exclusive; nothing in 005010 picks between them. `decodeSegment` has read
+   BODY elements the escape-wins way on **every released version** - `REF*EA*RCV?*NEXT` is two
+   elements at base and here - and `buildInterchange` escapes on emit. So this makes the envelope
+   obey the package's ONE rule instead of a second one, and it makes a single function stop
+   disagreeing with itself. The body control is pinned, and it is what makes this a fact rather than
+   a preference.
+6. **The exposure is INBOUND partner bytes only.** Anything this library emitted escapes a literal
+   `?` as `??`, so its own output round-trips unaffected on both trees.
 
 ## 🩺 Two exemptions, each with its own red control
 
