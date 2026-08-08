@@ -133,20 +133,6 @@ model.
     here** - what follows is the routes measured to REACH the regression direction, not a closed
     account of what bypasses the escaper.
 
-    **`buildTA1` escapes nothing** - it joins its five caller-supplied elements directly. TA1-01
-    echoes the acknowledged interchange's ISA-13, and ISA-13 is fixed-width, so a `?` there is
-    content this library will faithfully copy. A `buildTA1` call whose `interchangeControlNumber` is
-    `"00000001?"`, with `ackCode` `"A"` and `noteCode` `"000"`, emits the same
-    `TA1*00000001?*260601*1200*A*000` on either
-    release, and `parseTA1` read `ackCode` `"A"` with the control number intact through `0.0.14` and
-    reads **`ackCode` `"R"`** here, control number `"00000001?*260601"`, `noteCode` `undefined`,
-    `warnings: []`. **An Accept acknowledgment this library emitted now reads back as a Reject**, and
-    TA1-01 is the reassociation key. **🩺 The inverse also exists and is the less safe one:** the
-    read narrows an out-of-enum TA1-04 to `R`, so a well-typed shift always lands on Reject, but a
-    `noteCode` of literally `"A"` (type-only, never checked at run time) makes a **Reject read back
-    as an Accept**, and a sender who reads that never resubmits. If you emit `TA1`s echoing partner
-    control numbers, escape or reject a `?` yourself; that closes both directions.
-
     **`buildInterchange` does not escape GS-04, GS-05 or GS-07** (`groupDate`, `groupTime`,
     `responsibleAgencyCode`). A `groupDate` of `"2026060?"` emits
     `GS*HC*SENDER*RECEIVER*2026060?*1200*1*X*005010X222A1`, which its own return value read as nine
@@ -176,6 +162,91 @@ model.
     parser is not obliged to be release-aware either. `buildInterchange` applies no domain guard to
     any envelope field and will still emit all of them, though it now reports back what it wrote -
     at `0.0.14` it released GS-02 on emit and then answered GS-08 as `"X"` from its own return value.
+
+- **🩺 `buildTA1` now RELEASES its five caller-supplied elements, so an Accept acknowledgment this
+  library emits no longer reads back as a Reject, and the bytes it writes for such a value CHANGED**
+  (`X12-TA1-EMIT-NOT-RELEASE-AWARE`). Through `0.0.14` `buildTA1` joined the five values with the
+  element separator and escaped none of them, so a value carrying an active delimiter took a slot of
+  its own and shifted every element after it down one. TA1-04 is the disposition and TA1-05 the note,
+  and `parseTA1` narrows an out-of-enum TA1-04 to `R`. Measured with `parseX12` + `parseTA1` over
+  `ISA … <what buildTA1 returned> … IEA`, `ackCode` `"A"` and `noteCode` `"000"` throughout:
+
+  | `interchangeControlNumber` | emitted at `0.0.14`               | read `ackCode` | read TA1-01          | warnings                 |
+  | -------------------------- | --------------------------------- | -------------- | -------------------- | ------------------------ |
+  | `"000000001"`              | `TA1*000000001*260601*1200*A*000` | `"A"`          | `"000000001"`        | none                     |
+  | `"00000001?"`              | `TA1*00000001?*260601*1200*A*000` | `"R"`          | `"00000001?*260601"` | none                     |
+  | `"0000*0001"`              | `TA1*0000*0001*260601*1200*A*000` | `"R"`          | `"0000"`             | none                     |
+  | `"0000~0001"`              | `TA1*0000~0001*260601*1200*A*000` | `"R"`          | `"0000"`             | `X12_UNEXPECTED_SEGMENT` |
+
+  **An Accept acknowledgment this library emitted read back as a Reject, on the element that
+  reassociates it, with nothing raised on any channel.** The `*` and `~` rows did that on every
+  released version; the `?` row is the one the envelope-splitter entry above opened. **🩺 The inverse
+  exists and is the less safe direction:** the read narrows an out-of-enum TA1-04 to `R`, so a
+  well-typed shift always lands on Reject, but `noteCode` is checked by the type system and by
+  nothing at run time, so a `noteCode` of literally `"A"` shifted onto TA1-04 and made a **Reject
+  read back as an Accept** - and a sender who reads an Accept does not resubmit. All four now read
+  back the disposition that was emitted.
+  - **The grounding is inside this package, not in a spec clause**, the same tiebreak the
+    envelope-splitter entry records. `buildTA1` emitted bytes that this package's own reader decoded
+    into a different disposition than the caller asked for, while every other builder already
+    released the same class of element through the same helper. Nobody here has read a clause that
+    settles it, and nothing above claims one.
+  - **🛑 It changes bytes this library already put on the wire, which is the cost.** A value
+    containing none of the four delimiters and no `?` is emitted byte-for-byte as before, and that
+    is every conformant TA1: TA1-01 echoes ISA-13, TA1-02 / TA1-03 echo ISA-09 / ISA-10, and
+    TA1-04 / TA1-05 are code list values. A value containing one is now released.
+  - **🛑 No warning code is added and no case moves onto a new code, but the consumer predicate
+    MOVES IN BOTH DIRECTIONS.** `parseTA1` of a `buildTA1` output now reports the disposition and
+    note the caller passed; before, it reported whatever element the shift left in TA1-04, which
+    could be the caller's, a coincidental in-enum value, or an out-of-enum one narrowed to `"R"`. So
+    `ackCode === "R"` **stops** firing where an Accept had been shifted onto it, and **starts**
+    firing where a Reject had been shifted off it: `interchangeTime: "12*A"` with `ackCode: "R"`
+    read `"A"` before and reads `"R"` now, with every field a valid member of its union.
+    `ackCode === "A"` moves the same two ways. What is one-directional is the safety, which is a
+    different statement: nothing now reports a disposition the caller did not ask for.
+  - **What releasing the REST of the set costs, and where it does not cost.** Only `*`, `~` and a
+    `?` immediately before the separator ever shifted the segment's own element framing. **`^` and
+    `:` moved the dot-path reader instead, and releasing them is a gain there:**
+    `getSegmentValue(ta1, "01")` answered `"0000"` through `0.0.14` for a control number of
+    `"0000^0001"`, silently truncating the reassociation key to the first repetition, and answers
+    `"0000^0001"` now; the composite read `"01-1"` answered `"0000"` for `"0000:0001"` and answers
+    the whole value now. **The measured pure cost is a mid-string `?`, and only on the surfaces
+    documented as raw**: `raw`, `elements` and `parseTA1`'s fields read `"0000??0001"` where they
+    read `"0000?0001"`, while every dot-path read unescapes and answered `"0000?0001"` on both.
+    No total is published: that is what was measured, not a closed account. (`getSegmentValue`
+    takes an `X12Segment` and `Ta1Segment` carries no `id`, so add one to read a TA1 through it.)
+  - **A caller who was hand-rolling the escape** (the remedy this file named while the defect was
+    open) regresses on both kinds of surface: `"00000001??"` in, `TA1*00000001????*…` out, and
+    `getSegmentValue` answering `"00000001??"` where it answered `"00000001?"`. The framing and the
+    disposition stay correct, but **drop the hand-rolled escape.**
+  - **An EMPTY control number is not refused and never was.** `escapeRelease` early-returns on `""`
+    and `buildTA1` carries no required-field guard, so `interchangeControlNumber: ""` emits
+    `TA1**260601*1200*A*000` with `warnings: []`, here and at every earlier release. Only a
+    NON-string refuses. Unchanged and tracked as its own item.
+  - **🩺 The READ half did not move. `parseTA1` still reads elements RAW, pre-`?`-unescape**, exactly
+    as `X12Segment.elements` has always documented, so a control number of `"00000001?"` now reads
+    back as `"00000001??"` rather than as `"00000001?*260601"`. The disposition is correct where it
+    was inverted; apply `unescapeRelease` if you need the value rather than the bytes. Unescaping on
+    the read side would move every TA1 a consumer already reads and is not done here.
+  - **The release is scoped to the delimiter set the CALLER states.** `BuildTA1Options` gained
+    `repetitionSeparator` / `componentSeparator` / `segmentTerminator` beside the existing
+    `elementSeparator`, the same four `build999` already takes, and they exist for escaping and
+    nothing else - `buildTA1` still emits no terminator. Escaping against a guessed set is a value
+    corruption rather than a safe default: `unescapeRelease` preserves `?X` verbatim for any `X`
+    outside the declared set, so a value released against the wrong delimiter comes back carrying a
+    stray `?`. **The defaults are the cosyte archetype and this function cannot verify them** - if
+    you embed a TA1 in an envelope that declares different separators, state them.
+  - **A non-string element now REFUSES** with `AckBuildError` / `X12_ACK_INVALID_SPEC`, and that is a
+    prerequisite rather than a bonus. Releasing a value means routing it through the escape helper,
+    and the bare `escapeRelease` underneath it returns its empty accumulator for a `number`, so
+    escaping without the type check would have replaced a shifted TA1-01 with a vanished one. A
+    numeric control number emitted `TA1*12345*…` at `0.0.14` (the number surviving onto `elements`,
+    inside a value typed `readonly string[]`) and an absent one emitted `TA1**250101*…`; both refuse.
+    **No existing refusal moves code:** `ackCode` `"A"` with a non-`000` note still reports
+    `X12_TA1_ACCEPT_WITH_NOTE` and still runs first.
+  - **What this does NOT close.** `buildTA1` still uses no segment joiner, so its refusal names the
+    builder and never the slot; `buildInterchange` still does not escape GS-04 / GS-05 / GS-07; and
+    an unescaped active delimiter is still not safe anywhere, because that is what a delimiter is.
 
 - **🩺 BREAKING for `build277` callers: a 277 service line now REQUIRES `unitsOfService`, because
   SVC-07 is a required element in `005010X212` and this library was not emitting it at all**
@@ -1028,10 +1099,12 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   than reaching the message.
 
   **Read the "through a builder's segment joiner" qualifier literally.** `buildTA1` does not use one,
-  and is therefore **not covered**: it emits its five caller-supplied elements with a direct join, no
-  escape and no padding, so a numeric or `undefined` `interchangeControlNumber` is emitted silently
-  (`TA1**250101*1200*A*000`). TA1-01 is the reassociation key from the acknowledgment back to the
-  interchange it acknowledges, so that matters. Unchanged from `0.0.9` and tracked as its own item.
+  and is therefore **not covered by the segment guard**. Through `0.0.14` that meant nothing checked
+  its five elements at all, and a numeric or `undefined` `interchangeControlNumber` was emitted
+  silently (`TA1**250101*1200*A*000`); `X12-TA1-EMIT-NOT-RELEASE-AWARE` closed that by routing them
+  through the escape helper, which type-checks first and refuses with `AckBuildError` /
+  `X12_ACK_INVALID_SPEC`. What being outside the segment guard still costs is the **slot** in the
+  refusal message: it names `buildTA1`, never `TA1-01`.
 
   The monetary slots got their own guard on top of it: a slot typed `X12Decimal` refuses anything that
   is not one, rather than rendering `number.toString()` into the document.
@@ -1043,7 +1116,9 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
      `1?*BOGUS`); the fixed-width ISA slots do not go through it at all.
   2. **Whether an `X12Decimal` carries the SCALE you meant.** `fromString("0.3")` and
      `fromString("0.30")` are both accepted and both emit verbatim. That choice is yours.
-  3. **Anything `buildTA1` emits**, per the paragraph above.
+  3. **The delimiter set `buildTA1` releases against**, per the paragraph above. It defaults to the
+     cosyte archetype and the function cannot verify it; state the separators on `BuildTA1Options`
+     if you embed a TA1 in an envelope that declares different ones.
   4. **`build835`'s balance-equation amounts, which refuse UNTYPED.** `build835` runs its balance
      guard before it builds the escape helper, and that guard calls `X12Decimal` methods on your
      value. So a raw `number` there throws a plain `TypeError` with **no `code`** - some saying the

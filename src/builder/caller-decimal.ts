@@ -75,7 +75,10 @@
  * {@link "./caller-segment.js".requireCallerSegment}: no non-string reaches an
  * element of a segment emitted **through a builder's `seg` / `joinSeg`
  * helper**, `escDec` included. `buildTA1` uses neither and is outside it; see
- * that module's own scope note.
+ * that module's own scope note. Its five elements ARE type-checked, through
+ * `esc` rather than through the join (`X12-TA1-EMIT-NOT-RELEASE-AWARE`), so
+ * what being outside this backstop costs it is the SLOT in the refusal
+ * message, not the check.
  *
  * **And one class of `X12Decimal` slot never reaches this guard at all.**
  * `build835` runs `enforceBalance(spec)` before it resolves delimiters, and the

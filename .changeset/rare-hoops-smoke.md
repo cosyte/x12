@@ -36,13 +36,9 @@ the escape-wins way on every released version, so the envelope now obeys the one
 package already obeyed.
 
 **🩺 The exposure is not inbound bytes only.** Envelope slots routed through the builders' release
-escaper are safe; not every emit slot is routed through it, and no total is published. `buildTA1`
-escapes nothing, and TA1-01 echoes the acknowledged interchange's fixed-width ISA-13 where a `?` is
-content, so `TA1*00000001?*260601*1200*A*000` - the same bytes on either release - read `ackCode`
-`"A"` before and reads **`ackCode` `"R"`** now, with the reassociation key corrupted and
-`warnings: []`. An Accept acknowledgment this library emitted reads back as a Reject, and a
-`noteCode` of literally `"A"` inverts it into the less safe direction. `buildInterchange` also does
-not escape GS-04, GS-05 or GS-07. If you emit either, escape or reject a `?` yourself.
+escaper are safe; not every emit slot is routed through it, and no total is published.
+`buildInterchange` does not escape GS-04, GS-05 or GS-07. If you emit one of those, escape or reject
+a `?` yourself.
 
 Values are still RAW, pre-`?`-unescape, so `elements.join(separator)` still reproduces the segment
 byte for byte and `serializeX12`'s count substitution is unaffected. The ISA is deliberately exempt

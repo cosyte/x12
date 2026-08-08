@@ -2094,9 +2094,9 @@ string`), which `esc` cannot, being unary - that limit is gone for the segment
   **▶ THE REFUTER REFUSED PASS 1 ON EXACTLY THIS, AND IT WAS RIGHT.** The first
   draft dropped the `seg`/`joinSeg` qualifier and published "any builder emits"
   in six places. **`buildTA1` uses NEITHER helper** - it joins its five
-  caller-supplied elements directly, no `esc`, no `pad` (it imports none) - so
-  `TA1**250101*1200*A*000` still emits silently for a numeric or `undefined`
-  control number. **TA1-01 is data element I12, the reassociation key back to the
+  caller-supplied elements directly, no `pad` (it imports none) - so
+  `TA1**250101*1200*A*000` emitted silently for a numeric or `undefined` control
+  number until `X12-TA1-EMIT-NOT-RELEASE-AWARE` routed the five through `esc`. **TA1-01 is data element I12, the reassociation key back to the
   acknowledged interchange**, so this is the same class `#60` closed and it is
   filed as its own item rather than widened into here. The gate test's first
   rationale for excluding it ("one fixed-width line with no variable elements")
@@ -2184,9 +2184,9 @@ i += 1)` over a forged `{ length: undefined }` array-like compares `0` against
   AND THE DECISION IS _REFUSE, NEVER COERCE_.** `escapeRelease` read
   `value.length`, `undefined` on a number, so the early return did not fire, the
   loop never ran, and it returned its empty accumulator. **The value vanished
-  with no warning and no error.** All nine builders now take their `esc` from
-  `makeCallerEscaper` (`src/builder/caller-string.ts`), which type-checks first
-  and refuses with the calling module's own typed, code-tagged error.
+  with no warning and no error.** Every builder declaring an `esc` now takes it
+  from `makeCallerEscaper` (`src/builder/caller-string.ts`), which type-checks
+  first and refuses with the calling module's own typed, code-tagged error.
 
   **MEASURED AT BASE `143a6ea` BY DRIVING THE SHIPPED TABLE AGAINST A `143a6ea`
   WORKTREE, NOT ASSUMED.** Eight builders, one element each, string arm vs
@@ -2269,14 +2269,13 @@ positionally recoverable. **The filed 835 case reproduces exactly**:
   the 9-char spec limit" for a one-digit number. Neither is silent, so neither is
   this defect - but that is a property of those two slots and not of the
   envelope, since GS-04 and GS-05 above are envelope elements and ARE silent.
-  `buildTA1` has no `esc` at all (**and no `pad` either - the "every element
-  fixed-width" reason recorded here was false in both halves; all five elements
-  are caller-supplied and the module imports no `pad`**). And
-  the refusal names the **builder, not the element position**: `esc` is unary and
-  **invoked 411 times on 378 lines** (comment-stripped, `ctx.esc(...)` included,
-  and the gate asserts both numbers). **The first draft published "378 call
-  sites", which is the LINE count** - the same class of miscount this repo has
-  now shipped twice. And **"no working caller is broken" was too absolute**: a
+  `buildTA1` had no `esc` at all (**and no `pad` either - the "every element
+  fixed-width" reason recorded here was false in both halves**), and
+  `X12-TA1-EMIT-NOT-RELEASE-AWARE` gave it one. And
+  the refusal names the **builder, not the element position**: `esc` is unary.
+  **Its counts are asserted by the gate and NOT quoted here; a count duplicated
+  in prose drifts, and this one had.** **The first draft published "378 call
+  sites", which is the LINE count** - the same miscount, shipped twice. And **"no working caller is broken" was too absolute**: a
   boxed `new String("PT-ACCT-001")` built at base and is refused at head.
 
   **Public surface change:** exported `escapeRelease` now **throws `TypeError`**

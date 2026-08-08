@@ -42,8 +42,10 @@
  * The interchange is frozen, successful-looking, and missing **CLP-01**, which
  * TR3 005010X221A1 Loop 2100 marks required and which is the reassociation key
  * back to the 837's CLM-01. Losing it silently breaks the claim-to-payment
- * link. The same `esc` helper carries every string element of all nine
- * builders, so the class is not one field.
+ * link. The same `esc` helper carried every string element of every builder
+ * that declared one, so the class was not one field. (No count here: this
+ * module publishes none, on the rule that a count beside the gate that asserts
+ * it drifts. `test/builder-string-type.test.ts` holds them.)
  *
  * **The builder's own required-field guard does not catch it, and that is the
  * sharpest part.** `build-835.ts` refuses `patientControlNumber === ""` by
@@ -159,7 +161,7 @@
  *   type-checks every element at the segment join, on every route **through a
  *   builder's `seg` / `joinSeg` helper**. That is the statement this section
  *   could never make by listing: `esc` is optional on a slot, the join is not.
- *   Keep the qualifier - `buildTA1` uses neither helper, and a draft that
+ *   Keep the qualifier - `buildTA1` uses no joiner, and a draft that
  *   dropped it published a false completeness claim in six places.
  *
  * ### What is still NOT claimed
@@ -176,19 +178,28 @@
  *   is not a function`) and `padControl(1, 9)` throws the module's typed
  *   refusal with the **misleading** text "exceeds the 9-char spec limit". Those
  *   two terminate, which is better than emitting silently, and neither is
- *   improved here. **`buildTA1` has no `esc` at all, and no segment joiner
- *   either** - it emits its five caller-supplied elements with a direct
- *   `.join()`, so nothing checks them. A long-standing draft of this line said
- *   "every TA1 element being fixed-width", which is false in both halves: the
- *   module imports no `pad`, and every element comes from the caller.
+ *   improved here. **`buildTA1` had no `esc` at all and no segment joiner
+ *   either, and `X12-TA1-EMIT-NOT-RELEASE-AWARE` gave it the escaper** - it
+ *   still emits its five caller-supplied elements with a direct `.join()`, so
+ *   the joiner half of that sentence stands and the type check now comes from
+ *   here instead. What made it worth closing was not the type hole: an
+ *   unreleased delimiter in TA1-01 shifted TA1-04, and `parseTA1` narrows an
+ *   out-of-enum TA1-04 to `R`, so an Accept this library emitted read back as
+ *   a Reject. A long-standing draft of this line said "every TA1 element being
+ *   fixed-width", which is false in both halves: the module imports no `pad`,
+ *   and every element comes from the caller.
  *
  * One limit of the guard itself, rather than of its scope:
  *
  * - **The refusal names the BUILDER, not the element position.** `esc` is unary
- *   and invoked **406 times on 377 lines** across the nine modules (counted
- *   comment-stripped on this tree, `ctx.esc(...)` included, and pinned by the
- *   gate so the figure cannot drift); threading a per-slot locator through every
- *   one of them would be 406 opportunities to mislabel a slot, which is a worse
+ *   and invoked several hundred times across the ten modules that declare one.
+ *   **The count is DELETED from this prose rather than corrected, and that is
+ *   the rule** (`documentation/conventions.md`): this line published "406 times
+ *   on 377 lines" while the gate asserted a different pair, so it had already
+ *   drifted, and a count duplicated beside the gate that asserts it drifts
+ *   again. `test/builder-string-type.test.ts` holds both figures. Threading a
+ *   per-slot locator through every invocation would be one opportunity per
+ *   invocation to mislabel a slot, which is a worse
  *   trade than a message that names the builder and the offending TYPE. Stated
  *   as a limit rather than claimed away, and `REFUSAL-MESSAGE-PHI-ECHO` made it
  *   a sharper limit rather than a smaller one: the echoed value used to stand in
@@ -298,10 +309,12 @@ export function requireCallerString(
 /**
  * Build a builder's `esc` helper: check the type, then escape.
  *
- * Every one of the nine builder modules constructs its escaper here rather than
+ * EVERY builder module that declares an `esc` constructs it here rather than
  * writing `(value) => escapeRelease(value, delimiters)` inline, so the decision
  * above is applied at one site and `test/builder-string-type.test.ts` can prove
- * it by scanning for the shape.
+ * it by scanning for the shape. **That gate holds the count; this line does
+ * not, deliberately** - the figure was published here as "nine" and stayed
+ * nine when `X12-TA1-EMIT-NOT-RELEASE-AWARE` made it ten.
  *
  * @param delimiters the resolved delimiter set for this interchange
  * @param at a library-owned locator naming the builder, e.g. `"build835"`

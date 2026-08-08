@@ -72,6 +72,40 @@ copying files.** Source of truth: the meta-repo's `documentation/conventions.md`
 history. Do not act on a line here without reading it. 🩺 = getting it wrong mis-states a clinical
 or financial value on the wire.**
 
+### 🩺 `X12-TA1-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-ta1-emit-escape.md`
+
+- **🩺 `buildTA1` RELEASES ALL FIVE CALLER ELEMENTS NOW, SO AN ACCEPT THIS LIBRARY EMITS NO LONGER
+  READS BACK AS A REJECT.** A bare delimiter took its own slot and shifted TA1-04, which the read
+  narrows out-of-enum to `R`. **`*` AND `~` DID IT ON EVERY RELEASE; ONLY THE `?` SHAPE IS `#96`'s -
+  never restate the class as something that arc introduced. THE INVERSE IS THE LESS SAFE ONE:** a
+  type-forbidden `noteCode` of `"A"` shifted onto TA1-04 made a **REJECT READ ACCEPT**, and nobody
+  resubmits against an Accept.
+- **🛑 IT CHANGES BYTES ALREADY ON THE WIRE. THAT IS `#96`'s STATED COST, WEIGHED AND TAKEN, NOT AN
+  OVERSIGHT CORRECTED.** Bounded: no delimiter and no `?` means byte-identical, which is every
+  conformant TA1. **THE PREDICATE MOVES BOTH WAYS, LIKE `#96`'s - A DRAFT SAYING "ONE WAY, NOTHING
+  STARTS" WAS REFUTED IN ONE PROBE. STATE THE PROPERTY, NEVER THE DIRECTIONS:** head reports the
+  disposition THE CALLER PASSED, base reported whatever the shift left in slot 4, so `ackCode === "R"`
+  both STOPS and STARTS (`interchangeTime: "12*A"` + `ackCode "R"` read `"A"` at base, all fields
+  in-enum). **ONE-WAY IS THE SAFETY, A DIFFERENT SENTENCE.**
+- **🛑 TWO DRAFTS OF THE COST BULLET WERE REFUTED, THE SECOND BY THE CORRECTION TO THE FIRST. NEVER
+  TOTAL IT.** "The one class that gets worse" (pass 1) and "the rest is released for no framing gain"
+  (pass 2, **inverted** by measurement). What holds: only `*`, `~` and a `?` BEFORE the separator
+  ever shifted the SEGMENT's framing; **`^` and `:` moved the DOT-PATH reader and releasing them is a
+  GAIN** (`getSegmentValue(ta1, "01")` answered `"0000"` at base for `"0000^0001"`, the key truncated
+  to repetition 0); **the measured pure cost is a MID-STRING `?` on the RAW surfaces only**, since
+  every dot-path read unescapes. A hand-rolled escape regresses on both. **THE READ HALF DID NOT
+  MOVE:** `parseTA1` is still pre-`?`-unescape.
+- **🛑 RELEASE ONLY AGAINST THE DELIMITER SET THE CALLER STATES** (`BuildTA1Options` took
+  `Build999EnvelopeSpec`'s other three; they exist for ESCAPING and `buildTA1` still emits no
+  terminator). `unescapeRelease` keeps `?X` verbatim, so releasing against a GUESSED delimiter
+  corrupts a reassociation key that was correct. **THE DEFAULTS ARE THE ARCHETYPE AND CANNOT BE
+  VERIFIED.**
+- **THE TYPE CHECK IS A PREREQUISITE, NOT A BONUS:** bare `escapeRelease` returns `""` for a
+  `number`, so escaping without the chokepoint trades a shifted TA1-01 for a VANISHED one.
+  **EXISTING `X12_ACK_INVALID_SPEC`, NO NEW CODE; `enforceAcceptIsClean` STILL RUNS FIRST.**
+  **THE `seg`/`joinSeg` QUALIFIER IS UNCHANGED** - still no joiner, so the refusal names the BUILDER
+  and never `TA1-01`.
+
 ### 🩺 `X12-VARIANT-ICR-UNGROUNDED` + `X12-837-EMIT-IDENTIFIER-FIXED` (2026-08-08) · `agent-notes/x12-{variant-icr-ungrounded,837-emit-identifier-fixed}.md`
 
 - **🩺 `VARIANT_BY_ICR` MISSED EVERY 45 CFR 162.1102 IDENTIFIER AND BOTH COMPANION-GUIDE ONES**, so
@@ -87,8 +121,8 @@ or financial value on the wire.**
   **NO COUNT, NEVER ENUMERATE THE SET IN A MESSAGE** - a tripwire reds on a quoted TR3 id.
 - **🩺 EMIT TAKES `Build837EnvelopeSpec.implementationConventionReference` INTO BOTH ST-03/GS-08;
   THE DEFAULTS DO NOT MOVE** (a PARTNER fact). **REFUSE ON DISAGREEMENT, NOT ON ABSENCE.**
-  **🩺 A `?` BEFORE A GS/ST SEPARATOR IS ONE ELEMENT: A FIX IF ESCAPED, A REGRESSION IF LITERAL AND
-  AN ACCEPT `TA1` CAN READ BACK REJECT. ISA EXEMPT** - `agent-notes/x12-envelope-release-split.md`.
+  **🩺 A `?` BEFORE A GS/ST SEPARATOR IS ONE ELEMENT: A FIX IF ESCAPED, A REGRESSION IF LITERAL.
+  ISA EXEMPT** - `agent-notes/x12-envelope-release-split.md`.
 
 ### 🩺 `X12-837-SV1-OVERWRITE` (2026-08-08) · `documentation/agent-notes/x12-837-sv1-overwrite.md`
 
@@ -317,10 +351,9 @@ or financial value on the wire.**
   a trap below says so. ONLY these were routed** (the enumeration: relocated narrative §7). **The
   residual delimiter injection is NOT stop-the-line** - it fails at the receiver and mints no wrong
   clinical value. Do not escalate it as if it did.
-- **`buildTA1` uses NEITHER `seg` NOR `joinSeg`** - it joins its five caller-supplied elements
-  directly, no `esc`, no `pad`. TA1-01 is data element I12, the reassociation key back to the
-  acknowledged interchange. **This was the FOURTH iteration of the completeness claim; do not write
-  the unqualified form again.**
+- **`buildTA1` uses NEITHER `seg` NOR `joinSeg`; it DOES use `esc` now** (trap above), and no `pad`.
+  TA1-01 is data element I12, the reassociation key. **This was the FOURTH iteration of the
+  completeness claim; do not write the unqualified form again.**
 - **The fixed-width ISA line is joined directly and is outside BOTH guards.** Both throws terminate and
   neither is silent (which throws what: relocated narrative §8).
 - **`build835`'s balance-equation amounts refuse UNTYPED, and every other `X12Decimal` field refuses
@@ -342,8 +375,9 @@ or financial value on the wire.**
 
 ### 🩺 `X12-NUMERIC-VALUE-EMITS-EMPTY` (2026-08-03) · `documentation/agent-notes.md#x12-numeric-value-emits-empty-2026-08-03`
 
-- **🩺 All nine builders take `esc` from `makeCallerEscaper` (`src/builder/caller-string.ts`), which
-  type-checks first and refuses with the calling module's own typed, code-tagged error.**
+- **🩺 EVERY builder that declares an `esc` takes it from `makeCallerEscaper`
+  (`src/builder/caller-string.ts`), which type-checks first and refuses with the calling module's own
+  typed, code-tagged error. NO COUNT HERE - the gate holds it, and "nine" outlived the ninth.**
   What `escapeRelease` read, and the `CLP-01` reassociation key it vanished: relocated narrative §8.
 - **🩺 Refuse, never coerce, and that is the whole item.** Coercion mints a _different_ identifier: a
   payload carrying `"0012345"` as a number already lost its leading zeros, and reassociating to the
@@ -537,76 +571,24 @@ or financial value on the wire.**
 - **The shipped disclosure was wrong in several places at once** (relocated narrative §7).
   **Correct the disclosure in the same commit as the fix that makes the new wording true.**
 
-### 🩺 Per-transaction invariants that shipped with the phases
+### 🩺 Per-transaction invariants that shipped with the phases · `agent-notes/per-transaction-invariants.md`
 
-Full detail for EVERY bullet below is in the phase sections of `documentation/agent-notes.md`, `#phase-9-profiles-and-quirk-attribution` through `#phase-1-envelope-decoder`. Open the phase that shipped the surface before you change it.
-
-- **🩺 v1 profiles are DESCRIPTIVE: a profile NEVER alters the parse.** `groups` / `warnings` / `isa`
-  are byte-identical with and without one (divergence test); `partitionWarnings` is the one hook.
-- **🩺 HARD RULE, LOCKED: a profile quirk with no Tier-2 fixture demonstrating the deviation is
-  FORBIDDEN. No invented quirks.** Enforced three ways; built-ins reach consumers ONLY via
-  `profiles` - relocated narrative §10.5.
-- **The profile API DIVERGES from `hl7` DELIBERATELY** (`describe()` returns DATA, `X12ProfileSpec`,
-  the x12-only `partitionWarnings`). **"Symmetry is a feature" does NOT license collapsing them
-  back.** Long form for all three: `claude-md-relocated-narrative.md`.
-- **🩺 The 820 carries no TR3 balance equation:** `build820` emits every amount VERBATIM and NEVER
-  raises a balance-mismatch refusal, a deliberate contrast with `build835`.
-- **🩺 Maintenance type is the 834's safety primitive: emit VERBATIM, refuse the unknown** (the read
-  side only WARNS, scoped to the affected member; the builder REFUSES). **🩺 The 278 certification
-  decision is response-only and never inferred** - relocated narrative §10.7.
-- **🩺 TRN echo is the safety-critical reassociation invariant: the builders place the caller's trace
-  into TRN-02 VERBATIM and NEVER fabricate, normalize or mutate it.** Which echoes which: the phase
-  sections.
-- **🩺 The HL spine is COMPUTED, never caller-supplied. State it PER BUILDER, never as a blanket.**
-  All four compute HL-01/02/04 from the nested tree and take HL-03 from a module-level `HL_LEVEL`
-  constant, at every level EXCEPT the 278's EV/SS review level, so an inconsistent hierarchy is
-  _unrepresentable_. **There is no level field on `Build271Spec` or `Build277Spec` and none should be
-  added** - that destroys the guarantee rather than closing a gap. The four level chains: relocated
-  narrative.
-- **🩺 The one caller-supplied HL-03 is the 278's EV/SS REVIEW level** (`review.levelCode`, default
-  `EV`). **Both entry points REFUSE anything else** (`X12_278_BUILD_INVALID_SPEC`, no new code): the
-  review **and its HCR-01 decision FAIL TO DECODE - they are NOT decoded WRONGLY**. **Resolve via the
-  emitter's own `?? "EV"`, NEVER `!== undefined`.** Reaches nested and dependent reviews. **Do not
-  restate it as a property of `build278`'s HL-03 generally, nor write "every builder that has one"
-  over it** - long form: relocated narrative §10.1.
-- **🩺 On the READ side the walker NEVER silently re-numbers a broken HL pointer** - it emits
-  `X12_HL_PARENT_MISMATCH` / `X12_HL_PARENT_LEVEL_INVALID`. The 278 `EV` / `SS` levels are
-  deliberately tolerant, so nothing on the read side catches an out-of-enum HL-03 on a document this
-  library did not emit. Untouched; a warning needs a new code - relocated narrative §10.2.
-- **Emit the envelope INLINE, not via `buildInterchange`, in any domain builder that composes a
-  composite element** (835, 837), so a pre-composed composite is never double-escaped - relocated
-  narrative §10.6.
-- **`splitSegments` is release-aware via `findUnescapedTerminator`** (what a naive `indexOf` split
-  did: relocated narrative §8). A degenerate terminator-is-release delimiter set falls back to the
-  literal scan.
-- **Control NUMBERS are identity and are NEVER rewritten** even under `{ specClean: true }`;
-  corrected COUNTS emit only with `{ recomputeCounts: true }`, inert without `specClean`. Every
-  mismatch surfaces via `onWarning`, never silently corrected.
-- **🩺 All monetary / percent / quantity fields decode as `X12Decimal`: string-backed, `BigInt`-exact,
-  never `parseFloat`.**
-- **🩺 The 835 model is NEVER silently rebalanced.** Three TR3 X221A1 §1.10.2 invariants (line, claim,
-  top-of-remit) run after the walk and emit `X12_835_REMIT_BALANCE_MISMATCH`. **PLB amounts carry the
-  RAW EDI sign (positive = take-back), so the top equation is `BPR-02 == Σ(CLP-04) - Σ(PLB)`.**
-- **🩺 An unknown code preserves its verbatim value and warns; it is never dropped or normalized.**
-  **NAME THE RULE, NEVER THE MEMBERS** - derive the codes from `WARNING_CODES`. The HI one keeps the
-  verbatim qualifier AND code with `codeSystem: "unknown"`.
-- **🩺 Acks are structurally PHI-free by design; `IK4-04` is a caller surface callers SHOULD omit
-  when the bytes are PHI, and the library NEVER auto-populates it.**
-- **`build999` REFUSES `Accept` with a non-empty error list (`X12_ACK_ACCEPT_WITH_ERRORS`) and bad
-  AK9 counts (`X12_ACK_COUNT_MISMATCH`); `buildTA1` REFUSES `A` with a non-`000` note.**
-- **🩺 Every DOMAIN builder's own refusal message carries structural locators, counts and numeric
-  totals only** - never an identifier, name, trace or clinical code. **State this PER BUILDER, never
-  as a property of every builder.** Standing exception, the **ack path** (`build999`, `buildTA1`).
-  **It is NOT an absolute PHI guarantee, only one about TEMPLATES** - relocated narrative §10.3.
-- **🩺 NO CALLER GUARD ECHOES WHAT A CALLER PUT IN AN ELEMENT** - they report the TYPE only.
-  **Never re-add a value, never fold the decimal one back out. Two things this does NOT say, both
-  drafted false once:** the array guard STILL renders a forged array-like's `length` and class tag,
-  and **only the SEGMENT guard names the slot** - relocated narrative §10.4.
-- **The `?`-release escape is honored losslessly**; dot-path traversal walks elements, composites
-  (`-N`, 1-indexed) and repetitions (`[N]`, 0-indexed).
-- **Known read-side limitations are documented, not accidental, and `KNOWN-LIMITATIONS.md`
-  enumerates them.** One worth knowing here: `get834Enrollments` streams per `INS` loop over a file
-  **still parsed into `tx.segments` up front** - an honest v1 limitation, not a streaming parser.
+**RELOCATED IN FULL 2026-08-08, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-TA1-EMIT-NOT-RELEASE-AWARE` trap above, under this file's own ratchet (relocate first, lower the
+entry as it lands, never raise). **Open that file before you change any surface a phase built; the
+imperatives are live and they are THERE, not here.** What is in it, so you know when you need it:
+v1 profiles are DESCRIPTIVE and a quirk with no Tier-2 fixture is FORBIDDEN; the profile API diverges
+from `hl7` deliberately; the 820 carries no balance equation and `build820` never refuses one;
+maintenance type is the 834's safety primitive and the 278 certification decision is response-only;
+TRN echo is VERBATIM and never fabricated; the HL spine is COMPUTED per builder, with the 278's EV/SS
+review level the ONE caller-supplied HL-03; the read side never silently re-numbers a broken HL
+pointer; composite-emitting builders emit the envelope INLINE; `splitSegments` is release-aware;
+control NUMBERS are identity and are never rewritten; every money / percent / quantity field is
+`X12Decimal`; the 835 is NEVER silently rebalanced and PLB carries the RAW EDI sign; an unknown code
+is preserved and warned, never normalized (NAME THE RULE, NEVER THE MEMBERS); acks are structurally
+PHI-free and never auto-send; `build999` / `buildTA1` refusals; per-builder refusal messages carry
+structural locators ONLY, stated PER BUILDER; NO caller guard echoes a caller's element value; the
+`?`-release escape is honored losslessly; and `KNOWN-LIMITATIONS.md` is the canonical read-side list.
 
 ### `ASSETS-P8`: the `attw` gate lies · `documentation/agent-notes.md#assets-p8-the-attw-wrapper`
 

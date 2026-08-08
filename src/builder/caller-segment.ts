@@ -32,11 +32,14 @@
  * **Read the `seg` / `joinSeg` qualifier literally, because a refuter measured a
  * draft of this file that dropped it.** That draft said "any builder emits", and
  * `buildTA1` does not use either helper: it emits `["TA1", ...five caller
- * values].join(sep)` directly, with no `esc` and no `pad`, so nothing checks it
- * and a numeric or `undefined` TA1-01 is emitted silently. That is
- * `PRE-EXISTING` and unchanged here; it is named below and pinned in
- * `test/builder-segment-type.test.ts` rather than papered over. The lesson is
- * the same one the census drafts taught: the qualifier is the claim.
+ * values].join(sep)` directly, with no `pad`. At the time that meant nothing
+ * checked it and a numeric or `undefined` TA1-01 was emitted silently;
+ * `X12-TA1-EMIT-NOT-RELEASE-AWARE` closed that by routing the five elements
+ * through `esc`, which type-checks. **The qualifier stays exactly as written**
+ * - `buildTA1` is still outside THIS module, and a guard reached from where a
+ * function is CALLED is not the structural one. It is named below and pinned
+ * in `test/builder-segment-type.test.ts` rather than papered over. The lesson
+ * is the same one the census drafts taught: the qualifier is the claim.
  *
  * Deliberately **not** claimed:
  *
@@ -50,8 +53,18 @@
  * - **`buildTA1` is outside it**, per the paragraph above. TA1-01 is data
  *   element I12, the interchange control number echoed from ISA-13 and the
  *   reassociation key back to the acknowledged interchange, so a silently empty
- *   one is not a small thing. Filed as its own item; widening this guard into a
- *   public builder is a behaviour change that deserves its own graded slice.
+ *   one is not a small thing. **A NON-STRING one refuses now**, because that
+ *   builder's `esc` type-checks first - **but an EMPTY STRING still builds
+ *   silently**: `escapeRelease` early-returns on `""` and `buildTA1` carries no
+ *   required-field guard, unlike `build835`, which refuses
+ *   `patientControlNumber === ""` by name. `buildTA1({
+ *   interchangeControlNumber: "", … })` emits `TA1**260601*1200*A*000` with
+ *   `warnings: []`, here and at every earlier release. **Do not write the
+ *   unqualified "a silently empty TA1-01 is no longer possible" form** - a
+ *   draft of this bullet did and was refuted. The other thing still missing is
+ *   this module's slot naming: the refusal says `buildTA1`, never `TA1-01`.
+ *   Widening this guard into a public builder remains its own graded slice, and
+ *   so does giving that builder a required-field guard.
  * - **The fixed-width ISA line is outside it.** Every builder assembles ISA by
  *   `[...].join(elementSeparator)` directly, not through `seg`, because its
  *   elements are `pad`ed to width rather than escaped. Those slots remain as

@@ -950,6 +950,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **🩺 `buildTA1` now release-escapes its five caller-supplied elements, so an Accept acknowledgment
+  this library emits no longer reads back as a Reject** (`X12-TA1-EMIT-NOT-RELEASE-AWARE`).
+  Reproduced on the base tree at `e8f34b9`. `buildTA1` joined the five values with the element
+  separator and escaped none of them, so a value carrying an active delimiter took a slot of its own
+  and shifted every element after it down one. TA1-04 is the disposition, TA1-05 the note, and
+  `parseTA1` narrows an out-of-enum TA1-04 to `R`. Measured with `parseX12` + `parseTA1` over
+  `ISA … <what buildTA1 returned> … IEA`, `ackCode` `"A"` and `noteCode` `"000"` throughout:
+
+  | `interchangeControlNumber` | emitted at `0.0.14`               | read `ackCode` | read TA1-01          | warnings                 |
+  | -------------------------- | --------------------------------- | -------------- | -------------------- | ------------------------ |
+  | `"000000001"`              | `TA1*000000001*260601*1200*A*000` | `"A"`          | `"000000001"`        | none                     |
+  | `"00000001?"`              | `TA1*00000001?*260601*1200*A*000` | `"R"`          | `"00000001?*260601"` | none                     |
+  | `"0000*0001"`              | `TA1*0000*0001*260601*1200*A*000` | `"R"`          | `"0000"`             | none                     |
+  | `"0000~0001"`              | `TA1*0000~0001*260601*1200*A*000` | `"R"`          | `"0000"`             | `X12_UNEXPECTED_SEGMENT` |
+
+  **An Accept acknowledgment this library emitted read back as a Reject**, on the element that
+  reassociates it, with nothing raised on any channel. The `*` and `~` rows did that on every
+  released version; the `?` row is the one the entry below opened. **🩺 The inverse exists and is the
+  less safe direction:** the read narrows an out-of-enum TA1-04 to `R`, so a well-typed shift always
+  lands on Reject, but `noteCode` is checked by the type system and by nothing at run time, so a
+  `noteCode` of literally `"A"` shifted onto TA1-04 and made a **Reject read back as an Accept**, and
+  a sender who reads an Accept does not resubmit. All four now read back the disposition emitted.
+
+  **The grounding is inside this package rather than in a spec clause**, the same tiebreak the entry
+  below records: `buildTA1` emitted bytes that this package's own reader decoded into a different
+  disposition than the caller asked for, while every other builder already released the same class of
+  element through the same helper.
+
+  **🛑 It changes bytes this library already put on the wire, and that is the cost.** A value
+  containing none of the four delimiters and no `?` is emitted byte-for-byte as before, which is
+  every conformant TA1: TA1-01 echoes ISA-13, TA1-02 / TA1-03 echo ISA-09 / ISA-10, and TA1-04 /
+  TA1-05 are code list values.
+
+  **🛑 No warning code is added and no case moves onto a new code, but the consumer predicate MOVES
+  IN BOTH DIRECTIONS.** `parseTA1` of a `buildTA1` output now reports the disposition and note the
+  caller passed; before, it reported whatever element the shift left in TA1-04, which could be the
+  caller's, a coincidental in-enum value, or an out-of-enum one narrowed to `"R"`. So
+  `ackCode === "R"` **stops** firing where an Accept had been shifted onto it, and **starts** firing
+  where a Reject had been shifted off it: `interchangeTime: "12*A"` with `ackCode: "R"` read `"A"`
+  before and reads `"R"` now, with every field a valid member of its union. `ackCode === "A"` moves
+  the same two ways. What is one-directional is the safety, which is a different statement: nothing
+  now reports a disposition the caller did not ask for.
+
+  **What releasing the rest of the set costs, and where it does not cost.** Only `*`, `~` and a `?`
+  immediately before the separator ever shifted the segment's own element framing. **`^` and `:`
+  moved the dot-path reader instead, and releasing them is a gain there:**
+  `getSegmentValue(ta1, "01")` answered `"0000"` at `0.0.14` for a control number of `"0000^0001"`,
+  silently truncating the reassociation key to the first repetition, and answers `"0000^0001"` now;
+  the composite read `"01-1"` answered `"0000"` for `"0000:0001"` and answers the whole value now.
+  **The measured pure cost is a mid-string `?`, and only on the surfaces documented as raw**: `raw`,
+  `elements` and `parseTA1`'s fields read `"0000??0001"` where they read `"0000?0001"`, while every
+  dot-path read unescapes and answered `"0000?0001"` on both. No total is published: that is what was
+  measured, not a closed account. `getSegmentValue` takes an `X12Segment` and `Ta1Segment` carries no
+  `id`, so add one to read a TA1 through it. If you were escaping the value yourself, as `KNOWN-LIMITATIONS.md`
+  advised while this was open, drop that - you are now escaping twice on both kinds of surface
+  (`"00000001??"` in, `TA1*00000001????*…` out, `getSegmentValue` answering `"00000001??"`).
+
+  **The read half did not move.** `parseTA1` still reads elements RAW, pre-`?`-unescape, exactly as
+  `X12Segment.elements` has always documented, so a control number of `"00000001?"` now reads back as
+  `"00000001??"` rather than as `"00000001?*260601"`. Apply `unescapeRelease` if you need the value
+  rather than the bytes; unescaping on the read side would move every TA1 a consumer already reads
+  and is not done here.
+
+  **`BuildTA1Options` gained `repetitionSeparator`, `componentSeparator` and `segmentTerminator`**
+  beside the existing `elementSeparator`, the same four `build999` already takes. They exist for
+  escaping and nothing else - `buildTA1` still emits no segment terminator, no repetition and no
+  composite. Escaping against a guessed delimiter set is a value corruption rather than a safe
+  default: `unescapeRelease` preserves `?X` verbatim for any `X` outside the reader's declared set,
+  so a value released against the wrong delimiter comes back carrying a stray `?`. The defaults are
+  unchanged and are the cosyte archetype, which this function cannot verify, so state the separators
+  if you embed a TA1 in an envelope that declares different ones.
+
+  **A non-string element now refuses** with `AckBuildError` and the existing `X12_ACK_INVALID_SPEC`
+  code, and that is a prerequisite of the escape rather than a separate guard: releasing a value
+  routes it through the escape helper, and the bare `escapeRelease` underneath it returns its empty
+  accumulator for a `number`, so escaping without the type check would have replaced a shifted TA1-01
+  with a vanished one. A numeric `interchangeControlNumber` emitted `TA1*12345*260601*1200*A*000`
+  before, with the number surviving onto `elements` inside a value typed `readonly string[]`, and an
+  absent one emitted `TA1**250101*1200*A*000`. The accept-with-note refusal still runs first and
+  still reports `X12_TA1_ACCEPT_WITH_NOTE`, so no existing refusal moves code.
+
+  **What this does not close:** `buildTA1` still uses no segment joiner, so its refusal names the
+  builder and never `TA1-01`; `buildInterchange` still does not escape GS-04, GS-05 or GS-07; and an
+  unescaped active delimiter is still not safe anywhere. Measured in `KNOWN-LIMITATIONS.md`.
+
 - **🩺 A `?` immediately before the element separator inside an envelope segment now frames as ONE
   element, which fixes a released delimiter and is a SYMMETRIC change**
   (`X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE`). Reproduced on the base
@@ -1003,18 +1088,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **🩺 The exposure is NOT inbound bytes only.** Envelope slots routed through the builders' release
   escaper are safe. Not every emit slot is routed through it, and no total is published: what follows
   is the routes measured to reach the regression direction, not a closed account of what bypasses the
-  escaper. **`buildTA1` escapes nothing** - it joins its five caller-supplied elements
-  directly, and TA1-01 echoes the acknowledged interchange's fixed-width ISA-13, where a `?` is
-  content. `buildTA1({ interchangeControlNumber: "00000001?", ackCode: "A", noteCode: "000", … })`
-  emits the same `TA1*00000001?*260601*1200*A*000` on either release, and `parseTA1` read `ackCode`
-  `"A"` at `0.0.14` and reads **`ackCode` `"R"`** here, control number `"00000001?*260601"`,
-  `noteCode` `undefined`, `warnings: []` - **an Accept acknowledgment this library emitted now reads
-  back as a Reject**, on the element that reassociates it. The inverse exists and is the less safe
-  one: the read narrows an out-of-enum TA1-04 to `R`, so a well-typed shift always lands on Reject,
-  but a `noteCode` of literally `"A"` (type-only, never checked at run time) makes a **Reject read
-  back as an Accept**. And **`buildInterchange` does not escape
-  GS-04, GS-05 or GS-07**: a `groupDate` of `"2026060?"` read nine GS elements at `0.0.14` and reads
-  eight here, GS-08 gone. If you emit either, escape or reject a `?` yourself.
+  escaper. **`buildInterchange` does not escape GS-04, GS-05 or GS-07**: a `groupDate` of
+  `"2026060?"` read nine GS elements at `0.0.14` and reads eight here, GS-08 gone. If you emit one
+  of those, escape or reject a `?` yourself.
 
   **Values are still RAW, pre-`?`-unescape**, exactly as `X12Segment.elements` has always documented:
   `gs.elements[2]` reads `"SEND?*ER"`, not `"SEND*ER"`. `elements.join(separator)` therefore still

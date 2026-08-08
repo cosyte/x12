@@ -36,11 +36,13 @@
  * is pinned below and is what makes that a fact.
  *
  * 🛑 AND THE EXPOSURE IS NOT INBOUND BYTES ONLY - a second draft of this file
- * said it was, and pass two measured that false too. `buildTA1` escapes nothing
- * and `buildInterchange` does not escape GS-04 / GS-05 / GS-07, so this
- * library's own emit reaches the regression direction. Pinned below, including
- * the sharpest instance found in three passes: an Accept acknowledgment this
- * library emitted reads back as a Reject.
+ * said it was, and pass two measured that false too. At this slice `buildTA1`
+ * escaped nothing and `buildInterchange` did not escape GS-04 / GS-05 / GS-07,
+ * so this library's own emit reached the regression direction, including the
+ * sharpest instance found in three passes: an Accept acknowledgment this
+ * library emitted read back as a Reject. **`X12-TA1-EMIT-NOT-RELEASE-AWARE`
+ * closed the `buildTA1` half** and `test/transactions-ack-ta1-escape.test.ts`
+ * owns it; the `buildInterchange` half is still open and still pinned below.
  *
  * ## Why it is a defect and not a tolerance
  *
@@ -337,16 +339,22 @@ describe("X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE: what reads DIFFERENTLY, both 
 describe("X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE: 🛑 the exposure is NOT inbound bytes only", () => {
   // A second draft of this file claimed it was, and pass two measured it false.
   // Every envelope slot routed through the builders' release escaper is safe;
-  // these two emit routes are NOT routed through it and both reach the
-  // regression direction. DISCLOSED, deliberately NOT guarded: escaping in
-  // `buildTA1` would change bytes this library already puts on the wire, which
-  // is an emit-side decision with its own blast radius and its own slice.
+  // these two emit routes were NOT routed through it and both reached the
+  // regression direction.
+  //
+  // **The `buildTA1` half was DISCLOSED here and is now CLOSED** by
+  // `X12-TA1-EMIT-NOT-RELEASE-AWARE`, which took the byte change this slice
+  // would not: `test/transactions-ack-ta1-escape.test.ts` owns the case and
+  // pins what it cost. What remains open here is the `buildInterchange` half
+  // below, which this file keeps disclosing.
 
-  it("🩺 THE SHARPEST INSTANCE: an Accept acknowledgment this library emitted reads back as a REJECT", () => {
-    // `buildTA1` joins its five caller-supplied elements directly - no `seg`, no
-    // `joinSeg`, no `esc`. TA1-01 echoes the acknowledged interchange's ISA-13,
-    // and ISA-13 is fixed-width, so a `?` there is CONTENT by this slice's own
-    // ISA exemption and this library copies it faithfully.
+  it("🩺 the emit route this slice disclosed: an Accept acknowledgment now survives its own read", () => {
+    // At base `e8f34b9` `buildTA1` joined its five caller-supplied elements
+    // directly - no `seg`, no `joinSeg`, no `esc` - so these SAME bytes came
+    // out on either release and the read answered `R` for an Accept, with
+    // TA1-01 merged into TA1-02 and nothing raised on any channel. TA1-01
+    // echoes the acknowledged interchange's ISA-13, and ISA-13 is fixed-width,
+    // so a `?` there is CONTENT by this slice's own ISA exemption.
     const ta1 = buildTA1({
       interchangeControlNumber: "00000001?",
       interchangeDate: "260601",
@@ -354,16 +362,16 @@ describe("X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE: 🛑 the exposure is NOT inbo
       ackCode: "A",
       noteCode: "000",
     });
-    // Identical bytes on both trees - the emit is not what changed.
-    expect(ta1.raw).toBe("TA1*00000001?*260601*1200*A*000");
+    // The bytes ARE what changed, and only for a value carrying a delimiter or
+    // the release character.
+    expect(ta1.raw).toBe("TA1*00000001??*260601*1200*A*000");
 
     const parsed = parseX12(`${ISA}${ta1.raw}~IEA*0*000000001~`);
     const read = parseTA1(parsed);
-    // Base read ackCode "A", icn "00000001?", noteCode "000".
-    expect(read?.ackCode).toBe("R");
-    expect(read?.interchangeControlNumber).toBe("00000001?*260601");
-    expect(read?.noteCode).toBeUndefined();
-    // And nothing is raised on any channel, either way.
+    expect(read?.ackCode).toBe("A"); // "R" at base
+    expect(read?.interchangeControlNumber).toBe("00000001??"); // "00000001?*260601" at base
+    expect(read?.noteCode).toBe("000"); // undefined at base
+    // Still nothing raised on any channel - the read half did not move.
     expect(parsed.warnings).toEqual([]);
   });
 

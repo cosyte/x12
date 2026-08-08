@@ -253,15 +253,18 @@ describe("refusal messages: the source gate", () => {
     // added by `X12-837-EMIT-IDENTIFIER-FIXED` in `build-837.ts`, where the new
     // `envelope.implementationConventionReference` override refuses an empty
     // reference, one carrying an active delimiter or the release character, and
-    // one this library's own reader resolves to a different 837 variant), and
+    // one this library's own reader resolves to a different 837 variant), plus
+    // the ONE added by `X12-TA1-EMIT-NOT-RELEASE-AWARE` in `build-ta1.ts`,
+    // where routing the five caller elements through `makeCallerEscaper` needs
+    // a `refuse` callback of this module's own, and
     // `src/profiles/validate.ts` with 12. The
-    // module count is unchanged at 11 because `build-277.ts` and `build-278.ts`
-    // already raised elsewhere. Pinned so a module that stops being scanned
-    // (a rename, a moved directory) is a failure rather than a silently
-    // smaller sweep.
+    // module count is unchanged at 11 because `build-277.ts`, `build-278.ts`
+    // and `build-ta1.ts` already raised elsewhere. Pinned so a module that
+    // stops being scanned (a rename, a moved directory) is a failure rather
+    // than a silently smaller sweep.
     const raising = new Set(sites.map((s) => s.file));
     expect(raising.size).toBe(11);
-    expect(sites.length).toBe(93);
+    expect(sites.length).toBe(94);
     expect(modules.some((m) => m.endsWith(join("profiles", "validate.ts")))).toBe(true);
   });
 

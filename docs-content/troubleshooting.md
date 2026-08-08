@@ -206,10 +206,13 @@ and not through the segment joiner at all. A number there throws an untyped `Typ
 `interchangeControlNumber` a typed refusal whose text misleadingly says "exceeds the 9-char spec
 limit". Both terminate, which is why they are the smaller hazard.
 
-Third, **`buildTA1`**, which uses no segment joiner and no escape helper: it joins its five
-caller-supplied elements directly, so a numeric or `undefined` `interchangeControlNumber` is emitted
-silently as `TA1**250101*1200*A*000`. TA1-01 reassociates the acknowledgment to the interchange it
-acknowledges, so build it as a string.
+Third, **the delimiter set `buildTA1` releases against.** It uses no segment joiner, so its refusal
+names the builder rather than `TA1-01`, but its five elements do go through the escape helper: a
+numeric or `undefined` `interchangeControlNumber` now refuses instead of emitting
+`TA1**250101*1200*A*000`, and an active delimiter is released instead of shifting the disposition
+element. What it cannot verify is the envelope you will embed the segment in. The separators default
+to the cosyte archetype, so state them on `BuildTA1Options` if yours differ, or a value carrying a
+byte that is a delimiter here and not there comes back with a stray `?`.
 
 Fourth, **`build835`'s balance-equation amounts refuse UNTYPED.** The balance guard runs before the
 escape helper is built and calls `X12Decimal` methods on your value, so a raw `number` there throws a

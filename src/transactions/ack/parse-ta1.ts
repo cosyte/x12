@@ -45,12 +45,18 @@ export function parseTA1(interchange: X12Interchange): X12AckTA1 | undefined {
   // `X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE`. TA1 is an ordinary delimited
   // segment, so its FRAMING is now release-aware like every other envelope
   // segment's; only the ISA, which is fixed-width, is split positionally. The
-  // consequence is measured and disclosed rather than guarded, because it is
-  // sharp: `buildTA1` escapes nothing, TA1-01 echoes the acknowledged
+  // consequence was measured and disclosed rather than guarded, because it was
+  // sharp: `buildTA1` escaped nothing, TA1-01 echoes the acknowledged
   // interchange's ISA-13, and a `?` is content in a fixed-width ISA element, so
-  // an ISA-13 ending in `?` makes an Accept this library emitted read back as a
-  // Reject with the reassociation key merged into TA1-02. See
-  // `KNOWN-LIMITATIONS.md` and `test/parser-envelope-release-split.test.ts`.
+  // an ISA-13 ending in `?` made an Accept this library emitted read back as a
+  // Reject with the reassociation key merged into TA1-02.
+  // `X12-TA1-EMIT-NOT-RELEASE-AWARE` closed that on the EMIT side, and nothing
+  // here changed: an inbound TA1 from anyone else is still framed release-aware
+  // and still read verbatim, so a released element still reads back carrying
+  // its `?`. Apply `unescapeRelease` if you need the value rather than the
+  // bytes. See `KNOWN-LIMITATIONS.md`,
+  // `test/parser-envelope-release-split.test.ts` and
+  // `test/transactions-ack-ta1-escape.test.ts`.
   const elements = ta1.elements;
   const interchangeControlNumber = elements[1] ?? "";
   const interchangeDate = elements[2] ?? "";
