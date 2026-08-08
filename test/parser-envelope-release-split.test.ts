@@ -31,9 +31,16 @@
  * turn a warned non-decode into a decoded charge. All of it is pinned below.
  *
  * The tie is broken by CONSISTENCY, not by the spec: `decodeSegment` has always
- * read BODY elements the second way on every released version, and the emit half
- * escapes. This makes the envelope obey the package's one rule instead of a
- * second one. The body control is pinned below and is what makes that a fact.
+ * read BODY elements the second way on every released version. This makes the
+ * envelope obey the package's one rule instead of a second one. The body control
+ * is pinned below and is what makes that a fact.
+ *
+ * 🛑 AND THE EXPOSURE IS NOT INBOUND BYTES ONLY - a second draft of this file
+ * said it was, and pass two measured that false too. `buildTA1` escapes nothing
+ * and `buildInterchange` does not escape GS-04 / GS-05 / GS-07, so this
+ * library's own emit reaches the regression direction. Pinned below, including
+ * the sharpest instance found in three passes: an Accept acknowledgment this
+ * library emitted reads back as a Reject.
  *
  * ## Why it is a defect and not a tolerance
  *
@@ -61,7 +68,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildInterchange as buildInterchangeApi,
+  buildTA1,
   get837Claims,
+  parseTA1,
   parseX12,
   serializeX12,
 } from "../src/index.js";
@@ -298,9 +307,11 @@ describe("X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE: what reads DIFFERENTLY, both 
     const submission = tx === undefined ? undefined : get837Claims(parsed.delimiters, tx);
     expect(submission?.variant).toBe("I"); // "P" at base, from the declaration
     expect(submission?.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("150.00"); // undefined at base
-    expect(submission?.warnings.map((w) => w.code)).not.toContain(
-      "X12_837_SERVICE_LINE_NOT_DECODED",
-    );
+    // 🩺 WHOLE ARRAY, never a `.not.toContain`. This repo's own
+    // `X12-VARIANT-LOOKUP-PROTOTYPE` trap: `#67`'s residual pinned a value plus
+    // the absence of a DIFFERENT code and stayed green. Base is
+    // ["X12_MISSING_REQUIRED_LOOP", "X12_837_SERVICE_LINE_NOT_DECODED"].
+    expect(submission?.warnings.map((w) => w.code)).toEqual(["X12_MISSING_REQUIRED_LOOP"]);
   });
 
   it("a literal trailing `?` is a DANGLING release character and is NOT warned mid-segment, on either tree", () => {
@@ -318,7 +329,68 @@ describe("X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE: what reads DIFFERENTLY, both 
         "GE*1*000000123",
       ),
     );
-    expect(parsed.warnings.map((w) => w.code)).not.toContain("X12_DANGLING_RELEASE_CHAR");
+    // Whole array, so this cannot pass vacuously.
+    expect(parsed.warnings.map((w) => w.code)).toEqual(["X12_CONTROL_NUMBER_MISMATCH"]);
+  });
+});
+
+describe("X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE: 🛑 the exposure is NOT inbound bytes only", () => {
+  // A second draft of this file claimed it was, and pass two measured it false.
+  // Every envelope slot routed through the builders' release escaper is safe;
+  // these two emit routes are NOT routed through it and both reach the
+  // regression direction. DISCLOSED, deliberately NOT guarded: escaping in
+  // `buildTA1` would change bytes this library already puts on the wire, which
+  // is an emit-side decision with its own blast radius and its own slice.
+
+  it("🩺 THE SHARPEST INSTANCE: an Accept acknowledgment this library emitted reads back as a REJECT", () => {
+    // `buildTA1` joins its five caller-supplied elements directly - no `seg`, no
+    // `joinSeg`, no `esc`. TA1-01 echoes the acknowledged interchange's ISA-13,
+    // and ISA-13 is fixed-width, so a `?` there is CONTENT by this slice's own
+    // ISA exemption and this library copies it faithfully.
+    const ta1 = buildTA1({
+      interchangeControlNumber: "00000001?",
+      interchangeDate: "260601",
+      interchangeTime: "1200",
+      ackCode: "A",
+      noteCode: "000",
+    });
+    // Identical bytes on both trees - the emit is not what changed.
+    expect(ta1.raw).toBe("TA1*00000001?*260601*1200*A*000");
+
+    const parsed = parseX12(`${ISA}${ta1.raw}~IEA*0*000000001~`);
+    const read = parseTA1(parsed);
+    // Base read ackCode "A", icn "00000001?", noteCode "000".
+    expect(read?.ackCode).toBe("R");
+    expect(read?.interchangeControlNumber).toBe("00000001?*260601");
+    expect(read?.noteCode).toBeUndefined();
+    // And nothing is raised on any channel, either way.
+    expect(parsed.warnings).toEqual([]);
+  });
+
+  it("🩺 `buildInterchange` does not escape GS-04 / GS-05 / GS-07, so its own return value loses GS-08", () => {
+    const built = buildInterchangeApi({
+      senderId: "SENDER",
+      receiverId: "RECEIVER",
+      interchangeDate: "260601",
+      interchangeTime: "1200",
+      interchangeControlNumber: "000000001",
+      groups: [
+        {
+          functionalIdCode: "HC",
+          groupControlNumber: "1",
+          groupDate: "2026060?",
+          versionRelease: "005010X222A1",
+          transactions: [
+            { transactionSetIdCode: "837", transactionSetControlNumber: "0001", segments: [] },
+          ],
+        },
+      ],
+    });
+    const gs = built.groups[0]?.gs;
+    expect(gs?.raw).toBe("GS*HC*SENDER*RECEIVER*2026060?*1200*1*X*005010X222A1");
+    expect(gs?.elements).toHaveLength(8); // nine at base
+    expect(gs?.elements[8]).toBeUndefined(); // "005010X222A1" at base
+    expect(built.warnings.map((w) => w.code)).toEqual(["X12_CONTROL_NUMBER_MISMATCH"]); // [] at base
   });
 });
 

@@ -125,11 +125,24 @@ model.
   - **Why it was taken anyway, and it is CONSISTENCY rather than a spec clause.** The two readings
     are mutually exclusive and nothing in 005010 picks between them. `decodeSegment` has read BODY
     elements the escape-wins way on **every released version** (`REF*EA*RCV?*NEXT` has always been
-    two elements), and this library escapes a literal `?` as `??` on emit, so its own output is
-    unaffected either way and the exposure is inbound partner bytes only. The envelope now obeys the
-    one rule the rest of the package already obeyed, and `buildInterchange` stops disagreeing with
-    itself: at `0.0.14` it released GS-02 on emit and then answered GS-08 as `"X"` from its own
-    return value.
+    two elements). The envelope now obeys the one rule the rest of the package already obeyed, and
+    `buildInterchange` stops disagreeing with itself: at `0.0.14` it released GS-02 on emit and then
+    answered GS-08 as `"X"` from its own return value.
+  - **🩺 THE EXPOSURE IS NOT INBOUND BYTES ONLY. TWO OF THIS LIBRARY'S OWN EMIT SLOTS DO NOT ESCAPE,
+    AND BOTH REACH IT.** Every envelope slot routed through the builders' escaper is safe, and these
+    two are not routed through it: - **`buildTA1` escapes nothing** - it joins its five caller-supplied elements directly. TA1-01
+    echoes the acknowledged interchange's ISA-13, and ISA-13 is fixed-width, so a `?` there is
+    content this library will faithfully copy. `buildTA1({ interchangeControlNumber: "00000001?",
+ackCode: "A", noteCode: "000", ... })` emits the same `TA1*00000001?*260601*1200*A*000` on
+    either release, and `parseTA1` read `ackCode` `"A"` with the control number intact through
+    `0.0.14` and reads **`ackCode` `"R"`** here, control number `"00000001?*260601"`, `noteCode`
+    `undefined`, `warnings: []`. **An Accept acknowledgment this library emitted now reads back as
+    a Reject**, and TA1-01 is the reassociation key. If you emit `TA1`s echoing partner control
+    numbers, escape or reject a `?` yourself. - **`buildInterchange` does not escape GS-04, GS-05 or GS-07** (`groupDate`, `groupTime`,
+    `responsibleAgencyCode`). A `groupDate` of `"2026060?"` emits
+    `GS*HC*SENDER*RECEIVER*2026060?*1200*1*X*005010X222A1`, which its own return value read as nine
+    elements with GS-08 intact through `0.0.14` and reads as **eight** here, GS-08 gone, plus
+    `X12_CONTROL_NUMBER_MISMATCH`.
   - **An envelope element ending in a literal `?` is a dangling release character and is NOT warned.**
     `X12_DANGLING_RELEASE_CHAR` fires only for an odd run of `?` at the very END of a segment, so a
     mid-segment one reaches no check. That is true of body elements too and is unchanged here.

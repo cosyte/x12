@@ -84,12 +84,38 @@ reasoning is what a future slice should re-read rather than re-derive:
 5. **What the decision actually rests on, and it is CONSISTENCY rather than the spec.** The two
    readings are mutually exclusive; nothing in 005010 picks between them. `decodeSegment` has read
    BODY elements the escape-wins way on **every released version** - `REF*EA*RCV?*NEXT` is two
-   elements at base and here - and `buildInterchange` escapes on emit. So this makes the envelope
-   obey the package's ONE rule instead of a second one, and it makes a single function stop
-   disagreeing with itself. The body control is pinned, and it is what makes this a fact rather than
-   a preference.
-6. **The exposure is INBOUND partner bytes only.** Anything this library emitted escapes a literal
-   `?` as `??`, so its own output round-trips unaffected on both trees.
+   elements at base and here. So this makes the envelope obey the package's ONE rule instead of a
+   second one, and it makes a single function stop disagreeing with itself. The body control is
+   pinned, and it is what makes this a fact rather than a preference. **Do NOT extend that into "so
+   the emit half is safe" - item 6 is exactly that mistake, measured.**
+6. **🛑 THE EXPOSURE IS NOT INBOUND BYTES ONLY, AND THE REMEDY FOR PASS ONE SAID IT WAS.** That
+   sentence shipped on five surfaces and pass two measured it false. Every envelope slot routed
+   through the builders' escaper is safe; **two emit slots are not routed through it, and both reach
+   this class:**
+   - **`buildTA1` escapes nothing** - it joins its five caller-supplied elements directly, which
+     `CLAUDE.md` already records under `X12-DECIMAL-BYPASSES-THE-GUARD`. TA1-01 echoes the
+     acknowledged interchange's ISA-13, and ISA-13 is fixed-width, so a `?` there is content **by
+     this slice's own ISA exemption**. Identical bytes on both trees,
+     `TA1*00000001?*260601*1200*A*000`, and `parseTA1` reads:
+
+     ```text
+     base 1b71733   ackCode "A"   icn "00000001?"           noteCode "000"        warnings: []
+     head           ackCode "R"   icn "00000001?*260601"     noteCode undefined    warnings: []
+     ```
+
+     **An Accept acknowledgment this library emitted reads back as a Reject**, on the element that
+     reassociates it. This is the sharpest instance of the regression direction found anywhere in
+     three passes, and it is DISCLOSED rather than guarded: escaping in `buildTA1` would change bytes
+     this library already puts on the wire, which is an emit-side decision with its own blast radius
+     and its own slice. **That is a deliberate call, not an oversight - record it, do not re-derive it.**
+
+   - **`buildInterchange` does not escape GS-04, GS-05 or GS-07.** A `groupDate` of `"2026060?"`
+     emits `GS*HC*SENDER*RECEIVER*2026060?*1200*1*X*005010X222A1` and its own return value reads nine
+     elements at base and **eight** here, GS-08 gone, plus `X12_CONTROL_NUMBER_MISMATCH`.
+
+   `src/transactions/ack/parse-ta1.ts` carried "no `?`-escape applies - the standard does NOT define
+   escaped TA1 content" beside its element reads. Corrected with the code: the READS are still
+   verbatim, but the FRAMING is now release-aware like every other envelope segment.
 
 ## 🩺 Two exemptions, each with its own red control
 
