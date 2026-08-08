@@ -14,7 +14,7 @@
  */
 
 import { ISA_MIN_LENGTH } from "./delimiters.js";
-import { RELEASE_CHAR } from "./release.js";
+import { RELEASE_CHAR, splitWithRelease } from "./release.js";
 import { decodeSegment, type X12Segment } from "./segment.js";
 import type {
   Delimiters,
@@ -55,6 +55,20 @@ import type { X12ParseWarning, X12UnexpectedSegmentContext } from "./warnings.js
  * so consumers can trim if they wish - we never do, to keep round-trip
  * byte-exact).
  *
+ * **The ISA is the one segment whose element split is NOT release-aware, and
+ * that is deliberate.** ASC X12 .5 makes the ISA fixed-width: every element
+ * has a spec-fixed width and the separators sit at known byte offsets, which
+ * is precisely what lets `detectDelimiters` recover the delimiter set from an
+ * interchange before anything is parsed. `buildInterchange` states the same
+ * rule from the emit side ("pad each element, never escape - the separators
+ * are the ISA's own structural bytes, declared in-band"), so a `?` inside an
+ * ISA element is content, never an escape. Splitting it with
+ * {@link "./release.js".splitWithRelease} would let a `?` one byte before a
+ * separator swallow that separator and collapse the segment to fewer than 17
+ * parts, mis-framing every element after it on a document that is in fact
+ * well-formed. `splitElements` covers every OTHER envelope segment, all of
+ * which are ordinary delimited segments.
+ *
  * @internal
  */
 function decodeIsa(raw: string, delimiters: Delimiters): IsaSegment {
@@ -63,7 +77,7 @@ function decodeIsa(raw: string, delimiters: Delimiters): IsaSegment {
   const isaHead = isaRaw.slice(0, ISA_MIN_LENGTH - 1);
   // Split into ["ISA", e1, e2, …, e16] - exactly 17 entries by construction
   // because the element-separator-position guard in delimiters.ts already
-  // verified the layout.
+  // verified the layout. Positional, never release-aware: see above.
   const parts = isaHead.split(delimiters.element);
   return { raw: isaRaw, elements: Object.freeze(parts.slice()) };
 }
@@ -189,13 +203,48 @@ function splitSegments(
 
 /**
  * Split a single segment string into its name + element array using the
- * element separator. `elements[0]` is the segment name; subsequent entries
- * are the elements 1-indexed against the X12 spec convention.
+ * element separator, honouring the `?`-release-character escape exactly as
+ * {@link "./segment.js".decodeSegment} does for body segments and as
+ * {@link findUnescapedTerminator} already does for the terminator.
+ * `elements[0]` is the segment name; subsequent entries are the elements
+ * 1-indexed against the X12 spec convention.
+ *
+ * This is the ENVELOPE segments' splitter - `GS`, `GE`, `ST`, `SE`, `IEA`,
+ * `TA1`, and the dispatch name of anything the walker has to place. It used
+ * to be a plain `String.prototype.split`, which meant a released element
+ * separator (`?*`) still ended the element and SHIFTED every element after
+ * it down a slot: `GS*HC*SEND?*ER*RCV*...` read ten elements, so GS-08 was
+ * answered out of GS-07's slot. Nothing warned on the shift itself, and the
+ * one warning that did appear (`X12_CONTROL_NUMBER_MISMATCH`, when the
+ * displaced slot happened to be a control number) named a different problem.
+ * The package's own `buildInterchange` releases GS-02 / GS-03 / GS-06 /
+ * GS-08 and ST-01 / ST-02 / ST-03 on emit and then returns `parseX12` of its
+ * own bytes, so the two halves disagreed inside a single call.
+ *
+ * Values stay RAW here - the release sequence is preserved inside the token,
+ * never unescaped - which is the same contract {@link "./segment.js".X12Segment}
+ * states for `elements`. Two properties follow and both are relied on:
+ * `elements.join(delimiters.element)` still reproduces the segment byte for
+ * byte (which is what lets `../serialize/serialize.ts` substitute a
+ * recomputed count into a control segment), and a consumer reading
+ * `gs.elements[8]` gets the sender's bytes rather than a normalization.
+ *
+ * The ISA is deliberately NOT split this way - see {@link decodeIsa}.
  *
  * @internal
  */
 function splitElements(segment: string, delimiters: Delimiters): readonly string[] {
-  return Object.freeze(segment.split(delimiters.element));
+  // Degenerate delimiter set: when the element separator IS the release
+  // character, `?` cannot also escape, so fall back to the literal split.
+  // `detectDelimiters` reads the element separator positionally out of ISA
+  // byte 4 and rejects only control characters and a non-distinct set, so `?`
+  // there is admissible and such an interchange framed correctly before this
+  // splitter became release-aware. `findUnescapedTerminator` above carries the
+  // identical guard for the identical reason; keep the two in step.
+  if (delimiters.element === RELEASE_CHAR) {
+    return Object.freeze(segment.split(delimiters.element));
+  }
+  return Object.freeze(splitWithRelease(segment, delimiters.element));
 }
 
 /**

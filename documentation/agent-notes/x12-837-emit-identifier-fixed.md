@@ -102,6 +102,13 @@ warning.
 
 ## 🩺 The finding this slice paid for: escaping does NOT protect ST-03 or GS-08
 
+> **🛑 SUPERSEDED 2026-08-08 by `X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE`
+> (`documentation/agent-notes/x12-envelope-splitter-release-aware.md`). The envelope splitter IS
+> release-aware now, so everything in this section and the next describes the tree at `1b71733` and
+> not the current one. A release-escaped delimiter no longer splits an envelope segment; an
+> UNESCAPED one still ends its element, and `build837`'s refusal was kept anyway. Read the superseding
+> note for why. Left standing rather than edited: it is the measurement that paid for that slice.**
+
 The first draft escaped the caller's reference through the builder's `esc` and asserted it
 round-tripped. It does not. Measured straight through `parseX12`, so it is grounded on the reader
 and not on the builder that now refuses:

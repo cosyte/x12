@@ -34,13 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   published.
   - **Empty.** A trailing empty element is not emitted at all, so an empty reference would remove
     ST-03 and GS-08 rather than send them empty - a silent structural loss on two required elements.
-  - **Carrying an active delimiter or the release character.** 🩺 Escaping does not make this
-    element safe, which is why the value is refused rather than escaped: measured through
-    `parseX12`, a released `005010?*X222A1` in GS-08 and ST-03 still splits the segment, with
-    **nothing raised on any channel**, while the identical construct in a body element holds as one.
-    The envelope segments are read by a splitter that is not release-aware. That is a pre-existing
-    property of the reader, now written down in `KNOWN-LIMITATIONS.md`, and it is **not** changed
-    here: changing how envelope segments split would change how already-published documents decode.
+  - **Carrying an active delimiter or the release character.** The value is refused rather than
+    escaped. A trading partner's parser is not obliged to honour the release escape, and a published
+    guide identifier has no legitimate use for a delimiter, so the refusal is kept even now that
+    this library's own reader would carry it (see the envelope-splitter entry below).
   - **A reference this library's own reader resolves to a DIFFERENT 837 variant** (`005010X223A2`
     handed to `build837P`). The emitted file would declare one variant and carry another's service
     segments, and `get837Claims` would decode none of its service lines. Same class as the existing
@@ -55,12 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   differ: GS-08 is data element 480 (`AN 1/12`), ST-03 is element 1705 (`AN 1/35`).
 
   **🩺 A guard on this element cannot make the element trustworthy, and the disclosure above is
-  therefore about the whole envelope segment rather than these two elements.** An active delimiter in
-  a _different_ `GS` or `ST` element splits its own segment and **shifts every element after it**, so
-  ST-03 and GS-08 are then read out of a neighbour's slot: an `applicationSenderCode` of `SEND*ER`
-  makes GS-08 read `X` (the GS-07 agency code), and a `groupControlNumber` of `1*2` does the same
-  with **nothing warned on any channel**. Pre-existing, unchanged here, now measured in
-  `KNOWN-LIMITATIONS.md`.
+  therefore about the whole envelope segment rather than these two elements.** An **unescaped**
+  active delimiter in a _different_ `GS` or `ST` element still ends its own element and shifts every
+  element after it, so ST-03 and GS-08 are then read out of a neighbour's slot, and no refusal here
+  can reach it. A **release-escaped** one no longer does - see the entry below, which landed after
+  this one and retracts the part of it that said escaping could not help.
 
 - **🩺 `X12_837_SERVICE_SEGMENT_REPEATED`, the 33rd Tier-2 warning code, plus the public factory
   `serviceSegmentRepeated(position)`** (`X12-837-SV1-OVERWRITE`). A **second** `SV1` / `SV2` / `SV3`
@@ -953,6 +949,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and no published type changed.
 
 ### Fixed
+
+- **🩺 A release-escaped delimiter inside an envelope segment no longer splits it and no longer
+  shifts every element after it** (`X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE`). Reproduced on the base
+  tree at `1b71733`. `src/parser/envelope.ts`'s `splitElements` - the splitter for `GS`, `GE`, `ST`,
+  `SE`, `IEA` and `TA1` - was a plain `String.prototype.split` on the element separator, so a `?*`
+  ended the element anyway and every element after it moved down a slot:
+
+  ```text
+  GS*HC*S*R*20260601*1200*1*X*005010?*X222A1~   ten elements, GS-08 read "005010?"
+  applicationSenderCode "SEND*ER"               GS-08 read "X", the GS-07 agency code
+  groupControlNumber    "1*2"                   GS-08 read "X";  warnings: []
+  transactionSetControlNumber "00*01"           ST-03 read "01"; warnings: []
+  CLM*PT?*ACCT*150.00~                          three elements - the BODY control, always correct
+  ```
+
+  **🩺 Nothing clinical or monetary was ever mis-read by this**, because the body splitter was
+  already release-aware; the blast radius was envelope framing, which is why it was a slice of its
+  own rather than stop-the-line. **What made it a defect rather than a tolerance is that this
+  package's own two halves disagreed inside a single call:** `buildInterchange` maps its release
+  escaper over GS-02 / GS-03 / GS-06 / GS-08 and ST-01 / ST-02 / ST-03, then returns `parseX12` of
+  the bytes it just wrote, so `applicationSenderCode: "SEND*ER"` emitted a correct
+  `GS*HC*SEND?*ER*...` and handed back a model whose GS-08 answered `"X"`, with `warnings: []`.
+
+  **🛑 This is a behaviour change on already-published decoding, and the class it changes is exactly
+  one:** an envelope segment carrying a `?` immediately before the element separator. Every other
+  release sequence in an envelope element (`??`, `?:`, `?^`, `?~`, `?A`) framed identically before
+  and after and still does, pinned as invariance controls. **No warning code is added.** One can STOP
+  firing: where the shift displaced a control number, `X12_CONTROL_NUMBER_MISMATCH` was raised
+  against a document whose control numbers always did agree, and it is now silent - so **a consumer
+  that rejects on that code will accept such a document from this release on**. A genuine mismatch
+  still raises it, pinned as its own control.
+
+  **Values are still RAW, pre-`?`-unescape**, exactly as `X12Segment.elements` has always documented:
+  `gs.elements[2]` reads `"SEND?*ER"`, not `"SEND*ER"`. `elements.join(separator)` therefore still
+  reproduces the segment byte for byte, which is what `serializeX12` relies on when it substitutes a
+  recomputed `SE-01` / `GE-01` / `IEA-01` into a control segment.
+
+  **🩺 The ISA is deliberately exempt.** ASC X12 .5 makes it fixed-width, which is what lets the
+  delimiter set be recovered from it before anything is parsed, so a `?` in an ISA element is content
+  and never an escape; release-splitting it would collapse a well-formed ISA below its 17 entries.
+  A degenerate delimiter set whose element separator IS `?` also falls back to the literal split,
+  the same guard the segment-terminator scanner already carried. Both are pinned, each with a red
+  negative control.
+
+  **🛑 An UNESCAPED delimiter is still not safe and nothing here claims otherwise** - a bare active
+  delimiter ends its element, because that is what a delimiter is. `build837`'s
+  `implementationConventionReference` still refuses a value carrying one, deliberately not relaxed:
+  a partner's parser is not obliged to be release-aware either, and widening an emit surface is its
+  own decision rather than a side effect of a reader fix.
 
 - **🩺 An `AMT` / `ADX` row whose amount decodes nothing is no longer dropped in silence**
   (`X12-AMT-ADX-ABSENT-AMOUNT`). Reproduced on the base tree at `9db104b` across all four readers,

@@ -80,29 +80,53 @@ model.
       reader falls back to the `SVx` scan on such a file, exactly as it does for any unrecognised
       ST-03.
 
-- **🩺 An active delimiter inside ANY `GS` or `ST` element splits the segment even when it is
-  release-escaped, nothing is warned, and every element after it SHIFTS DOWN A SLOT.** Read it as a
-  property of the whole envelope segment and never of one element: the `GS` / `ST` splitter is not
-  release-aware, so the damage is framing, and the element a reader goes looking for is then read
-  out of its neighbour's slot. Measured through `parseX12`:
+- **🩺 A RELEASE-ESCAPED delimiter inside an envelope segment no longer splits it, and that is a
+  behaviour change on already-published decoding** (`X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE`).
+  Through `0.0.14` the envelope segments' element splitter was a plain `String.prototype.split`, so a
+  released element separator (`?*`) still ended the element and SHIFTED every element after it down a
+  slot. It was a property of the whole envelope segment and never of one element, so the element a
+  reader went looking for came back out of its neighbour's slot. Measured then, through `parseX12`:
 
   ```text
-  GS*HC*S*R*20260601*1200*1*X*005010?*X222A1~   ten elements, GS-08 reads "005010?"
-  applicationSenderCode "SEND*ER"               GS-08 reads "X", the GS-07 agency code
-  groupControlNumber    "1*2"                   GS-08 reads "X";  warnings: []
-  transactionSetControlNumber "00*01"           ST-03 reads "01"; warnings: []
-  CLM*PT?*ACCT*150.00~                          three elements, CLM-01 holds "PT?*ACCT"
+  GS*HC*S*R*20260601*1200*1*X*005010?*X222A1~   ten elements, GS-08 read "005010?"
+  applicationSenderCode "SEND*ER"               GS-08 read "X", the GS-07 agency code
+  groupControlNumber    "1*2"                   GS-08 read "X";  warnings: []
+  transactionSetControlNumber "00*01"           ST-03 read "01"; warnings: []
+  CLM*PT?*ACCT*150.00~                          three elements, CLM-01 held "PT?*ACCT"
   ```
 
-  The body element is the control: there the release IS honoured. Two of the three envelope cases
-  above are silent on every channel; the first raises only `X12_CONTROL_NUMBER_MISMATCH`, which
-  names a different problem. **Not fixed, and PRE-EXISTING to the caller override below it:**
-  changing how envelope segments split changes how already-published documents decode, which is the
-  same call made everywhere else in this file. **So a guard on one element cannot make that element
-  trustworthy** - `build837`'s `implementationConventionReference` refuses a value it cannot carry,
-  which stops that field from being the cause, and it cannot stop a delimiter in a control number
-  from shifting the reference out from under it. `buildInterchange` applies no domain guard to any
-  of these and will emit all of them.
+  The body element was the control and was always correct, which is why nothing clinical or monetary
+  was ever mis-read by this: the blast radius was envelope FRAMING. `splitElements` now honours the
+  release character exactly as `decodeSegment` and the segment-terminator scanner already did, so
+  every row above reads one element fewer and the value lands in its own slot.
+  - **🛑 What this changes for a consumer.** Only one input class decodes differently: an envelope
+    segment (`GS`, `GE`, `ST`, `SE`, `IEA`, `TA1`) carrying a `?` immediately before the element
+    separator. Every other release sequence in an envelope element (`??`, `?:`, `?^`, `?~`, `?A`)
+    framed identically before and after and still does. **No warning code is added, and one can STOP
+    firing:** where the shift displaced a control number, `X12_CONTROL_NUMBER_MISMATCH` was raised
+    against a document whose control numbers always did agree, and it is now silent. A consumer that
+    REJECTS on that code will accept such a document from this release on. A genuine mismatch still
+    raises it.
+  - **Values are still RAW, pre-`?`-unescape**, exactly as `X12Segment.elements` has always
+    documented: `gs.elements[2]` on the first row reads `"SEND?*ER"`, not `"SEND*ER"`. Read through
+    `getSegmentValue` if you want the logical value. `elements.join(separator)` therefore still
+    reproduces the segment byte for byte, which is what `serializeX12` relies on when it substitutes
+    a recomputed `SE-01` / `GE-01` / `IEA-01` into a control segment.
+  - **🩺 The ISA is deliberately exempt and stays positional.** ASC X12 .5 makes the ISA fixed-width,
+    which is what lets the delimiters be recovered from it before anything is parsed, so a `?` in an
+    ISA element is content and never an escape. `buildInterchange` states the same rule from the emit
+    side: it pads each ISA element and never escapes one.
+  - **A degenerate delimiter set whose element separator IS `?` is unchanged.** `?` cannot both
+    separate and escape, so the splitter falls back to the literal split, the same guard the
+    segment-terminator scanner already carried.
+  - **🩺 This does NOT make an UNESCAPED delimiter safe, and nothing here claims it does.** A bare
+    active delimiter in an envelope element still ends that element, because that is what a delimiter
+    is; only the sender escaping it is now honoured. `build837`'s
+    `implementationConventionReference` still REFUSES a value carrying an active delimiter or the
+    release character, and is deliberately not relaxed on the strength of this fix: a partner's
+    parser is not obliged to be release-aware either. `buildInterchange` applies no domain guard to
+    any envelope field and will still emit all of them, though it now reports back what it wrote -
+    at `0.0.14` it released GS-02 on emit and then answered GS-08 as `"X"` from its own return value.
 
 - **🩺 BREAKING for `build277` callers: a 277 service line now REQUIRES `unitsOfService`, because
   SVC-07 is a required element in `005010X212` and this library was not emitting it at all**

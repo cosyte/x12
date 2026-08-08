@@ -487,9 +487,10 @@ readBack?.claims[0]?.serviceLines[0]?.charge?.toString(); // => "150.00"
 **What it refuses of its own**, all `Claim837BuildError` with code `X12_837_BUILD_INVALID_SPEC`, and
 no refusal message echoes the value you passed: an **empty** reference (a trailing empty element is
 not emitted, so it would delete ST-03 and GS-08 rather than send them empty); one carrying an
-**active delimiter or the release character** (escaping does not help here - the envelope segments
-are read by a splitter that is not release-aware, so a released delimiter still splits the segment,
-silently); and one this library's own reader resolves to a **different 837 variant**, such as
+**active delimiter or the release character** (this library's own reader would now carry it - the
+envelope splitter honours the release escape as of `X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE` - but a
+trading partner's parser is not obliged to, and a guide identifier has no legitimate use for a
+delimiter, so the refusal is kept); and one this library's own reader resolves to a **different 837 variant**, such as
 `005010X223A2` handed to `build837P`, which would emit a file declaring one variant and carrying
 another's service segments. Those are on top of the element-type guard every string slot in every
 builder already has, which refuses a non-string with the same code, so read the list as what this
@@ -501,11 +502,14 @@ reading such a file back, this library falls through to the `SVx` scan for the v
 does for any unrecognised ST-03. The **length** is not bounded either, and the two elements' maxima
 differ: GS-08 is data element 480 (`AN 1/12`), ST-03 is element 1705 (`AN 1/35`).
 
-**🩺 And a guard on this element cannot make the element trustworthy.** An active delimiter in a
-_different_ envelope field (a control number, an application sender code) splits its own segment and
-shifts every element after it, so ST-03 and GS-08 are then read out of a neighbour's slot, mostly
-with nothing warned. That is a pre-existing property of the envelope splitter rather than of this
-field, it is measured in `KNOWN-LIMITATIONS.md`, and no refusal here can reach it.
+**🩺 A guard on this element still cannot make the element trustworthy, but the reason narrowed.**
+An active delimiter in a _different_ envelope field (a control number, an application sender code)
+used to split its own segment and shift every element after it, so ST-03 and GS-08 were read out of
+a neighbour's slot, mostly with nothing warned. A **release-escaped** one no longer does: the
+envelope splitter honours the escape, so a sender who escapes correctly is now read correctly. An
+**unescaped** one still ends its element, because that is what a delimiter is, and no refusal here
+can reach it. The behaviour change this landed on already-published decoding is measured in
+`KNOWN-LIMITATIONS.md`.
 
 ---
 
