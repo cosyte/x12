@@ -375,8 +375,9 @@ or financial value on the wire.**
 
 ### 🩺 `X12-NUMERIC-VALUE-EMITS-EMPTY` (2026-08-03) · `documentation/agent-notes.md#x12-numeric-value-emits-empty-2026-08-03`
 
-- **🩺 All nine builders take `esc` from `makeCallerEscaper` (`src/builder/caller-string.ts`), which
-  type-checks first and refuses with the calling module's own typed, code-tagged error.**
+- **🩺 EVERY builder that declares an `esc` takes it from `makeCallerEscaper`
+  (`src/builder/caller-string.ts`), which type-checks first and refuses with the calling module's own
+  typed, code-tagged error. NO COUNT HERE - the gate holds it, and "nine" outlived the ninth.**
   What `escapeRelease` read, and the `CLP-01` reassociation key it vanished: relocated narrative §8.
 - **🩺 Refuse, never coerce, and that is the whole item.** Coercion mints a _different_ identifier: a
   payload carrying `"0012345"` as a number already lost its leading zeros, and reassociating to the

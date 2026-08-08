@@ -39,8 +39,9 @@
  * A value containing none of the four delimiters or the release character
  * is emitted byte-for-byte as before, which is every conformant TA1. A
  * value containing one is now released, so its bytes differ from the ones
- * `0.0.14` and earlier put on the wire. Four consequences are worth stating
- * outright rather than arguing away:
+ * `0.0.14` and earlier put on the wire. What that costs is stated outright
+ * below rather than argued away, and **without a total**: two drafts of this
+ * account published a closed one and both were refuted.
  *
  * - **The consumer predicate moves in BOTH directions.** Read the property
  *   rather than a direction list: `parseTA1` of a `buildTA1` output now
@@ -59,9 +60,14 @@
  *   number of `"0000^0001"`, truncating the reassociation key to the first
  *   repetition, and answers `"0000^0001"` here; the composite read `"01-1"`
  *   answered `"0000"` for `"0000:0001"`. **The measured pure cost is a
- *   MID-STRING `?`, and only on the surfaces documented as raw** - every
- *   dot-path read unescapes and answered the same value on both. No total
- *   is published: that is what was measured, not a closed account.
+ *   MID-STRING `?`, and only on the surfaces documented as raw**: `raw`,
+ *   `elements` and `parseTA1`'s fields read `"0000??0001"` where they read
+ *   `"0000?0001"`, while the dot-path read of THAT value unescapes and
+ *   answered `"0000?0001"` on both. Read the clause as scoped to the
+ *   mid-string `?`, because it is not true of `^` or `:` three sentences
+ *   up. **`getSegmentValue` takes an `X12Segment` and `Ta1Segment` carries
+ *   no `id`, so add one to read a TA1 through it.** No total is published:
+ *   that is what was measured, not a closed account.
  * - **`parseTA1` reads elements RAW, pre-`?`-unescape**, exactly as
  *   `X12Segment.elements` has always documented. So a control number of
  *   `"00000001?"` now reads back as `"00000001??"` rather than as
@@ -71,8 +77,9 @@
  * - **A caller who was pre-releasing the value themselves** (the remedy
  *   `KNOWN-LIMITATIONS.md` named while this was open) is now escaping
  *   twice: `"00000001??"` in, `"00000001????"` out. The framing and the
- *   disposition stay correct; the key carries the extra pair. Drop the
- *   hand-rolled escape.
+ *   disposition stay correct, and this one regresses on BOTH kinds of
+ *   surface - the dot-path read answers `"00000001??"` where it answered
+ *   `"00000001?"`. Drop the hand-rolled escape.
  *
  * **And an EMPTY control number is still not refused.** `escapeRelease`
  * early-returns on `""` and this module has no required-field guard, so

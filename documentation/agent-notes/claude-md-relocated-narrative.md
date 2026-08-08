@@ -420,8 +420,10 @@ rounds. What moved is why each holds:
 
 ### `X12-NUMERIC-VALUE-EMITS-EMPTY` - what `escapeRelease` read
 
-The bullet still says all nine builders take `esc` from `makeCallerEscaper`, which type-checks
-first and refuses with the calling module's own typed, code-tagged error. What moved is the
+The bullet still says every builder that declares an `esc` takes it from `makeCallerEscaper`, which
+type-checks first and refuses with the calling module's own typed, code-tagged error. (It said
+"nine" until `X12-TA1-EMIT-NOT-RELEASE-AWARE` made it ten; the count is deleted rather than
+re-derived, and `test/builder-string-type.test.ts` holds it.) What moved is the
 mechanism and the slot it cost:
 
 > `escapeRelease` read `value.length`, `undefined` on a number, so the value vanished with no

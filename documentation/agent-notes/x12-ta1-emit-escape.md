@@ -86,6 +86,8 @@ disposition the caller did not ask for. **Do not compress that into "the predica
   - **A caller who was hand-rolling the escape regresses on both kinds of surface** - the remedy
     `KNOWN-LIMITATIONS.md` published while this was open. `"00000001??"` in, `TA1*00000001????*…`
     out, and `getSegmentValue` answering `"00000001??"` where it answered `"00000001?"`.
+  - **`getSegmentValue` takes an `X12Segment` and `Ta1Segment` carries no `id`**, so every dot-path
+    example above needs one added. The runtime never reads it; the types do.
   - **NO TOTAL IS PUBLISHED. This is what was measured, not a closed account** - which is the lesson
     of the two refuted drafts, not a hedge added after them.
 - **Releasing `:` and `^` was a DECISION BEFORE it was measured to be a gain, and the argument that

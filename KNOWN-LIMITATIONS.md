@@ -213,7 +213,8 @@ model.
     the whole value now. **The measured pure cost is a mid-string `?`, and only on the surfaces
     documented as raw**: `raw`, `elements` and `parseTA1`'s fields read `"0000??0001"` where they
     read `"0000?0001"`, while every dot-path read unescapes and answered `"0000?0001"` on both.
-    No total is published: that is what was measured, not a closed account.
+    No total is published: that is what was measured, not a closed account. (`getSegmentValue`
+    takes an `X12Segment` and `Ta1Segment` carries no `id`, so add one to read a TA1 through it.)
   - **A caller who was hand-rolling the escape** (the remedy this file named while the defect was
     open) regresses on both kinds of surface: `"00000001??"` in, `TA1*00000001????*…` out, and
     `getSegmentValue` answering `"00000001??"` where it answered `"00000001?"`. The framing and the

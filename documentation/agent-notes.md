@@ -2184,9 +2184,9 @@ i += 1)` over a forged `{ length: undefined }` array-like compares `0` against
   AND THE DECISION IS _REFUSE, NEVER COERCE_.** `escapeRelease` read
   `value.length`, `undefined` on a number, so the early return did not fire, the
   loop never ran, and it returned its empty accumulator. **The value vanished
-  with no warning and no error.** All nine builders now take their `esc` from
-  `makeCallerEscaper` (`src/builder/caller-string.ts`), which type-checks first
-  and refuses with the calling module's own typed, code-tagged error.
+  with no warning and no error.** Every builder declaring an `esc` now takes it
+  from `makeCallerEscaper` (`src/builder/caller-string.ts`), which type-checks
+  first and refuses with the calling module's own typed, code-tagged error.
 
   **MEASURED AT BASE `143a6ea` BY DRIVING THE SHIPPED TABLE AGAINST A `143a6ea`
   WORKTREE, NOT ASSUMED.** Eight builders, one element each, string arm vs

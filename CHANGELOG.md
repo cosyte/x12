@@ -1002,7 +1002,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **The measured pure cost is a mid-string `?`, and only on the surfaces documented as raw**: `raw`,
   `elements` and `parseTA1`'s fields read `"0000??0001"` where they read `"0000?0001"`, while every
   dot-path read unescapes and answered `"0000?0001"` on both. No total is published: that is what was
-  measured, not a closed account. If you were escaping the value yourself, as `KNOWN-LIMITATIONS.md`
+  measured, not a closed account. `getSegmentValue` takes an `X12Segment` and `Ta1Segment` carries no
+  `id`, so add one to read a TA1 through it. If you were escaping the value yourself, as `KNOWN-LIMITATIONS.md`
   advised while this was open, drop that - you are now escaping twice on both kinds of surface
   (`"00000001??"` in, `TA1*00000001????*…` out, `getSegmentValue` answering `"00000001??"`).
 

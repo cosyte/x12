@@ -41,7 +41,9 @@ reassociation key to the first repetition, and answers `"0000^0001"` now; the co
 `"01-1"` answered `"0000"` for `"0000:0001"` and answers the whole value now. The measured pure cost
 is a mid-string `?`, and only on the surfaces documented as raw: `raw`, `elements` and `parseTA1`'s
 fields read `"0000??0001"` where they read `"0000?0001"`, while every dot-path read unescapes and
-answered `"0000?0001"` on both. No total is published. If you were escaping the value yourself, as
+answered `"0000?0001"` on both. No total is published. `getSegmentValue` takes an `X12Segment` and
+`Ta1Segment` carries no `id`, so add one to read a TA1 through it. If you were escaping the value
+yourself, as
 `KNOWN-LIMITATIONS.md` advised while this was open, drop that: you are now escaping twice, on both
 kinds of surface.
 
