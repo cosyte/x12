@@ -322,3 +322,11 @@ and still cites X12.6. What moved is the incident:
 
 > Pass 1 counted only `tx.rawSegments`, so spec-clean mode **rewrote a CORRECT `SE*4*` down to
 > `SE*3*`**.
+
+### `X12-NUMERIC-VALUE-EMITS-EMPTY` - how the required-field guard was defeated
+
+The bullet still says the builder's own required-field guard is defeated by a number, and still says
+to check the TYPE rather than the sentinel. What moved is the instance:
+
+> `build-835.ts` refused `patientControlNumber === ""` by name, and a number is not `""`, so it
+> passed and became `""` one line later.

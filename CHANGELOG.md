@@ -46,7 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `X12_837_SERVICE_SEGMENT_WITHOUT_LX` and `X12_837_SERVICE_LINE_DROPPED` fire on exactly the
   documents they fired on before, in the same positions, pinned by committed tests that assert the
   whole warning channel with the new code filtered out. **No consumer predicate written against any
-  existing code changes meaning.**
+  existing code changes meaning.** Read that as **invariance and not as a list of what else you will
+  see** on a contested document: it does not promise that any particular loss on one is reported at
+  all, and one that is not was not reported before this code existed either. A stray `LX` that opened
+  no line, for one, already suppressed `X12_837_SERVICE_SEGMENT_WITHOUT_LX` for the service segments
+  inside it, and still does.
 
 - **🩺 `X12_STATED_AMOUNT_DISCARDED`, the 31st Tier-2 warning code, plus the public factory
   `statedAmountDiscarded(position)`** (`X12-STATED-AMOUNT-DISCARDED`). The entry below reports a row

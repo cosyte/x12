@@ -79,14 +79,14 @@ or financial value on the wire.**
   fallback DECIDED and the body names more than one variant. **A caller `type` or a resolving
   `ST-03` means NO guess, so it is NOT raised however mixed the body is: a property of the
   RESOLUTION, never of the document.**
-- **🩺 NEVER PICK A WINNER.** A stray `SVx` and a conformant one are indistinguishable here;
-  first-wins takes the first, open Loop 2400 or not. Reporting the conflict is honest; choosing is
-  inventing.
-- **ADDITIVE, nothing moved:** `NOT_DECODED` / `SERVICE_SEGMENT_WITHOUT_LX` / `SERVICE_LINE_DROPPED`
-  fire on exactly the documents they did, pinned CHANNEL-WIDE with it filtered out. **Never travels
-  with `X12_837_UNKNOWN_VARIANT`** - the other outcome of one resolution. **STILL OPEN:** a foreign
-  `SVx` INSIDE an already-decoded Loop 2400 is silent at the segment; there this code is the SOLE
-  report.
+- **🩺 NEVER PICK A WINNER: a stray `SVx` and a conformant one are indistinguishable here**, and
+  first-wins takes the first, open Loop 2400 or not. Choosing would be inventing.
+- **🩺 ADDITIVITY HERE IS INVARIANCE, NEVER A LIST OF WHAT ELSE YOU WILL SEE.** The frozen message
+  said "a service segment with no line open still raises `X12_837_SERVICE_SEGMENT_WITHOUT_LX`"; a
+  refuter measured it FALSE - a stray `LX` suppresses it. Say only: whatever was raised is still
+  raised, same position. Pinned CHANNEL-WIDE with this filtered out. **Never with
+  `X12_837_UNKNOWN_VARIANT`.** **STILL OPEN:** a foreign `SVx` INSIDE an already-decoded Loop 2400 is
+  silent at the segment; there it is the SOLE report.
 
 ### 🩺 `X12-AMT-ADX-ABSENT-AMOUNT` + `X12-STATED-AMOUNT-DISCARDED` (2026-08-07) · `documentation/agent-notes/x12-{amt-adx-absent-amount,stated-amount-discarded}.md`
 
@@ -323,8 +323,7 @@ or financial value on the wire.**
 - **🩺 Refuse, never coerce, and that is the whole item.** Coercion mints a _different_ identifier: a
   payload carrying `"0012345"` as a number already lost its leading zeros, and reassociating to the
   wrong claim is worse than failing to reassociate. **The builder's own required-field guard is
-  defeated by a number** - `build-835.ts` refused `patientControlNumber === ""` by name, and a number
-  is not `""`, so it passed and became `""` one line later. Check the type, not the sentinel.
+  defeated by a number** (the instance: relocated narrative §7). Check the type, not the sentinel.
 - **The `#51` asymmetry is deliberate, not an inconsistency.** `renderCallerValue` **coerces**;
   `esc` **refuses**. _Survive anything_ vs _invent nothing_.
 - **🩺 NEVER PUBLISH AN EXHAUSTIVE CENSUS OF WHAT BYPASSES THE CHOKEPOINT.** Three drafts did; a

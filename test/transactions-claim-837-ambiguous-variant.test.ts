@@ -225,6 +225,36 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     expect(channel(sub)).toEqual([AMBIGUOUS, NOT_DECODED]);
   });
 
+  it("🩺 it fires where NEITHER conflicting segment is reported at itself", () => {
+    // An `LX` with no `CLM` open drops its line and sets the suppression flag,
+    // so BOTH service segments after it reach `reportOrphanServiceSegment` and
+    // are silent - `X12_837_SERVICE_SEGMENT_WITHOUT_LX` appears nowhere on this
+    // channel. The loss is named once at the `LX`, which is deliberate and
+    // documented in `KNOWN-LIMITATIONS.md`.
+    //
+    // 🩺 THIS IS WHY NO SURFACE HERE MAY SAY "a service segment with no line
+    // open still raises `X12_837_SERVICE_SEGMENT_WITHOUT_LX`". The registry
+    // message said exactly that in this slice's first draft and a refuter
+    // measured it false on this document. The additivity claim is INVARIANCE -
+    // whatever was raised before is still raised, in the same place - never a
+    // list of what else a reader will see.
+    const { sub } = parse837("005010X222A1", [
+      "HL*1**20*1~",
+      "NM1*85*2*BILLING CLINIC INC*****XX*1234567890~",
+      "HL*2*1*22*0~",
+      "SBR*P*18*GROUP123******MB~",
+      "NM1*IL*1*TEST*PATIENT*A***MI*MEMBER001~",
+      "NM1*PR*2*PAYER ONE*****PI*PAYER01~",
+      "LX*1~",
+      SV1,
+      SV2,
+      "CLM*PT-ACCT-900*8500***11:B:1*Y*A*Y*Y~",
+    ]);
+    expect(sub.variant).toBe("P");
+    expect(channel(sub)).toEqual([AMBIGUOUS, WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
+    expect(channel(sub)).not.toContain(WITHOUT_LX);
+  });
+
   it("three conflicting segments still raise it exactly once", () => {
     // It reports the RESOLUTION, and there is one of those per transaction.
     const { sub } = parse837("005010X222A1", claimBody(["LX*1~", SV1, "LX*2~", SV2, "LX*3~", SV3]));

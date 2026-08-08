@@ -1,5 +1,12 @@
 # `X12-837-AMBIGUOUS-VARIANT` (2026-08-08)
 
+Provenance: this repo's own source tree at `c758bcd` and at `b5dbfce`, measured (every census, every
+channel, both trees). The three implementation-convention references are read out of
+`VARIANT_BY_ICR` in `src/transactions/claim/get-837.ts`, which is this package's own table and
+**not** a grounding of them against a TR3 - nobody here has read one, and this slice asserts no TR3
+usage code. The claim that no TR3 rule makes a majority or an in-loop `SVx` authoritative is a
+statement that no such grounding exists here, not a citation.
+
 The `X12-837-RESIDUALS` slice that closed the **silence** around the stray-`SVx` re-typing, the
 highest-blast-radius of that item's five `PRE-EXISTING` findings. Its own file rather than a section
 in `documentation/agent-notes.md`, which stands at 249,982 of a 250,000-byte budget.
@@ -17,7 +24,10 @@ Institutional. `submission.variant` reads `"I"`; `decodeSv1` returns on its vari
 `SV1` line reads `charge` `undefined`, `units` `undefined` and `procedureCode` `undefined`; and a
 consumer routing on `submission.variant` sends a Professional claim down an Institutional path.
 
-**That behaviour is `PRE-EXISTING`, reproduces at `0.0.10`, and is NOT changed here.** Which variant
+**That behaviour is `PRE-EXISTING` and is NOT changed here. It reproduces on the CURRENT release:
+base `c758bcd` is `0.0.13` and the registry serves `0.0.13`**, and it reaches back at least to
+`0.0.10`, where `#71` measured it. Never state the older bound alone - `#71`'s own version claim was
+refuted for telling consumers on the current release they already had a fix they did not. Which variant
 a document resolves to, which lines decode and which warnings the walk raises are byte-for-byte what
 they were at `c758bcd`. What was missing was any report of the **resolution** itself: the line-level
 consequences were on the channel and the submission-level typing that produced them was not.
@@ -99,6 +109,52 @@ The same test's trailing-`SV2` case (`LX*1~`, `SV1`, `SV2`) gained a channel ass
 have. It is the sharpest document in the slice: the foreign `SV2` reaches a Loop 2400 the `SV1`
 already decoded, so `decodeSv2` returns on the variant check and **nothing else reports it at all**.
 The new code is the sole entry on that channel.
+
+## Pass 1: REFUTED, on a claim inside the frozen public message
+
+**🩺 The `INTRODUCED` major, and it is the sixth consecutive finding in this lineage that was a claim
+defect rather than a code defect.** The registry message's closing sentence enumerated what else a
+contested document raises: *"a Loop 2400 carrying only a service segment for another variant still
+raises `X12_837_SERVICE_LINE_NOT_DECODED` at its own LX, and a service segment arriving with no line
+open still raises `X12_837_SERVICE_SEGMENT_WITHOUT_LX` at itself."* The second clause is **false**,
+and false on a document that raises this very code: `reportOrphanServiceSegment` returns early on
+`droppedLineReported`, so after a stray `LX` that opened no line, the service segments inside it are
+**silent**. That suppression is deliberate, pre-existing and documented in `KNOWN-LIMITATIONS.md`;
+the new sentence contradicted the package's own disclosure, in a table this repo treats as public
+and frozen.
+
+Measured at head, `ST-03` `005010X222A1`, an `LX` with no `CLM` open followed by `SV1` then `SV2`:
+the channel is `[AMBIGUOUS, SERVICE_LINE_DROPPED]` and `X12_837_SERVICE_SEGMENT_WITHOUT_LX` appears
+**nowhere**. Twenty whole-channel `toEqual` assertions missed it because no case exercised the
+stray-`LX` route.
+
+**Remedy: cut the claim back, do not grow the guard** - the same correction `#70` and `#80` were
+forced into. The enumeration is deleted from the message and from the troubleshooting row and
+replaced by the invariance statement alone: *whatever this reader raised on such a document before,
+it still raises, at the same position, and this one is added beside them* - explicitly **not** a list
+of what else you will see. `CHANGELOG.md` and the changeset carry the same qualifier. **The
+stray-`LX` document is now a committed case** pinning the whole channel and the absence of
+`X12_837_SERVICE_SEGMENT_WITHOUT_LX` on it. No behaviour changed in the remedy; no guard was added.
+
+Two further `INTRODUCED` minors from the same pass, both fixed here: this file carried no
+`Provenance:` field where a sibling agent note does, and it said the defect "reproduces at `0.0.10`"
+without saying it reproduces on the **current** release, which is `#71`'s own version trap in
+miniature.
+
+## Filed by the pass-1 refuter, `PRE-EXISTING`, not fixed here
+
+- **🩺 A second `SV1` inside an already-open Loop 2400 silently overwrites the first's money and
+  procedure code.** Measured identically on both trees under a resolving `ST-03` `005010X222A2`:
+  `LX*1~ SV1*HC:99213*8500*UN*4***1~ SV1*HC:99999*12*UN*1***1~` leaves ONE service line reading
+  `charge` `12` and `procedureCode` `99999`, with **no warning on any channel**. `8500` off the wire
+  becomes `12` on the model. Already named in `X12-837-RESIDUALS` and in `documentation/repos/x12.md`;
+  the refuter's recommendation, recorded rather than acted on here, is that it should not sit behind
+  further disclosure-only slices.
+- **The `VARIANT_BY_ICR` key set is ungrounded.** This repo's own fixtures use `005010X222A1` as the
+  real-world 837P `ST-03` that does **not** resolve, so the package assumes production 837P traffic
+  routes through the `SVx` fallback - which would make this new code the normal path rather than the
+  exception. No primary source was consulted in either direction and none is claimed. Grounding the
+  three references against the WPC / X12 TR3 listing is its own unit.
 
 ## Deferred, filed not fixed
 
