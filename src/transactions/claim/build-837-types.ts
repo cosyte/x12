@@ -26,6 +26,21 @@ import type { X12Decimal } from "../../decimal.js";
  * fixes GS-01 to `"HC"` and the ST-03 / GS-08 version to the variant's TR3
  * (`005010X222A2` / `X223A3` / `X224A2`) so the caller never hand-codes them.
  *
+ * **🩺 Known limitation, disclosed rather than changed: those three are
+ * published errata guides, but they are neither the identifiers HIPAA
+ * adopts at 45 CFR 162.1102 nor the ones payer companion guides commonly
+ * require in ST-03 / GS-08** (CMS and several state Medicaid guides state
+ * `005010X222A1` for Professional, `005010X223A2` for Institutional and
+ * `005010X224A2` for Dental). **A partner that requires one of those will
+ * reject a Professional or Institutional 837 this builder emits, and there
+ * is currently no way for a caller to override the value.** Nothing here
+ * was re-stamped on that evidence: which published guide identifier a
+ * trading partner accepts is a partner fact, not a spec fact, and silently
+ * changing bytes this library already emitted would break the partners it
+ * works with today. `KNOWN-LIMITATIONS.md` carries this as an open
+ * residual. The READ side is unaffected - `get837Claims` recognises all of
+ * these references.
+ *
  * @example
  * ```ts
  * import type { Build837EnvelopeSpec } from "@cosyte/x12";

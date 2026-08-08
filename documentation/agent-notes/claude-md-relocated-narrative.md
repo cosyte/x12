@@ -496,3 +496,79 @@ scope. What moved is the reason:
 
 > The walker skips it, so there is nothing to re-emit; closing it is a RETENTION change to the
 > `name.length > 0` guard and would mint new `X12_UNEXPECTED_SEGMENT`s.
+
+## 9. Trap-bullet narrative relocated by `X12-VARIANT-ICR-UNGROUNDED` (2026-08-08)
+
+`x12/CLAUDE.md` was at 52,710 of 52,710 with zero headroom, and this slice owed a trap. Nine pieces
+of narrative moved here **first**; no trap was deleted and the entry in the umbrella's
+`.claude/hooks/doc-budget.mjs` was not raised. Each bullet still carries its imperative; what follows
+is only the reasoning behind it.
+
+### `X12-CALLER-VALUE-RESIDUALS` - why `renderCallerJson` keeps `JSON.stringify`, and why `profileName` is not bounded
+
+The bullet still says `renderCallerJson` bounds its OUTPUT, never throws, fabricates no closing
+quote, and that `X12ProfileError.profileName` is deliberately NOT bounded. The two reasons:
+
+> The value's TYPE is what is wrong at those sites, and `null` and `"null"` are different mistakes,
+> so the JSON rendering is the point rather than an implementation detail. It survives circular
+> references, `BigInt` and a hostile `toJSON`. `profileName` is left unbounded because truncating it
+> would stop it matching what the consumer passed, which is the one thing that field is for.
+
+### `X12-CALLER-VALUE-RESIDUALS` - the `for...of` sites, and the reachability of a forged non-array
+
+The bullet still scopes a forged non-array as availability rather than `STOP-THE-LINE`, and still
+says the `for...of` sites throw with no `code`. What moved:
+
+> Unreachable from TypeScript; reachable from JS, from a JSON payload, and from `@cosyte/cli`. The
+> `for...of` sites are `buildInterchange`'s `spec.groups`, `build999`'s `transactionResponses`, and
+> every optional leaf array; each throws `TypeError: ... is not iterable`. Disclosed, pinned.
+
+### `X12-CALLER-VALUE-RESIDUALS` - the four scopes neither gate scans
+
+The bullet still says neither gate scans indexed loops outside the `build*` scope. The four:
+
+> `src/loops/define.ts`, `src/profiles/validate.ts`, the `get-*.ts` readers, `src/parser/envelope.ts`.
+
+### `X12-BUILDER-BOUNDS` - why the build-side `segmentIndex: 0` is not the same defect
+
+The bullet still says it was filed as the same defect and is not one. Why:
+
+> The builder has no parsed segment stream, so the position is `UNANCHORED_BUILD_POSITION`, inert by
+> construction. Fabricating an index would have named a segment no consumer can resolve.
+
+### `ASSETS-P8` - what each of the two `attw` nets catches
+
+The bullet still says to keep BOTH nets in `scripts/attw.mjs`. What each is for:
+
+> The **preflight** checks that every relative path `package.json` promises exists and is non-empty,
+> which catches the `tsup` build interval and NAMES the missing file. The **post-check** on the
+> untyped sentence catches what the preflight structurally cannot: declarations on disk but excluded
+> from the tarball by `files` / `.npmignore`.
+
+### `X12-DECIMAL-BYPASSES-THE-GUARD` - what a `parts.length` bound over a caller array-like did
+
+The bullet still says never to bound a loop that way and to iterate with `for...of`, which throws:
+
+> A forged `{ length: undefined }` runs **zero** iterations and reports every segment clean.
+
+### `X12-VARIANT-LOOKUP-PROTOTYPE` - why no source scan can ship for the prototype defence
+
+The bullet still says NO SOURCE SCAN SHIPS, DELIBERATELY. The reason:
+
+> A scan cannot separate a wire-keyed table from a discriminant-keyed one, and `warnings.ts` has four
+> of the latter, so it would need a per-TABLE allowlist. That is `#51`'s failure mode.
+
+### The `phi-scan` gate - why a walk root's own index entry is exempt
+
+The bullet still says such a root's OWN index entry is EXEMPT and that its control must commit its
+corpus. Why:
+
+> The walk yields `<root>/<name>` and never `<root>`, so without the exemption the superset scan
+> turns an exit 1 into a refusal.
+
+### The `phi-scan` gate - why the enumerate-then-read race is deferred
+
+The bullet still says the race is deferred and that the reason is DIRECTION:
+
+> Its remedy TOLERATES a failed read; these two rules NARROW what the enumeration admits. Mixing the
+> two directions in one change is what makes a widening reintroduce the race verbatim.

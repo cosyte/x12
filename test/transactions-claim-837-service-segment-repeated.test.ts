@@ -73,6 +73,16 @@ const SV1_REPEAT_NO_CHARGE = "SV1*HC:99214**UN*1***1~";
 const SV2_FOREIGN = "SV2*0300*HC:99214*7300*UN*2~";
 const SV3_FOREIGN = "SV3*AD:D1110*6100**11*1*1~";
 
+/**
+ * An ST-03 `get837Claims` turns into no variant, so the `SVx` fall-back is
+ * what decides. The ASC X12N **4010** addenda reference for professional
+ * claims, named at 45 CFR 162.1102(a)(3); this library's v1 scope is 005010
+ * only. Through `0.0.13` this case used `005010X222A1`, which is the errata
+ * production 837Ps actually carry in ST-03 and which now RESOLVES - see
+ * `documentation/agent-notes/x12-variant-icr-ungrounded.md`.
+ */
+const UNRESOLVED_ICR = "004010X098A1";
+
 interface Parsed {
   readonly sub: X12_837Submission;
   readonly tx: X12TransactionSet;
@@ -497,7 +507,7 @@ describe("additivity", () => {
     // ST-03 that resolves to nothing this library knows, so the fallback
     // decides: first-wins takes the SV1, and the SV2 both contradicts the
     // resolution and repeats inside the open line.
-    const { sub } = parse837("005010X222A1", claimBody(["LX*1~", SV1_FIRST, SV2_FOREIGN]));
+    const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1_FIRST, SV2_FOREIGN]));
 
     expect(channel(sub)).toEqual([AMBIGUOUS, REPEATED]);
     expect(sub.variant).toBe("P");

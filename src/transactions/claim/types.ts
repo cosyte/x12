@@ -1,9 +1,9 @@
 /**
  * Typed model for an X12 005010 837 Healthcare Claim - the three sibling
- * TR3s (`005010X222A2` Professional / `005010X223A3` Institutional /
- * `005010X224A2` Dental). The shape is the public contract of
- * `get837Claims()` - adding fields is backward-compatible; renaming
- * fields is breaking.
+ * TR3 families (`005010X222` Professional / `005010X223` Institutional /
+ * `005010X224` Dental, each together with its published errata). The shape
+ * is the public contract of `get837Claims()` - adding fields is
+ * backward-compatible; renaming fields is breaking.
  *
  * Spec source: WPC TR3s for X222A2 / X223A3 / X224A2 plus the X12 005010
  * base specification (envelope + segment definitions).
@@ -15,8 +15,9 @@
  *
  * Variant discrimination. {@link X12Claim837Variant} drives the
  * service-line discriminated union ({@link X12_837ServiceLine}). The
- * walker reads ST-03's implementation convention reference (X222A2 /
- * X223A3 / X224A2) where present; otherwise infers from service-line
+ * walker reads ST-03's implementation convention reference where it
+ * recognises one (the table lives beside `get837Claims`, and the sources
+ * every key came from are named there); otherwise infers from service-line
  * segment id (SV1 → P, SV2 → I, SV3 → D); otherwise marks the variant
  * `"unknown"` and emits `X12_837_UNKNOWN_VARIANT`. That inference takes the
  * FIRST such segment in the body, whether or not a Loop 2400 was open at it,

@@ -83,6 +83,16 @@ const SV1 = "SV1*HC:99213*8500*UN*4***1~";
 const SV2 = "SV2*0300*HC:99213*8500*UN*4~";
 const SV3 = "SV3*AD:D1110*10000***1~";
 
+/**
+ * An ST-03 `get837Claims` turns into no variant, so the `SVx` fall-back is
+ * what decides. The ASC X12N **4010** addenda reference for professional
+ * claims, named at 45 CFR 162.1102(a)(3); this library's v1 scope is 005010
+ * only. Through `0.0.13` this case used `005010X222A1`, which is the errata
+ * production 837Ps actually carry in ST-03 and which now RESOLVES - see
+ * `documentation/agent-notes/x12-variant-icr-ungrounded.md`.
+ */
+const UNRESOLVED_ICR = "004010X098A1";
+
 interface Parsed {
   readonly sub: X12_837Submission;
   readonly tx: X12TransactionSet;
@@ -313,8 +323,8 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     // Measured identical at `0899813`, and the reason no surface here may
     // say "it does not name the variant". Variant resolution runs before the
     // walk, as `explicitType ?? variantFromIcr ?? variantFromSegment`: a
-    // caller's `type` wins first, and absent one an ST-03 outside the three
-    // known conventions falls through to a scan of every SVx in the body,
+    // caller's `type` wins first, and absent one an ST-03 this reader
+    // recognises no convention for falls through to a scan of every SVx in the body,
     // orphans included. So a single stray SV2 re-types the whole submission
     // and the conformant SV1 line beside it reads undefined / undefined
     // rather than 8500 / 4 (it read 0 / 0 through `0.0.12`). Both halves of
@@ -328,7 +338,7 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     // on `submission.variant` had no signal at all.
     // `X12_837_AMBIGUOUS_VARIANT` is that signal and is purely additive -
     // this assertion is the pin that the two codes below did not move.
-    const stray = parse837([...HEADER, CLM, SV2, "LX*1~", SV1], "005010X222A1");
+    const stray = parse837([...HEADER, CLM, SV2, "LX*1~", SV1], UNRESOLVED_ICR);
     expect(stray.variant).toBe("I");
     expect(stray.claims[0]?.serviceLines[0]?.charge).toBeUndefined();
     expect(stray.claims[0]?.serviceLines[0]?.units).toBeUndefined();
@@ -344,14 +354,14 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     // CONTROL: the same document without the stray segment reads correctly.
     // Removing one segment moves an $8,500 charge, which is the measurement
     // rather than the argument.
-    const clean = parse837([...HEADER, CLM, "LX*1~", SV1], "005010X222A1");
+    const clean = parse837([...HEADER, CLM, "LX*1~", SV1], UNRESOLVED_ICR);
     expect(clean.variant).toBe("P");
     expect(clean.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     expect(channel(clean)).toEqual([]);
 
     // CONTROL: a caller `type` wins ahead of both the ICR and the scan, so
     // the identical bytes read correctly. The orphan is still reported.
-    const typed = parse837([...HEADER, CLM, SV2, "LX*1~", SV1], "005010X222A1", { type: "P" });
+    const typed = parse837([...HEADER, CLM, SV2, "LX*1~", SV1], UNRESOLVED_ICR, { type: "P" });
     expect(typed.variant).toBe("P");
     expect(typed.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     expect(typed.claims[0]?.serviceLines[0]?.procedureCode).toBe("99213");
@@ -360,7 +370,7 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     // And the fallback takes the FIRST SVx: a stray SV2 placed AFTER the
     // conformant line changes nothing. Every sentence about this says
     // "the first SVx" for that reason.
-    const trailing = parse837([...HEADER, CLM, "LX*1~", SV1, SV2], "005010X222A1");
+    const trailing = parse837([...HEADER, CLM, "LX*1~", SV1, SV2], UNRESOLVED_ICR);
     expect(trailing.variant).toBe("P");
     expect(trailing.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     // The body is still self-contradictory, so the resolution is still a

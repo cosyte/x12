@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   **What that cost.** Variant resolution runs before the walk as
   `explicitType ?? variantFromIcr ?? variantFromSegment`. Absent a caller `type` option, and where
-  `ST-03` names none of `005010X222A2` / `005010X223A3` / `005010X224A2`, the reader falls back to the
+  `ST-03` names no implementation convention this reader recognises, the reader falls back to the
   **first** `SV1` / `SV2` / `SV3` in the body, orphans included. One stray `SV2` ahead of a conformant
   Professional claim therefore re-types the whole submission Institutional: `submission.variant` reads
   `"I"`, and a consumer routing on that field sends a Professional claim down an Institutional path.
@@ -68,9 +68,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no channel**, so `submission.variant` carried a confident value with nothing to contradict it.
 
   **🛑 THIS CLOSES ONLY THE SILENCE, AND THE RESTRAINT IS THE POINT.** The fallback is **not**
-  narrowed and first-wins is unchanged: which variant a document resolves to, and which lines decode,
-  are byte-for-byte what they were at `0.0.13`, and this code is added beside whatever the walk
-  already raised. Excluding orphans from
+  narrowed and first-wins is unchanged, so on every document that reaches the fallback the variant
+  resolved and the lines decoded are byte-for-byte what they were at `0.0.13`, and this code is added
+  beside whatever the walk already raised. (`X12-VARIANT-ICR-UNGROUNDED`, in this same release,
+  changed WHICH documents reach the fallback; read its entry for what decodes differently.) Excluding orphans from
   the fallback would change how already-published documents decode and is its own slice.
 
   **🩺 Which service segment is the stray one is NOT decided.** This reader cannot tell a stray
@@ -89,9 +90,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   **🩺 It is additive, and nothing moved onto it.** `X12_837_SERVICE_LINE_NOT_DECODED`,
   `X12_837_SERVICE_SEGMENT_WITHOUT_LX` and `X12_837_SERVICE_LINE_DROPPED` fire on exactly the
-  documents they fired on before, in the same positions, pinned by committed tests that assert the
-  whole warning channel with the new code filtered out. **No consumer predicate written against any
-  existing code changes meaning.** Read that as **invariance and not as a list of what else you will
+  documents they fired on before **this code was added**, in the same positions, pinned by committed
+  tests that assert the whole warning channel with the new code filtered out. **No consumer predicate
+  changes meaning because of this code.** (`X12-VARIANT-ICR-UNGROUNDED`, in this same release, DID
+  change which documents reach the `SVx` fallback; read its entry above.) Read that as **invariance and not as a list of what else you will
   see** on a contested document: it does not promise that any particular loss on one is reported at
   all, and one that is not was not reported before this code existed either. A stray `LX` that opened
   no line, for one, already suppressed `X12_837_SERVICE_SEGMENT_WITHOUT_LX` for the service segments
@@ -357,6 +359,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   document content, verbatim, exactly like `tx.rawSegments`. Log `context` and `segmentIndex`.
 
 ### Changed
+
+- **🩺 `get837Claims` now recognises every published `ST-03` implementation-convention reference for
+  the three 837 guides, and some already-published files therefore decode differently**
+  (`X12-VARIANT-ICR-UNGROUNDED`). This is a grounding unit: the table `VARIANT_BY_ICR` had three keys
+  and they were grounded against nothing.
+
+  **🩺 What that cost, measured at `668afea`, which is `main` at published `0.0.13`.** The table held exactly
+  `005010X222A2`, `005010X223A3` and `005010X224A2`. **It contained none of the identifiers HIPAA
+  adopts at 45 CFR 162.1102** (`005010X222`; `005010X223` with its `005010X223A1` Type 1 errata;
+  `005010X224` with `005010X224A1`), **and it was missing `005010X222A1` and `005010X223A2`**, which
+  CMS and state Medicaid companion guides require in ST-03 and GS-08 on production professional and
+  institutional claims. So a conformant, HIPAA-mandated 837P declaring `005010X222A1` resolved to no
+  variant at all, fell through to the `SVx` scan, and one stray `SV2` anywhere in the body re-typed
+  the whole submission Institutional. **The `SVx` fallback was the NORMAL path on production
+  professional and institutional traffic rather than the exception**, and `X12_837_UNKNOWN_VARIANT`
+  on such a file was a fabricated non-conformance claim about a document that was not
+  non-conformant. The sources for every key are named beside the table and in
+  `documentation/agent-notes/x12-variant-icr-ungrounded.md`; the three later published errata guides
+  are the weakest leg and say so in place.
+
+  **🛑 This IS a behaviour change on already-published decoding, and it is disclosed rather than
+  buried.** On a file whose `ST-03` is now recognised: `submission.variant` can differ from what
+  `0.0.13` read, wherever the first `SVx` in the body disagreed with the declaration; and
+  **`X12_837_AMBIGUOUS_VARIANT` and `X12_837_UNKNOWN_VARIANT` no longer fire on it at all**, because
+  no guess was made. **A predicate written against either code goes quiet on such a file.**
+
+  **🩺 And a service line whose `SVx` kind disagrees with the declaration is no longer DECODED, so a
+  code STARTS firing on a document that may have carried `warnings: []`.** Under an `ST-03` of
+  `005010X222A1` with a body whose only service segment is an `SV2`, `0.0.13` read `variant` `"I"`,
+  `charge` `7300`, `units` `2` and `warnings: []`; this release reads `variant` `"P"`, `charge` and
+  `units` `undefined` with the rest of the service segment undecoded, and
+  `X12_837_SERVICE_LINE_NOT_DECODED` at that line's `LX`. **Read only the decimal slots as
+  `undefined`:** an undecoded line SEEDS its identity fields, so `procedureCode` is `""` on a P or D
+  line and `revenueCode` is `""` on an I one. A predicate of `procedureCode === undefined` does NOT
+  detect this.
+  A mis-stamped envelope is an ordinary vendor variant and this reader can no more tell one from a
+  conformant document than it can tell a stray `SVx` from a conformant one, so the loss is **warned
+  rather than silent**, and the cookbook's post-a-line-amount gate already names that code first.
+
+  **🛑 Read all of that as ONE property and never as a closed list of consequences:** where `ST-03`
+  is now recognised, **the document's own declaration decides the variant instead of its first
+  service segment**, and everything downstream follows from that single substitution. A first draft
+  of this entry published a census of three and a refuter measured it false by finding a fourth.
+
+  That is
+  the hazard a widening onto a new code carries, taken here in the opposite direction from the two
+  slices before it: they refused to narrow a fallback because the reader had no evidence beyond the
+  segments, and here the reader had the evidence in ST-03 and was ignoring it. Re-check any routing
+  driven off `submission.variant` for 837s you read on `0.0.13` or earlier.
+
+  **🛑 The `SVx` fallback is NOT narrowed.** First-wins still takes the first `SV1` / `SV2` / `SV3` in
+  the body, orphans included, on every document that still reaches it, and precedence is unchanged:
+  a caller `type` still wins ahead of ST-03, and ST-03 ahead of the segments. What changed is which
+  documents reach the fallback.
+
+  **It is a LIST of cited identifiers, never a pattern.** A reference outside the set, in a different
+  case, or carrying leading whitespace still falls through exactly as before. The set is **not
+  claimed exhaustive and no count of it is published**: both variant-resolution messages named the
+  three old keys literally, so both were wrong the moment the table was corrected, and neither
+  enumerates the set any more. A committed tripwire reds if any registry message quotes a TR3
+  identifier again.
+
+  **🩺 OPEN, and deliberately not fixed here: the EMIT side still stamps the old three.** `build837P`
+  / `build837I` / `build837D` write `005010X222A2` / `005010X223A3` / `005010X224A2` and a caller
+  cannot override them, so **a partner that requires `005010X222A1` or `005010X223A2` will reject an
+  837 this builder emits.** Which published guide identifier a partner accepts is a partner fact
+  rather than a spec fact, and changing bytes this library already emitted would break the partners
+  it works with today. `KNOWN-LIMITATIONS.md` carries it as an open residual.
 
 - **🩺 BREAKING (read model): every monetary, percent and quantity slot the readers used to fill with
   a fabricated `X12Decimal.ZERO` is now `X12Decimal | undefined`** (`X12-837-SV-UNDEFINED-DECIMAL`).
@@ -959,8 +1029,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   are both the line charge, so reading a service segment into a line the walker never opened
   mis-reads money. Refusing to read is the safe half; doing it silently was the defect. **This says
   nothing about how the variant resolved**, and `KNOWN-LIMITATIONS.md` now discloses why: a caller's
-  `type` option wins first, and absent one, where `ST-03` names none of the three known
-  implementation conventions, the reader falls back to the first `SVx` in the transaction body,
+  `type` option wins first, and absent one, where `ST-03` names no implementation convention this
+  reader recognises, the reader falls back to the first `SVx` in the transaction body,
   orphans included, so a stray `SV2` re-types the whole submission. That is pre-existing behaviour, measured identical at `0.0.10`, and is deliberately
   not narrowed here.
 

@@ -245,8 +245,26 @@ The same pattern (`build277` / `build277CA` echoing the 276's trace) covers clai
 with their code-system provenance.
 
 `get837Claims(delimiters, tx)` returns an `X12_837Submission`. Variant is resolved from the ST-03
-implementation-convention reference (`X222A2` → P, `X223A3` → I, `X224A2` → D), with an SVx fallback;
-an unresolvable one raises `X12_837_UNKNOWN_VARIANT`.
+implementation-convention reference (an `X222` guide → P, `X223` → I, `X224` → D), with an SVx
+fallback; an unresolvable one raises `X12_837_UNKNOWN_VARIANT`.
+
+**🩺 Which references resolve changed in this release, and it changes how some already-published files
+decode.** Through `0.0.13` the reader recognised exactly three: `005010X222A2`, `005010X223A3` and
+`005010X224A2`. That set contained **none** of the identifiers HIPAA adopts at 45 CFR 162.1102, and
+it was missing `005010X222A1` and `005010X223A2`, which are what CMS and state Medicaid companion
+guides require in ST-03 on production professional and institutional claims. So a conformant 837P
+declaring `005010X222A1` resolved to nothing and fell through to the SVx fallback, where one stray
+`SV2` re-typed the whole submission. The reader now recognises each base guide and each of its
+published errata. **If you read 837 files on `0.0.13` or earlier, re-check any routing you drove off
+`submission.variant`, and any predicate you wrote on `X12_837_UNKNOWN_VARIANT` or
+`X12_837_AMBIGUOUS_VARIANT`:** on a file whose ST-03 is now recognised, the variant can differ,
+neither code fires any more, and **a service line whose `SVx` kind disagrees with the declaration is
+no longer decoded** - its `charge` and `units` read `undefined`, the rest of the service segment is
+undecoded, and `X12_837_SERVICE_LINE_NOT_DECODED` is raised at that line's `LX`, on a document that
+may have been silent before. **Gate on the warning, not on a slot:** an undecoded line SEEDS its
+identity fields, so `procedureCode` is `""` on a P or D line and `revenueCode` is `""` on an I one. Read all of that as **one property and not a closed list**: where ST-03 is recognised,
+the document's own declaration decides the variant instead of its first service segment. The set is a list of cited identifiers, never a pattern: a reference
+outside it, in a different case, or padded still falls through exactly as before.
 
 **🩺 When the fallback is what decided and the body contradicts itself, that is reported too.** The
 fallback takes the **first** `SV1` / `SV2` / `SV3` in the transaction body, whether or not a Loop 2400

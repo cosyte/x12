@@ -72,6 +72,25 @@ copying files.** Source of truth: the meta-repo's `documentation/conventions.md`
 history. Do not act on a line here without reading it. 🩺 = getting it wrong mis-states a clinical
 or financial value on the wire.**
 
+### 🩺 `X12-VARIANT-ICR-UNGROUNDED` (2026-08-08) · `documentation/agent-notes/x12-variant-icr-ungrounded.md`
+
+- **🩺 `VARIANT_BY_ICR` HELD NONE OF THE IDENTIFIERS 45 CFR 162.1102 ADOPTS, and MISSED
+  `005010X222A1` / `005010X223A2` WHICH COMPANION GUIDES REQUIRE IN ST-03**, so the `SVx` fallback
+  was the NORMAL path on production 837P/I and `X12_837_UNKNOWN_VARIANT` accused a CONFORMANT
+  document. **EVERY KEY NOW NAMES ITS SOURCE; the later errata are the WEAKEST leg, and say so.**
+- **🛑 A BEHAVIOUR CHANGE ON PUBLISHED DECODING. STATE IT AS ONE PROPERTY, NEVER A LIST OF
+  CONSEQUENCES** - a draft published three and a refuter found a fourth. The property: **where ST-03
+  now resolves, THE DECLARATION DECIDES INSTEAD OF THE FIRST `SVx`.** So `variant` can differ, both
+  variant codes STOP firing, and **a line whose `SVx` kind disagrees STOPS DECODING and STARTS
+  raising `X12_837_SERVICE_LINE_NOT_DECODED`.** Opposite call to `#87`/`#88` for ONE reason: **the
+  evidence was IN ST-03 and was being ignored.** **The fallback is NOT narrowed and precedence is
+  unchanged** - only WHICH documents reach it changed.
+- **A LIST OF CITED IDENTIFIERS, NEVER A PATTERN** - no trim, no case-fold, no prefix.
+  **PUBLISH NO COUNT AND NEVER ENUMERATE IT IN A MESSAGE:** both frozen messages listed the old three
+  and both went false; a tripwire reds if any message quotes a TR3 id again.
+- **🩺 THE EMIT SIDE STILL STAMPS THE OLD THREE and a caller CANNOT override**, so a partner
+  requiring `005010X222A1` REJECTS what `build837P` emits. Open, disclosed.
+
 ### 🩺 `X12-837-SV1-OVERWRITE` (2026-08-08) · `documentation/agent-notes/x12-837-sv1-overwrite.md`
 
 - **🩺 A LINE HOLDS ONE SERVICE SEGMENT'S SLOTS AND EVERY DECODER WRITES ALL OF ITS OWN**, so a 2nd
@@ -86,8 +105,8 @@ or financial value on the wire.**
 - **🛑 A BLIND CONSUMER WAS THIS REPO'S OWN DOCS, NOTHING HAVING MOVED ONTO A NEW CODE:** the
   post-a-line-amount gate named FOUR codes and `spec-notes-money` "the known instance", NONE firing
   here. **SWEEP EVERY MONEY PAGE, NOT THE RECIPE ALONE; PIN IT.**
-- **The message ASSERTS NO TR3 USAGE and depends on NO variant resolving** - `VARIANT_BY_ICR` is
-  ungrounded.
+- **The message ASSERTS NO TR3 USAGE and depends on NO variant resolving**, which is why
+  `X12-VARIANT-ICR-UNGROUNDED` could correct that table without touching this code.
 
 ### 🩺 `X12-837-AMBIGUOUS-VARIANT` (2026-08-08) · `documentation/agent-notes/x12-837-ambiguous-variant.md`
 
@@ -203,9 +222,8 @@ or financial value on the wire.**
   `Object.hasOwn`.
 - **271 / 277 / 278 were NEVER exposed and their literal tables are LEFT ALONE:** `shared/hl.ts` has
   always guarded with `hasOwnProperty`; the 837's LOCAL `validateHl` copy did not. **Do not "finish
-  the job" there.** **NO SOURCE SCAN SHIPS, DELIBERATELY** - a scan cannot separate a wire-keyed
-  table from a discriminant-keyed one and `warnings.ts` has four of the latter, so it needs a
-  per-TABLE allowlist (`#51`'s failure mode). The defence derives its keys from
+  the job" there.** **NO SOURCE SCAN SHIPS, DELIBERATELY** (the reason it cannot work here:
+  relocated narrative §9). The defence derives its keys from
   `Object.getOwnPropertyNames(Object.prototype)` AT RUN TIME, UNFILTERED.
 - **`X12_837_SERVICE_LINE_DROPPED` is a NEW code, NOT `#67`'s renamed.** Two routes (no `CLM` open,
   or the variant is not P/I/D), one message, no discriminant. The family is the trap below.
@@ -270,15 +288,15 @@ or financial value on the wire.**
   them back.**
 - **Never fix a mis-read position while leaving its sibling element unread** - that turns a mis-read
   into a **fresh silent drop**. **Retention is non-decreasing, on purpose.**
-- **🩺 A round trip cannot test an element map; only bytes can.** A `build835` -> `get835` round trip is green for ANY pair of positions the two modules agree
-  on. `test/transactions-remit-835-svc-element-map.test.ts` pins the map literally. **Never weaken
-  those to round trips.**
+- **🩺 A round trip cannot test an element map; only bytes can** - it is green for ANY pair of
+  positions the two modules agree on. `test/transactions-remit-835-svc-element-map.test.ts` pins the
+  map literally. **Never weaken those to round trips.**
 - **🩺 Checking a spec claim against this repo's own implementation is NOT a check** - it only proves
   the two agree, which is exactly how the wrong map survived. Ground an element number OUTSIDE the
   repo (sources in `KNOWN-LIMITATIONS.md`). **TR3 005010X221A1 is paid for and nobody here has read
   it.**
-- **Never default an absent SVC-05 to one.** X221A1 is _reported_ to assume one, secondhand and not
-  from a clause anyone here read. Fabricating a count is inventing.
+- **Never default an absent SVC-05 to one.** X221A1 is _reported_ to assume one, secondhand and from
+  no clause anyone here read. Fabricating a count is inventing.
 - **`undefined` still means "not decoded", not "absent"** - the next trap says what tells them apart.
 - **🩺 835s this library emitted at `0.0.9` or earlier are non-conformant and should be re-emitted**
   (the mechanism: relocated narrative §8).
@@ -296,10 +314,10 @@ or financial value on the wire.**
   `requireCallerSegment` type-checks every element of every segment emitted **through a builder's
   `seg`/`joinSeg` helper**. A `string` carrying an active delimiter in a slot that skipped `esc` is
   still emitted verbatim.
-- **The raw slots routed through `esc`: delimiter-safe and type-checked, and value-constrained only
-  where a trap below says so. Only these were routed** (the enumeration: relocated narrative §7).
-  **The residual delimiter injection is NOT stop-the-line: these fail at the receiver and mint no
-  wrong clinical value.** Do not escalate it as if they did.
+- **The raw slots routed through `esc`: delimiter-safe and type-checked, value-constrained only where
+  a trap below says so. ONLY these were routed** (the enumeration: relocated narrative §7). **The
+  residual delimiter injection is NOT stop-the-line** - it fails at the receiver and mints no wrong
+  clinical value. Do not escalate it as if it did.
 - **`buildTA1` uses NEITHER `seg` NOR `joinSeg`** - it joins its five caller-supplied elements
   directly, no `esc`, no `pad`. TA1-01 is data element I12, the reassociation key back to the
   acknowledged interchange. **This was the FOURTH iteration of the completeness claim; do not write
@@ -317,12 +335,11 @@ or financial value on the wire.**
 - **Assert the MESSAGE, not the class, in every builder-refusal test** - including the disclosure
   pins. `expect(run).toThrow(Remit835BuildError)` passes on an unrelated refusal; four of six new
   cases were vacuous that way.
-- **Never bound a loop with `i < parts.length` over a caller array-like.** A forged
-  `{ length: undefined }` runs **zero** iterations and reports every segment clean. Iterate with
-  `for...of`, which throws. **The scanner is not comment-stripped for that rule**, so writing the bad
-  shape in a comment reds it too.
-- **The pinned `esc` counts, and why "X12 code source 715" was wrong, are in the agent-notes
-  section.** Both are measurements, not rules; read them there before quoting either.
+- **Never bound a loop with `i < parts.length` over a caller array-like; iterate with `for...of`,
+  which throws** (the forged shape and what it reported: relocated narrative §9). **The scanner is
+  not comment-stripped for that rule**, so writing the bad shape in a comment reds it too.
+- **The pinned `esc` counts, and why "X12 code source 715" was wrong, are MEASUREMENTS and not
+  rules** - agent-notes section; read them there before quoting either.
 
 ### 🩺 `X12-NUMERIC-VALUE-EMITS-EMPTY` (2026-08-03) · `documentation/agent-notes.md#x12-numeric-value-emits-empty-2026-08-03`
 
@@ -346,10 +363,10 @@ or financial value on the wire.**
 
 ### `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX` (2026-08-03) · `documentation/agent-notes.md#parser-testtimeout-asserts-an-idle-box-2026-08-03`
 
-- **No timeout value changed, and that is the finding, not an omission.**
-- **Count BOTH trees, and never reuse one census for the other.**
+- **No timeout value changed; that is the finding, not an omission.**
+- **Count BOTH trees; never reuse one census for the other.**
 - **Re-derive this box's capacity; never inherit a figure.** The item's numbers are stale.
-- **Interleave BASE/HEAD runs, two rounds each.**
+- **Interleave BASE/HEAD runs, two rounds each. Never one.**
 - **The `tsx` -> `node` substitution is pinned as an EQUIVALENCE, not assumed. Scope it:** `paths`
   mode only (why: relocated narrative §8).
 - **The global `testTimeout` stays at 10 s on purpose**, and **do not upgrade the `10.0 s` reading
@@ -365,12 +382,11 @@ or financial value on the wire.**
 
 - **🩺 Both enumerating routes REFUSE a symlink (exit 2), naming every offender**; neither FOLLOWS
   an ENTRY it enumerated. Say ENTRY, not "anything": **a walk ROOT that is itself a link IS
-  followed** (`existsSync`/`readdirSync`/`statSync` follow) - a superset, not blind. **🔴 AND
-  NOTHING UNDER SUCH A ROOT IS RECONCILED** (its files are outside the `git ls-files` pathspec), so
-  an EMPTIED link target reads **exit 0**. PRE-EXISTING, OPEN: **the closure is "within the
-  declared roots", NOT a universal.** **A refusal NEVER
-  reports the link target:** a diagnostic ABOUT a PHI leak is itself a PHI surface, so describe the
-  shape, never exemplify it.
+  followed** - a superset, not blind. **🔴 AND NOTHING UNDER SUCH A ROOT IS RECONCILED** (its files
+  are outside the `git ls-files` pathspec), so an EMPTIED link target reads **exit 0**.
+  PRE-EXISTING, OPEN: **the closure is "within the declared roots", NOT a universal.** **A refusal
+  NEVER reports the link target:** a diagnostic ABOUT a PHI leak is itself a PHI surface, so
+  describe the shape, never exemplify it.
 - **▶ 🩺 THE `--staged` ARGV IS THE GATE AND EVERY FLAG IN IT IS LOAD-BEARING; NEVER SHORTEN IT. ONE
   RULE: DO NOT TRUST THE CALLER'S GIT CONFIG.** Five holes, all exit 0 over PHI, closed by
   `--no-renames --ignore-submodules=none --diff-filter=AMTUB`. `T` is what
@@ -389,9 +405,8 @@ or financial value on the wire.**
   **A COUNT CANNOT DO IT** - an emptied root gives zero and a total still looks whole.
   **SAY "A DIRECTORY", NEVER "ENUMERABLE"** - a TYPE check; an unreadable one still throws
   uncaught at **exit 1** (PRE-EXISTING). **CUT THE CLAIM BACK, NEVER
-  GROW THE GUARD.** Such a root's OWN index entry is EXEMPT (the walk yields `<root>/<name>`, never
-  `<root>`), else that superset scan turns exit 1 into a refusal; **its control MUST COMMIT its
-  corpus.**
+  GROW THE GUARD.** Such a root's OWN index entry is EXEMPT (why: relocated narrative §9); **its
+  control MUST COMMIT its corpus.**
   `git check-ignore` reads the INDEX: a TRACKED ignored file is SCANNED, its absence REFUSES. No git:
   REFUSE. **RE-DERIVE EVERY EXIT CODE PER REPO** - the regular-file root is **2** here (was **1**,
   uncaught), **2** in `hl7`, **1** in `terminology` by a DIFFERENT mechanism.
@@ -404,20 +419,17 @@ or financial value on the wire.**
   compares WITHIN the declared scope. **Widening the roots buys only the `scanCommonShapes` floor -
   THREE detectors, not the two a draft named**: the `REF*SY` **UNDASHED** SSN is NOT segment-aware
   either; **derive it from the source, never prose** (`.ts` fixtures are literals, so
-  `looksLikeX12` is false). **Widen the RECOGNISER too, not
-  instead. The enumerate-then-read race is deferred; the reason is DIRECTION:** its remedy TOLERATES
-  a failed read, these NARROW what the enumeration admits. x12 escapes it only by a **scope
+  `looksLikeX12` is false). **Widen the RECOGNISER too, not instead. The enumerate-then-read race is
+  deferred, and the reason is DIRECTION** (relocated narrative §9). x12 escapes it only by a **scope
   accident** of its walk roots: **any widening reintroduces it verbatim.**
 
 ### 🩺 `X12-CALLER-VALUE-RESIDUALS` (2026-08-02) · `documentation/agent-notes.md#x12-caller-value-residuals-2026-08-02`
 
-- **All twenty-three caller-value holes across twelve `src/profiles/validate.ts` refusal sites route
-  through `renderCallerValue` or `renderCallerJson`**.
-- **`renderCallerJson` keeps `JSON.stringify` and bounds its OUTPUT**, because the value's TYPE is
-  what is wrong at those sites (`null` and `"null"` are different mistakes). It never throws
-  (circular, `BigInt`, hostile `toJSON`) and fabricates no closing quote.
-  **`X12ProfileError.profileName` is deliberately NOT bounded**, asserted as a test: truncating it
-  would stop it matching what the consumer passed.
+- **Every caller-value hole across the `src/profiles/validate.ts` refusal sites routes through
+  `renderCallerValue` or `renderCallerJson`. Derive both counts; never quote them here.**
+- **`renderCallerJson` keeps `JSON.stringify` and bounds its OUTPUT; it never throws and fabricates
+  no closing quote. `X12ProfileError.profileName` is deliberately NOT bounded**, asserted as a test
+  (both reasons: relocated narrative §9).
 - **🩺 Every indexed loop bound in a builder comes from a `requireCallerArray` binding.** A forged
   `{ length: "9".repeat(120000) }` coerces to `Infinity` and the builder **spins forever instead of
   refusing**; most probes HUNG at base. Both censuses are in the agent-notes section.
@@ -425,10 +437,9 @@ or financial value on the wire.**
   builder owns a distinct error class and code consumers branch on.
 - **`requireCallerArray` answers `null` as ABSENT** (why: relocated narrative §7). **`build835`'s
   `claims` is the measured exception**, pinned by a test.
-- **Scope the claim: a forged non-array is availability, not `STOP-THE-LINE`.** Nothing decodes a
-  document differently. Unreachable from TypeScript, reachable from JS / JSON / `@cosyte/cli`.
-  **`for...of` sites throw `TypeError: ... is not iterable` with NO `code`** (`buildInterchange`'s
-  `spec.groups`, `build999`'s `transactionResponses`, every optional leaf array). Disclosed, pinned.
+- **Scope the claim: a forged non-array is availability, not `STOP-THE-LINE`** - nothing decodes a
+  document differently. **`for...of` sites throw `TypeError: ... is not iterable` with NO `code`**;
+  those sites and the reachability: relocated narrative §9. Disclosed, pinned.
 - **`test/builder-array-bounds.test.ts` keys on the OPERAND, never on the property NAME** - that is
   the mistake `#51`'s allowlist made twice. Its scan strips comments first.
 - **🩺 The negative control found something worse than a red: removing a `requireCallerArray` call
@@ -436,11 +447,10 @@ or financial value on the wire.**
   keeping the source scan exhaustive rather than trusting the examples.**
 - **Drive the shipped table, not a side probe**, and **every figure this area publishes is a
   MEASUREMENT, not a maximum** (the figures and the `QUIRK_ID_RE` correction: relocated narrative §7).
-- **Known and NOT claimed away:** bounding a message here **redacts nothing** (the caller passed the
-  value in), the surviving characters are **not escaped**, the bound is on UTF-16 **code units, not
-  bytes**, both scans are syntactic tripwires and not proofs, and **neither gate scans indexed loops
-  outside the `build*` scope** (`src/loops/define.ts`, `src/profiles/validate.ts`, the `get-*.ts`
-  readers, `src/parser/envelope.ts`).
+- **Known and NOT claimed away:** bounding a message here **redacts nothing**, the survivors are
+  **not escaped**, the bound is UTF-16 **code units, not bytes**, both scans are syntactic tripwires
+  and not proofs, and **neither gate scans indexed loops outside the `build*` scope** (the four
+  places: relocated narrative §9).
 
 ### `X12-BUILDER-BOUNDS` (2026-08-02) · `documentation/agent-notes.md#x12-builder-bounds-2026-08-02`
 
@@ -458,19 +468,17 @@ or financial value on the wire.**
   allowlists that leaked: relocated narrative §8). **Negative controls run both ways.**
 - **🩺 `segmentIndex: 0` is NOT a neutral sentinel: `tx.segments[0]` is the `ST`.** The remit-total
   balance warning now carries the BPR's own 1-based body index, and `balance.ts`'s doc was corrected
-  with the code. **The build-side `segmentIndex: 0` was filed as the same defect and is not one** -
-  the builder has no parsed segment stream, so the position is `UNANCHORED_BUILD_POSITION`, inert by
-  construction. Fabricating an index would have named a segment no consumer can resolve.
+  with the code. **The build-side `segmentIndex: 0` was filed as the same defect and is not one**
+  (why, and what fabricating one would have named: relocated narrative §9).
 - **`renderCallerValue` coerces and never throws** (the draft that did not: relocated narrative).
-- **Assert SE-01 outright rather than trusting it**: a repeatedly-hit tripwire.
+- **Assert SE-01 outright, never trust it**: a repeatedly-hit tripwire.
 
 ### 🩺 `X12-ORPHAN-REEMIT` (2026-08-02) · `documentation/agent-notes.md#x12-orphan-reemit-2026-08-02`
 
 - **🩺 `serializeX12` places every orphan by `X12OrphanSegment.anchor` and NEVER by `segmentIndex`.
   The fix is the ANCHOR, not the re-emission.** An anchor names a SLOT of the typed tree, so it
-  survives both reorderings the emit performs; a raw input index cannot. Corners (the length-equal
-  index, `segmentOffset` never `0`, `transaction` reachable only by a `TA1`) in the agent-notes
-  section.
+  survives both reorderings the emit performs; a raw input index cannot. The three corners are in the
+  agent-notes section.
 - **🩺 SE-01 must count the BYTES THE SERIALIZER WRITES, not the model rows** (X12.6: "segments
   included in the transaction set, including ST and SE"). What the undercount did: relocated narrative
   §7. `segCount` now adds every orphan
@@ -494,8 +502,8 @@ or financial value on the wire.**
 - **🩺 NEVER replay an orphan at its recorded `segmentIndex`. Read the refutation before touching the
   emit again.** `segmentIndex` indexes the INPUT stream and the emit is not in input order, so replay
   splices the orphan into whatever occupies that slot; the three corruption shapes measured, and why
-  trading a warned omission for silent structural corruption is the wrong direction here, are in
-  `documentation/agent-notes/claude-md-relocated-narrative.md`.
+  trading a warned omission for silent structural corruption is the wrong direction here: relocated
+  narrative.
   **The defect is in the ADDRESSING SCHEME and comes straight back if anyone reaches for
   `segmentIndex`.**
 - **A segment with an empty first element, outside a transaction, is dropped with NO warning at all** -
@@ -519,8 +527,8 @@ or financial value on the wire.**
   (what it was: relocated narrative §8).
 - **The deliverable is the SLOT TABLE, not the fix.** `test/_helpers/phi-slots.ts` sweeps every
   consumer-controlled slot via `assertNoDiagnosticPhiLeak`; **the GREEN ones are the point of writing
-  the table before the fix** (never quote its size - derive it). Registry membership is asserted
-  separately, so a factory that starts interpolating again fails without anyone extending the table.
+  the table before the fix** (never quote its size - derive it). **Registry membership is asserted
+  SEPARATELY**, which is what catches a factory nobody extended the table for.
 - **`^0.0.1` resolves EXACTLY on npm for a `0.0.x`.**
 - **The shipped disclosure was wrong in several places at once** (relocated narrative §7).
   **Correct the disclosure in the same commit as the fix that makes the new wording true.**
@@ -537,24 +545,24 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
 - **The profile API DIVERGES from `hl7` DELIBERATELY** (`describe()` returns DATA, `X12ProfileSpec`,
   the x12-only `partitionWarnings`). **"Symmetry is a feature" does NOT license collapsing them
   back.** Long form for all three: `claude-md-relocated-narrative.md`.
-- **🩺 The 820 carries no TR3 balance equation.** `build820` emits every monetary amount VERBATIM
-  and NEVER raises a balance-mismatch refusal - a deliberate contrast with `build835`.
+- **🩺 The 820 carries no TR3 balance equation:** `build820` emits every amount VERBATIM and NEVER
+  raises a balance-mismatch refusal, a deliberate contrast with `build835`.
 - **🩺 Maintenance type is the 834's safety primitive: emit VERBATIM, refuse the unknown.** The
   builder places the caller's INS-03 / HD-01 (code source 875) verbatim and NEVER infers or
   normalizes; where the read side only WARNS (`X12_834_UNKNOWN_MAINTENANCE_TYPE`, **scoped to the
-  affected member only**, so one unknown code never invalidates the roster) the builder REFUSES.
-- **🩺 The 278 certification decision is response-only and never inferred.** `build278Response` places
-  HCR-01 VERBATIM and never normalizes or **upgrades** it; `build278Request` REFUSES a review carrying
-  a decision.
-- **🩺 TRN echo is the safety-critical reassociation invariant.** A 271 echoes the 270's TRN-02 onto
-  its subscriber / dependent, a 277 echoes the 276's onto its claim; the builders place the caller's
-  trace into TRN-02 verbatim and NEVER fabricate, normalize, or mutate it.
+  affected member only**) the builder REFUSES.
+- **🩺 The 278 certification decision is response-only and never inferred:** `build278Response`
+  places HCR-01 VERBATIM and never normalizes or **upgrades** it; `build278Request` REFUSES a review
+  carrying one.
+- **🩺 TRN echo is the safety-critical reassociation invariant: the builders place the caller's trace
+  into TRN-02 VERBATIM and NEVER fabricate, normalize or mutate it.** Which echoes which: the phase
+  sections.
 - **🩺 The HL spine is COMPUTED, never caller-supplied. State it PER BUILDER, never as a blanket.**
   All four compute HL-01/02/04 from the nested tree and take HL-03 from a module-level `HL_LEVEL`
   constant, at every level EXCEPT the 278's EV/SS review level, so an inconsistent hierarchy is
-  _unrepresentable_ and SE-01 is correct by construction. **There is no level field on
-  `Build271Spec` or `Build277Spec` and none should be added** - that destroys the guarantee rather
-  than closing a gap. The four level chains: `claude-md-relocated-narrative.md`.
+  _unrepresentable_. **There is no level field on `Build271Spec` or `Build277Spec` and none should be
+  added** - that destroys the guarantee rather than closing a gap. The four level chains: relocated
+  narrative.
 - **🩺 The one caller-supplied HL-03 is the 278's EV/SS REVIEW level** (`review.levelCode`, default
   `EV`; `esc` never constrained the value). **Both entry points now REFUSE anything else**
   (`X12_278_BUILD_INVALID_SPEC`, no new code): the emit is well-formed but opens a loop no reader
@@ -562,8 +570,7 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   never write the stronger form. **Resolve via the emitter's own `?? "EV"`, NEVER `!== undefined`** -
   `null` is absent, and `undefined`-only refused a spec the emitter would have built. Reaches nested
   and dependent reviews. **Do not restate this as a property of `build278`'s HL-03 generally, and do
-  not write "every builder that has one" over it** - the UMO, requester, subscriber and dependent
-  levels are library constants like every other builder's.
+  not write "every builder that has one" over it** - its other four levels are library constants.
 - **🩺 On the READ side the walker NEVER silently re-numbers a broken HL pointer** - it emits
   `X12_HL_PARENT_MISMATCH` / `X12_HL_PARENT_LEVEL_INVALID`. The 278 `EV` / `SS` levels are
   deliberately tolerant (omitted from the expected-parent map), which is why nothing on the read side
@@ -575,25 +582,24 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
 - **`splitSegments` is release-aware via `findUnescapedTerminator`** (what a naive `indexOf` split
   did: relocated narrative §8). A degenerate terminator-is-release delimiter set falls back to the
   literal scan.
-- **Control NUMBERS are identity and are NEVER rewritten**, even under `{ specClean: true }`;
-  corrected COUNTS emit only with `{ recomputeCounts: true }`, which is inert without `specClean`.
-  Every mismatch surfaces via `onWarning` and is never silently corrected.
+- **Control NUMBERS are identity and are NEVER rewritten** even under `{ specClean: true }`;
+  corrected COUNTS emit only with `{ recomputeCounts: true }`, inert without `specClean`. Every
+  mismatch surfaces via `onWarning`, never silently corrected.
 - **🩺 All monetary / percent / quantity fields decode as `X12Decimal`: string-backed, `BigInt`-exact,
-  NEVER `parseFloat`.**
+  never `parseFloat`.**
 - **🩺 The 835 model is NEVER silently rebalanced.** Three TR3 X221A1 §1.10.2 invariants (line, claim,
   top-of-remit) run after the walk and emit `X12_835_REMIT_BALANCE_MISMATCH`. **PLB amounts carry the
   RAW EDI sign (positive = take-back), so the top equation is `BPR-02 == Σ(CLP-04) - Σ(PLB)`.**
-- **🩺 An unknown code preserves its verbatim value and warns; it is never dropped or normalized** -
-  `X12_UNKNOWN_CARC` / `X12_UNKNOWN_RARC` / `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` /
-  `X12_UNKNOWN_CLAIM_STATUS` / `X12_UNKNOWN_HI_QUALIFIER` (verbatim qualifier + code, with
-  `codeSystem: "unknown"`) / `X12_837_UNKNOWN_VARIANT`.
-- **🩺 Acks are structurally PHI-free by design, and `IK4-04` (`copyOfBadDataElement`) is a caller
-  surface callers SHOULD omit when the bytes are PHI. The library NEVER auto-populates it.**
-- **`build999` REFUSES `Accept` against a non-empty error list (`X12_ACK_ACCEPT_WITH_ERRORS`) and
-  inconsistent AK9 counts (`X12_ACK_COUNT_MISMATCH`); `buildTA1` REFUSES `A` with a non-`000` note.**
+- **🩺 An unknown code preserves its verbatim value and warns; it is never dropped or normalized.**
+  **NAME THE RULE, NEVER THE MEMBERS** - derive the codes from `WARNING_CODES`. The HI one keeps the
+  verbatim qualifier AND code with `codeSystem: "unknown"`.
+- **🩺 Acks are structurally PHI-free by design; `IK4-04` is a caller surface callers SHOULD omit
+  when the bytes are PHI, and the library NEVER auto-populates it.**
+- **`build999` REFUSES `Accept` with a non-empty error list (`X12_ACK_ACCEPT_WITH_ERRORS`) and bad
+  AK9 counts (`X12_ACK_COUNT_MISMATCH`); `buildTA1` REFUSES `A` with a non-`000` note.**
 - **🩺 Every DOMAIN builder's own refusal message carries structural locators, counts and numeric
-  totals only** - never a `claimId`, member id, member name, trace or diagnosis code. **State this
-  PER BUILDER, never as a property of every builder.** Standing exception, the **ack path**:
+  totals only** - never an identifier, a name, a trace or a clinical code. **State this PER BUILDER,
+  never as a property of every builder.** Standing exception, the **ack path**:
   `build999` interpolates the acknowledged ST-02 and `buildTA1` its TA1-05 note code. **The negative
   list is NOT an absolute PHI guarantee; it is one about the builder's own TEMPLATES**, which still
   render control numbers and codes.
@@ -620,16 +626,12 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   relocated narrative §7). **Re-measure per repo; do not carry a sibling's figure over.** The answer
   is **not** a lock, a lease or a build queue (ADR 0015): the gate has to be able to say its own
   inputs were missing, whatever removed them.
-- **Keep BOTH nets in `scripts/attw.mjs`; they catch different things.** The **preflight** checks
-  every relative path `package.json` promises exists and is non-empty, which catches the build
-  interval and NAMES the missing file. The **post-check** on the untyped sentence catches what the
-  preflight structurally cannot: declarations on disk but excluded from the tarball by
-  `files`/`.npmignore`.
+- **Keep BOTH nets in `scripts/attw.mjs`; they catch different things** - the preflight and the
+  post-check, and what each one catches that the other structurally cannot: relocated narrative §9.
 - **The post-check reads a string, so anything that could hide it is REFUSED by option name,
   wholesale, not by value** (four routes; a nonexistent `--config-path` blinds nothing).
-- **`test/scripts/attw-gate.test.ts` pins the upstream exit-0 itself**, so an `attw` upgrade that
-  rewords the sentence or fixes the exit code reds the suite instead of letting the net go quietly
-  slack.
+- **`test/scripts/attw-gate.test.ts` pins the upstream exit-0 itself**, so an `attw` upgrade reds the
+  suite instead of letting the net go quietly slack.
 - **The port is NOT finished org-wide, including `config/scripts/parser-template/`, which
   `scaffold-parser.mjs` mints new parsers from.** Derive the set; never trust a count.
 

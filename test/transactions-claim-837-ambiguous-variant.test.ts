@@ -5,8 +5,8 @@
  *
  * 🩺 **What that cost, measured at `c758bcd`.** Variant resolution runs
  * before the walk as `explicitType ?? variantFromIcr ?? variantFromSegment`.
- * Absent a caller `type` option, and where ST-03 names none of the three
- * implementation-convention references this library knows, it falls back to
+ * Absent a caller `type` option, and where ST-03 names no implementation
+ * convention this library recognises, it falls back to
  * the FIRST `SV1` / `SV2` / `SV3` in the transaction body, orphans included.
  * So one stray `SV2` ahead of a conformant Professional claim re-types the
  * WHOLE submission Institutional: `submission.variant` reads `"I"`, and a
@@ -57,6 +57,24 @@ const MARKER = "ZZMARKERZZ";
 const SV1 = "SV1*HC:99213*8500*UN*4***1~";
 const SV2 = "SV2*0300*HC:99213*7300*UN*2~";
 const SV3 = "SV3*AD:D1110*6100**11*1*1~";
+
+/**
+ * An ST-03 `get837Claims` turns into no variant, so every case below is
+ * decided by the `SVx` fall-back. It is the ASC X12N **4010** addenda
+ * reference for professional claims, named verbatim at 45 CFR 162.1102(a)(3)
+ * - a real identifier of a version this library's v1 scope deliberately
+ * excludes (005010 only). A 4010 reference is NOT read as `"P"`, and that
+ * is a property of the scope, not an oversight.
+ *
+ * **🩺 Through `0.0.13` this file used `005010X222A1` for this job, and
+ * that was the defect `X12-VARIANT-ICR-UNGROUNDED` closed.** `005010X222A1`
+ * is the June 2010 errata that CMS and state Medicaid companion guides
+ * require in ST-03 on a production 837P, so the fall-back below was the
+ * NORMAL path on real professional traffic rather than the exception. It
+ * resolves now. Sources:
+ * `documentation/agent-notes/x12-variant-icr-ungrounded.md`.
+ */
+const UNRESOLVED_ICR = "004010X098A1";
 
 interface Parsed {
   readonly sub: X12_837Submission;
@@ -142,7 +160,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
    * no channel at all.
    */
   it("🩺 a stray SV2 ahead of a Professional claim raises it, and the line codes are unchanged", () => {
-    const { sub } = parse837("005010X222A1", [
+    const { sub } = parse837(UNRESOLVED_ICR, [
       "HL*1**20*1~",
       "NM1*85*2*BILLING CLINIC INC*****XX*1234567890~",
       SV2,
@@ -172,7 +190,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     // The recovery the message names. A caller `type` wins ahead of the
     // fall-back, so no guess is made and there is nothing to report.
     const { sub } = parse837(
-      "005010X222A1",
+      UNRESOLVED_ICR,
       [
         "HL*1**20*1~",
         "NM1*85*2*BILLING CLINIC INC*****XX*1234567890~",
@@ -200,7 +218,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     // Neither segment is an orphan here, so nothing about the conflict
     // depends on the orphan route. The SV1 wins first-wins; the SV2 line is
     // retained undecoded and says so at its own LX.
-    const { sub } = parse837("005010X222A1", claimBody(["LX*1~", SV1, "LX*2~", SV2]));
+    const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1, "LX*2~", SV2]));
     expect(sub.variant).toBe("P");
     expect(sub.claims[0]?.serviceLines).toHaveLength(2);
     expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
@@ -210,13 +228,13 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
 
   it("it fires in the other direction too: an SV2 first, an SV1 second", () => {
     // The code is about the conflict, not about which variant loses.
-    const { sub } = parse837("005010X222A1", claimBody(["LX*1~", SV2, "LX*2~", SV1]));
+    const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV2, "LX*2~", SV1]));
     expect(sub.variant).toBe("I");
     expect(channel(sub)).toEqual([AMBIGUOUS, NOT_DECODED]);
   });
 
   it("an SV3 conflicting with an SV1 raises it (all three ids are in the table)", () => {
-    const { sub } = parse837("005010X222A1", claimBody(["LX*1~", SV1, "LX*2~", SV3]));
+    const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1, "LX*2~", SV3]));
     expect(sub.variant).toBe("P");
     expect(channel(sub)).toEqual([AMBIGUOUS, NOT_DECODED]);
   });
@@ -251,7 +269,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     // measured it false on this document. The additivity claim is INVARIANCE -
     // whatever was raised before is still raised, in the same place - never a
     // list of what else a reader will see.
-    const { sub } = parse837("005010X222A1", [
+    const { sub } = parse837(UNRESOLVED_ICR, [
       "HL*1**20*1~",
       "NM1*85*2*BILLING CLINIC INC*****XX*1234567890~",
       "HL*2*1*22*0~",
@@ -270,7 +288,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
 
   it("three conflicting segments still raise it exactly once", () => {
     // It reports the RESOLUTION, and there is one of those per transaction.
-    const { sub } = parse837("005010X222A1", claimBody(["LX*1~", SV1, "LX*2~", SV2, "LX*3~", SV3]));
+    const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1, "LX*2~", SV2, "LX*3~", SV3]));
     expect(channel(sub).filter((c) => c === AMBIGUOUS)).toHaveLength(1);
     expect(channel(sub)).toEqual([AMBIGUOUS, NOT_DECODED, NOT_DECODED]);
   });
@@ -282,7 +300,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
 
 describe("X12-837-AMBIGUOUS-VARIANT: controls, where the fall-back was not contested", () => {
   it("CONTROL: an unresolvable ST-03 whose body names ONE variant is silent", () => {
-    const { sub } = parse837("005010X222A1", claimBody(["LX*1~", SV1, "LX*2~", SV1]));
+    const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1, "LX*2~", SV1]));
     expect(sub.variant).toBe("P");
     expect(channel(sub)).toEqual([]);
   });
@@ -297,7 +315,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: controls, where the fall-back was not conte
   });
 
   it("CONTROL: a caller `type` with a mixed body does not raise it", () => {
-    const { sub } = parse837("005010X222A1", claimBody(["LX*1~", SV1, "LX*2~", SV2]), {
+    const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1, "LX*2~", SV2]), {
       type: "I",
     });
     expect(sub.variant).toBe("I");
@@ -309,7 +327,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: controls, where the fall-back was not conte
   it("CONTROL: no SVx at all is X12_837_UNKNOWN_VARIANT, never this code", () => {
     // The two codes are the two outcomes of one resolution and can never
     // travel together: a conflicting body has something to fall back on.
-    const { sub } = parse837("005010X222A1", claimBody(["LX*1~", "DTP*472*D8*20260601~"]));
+    const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", "DTP*472*D8*20260601~"]));
     expect(sub.variant).toBe("unknown");
     expect(channel(sub)).toEqual([UNKNOWN_VARIANT, WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
   });
@@ -324,7 +342,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: controls, where the fall-back was not conte
     // Reachable from JavaScript / a JSON payload only. It wins ahead of the
     // fall-back like any other caller value, so no guess is made; every line
     // drops, which is pre-existing and unchanged.
-    const { sub } = parse837("005010X222A1", claimBody(["LX*1~", SV1, "LX*2~", SV2]), {
+    const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1, "LX*2~", SV2]), {
       type: "X" as "P",
     });
     expect(sub.variant).toBe("X");
@@ -341,7 +359,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: controls, where the fall-back was not conte
 
 describe("X12-837-AMBIGUOUS-VARIANT: the warning's shape", () => {
   it("🩺 anchors at the ST (segmentIndex 0) with NO elementIndex", () => {
-    const { sub, tx } = parse837("005010X222A1", claimBody(["LX*1~", SV1, "LX*2~", SV2]));
+    const { sub, tx } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1, "LX*2~", SV2]));
     const w = sub.warnings.find((x) => x.code === AMBIGUOUS);
     expect(w).toBeDefined();
     expect(w?.position.segmentIndex).toBe(0);
@@ -427,7 +445,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: additive, with nothing moved onto it", () =
 
   for (const [name, body, legacyChannel] of cases) {
     it(`${name}: the pre-existing codes are untouched`, () => {
-      const { sub } = parse837("005010X222A1", body);
+      const { sub } = parse837(UNRESOLVED_ICR, body);
       expect(channel(sub).filter((c) => !ADDED_SINCE_0_0_13.has(c))).toEqual([...legacyChannel]);
       expect(channel(sub)).toContain(AMBIGUOUS);
     });
@@ -437,7 +455,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: additive, with nothing moved onto it", () =
     // Narrowing the fall-back to skip orphans would read this document as
     // Professional and decode the SV1. It is deliberately NOT narrowed: that
     // changes how an already-published document decodes.
-    const { sub } = parse837("005010X222A1", claimBody([SV2, "LX*1~", SV1]));
+    const { sub } = parse837(UNRESOLVED_ICR, claimBody([SV2, "LX*1~", SV1]));
     expect(sub.variant).toBe("I");
     expect(sub.claims[0]?.serviceLines[0]?.charge).toBeUndefined();
   });
