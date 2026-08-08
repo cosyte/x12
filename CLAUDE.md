@@ -415,10 +415,12 @@ or financial value on the wire.**
   the two a draft named** (`REF*SY`'s **UNDASHED** SSN is not segment-aware).
   **DERIVE THE CENSUS FROM `git ls-files`; PUBLISH NO COUNT HERE.** **`looksLikeX12` asks whether the
   file _IS_ an interchange**, so inline `.ts` fixtures holding segment text reached NO segment-aware
-  detector; `scanEmbeddedSegments` is the other side, **four bounds, disclosed and pinned:** assumes
-  `*`, knows only the ids the checks consume, never runs on a whole-file interchange, and skips a
-  non-name-shaped element or a whitespace-bearing id - **EMBEDDED-ONLY; `.edi` is unchanged.**
-  **A BUILDER SPEC OBJECT is segment text to nobody** - found by hand-reading.
+  detector; `scanEmbeddedSegments` is the other side. **IT IS A TRIPWIRE, NOT A PARSER: NEVER PUBLISH
+  A CLOSED COUNT OF WHAT IT MISSES** - a draft said "four bounds", a refuter found two more in one
+  pass. **🩺 `'` MUST NOT BE A RUN STOP** - it TRUNCATED the run, losing a surname AND the member id,
+  qualifier-34 SSN and phone after it - and **"letter" is `\p{L}`, NEVER `[A-Za-z]`.** Its narrowings
+  are **EMBEDDED-ONLY; `.edi` is unchanged.** **A BUILDER SPEC OBJECT is segment text to nobody** -
+  found by hand-reading, not by the gate.
 - **▶ 🛑 THIS GATE'S OWN CONTROLS ARE ASSEMBLED WITH `seg(...)`, NEVER LITERAL SEGMENT TEXT; WRITE
   THE NEXT ONE THE SAME WAY.** Declaring them disarms the detector they prove; a literal-path
   exemption would have to reach `--staged` or the file could never be committed again. **STILL OPEN:
@@ -542,20 +544,16 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
 - **🩺 v1 profiles are DESCRIPTIVE: a profile NEVER alters the parse.** `groups` / `warnings` / `isa`
   are byte-identical with and without one (divergence test); `partitionWarnings` is the one hook.
 - **🩺 HARD RULE, LOCKED: a profile quirk with no Tier-2 fixture demonstrating the deviation is
-  FORBIDDEN. No invented quirks.** Enforced three ways, incl. a per-quirk DEMONSTRATOR registry, so a
-  real-but-irrelevant fixture cannot slip past. Built-ins reach consumers ONLY via `profiles`.
+  FORBIDDEN. No invented quirks.** Enforced three ways; built-ins reach consumers ONLY via
+  `profiles` - relocated narrative §10.5.
 - **The profile API DIVERGES from `hl7` DELIBERATELY** (`describe()` returns DATA, `X12ProfileSpec`,
   the x12-only `partitionWarnings`). **"Symmetry is a feature" does NOT license collapsing them
   back.** Long form for all three: `claude-md-relocated-narrative.md`.
 - **🩺 The 820 carries no TR3 balance equation:** `build820` emits every amount VERBATIM and NEVER
   raises a balance-mismatch refusal, a deliberate contrast with `build835`.
-- **🩺 Maintenance type is the 834's safety primitive: emit VERBATIM, refuse the unknown.** The
-  builder places the caller's INS-03 / HD-01 (code source 875) verbatim and NEVER infers or
-  normalizes; where the read side only WARNS (`X12_834_UNKNOWN_MAINTENANCE_TYPE`, **scoped to the
-  affected member only**) the builder REFUSES.
-- **🩺 The 278 certification decision is response-only and never inferred:** `build278Response`
-  places HCR-01 VERBATIM and never normalizes or **upgrades** it; `build278Request` REFUSES a review
-  carrying one.
+- **🩺 Maintenance type is the 834's safety primitive: emit VERBATIM, refuse the unknown** (the read
+  side only WARNS, scoped to the affected member; the builder REFUSES). **🩺 The 278 certification
+  decision is response-only and never inferred** - relocated narrative §10.7.
 - **🩺 TRN echo is the safety-critical reassociation invariant: the builders place the caller's trace
   into TRN-02 VERBATIM and NEVER fabricate, normalize or mutate it.** Which echoes which: the phase
   sections.
@@ -576,8 +574,8 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   deliberately tolerant, so nothing on the read side catches an out-of-enum HL-03 on a document this
   library did not emit. Untouched; a warning needs a new code - relocated narrative §10.2.
 - **Emit the envelope INLINE, not via `buildInterchange`, in any domain builder that composes a
-  composite element** (835, 837), so a pre-composed composite is never double-escaped. Composites
-  escape each component then join with the RAW component separator.
+  composite element** (835, 837), so a pre-composed composite is never double-escaped - relocated
+  narrative §10.6.
 - **`splitSegments` is release-aware via `findUnescapedTerminator`** (what a naive `indexOf` split
   did: relocated narrative §8). A degenerate terminator-is-release delimiter set falls back to the
   literal scan.

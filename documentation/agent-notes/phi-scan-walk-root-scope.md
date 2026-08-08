@@ -23,24 +23,25 @@ git ls-files -- src test/fixtures | grep -iv '\.md$' | wc -l   # opened by the w
 
 At base `7d50305`:
 
-| | |
-|---|---|
-| tracked | **306** |
+|                                              |         |
+| -------------------------------------------- | ------- |
+| tracked                                      | **306** |
 | opened by the walk (`test/fixtures` + `src`) | **163** |
-| opened by **neither** route | **143** |
-| of those, tracked under `test/` | **85** |
-| `.md` under either walk root | **0** |
+| opened by **neither** route                  | **143** |
+| of those, tracked under `test/`              | **85**  |
+| `.md` under either walk root                 | **0**   |
 
-At head:
+At head, **and note the denominator MOVES because this slice adds tracked files of its own** - a
+refuter caught a draft of this table quoting base's 306 at head:
 
-| | |
-|---|---|
-| tracked | **306** |
+|                                     |         |
+| ----------------------------------- | ------- |
+| tracked                             | **308** |
 | opened by the walk (`test` + `src`) | **248** |
-| opened by **neither** route | **58** |
-| of those, tracked under `test/` | **0** |
+| opened by **neither** route         | **60**  |
+| of those, tracked under `test/`     | **0**   |
 
-The remaining 58 are outside both roots: `.changeset/`, `.claude/`, `.github/`, `docs-content/`,
+The remaining 60 are outside both roots: `.changeset/`, `.claude/`, `.github/`, `docs-content/`,
 `documentation/`, `scripts/`, the root dotfiles and the root markdown. **That is a scope decision and
 not this item**, and widening to them is not free: `scripts/phi-scan.ts` and
 `scripts/phi-allow-list.txt` are the gate's own source and its declaration file, and every value in
@@ -70,27 +71,61 @@ Measured: the floor alone, over the newly opened 85, found **8 shapes in exactly
 enumeration half on its own would have closed about a sixth of what was there.
 
 `scanEmbeddedSegments` closes it. It finds a segment id from a closed list followed by `*`, takes the
-run to the first `~`, quote, backtick, backslash or newline, strips `${...}` first so an interpolated
+run to the first `~`, `"`, backtick, backslash or newline, removes `${...}` first so an interpolated
 fixture keeps its **element positions**, and hands the result to the same checks.
 
-**What it does not do, each disclosed and each pinned by a case:**
+**🛑 What it does not do. THIS IS A SYNTACTIC TRIPWIRE OVER SOURCE TEXT, NOT A PARSER, so the list
+below is what has been MEASURED and is explicitly NOT a closed census.** A draft of this note
+published it as "four bounds" in four places and pass 1 of the refuter found two more in a single
+pass. **Finding one more is expected and is not a new finding. Cut the claim back, never grow the
+guard, and publish no count of them** - the rule `X12-NUMERIC-VALUE-EMITS-EMPTY` was refuted three
+times for breaking. Each below is pinned by a case:
 
 - **It infers no delimiters.** There is no ISA in an embedded run, so the element separator is taken
   to be `*`. A segment embedded under a non-default separator is not reached.
 - **It recognises only the ids the checks consume** (`NM1`, `PER`, `DMG`, `DTP`, `DTM`, `BHT`, `GS`).
-  Cut back, never grow.
 - **It does not run on a whole-file interchange.** Those go through `scanX12`, which has real
   delimiters. Running both would report every hit twice, and there is a case asserting it does not.
-- **It skips an element that is not name-shaped, and an id element carrying whitespace.** A run found
-  in prose ends at whatever punctuation comes first and can swallow the sentence around it: before
-  these two predicates, a fenced doc table in `test/builder-string-type.test.ts` reported its arrow
-  column as an SSN-qualified id, and an `NM1` quoted in a `//` comment in `test/parser-segment.test.ts`
-  reported the following English word as a person name. **Both predicates apply to the EMBEDDED pass
-  only** and the whole-file `.edi` path keeps the base rules unchanged, which is asserted with the
-  same bytes on both sides.
+- **A template placeholder is REMOVED before the split**, which keeps an interpolated fixture's
+  element positions. **Say the other half too, because a draft named only the benefit: the removed
+  bytes leave this pass's view entirely**, so a name an interpolation holds is never checked.
+- **A segment split across a concatenation is not reached.** `"NM1*IL*1*" + "MCALLISTER*BRENDAN~"` is
+  clean where the same bytes unsplit are two hits. Nothing in this corpus is written that way today,
+  which is what makes it latent rather than noise.
+- **The run stops at the first `"`, backtick, `~`, backslash or newline**, so a segment carrying any
+  of those inside an element is truncated there and every later element ceases to exist.
+- **It skips an element that is not name-shaped, and an id element carrying anything but ASCII
+  alphanumerics, `.`, `_` or `-`.** A run found in prose ends at whatever punctuation comes first and
+  can swallow the sentence around it: before these two predicates, a fenced doc table in
+  `test/builder-string-type.test.ts` reported its arrow column as an SSN-qualified id, and an `NM1`
+  quoted in a `//` comment in `test/parser-segment.test.ts` reported the following English word as a
+  person name. **Both predicates apply to the EMBEDDED pass only** and the whole-file `.edi` path
+  keeps the base rules unchanged, which is asserted with the same bytes on both sides.
 - **A fixture expressed as a BUILDER SPEC OBJECT is segment text to nobody.** `{ lastName: "…" }`
   becomes a segment only when the builder runs. **Found by hand-reading, not by the gate**, and pinned
   as a case so the silence is not read as coverage.
+
+## 🩺 Two things a refuter measured and a draft had backwards, both in the leak-hiding direction
+
+**`'` MUST NOT BE A RUN STOP, AND "LETTER" MUST NOT BE `[A-Za-z]`.** The first draft put `'` in the
+run-stop set (symmetry with `"`, since both delimit a TypeScript string) and wrote the name class as
+`[A-Za-z][A-Za-z' .-]*`. The two contradict each other: nothing carrying an apostrophe could ever be
+FRAMED, so the `'` branch of the name class was dead - and the failure was worse than a skip, because
+the run was **truncated** at the apostrophe and every later element ceased to exist. Measured then,
+every one of these reported clean in a `.ts` literal:
+
+| input                                     | then  | now                          |
+| ----------------------------------------- | ----- | ---------------------------- |
+| `NM1*IL*1*O'BRIEN*SEAN****MI*W123456789~` | clean | name + member id             |
+| `NM1*IL*1*O'BRIEN*SEAN****34*123456789~`  | clean | name + qualifier-34 SSN      |
+| `PER*IC*JOHN O'BRIEN*TE*2124440101~`      | clean | contact name + non-555 phone |
+| `NM1*IL*1*NUÑEZ*JOSÉ~`                    | clean | both name elements           |
+
+`O'Brien`, `D'Angelo` and `N'Diaye` are exactly the surnames a real de-identification failure drops
+into a fixture, and the `scanCommonShapes` floor covers neither the member id nor the qualifier-34
+SSN. **A surname is not an ASCII string**, so the name class is `\p{L}` with combining marks. The
+disclosure that shipped in the first draft said apostrophes were permitted, which was true of the
+class and false of the pass.
 
 ## The one cell of the widening that was NOT additive, and the grid is what found it
 
@@ -121,11 +156,11 @@ found".
 `ccda#103` lost a real detection by arguing an exemption was additive "because no route read a
 `.md`", when `paths` ran the same structural predicate. So, for this slice:
 
-| route | enumeration change | recogniser change |
-|---|---|---|
-| `all` (`pnpm phi-scan`) | roots `test/fixtures`+`src` -> `test`+`src` | gains `scanEmbeddedSegments` |
-| `--staged` (pre-commit) | `test/fixtures/**`+`src/**.ts` -> `test/**`+`src/**` | gains `scanEmbeddedSegments` |
-| `paths` (`pnpm phi-scan <file>`) | unchanged (the caller names the file) | gains `scanEmbeddedSegments` |
+| route                            | enumeration change                                   | recogniser change            |
+| -------------------------------- | ---------------------------------------------------- | ---------------------------- |
+| `all` (`pnpm phi-scan`)          | roots `test/fixtures`+`src` -> `test`+`src`          | gains `scanEmbeddedSegments` |
+| `--staged` (pre-commit)          | `test/fixtures/**`+`src/**.ts` -> `test/**`+`src/**` | gains `scanEmbeddedSegments` |
+| `paths` (`pnpm phi-scan <file>`) | unchanged (the caller names the file)                | gains `scanEmbeddedSegments` |
 
 Both enumeration changes are **unions**: the old scope is a subtree of the new one, so no path either
 route enumerated stops being enumerated. **No exemption was written, on any route.** That is
@@ -141,17 +176,17 @@ for the corpus to be clean rather than excused.
 **Every base `1` is still non-zero. Nothing went `1 -> 0` except the declared allow-list clearances
 below.** The changed cells:
 
-| shape | route | base | head |
-|---|---|---|---|
-| violator `.edi` directly under `test/` | all | 0 | **1** |
-| inline-segment `.ts` under `test/` | all | 0 | **1** |
-| inline-segment `.ts` under `test/property/` | all | 0 | **1** |
-| inline-segment `.ts` under `src/` | all | 0 | **1** |
-| violator staged directly under `test/` | `--staged` | 0 | **1** |
-| inline-segment `.ts` staged under `test/` | `--staged` | 0 | **1** |
-| violator staged at `src/notes.md` | `--staged` | 0 | **1** |
-| `test/fixtures` a symlink to a dir holding PHI | all | 1 | **2** |
-| `test/fixtures` a symlink, target emptied | all | **0** | **2** |
+| shape                                          | route      | base  | head  |
+| ---------------------------------------------- | ---------- | ----- | ----- |
+| violator `.edi` directly under `test/`         | all        | 0     | **1** |
+| inline-segment `.ts` under `test/`             | all        | 0     | **1** |
+| inline-segment `.ts` under `test/property/`    | all        | 0     | **1** |
+| inline-segment `.ts` under `src/`              | all        | 0     | **1** |
+| violator staged directly under `test/`         | `--staged` | 0     | **1** |
+| inline-segment `.ts` staged under `test/`      | `--staged` | 0     | **1** |
+| violator staged at `src/notes.md`              | `--staged` | 0     | **1** |
+| `test/fixtures` a symlink to a dir holding PHI | all        | 1     | **2** |
+| `test/fixtures` a symlink, target emptied      | all        | **0** | **2** |
 
 The last two are the widening's other gain and they are worth stating separately: `test/fixtures`
 stopped being a root, so the **entry** rule applies to it and the shape is refused outright instead
@@ -207,7 +242,11 @@ codes `00093721410` and `00378010401` (public labeler codes, in the 837 drug-ide
 fixtures); the CMS test NPI `1234567893`; and `t@example.com`, the git identity a throwaway test repo
 commits under. `SMITH` survives in two files as an org name (`SMITH CLINIC`) and a placeholder
 surname in a **builder spec object**, both read and neither PHI - and the spec-object one is the
-disclosed reach gap above, not a clearance.
+disclosed reach gap above, not a clearance. **`2124440101` belongs on this list too**, the fictional
+biller's phone in the gate's own controls: it is off the 555 convention deliberately, because the
+communication-number detector exists to flag exactly that, and assembling the control moved it out of
+the gate's view. It is invented, and "nothing is obscured" was true of the names and the SSN digits
+only.
 
 ## Residuals, all PRE-EXISTING and all disclosed
 
@@ -225,4 +264,4 @@ disclosed reach gap above, not a clearance.
   escaped it "only by a scope accident of its walk roots" and that **any widening reintroduces it
   verbatim** - which this widening does, over 85 more files. Still deferred, and the reason is still
   direction: the remedy TOLERATES a failed read, which pulls against every other rule here.
-- **58 tracked files remain outside both routes.** Named above.
+- **60 tracked files remain outside both routes at head.** Named above, and **re-derive rather than trusting that number** - it moves with every file the next slice adds.

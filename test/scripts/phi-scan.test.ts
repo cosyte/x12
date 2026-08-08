@@ -1711,6 +1711,89 @@ describe("phi-scan: the recogniser reaches segment text a string literal is hold
     expect(runIn(root, ["test/piped.ts"]).code, "the same segment under `*` IS reached").toBe(1);
   });
 
+  it("🩺 an APOSTROPHE in a name does not truncate the run, and the whole segment is still read", () => {
+    // 🛑 A REFUTER FOUND THIS AND IT WAS THE SHARPEST FINDING OF THE SLICE. The
+    // first draft put `\'` in `EMBEDDED_RUN_STOP`, by symmetry with `"`, and also
+    // allowed it in the name class - which made that branch DEAD. The failure was
+    // not a skipped element: the run was TRUNCATED at the apostrophe, so every
+    // element after it ceased to exist, and the member id, the qualifier-34 SSN
+    // and the non-555 phone in the same segment went with the surname.
+    const root = makeRepo();
+    const p = join(root, "test", "apostrophe.ts");
+
+    writeFileSync(
+      p,
+      `export const S = ${JSON.stringify(seg("NM1", "IL", "1", "O'BRIEN", "SEAN", "", "", "", "MI", "W123456789"))};\n`,
+    );
+    const name = runIn(root, ["test/apostrophe.ts"]);
+    expect(name.code, `stderr: ${name.stderr}`).toBe(1);
+    expect(name.stderr, "the surname").toContain("BRIEN");
+    expect(name.stderr, "and the element AFTER the apostrophe").toContain("W123456789");
+
+    writeFileSync(
+      p,
+      `export const S = ${JSON.stringify(seg("NM1", "IL", "1", "O'BRIEN", "SEAN", "", "", "", "34", "123456789"))};\n`,
+    );
+    expect(runIn(root, ["test/apostrophe.ts"]).stderr).toContain("SSN (NM1 qualifier 34)");
+
+    writeFileSync(
+      p,
+      `export const S = ${JSON.stringify(seg("PER", "IC", "JOHN O'BRIEN", "TE", "2124440101"))};\n`,
+    );
+    expect(runIn(root, ["test/apostrophe.ts"]).stderr).toContain("phone/fax");
+  });
+
+  it("🩺 a surname is NOT an ASCII string: a non-ASCII name element is still checked", () => {
+    // The name class is `\p{L}` plus combining marks. With `[A-Za-z]` both
+    // elements below were skipped and the file reported clean.
+    const root = makeRepo();
+    writeFileSync(
+      join(root, "test", "unicode.ts"),
+      `export const S = ${JSON.stringify(seg("NM1", "IL", "1", "NU\u00d1EZ", "JOS\u00c9"))};\n`,
+    );
+    const r = runIn(root, ["test/unicode.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("person-name token");
+  });
+
+  it("DISCLOSED GAP: a segment split across a CONCATENATION is not reached", () => {
+    // Named because the list of what this pass cannot see is NOT a closed census
+    // and a draft published it as one. The control beside it is what makes the
+    // zero a gap rather than a clearance.
+    const root = makeRepo();
+    const whole = seg("NM1", "IL", "1", "MCALLISTER", "BRENDAN");
+    const cut = whole.indexOf("MCALLISTER");
+    // Built, not written: this file is inside a walk root, so a literal here
+    // would red the gate. That is the rule at the top, applying to itself.
+    writeFileSync(
+      join(root, "test", "split.ts"),
+      `export const S = ${JSON.stringify(whole.slice(0, cut))} + ${JSON.stringify(whole.slice(cut))};\n`,
+    );
+    expect(runIn(root, ["test/split.ts"]).code, "not reached: disclosed").toBe(0);
+
+    writeFileSync(join(root, "test", "split.ts"), `export const S = ${JSON.stringify(whole)};\n`);
+    expect(runIn(root, ["test/split.ts"]).code, "the same bytes unsplit ARE reached").toBe(1);
+  });
+
+  it("DISCLOSED GAP: bytes inside a `${...}` placeholder leave this pass's view entirely", () => {
+    // The strip keeps an interpolated fixture's ELEMENT POSITIONS, which is why
+    // it is done - but say the other half too: what it removes is not checked.
+    const root = makeRepo();
+    const whole = seg("NM1", "IL", "1", "MCALLISTER", "BRENDAN");
+    const interpolated = whole.replace(
+      "MCALLISTER",
+      ["${", JSON.stringify("MCALLISTER"), "}"].join(""),
+    );
+    writeFileSync(
+      join(root, "test", "interp.ts"),
+      ["export const S = `", interpolated, "`;\n"].join(""),
+    );
+    const r = runIn(root, ["test/interp.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr, "the literal element IS checked").toContain("BRENDAN");
+    expect(r.stderr, "the interpolated one is NOT: disclosed").not.toContain("MCALLISTER");
+  });
+
   it("DISCLOSED GAP: a fixture expressed as a BUILDER SPEC OBJECT is segment text to nobody", () => {
     // 🩺 FOUND BY HAND-READING THE 85 FILES THE WIDENING OPENED, NOT BY THE GATE.
     // A name in `{ lastName: "…" }` becomes a segment only when the builder runs,

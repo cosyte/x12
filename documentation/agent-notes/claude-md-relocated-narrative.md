@@ -621,3 +621,25 @@ Verbatim, two pieces.
 >   one back out. And state the two things this does NOT say, both drafted false once:** the array
 >   guard STILL renders a forged array-like's `length` and class tag (SHAPE, not element contents),
 >   and **only the SEGMENT guard names the slot** (`esc`/`escDec` name the BUILDER).
+
+### 10.5 The profile-quirk hard rule, and how it is enforced
+
+> - **🩺 HARD RULE, LOCKED: a profile quirk with no Tier-2 fixture demonstrating the deviation is
+>   FORBIDDEN. No invented quirks.** Enforced three ways, incl. a per-quirk DEMONSTRATOR registry, so a
+>   real-but-irrelevant fixture cannot slip past. Built-ins reach consumers ONLY via `profiles`.
+
+### 10.6 Why composing builders emit the envelope inline
+
+> - Emit the envelope INLINE, not via `buildInterchange`, in any domain builder that composes a
+>   composite element (835, 837), so a pre-composed composite is never double-escaped. Composites
+>   escape each component then join with the RAW component separator.
+
+### 10.7 The 278 certification decision, and the maintenance-type primitive
+
+> - **🩺 Maintenance type is the 834's safety primitive: emit VERBATIM, refuse the unknown.** The
+>   builder places the caller's INS-03 / HD-01 (code source 875) verbatim and NEVER infers or
+>   normalizes; where the read side only WARNS (`X12_834_UNKNOWN_MAINTENANCE_TYPE`, **scoped to the
+>   affected member only**) the builder REFUSES.
+> - **🩺 The 278 certification decision is response-only and never inferred:** `build278Response`
+>   places HCR-01 VERBATIM and never normalizes or **upgrades** it; `build278Request` REFUSES a review
+>   carrying one.

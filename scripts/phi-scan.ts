@@ -1125,13 +1125,28 @@ function pushHit(hits: Hit[], path: string, segment: string, value: string, reas
  * name. Neither is PHI and neither is a fixture.
  *
  * SAY WHAT THIS COSTS, because it is a real narrowing of the EMBEDDED pass and
- * not a free win: a name element carrying anything but letters, spaces,
- * apostrophes, periods or hyphens is skipped there, and so is an id element
- * carrying whitespace. The whole-file `.edi` path is NOT narrowed - it does not
- * take these predicates - so nothing this scanner detected before detects less
- * now.
+ * not a free win: a name element carrying anything but a letter, a combining
+ * mark, a space, an apostrophe, a period or a hyphen is skipped there, and so is
+ * an id element carrying anything but ASCII alphanumerics, `.`, `_` or `-`. The
+ * whole-file `.edi` path is NOT narrowed - it does not take these predicates -
+ * so nothing this scanner detected before detects less now.
+ *
+ * 🩺 "LETTER" IS `\p{L}`, NOT `[A-Za-z]`, AND A REFUTER PAID FOR THAT. With the
+ * ASCII class, `NM1*IL*1*NUÑEZ*JOSÉ~` in a `.ts` literal was skipped on BOTH
+ * name elements and reported clean. A surname is not an ASCII string and a
+ * recogniser that assumes it is fails in the leak-hiding direction.
+ *
+ * 🩺 AND THE APOSTROPHE IS IN THIS CLASS ONLY BECAUSE `EMBEDDED_RUN_STOP` NO
+ * LONGER STOPS AT ONE - the two constants have to be read together. While `'`
+ * was a run stop, this branch was DEAD and the failure was worse than a skip:
+ * the run was TRUNCATED at the apostrophe, so every element after it ceased to
+ * exist. Measured then, all clean: `NM1*IL*1*O'BRIEN*SEAN****MI*W123456789~`,
+ * the same segment carrying a qualifier-34 SSN, and
+ * `PER*IC*JOHN O'BRIEN*TE*2124440101~`. `O'Brien`, `D'Angelo` and `N'Diaye` are
+ * exactly the surnames a real de-identification failure drops into a fixture,
+ * and the member id, the SSN and the phone went with them.
  */
-const EMBEDDED_NAME_SHAPED = /^[A-Za-z][A-Za-z' .-]*$/;
+const EMBEDDED_NAME_SHAPED = /^\p{L}[\p{L}\p{M}' .-]*$/u;
 const EMBEDDED_ID_SHAPED = /^[0-9A-Za-z][0-9A-Za-z._-]*$/;
 
 function nameElementEligible(el: string, embedded: boolean): boolean {
@@ -1282,8 +1297,13 @@ function scanX12(target: Target, text: string, allow: AllowList, hits: Hit[]): v
  * all unanchored `matchAll` passes, so they DID reach a string literal already.
  * Everything else did not, and this pass is what closes that half.
  *
- * WHAT IT DOES NOT DO, stated because the boundary is narrower than "the scanner
- * now understands embedded X12":
+ * 🛑 WHAT IT DOES NOT DO. THIS IS A SYNTACTIC TRIPWIRE OVER SOURCE TEXT AND NOT A
+ * PARSER, SO THE LIST BELOW IS WHAT HAS BEEN MEASURED AND IS EXPLICITLY NOT A
+ * CLOSED CENSUS. A draft published it as "four bounds" in four places and a
+ * refuter found two more in one pass; finding one more is EXPECTED and is not a
+ * new finding. **Cut the claim back, never grow the guard**, and NEVER PUBLISH A
+ * COUNT OF THESE - that is the same rule `X12-NUMERIC-VALUE-EMITS-EMPTY` was
+ * refuted three times for breaking.
  *   - it infers NO delimiters, because there is no ISA to declare them. The
  *     element separator is taken to be `*`, which is what every fixture in this
  *     package uses and what X12 uses by overwhelming convention. A segment
@@ -1295,9 +1315,19 @@ function scanX12(target: Target, text: string, allow: AllowList, hits: Hit[]): v
  *     produces a gate nobody believes; the rule here is cut back, never grow.
  *   - it does not run on a whole-file interchange. Those go through `scanX12`,
  *     which has real delimiters, and running both would report every hit twice.
- *   - a template placeholder is stripped before the split (`${...}` -> nothing),
- *     so an interpolated fixture keeps its ELEMENT POSITIONS. Truncating at the
- *     `$` instead would silently stop checking every element after it.
+ *   - a template placeholder is REMOVED before the split (`${...}` -> nothing).
+ *     That keeps an interpolated fixture's ELEMENT POSITIONS, which truncating at
+ *     the `$` would not - but say the other half too, because a draft named only
+ *     the benefit: THE REMOVED BYTES LEAVE THIS PASS'S VIEW ENTIRELY, so a name
+ *     an interpolation holds is never checked.
+ *   - A SEGMENT SPLIT ACROSS A CONCATENATION IS NOT REACHED.
+ *     `"NM1*IL*1*" + "MCALLISTER*BRENDAN~"` is clean where the same bytes
+ *     unsplit are two hits. Nothing in this corpus is written that way today,
+ *     which is what makes it latent rather than noise.
+ *   - the run stops at the FIRST `"`, backtick, `~`, backslash or newline, so a
+ *     segment carrying any of those inside an element is truncated there and
+ *     every later element ceases to exist. `'` USED TO BE IN THAT SET AND IS NOT
+ *     ANY MORE; the trap is written out at `EMBEDDED_NAME_SHAPED`.
  */
 const EMBEDDED_SEGMENT_IDS = ["NM1", "PER", "DMG", "DTP", "DTM", "BHT", "GS"] as const;
 const EMBEDDED_SEGMENT_RE = new RegExp(
@@ -1305,15 +1335,23 @@ const EMBEDDED_SEGMENT_RE = new RegExp(
   "g",
 );
 /**
- * Where an embedded run ends. `~` is the conventional segment terminator; the
- * quote characters are where a `.ts` string literal ends; a backslash is where
- * an escape begins and the bytes stop being the fixture's own; and a newline
- * ends any of them. A run is NOT required to end at `~`: measured on this tree,
- * three real inline-fixture hits in `test/phi-diagnostic-surface.test.ts` are
- * written with no terminator at all, so requiring one would have been a hole a
- * leak fits through exactly.
+ * Where an embedded run ends. `~` is the conventional segment terminator; `"` and
+ * the backtick are where a `.ts` string literal ends; a backslash is where an
+ * escape begins and the bytes stop being the fixture's own; and a newline ends
+ * any of them. A run is NOT required to end at `~`: measured on this tree, three
+ * real inline-fixture hits in `test/phi-diagnostic-surface.test.ts` are written
+ * with no terminator at all, so requiring one would have been a hole a leak fits
+ * through exactly.
+ *
+ * 🩺 `'` IS DELIBERATELY ABSENT AND MUST STAY ABSENT. It is a string-literal
+ * delimiter in TypeScript, so it belongs here by symmetry with `"` - and putting
+ * it here TRUNCATES every embedded run at the first apostrophe, which silently
+ * dropped `O'Brien`, its member id, its qualifier-34 SSN and a non-555 phone in
+ * the same segment. A surname's apostrophe is worth more than a single-quoted
+ * literal's boundary, and the element-shape predicates already handle the source
+ * text a longer run picks up.
  */
-const EMBEDDED_RUN_STOP = /["'`~\\\n\r]/;
+const EMBEDDED_RUN_STOP = /["`~\\\n\r]/;
 
 function scanEmbeddedSegments(
   target: Target,
