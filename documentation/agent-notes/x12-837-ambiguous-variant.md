@@ -106,9 +106,11 @@ residual test had. It now pins all three codes, and the title's `PRE-EXISTING:` 
 because the **silence** no longer is; the re-typing still is, and the comment says so.
 
 The same test's trailing-`SV2` case (`LX*1~`, `SV1`, `SV2`) gained a channel assertion it did not
-have. It is the sharpest document in the slice: the foreign `SV2` reaches a Loop 2400 the `SV1`
-already decoded, so `decodeSv2` returns on the variant check and **nothing else reports it at all**.
-The new code is the sole entry on that channel.
+have. It was the sharpest document in the slice: the foreign `SV2` reaches a Loop 2400 the `SV1`
+already decoded, so `decodeSv2` returned on the variant check and, **when this item landed**,
+nothing else reported it: the new code was then the sole entry on that channel.
+**`X12-837-SV1-OVERWRITE` has since closed that**, and the case now pins
+`[X12_837_AMBIGUOUS_VARIANT, X12_837_SERVICE_SEGMENT_REPEATED]`.
 
 ## Pass 1: REFUTED, on a claim inside the frozen public message
 
@@ -180,8 +182,10 @@ ADR 0016 and pass 2's own recommendation to land.
 
 ## Deferred, filed not fixed
 
-- **A foreign or duplicate `SVx` inside an already-decoded Loop 2400 is still silent at the segment
-  level.** A second `SV1` still overwrites the first's charge. `PRE-EXISTING`, its own slice.
+- **A foreign or duplicate `SVx` inside an already-decoded Loop 2400.** Deferred here, and **CLOSED
+  by `X12-837-SV1-OVERWRITE`**: such a segment now raises `X12_837_SERVICE_SEGMENT_REPEATED` at
+  itself, so this item's code is no longer the sole report on that document. The overwrite itself is
+  unchanged - the second `SV1` still wins - and only the silence was closed.
 - **Narrowing the fallback to skip orphans.** A decode change on a published package; its own slice,
   and it needs an argument this one does not make.
 - **`transactionIndex` is hard-coded `0`** in `get-837.ts`. The new warning follows the file's

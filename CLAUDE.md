@@ -72,6 +72,23 @@ copying files.** Source of truth: the meta-repo's `documentation/conventions.md`
 history. Do not act on a line here without reading it. 🩺 = getting it wrong mis-states a clinical
 or financial value on the wire.**
 
+### 🩺 `X12-837-SV1-OVERWRITE` (2026-08-08) · `documentation/agent-notes/x12-837-sv1-overwrite.md`
+
+- **🩺 A LINE HOLDS ONE SERVICE SEGMENT'S SLOTS AND EVERY DECODER WRITES ALL OF ITS OWN**, so a 2nd
+  `SVx` in an OPEN Loop 2400 REPLACES the 1st: `8500` -> `12`, CPT `99213` -> `99999`, `warnings: []`
+  through `0.0.13`. **An ABSENT charge element on the repeat writes `undefined` over a STATED amount
+  and `X12_837_SERVICE_LINE_NOT_DECODED` does NOT fire: a segment DID decode.**
+- **🛑 LAST-WINS IS NOT NARROWED, ELEMENT FOR ELEMENT.** Same call as `#87`/`#71`: a stray `SVx` and a
+  conformant one are indistinguishable, and first-wins changes how PUBLISHED documents decode.
+- **`X12_837_SERVICE_SEGMENT_REPEATED` at the REPEAT, no `elementIndex`, once per repeat, SCOPED TO
+  THE LINE.** Fires on ANY kind, DECODED OR NOT: keying it on `serviceSegmentDecoded`, or latching
+  it, each reds its own control.
+- **🛑 A BLIND CONSUMER WAS THIS REPO'S OWN DOCS, NOTHING HAVING MOVED ONTO A NEW CODE:** the
+  post-a-line-amount gate named FOUR codes and `spec-notes-money` "the known instance", NONE firing
+  here. **SWEEP EVERY MONEY PAGE, NOT THE RECIPE ALONE; PIN IT.**
+- **The message ASSERTS NO TR3 USAGE and depends on NO variant resolving** - `VARIANT_BY_ICR` is
+  ungrounded.
+
 ### 🩺 `X12-837-AMBIGUOUS-VARIANT` (2026-08-08) · `documentation/agent-notes/x12-837-ambiguous-variant.md`
 
 - **🩺 THE `SVx` FALLBACK IS NOT NARROWED AND MUST NOT BE; THIS CLOSED ONLY THE SILENCE.**
@@ -85,8 +102,8 @@ or financial value on the wire.**
   said "a service segment with no line open still raises `X12_837_SERVICE_SEGMENT_WITHOUT_LX`"; a
   refuter measured it FALSE - a stray `LX` suppresses it. Say only: whatever was raised is still
   raised, same position. Pinned CHANNEL-WIDE with this filtered out. **Never with
-  `X12_837_UNKNOWN_VARIANT`.** **STILL OPEN:** a foreign `SVx` INSIDE an already-decoded Loop 2400 is
-  silent at the segment; there it is the SOLE report.
+  `X12_837_UNKNOWN_VARIANT`.** **NO LONGER SOLE:** a foreign `SVx` inside an already-decoded Loop 2400
+  raises `X12_837_SERVICE_SEGMENT_REPEATED` at itself (trap above).
 
 ### 🩺 `X12-AMT-ADX-ABSENT-AMOUNT` + `X12-STATED-AMOUNT-DISCARDED` (2026-08-07) · `documentation/agent-notes/x12-{amt-adx-absent-amount,stated-amount-discarded}.md`
 
@@ -181,9 +198,8 @@ or financial value on the wire.**
   NOT HELP and is why this passed review** - it seals OWN properties only. **🩺 NAME THE SET, NEVER
   THE MEMBERS:** a draft published EIGHT across six surfaces; the engine has TWELVE. **Cut back,
   never grow a census.**
-- **🩺 It destroyed strictly more than `#67`: an ST-03 of `constructor` made `variant` a FUNCTION, so
-  EVERY Loop 2400 left the model with `warnings: []`.** Four more sites, probe by probe, in the
-  agent-notes section. **🩺 `in` IS NOT THE SAFE FORM** - it walks the prototype chain. Reach for
+- **🩺 What it destroyed, strictly more than `#67`: relocated narrative §8**, and four more sites
+  probe by probe in the agent-notes section. **🩺 `in` IS NOT THE SAFE FORM** - it walks the prototype chain. Reach for
   `Object.hasOwn`.
 - **271 / 277 / 278 were NEVER exposed and their literal tables are LEFT ALONE:** `shared/hl.ts` has
   always guarded with `hasOwnProperty`; the 837's LOCAL `validateHl` copy did not. **Do not "finish
@@ -230,15 +246,15 @@ or financial value on the wire.**
 ### 🩺 `X12-QUANTITY-SILENT-DEFAULTS` (2026-08-05) · `documentation/agent-notes.md#x12-quantity-silent-defaults-2026-08-05`
 
 - **🩺 A PRESENT decimal that does not decode emits `X12_UNPARSEABLE_DECIMAL` at its
-  `position.elementIndex`, in all six readers. An ABSENT one emits nothing.** Both pinned.
+  `position.elementIndex`, in all six readers; an ABSENT one emits nothing.** Both pinned.
 - **🩺 THIS slice closed only the SILENCE; `X12-837-SV-UNDEFINED-DECIMAL` closed the `0`.**
 - **🩺 NEVER INVERT IT INTO "an unwarned value is one the sender sent". A slot a reader never read
   cannot warn**; three shipped docs carried the bare form. Guarantee: unwarned **at an element a
   reader decoded**. The 837 instance of the other kind is the trap above.
 - **PUBLISH NO CENSUS OF THE FALLBACK OUTCOMES.** The
   RULE holds: a property of the READ, not the USE.
-- **ONE message, NO discriminant** - a `ZERO`/`NOT_DECODED` pair was wrong at 835 `CAS`, 835 `PLB`,
-  837 `CAS`. **And assert nothing about what X12.6 type R permits;** nobody here has read it, so the
+- **ONE message, NO discriminant** (where a `ZERO`/`NOT_DECODED` pair was wrong: relocated narrative
+  §8). **And assert nothing about what X12.6 type R permits;** nobody here has read it, so the
   message says "could not decode".
 - **The 835 balance invariant is NOT a net: it names an equation, never an element, and exists in no
   other reader.**
@@ -264,17 +280,16 @@ or financial value on the wire.**
 - **Never default an absent SVC-05 to one.** X221A1 is _reported_ to assume one, secondhand and not
   from a clause anyone here read. Fabricating a count is inventing.
 - **`undefined` still means "not decoded", not "absent"** - the next trap says what tells them apart.
-- **🩺 835s this library emitted at `0.0.9` or earlier are non-conformant and should be re-emitted** -
-  their revenue code sits in SVC-05, so head reads it back as a paid quantity (`0300` -> 300 units)
-  with no warning.
+- **🩺 835s this library emitted at `0.0.9` or earlier are non-conformant and should be re-emitted**
+  (the mechanism: relocated narrative §8).
 
 ### 🩺 `X12-DECIMAL-BYPASSES-THE-GUARD` (2026-08-04) · `documentation/agent-notes.md#x12-decimal-bypasses-the-guard-2026-08-04`
 
-- **Every `X12Decimal` slot emits through the builder's `escDec` over `requireCallerDecimal`.** A raw
-  `number` in an `X12Decimal` slot used to reach `esc` already stringified by `value.toString()`, so
-  the caller guard never applied and `0.1+0.2`, `1e21` and `NaN` went out on the wire.
-- **🩺 Refuse, never round. That is the decision.** `0.30` guesses cents, `0.3` guesses tenths, and
-  guessing the scale of money is what `X12Decimal` exists to prevent.
+- **Every `X12Decimal` slot emits through the builder's `escDec` over `requireCallerDecimal`.** How a raw
+  `number` in such a slot used to bypass that guard, and what went out on the wire: relocated
+  narrative §8.
+- **🩺 Refuse, never round:** guessing the scale of money is what `X12Decimal` exists to prevent
+  (relocated narrative §8).
 - **Do not flatten this with `#60`.** `#60` existed because a required identifier VANISHED. Nothing
   vanishes here and nothing is mis-_read_; the exposure is float noise on the wire.
 - **Type safety is structural; DELIMITER safety is per-slot. Never write the unqualified form.**
@@ -283,27 +298,22 @@ or financial value on the wire.**
   still emitted verbatim.
 - **The raw slots routed through `esc`: delimiter-safe and type-checked, and value-constrained only
   where a trap below says so. Only these were routed** (the enumeration: relocated narrative §7).
-  **The residual delimiter injection is NOT stop-the-line: these fail at the receiver, they do not
-  mint a wrong clinical value.** Do not escalate it as if they did.
+  **The residual delimiter injection is NOT stop-the-line: these fail at the receiver and mint no
+  wrong clinical value.** Do not escalate it as if they did.
 - **`buildTA1` uses NEITHER `seg` NOR `joinSeg`** - it joins its five caller-supplied elements
   directly, no `esc`, no `pad`. TA1-01 is data element I12, the reassociation key back to the
   acknowledged interchange. **This was the FOURTH iteration of the completeness claim; do not write
   the unqualified form again.**
-- **The fixed-width ISA line is joined directly and is outside BOTH guards.** `pad(1, 15)` throws an
-  untyped `TypeError`; `padControl(1, 9)` throws the misleading "exceeds the 9-char spec limit". Both
-  terminate; neither is silent.
+- **The fixed-width ISA line is joined directly and is outside BOTH guards.** Both throws terminate and
+  neither is silent (which throws what: relocated narrative §8).
 - **`build835`'s balance-equation amounts refuse UNTYPED, and every other `X12Decimal` field refuses
   TYPED.** `enforceBalance(spec)` runs BEFORE the escaper is built, so `requireCallerDecimal` is
   unreachable on anything it reads.
 - **🩺 STATE THE RULE, AND NAME SPEC FIELDS - NEVER ELEMENT NUMBERS.** A slot refuses untyped exactly
   when the balance guard reads it as a term of one of the three §1.10.2 invariants (line, claim,
-  top-of-remit) in `src/transactions/remit/balance.ts`. **The terms, enumerated, because a count
-  without its list cannot self-correct:** `payment.totalActualPayment`, `claim.totalChargeAmount`,
-  `claim.totalPaymentAmount`, every `adjustments[].amount` at claim and line level,
-  `serviceLine.chargeAmount`, `serviceLine.paymentAmount`, `providerAdjustments[].amount`. Two
-  successive remedies published a closed list and an element-number list and both were measured
-  wrong; the second because it graded the prose against this repo's code. Field names cannot drift
-  that way. Both arms are pinned on one fixture, so moving a slot between them reds the gate.
+  top-of-remit) in `src/transactions/remit/balance.ts`. **The terms are ENUMERATED in relocated narrative §8, because a count
+  without its list cannot self-correct; read them there and never re-derive them.** Two successive
+  remedies published a closed list and an element-number list and both were measured wrong. Both arms are pinned on one fixture, so moving a slot between them reds the gate.
 - **Assert the MESSAGE, not the class, in every builder-refusal test** - including the disclosure
   pins. `expect(run).toThrow(Remit835BuildError)` passes on an unrelated refusal; four of six new
   cases were vacuous that way.
@@ -318,8 +328,7 @@ or financial value on the wire.**
 
 - **🩺 All nine builders take `esc` from `makeCallerEscaper` (`src/builder/caller-string.ts`), which
   type-checks first and refuses with the calling module's own typed, code-tagged error.**
-  `escapeRelease` read `value.length`, `undefined` on a number, so the value vanished with no warning
-  and no error - including `CLP-01`, the reassociation key back to the 837's `CLM-01`.
+  What `escapeRelease` read, and the `CLP-01` reassociation key it vanished: relocated narrative §8.
 - **🩺 Refuse, never coerce, and that is the whole item.** Coercion mints a _different_ identifier: a
   payload carrying `"0012345"` as a number already lost its leading zeros, and reassociating to the
   wrong claim is worse than failing to reassociate. **The builder's own required-field guard is
@@ -341,11 +350,10 @@ or financial value on the wire.**
 - **Count BOTH trees, and never reuse one census for the other.**
 - **Re-derive this box's capacity; never inherit a figure.** The item's numbers are stale.
 - **Interleave BASE/HEAD runs, two rounds each.**
-- **The `tsx` -> `node` substitution is pinned as an EQUIVALENCE, not assumed.** Nothing else
-  enforces erasable-only syntax; the Node 22.18 floor is unenforced. **Scope it:** `paths` mode only.
-- **The global `testTimeout` stays at 10 s on purpose.** The 10 MB+ 834 stream sits AT it and is green
-  only on its own 120 s per-test ceiling. **Do not upgrade the `10.0 s` reading into a proven
-  crossing** - the reporter rounds.
+- **The `tsx` -> `node` substitution is pinned as an EQUIVALENCE, not assumed. Scope it:** `paths`
+  mode only (why: relocated narrative §8).
+- **The global `testTimeout` stays at 10 s on purpose**, and **do not upgrade the `10.0 s` reading
+  into a proven crossing** - the reporter rounds. The 834 stream's figures: relocated narrative §8.
 - **🩺 `testTimeout` is NOT the liveness net people assume.** An **infinite synchronous** loop gives
   **NO VERDICT AT ALL** and wedges the worker. A liveness regression here reads as an ABSENT verdict,
   not a red one, and no value of `testTimeout` changes that. The defence is the source scan in
@@ -371,8 +379,8 @@ or financial value on the wire.**
   re-empties the route. **No test may run `git merge`** - it reds on CI on its own premise; stage the
   conflict with `update-index`.
 - **▶ 🩺 QUOTE THE CLASSIFICATION, NEVER THE LETTER: `--diff-filter` classifies a broken pair as `B`
-  WHATEVER LETTER IT PRINTS** - `-B` prints **`M`** + a score, one path, which `RAW_RECORD` parses
-  happily. **A short fixture does NOT break; the case needs bulk. NEVER RECORD A SIMILARITY
+  WHATEVER LETTER IT PRINTS** (what `-B` prints instead: relocated narrative §8). **A short fixture
+  does NOT break; the case needs bulk. NEVER RECORD A SIMILARITY
   SCORE** - it drifts; **DELETE a drifting number, never correct it.**
   **"Strict superset" REFUTED; EQUAL absent a rename/copy/gitlink/unmerged path.**
 - **▶ 🩺 ALL MODE OWES AN ACCOUNT OF ITS ROOTS. TWO RULES, NEITHER IMPLIES THE OTHER, BECAUSE
@@ -387,8 +395,8 @@ or financial value on the wire.**
   `git check-ignore` reads the INDEX: a TRACKED ignored file is SCANNED, its absence REFUSES. No git:
   REFUSE. **RE-DERIVE EVERY EXIT CODE PER REPO** - the regular-file root is **2** here (was **1**,
   uncaught), **2** in `hl7`, **1** in `terminology` by a DIFFERENT mechanism.
-- **Synthetic tokens are POSITIVELY DECLARED in `scripts/phi-allow-list.txt`** (byte-strict: no
-  inline header, as DICOM's `.dcm`); **a whole-file bypass needs `--allow-fixture` AND an entry in
+- **Synthetic tokens are POSITIVELY DECLARED in `scripts/phi-allow-list.txt`, byte-strict, with no
+  inline header; a whole-file bypass needs `--allow-fixture` AND an entry in
   `phi-scan-overrides.md`.**
 - **▶ 🩺 STILL OPEN, MEASURED HERE - NEVER PORT A SIBLING'S RESIDUAL LIST:** a tracked file directly
   under `test/` is seen by NEITHER route, and an index entry AT a root's own path matches no
@@ -424,9 +432,8 @@ or financial value on the wire.**
 - **`test/builder-array-bounds.test.ts` keys on the OPERAND, never on the property NAME** - that is
   the mistake `#51`'s allowlist made twice. Its scan strips comments first.
 - **🩺 The negative control found something worse than a red: removing a `requireCallerArray` call
-  WEDGES the test rather than failing it.** A synchronous infinite loop never yields, so
-  `testTimeout` cannot interrupt it. **That is the argument for keeping the source scan exhaustive
-  rather than trusting the examples.**
+  WEDGES the test rather than failing it** (why: relocated narrative §8). **That is the argument for
+  keeping the source scan exhaustive rather than trusting the examples.**
 - **Drive the shipped table, not a side probe**, and **every figure this area publishes is a
   MEASUREMENT, not a maximum** (the figures and the `QUIRK_ID_RE` correction: relocated narrative §7).
 - **Known and NOT claimed away:** bounding a message here **redacts nothing** (the caller passed the
@@ -446,17 +453,16 @@ or financial value on the wire.**
 - **This is NOT `PHI-WARNING-MESSAGE-LEAK` on the emit side; escaping was deliberately NOT done, so
   a refusal message is bounded but one log line is not; and the caller-vs-document dichotomy is NOT
   categorical.** Long form + the two counterexamples: relocated narrative §7.
-- **`test/builder-refusal-bounds.test.ts` must never allow `String(...)` or `String(<expr>.length)`.**
-  Its first allowlist admitted any `String(...)`; its second inspected the property NAME and not the
-  operand, so a forged `{length}` sailed through. What remains allowed is a single-letter loop index
-  and the `width` literal only. **Negative controls run both ways.**
+- **`test/builder-refusal-bounds.test.ts` must never allow `String(...)` or `String(<expr>.length)`;
+  what remains allowed is a single-letter loop index and the `width` literal only** (the two
+  allowlists that leaked: relocated narrative §8). **Negative controls run both ways.**
 - **🩺 `segmentIndex: 0` is NOT a neutral sentinel: `tx.segments[0]` is the `ST`.** The remit-total
   balance warning now carries the BPR's own 1-based body index, and `balance.ts`'s doc was corrected
   with the code. **The build-side `segmentIndex: 0` was filed as the same defect and is not one** -
   the builder has no parsed segment stream, so the position is `UNANCHORED_BUILD_POSITION`, inert by
   construction. Fabricating an index would have named a segment no consumer can resolve.
 - **`renderCallerValue` coerces and never throws** (the draft that did not: relocated narrative).
-- **Assert SE-01 outright rather than trusting it** - a repeatedly-hit tripwire.
+- **Assert SE-01 outright rather than trusting it**: a repeatedly-hit tripwire.
 
 ### 🩺 `X12-ORPHAN-REEMIT` (2026-08-02) · `documentation/agent-notes.md#x12-orphan-reemit-2026-08-02`
 
@@ -471,8 +477,7 @@ or financial value on the wire.**
   flushed between the `ST` and the `SE`. GE-01/IEA-01 are unaffected: an orphan is never a `GS`.
 - **`KNOWN-LIMITATIONS.md` holds the canonical not-reproduced list; derive its size.**
 - **Case 6 (the empty-first-element segment `*A*B~` outside a transaction) is deliberately NOT in
-  scope.** The walker skips it, so there is nothing to re-emit; closing it is a RETENTION change to
-  the `name.length > 0` guard and would mint new `X12_UNEXPECTED_SEGMENT`s.
+  scope** (why, and what closing it would mint: relocated narrative §8).
 - **Retention and placement are NOT promotion:** no `get*` reader sees an orphan, and a `TA1` in a
   group still does not join `ta1Segments`.
 - **State the four kept regression assertions at the MODEL level, not the byte level.** A
@@ -484,8 +489,8 @@ or financial value on the wire.**
 - **🩺 A segment the envelope walker cannot place is RETAINED on `X12Interchange.orphanSegments`, not
   discarded.** All orphans go through one `recordOrphan` chokepoint so the warning and the retained
   segment can never disagree; `segmentIndex` is the join key back to `position.segmentIndex`.
-- **🩺 Line-break tolerance is 15 of 15 CR/LF sequences of length 0 to 3.** It admitted 4 of 15, so a
-  uniformly **double-spaced file lost its ENTIRE interchange body** and returned `groups: []`.
+- **🩺 Line-break tolerance is 15 of 15 CR/LF sequences of length 0 to 3.** What 4 of 15 cost:
+  relocated narrative §8.
 - **🩺 NEVER replay an orphan at its recorded `segmentIndex`. Read the refutation before touching the
   emit again.** `segmentIndex` indexes the INPUT stream and the emit is not in input order, so replay
   splices the orphan into whatever occupies that slot; the three corruption shapes measured, and why
@@ -507,12 +512,11 @@ or financial value on the wire.**
   `UNEXPECTED_SEGMENT_CONTEXTS` / `BALANCE_INVARIANTS` / `REQUIRED_LOOPS`), and `message` is a lookup
   into a frozen table exported as `ALL_WARNING_MESSAGES`.
 - **🩺 Shape-validate-then-echo CANNOT hold for a control number**, whose grammar is whatever the
-  trading partner sent. `X12_CONTROL_NUMBER_MISMATCH` rendered both sides verbatim and unbounded on
-  all six control-number slots.
+  trading partner sent (what leaked, and where: relocated narrative §8).
 - **`snippet` stays on the four Tier-3 fatals and nowhere else** - a strict-mode escalation used to
   carry 64 bytes of the interchange.
-- **`X12Segment.id` is bounded to the segment-id grammar with a `NON_SPEC_SEGMENT_ID` sentinel** -
-  it was an unbounded copy of the segment's first element.
+- **`X12Segment.id` is bounded to the segment-id grammar with a `NON_SPEC_SEGMENT_ID` sentinel**
+  (what it was: relocated narrative §8).
 - **The deliverable is the SLOT TABLE, not the fix.** `test/_helpers/phi-slots.ts` sweeps every
   consumer-controlled slot via `assertNoDiagnosticPhiLeak`; **the GREEN ones are the point of writing
   the table before the fix** (never quote its size - derive it). Registry membership is asserted
@@ -568,9 +572,9 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
 - **Emit the envelope INLINE, not via `buildInterchange`, in any domain builder that composes a
   composite element** (835, 837), so a pre-composed composite is never double-escaped. Composites
   escape each component then join with the RAW component separator.
-- **`splitSegments` is release-aware via `findUnescapedTerminator`.** A naive `indexOf` split
-  mid-value on a `?`-release-escaped terminator (`?~`). A degenerate terminator-is-release delimiter
-  set falls back to the literal scan.
+- **`splitSegments` is release-aware via `findUnescapedTerminator`** (what a naive `indexOf` split
+  did: relocated narrative §8). A degenerate terminator-is-release delimiter set falls back to the
+  literal scan.
 - **Control NUMBERS are identity and are NEVER rewritten**, even under `{ specClean: true }`;
   corrected COUNTS emit only with `{ recomputeCounts: true }`, which is inert without `specClean`.
   Every mismatch surfaces via `onWarning` and is never silently corrected.
@@ -608,11 +612,10 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
 ### `ASSETS-P8`: the `attw` gate lies · `documentation/agent-notes.md#assets-p8-the-attw-wrapper`
 
 - **🩺 `attw` prints "does not contain types" and EXITS 0, so the `attw` script is `scripts/attw.mjs`,
-  a wrapper, NEVER the bare CLI.** `getExitCode.js` in `@arethetypeswrong/cli` 0.18.4 opens with
-  `if (!analysis.types) return 0` and the problem list is never consulted. For a package that ships
-  types it means the declarations were **not in the tarball**: a broken publish reported as a pass.
-- **`scripts/verify.sh` needs no change; do not touch it.** It propagates the step's status
-  faithfully. The step is what lies to it.
+  a wrapper, NEVER the bare CLI** (the upstream line that does it: relocated narrative §8). For a
+  package that ships types it means the declarations were **not in the tarball**: a broken publish reported as a pass.
+- **`scripts/verify.sh` needs no change; do not touch it** - it propagates the step's status
+  faithfully; the step is what lies to it.
 - **The timing supplies the condition; the exit code is the defect** (the `tsup` build interval:
   relocated narrative §7). **Re-measure per repo; do not carry a sibling's figure over.** The answer
   is **not** a lock, a lease or a build queue (ADR 0015): the gate has to be able to say its own

@@ -110,10 +110,15 @@ Three things to hold onto:
   `X12_AMOUNT_ROW_DROPPED` (below), which is raised on both routes and so separates neither.
   Read the guarantee in exactly that direction:
   an unwarned value **at an element a reader decoded** is what the sender sent. It is not a promise
-  about every slot on the model, because a slot a reader never read cannot warn. The known instance
-  of that in this library, an 837 service line whose `SVx` never decoded because it does not match
-  the variant the submission resolved to, leaves `charge` and `units` `undefined` and is announced by
-  its own warning, **`X12_837_SERVICE_LINE_NOT_DECODED`**, anchored at the `LX` that opened the line.
+  about every slot on the model, because a slot a reader never read cannot warn. One instance in this
+  library, an 837 service line whose `SVx` never decoded because it does not match the variant the
+  submission resolved to, leaves `charge` and `units` `undefined` and is announced by its own
+  warning, **`X12_837_SERVICE_LINE_NOT_DECODED`**, anchored at the `LX` that opened the line. **Do
+  not read that as the only one, and do not gate on that code alone**: a Loop 2400 carrying a SECOND
+  `SV1` / `SV2` / `SV3` reaches the same `charge: undefined` by a different route - the repeat writes
+  its own absent element over the amount the first one stated - and on that line a service segment
+  DID decode, so `X12_837_SERVICE_LINE_NOT_DECODED` does not fire.
+  **`X12_837_SERVICE_SEGMENT_REPEATED`**, anchored at the repeated segment, is what announces it.
   No census of never-read slots is published here, on purpose: the rule is what holds.
 - **The 835 balance invariants do not sum an absent term.** Where any term of a TR3 X221A1 §1.10.2
   equation is `undefined`, the equation is reported as **`X12_835_BALANCE_NOT_EVALUABLE`** rather

@@ -9,6 +9,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🩺 `X12_837_SERVICE_SEGMENT_REPEATED`, the 33rd Tier-2 warning code, plus the public factory
+  `serviceSegmentRepeated(position)`** (`X12-837-SV1-OVERWRITE`). A **second** `SV1` / `SV2` / `SV3`
+  arriving inside an **already-open** Loop 2400 now says so, at that repeated segment. Through
+  `0.0.13` it said nothing at all.
+
+  **🩺 What that cost, and it is money and a procedure code.** A service line carries **one** service
+  segment's worth of slots, and every decoder writes **all** of the slots its kind writes. Under an
+  `ST-03` of `005010X222A2`, `SV1*HC:99213*8500*UN*4***1~` followed by `SV1*HC:99999*12*UN*1***1~`
+  inside one `LX` left ONE line reading `charge` **`12`** and `procedureCode` **`99999`**, with
+  `warnings: []`. `8500` became `12`, CPT `99213` became `99999`, and nothing was raised on any
+  channel. **The worst corner is a repeat whose own charge element is ABSENT:** it writes `undefined`
+  over the amount the first one stated, and `X12_837_SERVICE_LINE_NOT_DECODED` does **not** fire
+  there, because a service segment did decode.
+
+  **🛑 THIS CLOSES ONLY THE SILENCE, AND THE RESTRAINT IS THE POINT.** The decode is **not** narrowed:
+  last-wins is unchanged, element for element, so which values a document decodes to are byte-for-byte
+  what they were at `0.0.13`. This reader cannot tell a stray service segment from a conformant one,
+  so choosing the first would be inventing; and changing which occurrence wins changes how
+  **already-published documents decode**. That is the same call made for the `SVx` variant fallback.
+
+  **It fires on a repeat of ANY kind, decoded or not.** One whose kind does not match the resolved
+  variant is read into nothing and overwrites nothing - what it carries reaches no part of the typed
+  model - and it is reported the same way, before or after the matching one.
+
+  **Anchored at the repeated service segment**, with **no `elementIndex`**: what is reported is a
+  second occurrence of the segment, not a defect in an element of it. **Once per repeat**, and the
+  count is scoped to the LINE and never latched, so a first service segment under a later `LX` is a
+  first. It can never name the same segment as `X12_837_SERVICE_SEGMENT_WITHOUT_LX`, which requires
+  that no Loop 2400 be open.
+
+  **It is additive and nothing moved onto it**, pinned by committed tests asserting the whole warning
+  channel with the new code filtered out. **No consumer predicate written against any existing code
+  changes meaning.** Read that as invariance, not as a list of what else you will see.
+
+  **🛑 The package's own documentation was a consumer, and it was blind.** The cookbook's "gate before
+  you post a line amount" recipe named four codes and **none** of them fires on the overwrite
+  document, so a consumer following it posted `12` for a line the sender also sent as `8500`. The
+  cookbook, the troubleshooting table and `KNOWN-LIMITATIONS.md` now name this code beside the other
+  four, and a committed test pins that the four-code gate misses what the five-code gate catches.
+  **The recipe was not the only page:** `spec-notes-money` named `X12_837_SERVICE_LINE_NOT_DECODED`
+  as "the known instance" of an 837 charge reading `undefined` from a slot no reader read, and the
+  repeat corner is a second instance by a different route on which that code does not fire. It now
+  says so.
+
 - **🩺 `X12_837_AMBIGUOUS_VARIANT`, the 32nd Tier-2 warning code, plus the public factory
   `ambiguous837Variant(position)`** (`X12-837-RESIDUALS`). An 837 whose variant was decided by the
   `SVx` fallback, in a transaction body that carries service segments for **more than one variant**,
@@ -24,8 +68,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no channel**, so `submission.variant` carried a confident value with nothing to contradict it.
 
   **🛑 THIS CLOSES ONLY THE SILENCE, AND THE RESTRAINT IS THE POINT.** The fallback is **not**
-  narrowed and first-wins is unchanged: which variant a document resolves to, which lines decode and
-  which warnings the walk raises are byte-for-byte what they were at `0.0.13`. Excluding orphans from
+  narrowed and first-wins is unchanged: which variant a document resolves to, and which lines decode,
+  are byte-for-byte what they were at `0.0.13`, and this code is added beside whatever the walk
+  already raised. Excluding orphans from
   the fallback would change how already-published documents decode and is its own slice.
 
   **🩺 Which service segment is the stray one is NOT decided.** This reader cannot tell a stray

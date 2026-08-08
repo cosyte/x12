@@ -86,6 +86,7 @@ export const WARNING_CODES = {
   X12_837_SERVICE_LINE_NOT_DECODED: "X12_837_SERVICE_LINE_NOT_DECODED",
   X12_837_SERVICE_LINE_DROPPED: "X12_837_SERVICE_LINE_DROPPED",
   X12_837_SERVICE_SEGMENT_WITHOUT_LX: "X12_837_SERVICE_SEGMENT_WITHOUT_LX",
+  X12_837_SERVICE_SEGMENT_REPEATED: "X12_837_SERVICE_SEGMENT_REPEATED",
   X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX: "X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX",
   X12_837_PAY_TO_ADDRESS_REPEATED: "X12_837_PAY_TO_ADDRESS_REPEATED",
   X12_835_BALANCE_NOT_EVALUABLE: "X12_835_BALANCE_NOT_EVALUABLE",
@@ -345,6 +346,8 @@ const WARNING_MESSAGES = {
     "837 service line dropped from the typed model: the LX at `position.segmentIndex` opened no Loop 2400, so no line appears on any claim's `serviceLines` for it and the SV1 / SV2 / SV3 that followed - its charge, units, procedure code and modifiers - was read into nothing. Compare `X12_837_SERVICE_LINE_NOT_DECODED`, where the line IS on the model and only its service segment went unread. Two causes: no Loop 2300 (CLM) is open at this LX, so there is no claim to attach a line to; or the submission's variant is not one of P / I / D, so no variant-specific line shape could be built. Read `submission.variant` and `submission.claims` to tell them apart; do NOT expect `X12_837_UNKNOWN_VARIANT` alongside this code, because a caller-supplied `type` outside P / I / D reaches the second cause without it. Nothing is fabricated to stand in for the missing line and no claim is synthesized. What becomes of a DTP / AMT / NTE / REF that follows the dropped LX depends on the route and this message does not say; see KNOWN-LIMITATIONS.md. The verbatim segments are preserved on the transaction set; read them there before concluding the claim had no service lines.",
   X12_837_SERVICE_SEGMENT_WITHOUT_LX:
     "837 service segment with no Loop 2400 to read it into: no service line was open at the SV1 / SV2 / SV3 at `position.segmentIndex`, so NOTHING it carries - its charge, units, procedure code, modifiers, unit of measure and place of service - was read. Read that literally: an LX may well appear earlier in the transaction, and what this reports is that none of them had opened a Loop 2400 still current at this segment. No line appears on any claim's `serviceLines` for it and nothing is fabricated to stand in. Compare the two codes anchored at an LX: `X12_837_SERVICE_LINE_DROPPED`, where an LX IS present and opened no line, and `X12_837_SERVICE_LINE_NOT_DECODED`, where the line is on the model and only its service segment went unread. Neither of those can report the SAME service segment as this code, because both are raised at an LX and this one only where no Loop 2400 is open; a document with several claims can still carry all three. This says NOTHING about how the submission's variant resolved: absent a caller-supplied `type` option, and where ST-03 names no known implementation convention, the reader falls back to the first SV1 / SV2 / SV3 in the transaction, and a segment reported here is eligible for that fallback like any other, so a stray one can decide the variant every line is read against. Read `submission.variant`. The verbatim segments are preserved on the transaction set; read them there before concluding the claim had no service lines.",
+  X12_837_SERVICE_SEGMENT_REPEATED:
+    "837 service segment repeated inside one Loop 2400: the SV1 / SV2 / SV3 at `position.segmentIndex` is not the first service segment to arrive in the service line the LX before it opened. This reader's line carries ONE service segment's worth of slots, so it cannot hold both, and this code is the only thing that tells you the document sent more than one. It asserts nothing about what usage the TR3s give the segment; what it reports is that this reader has one set of those slots per line. What the line carries is what the LAST service segment MATCHING the submission's resolved variant wrote onto it, and only that. Such a segment writes every slot its kind writes - the charge, the units and the procedure code among them - so a matching one arriving second leaves NOTHING an earlier matching one wrote, including where the later one's charge or units element is ABSENT: there the line is left with undefined, which is what this library puts on a decimal slot it decoded no value into, over an amount the earlier one stated. A service segment of a kind that does NOT match the resolved variant is read into nothing at all - it overwrites no slot, and what it carries reaches no part of the typed model. Which of them the sender meant is NOT decided here and is not derivable from the TR3s: this reader cannot tell a stray service segment from a conformant one, and picking a winner would be inventing. Nothing is fabricated to stand in, no second line is synthesized - an LX is what opens a line and there is none here - and no earlier value is kept in a second slot. Read the bound literally, as a property of the READ: this reports a second service segment arriving while a Loop 2400 IS open, whether or not it decoded. It is disjoint from `X12_837_SERVICE_SEGMENT_WITHOUT_LX`, which requires that NO Loop 2400 be open where this one requires that one is, so the two can never name the same segment; read that as disjointness and NOT as a promise that a service segment outside an open Loop 2400 is always named by that code, because a service segment FOLLOWING an LX that opened no line at all is named by neither of them, the loss having already been reported at that LX by `X12_837_SERVICE_LINE_DROPPED`. `X12_837_SERVICE_LINE_NOT_DECODED`, anchored at the LX, reports that no service segment matching the variant decoded onto the line at all, so a document can carry both codes on different segments. It fires once per repeat, so three service segments in one Loop 2400 are two warnings, and the count resets with the line: a first service segment under a later LX is a first and never a repeat. It says nothing about how the submission's variant resolved; where the fallback decided that and the body names more than one, `X12_837_AMBIGUOUS_VARIANT` reports it separately. The verbatim segments are preserved on the transaction set; read them there before acting on the charge, the quantity or the procedure code.",
   X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX:
     "837 entity segment read into nothing after a dropped LX: the N3 / N4 / PER / REF at `position.segmentIndex` arrived while no entity loop was open, because an earlier LX in this transaction opened no Loop 2400 (no CLM was open at it) and closed the entity loop that was current there. NOTHING this segment carries reached the model: no party's `address`, `contacts` or `references` was written from it, and no party, claim or line was synthesized to hold it. This is the code that names THAT loss; `X12_837_SERVICE_LINE_DROPPED` is raised at the LX itself and names the SERVICE LINE's loss, never an entity segment, so the two report different things about the same stretch of the document. Read the bound literally, because this code does NOT report every unattached entity segment: it reports one discarded after such an LX and only while nothing since has opened a new loop, so an N3 / N4 / PER / REF that reaches no party by any other route is still silent, and one arriving after a later NM1 is outside this code's scope, whether or not this reader surfaces that segment kind on that party. It reports that the segment reached NO party; it does not claim it would have reached one had the LX been absent, because this reader does not surface every one of these segment kinds on every party (a PER on a patient or a pay-to address, for one). Which party a segment following a stray LX belongs to is not derivable from the TR3s in either direction, so it is discarded rather than attributed: see KNOWN-LIMITATIONS.md. The verbatim segments are preserved on the transaction set; read them there before concluding a party had no address, no secondary identifier or no contact.",
   X12_837_PAY_TO_ADDRESS_REPEATED:
@@ -1049,6 +1052,59 @@ export function serviceSegmentWithoutLx(position: X12Position): X12ParseWarning 
   return {
     code: WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
     message: WARNING_MESSAGES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_837_SERVICE_SEGMENT_REPEATED` warning. Emitted by the 837
+ * helper at the second and each subsequent `SV1` / `SV2` / `SV3` to arrive
+ * inside one open Loop 2400. `position` names the repeated service segment
+ * itself, which is the segment a consumer resolves back through
+ * `tx.segments`; there is no `elementIndex`, because what is reported is a
+ * second occurrence of the segment rather than a defect in any element of it.
+ *
+ * Once per repeat, so three service segments in one Loop 2400 are two
+ * warnings. The count lives on the line and is cleared when the line flushes,
+ * so a first service segment under a later `LX` is a first and never a
+ * repeat - a scope, not a latch.
+ *
+ * **The rule the reader applies, because a consumer cannot infer it from a
+ * one-slot model:** occurrences are never merged and the LAST one matching
+ * the submission's resolved variant wins, writing every slot its kind writes.
+ * So an earlier matching occurrence leaves nothing on the line, not even in a
+ * slot the later one's own element is absent from - there the later one's
+ * `undefined` replaces an amount the earlier one stated. Through `0.0.13` a
+ * charge of `8500` and a CPT of `99213` were replaced by a repeat's `12` and
+ * `99999` with `warnings: []`. An occurrence whose kind does NOT match the
+ * resolved variant is read into nothing and overwrites nothing.
+ *
+ * It reports that the DOCUMENT sent more than one, and asserts nothing about
+ * what usage the TR3s give the segment. It does not decide which occurrence
+ * the sender meant: this reader cannot tell a stray service segment from a
+ * conformant one, exactly as {@link ambiguous837Variant} records for the
+ * variant fallback.
+ *
+ * Disjoint from {@link serviceSegmentWithoutLx} by construction - that one
+ * fires only where no Loop 2400 is open and this one only where one is - so
+ * the two can never name the same segment. Read that as disjointness only:
+ * a service segment following an `LX` that opened no line is named by
+ * NEITHER, because {@link serviceLineDropped} at that `LX` already reports
+ * the loss and suppresses the orphan code. {@link serviceLineNotDecoded} is
+ * raised at the `LX` and reports that no matching service segment decoded
+ * onto the line at all; a document can carry both codes on different
+ * segments.
+ *
+ * @example
+ * ```ts
+ * import { serviceSegmentRepeated } from "@cosyte/x12";
+ * const w = serviceSegmentRepeated({ segmentIndex: 9, transactionIndex: 0 });
+ * ```
+ */
+export function serviceSegmentRepeated(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_837_SERVICE_SEGMENT_REPEATED,
+    message: WARNING_MESSAGES.X12_837_SERVICE_SEGMENT_REPEATED,
     position,
   };
 }
