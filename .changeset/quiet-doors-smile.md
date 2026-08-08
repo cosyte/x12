@@ -2,7 +2,7 @@
 "@cosyte/x12": patch
 ---
 
-The PHI commit-gate now opens every tracked file under `test/`, and reads X12 segment text that a `.ts` string literal is holding (PHI-SCAN-WALK-ROOT-SCOPE).
+The PHI commit-gate now opens every tracked file under `test/`, and reads X12 segment text that a `.ts` string literal is holding.
 
 **No library surface changes.** This is `scripts/phi-scan.ts`, the repository's own PHI gate. It is called out in a changelog because the gate is what stands between a real-looking X12 fixture and a public commit, and because two of the changes below alter what the pre-commit hook refuses.
 
