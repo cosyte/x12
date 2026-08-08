@@ -264,7 +264,10 @@ The reference wins over the segments when the two disagree, and the `type` optio
 service line whose `SVx` then does not match is **not** decoded (reading an `SV2` into a Professional
 line would mis-read the charge), so its `charge` and `units` read `undefined` and
 `X12_837_SERVICE_LINE_NOT_DECODED` is raised against the `LX` that opened it. Gate on that warning
-before you post a line amount, alongside `X12_UNPARSEABLE_DECIMAL` (the `SVx` decoded but the amount
+before you post a line amount, alongside `X12_837_SERVICE_SEGMENT_REPEATED` (a **second** service
+segment inside one Loop 2400: the line carries only the last matching one, so a charge and a
+procedure code the sender also sent are not on the model - see below), `X12_UNPARSEABLE_DECIMAL` (the
+`SVx` decoded but the amount
 itself did not) and `X12_AMOUNT_ROW_DROPPED` (an `AMT` whose own amount decoded nothing, so the
 whole supplemental-amount row is off the model - off the **line** where one is open, and off the
 claim otherwise). Gate on `X12_STATED_AMOUNT_DISCARDED` beside it: an `AMT` arriving while a Loop
@@ -296,6 +299,21 @@ general "this segment reached no party" report. It reports that the segment reac
 not that it would otherwise have reached one: this reader surfaces neither a `PER` on a patient nor
 one on a pay-to address on any release, so on those the alternative was also no party. The bytes stay verbatim on `tx.segments`, which is
 still the only complete account of the document.
+
+**🩺 A sixth code covers the one that costs money on a line that decoded perfectly well.** Where a
+second `SV1` / `SV2` / `SV3` arrives inside a Loop 2400 that is **already open**,
+`X12_837_SERVICE_SEGMENT_REPEATED` is raised at that repeated segment. The line carries one service
+segment's worth of slots, so it holds what the **last** segment matching the resolved variant wrote,
+and every decoder writes all of the slots its kind writes: `SV1*HC:99213*8500*…` followed by
+`SV1*HC:99999*12*…` leaves one line reading `charge` `12` and `procedureCode` `99999`, and through
+`0.0.13` it did so with `warnings: []`. Where the repeat's own charge element is **absent** it writes
+`undefined` over the amount the first one stated, and `X12_837_SERVICE_LINE_NOT_DECODED` does **not**
+fire there, because a service segment did decode. A repeat whose kind does not match the resolved
+variant is read into nothing and overwrites nothing, and is reported the same way. **Which of them the
+sender meant is not decided** - this reader cannot tell a stray service segment from a conformant one -
+and the decode is byte-for-byte what it was at `0.0.13`, so gate on the code and read the segments off
+`tx.segments` rather than expecting the model to reconcile them. It never names the same segment as
+`X12_837_SERVICE_SEGMENT_WITHOUT_LX`, which reports one arriving with **no** line open.
 
 ```ts
 import { parseX12, get837Claims, HL_LEVEL_CODES, WARNING_CODES } from "@cosyte/x12";

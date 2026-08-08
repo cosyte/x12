@@ -357,10 +357,54 @@ model.
   - **It can never travel with `X12_837_UNKNOWN_VARIANT`**, which is the other outcome of the same
     resolution: a body with conflicting service segments has, by construction, at least one to fall
     back on. It fires **once per transaction**, because there is one resolution per transaction.
-  - **What it does NOT close:** a foreign or duplicate `SVx` arriving inside a Loop 2400 the resolved
-    variant already decoded is still read into nothing in silence at the segment level, and where
-    that segment is the only one contradicting the resolution this code is now the sole report on the
-    channel. Narrowing the fallback, and warning at that segment, are each their own slice.
+  - **What it does NOT close:** narrowing the fallback, which is deliberately left alone. It no
+    longer leaves a second `SVx` inside an already-open Loop 2400 unreported: that was its own
+    slice, and it is the entry below. **Read the earlier wording as withdrawn** - it said such a
+    segment is "read into nothing", which was true only of one whose kind does not match the
+    resolved variant; a DUPLICATE of the matching kind is read into the line and REPLACES what the
+    first one wrote.
+
+- **🩺 A second `SV1` / `SV2` / `SV3` inside an ALREADY-OPEN Loop 2400 raises
+  `X12_837_SERVICE_SEGMENT_REPEATED`, anchored at the repeated service segment itself.** A service
+  line carries **one** service segment's worth of slots, and every decoder writes **all** of the
+  slots its kind writes, so the model holds what the **last** service segment matching the
+  submission's resolved variant wrote and nothing of any earlier one. **Through `0.0.13` that
+  happened in complete silence, and it is money and a procedure code:** under an `ST-03` of
+  `005010X222A2`, `SV1*HC:99213*8500*UN*4***1~` followed by `SV1*HC:99999*12*UN*1***1~` inside one
+  `LX` left ONE line reading `charge` `12` and `procedureCode` `99999`, with `warnings: []`. `8500`
+  became `12`, CPT `99213` became `99999`, and nothing was raised on any channel. Six bounds, each a
+  committed test:
+  - **🛑 The decode is NOT narrowed, and that is deliberate.** Last-wins is unchanged, element for
+    element, so which values a document decodes to are byte-for-byte what they were at `0.0.13`.
+    This reader cannot tell a stray service segment from a conformant one, so choosing the first
+    instead would be inventing; and changing which occurrence wins changes how **already-published
+    documents decode**, the same call made about the variant fallback in the entry above. **This
+    closes only the silence.**
+  - **🩺 The worst corner is a repeat whose own charge element is ABSENT.** It writes `undefined`
+    over the amount the first one stated, and `X12_837_SERVICE_LINE_NOT_DECODED` does **not** fire
+    on that line, because a service segment _did_ decode. This code is then the only thing on the
+    channel that says why the charge is empty.
+  - **It fires on a repeat of ANY kind, decoded or not.** A service segment whose kind does not
+    match the resolved variant is read into nothing and overwrites nothing - the loss there is that
+    what it carries reaches no part of the typed model - and it is reported the same way, whether it
+    arrives before or after the matching one. That case was silent at the segment through `0.0.13`
+    too, and the entry above recorded it as a deferred residual.
+  - **Once per repeat, and the count is scoped to the LINE, never latched.** Three service segments
+    in one Loop 2400 are two warnings at two positions; a first service segment under a later `LX`,
+    or in a later claim, is a first and never a repeat. A latching flag would report a conformant
+    second line.
+  - **It can never name the same segment as `X12_837_SERVICE_SEGMENT_WITHOUT_LX`**, which requires
+    that NO Loop 2400 be open where this one requires that one is. It can travel with
+    `X12_837_SERVICE_LINE_NOT_DECODED` (both service segments foreign to the resolved variant), with
+    `X12_UNPARSEABLE_DECIMAL` (the repeat's own amount bytes), and with
+    `X12_837_AMBIGUOUS_VARIANT`, each on its own segment.
+  - **It is ADDITIVE and nothing moved onto it.** Every code this reader raised on a document of
+    this shape before, it still raises, at the same position; a predicate written against any of
+    them is unaffected. Read that as invariance and **not** as a list of what else you will see.
+    **The package's own documentation was a consumer that needed updating**: the cookbook's
+    "gate before you post a line amount" recipe named four codes, none of which fires on the
+    overwrite document, so it was blind to it - it now names this one too, and a committed test
+    pins that the four-code gate misses what the five-code gate catches.
 
 - **🩺 An `N3` / `N4` / `PER` / `REF` discarded after a stray `LX` raises
   `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, anchored at the discarded segment itself.** This is

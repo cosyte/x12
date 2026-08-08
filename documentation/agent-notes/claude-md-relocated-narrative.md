@@ -330,3 +330,159 @@ to check the TYPE rather than the sentinel. What moved is the instance:
 
 > `build-835.ts` refused `patientControlNumber === ""` by name, and a number is not `""`, so it
 > passed and became `""` one line later.
+
+## 8. Trap-bullet narrative relocated by `X12-837-SV1-OVERWRITE` (2026-08-08)
+
+A fourth round, to fund that slice's trap block from a file that stood at **52,723 of a
+52,723-byte entry with ZERO room**, the entry having been lowered to meet round 7's shrink.
+**Every imperative stayed behind in `CLAUDE.md`**; what moved is mechanism, enumeration and
+incident history that the trap line does not need in order to be actionable. **No trap was
+deleted.** The umbrella still owes the matching ratchet drop to **52,716**, which lives in
+`.claude/hooks/doc-budget.mjs` and is outside this repo. Fourteen pieces, verbatim.
+
+### `X12-DECIMAL-BYPASSES-THE-GUARD` - the §1.10.2 balance terms, enumerated
+
+The bullet still says to state the rule and name spec fields rather than element numbers, still
+says a slot refuses untyped exactly where the balance guard reads it as a term of one of the three
+§1.10.2 invariants in `src/transactions/remit/balance.ts`, and still records that two successive
+remedies published a closed list and an element-number list and both were measured wrong. **What
+moved is the list itself, which is the thing that lets a wrong count self-correct - read it here,
+never re-derive it:**
+
+> `payment.totalActualPayment`, `claim.totalChargeAmount`, `claim.totalPaymentAmount`, every
+> `adjustments[].amount` at claim and line level, `serviceLine.chargeAmount`,
+> `serviceLine.paymentAmount`, `providerAdjustments[].amount`.
+
+And the reason the second of those two remedies was wrong:
+
+> the second because it graded the prose against this repo's code. Field names cannot drift that way.
+
+### `X12-DECIMAL-BYPASSES-THE-GUARD` - the fixed-width ISA line's two throws
+
+The bullet still says the ISA line is joined directly and sits outside BOTH guards, and still says
+both throws terminate and neither is silent. What moved is which throws what:
+
+> `pad(1, 15)` throws an untyped `TypeError`; `padControl(1, 9)` throws the misleading "exceeds the
+> 9-char spec limit".
+
+### `X12-DECIMAL-BYPASSES-THE-GUARD` - how a raw number bypassed the caller guard
+
+The bullet still says every `X12Decimal` slot emits through the builder's `escDec` over
+`requireCallerDecimal`. What moved is the mechanism and what it put on the wire:
+
+> A raw `number` in an `X12Decimal` slot used to reach `esc` already stringified by
+> `value.toString()`, so the caller guard never applied and `0.1+0.2`, `1e21` and `NaN` went out on
+> the wire.
+
+### `X12-DECIMAL-BYPASSES-THE-GUARD` - refuse, never round
+
+The bullet still says refuse rather than round, and still says guessing the scale of money is what
+`X12Decimal` exists to prevent. What moved is the illustration:
+
+> `0.30` guesses cents, `0.3` guesses tenths.
+
+### `X12-VARIANT-LOOKUP-PROTOTYPE` - what the prototype hole destroyed
+
+The bullet still says `in` is not the safe form and to reach for `Object.hasOwn`, and still points
+at the four further sites in the agent-notes section. What moved is the incident:
+
+> **🩺 It destroyed strictly more than `#67`: an ST-03 of `constructor` made `variant` a FUNCTION,
+> so EVERY Loop 2400 left the model with `warnings: []`.**
+
+### `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` - what 4 of 15 line-break sequences cost
+
+The bullet still states the tolerance as 15 of 15 CR/LF sequences of length 0 to 3. What moved is
+the incident:
+
+> It admitted 4 of 15, so a uniformly **double-spaced file lost its ENTIRE interchange body** and
+> returned `groups: []`.
+
+### `X12-SVC-ELEMENT-MAP-OFF-BY-ONE` - why a `0.0.9` 835 must be re-emitted
+
+The bullet still says 835s this library emitted at `0.0.9` or earlier are non-conformant and should
+be re-emitted. What moved is the mechanism:
+
+> their revenue code sits in SVC-05, so head reads it back as a paid quantity (`0300` -> 300 units)
+> with no warning.
+
+### `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX` - the two measurements
+
+The bullets still say the `tsx` -> `node` substitution is pinned as an EQUIVALENCE rather than
+assumed and is scoped to `paths` mode only; that the global `testTimeout` stays at 10 s on purpose;
+and that the `10.0 s` reading must not be upgraded into a proven crossing, because the reporter
+rounds. What moved is why each holds:
+
+> Nothing else enforces erasable-only syntax; the Node 22.18 floor is unenforced.
+
+> The 10 MB+ 834 stream sits AT it and is green only on its own 120 s per-test ceiling.
+
+### `X12-NUMERIC-VALUE-EMITS-EMPTY` - what `escapeRelease` read
+
+The bullet still says all nine builders take `esc` from `makeCallerEscaper`, which type-checks
+first and refuses with the calling module's own typed, code-tagged error. What moved is the
+mechanism and the slot it cost:
+
+> `escapeRelease` read `value.length`, `undefined` on a number, so the value vanished with no
+> warning and no error - including `CLP-01`, the reassociation key back to the 837's `CLM-01`.
+
+### `X12-CALLER-VALUE-RESIDUALS` - why the array-bounds control wedges
+
+The bullet still says the negative control found something worse than a red, that removing a
+`requireCallerArray` call WEDGES the test rather than failing it, and that this is the argument for
+keeping the source scan exhaustive. What moved is the reason:
+
+> A synchronous infinite loop never yields, so `testTimeout` cannot interrupt it.
+
+### `X12-QUANTITY-SILENT-DEFAULTS` - where a `ZERO`/`NOT_DECODED` pair was wrong
+
+The bullet still says ONE message, NO discriminant. What moved is the census:
+
+> a `ZERO`/`NOT_DECODED` pair was wrong at 835 `CAS`, 835 `PLB`, 837 `CAS`.
+
+### `ASSETS-P8` - the upstream line that returns 0
+
+The bullet still says `attw` prints "does not contain types" and EXITS 0, that the `attw` script is
+therefore `scripts/attw.mjs` and never the bare CLI, and that for a package which ships types it
+means the declarations were not in the tarball. What moved is the upstream source:
+
+> `getExitCode.js` in `@arethetypeswrong/cli` 0.18.4 opens with `if (!analysis.types) return 0` and
+> the problem list is never consulted.
+
+### `PHI-WARNING-MESSAGE-LEAK` - the two things that leaked
+
+The bullets still say shape-validate-then-echo cannot hold for a control number, whose grammar is
+whatever the trading partner sent, and still say `X12Segment.id` is bounded to the segment-id
+grammar with a `NON_SPEC_SEGMENT_ID` sentinel. What moved is what each was:
+
+> `X12_CONTROL_NUMBER_MISMATCH` rendered both sides verbatim and unbounded on all six
+> control-number slots.
+
+> it was an unbounded copy of the segment's first element.
+
+### `X12-BUILDER-BOUNDS` - the two allowlists that leaked
+
+The bullet still says `test/builder-refusal-bounds.test.ts` must never allow `String(...)` or
+`String(<expr>.length)`, still says what remains allowed is a single-letter loop index and the
+`width` literal only, and still says negative controls run both ways. What moved is the history:
+
+> Its first allowlist admitted any `String(...)`; its second inspected the property NAME and not the
+> operand, so a forged `{length}` sailed through.
+
+### The `phi-scan` gate - what `-B` prints, and the parser envelope's naive split
+
+The bullets still say to quote the classification and never the letter, because `--diff-filter`
+classifies a broken pair as `B` whatever letter it prints; and still say `splitSegments` is
+release-aware via `findUnescapedTerminator` and that a degenerate terminator-is-release delimiter
+set falls back to the literal scan. What moved is what each looks like:
+
+> `-B` prints **`M`** + a score, one path, which `RAW_RECORD` parses happily.
+
+> A naive `indexOf` split mid-value on a `?`-release-escaped terminator (`?~`).
+
+### The `phi-scan` gate - the allow-list's byte-strictness, compared
+
+The bullet still says synthetic tokens are POSITIVELY DECLARED in `scripts/phi-allow-list.txt`,
+byte-strict and with no inline header, and that a whole-file bypass needs `--allow-fixture` AND an
+entry in `phi-scan-overrides.md`. What moved is the sibling it matches:
+
+> as DICOM's `.dcm`

@@ -116,6 +116,19 @@ const NOT_DECODED = WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED;
 const WITHOUT_LX = WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX;
 const UNKNOWN_VARIANT = WARNING_CODES.X12_837_UNKNOWN_VARIANT;
 
+/**
+ * Every Tier-2 code added after `0.0.13`, which is the release the additivity
+ * claim below is measured against. The claim is that a consumer's predicate on
+ * a code that EXISTED at `0.0.13` reads exactly the documents it read then, so
+ * the filter has to drop each later addition rather than only this suite's own
+ * - otherwise the next additive slice reds this suite for being additive,
+ * which is the opposite of what it asserts. Additions only; never remove one.
+ */
+const ADDED_SINCE_0_0_13: ReadonlySet<string> = new Set<string>([
+  WARNING_CODES.X12_837_AMBIGUOUS_VARIANT,
+  WARNING_CODES.X12_837_SERVICE_SEGMENT_REPEATED,
+]);
+
 // ---------------------------------------------------------------------------
 // 1. The headline: a stray SVx that re-types the submission now says so.
 // ---------------------------------------------------------------------------
@@ -392,11 +405,15 @@ describe("X12-837-AMBIGUOUS-VARIANT: additive, with nothing moved onto it", () =
     ["conflict inside two opened lines", claimBody(["LX*1~", SV1, "LX*2~", SV2]), [NOT_DECODED]],
     [
       // 🩺 The foreign SVx arrives INSIDE an opened Loop 2400 that the SV1
-      // already decoded, so `decodeSv2` returns on the variant check and
-      // nothing reports it: a separate `PRE-EXISTING` silence, untouched
-      // here. The legacy channel is genuinely empty, which makes this the
-      // sharpest case for the new code and the one that must not be
-      // mis-stated as the line codes doing the work.
+      // already decoded, so `decodeSv2` returns on the variant check and no
+      // LINE code reports it. That was a separate `PRE-EXISTING` silence when
+      // this suite was written and it is now closed by its own slice
+      // (`X12-837-SV1-OVERWRITE`, `X12_837_SERVICE_SEGMENT_REPEATED` at the
+      // repeated segment). The LEGACY channel below is still genuinely empty,
+      // which is what this case exists to pin, and which is why the filter
+      // must drop every code added since `0.0.13` rather than just this
+      // suite's own - a consumer's predicate reads the old codes, and it is
+      // those that must be unchanged.
       "conflict where the loser sits inside an already-decoded line",
       claimBody(["LX*1~", SV1, SV2]),
       [],
@@ -411,7 +428,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: additive, with nothing moved onto it", () =
   for (const [name, body, legacyChannel] of cases) {
     it(`${name}: the pre-existing codes are untouched`, () => {
       const { sub } = parse837("005010X222A1", body);
-      expect(channel(sub).filter((c) => c !== AMBIGUOUS)).toEqual([...legacyChannel]);
+      expect(channel(sub).filter((c) => !ADDED_SINCE_0_0_13.has(c))).toEqual([...legacyChannel]);
       expect(channel(sub)).toContain(AMBIGUOUS);
     });
   }

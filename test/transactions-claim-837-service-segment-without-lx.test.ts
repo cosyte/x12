@@ -365,10 +365,16 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     expect(trailing.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     // The body is still self-contradictory, so the resolution is still a
     // guess and still reported - even though first-wins happened to land on
-    // the conformant segment here. The SV2 reaches a line that the SV1
-    // already decoded, so nothing else reports it: that silence is a
-    // separate PRE-EXISTING residual and is untouched.
-    expect(channel(trailing)).toEqual([WARNING_CODES.X12_837_AMBIGUOUS_VARIANT]);
+    // the conformant segment here. The SV2 reaches a line the SV1 already
+    // decoded, and THAT is no longer silent either: `X12-837-SV1-OVERWRITE`
+    // added `X12_837_SERVICE_SEGMENT_REPEATED` at the second service segment
+    // in an open Loop 2400, whether or not it decoded. This assertion read
+    // `[AMBIGUOUS]` alone until that slice, and its going red is the finding
+    // rather than a regression: it was the pin ON that silence.
+    expect(channel(trailing)).toEqual([
+      WARNING_CODES.X12_837_AMBIGUOUS_VARIANT,
+      WARNING_CODES.X12_837_SERVICE_SEGMENT_REPEATED,
+    ]);
   });
 
   it("🩺 the condition is NO LINE OPEN, not 'the file contains no LX'", () => {

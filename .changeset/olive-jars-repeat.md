@@ -1,0 +1,21 @@
+---
+"@cosyte/x12": patch
+---
+
+A second `SV1` / `SV2` / `SV3` inside an already-open Loop 2400 no longer replaces the first's charge and procedure code in silence (X12-837-SV1-OVERWRITE).
+
+An 837 service line carries **one** service segment's worth of slots, and `decodeSv1` / `decodeSv2` / `decodeSv3` each write **all** of the slots their kind writes. So a second service segment arriving inside a Loop 2400 that is already open replaces what the first wrote, outright rather than by merge. Under an `ST-03` of `005010X222A2`, `SV1*HC:99213*8500*UN*4***1~` followed by `SV1*HC:99999*12*UN*1***1~` inside one `LX` left ONE line reading `charge` **`12`** and `procedureCode` **`99999`**, with `warnings: []`. `8500` became `12`, CPT `99213` became `99999`, and nothing was raised on any channel. The worst corner is a repeat whose own charge element is **absent**: it writes `undefined` over the amount the first one stated, and `X12_837_SERVICE_LINE_NOT_DECODED` does **not** fire on that line, because a service segment did decode.
+
+**Added:** `X12_837_SERVICE_SEGMENT_REPEATED`, the 33rd Tier-2 warning code, plus the public factory `serviceSegmentRepeated(position)`. It is raised at the repeated service segment itself, with **no** `position.elementIndex` (what is reported is a second occurrence of the segment, not a defect in an element of it), once per repeat.
+
+**This closes only the silence, and the restraint is the point.** The decode is **not** narrowed: the last service segment matching the submission's resolved variant still wins, element for element, so which values a document decodes to are byte-for-byte what they were on `0.0.13`. Two reasons, and they are the two given for not narrowing the `SVx` variant fallback on this same segment family: this reader cannot tell a stray service segment from a conformant one, so picking a winner would be inventing; and changing which occurrence wins changes how already-published documents decode.
+
+**It fires on a repeat of any kind, decoded or not.** A service segment whose kind does not match the resolved variant is read into nothing and overwrites nothing, and it is reported the same way, whether it arrives before or after the matching one. That case was silent at the segment on `0.0.13` too.
+
+**Once per repeat, and the count is scoped to the line rather than latched.** Three service segments in one Loop 2400 are two warnings at two positions, and a first service segment under a later `LX`, or in a later claim, is a first and never a repeat. It can never name the same segment as `X12_837_SERVICE_SEGMENT_WITHOUT_LX`, which requires that no Loop 2400 be open where this one requires that one is; it can travel with `X12_837_SERVICE_LINE_NOT_DECODED`, `X12_UNPARSEABLE_DECIMAL` and `X12_837_AMBIGUOUS_VARIANT`, each on its own segment.
+
+**It is additive and nothing moved onto it.** Every code this reader raised on a document of this shape before, it still raises, at the same position, pinned by committed tests that assert the whole warning channel with the new code filtered out. **No consumer predicate written against any existing code changes meaning.** Read that as invariance, not as a list of what else you will see on such a document.
+
+**The package's own documentation was a consumer, and it was blind.** The cookbook's "gate before you post a line amount" recipe named four codes, and **none** of them fires on the overwrite document, so a consumer following it posted `12` for a line the sender also sent as `8500`. The cookbook, the troubleshooting table and `KNOWN-LIMITATIONS.md` now name this code beside the other four, and a committed test pins that the four-code gate misses what the five-code gate catches.
+
+If you read 837 files on `0.0.13` or earlier, re-check any line amount or procedure code you took off a claim whose raw Loop 2400 carries more than one service segment: the model's reading is unchanged on this release, and only the warning channel now tells you the sender sent another one.

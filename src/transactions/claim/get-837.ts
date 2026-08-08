@@ -61,6 +61,7 @@ import {
   payToAddressRepeated,
   serviceLineDropped,
   serviceLineNotDecoded,
+  serviceSegmentRepeated,
   serviceSegmentWithoutLx,
   statedAmountDiscarded,
   unknown837Variant,
@@ -424,6 +425,30 @@ export function get837Claims(
   const reportOrphanServiceSegment = (position: X12Position): void => {
     if (droppedLineReported) return;
     warnings.push(serviceSegmentWithoutLx(position));
+  };
+
+  /**
+   * Record that a service segment arrived on the open line, reporting it as a
+   * repeat where one already had.
+   *
+   * The model carries one service segment's worth of slots per Loop 2400, and
+   * every decoder writes ALL of the slots its kind writes, so a second
+   * matching segment replaces the first's charge, units and procedure code
+   * outright - including replacing a stated amount with `undefined` where its
+   * own element is absent. Through `0.0.13` that happened with `warnings: []`.
+   *
+   * The reader still decodes exactly as it did: the last matching segment
+   * wins, unchanged. Narrowing it to first-wins would change how already
+   * published documents decode, and which of the two the sender meant is not
+   * derivable - the same call `X12-837-AMBIGUOUS-VARIANT` made about the
+   * fallback on this same segment family. This closes only the silence.
+   *
+   * Called for EVERY service segment reaching an open line, matching or not,
+   * and before the decode, which never reads the flag. @internal
+   */
+  const noteServiceSegment = (acc: ServiceLineAccumulator, position: X12Position): void => {
+    if (acc.serviceSegmentSeen) warnings.push(serviceSegmentRepeated(position));
+    acc.serviceSegmentSeen = true;
   };
 
   /**
@@ -963,19 +988,41 @@ export function get837Claims(
       // before the walk and scans every SVx in the body: an orphan segment
       // is eligible for that fallback like any other, which is pre-existing
       // and disclosed in KNOWN-LIMITATIONS.md rather than changed here.
+      //
+      // A SECOND service segment inside an already-open Loop 2400 is the
+      // other silence on this segment, and it is a worse one: the line IS
+      // open, so the repeat decodes, and every decoder writes all of the
+      // slots its kind writes. `SV1*HC:99213*8500*…` followed by
+      // `SV1*HC:99999*12*…` left ONE line reading `charge` 12 and
+      // `procedureCode` 99999 through `0.0.13`, with `warnings: []` - money
+      // and a CPT code replaced on the model, on no channel at all.
+      // `noteServiceSegment` reports that, at the repeat itself, and changes
+      // NOTHING about which segment wins.
       case "SV1": {
-        if (currentServiceLine !== undefined) decodeSv1(currentServiceLine, seg, delimiters, sink);
-        else reportOrphanServiceSegment(position);
+        if (currentServiceLine === undefined) {
+          reportOrphanServiceSegment(position);
+          break;
+        }
+        noteServiceSegment(currentServiceLine, position);
+        decodeSv1(currentServiceLine, seg, delimiters, sink);
         break;
       }
       case "SV2": {
-        if (currentServiceLine !== undefined) decodeSv2(currentServiceLine, seg, delimiters, sink);
-        else reportOrphanServiceSegment(position);
+        if (currentServiceLine === undefined) {
+          reportOrphanServiceSegment(position);
+          break;
+        }
+        noteServiceSegment(currentServiceLine, position);
+        decodeSv2(currentServiceLine, seg, delimiters, sink);
         break;
       }
       case "SV3": {
-        if (currentServiceLine !== undefined) decodeSv3(currentServiceLine, seg, delimiters, sink);
-        else reportOrphanServiceSegment(position);
+        if (currentServiceLine === undefined) {
+          reportOrphanServiceSegment(position);
+          break;
+        }
+        noteServiceSegment(currentServiceLine, position);
+        decodeSv3(currentServiceLine, seg, delimiters, sink);
         break;
       }
       case "TOO": {
@@ -1361,6 +1408,23 @@ interface ServiceLineBaseAccumulator {
    * ever read, so `charge` / `units` below are seeded stand-ins. @internal
    */
   serviceSegmentDecoded: boolean;
+  /**
+   * Set by the FIRST `SV1` / `SV2` / `SV3` to arrive while this line is open,
+   * whether or not it matched the line's variant and so whether or not it
+   * decoded anything. It is what makes the NEXT one a repeat.
+   *
+   * Deliberately NOT the same flag as `serviceSegmentDecoded` above, which
+   * only a matching kind sets. A line that took an `SV2` and then an `SV1`
+   * under a Professional submission was sent two service segments and can
+   * only carry one of them, and keying the report on the decoded flag would
+   * leave that shape as silent as it was through `0.0.13`.
+   *
+   * It lives on the accumulator rather than in a walk-scoped `let` so that it
+   * is created and discarded with the line itself: a first service segment
+   * under a later `LX` gets a fresh accumulator and is a first, never a
+   * repeat. @internal
+   */
+  serviceSegmentSeen: boolean;
   charge: X12Decimal | undefined;
   units: X12Decimal | undefined;
   unitOfMeasure: string | undefined;
@@ -1507,6 +1571,7 @@ function openServiceLine(
     lineNumber,
     position,
     serviceSegmentDecoded: false,
+    serviceSegmentSeen: false,
     charge: undefined,
     units: undefined,
     unitOfMeasure: undefined,
