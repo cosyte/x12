@@ -89,9 +89,13 @@ reasoning is what a future slice should re-read rather than re-derive:
    pinned, and it is what makes this a fact rather than a preference. **Do NOT extend that into "so
    the emit half is safe" - item 6 is exactly that mistake, measured.**
 6. **🛑 THE EXPOSURE IS NOT INBOUND BYTES ONLY, AND THE REMEDY FOR PASS ONE SAID IT WAS.** That
-   sentence shipped on five surfaces and pass two measured it false. Every envelope slot routed
-   through the builders' escaper is safe; **two emit slots are not routed through it, and both reach
-   this class:**
+   sentence shipped on five surfaces and pass two measured it false. Envelope slots routed through
+   the builders' release escaper are safe. **Not every emit slot is routed through it, and NO TOTAL
+   IS PUBLISHED anywhere** - `X12-NUMERIC-VALUE-EMITS-EMPTY` already banned a bypass census here, and
+   pass three caught a draft of this remedy re-publishing one ("two") that was short by at least
+   `IEA-02`, which `buildInterchange` and all eight domain builders emit unescaped. **State the
+   property, list only what REACHES the regression direction, and expect the list to be incomplete.**
+   The routes measured to reach it:
    - **`buildTA1` escapes nothing** - it joins its five caller-supplied elements directly, which
      `CLAUDE.md` already records under `X12-DECIMAL-BYPASSES-THE-GUARD`. TA1-01 echoes the
      acknowledged interchange's ISA-13, and ISA-13 is fixed-width, so a `?` there is content **by
@@ -108,6 +112,14 @@ reasoning is what a future slice should re-read rather than re-derive:
      three passes, and it is DISCLOSED rather than guarded: escaping in `buildTA1` would change bytes
      this library already puts on the wire, which is an emit-side decision with its own blast radius
      and its own slice. **That is a deliberate call, not an oversight - record it, do not re-derive it.**
+
+     **🩺 AND DO NOT PUBLISH ONLY THE FAIL-SAFE HALF, which a draft of this remedy did.** `parseTA1`
+     narrows an out-of-enum TA1-04 to `R`, so every WELL-TYPED shift lands on Reject and every
+     reachable inbound merge position does too. But `noteCode` is type-only (`Ta1NoteCode`, never
+     checked at run time - `X12-BUILDER-BOUNDS`: a type is not a runtime guarantee), so a `noteCode`
+     of literally `"A"` emits `TA1*00000001?*260601*1200*R*A` and reads back **`ackCode` `"A"`**: a
+     **Reject read as an Accept**, whose sender never resubmits. Unreachable from TypeScript and from
+     conformant bytes, which is why it is a line rather than a guard - but state BOTH directions.
 
    - **`buildInterchange` does not escape GS-04, GS-05 or GS-07.** A `groupDate` of `"2026060?"`
      emits `GS*HC*SENDER*RECEIVER*2026060?*1200*1*X*005010X222A1` and its own return value reads nine

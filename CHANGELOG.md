@@ -1000,15 +1000,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the escape-wins way on every released version (`REF*EA*RCV?*NEXT` has always been two elements), so
   the envelope now obeys the one rule the rest of the package already obeyed.
 
-  **🩺 The exposure is NOT inbound bytes only. Two of this library's own emit slots do not escape and
-  both reach it.** Every envelope slot routed through the builders' escaper is safe; these two are
-  not routed through it. **`buildTA1` escapes nothing** - it joins its five caller-supplied elements
+  **🩺 The exposure is NOT inbound bytes only.** Envelope slots routed through the builders' release
+  escaper are safe. Not every emit slot is routed through it, and no total is published: what follows
+  is the routes measured to reach the regression direction, not a closed account of what bypasses the
+  escaper. **`buildTA1` escapes nothing** - it joins its five caller-supplied elements
   directly, and TA1-01 echoes the acknowledged interchange's fixed-width ISA-13, where a `?` is
   content. `buildTA1({ interchangeControlNumber: "00000001?", ackCode: "A", noteCode: "000", … })`
   emits the same `TA1*00000001?*260601*1200*A*000` on either release, and `parseTA1` read `ackCode`
   `"A"` at `0.0.14` and reads **`ackCode` `"R"`** here, control number `"00000001?*260601"`,
   `noteCode` `undefined`, `warnings: []` - **an Accept acknowledgment this library emitted now reads
-  back as a Reject**, on the element that reassociates it. And **`buildInterchange` does not escape
+  back as a Reject**, on the element that reassociates it. The inverse exists and is the less safe
+  one: the read narrows an out-of-enum TA1-04 to `R`, so a well-typed shift always lands on Reject,
+  but a `noteCode` of literally `"A"` (type-only, never checked at run time) makes a **Reject read
+  back as an Accept**. And **`buildInterchange` does not escape
   GS-04, GS-05 or GS-07**: a `groupDate` of `"2026060?"` read nine GS elements at `0.0.14` and reads
   eight here, GS-08 gone. If you emit either, escape or reject a `?` yourself.
 
