@@ -53,14 +53,36 @@ model.
   - **The set is not claimed exhaustive and no count of it is published**, here or in any warning
     message. Both variant messages named the three old keys literally and were wrong the moment the
     table was corrected, so neither enumerates the set any more.
-  - **🩺 OPEN, and NOT fixed here: the EMIT side still stamps the old three.** `build837P` /
-    `build837I` / `build837D` write `005010X222A2` / `005010X223A3` / `005010X224A2` into ST-03 and
-    GS-08, and **a caller cannot override the value**. Two of those are not what the companion guides
-    above require, so **a trading partner that requires `005010X222A1` or `005010X223A2` will reject
-    an 837 this builder emits.** Deliberately not re-stamped: which published guide identifier a
-    partner accepts is a partner fact rather than a spec fact, and changing bytes this library
-    already emitted would break the partners it works with today. The remedy is a caller-supplied
-    override, which is a public-surface addition and its own slice.
+  - **🩺 CLOSED, in the slice after this one: the emit side takes a caller override**
+    (`X12-837-EMIT-IDENTIFIER-FIXED`). `build837P` / `build837I` / `build837D` still DEFAULT to
+    `005010X222A2` / `005010X223A3` / `005010X224A2` in ST-03 and GS-08, and
+    **`Build837EnvelopeSpec.implementationConventionReference` now states another** - one value,
+    both elements. Two of the defaults are not what the companion guides above require, so a partner
+    asking for `005010X222A1` or `005010X223A2` used to reject what this builder emitted and there
+    was no way to comply. **The default itself was deliberately NOT re-stamped:** which published
+    guide identifier a partner accepts is a partner fact rather than a spec fact, and changing bytes
+    this library already emitted would break the partners it works with today.
+    - **What the override refuses, all `X12_837_BUILD_INVALID_SPEC`, and none of it echoes your
+      value back:** an empty reference (a trailing empty element is not emitted, so it would delete
+      ST-03 and GS-08 rather than send them empty); one carrying an active delimiter or the release
+      character; and one this library's own reader resolves to a **different** 837 variant, which
+      would emit a file declaring one variant and carrying another's service segments.
+    - **A reference outside the read table is emitted as given, deliberately.** The published-errata
+      set is not provably exhaustive, so refusing an unrecognised identifier would claim an
+      exhaustiveness nothing here supports. The honest cost, pinned as a test: this library's own
+      reader falls back to the `SVx` scan on such a file, exactly as it does for any unrecognised
+      ST-03.
+
+- **🩺 An active delimiter inside GS-08 or ST-03 splits the segment even when it is
+  release-escaped, and nothing is warned.** Measured through `parseX12`: a
+  `GS*HC*S*R*20260601*1200*1*X*005010?*X222A1~` reads back with **ten** elements and GS-08 of
+  `005010?`, and the same construct in a body element (`CLM*PT?*ACCT*150.00~`) holds as **one**
+  element - the envelope segments are read by a splitter that is not release-aware. `warnings` is
+  empty on both. **Not fixed:** changing how envelope segments split changes how already-published
+  documents decode, which is the same call made everywhere else in this file. The 837 builder's
+  `implementationConventionReference` refuses such a value rather than emitting it;
+  `buildInterchange`'s `versionRelease` and `implementationConventionReference` apply no domain
+  guard and will emit it, as documented for every other element it takes.
 
 - **🩺 BREAKING for `build277` callers: a 277 service line now REQUIRES `unitsOfService`, because
   SVC-07 is a required element in `005010X212` and this library was not emitting it at all**

@@ -236,8 +236,8 @@ describe("refusal messages: the source gate", () => {
 
   it("finds the refusing modules and their refusal sites", () => {
     // Re-derived on this tree, not inherited: ELEVEN modules raise a typed
-    // refusal across EIGHTY-SIX `throw` sites - ten builder modules with 74
-    // sites (59 three slices ago, plus the nine one-line `refuseSpec` /
+    // refusal across NINETY-THREE `throw` sites - ten builder modules with 81
+    // sites (59 several slices ago, plus the nine one-line `refuseSpec` /
     // `refuseHierarchy` throwers that `requireCallerArray` calls back into,
     // plus the FOUR added by `X12-NUMERIC-VALUE-EMITS-EMPTY` so that
     // `buildInterchange`, `build999`, `build271` and `build278` each own a
@@ -249,7 +249,11 @@ describe("refusal messages: the source gate", () => {
     // `X12-837-SV-UNDEFINED-DECIMAL`: one in `build-837.ts` for a service line
     // with no `units`, and three in `build-835.ts` where each balance check
     // now refuses a term that did not decode with `X12_835_BUILD_INVALID_SPEC`
-    // rather than reporting an inequality it never computed), and
+    // rather than reporting an inequality it never computed, plus the THREE
+    // added by `X12-837-EMIT-IDENTIFIER-FIXED` in `build-837.ts`, where the new
+    // `envelope.implementationConventionReference` override refuses an empty
+    // reference, one carrying an active delimiter or the release character, and
+    // one this library's own reader resolves to a different 837 variant), and
     // `src/profiles/validate.ts` with 12. The
     // module count is unchanged at 11 because `build-277.ts` and `build-278.ts`
     // already raised elsewhere. Pinned so a module that stops being scanned
@@ -257,7 +261,7 @@ describe("refusal messages: the source gate", () => {
     // smaller sweep.
     const raising = new Set(sites.map((s) => s.file));
     expect(raising.size).toBe(11);
-    expect(sites.length).toBe(90);
+    expect(sites.length).toBe(93);
     expect(modules.some((m) => m.endsWith(join("profiles", "validate.ts")))).toBe(true);
   });
 

@@ -378,6 +378,90 @@ for (const claim of sub.claims) {
 const unknownHi = sub.warnings.some((w) => w.code === WARNING_CODES.X12_UNKNOWN_HI_QUALIFIER);
 ```
 
+### 🩺 Building one: declare the guide your partner asked for
+
+`build837P` / `build837I` / `build837D` default ST-03 and GS-08 to `005010X222A2` / `005010X223A3` /
+`005010X224A2`. **Those defaults are not what every partner accepts** - CMS and several state
+Medicaid companion guides require `005010X222A1` on professional and `005010X223A2` on institutional
+claims, and a partner on one of those rejects a file declaring the default. Which published guide
+identifier a partner accepts is a **partner fact rather than a spec fact**, so this library will not
+choose for you: state it on the envelope and one value reaches both elements.
+
+```ts runnable
+import { build837P, get837Claims, X12Decimal, type Build837Spec } from "@cosyte/x12";
+
+const spec: Build837Spec = {
+  envelope: {
+    senderId: "SUBMITTER",
+    receiverId: "RECEIVER",
+    interchangeDate: "260601",
+    interchangeTime: "1200",
+    interchangeControlNumber: "000000001",
+    groupControlNumber: "1",
+    transactionSetControlNumber: "0001",
+    // Omit this and you get 005010X222A2, exactly as before it existed.
+    implementationConventionReference: "005010X222A1",
+  },
+  submitter: { entityIdentifierCode: "41", entityTypeQualifier: "2", name: "SUBMITTER ONE", idQualifier: "46", idCode: "SUB001" },
+  receiver: { entityIdentifierCode: "40", entityTypeQualifier: "2", name: "RECEIVER ONE", idQualifier: "46", idCode: "REC001" },
+  billingProviders: [
+    {
+      provider: { entityIdentifierCode: "85", entityTypeQualifier: "2", name: "BILLING CLINIC INC", idQualifier: "XX", idCode: "1234567890" },
+      subscribers: [
+        {
+          info: { payerResponsibilityCode: "P", individualRelationshipCode: "18", claimFilingIndicator: "MB" },
+          subscriber: { entityIdentifierCode: "IL", entityTypeQualifier: "1", name: "PATIENT", firstName: "TEST", idQualifier: "MI", idCode: "MEMBER001" },
+          payer: { entityIdentifierCode: "PR", entityTypeQualifier: "2", name: "PAYER ONE", idQualifier: "PI", idCode: "PAYER01" },
+          claims: [
+            {
+              claimId: "PT-ACCT-001",
+              totalCharge: X12Decimal.fromString("150.00")!,
+              diagnoses: [{ qualifier: "ABK", code: "J20.9" }],
+              serviceLines: [
+                {
+                  variant: "P",
+                  procedureQualifier: "HC",
+                  procedureCode: "99213",
+                  charge: X12Decimal.fromString("150.00")!,
+                  unitOfMeasure: "UN",
+                  units: X12Decimal.fromString("1")!,
+                  diagnosisPointers: ["1"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+const built = build837P(spec);
+
+// One value, BOTH elements - GS-08 and ST-03 never disagree.
+built.groups[0]?.gs.elements[8]; // => "005010X222A1"
+built.groups[0]?.transactions[0]?.st.elements[3]; // => "005010X222A1"
+
+// And it still reads back as a Professional claim, charge intact.
+const builtTx = built.groups[0]?.transactions[0];
+const readBack = builtTx ? get837Claims(built.delimiters, builtTx) : undefined;
+readBack?.variant; // => "P"
+readBack?.claims[0]?.serviceLines[0]?.charge?.toString(); // => "150.00"
+```
+
+**Three things it refuses**, all `Claim837BuildError` with code `X12_837_BUILD_INVALID_SPEC`, and no
+refusal message echoes the value you passed: an **empty** reference (a trailing empty element is not
+emitted, so it would delete ST-03 and GS-08 rather than send them empty); one carrying an **active
+delimiter or the release character** (escaping does not help here - the envelope segments are read by
+a splitter that is not release-aware, so a released delimiter still splits the segment, silently); and
+one this library's own reader resolves to a **different 837 variant**, such as `005010X223A2` handed
+to `build837P`, which would emit a file declaring one variant and carrying another's service segments.
+
+**Anything else is emitted as given.** The set of published errata is not provably exhaustive, so an
+identifier this library does not recognise is your call, not an error - with one honest cost: on
+reading such a file back, this library falls through to the `SVx` scan for the variant, exactly as it
+does for any unrecognised ST-03.
+
 ---
 
 ## 5. Parse a 999 acknowledgment: disposition + segment errors
