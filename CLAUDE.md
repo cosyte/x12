@@ -83,8 +83,9 @@ or financial value on the wire.**
 - **`X12_837_SERVICE_SEGMENT_REPEATED` at the REPEAT, no `elementIndex`, once per repeat, SCOPED TO
   THE LINE.** Fires on ANY kind, DECODED OR NOT: keying it on `serviceSegmentDecoded`, or latching
   it, each reds its own control.
-- **🛑 THE BLIND CONSUMER WAS THIS REPO'S OWN COOKBOOK, WITH NOTHING MOVED ONTO A NEW CODE:** its
-  post-a-line-amount gate named FOUR codes, NONE firing here. **PIN THE SWEEP.**
+- **🛑 A BLIND CONSUMER WAS THIS REPO'S OWN DOCS, NOTHING HAVING MOVED ONTO A NEW CODE:** the
+  post-a-line-amount gate named FOUR codes and `spec-notes-money` "the known instance", NONE firing
+  here. **SWEEP EVERY MONEY PAGE, NOT THE RECIPE ALONE; PIN IT.**
 - **The message ASSERTS NO TR3 USAGE and depends on NO variant resolving** - `VARIANT_BY_ICR` is
   ungrounded.
 
@@ -476,8 +477,7 @@ or financial value on the wire.**
   flushed between the `ST` and the `SE`. GE-01/IEA-01 are unaffected: an orphan is never a `GS`.
 - **`KNOWN-LIMITATIONS.md` holds the canonical not-reproduced list; derive its size.**
 - **Case 6 (the empty-first-element segment `*A*B~` outside a transaction) is deliberately NOT in
-  scope.** The walker skips it, so there is nothing to re-emit; closing it is a RETENTION change to
-  the `name.length > 0` guard and would mint new `X12_UNEXPECTED_SEGMENT`s.
+  scope** (why, and what closing it would mint: relocated narrative §8).
 - **Retention and placement are NOT promotion:** no `get*` reader sees an orphan, and a `TA1` in a
   group still does not join `ta1Segments`.
 - **State the four kept regression assertions at the MODEL level, not the byte level.** A

@@ -338,7 +338,8 @@ A fourth round, to fund that slice's trap block from a file that stood at **52,7
 **Every imperative stayed behind in `CLAUDE.md`**; what moved is mechanism, enumeration and
 incident history that the trap line does not need in order to be actionable. **No trap was
 deleted.** The umbrella still owes the matching ratchet drop to **52,716**, which lives in
-`.claude/hooks/doc-budget.mjs` and is outside this repo. Fourteen pieces, verbatim.
+`.claude/hooks/doc-budget.mjs` and is outside this repo. **No count of the pieces is published here** - a
+drifting number is deleted rather than corrected, and the subsections below are the list.
 
 ### `X12-DECIMAL-BYPASSES-THE-GUARD` - the §1.10.2 balance terms, enumerated
 
@@ -486,3 +487,11 @@ byte-strict and with no inline header, and that a whole-file bypass needs `--all
 entry in `phi-scan-overrides.md`. What moved is the sibling it matches:
 
 > as DICOM's `.dcm`
+
+### `X12-ORPHAN-REEMIT` - why case 6 is out of scope
+
+The bullet still says the empty-first-element segment outside a transaction is deliberately NOT in
+scope. What moved is the reason:
+
+> The walker skips it, so there is nothing to re-emit; closing it is a RETENTION change to the
+> `name.length > 0` guard and would mint new `X12_UNEXPECTED_SEGMENT`s.

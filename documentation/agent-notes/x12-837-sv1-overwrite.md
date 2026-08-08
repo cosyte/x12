@@ -65,7 +65,7 @@ document decodes to are byte-for-byte what they were at `0.0.13`.
   on before, at the same position, pinned by whole-channel `toEqual` assertions with the new code
   filtered out.
 
-## 🛑 The consumer that was blind, and it was this package's own documentation
+## 🛑 A consumer that was blind, and it was this package's own documentation
 
 `#83` was refuted for a widening that moved a case **off** a code a published recipe gated on. The
 mirror-image hazard bit here: the cookbook's "gate before you post a line amount" recipe named
@@ -77,6 +77,14 @@ moved - the gap was a code that had never existed.
 The cookbook, the troubleshooting table and `KNOWN-LIMITATIONS.md` now name this code beside the
 other four, and **a committed test pins that the four-code gate misses what the five-code gate
 catches**, with a clean single-segment control on which neither fires.
+
+**And the recipe was not the only page.** `docs-content/spec-notes-money.md` named
+`X12_837_SERVICE_LINE_NOT_DECODED` as "the known instance" of an 837 charge reading `undefined` from
+a slot no reader read, and told a consumer to gate on it. The repeat corner is a second instance by
+a different route, on which that code does **not** fire. The page now says so. **Read the rule out
+of this: sweeping the RECIPE is not sweeping the DOCS, and a page that names "the known instance" of
+anything is a census that the next slice falsifies.** A pass-1 refutation found this page after the
+first three surfaces had been swept and called done.
 
 ## The message asserts no TR3 usage, and depends on no variant resolving
 
@@ -115,8 +123,8 @@ check:no-emdash, test:coverage, build, attw, verify:exports), 77 files / **1,669
 
 ## Budget
 
-`x12/CLAUDE.md` went **52,723 (zero room) -> 52,716**, paid for by relocating **fifteen** pieces of
-narrative into `documentation/agent-notes/claude-md-relocated-narrative.md` §8 **first**. No trap
+`x12/CLAUDE.md` went **52,723 (zero room) -> 52,716**, paid for by relocating narrative
+into `documentation/agent-notes/claude-md-relocated-narrative.md` §8 **first**. No trap
 was deleted. `agent-notes.md` untouched, its 18 bytes intact. **The umbrella still owes the matching
 ratchet drop of `REPO_CLAUDE.x12` to 52,716 in `.claude/hooks/doc-budget.mjs`**, which is outside
 this repo.

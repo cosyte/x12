@@ -48,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   document, so a consumer following it posted `12` for a line the sender also sent as `8500`. The
   cookbook, the troubleshooting table and `KNOWN-LIMITATIONS.md` now name this code beside the other
   four, and a committed test pins that the four-code gate misses what the five-code gate catches.
+  **The recipe was not the only page:** `spec-notes-money` named `X12_837_SERVICE_LINE_NOT_DECODED`
+  as "the known instance" of an 837 charge reading `undefined` from a slot no reader read, and the
+  repeat corner is a second instance by a different route on which that code does not fire. It now
+  says so.
 
 - **🩺 `X12_837_AMBIGUOUS_VARIANT`, the 32nd Tier-2 warning code, plus the public factory
   `ambiguous837Variant(position)`** (`X12-837-RESIDUALS`). An 837 whose variant was decided by the
@@ -64,8 +68,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no channel**, so `submission.variant` carried a confident value with nothing to contradict it.
 
   **🛑 THIS CLOSES ONLY THE SILENCE, AND THE RESTRAINT IS THE POINT.** The fallback is **not**
-  narrowed and first-wins is unchanged: which variant a document resolves to, which lines decode and
-  which warnings the walk raises are byte-for-byte what they were at `0.0.13`. Excluding orphans from
+  narrowed and first-wins is unchanged: which variant a document resolves to, and which lines decode,
+  are byte-for-byte what they were at `0.0.13`, and this code is added beside whatever the walk
+  already raised. Excluding orphans from
   the fallback would change how already-published documents decode and is its own slice.
 
   **🩺 Which service segment is the stray one is NOT decided.** This reader cannot tell a stray

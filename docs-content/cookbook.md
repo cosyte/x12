@@ -313,7 +313,10 @@ variant is read into nothing and overwrites nothing, and is reported the same wa
 sender meant is not decided** - this reader cannot tell a stray service segment from a conformant one -
 and the decode is byte-for-byte what it was at `0.0.13`, so gate on the code and read the segments off
 `tx.segments` rather than expecting the model to reconcile them. It never names the same segment as
-`X12_837_SERVICE_SEGMENT_WITHOUT_LX`, which reports one arriving with **no** line open.
+`X12_837_SERVICE_SEGMENT_WITHOUT_LX`, which requires that **no** Loop 2400 be open where this one
+requires that one is. Read that as disjointness and not as coverage: a service segment following an
+`LX` that opened no line is named by neither, because `X12_837_SERVICE_LINE_DROPPED` at that `LX`
+already reports the loss.
 
 ```ts
 import { parseX12, get837Claims, HL_LEVEL_CODES, WARNING_CODES } from "@cosyte/x12";
