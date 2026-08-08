@@ -402,16 +402,51 @@ const spec: Build837Spec = {
     // Omit this and you get 005010X222A2, exactly as before it existed.
     implementationConventionReference: "005010X222A1",
   },
-  submitter: { entityIdentifierCode: "41", entityTypeQualifier: "2", name: "SUBMITTER ONE", idQualifier: "46", idCode: "SUB001" },
-  receiver: { entityIdentifierCode: "40", entityTypeQualifier: "2", name: "RECEIVER ONE", idQualifier: "46", idCode: "REC001" },
+  submitter: {
+    entityIdentifierCode: "41",
+    entityTypeQualifier: "2",
+    name: "SUBMITTER ONE",
+    idQualifier: "46",
+    idCode: "SUB001",
+  },
+  receiver: {
+    entityIdentifierCode: "40",
+    entityTypeQualifier: "2",
+    name: "RECEIVER ONE",
+    idQualifier: "46",
+    idCode: "REC001",
+  },
   billingProviders: [
     {
-      provider: { entityIdentifierCode: "85", entityTypeQualifier: "2", name: "BILLING CLINIC INC", idQualifier: "XX", idCode: "1234567890" },
+      provider: {
+        entityIdentifierCode: "85",
+        entityTypeQualifier: "2",
+        name: "BILLING CLINIC INC",
+        idQualifier: "XX",
+        idCode: "1234567890",
+      },
       subscribers: [
         {
-          info: { payerResponsibilityCode: "P", individualRelationshipCode: "18", claimFilingIndicator: "MB" },
-          subscriber: { entityIdentifierCode: "IL", entityTypeQualifier: "1", name: "PATIENT", firstName: "TEST", idQualifier: "MI", idCode: "MEMBER001" },
-          payer: { entityIdentifierCode: "PR", entityTypeQualifier: "2", name: "PAYER ONE", idQualifier: "PI", idCode: "PAYER01" },
+          info: {
+            payerResponsibilityCode: "P",
+            individualRelationshipCode: "18",
+            claimFilingIndicator: "MB",
+          },
+          subscriber: {
+            entityIdentifierCode: "IL",
+            entityTypeQualifier: "1",
+            name: "PATIENT",
+            firstName: "TEST",
+            idQualifier: "MI",
+            idCode: "MEMBER001",
+          },
+          payer: {
+            entityIdentifierCode: "PR",
+            entityTypeQualifier: "2",
+            name: "PAYER ONE",
+            idQualifier: "PI",
+            idCode: "PAYER01",
+          },
           claims: [
             {
               claimId: "PT-ACCT-001",
@@ -449,18 +484,28 @@ readBack?.variant; // => "P"
 readBack?.claims[0]?.serviceLines[0]?.charge?.toString(); // => "150.00"
 ```
 
-**Three things it refuses**, all `Claim837BuildError` with code `X12_837_BUILD_INVALID_SPEC`, and no
-refusal message echoes the value you passed: an **empty** reference (a trailing empty element is not
-emitted, so it would delete ST-03 and GS-08 rather than send them empty); one carrying an **active
-delimiter or the release character** (escaping does not help here - the envelope segments are read by
-a splitter that is not release-aware, so a released delimiter still splits the segment, silently); and
-one this library's own reader resolves to a **different 837 variant**, such as `005010X223A2` handed
-to `build837P`, which would emit a file declaring one variant and carrying another's service segments.
+**What it refuses of its own**, all `Claim837BuildError` with code `X12_837_BUILD_INVALID_SPEC`, and
+no refusal message echoes the value you passed: an **empty** reference (a trailing empty element is
+not emitted, so it would delete ST-03 and GS-08 rather than send them empty); one carrying an
+**active delimiter or the release character** (escaping does not help here - the envelope segments
+are read by a splitter that is not release-aware, so a released delimiter still splits the segment,
+silently); and one this library's own reader resolves to a **different 837 variant**, such as
+`005010X223A2` handed to `build837P`, which would emit a file declaring one variant and carrying
+another's service segments. Those are on top of the element-type guard every string slot in every
+builder already has, which refuses a non-string with the same code, so read the list as what this
+field adds rather than as everything that can refuse.
 
 **Anything else is emitted as given.** The set of published errata is not provably exhaustive, so an
 identifier this library does not recognise is your call, not an error - with one honest cost: on
 reading such a file back, this library falls through to the `SVx` scan for the variant, exactly as it
-does for any unrecognised ST-03.
+does for any unrecognised ST-03. The **length** is not bounded either, and the two elements' maxima
+differ: GS-08 is data element 480 (`AN 1/12`), ST-03 is element 1705 (`AN 1/35`).
+
+**🩺 And a guard on this element cannot make the element trustworthy.** An active delimiter in a
+_different_ envelope field (a control number, an application sender code) splits its own segment and
+shifts every element after it, so ST-03 and GS-08 are then read out of a neighbour's slot, mostly
+with nothing warned. That is a pre-existing property of the envelope splitter rather than of this
+field, it is measured in `KNOWN-LIMITATIONS.md`, and no refusal here can reach it.
 
 ---
 

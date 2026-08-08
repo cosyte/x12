@@ -62,27 +62,47 @@ model.
     was no way to comply. **The default itself was deliberately NOT re-stamped:** which published
     guide identifier a partner accepts is a partner fact rather than a spec fact, and changing bytes
     this library already emitted would break the partners it works with today.
-    - **What the override refuses, all `X12_837_BUILD_INVALID_SPEC`, and none of it echoes your
-      value back:** an empty reference (a trailing empty element is not emitted, so it would delete
-      ST-03 and GS-08 rather than send them empty); one carrying an active delimiter or the release
-      character; and one this library's own reader resolves to a **different** 837 variant, which
-      would emit a file declaring one variant and carrying another's service segments.
+    - **What the override refuses of its own, all `X12_837_BUILD_INVALID_SPEC`, and none of it
+      echoes your value back:** an empty reference (a trailing empty element is not emitted, so it
+      would delete ST-03 and GS-08 rather than send them empty); one carrying an active delimiter or
+      the release character; and one this library's own reader resolves to a **different** 837
+      variant, which would emit a file declaring one variant and carrying another's service
+      segments. **No total is published**, because those sit on top of the element-type guard every
+      string slot in every builder already has, which refuses a non-string with the same code. Take
+      the list as what this field adds, never as a closed account of everything that can refuse.
+    - **🩺 It bounds the VALUE, not the length, and the two elements' maxima differ.** GS-08 is data
+      element 480 (`AN 1/12`) and ST-03 is element 1705 (`AN 1/35`), so "one value, both elements"
+      is true of the bytes and not of what each element may legally hold. Nothing here refuses an
+      over-length reference, in line with every other envelope field this library takes.
     - **A reference outside the read table is emitted as given, deliberately.** The published-errata
       set is not provably exhaustive, so refusing an unrecognised identifier would claim an
       exhaustiveness nothing here supports. The honest cost, pinned as a test: this library's own
       reader falls back to the `SVx` scan on such a file, exactly as it does for any unrecognised
       ST-03.
 
-- **🩺 An active delimiter inside GS-08 or ST-03 splits the segment even when it is
-  release-escaped, and nothing is warned.** Measured through `parseX12`: a
-  `GS*HC*S*R*20260601*1200*1*X*005010?*X222A1~` reads back with **ten** elements and GS-08 of
-  `005010?`, and the same construct in a body element (`CLM*PT?*ACCT*150.00~`) holds as **one**
-  element - the envelope segments are read by a splitter that is not release-aware. `warnings` is
-  empty on both. **Not fixed:** changing how envelope segments split changes how already-published
-  documents decode, which is the same call made everywhere else in this file. The 837 builder's
-  `implementationConventionReference` refuses such a value rather than emitting it;
-  `buildInterchange`'s `versionRelease` and `implementationConventionReference` apply no domain
-  guard and will emit it, as documented for every other element it takes.
+- **🩺 An active delimiter inside ANY `GS` or `ST` element splits the segment even when it is
+  release-escaped, nothing is warned, and every element after it SHIFTS DOWN A SLOT.** Read it as a
+  property of the whole envelope segment and never of one element: the `GS` / `ST` splitter is not
+  release-aware, so the damage is framing, and the element a reader goes looking for is then read
+  out of its neighbour's slot. Measured through `parseX12`:
+
+  ```text
+  GS*HC*S*R*20260601*1200*1*X*005010?*X222A1~   ten elements, GS-08 reads "005010?"
+  applicationSenderCode "SEND*ER"               GS-08 reads "X", the GS-07 agency code
+  groupControlNumber    "1*2"                   GS-08 reads "X";  warnings: []
+  transactionSetControlNumber "00*01"           ST-03 reads "01"; warnings: []
+  CLM*PT?*ACCT*150.00~                          three elements, CLM-01 holds "PT?*ACCT"
+  ```
+
+  The body element is the control: there the release IS honoured. Two of the three envelope cases
+  above are silent on every channel; the first raises only `X12_CONTROL_NUMBER_MISMATCH`, which
+  names a different problem. **Not fixed, and PRE-EXISTING to the caller override below it:**
+  changing how envelope segments split changes how already-published documents decode, which is the
+  same call made everywhere else in this file. **So a guard on one element cannot make that element
+  trustworthy** - `build837`'s `implementationConventionReference` refuses a value it cannot carry,
+  which stops that field from being the cause, and it cannot stop a delimiter in a control number
+  from shifting the reference out from under it. `buildInterchange` applies no domain guard to any
+  of these and will emit all of them.
 
 - **🩺 BREAKING for `build277` callers: a 277 service line now REQUIRES `unitsOfService`, because
   SVC-07 is a required element in `005010X212` and this library was not emitting it at all**

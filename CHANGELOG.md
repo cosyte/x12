@@ -27,8 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   break the partners it works with today, so the default stays and the caller states what its own
   partner asked for. Nothing about an existing call changes.
 
-  **Three refusals, all `Claim837BuildError` with code `X12_837_BUILD_INVALID_SPEC`, and none of
-  them echoes the value you passed:**
+  **What it refuses of its own, all `Claim837BuildError` with code `X12_837_BUILD_INVALID_SPEC`, and
+  none of them echoes the value you passed.** These sit on top of the element-type guard every string
+  slot in every builder already has, which refuses a non-string with the same code, so read the list
+  as what this field adds and not as a closed account of everything that can refuse. No total is
+  published.
   - **Empty.** A trailing empty element is not emitted at all, so an empty reference would remove
     ST-03 and GS-08 rather than send them empty - a silent structural loss on two required elements.
   - **Carrying an active delimiter or the release character.** 🩺 Escaping does not make this
@@ -48,7 +51,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the published-errata set provably exhaustive, so refusing an unrecognised identifier would claim
   an exhaustiveness this library does not claim when reading either. The honest cost is pinned as a
   test: on such a file this library's own reader falls back to the `SVx` scan, exactly as it does
-  for any unrecognised ST-03.
+  for any unrecognised ST-03. The **length** is not bounded either, and the two elements' maxima
+  differ: GS-08 is data element 480 (`AN 1/12`), ST-03 is element 1705 (`AN 1/35`).
+
+  **🩺 A guard on this element cannot make the element trustworthy, and the disclosure above is
+  therefore about the whole envelope segment rather than these two elements.** An active delimiter in
+  a _different_ `GS` or `ST` element splits its own segment and **shifts every element after it**, so
+  ST-03 and GS-08 are then read out of a neighbour's slot: an `applicationSenderCode` of `SEND*ER`
+  makes GS-08 read `X` (the GS-07 agency code), and a `groupControlNumber` of `1*2` does the same
+  with **nothing warned on any channel**. Pre-existing, unchanged here, now measured in
+  `KNOWN-LIMITATIONS.md`.
 
 - **🩺 `X12_837_SERVICE_SEGMENT_REPEATED`, the 33rd Tier-2 warning code, plus the public factory
   `serviceSegmentRepeated(position)`** (`X12-837-SV1-OVERWRITE`). A **second** `SV1` / `SV2` / `SV3`

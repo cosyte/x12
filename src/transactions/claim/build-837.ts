@@ -127,7 +127,10 @@ const VERSION_BY_VARIANT: Readonly<Record<"P" | "I" | "D", string>> = {
  * caller-supplied value goes through `esc`, which is what type-checks it and
  * keeps a delimiter inside it from splitting the segment.
  *
- * Three refusals, and NONE echoes the caller's value:
+ * What it refuses of its own, and NONE of it echoes the caller's value. These
+ * sit on top of the element-type guard `esc` already applies to every string
+ * slot, so read them as what this field adds rather than as a closed account
+ * of everything that can refuse here; no total is published:
  *
  * 1. **Empty.** `seg` strips trailing empty elements, so an empty reference
  *    would not emit an empty ST-03 and GS-08, it would emit segments that do
@@ -157,7 +160,14 @@ const VERSION_BY_VARIANT: Readonly<Record<"P" | "I" | "D", string>> = {
  * Nothing makes the set of published errata provably exhaustive, and a
  * partner may require an identifier nobody here cited; refusing on absence
  * would re-import an exhaustiveness claim this package does not make on the
- * read side either. @internal
+ * read side either. Nor is the LENGTH bounded: GS-08 is data element 480
+ * (`AN 1/12`) and ST-03 is element 1705 (`AN 1/35`), so the two maxima differ
+ * and no envelope field in this library bounds one.
+ *
+ * 🩺 And none of this makes the element trustworthy on READ: an active
+ * delimiter in a different envelope field shifts every element after it, so
+ * ST-03 / GS-08 come back out of a neighbour's slot. PRE-EXISTING, measured in
+ * `KNOWN-LIMITATIONS.md`, and not something a guard here can reach. @internal
  */
 function resolveVersionRelease(
   variant: "P" | "I" | "D",

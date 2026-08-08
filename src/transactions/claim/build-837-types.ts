@@ -77,23 +77,33 @@ export interface Build837EnvelopeSpec {
    * for example `005010X222A1` on a professional claim to a payer that asks
    * for it. Which published identifier a partner accepts is a partner fact,
    * so this library will not choose for you: it defaults to a real published
-   * guide and gets out of the way. **One value reaches both elements**,
+   * guide and gets out of the way. **One value is written to both elements**,
    * because this builder has always written the same reference to ST-03 and
-   * GS-08 and nothing grounds a caller making them differ.
+   * GS-08 and nothing grounds a caller making them differ. That is a statement
+   * about the bytes this field emits, not about what each element may legally
+   * hold: GS-08 is data element 480 (`AN 1/12`) and ST-03 is element 1705
+   * (`AN 1/35`), and nothing here bounds the length.
    *
-   * Three refusals, all `X12_837_BUILD_INVALID_SPEC`. An **empty** string is
-   * refused, because a trailing empty element is dropped on emit, so it
-   * would delete ST-03 and GS-08 rather than send them empty. One carrying
-   * an **active delimiter or the release character** is refused, because
-   * these two elements cannot carry it even escaped: the ST and GS segments
-   * are read by a splitter that is not release-aware, so the declaration
-   * would silently become two elements. And a reference **this library's own
-   * reader resolves to a different variant** is refused (`005010X223A2`
-   * handed to `build837P`): the file would declare one variant and carry
-   * another's service segments, and `get837Claims` would then decode none of
-   * its service lines. **Anything else is emitted as given** - the set of
-   * published errata is not provably exhaustive, so an identifier this
-   * library does not carry is the caller's call, not an error.
+   * Refused, all `X12_837_BUILD_INVALID_SPEC`. An **empty** string, because a
+   * trailing empty element is dropped on emit, so it would delete ST-03 and
+   * GS-08 rather than send them empty. One carrying an **active delimiter or
+   * the release character**, because these two elements cannot carry it even
+   * escaped: the ST and GS segments are read by a splitter that is not
+   * release-aware, so the declaration would silently become two elements. And
+   * one **this library's own reader resolves to a different variant**
+   * (`005010X223A2` handed to `build837P`): the file would declare one variant
+   * and carry another's service segments, and `get837Claims` would then decode
+   * none of its service lines. Those are what this field adds, on top of the
+   * element-type guard every string slot already has, which refuses a
+   * non-string with the same code - no total is published. **Anything else is
+   * emitted as given** - the set of published errata is not provably
+   * exhaustive, so an identifier this library does not carry is the caller's
+   * call, not an error.
+   *
+   * 🩺 A guard on this element cannot make the element trustworthy. An active
+   * delimiter in a DIFFERENT envelope field splits its own segment and shifts
+   * every element after it, so ST-03 / GS-08 are then read out of a
+   * neighbour's slot. `KNOWN-LIMITATIONS.md` carries the measurement.
    */
   readonly implementationConventionReference?: string;
   /** ISA-05 - interchange sender qualifier. Default `"ZZ"`. */

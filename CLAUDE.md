@@ -81,14 +81,14 @@ or financial value on the wire.**
   CONSEQUENCES** - a draft published three, a refuter found a fourth; the set is in the notes. The
   property: **where ST-03 resolves, THE DECLARATION DECIDES, NOT THE FIRST `SVx`**, so a disagreeing
   line STOPS DECODING (`X12_837_SERVICE_LINE_NOT_DECODED`) and both variant codes STOP firing.
-  Opposite call to `#87`/`#88`: **the evidence was IN ST-03, ignored.** **The fallback is NOT
+  Opposite call to `#87`/`#88`: **evidence was IN ST-03, ignored.** **The fallback is NOT
   narrowed, precedence unchanged** - only WHICH documents reach it did.
-- **A LIST OF CITED IDENTIFIERS, NEVER A PATTERN, EITHER SIDE** - no trim, case-fold, prefix.
+- **CITED IDENTIFIERS, NEVER A PATTERN, EITHER SIDE** - no trim/case-fold/prefix.
   **NO COUNT, NEVER ENUMERATE THE SET IN A MESSAGE** - a tripwire reds on a quoted TR3 id.
-- **🩺 EMIT TAKES `Build837EnvelopeSpec.implementationConventionReference`, ONE value, BOTH
-  ST-03/GS-08; THE DEFAULTS DO NOT MOVE** (a PARTNER fact). **REFUSE ON DISAGREEMENT, NOT ON
-  ABSENCE.** **🩺 AN ACTIVE DELIMITER THERE SPLITS THE SEGMENT EVEN RELEASE-ESCAPED, SILENTLY** (a
-  BODY element does not): PRE-EXISTING in the splitter, NOT fixed; the builder REFUSES it.
+- **🩺 EMIT TAKES `Build837EnvelopeSpec.implementationConventionReference` INTO BOTH ST-03/GS-08;
+  THE DEFAULTS DO NOT MOVE** (a PARTNER fact). **REFUSE ON DISAGREEMENT, NOT ON ABSENCE.**
+  **🩺 AN ACTIVE DELIMITER IN ANY GS/ST ELEMENT SPLITS IT EVEN RELEASE-ESCAPED AND SHIFTS THE REST,
+  SILENTLY** (a BODY element does not): PRE-EXISTING, NOT fixed; A ONE-ELEMENT GUARD CANNOT FIX IT.
 
 ### 🩺 `X12-837-SV1-OVERWRITE` (2026-08-08) · `documentation/agent-notes/x12-837-sv1-overwrite.md`
 

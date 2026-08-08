@@ -481,6 +481,31 @@ describe("X12-837-EMIT-IDENTIFIER-FIXED: a reference carrying a delimiter is ref
     ).toThrow("carries an active delimiter or the release character");
   });
 
+  it("🩺 DISCLOSED, NOT GUARDED: a delimiter in ANOTHER envelope field shifts these two", () => {
+    // The refusal above stops this FIELD from being the cause; it cannot make
+    // the element trustworthy. The envelope split shifts every element after
+    // it, so ST-03 / GS-08 come back out of a neighbour's slot - here GS-08
+    // reads the GS-07 agency code, with nothing warned on any channel.
+    // PRE-EXISTING and untouched: changing how envelope segments split changes
+    // how already-published documents decode. Pinned so the public doc cannot
+    // drift back to an unqualified "one value reaches both elements".
+    const shifted = build837P(specFor("P", { ...ENVELOPE, groupControlNumber: "1*2" }));
+    expect(shifted.groups[0]?.gs.elements).toHaveLength(10); // nine, plus the split
+    expect(declaredReference(shifted).gs08).toBe("X");
+    expect(shifted.warnings).toEqual([]);
+  });
+
+  it("🩺 DISCLOSED, NOT GUARDED: the length is not bounded, and the two maxima differ", () => {
+    // GS-08 is data element 480 (AN 1/12); ST-03 is element 1705 (AN 1/35).
+    // Secondhand from the data-element dictionary, so it is disclosure and
+    // nothing refuses on it: bounding this one field would imply a promise the
+    // rest of the envelope does not keep (`groupControlNumber` is N0 1/9 and
+    // takes 16 digits at base).
+    const long = "005010X222A1EXTRAEXTRAEXTRAEXTRA123";
+    expect(long.length).toBeGreaterThan(12);
+    expect(declaredReference(build("P", long))).toEqual({ gs08: long, st03: long });
+  });
+
   it("🩺 THE REASON, MEASURED: escaping does not protect ST-03 or GS-08", () => {
     // Straight through `parseX12`, so it grounds the refusal on the reader
     // rather than on the builder that refuses. A released element separator

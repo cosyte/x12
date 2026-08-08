@@ -1,5 +1,15 @@
 # `X12-837-EMIT-IDENTIFIER-FIXED` (2026-08-08)
 
+**Provenance.** Every behavioural figure below was measured on this tree with `tsx` against
+`src/index.ts` or `parseX12` directly, and each measurement is reproduced beside its claim. The
+element definitions cited (480 `AN 1/12` for GS-08, 1705 `AN 1/35` for ST-03) are X12 data-element
+dictionary entries, secondhand: **nobody here has read X12.6 or the TR3s**, so they are recorded as
+disclosure and nothing refuses on them. The identifier claims this slice depends on are **not
+single-source and are not restated here** - the read-side docblock in
+`src/transactions/claim/get-837.ts` cites 45 CFR 162.1102(c), two independent state Medicaid
+companion guides for the same fact, and X12 RFI #2334, and labels its own weakest leg;
+`x12-variant-icr-ungrounded.md` carries the full sourcing. Read that file first.
+
 The emit half of `X12-VARIANT-ICR-UNGROUNDED`. `#89` grounded which `ST-03` implementation
 convention references the READER resolves and deliberately left the writer alone; this slice gave
 the writer a caller override. Read `x12-variant-icr-ungrounded.md` first: it carries the sources for
@@ -47,11 +57,19 @@ That sentence is the whole item, and it decides everything below:
   a file this library's own reader falls back to the `SVx` scan, exactly as it does for any
   unrecognised ST-03.
 
-## The three refusals, all `X12_837_BUILD_INVALID_SPEC`
+## What it refuses of its own, all `X12_837_BUILD_INVALID_SPEC`
 
 No new error code was minted. The trap from `#83` governs: a code is added when a consumer must ACT
 differently, never because the cause differs, and a caller who handed over a bad reference acts the
-same way in all three cases.
+same way in every case.
+
+**🩺 PUBLISH NO TOTAL, and a first draft published "three" in five places.** A refuter measured it
+short by one: a non-string reference (a JSON caller's `null`, or a number) is refused by the shared
+`makeCallerEscaper` guard carrying the SAME code, and this slice's own test measures it. That is the
+exact shape `X12-NUMERIC-VALUE-EMITS-EMPTY` already banned - "three drafts did; a refuter measured
+all three false, each time by finding one more. Cut the claim back, do not grow the census." The
+count was removed everywhere rather than incremented, and the list below is framed as what this
+FIELD adds on top of the element-type guard every string slot already has.
 
 1. **Empty.** `seg` strips trailing empty elements, so an empty reference does not emit an empty
    ST-03 and GS-08 - it emits segments that do not carry those elements at all. Two required
@@ -105,6 +123,25 @@ new surface refuses the input it cannot carry; `buildInterchange`'s `versionRele
 `implementationConventionReference` still emit it, which is consistent with that builder applying no
 domain guard to anything. Recorded in `KNOWN-LIMITATIONS.md` as its own entry.
 
+**🩺 And the refuter widened it, correctly: it is not about these two elements, it is about the
+whole envelope segment, because the split SHIFTS every element after it.** Measured on the head
+tree through untouched code:
+
+```text
+applicationSenderCode "SEND*ER"       -> GS-08 slot [8] reads "X" (the GS-07 agency code)
+                                         warnings: [X12_CONTROL_NUMBER_MISMATCH]
+groupControlNumber    "1*2"           -> GS-08 slot [8] reads "X";  warnings: []
+transactionSetControlNumber "00*01"   -> ST-03 slot [3] reads "01"; warnings: []
+```
+
+**So a guard on one element cannot make that element trustworthy**, and the first draft of this
+slice's public doc promised "one value reaches both elements" without that caveat. Corrected before
+merge in the field's JSDoc, `KNOWN-LIMITATIONS.md`, `CHANGELOG.md`, the changeset and the cookbook.
+Two of the three cases above are silent on every channel and the third names a different problem, so
+**this wants its own slice**; it is not stop-the-line, because the BODY splitter is release-aware and
+no dose, code system or patient identifier is mis-read - the blast radius is envelope framing, and it
+takes a caller putting an active delimiter into a control number.
+
 ## 🩺 The other finding: a probe that disagrees with the model's own shape
 
 The first draft of the test file walked `sub.billingProviders[0].subscribers[0].claims[0]` to reach a
@@ -157,3 +194,10 @@ restored                              -> 30 pass
   read table is a list of cited identifiers and no source says to normalise, so a lower-cased
   reference is emitted exactly as handed over, and a test pins that.
 - **No count of the errata set is published anywhere**, including in the new refusal messages.
+- **No LENGTH bound, disclosed rather than guarded.** GS-08 is data element 480 (`AN 1/12`) and
+  ST-03 is element 1705 (`AN 1/35`), so the one place the docs say "one value, both elements" is
+  exactly where the two maxima differ. A 35-character reference is emitted verbatim into GS-08 with
+  no refusal and no warning. The class is pre-existing and general - `groupControlNumber`
+  (element 28, `N0 1/9`), `transactionSetControlNumber` (element 329, `AN 4/9`) and an over-15
+  `senderId` are all accepted at base - so bounding this one field alone would be a guard that
+  implies a promise the envelope does not keep. Pinned as a disclosure test, not a refusal.
