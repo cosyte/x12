@@ -190,10 +190,14 @@
  * One limit of the guard itself, rather than of its scope:
  *
  * - **The refusal names the BUILDER, not the element position.** `esc` is unary
- *   and invoked **406 times on 377 lines** across the nine modules (counted
- *   comment-stripped on this tree, `ctx.esc(...)` included, and pinned by the
- *   gate so the figure cannot drift); threading a per-slot locator through every
- *   one of them would be 406 opportunities to mislabel a slot, which is a worse
+ *   and invoked several hundred times across the ten modules that declare one.
+ *   **The count is DELETED from this prose rather than corrected, and that is
+ *   the rule** (`documentation/conventions.md`): this line published "406 times
+ *   on 377 lines" while the gate asserted a different pair, so it had already
+ *   drifted, and a count duplicated beside the gate that asserts it drifts
+ *   again. `test/builder-string-type.test.ts` holds both figures. Threading a
+ *   per-slot locator through every invocation would be one opportunity per
+ *   invocation to mislabel a slot, which is a worse
  *   trade than a message that names the builder and the offending TYPE. Stated
  *   as a limit rather than claimed away, and `REFUSAL-MESSAGE-PHI-ECHO` made it
  *   a sharper limit rather than a smaller one: the echoed value used to stand in

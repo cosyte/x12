@@ -45,12 +45,24 @@
  *
  * Escaping changes bytes this library already put on the wire, which is why
  * `#96` left it. The change is bounded to values that carry a delimiter or the
- * release character - every conformant TA1 is byte-identical - and the two
- * residual costs are pinned below: a caller who was hand-rolling the escape
- * now escapes twice, and a caller who embeds a TA1 in a NON-archetype envelope
- * without stating its delimiters now gets a stray `?` where the value was
- * previously verbatim. The second is why `BuildTA1Options` gained the other
- * three separators rather than the escape being run against a guess.
+ * release character, so every conformant TA1 is byte-identical. **Two drafts
+ * of this file published a CLOSED account of what it costs and pass 1 refuted
+ * the second, so the costs below are named without a total** - finding one
+ * more is expected and is not a new finding:
+ *
+ * - **The consumer predicate moves in BOTH directions**, exactly as `#96`'s
+ *   did. `ackCode === "R"` stops firing where an Accept had been shifted onto
+ *   it and STARTS firing where a Reject had been shifted off it, and the
+ *   second needs no run-time-only value to reach.
+ * - **Only three values in the escaped set ever shifted an element.** A
+ *   mid-string `?`, a `:` and a `^` round-tripped at base and no longer do,
+ *   for no framing gain, and so does a caller who was hand-rolling the escape.
+ * - **A caller who embeds a TA1 in a NON-archetype envelope without stating
+ *   its delimiters** gets a stray `?` where the value was previously verbatim,
+ *   which is why `BuildTA1Options` gained the other three separators rather
+ *   than the escape being run against a guess.
+ * - **An EMPTY control number is still not refused**, here or at any earlier
+ *   release. Only a non-string refuses.
  */
 
 import { describe, expect, it } from "vitest";
@@ -193,11 +205,70 @@ describe("X12-TA1-EMIT-NOT-RELEASE-AWARE: the two costs, disclosed and pinned", 
     );
   });
 
+  it("🛑 the values that get LONGER bytes for no framing gain, which is not one class", () => {
+    // A draft of this file called the hand-rolled-escape caller "the one class
+    // whose bytes get worse" and pass 1 refuted it. Only THREE values in the
+    // escaped set ever shifted a TA1 element: `*`, `~`, and a `?` immediately
+    // before the separator. A MID-STRING `?`, a `:` and a `^` were emitted
+    // verbatim at base and round-tripped through this package's own reader;
+    // here they are released, the disposition is unaffected, and the
+    // reassociation key stops round-tripping. Released anyway because the
+    // alternative is an escaper that is a SUBSET of `escapeRelease`, which puts
+    // this module back outside the chokepoint. Pinned as the trade it is.
+    expect(roundTrip({ ...ACCEPT, interchangeControlNumber: "0000?0001" })).toMatchObject({
+      raw: "TA1*0000??0001*260601*1200*A*000", // was TA1*0000?0001*260601*1200*A*000
+      ackCode: "A", // "A" at base too - no framing was ever at stake here
+      controlNumber: "0000??0001", // was "0000?0001"
+    });
+    expect(roundTrip({ ...ACCEPT, interchangeControlNumber: "0000:0001" })).toMatchObject({
+      raw: "TA1*0000?:0001*260601*1200*A*000",
+      ackCode: "A",
+      controlNumber: "0000?:0001", // was "0000:0001"
+    });
+    expect(roundTrip({ ...ACCEPT, interchangeControlNumber: "0000^0001" })).toMatchObject({
+      raw: "TA1*0000?^0001*260601*1200*A*000",
+      ackCode: "A",
+      controlNumber: "0000?^0001", // was "0000^0001"
+    });
+  });
+
+  it('🛑 the predicate moves in BOTH directions: `ackCode === "R"` STARTS firing here', () => {
+    // A draft published "one direction only, nothing starts" and pass 1 refuted
+    // it in one probe. The property is that head reports the disposition the
+    // CALLER passed and base reported whatever the shift left in slot 4, so
+    // every predicate over `ackCode` gains cases as well as losing them. Note
+    // there is no `as never` anywhere here: every field is a valid member of
+    // its own union, so this needs no run-time-only value to reach.
+    const read = roundTrip({
+      interchangeControlNumber: "000000001",
+      interchangeDate: "260601",
+      interchangeTime: "12*A",
+      ackCode: "R",
+      noteCode: "001",
+    });
+    expect(read.raw).toBe("TA1*000000001*260601*12?*A*R*001"); // was TA1*000000001*260601*12*A*R*001
+    expect(read.ackCode).toBe("R"); // was "A" - a consumer rejecting on "R" now rejects this
+    expect(read.controlNumber).toBe("000000001");
+  });
+
+  it("does NOT refuse an empty control number, and never did", () => {
+    // `escapeRelease` early-returns on `""` and `buildTA1` has no
+    // required-field guard, unlike `build835`'s `patientControlNumber`. Only a
+    // NON-string refuses. Pinned so "a silently empty TA1-01 is no longer
+    // possible" cannot be written again: a draft of `caller-segment.ts` wrote
+    // it and pass 1 refuted it.
+    expect(buildTA1({ ...ACCEPT, interchangeControlNumber: "" }).raw).toBe(
+      "TA1**260601*1200*A*000",
+    );
+    expect(buildTA1({ ...ACCEPT, interchangeControlNumber: "   " }).raw).toBe(
+      "TA1*   *260601*1200*A*000",
+    );
+  });
+
   it("🩺 a caller who was hand-rolling the escape now escapes twice", () => {
     // `KNOWN-LIMITATIONS.md` told callers to "escape or reject a `?` yourself"
-    // while this was open. Those callers are the one class whose bytes get
-    // WORSE rather than better: the disposition was already correct for them
-    // and stays correct, and the key gains the extra pair. Pinned so the
+    // while this was open. The disposition was already correct for them and
+    // stays correct, and the key gains the extra pair. Pinned so the
     // instruction to drop the hand-rolled escape cannot quietly go stale.
     const read = roundTrip({ ...ACCEPT, interchangeControlNumber: "00000001??" });
     expect(read.raw).toBe("TA1*00000001????*260601*1200*A*000");

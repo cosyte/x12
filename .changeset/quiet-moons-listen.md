@@ -21,10 +21,23 @@ Accept. All of it now reads back the disposition that was emitted.
 **🛑 It changes bytes this library already put on the wire, and that is the cost.** A value
 containing none of the four delimiters and no `?` is emitted byte-for-byte as before, which is every
 conformant TA1: TA1-01 echoes ISA-13, TA1-02 / TA1-03 echo ISA-09 / ISA-10, and TA1-04 / TA1-05 are
-code list values. A value containing one is now released. **No warning code is added and no case
-moves onto a new code, and the consumer predicate moves in ONE direction only:** reading
-`ta1.ackCode` off a TA1 this library emitted, a spurious `"R"` stops firing and a spurious `"A"`
-stops firing, and nothing starts. If you were escaping the value yourself, as
+code list values. A value containing one is now released.
+
+**No warning code is added and no case moves onto a new code, but the consumer predicate MOVES IN
+BOTH DIRECTIONS.** `parseTA1` of a `buildTA1` output now reports the disposition and note the caller
+passed; before, it reported whatever element the shift left in TA1-04, which could be the caller's, a
+coincidental in-enum value, or an out-of-enum one narrowed to `"R"`. So `ackCode === "R"` **stops**
+firing where an Accept had been shifted onto it, and **starts** firing where a Reject had been
+shifted off it: `interchangeTime: "12*A"` with `ackCode: "R"` read `"A"` before and reads `"R"` now,
+with every field a valid member of its union. `ackCode === "A"` moves the same two ways. What is
+one-directional is the safety, which is a different statement: nothing now reports a disposition the
+caller did not ask for.
+
+**Three values in the escaped set ever shifted an element, and the rest of the set gets longer bytes
+for nothing.** A mid-string `?`, a `:` and a `^` were emitted verbatim before and are released now,
+so a control number of `"0000:0001"` reads back as `"0000?:0001"`. They are released anyway because
+the alternative is an escaper that is a subset of `escapeRelease`, which would put `buildTA1` back
+outside the type-checking chokepoint. If you were escaping the value yourself, as
 `KNOWN-LIMITATIONS.md` advised while this was open, drop that: you are now escaping twice.
 
 **The read half did not move.** `parseTA1` still reads elements RAW, pre-`?`-unescape, exactly as

@@ -44,26 +44,49 @@ bytes that this package's own reader decoded into a **different disposition than
 for**, while every other builder already released the same class of element through the same helper.
 One function disagreeing with itself, which is the same shape `#96` used.
 
-**The predicate moves in ONE direction here, and that is worth stating because `#96`'s moved in
-two.** No code is minted and no case moves onto a new code. What changes is that a consumer reading
-`ta1.ackCode` off a TA1 **this library emitted** stops seeing a disposition the caller never asked
-for:
+**🛑 THE PREDICATE MOVES IN BOTH DIRECTIONS, exactly as `#96`'s did. A draft of this note said "ONE
+direction, nothing starts" and pass 1 refuted it in one probe.** No code is minted and no case moves
+onto a new code, so **state the PROPERTY and derive the directions from it, never list them:**
 
-- `ackCode === "R"` **stops** firing where an Accept was shifted onto it (three shapes above);
-- `ackCode === "A"` **stops** firing where a Reject's type-forbidden `noteCode` was shifted onto it.
+> At head, `parseTA1` of a `buildTA1` output reports the disposition and note **the caller passed**.
+> At base it reported whatever element the shift left in slot 4, which could be the caller's, a
+> coincidental in-enum value, or an out-of-enum one the read narrows to `"R"`.
 
-Nothing starts firing. There is no input for which the new bytes decode to a *worse* disposition than
-the old ones, which is why this is not the two-directional move `#96` had to disclose.
+Because base was arbitrary, every predicate over `ta1.ackCode` gains cases as well as losing them:
+
+- `ackCode === "R"` **stops** firing where an Accept was shifted onto it (`"0000*0001"`,
+  `"0000~0001"`, `"00000001?"` in TA1-01);
+- `ackCode === "R"` **starts** firing where a Reject was shifted OFF it - and this needs no
+  type-forbidden value at all: `interchangeTime: "12*A"` with `ackCode: "R"` read `"A"` at base and
+  reads `"R"` here, every field a valid member of its union;
+- `ackCode === "A"` moves the same two ways.
+
+The direction of SAFETY is what is one-way, and it is a different sentence: nothing at head reports a
+disposition the caller did not ask for. **Do not compress that into "the predicate moves one way."**
 
 ## The cost, which is bytes, bounded
 
 - **A value containing none of the four delimiters and no `?` is emitted byte-for-byte as before**,
   and that is every conformant TA1: TA1-01 echoes ISA-13, TA1-02 / TA1-03 echo ISA-09 / ISA-10, and
   TA1-04 / TA1-05 are code list values. Pinned.
-- **The one class whose bytes get worse rather than better is a caller who was hand-rolling the
-  escape** - the remedy `KNOWN-LIMITATIONS.md` published while this was open. They now escape twice
-  (`"00000001??"` in, `TA1*00000001????*…` out). Framing and disposition stay correct; the key
-  carries the extra pair. Pinned, with the instruction to drop the hand-rolled escape.
+- **🛑 THE CLASS THAT GETS WORSE IS NOT ONE CLASS, AND A DRAFT CALLING IT "the one class" WAS REFUTED
+  IN PASS 1.** Only three values in the escaped set ever shifted a TA1 element: the element
+  separator, the segment terminator, and a `?` IMMEDIATELY BEFORE the separator. **Everything else in
+  the set was verbatim and round-tripped at base and does not here** - a MID-STRING `?`, a `:` and a
+  `^` are released, so the key reads back `"0000??0001"`, `"0000?:0001"` and `"0000?^0001"`, longer
+  in bytes than the caller passed. So is a caller who was hand-rolling the escape, the remedy
+  `KNOWN-LIMITATIONS.md` published while this was open: `"00000001??"` in, `TA1*00000001????*…` out.
+  Framing and disposition stay correct for all of them; what stops round-tripping through this
+  package's own reader is the reassociation key. All pinned.
+- **Releasing those anyway is a DECISION, and this is its whole argument.** `?` has no choice:
+  `escapeRelease` / `unescapeRelease` are a bijective pair only if the release character is ALWAYS
+  released, so releasing it conditionally on position would break the invariant the fix rests on.
+  `:` and `^` do have a choice, and they are released because the alternative is a bespoke escaper
+  that is a SUBSET of `escapeRelease` - which puts `buildTA1` back outside `makeCallerEscaper`, the
+  chokepoint whose absence this whole class came from, and which
+  `test/builder-string-type.test.ts` requires of every builder module. **Uniformity with the declared
+  set was worth more than three byte-identical shapes. Record it as the trade it is; never restate it
+  as free.**
 - **🩺 The READ half did not move and must not be read as if it had.** `parseTA1` reads elements RAW,
   pre-`?`-unescape, exactly as `X12Segment.elements` has always documented, so `"00000001?"` now
   reads back as `"00000001??"` rather than as `"00000001?*260601"`. **The disposition is correct

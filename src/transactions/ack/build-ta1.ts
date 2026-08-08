@@ -39,9 +39,25 @@
  * A value containing none of the four delimiters or the release character
  * is emitted byte-for-byte as before, which is every conformant TA1. A
  * value containing one is now released, so its bytes differ from the ones
- * `0.0.14` and earlier put on the wire. Two consequences are worth stating
+ * `0.0.14` and earlier put on the wire. Four consequences are worth stating
  * outright rather than arguing away:
  *
+ * - **The consumer predicate moves in BOTH directions.** Read the property
+ *   rather than a direction list: `parseTA1` of a `buildTA1` output now
+ *   reports the disposition and note the CALLER passed, where before it
+ *   reported whatever element the shift left in TA1-04. So
+ *   `ackCode === "R"` stops firing where an Accept had been shifted onto
+ *   it, and starts firing where a Reject had been shifted off it -
+ *   `interchangeTime: "12*A"` with `ackCode: "R"` read `"A"` before and
+ *   reads `"R"` here, every field a valid member of its union. What is
+ *   one-directional is the safety, which is a different statement.
+ * - **Only three values in the escaped set ever shifted an element**: the
+ *   element separator, the segment terminator, and a `?` immediately
+ *   before the separator. A MID-STRING `?`, a `:` and a `^` were emitted
+ *   verbatim before and are released now, for no framing gain. They are
+ *   released anyway because the alternative is an escaper that is a subset
+ *   of `escapeRelease`, which would put this module back outside the
+ *   type-checking chokepoint. Stated as the trade it is.
  * - **`parseTA1` reads elements RAW, pre-`?`-unescape**, exactly as
  *   `X12Segment.elements` has always documented. So a control number of
  *   `"00000001?"` now reads back as `"00000001??"` rather than as
@@ -53,6 +69,11 @@
  *   twice: `"00000001??"` in, `"00000001????"` out. The framing and the
  *   disposition stay correct; the key carries the extra pair. Drop the
  *   hand-rolled escape.
+ *
+ * **And an EMPTY control number is still not refused.** `escapeRelease`
+ * early-returns on `""` and this module has no required-field guard, so
+ * `interchangeControlNumber: ""` emits `TA1**260601*1200*A*000` with no
+ * error, here and at every earlier release. Only a NON-string refuses.
  *
  * And the release is scoped to the delimiter set the caller states through
  * {@link BuildTA1Options} - see that interface for why guessing one is a

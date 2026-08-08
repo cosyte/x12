@@ -82,10 +82,14 @@ or financial value on the wire.**
   resubmits against an Accept.
 - **🛑 IT CHANGES BYTES ALREADY ON THE WIRE. THAT IS `#96`'s STATED COST, WEIGHED AND TAKEN, NOT AN
   OVERSIGHT CORRECTED.** Bounded: no delimiter and no `?` means byte-identical, which is every
-  conformant TA1. **THE PREDICATE MOVES ONE WAY ONLY** - a spurious `R` and a spurious `A` both STOP
-  firing, nothing starts - **so do NOT copy `#96`'s two-directional wording onto it.** A caller who
-  hand-rolled the escape now escapes TWICE. **THE READ HALF DID NOT MOVE:** `parseTA1` is still
-  pre-`?`-unescape, so a released key still reads back carrying its `?`.
+  conformant TA1. **THE PREDICATE MOVES BOTH WAYS, LIKE `#96`'s - A DRAFT SAYING "ONE WAY, NOTHING
+  STARTS" WAS REFUTED IN ONE PROBE. STATE THE PROPERTY, NEVER THE DIRECTIONS:** head reports the
+  disposition THE CALLER PASSED, base reported whatever the shift left in slot 4, so `ackCode === "R"`
+  both STOPS and STARTS (`interchangeTime: "12*A"` + `ackCode "R"` read `"A"` at base, all fields
+  in-enum). **ONE-WAY IS THE SAFETY, A DIFFERENT SENTENCE.** **THE CLASS THAT GETS WORSE IS NOT ONE
+  CLASS EITHER:** only `*`, `~` and a `?` BEFORE the separator ever shifted; a MID-STRING `?`, `:`
+  and `^` round-tripped at base and no longer do, alongside a caller who hand-rolled the escape.
+  **THE READ HALF DID NOT MOVE:** `parseTA1` is still pre-`?`-unescape.
 - **🛑 RELEASE ONLY AGAINST THE DELIMITER SET THE CALLER STATES** (`BuildTA1Options` took
   `Build999EnvelopeSpec`'s other three; they exist for ESCAPING and `buildTA1` still emits no
   terminator). `unescapeRelease` keeps `?X` verbatim, so releasing against a GUESSED delimiter

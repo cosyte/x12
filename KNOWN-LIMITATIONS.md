@@ -195,10 +195,30 @@ model.
     containing none of the four delimiters and no `?` is emitted byte-for-byte as before, and that
     is every conformant TA1: TA1-01 echoes ISA-13, TA1-02 / TA1-03 echo ISA-09 / ISA-10, and
     TA1-04 / TA1-05 are code list values. A value containing one is now released.
+  - **🛑 No warning code is added and no case moves onto a new code, but the consumer predicate
+    MOVES IN BOTH DIRECTIONS.** `parseTA1` of a `buildTA1` output now reports the disposition and
+    note the caller passed; before, it reported whatever element the shift left in TA1-04, which
+    could be the caller's, a coincidental in-enum value, or an out-of-enum one narrowed to `"R"`. So
+    `ackCode === "R"` **stops** firing where an Accept had been shifted onto it, and **starts**
+    firing where a Reject had been shifted off it: `interchangeTime: "12*A"` with `ackCode: "R"`
+    read `"A"` before and reads `"R"` now, with every field a valid member of its union.
+    `ackCode === "A"` moves the same two ways. What is one-directional is the safety, which is a
+    different statement: nothing now reports a disposition the caller did not ask for.
+  - **Three values in the escaped set ever shifted an element; the rest of the set gets longer bytes
+    for nothing.** `*`, `~` and a `?` immediately before the separator are the three. A **mid-string
+    `?`**, a `:` and a `^` were emitted verbatim before and are released now, so `"0000:0001"` reads
+    back as `"0000?:0001"` and `"0000?0001"` as `"0000??0001"`: the disposition is unaffected and
+    the reassociation key stops round-tripping through this library's own reader. They are released
+    anyway because the alternative is an escaper that is a **subset** of `escapeRelease`, which
+    would put `buildTA1` back outside the type-checking chokepoint this fix routes it through.
   - **A caller who was hand-rolling the escape** (the remedy this file named while the defect was
-    open) now escapes twice: `"00000001??"` in, `TA1*00000001????*…` out. The framing and the
-    disposition stay correct and only the key carries the extra pair, but **drop the hand-rolled
-    escape.**
+    open) is in that class too, and now escapes twice: `"00000001??"` in, `TA1*00000001????*…` out.
+    The framing and the disposition stay correct and only the key carries the extra pair, but
+    **drop the hand-rolled escape.**
+  - **An EMPTY control number is not refused and never was.** `escapeRelease` early-returns on `""`
+    and `buildTA1` carries no required-field guard, so `interchangeControlNumber: ""` emits
+    `TA1**260601*1200*A*000` with `warnings: []`, here and at every earlier release. Only a
+    NON-string refuses. Unchanged and tracked as its own item.
   - **🩺 The READ half did not move. `parseTA1` still reads elements RAW, pre-`?`-unescape**, exactly
     as `X12Segment.elements` has always documented, so a control number of `"00000001?"` now reads
     back as `"00000001??"` rather than as `"00000001?*260601"`. The disposition is correct where it
