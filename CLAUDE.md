@@ -378,50 +378,52 @@ or financial value on the wire.**
 - **`test/scripts/attw-gate.test.ts` is deliberately left alone** - pinning the REAL binary is the
   point of it.
 
-### 🩺 The `phi-scan` gate · `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (2026-08-03), `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` + `PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL` (2026-08-06) · one `agent-notes.md` section per id + `#phi-commit-gate-armed-2026-06-28`
+### 🩺 The `phi-scan` gate · `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (2026-08-03), `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` + `PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL` (2026-08-06), `PHI-SCAN-WALK-ROOT-SCOPE` (2026-08-08) · one `agent-notes.md` section per id, the last `agent-notes/phi-scan-walk-root-scope.md`, + `#phi-commit-gate-armed-2026-06-28`
 
-- **🩺 Both enumerating routes REFUSE a symlink (exit 2), naming every offender**; neither FOLLOWS
-  an ENTRY it enumerated. Say ENTRY, not "anything": **a walk ROOT that is itself a link IS
-  followed** - a superset, not blind. **🔴 AND NOTHING UNDER SUCH A ROOT IS RECONCILED** (its files
-  are outside the `git ls-files` pathspec), so an EMPTIED link target reads **exit 0**.
-  PRE-EXISTING, OPEN: **the closure is "within the declared roots", NOT a universal.** **A refusal
-  NEVER reports the link target:** a diagnostic ABOUT a PHI leak is itself a PHI surface, so
-  describe the shape, never exemplify it.
-- **▶ 🩺 THE `--staged` ARGV IS THE GATE AND EVERY FLAG IN IT IS LOAD-BEARING; NEVER SHORTEN IT. ONE
-  RULE: DO NOT TRUST THE CALLER'S GIT CONFIG.** Five holes, all exit 0 over PHI, closed by
-  `--no-renames --ignore-submodules=none --diff-filter=AMTUB`. `T` is what
-  makes the mode check reachable. **`U` is closed by the FILTER, not `--no-renames`; never conflate
-  them**, and it refuses FIRST with its OWN message (mode `000000`). **ZERO stride work. Never add `-M`, `-C` or `--find-copies-harder`** - each
-  re-empties the route. **No test may run `git merge`** - it reds on CI on its own premise; stage the
-  conflict with `update-index`.
-- **▶ 🩺 QUOTE THE CLASSIFICATION, NEVER THE LETTER: `--diff-filter` classifies a broken pair as `B`
-  WHATEVER LETTER IT PRINTS** (what `-B` prints instead: relocated narrative §8). **A short fixture
-  does NOT break; the case needs bulk. NEVER RECORD A SIMILARITY
-  SCORE** - it drifts; **DELETE a drifting number, never correct it.**
+- **🩺 Both enumerating routes REFUSE a symlink (exit 2), naming every offender**; neither FOLLOWS an
+  ENTRY it enumerated. Say ENTRY, not "anything": **a walk ROOT that is itself a link IS followed** -
+  a superset - **🔴 and NOTHING under it is RECONCILED**, so an EMPTIED target reads **exit 0**.
+  PRE-EXISTING, OPEN; `PHI-SCAN-WALK-ROOT-SCOPE` MOVED IT UP A LEVEL, not closed. **The closure is
+  "within the declared roots", NOT a universal. A refusal NEVER reports the link target** - a
+  diagnostic ABOUT a leak is a PHI surface.
+- **▶ 🩺 THE `--staged` ARGV IS THE GATE, EVERY FLAG LOAD-BEARING; NEVER SHORTEN IT. ONE RULE: DO NOT
+  TRUST THE CALLER'S GIT CONFIG.** Five holes, all exit 0 over PHI, closed by
+  `--no-renames --ignore-submodules=none --diff-filter=AMTUB`. **`U` is closed by the FILTER, not
+  `--no-renames`; never conflate them. Never add `-M`, `-C` or `--find-copies-harder`** - each
+  re-empties it. **No test may run `git merge`**; stage the conflict with `update-index`.
+  **QUOTE THE CLASSIFICATION, NEVER THE LETTER: a broken pair is `B` WHATEVER LETTER IT PRINTS.
+  NEVER RECORD A SIMILARITY SCORE** - it drifts; **DELETE a drifting number, never correct it.**
   **"Strict superset" REFUTED; EQUAL absent a rename/copy/gitlink/unmerged path.**
 - **▶ 🩺 ALL MODE OWES AN ACCOUNT OF ITS ROOTS. TWO RULES, NEITHER IMPLIES THE OTHER, BECAUSE
-  EXISTENCE IS NOT OBSERVATION:** a root must BE a directory, and every tracked non-`.md` file under
-  one must have been ENUMERATED, checked against `git ls-files`. Both exit 2.
-  **A COUNT CANNOT DO IT** - an emptied root gives zero and a total still looks whole.
-  **SAY "A DIRECTORY", NEVER "ENUMERABLE"** - a TYPE check; an unreadable one still throws
-  uncaught at **exit 1** (PRE-EXISTING). **CUT THE CLAIM BACK, NEVER
-  GROW THE GUARD.** Such a root's OWN index entry is EXEMPT (why: relocated narrative §9); **its
-  control MUST COMMIT its corpus.**
-  `git check-ignore` reads the INDEX: a TRACKED ignored file is SCANNED, its absence REFUSES. No git:
-  REFUSE. **RE-DERIVE EVERY EXIT CODE PER REPO** - the regular-file root is **2** here (was **1**,
-  uncaught), **2** in `hl7`, **1** in `terminology` by a DIFFERENT mechanism.
-- **Synthetic tokens are POSITIVELY DECLARED in `scripts/phi-allow-list.txt`, byte-strict, with no
-  inline header; a whole-file bypass needs `--allow-fixture` AND an entry in
-  `phi-scan-overrides.md`.**
-- **▶ 🩺 STILL OPEN, MEASURED HERE - NEVER PORT A SIBLING'S RESIDUAL LIST:** a tracked file directly
-  under `test/` is seen by NEITHER route, and an index entry AT a root's own path matches no
-  `--staged` clause (each tests a `<root>/` PREFIX). **THE RECONCILIATION REACHES NEITHER** - it
-  compares WITHIN the declared scope. **Widening the roots buys only the `scanCommonShapes` floor -
-  THREE detectors, not the two a draft named**: the `REF*SY` **UNDASHED** SSN is NOT segment-aware
-  either; **derive it from the source, never prose** (`.ts` fixtures are literals, so
-  `looksLikeX12` is false). **Widen the RECOGNISER too, not instead. The enumerate-then-read race is
-  deferred, and the reason is DIRECTION** (relocated narrative §9). x12 escapes it only by a **scope
-  accident** of its walk roots: **any widening reintroduces it verbatim.**
+  EXISTENCE IS NOT OBSERVATION:** a declared directory must BE one, and every tracked non-`.md` file
+  under a walk root must have been ENUMERATED against `git ls-files`. Both exit 2. **A COUNT CANNOT
+  DO IT. 🛑 `REQUIRED_DIRECTORIES` IS NOT `WALK_ROOTS`; NEVER FOLD IT BACK IN** - walk roots must
+  stay DISJOINT (nested ones double-report), that list need not be; folding them cost a grid cell.
+  **SAY "A DIRECTORY", NEVER "ENUMERABLE"** - a TYPE check; an unreadable one throws uncaught at
+  **exit 1** (PRE-EXISTING). **CUT THE CLAIM BACK, NEVER GROW THE GUARD.** A root's OWN index entry
+  is EXEMPT (relocated narrative §9); **its control MUST COMMIT its corpus.** `git check-ignore`
+  reads the INDEX: a TRACKED ignored file is SCANNED, its absence REFUSES; no git, REFUSE.
+  **RE-DERIVE EVERY EXIT CODE PER REPO** - a regular-file root is **2** here (was **1**, uncaught),
+  **2** in `hl7`, **1** in `terminology` by a DIFFERENT mechanism.
+- **Synthetic tokens are POSITIVELY DECLARED in `scripts/phi-allow-list.txt`, byte-strict, no inline
+  header; a whole-file bypass needs `--allow-fixture` AND an entry in `phi-scan-overrides.md`.
+  🛑 AN ENTRY IS GLOBAL AND ROUTE-BLIND** - it clears that literal on `--staged`, the
+  COMMIT-BLOCKING route, too. **Fix a plausible name in the FIXTURE, never by declaring it.**
+- **▶ 🩺 `PHI-SCAN-WALK-ROOT-SCOPE` IS TWO SIDES, EACH "IN ADDITION TO", NEVER "INSTEAD OF".** Roots
+  `test` + `src`, `--staged` `test/**` + `src/**`, both widened **BY UNION**; **NO exemption on any
+  route** (`dicom#98`). Enumerating buys **only the `scanCommonShapes` floor - THREE detectors, not
+  the two a draft named** (`REF*SY`'s **UNDASHED** SSN is not segment-aware).
+  **DERIVE THE CENSUS FROM `git ls-files`; PUBLISH NO COUNT HERE.** **`looksLikeX12` asks whether the
+  file _IS_ an interchange**, so inline `.ts` fixtures holding segment text reached NO segment-aware
+  detector; `scanEmbeddedSegments` is the other side, **four bounds, disclosed and pinned:** assumes
+  `*`, knows only the ids the checks consume, never runs on a whole-file interchange, and skips a
+  non-name-shaped element or a whitespace-bearing id - **EMBEDDED-ONLY; `.edi` is unchanged.**
+  **A BUILDER SPEC OBJECT is segment text to nobody** - found by hand-reading.
+- **▶ 🛑 THIS GATE'S OWN CONTROLS ARE ASSEMBLED WITH `seg(...)`, NEVER LITERAL SEGMENT TEXT; WRITE
+  THE NEXT ONE THE SAME WAY.** Declaring them disarms the detector they prove; a literal-path
+  exemption would have to reach `--staged` or the file could never be committed again. **STILL OPEN:
+  the enumerate-then-read race, the reason being DIRECTION** (relocated narrative §9) - x12 escaped
+  it by a **scope accident**, and **this widening reintroduced it.**
 
 ### 🩺 `X12-CALLER-VALUE-RESIDUALS` (2026-08-02) · `documentation/agent-notes.md#x12-caller-value-residuals-2026-08-02`
 
@@ -564,18 +566,15 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   added** - that destroys the guarantee rather than closing a gap. The four level chains: relocated
   narrative.
 - **🩺 The one caller-supplied HL-03 is the 278's EV/SS REVIEW level** (`review.levelCode`, default
-  `EV`; `esc` never constrained the value). **Both entry points now REFUSE anything else**
-  (`X12_278_BUILD_INVALID_SPEC`, no new code): the emit is well-formed but opens a loop no reader
-  opens, so the review **and its HCR-01 decision FAIL TO DECODE - they are NOT decoded WRONGLY**, and
-  never write the stronger form. **Resolve via the emitter's own `?? "EV"`, NEVER `!== undefined`** -
-  `null` is absent, and `undefined`-only refused a spec the emitter would have built. Reaches nested
-  and dependent reviews. **Do not restate this as a property of `build278`'s HL-03 generally, and do
-  not write "every builder that has one" over it** - its other four levels are library constants.
+  `EV`). **Both entry points REFUSE anything else** (`X12_278_BUILD_INVALID_SPEC`, no new code): the
+  review **and its HCR-01 decision FAIL TO DECODE - they are NOT decoded WRONGLY**. **Resolve via the
+  emitter's own `?? "EV"`, NEVER `!== undefined`.** Reaches nested and dependent reviews. **Do not
+  restate it as a property of `build278`'s HL-03 generally, nor write "every builder that has one"
+  over it** - long form: relocated narrative §10.1.
 - **🩺 On the READ side the walker NEVER silently re-numbers a broken HL pointer** - it emits
   `X12_HL_PARENT_MISMATCH` / `X12_HL_PARENT_LEVEL_INVALID`. The 278 `EV` / `SS` levels are
-  deliberately tolerant (omitted from the expected-parent map), which is why nothing on the read side
-  catches an out-of-enum HL-03 on a document this library did not emit. Untouched; a warning needs a
-  new registry code.
+  deliberately tolerant, so nothing on the read side catches an out-of-enum HL-03 on a document this
+  library did not emit. Untouched; a warning needs a new code - relocated narrative §10.2.
 - **Emit the envelope INLINE, not via `buildInterchange`, in any domain builder that composes a
   composite element** (835, 837), so a pre-composed composite is never double-escaped. Composites
   escape each component then join with the RAW component separator.
@@ -598,17 +597,13 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
 - **`build999` REFUSES `Accept` with a non-empty error list (`X12_ACK_ACCEPT_WITH_ERRORS`) and bad
   AK9 counts (`X12_ACK_COUNT_MISMATCH`); `buildTA1` REFUSES `A` with a non-`000` note.**
 - **🩺 Every DOMAIN builder's own refusal message carries structural locators, counts and numeric
-  totals only** - never an identifier, a name, a trace or a clinical code. **State this PER BUILDER,
-  never as a property of every builder.** Standing exception, the **ack path**:
-  `build999` interpolates the acknowledged ST-02 and `buildTA1` its TA1-05 note code. **The negative
-  list is NOT an absolute PHI guarantee; it is one about the builder's own TEMPLATES**, which still
-  render control numbers and codes.
-- **🩺 NO CALLER GUARD ECHOES WHAT A CALLER PUT IN AN ELEMENT** - string/segment/decimal and the
-  array guard's PRIMITIVE arm report the TYPE only. **Never re-add a value, never fold the decimal
-  one back out. And state the two things this does NOT say, both drafted false once:** the array
-  guard STILL renders a forged array-like's `length` and class tag (SHAPE, not element contents),
-  and **only the SEGMENT guard names the slot** (`esc`/`escDec` name the BUILDER). Long form:
-  `claude-md-relocated-narrative.md`.
+  totals only** - never an identifier, name, trace or clinical code. **State this PER BUILDER, never
+  as a property of every builder.** Standing exception, the **ack path** (`build999`, `buildTA1`).
+  **It is NOT an absolute PHI guarantee, only one about TEMPLATES** - relocated narrative §10.3.
+- **🩺 NO CALLER GUARD ECHOES WHAT A CALLER PUT IN AN ELEMENT** - they report the TYPE only.
+  **Never re-add a value, never fold the decimal one back out. Two things this does NOT say, both
+  drafted false once:** the array guard STILL renders a forged array-like's `length` and class tag,
+  and **only the SEGMENT guard names the slot** - relocated narrative §10.4.
 - **The `?`-release escape is honored losslessly**; dot-path traversal walks elements, composites
   (`-N`, 1-indexed) and repetitions (`[N]`, 0-indexed).
 - **Known read-side limitations are documented, not accidental, and `KNOWN-LIMITATIONS.md`

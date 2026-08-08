@@ -572,3 +572,52 @@ The bullet still says the race is deferred and that the reason is DIRECTION:
 
 > Its remedy TOLERATES a failed read; these two rules NARROW what the enumeration admits. Mixing the
 > two directions in one change is what makes a widening reintroduce the race verbatim.
+
+## 10. Per-transaction-invariant narrative relocated by `PHI-SCAN-WALK-ROOT-SCOPE` (2026-08-08)
+
+Relocated to pay for that slice's trap block. `CLAUDE.md` stood at **52,708 of a 52,708-byte entry**
+with **zero** headroom, and the walk-root-scope slice found a real defect (`REQUIRED_DIRECTORIES`)
+that had to be recordable. **The imperatives all stayed behind.** What moved is the long-form
+explanation of two bullets in `### 🩺 Per-transaction invariants that shipped with the phases`, a
+section whose own header already says the full detail is in the phase sections of
+`documentation/agent-notes.md`. **Nothing was deleted and no trap was touched.** The umbrella owes the
+matching ratchet drop in `.claude/hooks/doc-budget.mjs`, which is **LOWERED on a shrink, never raised
+to meet a trap** - and a drain worker may not write it, so it is reported rather than made.
+
+Verbatim, two pieces.
+
+### 10.1 The 278's EV/SS review level, the one caller-supplied HL-03
+
+> - **🩺 The one caller-supplied HL-03 is the 278's EV/SS REVIEW level** (`review.levelCode`, default
+>   `EV`; `esc` never constrained the value). **Both entry points now REFUSE anything else**
+>   (`X12_278_BUILD_INVALID_SPEC`, no new code): the emit is well-formed but opens a loop no reader
+>   opens, so the review **and its HCR-01 decision FAIL TO DECODE - they are NOT decoded WRONGLY**, and
+>   never write the stronger form. **Resolve via the emitter's own `?? "EV"`, NEVER `!== undefined`** -
+>   `null` is absent, and `undefined`-only refused a spec the emitter would have built. Reaches nested
+>   and dependent reviews. **Do not restate this as a property of `build278`'s HL-03 generally, and do
+>   not write "every builder that has one" over it** - its other four levels are library constants.
+
+### 10.2 The read side never re-numbers a broken HL pointer
+
+> - **🩺 On the READ side the walker NEVER silently re-numbers a broken HL pointer** - it emits
+>   `X12_HL_PARENT_MISMATCH` / `X12_HL_PARENT_LEVEL_INVALID`. The 278 `EV` / `SS` levels are
+>   deliberately tolerant (omitted from the expected-parent map), which is why nothing on the read side
+>   catches an out-of-enum HL-03 on a document this library did not emit. Untouched; a warning needs a
+>   new registry code.
+
+### 10.3 Every DOMAIN builder's own refusal message, and the ack-path exception
+
+> - **🩺 Every DOMAIN builder's own refusal message carries structural locators, counts and numeric
+>   totals only** - never an identifier, a name, a trace or a clinical code. **State this PER BUILDER,
+>   never as a property of every builder.** Standing exception, the **ack path**:
+>   `build999` interpolates the acknowledged ST-02 and `buildTA1` its TA1-05 note code. **The negative
+>   list is NOT an absolute PHI guarantee; it is one about the builder's own TEMPLATES**, which still
+>   render control numbers and codes.
+
+### 10.4 No caller guard echoes what a caller put in an element
+
+> - **🩺 NO CALLER GUARD ECHOES WHAT A CALLER PUT IN AN ELEMENT** - string/segment/decimal and the
+>   array guard's PRIMITIVE arm report the TYPE only. **Never re-add a value, never fold the decimal
+>   one back out. And state the two things this does NOT say, both drafted false once:** the array
+>   guard STILL renders a forged array-like's `length` and class tag (SHAPE, not element contents),
+>   and **only the SEGMENT guard names the slot** (`esc`/`escDec` name the BUILDER).
