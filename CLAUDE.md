@@ -78,10 +78,13 @@ or financial value on the wire.**
   `005010X222A1` / `005010X223A2` WHICH COMPANION GUIDES REQUIRE IN ST-03**, so the `SVx` fallback
   was the NORMAL path on production 837P/I and `X12_837_UNKNOWN_VARIANT` accused a CONFORMANT
   document. **EVERY KEY NOW NAMES ITS SOURCE; the later errata are the WEAKEST leg, and say so.**
-- **🛑 A BEHAVIOUR CHANGE ON PUBLISHED DECODING, TAKEN DELIBERATELY:** `submission.variant` can
-  differ and **BOTH variant codes STOP FIRING** where ST-03 now resolves. Opposite call to `#87`/`#88`
-  for ONE reason: **the evidence was IN ST-03 and was being ignored.** **The `SVx` fallback is NOT
-  narrowed and precedence is unchanged** - only WHICH documents reach it changed.
+- **🛑 A BEHAVIOUR CHANGE ON PUBLISHED DECODING. STATE IT AS ONE PROPERTY, NEVER A LIST OF
+  CONSEQUENCES** - a draft published three and a refuter found a fourth. The property: **where ST-03
+  now resolves, THE DECLARATION DECIDES INSTEAD OF THE FIRST `SVx`.** So `variant` can differ, both
+  variant codes STOP firing, and **a line whose `SVx` kind disagrees STOPS DECODING and STARTS
+  raising `X12_837_SERVICE_LINE_NOT_DECODED`.** Opposite call to `#87`/`#88` for ONE reason: **the
+  evidence was IN ST-03 and was being ignored.** **The fallback is NOT narrowed and precedence is
+  unchanged** - only WHICH documents reach it changed.
 - **A LIST OF CITED IDENTIFIERS, NEVER A PATTERN** - no trim, no case-fold, no prefix.
   **PUBLISH NO COUNT AND NEVER ENUMERATE IT IN A MESSAGE:** both frozen messages listed the old three
   and both went false; a tripwire reds if any message quotes a TR3 id again.
@@ -542,24 +545,24 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
 - **The profile API DIVERGES from `hl7` DELIBERATELY** (`describe()` returns DATA, `X12ProfileSpec`,
   the x12-only `partitionWarnings`). **"Symmetry is a feature" does NOT license collapsing them
   back.** Long form for all three: `claude-md-relocated-narrative.md`.
-- **🩺 The 820 carries no TR3 balance equation.** `build820` emits every monetary amount VERBATIM
-  and NEVER raises a balance-mismatch refusal - a deliberate contrast with `build835`.
+- **🩺 The 820 carries no TR3 balance equation:** `build820` emits every amount VERBATIM and NEVER
+  raises a balance-mismatch refusal, a deliberate contrast with `build835`.
 - **🩺 Maintenance type is the 834's safety primitive: emit VERBATIM, refuse the unknown.** The
   builder places the caller's INS-03 / HD-01 (code source 875) verbatim and NEVER infers or
   normalizes; where the read side only WARNS (`X12_834_UNKNOWN_MAINTENANCE_TYPE`, **scoped to the
-  affected member only**, so one unknown code never invalidates the roster) the builder REFUSES.
-- **🩺 The 278 certification decision is response-only and never inferred.** `build278Response` places
-  HCR-01 VERBATIM and never normalizes or **upgrades** it; `build278Request` REFUSES a review carrying
-  a decision.
-- **🩺 TRN echo is the safety-critical reassociation invariant.** A 271 echoes the 270's TRN-02 onto
-  its subscriber / dependent, a 277 echoes the 276's onto its claim; the builders place the caller's
-  trace into TRN-02 verbatim and NEVER fabricate, normalize, or mutate it.
+  affected member only**) the builder REFUSES.
+- **🩺 The 278 certification decision is response-only and never inferred:** `build278Response`
+  places HCR-01 VERBATIM and never normalizes or **upgrades** it; `build278Request` REFUSES a review
+  carrying one.
+- **🩺 TRN echo is the safety-critical reassociation invariant: the builders place the caller's trace
+  into TRN-02 VERBATIM and NEVER fabricate, normalize or mutate it.** Which echoes which: the phase
+  sections.
 - **🩺 The HL spine is COMPUTED, never caller-supplied. State it PER BUILDER, never as a blanket.**
   All four compute HL-01/02/04 from the nested tree and take HL-03 from a module-level `HL_LEVEL`
   constant, at every level EXCEPT the 278's EV/SS review level, so an inconsistent hierarchy is
-  _unrepresentable_ and SE-01 is correct by construction. **There is no level field on
-  `Build271Spec` or `Build277Spec` and none should be added** - that destroys the guarantee rather
-  than closing a gap. The four level chains: `claude-md-relocated-narrative.md`.
+  _unrepresentable_. **There is no level field on `Build271Spec` or `Build277Spec` and none should be
+  added** - that destroys the guarantee rather than closing a gap. The four level chains: relocated
+  narrative.
 - **🩺 The one caller-supplied HL-03 is the 278's EV/SS REVIEW level** (`review.levelCode`, default
   `EV`; `esc` never constrained the value). **Both entry points now REFUSE anything else**
   (`X12_278_BUILD_INVALID_SPEC`, no new code): the emit is well-formed but opens a loop no reader
@@ -579,24 +582,24 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
 - **`splitSegments` is release-aware via `findUnescapedTerminator`** (what a naive `indexOf` split
   did: relocated narrative §8). A degenerate terminator-is-release delimiter set falls back to the
   literal scan.
-- **Control NUMBERS are identity and are NEVER rewritten**, even under `{ specClean: true }`;
-  corrected COUNTS emit only with `{ recomputeCounts: true }`, which is inert without `specClean`.
-  Every mismatch surfaces via `onWarning` and is never silently corrected.
+- **Control NUMBERS are identity and are NEVER rewritten** even under `{ specClean: true }`;
+  corrected COUNTS emit only with `{ recomputeCounts: true }`, inert without `specClean`. Every
+  mismatch surfaces via `onWarning`, never silently corrected.
 - **🩺 All monetary / percent / quantity fields decode as `X12Decimal`: string-backed, `BigInt`-exact,
-  NEVER `parseFloat`.**
+  never `parseFloat`.**
 - **🩺 The 835 model is NEVER silently rebalanced.** Three TR3 X221A1 §1.10.2 invariants (line, claim,
   top-of-remit) run after the walk and emit `X12_835_REMIT_BALANCE_MISMATCH`. **PLB amounts carry the
   RAW EDI sign (positive = take-back), so the top equation is `BPR-02 == Σ(CLP-04) - Σ(PLB)`.**
 - **🩺 An unknown code preserves its verbatim value and warns; it is never dropped or normalized.**
   **NAME THE RULE, NEVER THE MEMBERS** - derive the codes from `WARNING_CODES`. The HI one keeps the
   verbatim qualifier AND code with `codeSystem: "unknown"`.
-- **🩺 Acks are structurally PHI-free by design, and `IK4-04` (`copyOfBadDataElement`) is a caller
-  surface callers SHOULD omit when the bytes are PHI. The library NEVER auto-populates it.**
-- **`build999` REFUSES `Accept` against a non-empty error list (`X12_ACK_ACCEPT_WITH_ERRORS`) and
-  inconsistent AK9 counts (`X12_ACK_COUNT_MISMATCH`); `buildTA1` REFUSES `A` with a non-`000` note.**
+- **🩺 Acks are structurally PHI-free by design; `IK4-04` is a caller surface callers SHOULD omit
+  when the bytes are PHI, and the library NEVER auto-populates it.**
+- **`build999` REFUSES `Accept` with a non-empty error list (`X12_ACK_ACCEPT_WITH_ERRORS`) and bad
+  AK9 counts (`X12_ACK_COUNT_MISMATCH`); `buildTA1` REFUSES `A` with a non-`000` note.**
 - **🩺 Every DOMAIN builder's own refusal message carries structural locators, counts and numeric
-  totals only** - never a `claimId`, member id, member name, trace or diagnosis code. **State this
-  PER BUILDER, never as a property of every builder.** Standing exception, the **ack path**:
+  totals only** - never an identifier, a name, a trace or a clinical code. **State this PER BUILDER,
+  never as a property of every builder.** Standing exception, the **ack path**:
   `build999` interpolates the acknowledged ST-02 and `buildTA1` its TA1-05 note code. **The negative
   list is NOT an absolute PHI guarantee; it is one about the builder's own TEMPLATES**, which still
   render control numbers and codes.

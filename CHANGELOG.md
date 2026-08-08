@@ -68,9 +68,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no channel**, so `submission.variant` carried a confident value with nothing to contradict it.
 
   **🛑 THIS CLOSES ONLY THE SILENCE, AND THE RESTRAINT IS THE POINT.** The fallback is **not**
-  narrowed and first-wins is unchanged: which variant a document resolves to, and which lines decode,
-  are byte-for-byte what they were at `0.0.13`, and this code is added beside whatever the walk
-  already raised. Excluding orphans from
+  narrowed and first-wins is unchanged, so on every document that reaches the fallback the variant
+  resolved and the lines decoded are byte-for-byte what they were at `0.0.13`, and this code is added
+  beside whatever the walk already raised. (`X12-VARIANT-ICR-UNGROUNDED`, in this same release,
+  changed WHICH documents reach the fallback; read its entry for what decodes differently.) Excluding orphans from
   the fallback would change how already-published documents decode and is its own slice.
 
   **🩺 Which service segment is the stray one is NOT decided.** This reader cannot tell a stray
@@ -89,9 +90,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   **🩺 It is additive, and nothing moved onto it.** `X12_837_SERVICE_LINE_NOT_DECODED`,
   `X12_837_SERVICE_SEGMENT_WITHOUT_LX` and `X12_837_SERVICE_LINE_DROPPED` fire on exactly the
-  documents they fired on before, in the same positions, pinned by committed tests that assert the
-  whole warning channel with the new code filtered out. **No consumer predicate written against any
-  existing code changes meaning.** Read that as **invariance and not as a list of what else you will
+  documents they fired on before **this code was added**, in the same positions, pinned by committed
+  tests that assert the whole warning channel with the new code filtered out. **No consumer predicate
+  changes meaning because of this code.** (`X12-VARIANT-ICR-UNGROUNDED`, in this same release, DID
+  change which documents reach the `SVx` fallback; read its entry above.) Read that as **invariance and not as a list of what else you will
   see** on a contested document: it does not promise that any particular loss on one is reported at
   all, and one that is not was not reported before this code existed either. A stray `LX` that opened
   no line, for one, already suppressed `X12_837_SERVICE_SEGMENT_WITHOUT_LX` for the service segments
@@ -363,7 +365,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`X12-VARIANT-ICR-UNGROUNDED`). This is a grounding unit: the table `VARIANT_BY_ICR` had three keys
   and they were grounded against nothing.
 
-  **🩺 What that cost, measured at `668afea` (published `0.0.16`).** The table held exactly
+  **🩺 What that cost, measured at `668afea`, which is `main` at published `0.0.13`.** The table held exactly
   `005010X222A2`, `005010X223A3` and `005010X224A2`. **It contained none of the identifiers HIPAA
   adopts at 45 CFR 162.1102** (`005010X222`; `005010X223` with its `005010X223A1` Type 1 errata;
   `005010X224` with `005010X224A1`), **and it was missing `005010X222A1` and `005010X223A2`**, which
@@ -379,13 +381,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   **🛑 This IS a behaviour change on already-published decoding, and it is disclosed rather than
   buried.** On a file whose `ST-03` is now recognised: `submission.variant` can differ from what
-  `0.0.16` read, wherever the first `SVx` in the body disagreed with the declaration; and
+  `0.0.13` read, wherever the first `SVx` in the body disagreed with the declaration; and
   **`X12_837_AMBIGUOUS_VARIANT` and `X12_837_UNKNOWN_VARIANT` no longer fire on it at all**, because
-  no guess was made. **A predicate written against either code goes quiet on such a file.** That is
+  no guess was made. **A predicate written against either code goes quiet on such a file.**
+
+  **🩺 And a service line whose `SVx` kind disagrees with the declaration is no longer DECODED, so a
+  code STARTS firing on a document that may have carried `warnings: []`.** Under an `ST-03` of
+  `005010X222A1` with a body whose only service segment is an `SV2`, `0.0.13` read `variant` `"I"`,
+  `charge` `7300`, `units` `2` and `warnings: []`; this release reads `variant` `"P"`, `charge` /
+  `units` / `procedureCode` `undefined`, and `X12_837_SERVICE_LINE_NOT_DECODED` at that line's `LX`.
+  A mis-stamped envelope is an ordinary vendor variant and this reader can no more tell one from a
+  conformant document than it can tell a stray `SVx` from a conformant one, so the loss is **warned
+  rather than silent**, and the cookbook's post-a-line-amount gate already names that code first.
+
+  **🛑 Read all of that as ONE property and never as a closed list of consequences:** where `ST-03`
+  is now recognised, **the document's own declaration decides the variant instead of its first
+  service segment**, and everything downstream follows from that single substitution. A first draft
+  of this entry published a census of three and a refuter measured it false by finding a fourth.
+
+  That is
   the hazard a widening onto a new code carries, taken here in the opposite direction from the two
   slices before it: they refused to narrow a fallback because the reader had no evidence beyond the
   segments, and here the reader had the evidence in ST-03 and was ignoring it. Re-check any routing
-  driven off `submission.variant` for 837s you read on `0.0.16` or earlier.
+  driven off `submission.variant` for 837s you read on `0.0.13` or earlier.
 
   **🛑 The `SVx` fallback is NOT narrowed.** First-wins still takes the first `SV1` / `SV2` / `SV3` in
   the body, orphans included, on every document that still reaches it, and precedence is unchanged:

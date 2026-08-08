@@ -61,12 +61,12 @@ const SV3 = "SV3*AD:D1110*6100**11*1*1~";
 /**
  * An ST-03 `get837Claims` turns into no variant, so every case below is
  * decided by the `SVx` fall-back. It is the ASC X12N **4010** addenda
- * reference for professional claims, named verbatim at 45 CFR 162.1102(b)
+ * reference for professional claims, named verbatim at 45 CFR 162.1102(a)(3)
  * - a real identifier of a version this library's v1 scope deliberately
  * excludes (005010 only). A 4010 reference is NOT read as `"P"`, and that
  * is a property of the scope, not an oversight.
  *
- * **🩺 Through `0.0.16` this file used `005010X222A1` for this job, and
+ * **🩺 Through `0.0.13` this file used `005010X222A1` for this job, and
  * that was the defect `X12-VARIANT-ICR-UNGROUNDED` closed.** `005010X222A1`
  * is the June 2010 errata that CMS and state Medicaid companion guides
  * require in ST-03 on a production 837P, so the fall-back below was the

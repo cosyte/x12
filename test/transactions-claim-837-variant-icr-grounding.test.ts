@@ -2,7 +2,7 @@
  * `X12-VARIANT-ICR-UNGROUNDED`: `VARIANT_BY_ICR`, the ST-03 to 837-variant
  * table, held three keys that were grounded against nothing.
  *
- * 🩺 **What that cost, measured at `668afea` (published `0.0.16`).** The
+ * 🩺 **What that cost, measured at `668afea`, which is `main` at published `0.0.13`.** The
  * table held exactly `005010X222A2`, `005010X223A3` and `005010X224A2`.
  * **None of the identifiers HIPAA adopts was in it**, and neither were two
  * of the three that payer companion guides actually require on the wire. So
@@ -119,11 +119,19 @@ interface IcrCase {
 }
 
 const ADOPTED_BY_HIPAA: readonly IcrCase[] = [
-  { icr: "005010X222", variant: "P", why: "45 CFR 162.1102(e)(2)(iii), professional" },
-  { icr: "005010X223", variant: "I", why: "45 CFR 162.1102(e)(2)(iv), institutional" },
-  { icr: "005010X223A1", variant: "I", why: "45 CFR 162.1102(e)(2)(iv), Type 1 errata Oct 2007" },
-  { icr: "005010X224", variant: "D", why: "45 CFR 162.1102(e)(2)(ii), dental" },
-  { icr: "005010X224A1", variant: "D", why: "45 CFR 162.1102(e)(2)(ii), Type 1 errata Oct 2007" },
+  { icr: "005010X222", variant: "P", why: "45 CFR 162.1102(c) -> (b)(2)(iii), professional" },
+  { icr: "005010X223", variant: "I", why: "45 CFR 162.1102(c) -> (b)(2)(iv), institutional" },
+  {
+    icr: "005010X223A1",
+    variant: "I",
+    why: "45 CFR 162.1102(c) -> (b)(2)(iv), Type 1 errata Oct 2007",
+  },
+  { icr: "005010X224", variant: "D", why: "45 CFR 162.1102(c) -> (b)(2)(ii), dental" },
+  {
+    icr: "005010X224A1",
+    variant: "D",
+    why: "45 CFR 162.1102(c) -> (b)(2)(ii), Type 1 errata Oct 2007",
+  },
 ];
 
 const REQUIRED_BY_COMPANION_GUIDES: readonly IcrCase[] = [
@@ -145,54 +153,108 @@ const REQUIRED_BY_COMPANION_GUIDES: readonly IcrCase[] = [
 ];
 
 const LATER_PUBLISHED_ERRATA: readonly IcrCase[] = [
-  { icr: "005010X222A2", variant: "P", why: "published errata guide, catalog citation only" },
-  { icr: "005010X223A3", variant: "I", why: "published errata guide, catalog citation only" },
-  { icr: "005010X224A3", variant: "D", why: "published errata guide, catalog citation only" },
+  {
+    icr: "005010X222A2",
+    variant: "P",
+    why: "published errata guide named by X12 RFI #2334; NOT adopted",
+  },
+  {
+    icr: "005010X223A3",
+    variant: "I",
+    why: "published errata guide named by X12 RFI #2334; NOT adopted",
+  },
+  {
+    icr: "005010X224A3",
+    variant: "D",
+    why: "published errata guide named by X12 RFI #2334; NOT adopted",
+  },
 ];
 
 // ---------------------------------------------------------------------------
 // 1. The headline: what a production 837P and 837I declare now resolves.
 // ---------------------------------------------------------------------------
 
+/**
+ * Every case in this section reads a DISAGREEING body, so it can only pass
+ * by reading ST-03. The declaration therefore wins over the segment, the
+ * line's `SVx` does not match the resolved variant, and the line is left
+ * undecoded and reported at its `LX`. That is the fourth consequence of
+ * this change, and it is asserted on every one of these documents rather
+ * than described: `charge` reads `undefined` where `0.0.13` decoded the
+ * disagreeing segment's amount, and the channel gains a code the document
+ * did not carry.
+ *
+ * **🩺 A first draft asserted these with `.not.toContain`, and that is what
+ * hid the consequence** - a membership test cannot observe a case moving
+ * ONTO a code. Every channel assertion here is `toEqual` on the whole array.
+ */
+function expectDeclarationWins(icr: string, variant: X12Claim837Variant): void {
+  const disagreeing = variant === "P" ? SV2_ONLY : SV1_ONLY;
+  const sub = parse837(icr, disagreeing);
+  expect(sub.variant).toBe(variant);
+  const line = sub.claims[0]?.serviceLines[0];
+  expect(line).toBeDefined();
+  // The money and the quantity are ABSENT, which is what `undefined` means on
+  // a decimal slot here. The line's identity fields are NOT absent: an
+  // undecoded line is seeded with `""`, which is pre-existing and unchanged,
+  // and asserting `undefined` on them would be measuring the wrong shape.
+  expect(line?.charge).toBeUndefined();
+  expect(line?.units).toBeUndefined();
+  expect(channel(sub)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED]);
+}
+
 describe("X12-VARIANT-ICR-UNGROUNDED: the references production 837s carry", () => {
   for (const { icr, variant, why } of REQUIRED_BY_COMPANION_GUIDES) {
     it(`🩺 ST-03 ${icr} resolves to ${variant} (${why})`, () => {
-      // Read against a body whose only service segment DISAGREES, so this
-      // can only pass by reading ST-03.
-      const disagreeing = variant === "P" ? SV2_ONLY : SV1_ONLY;
-      const sub = parse837(icr, disagreeing);
-      expect(sub.variant).toBe(variant);
-      // No guess was made, so neither variant-resolution code is raised. At
-      // `0.0.16` the professional case here read "I" and carried
-      // X12_837_AMBIGUOUS_VARIANT or X12_837_UNKNOWN_VARIANT instead.
-      expect(channel(sub)).not.toContain(WARNING_CODES.X12_837_UNKNOWN_VARIANT);
-      expect(channel(sub)).not.toContain(WARNING_CODES.X12_837_AMBIGUOUS_VARIANT);
+      expectDeclarationWins(icr, variant);
     });
   }
 
   for (const { icr, variant, why } of ADOPTED_BY_HIPAA) {
     it(`ST-03 ${icr} resolves to ${variant} (${why})`, () => {
-      const disagreeing = variant === "P" ? SV2_ONLY : SV1_ONLY;
-      expect(parse837(icr, disagreeing).variant).toBe(variant);
+      expectDeclarationWins(icr, variant);
     });
   }
 
   for (const { icr, variant, why } of LATER_PUBLISHED_ERRATA) {
     it(`ST-03 ${icr} resolves to ${variant} (${why})`, () => {
-      const disagreeing = variant === "P" ? SV2_ONLY : SV1_ONLY;
-      expect(parse837(icr, disagreeing).variant).toBe(variant);
+      expectDeclarationWins(icr, variant);
     });
   }
+
+  /**
+   * 🩺 The fourth consequence, spelled out on one document with the values
+   * the refuter measured, because a census of three consequences was
+   * published and was false. A mis-stamped envelope is an ordinary vendor
+   * variant and this reader cannot tell one from a conformant document.
+   */
+  it("🩺 a line whose SVx kind disagrees with the declaration STOPS decoding and STARTS warning", () => {
+    // At `0.0.13`: variant "I", charge "7300", units "2", revenueCode
+    // "0300", `warnings: []`. The fallback typed the document off the very
+    // segment that now fails to match, so the line decoded.
+    const sub = parse837("005010X222A1", SV2_ONLY);
+    expect(sub.variant).toBe("P");
+    expect(sub.claims[0]?.serviceLines[0]?.charge).toBeUndefined();
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED]);
+
+    // CONTROL, and it is what makes the reading above a loss rather than a
+    // preference: the same bytes under an ST-03 this reader still turns
+    // into nothing fall back to the segment and decode, exactly as before.
+    const fellBack = parse837("004010X098A1", SV2_ONLY);
+    expect(fellBack.variant).toBe("I");
+    expect(fellBack.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("7300");
+    expect(channel(fellBack)).toEqual([]);
+  });
 });
 
 // ---------------------------------------------------------------------------
 // 2. The behaviour change, pinned AS a change rather than left to be found.
 // ---------------------------------------------------------------------------
 
-describe("X12-VARIANT-ICR-UNGROUNDED: what decodes differently from 0.0.16", () => {
+describe("X12-VARIANT-ICR-UNGROUNDED: what decodes differently from 0.0.13", () => {
   /**
    * The exact document `X12-837-AMBIGUOUS-VARIANT` shipped as its headline,
-   * under the ST-03 a real 837P carries. At `0.0.16` `variant` read `"I"`,
+   * under the ST-03 a real 837P carries. At `0.0.13` `variant` read `"I"`,
    * the conformant `SV1` line decoded nothing, and the channel held
    * `X12_837_AMBIGUOUS_VARIANT` beside the line-level codes.
    */
@@ -209,7 +271,7 @@ describe("X12-VARIANT-ICR-UNGROUNDED: what decodes differently from 0.0.16", () 
   });
 
   it("🩺 a declared 837P with no SVx at all is no longer called an unknown variant", () => {
-    // At `0.0.16` this raised X12_837_UNKNOWN_VARIANT, which said a
+    // At `0.0.13` this raised X12_837_UNKNOWN_VARIANT, which said a
     // conformant document's own implementation-convention reference was one
     // this reader could make nothing of. It was the table that was short.
     const sub = parse837("005010X222A1", [...HEADER, CLM, "HI*ABK:J20.9~"]);
@@ -307,7 +369,7 @@ describe("X12-VARIANT-ICR-UNGROUNDED: the SVx fall-back is not narrowed", () => 
 describe("X12-VARIANT-ICR-UNGROUNDED: no warning message enumerates the table", () => {
   /**
    * Both variant-resolution messages named the three keys literally through
-   * `0.0.16`, so every one of them was wrong the moment the table was
+   * `0.0.13`, so every one of them was wrong the moment the table was
    * grounded, in a string a consumer had already read. A message is frozen
    * and a table is not, so the messages describe the set and never list it.
    * This is the same rule the registry follows for the Tier-2 code count.

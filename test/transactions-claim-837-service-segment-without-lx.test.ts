@@ -86,8 +86,8 @@ const SV3 = "SV3*AD:D1110*10000***1~";
 /**
  * An ST-03 `get837Claims` turns into no variant, so the `SVx` fall-back is
  * what decides. The ASC X12N **4010** addenda reference for professional
- * claims, named at 45 CFR 162.1102(b); this library's v1 scope is 005010
- * only. Through `0.0.16` this case used `005010X222A1`, which is the errata
+ * claims, named at 45 CFR 162.1102(a)(3); this library's v1 scope is 005010
+ * only. Through `0.0.13` this case used `005010X222A1`, which is the errata
  * production 837Ps actually carry in ST-03 and which now RESOLVES - see
  * `documentation/agent-notes/x12-variant-icr-ungrounded.md`.
  */

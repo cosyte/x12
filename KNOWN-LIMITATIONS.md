@@ -18,7 +18,7 @@ model.
 
 - **🩺 Which `ST-03` implementation-convention references resolve to an 837 variant CHANGED in this
   release, and some already-published files therefore decode differently** (`X12-VARIANT-ICR-UNGROUNDED`).
-  Through `0.0.16` `get837Claims` recognised exactly three references: `005010X222A2`, `005010X223A3`
+  Through `0.0.13` `get837Claims` recognised exactly three references: `005010X222A2`, `005010X223A3`
   and `005010X224A2`. **That set contained none of the identifiers HIPAA adopts at 45 CFR 162.1102**
   (`005010X222`, `005010X223` + `005010X223A1`, `005010X224` + `005010X224A1`), **and it was missing
   `005010X222A1` and `005010X223A2`**, which CMS and state Medicaid companion guides require in ST-03
@@ -31,10 +31,19 @@ model.
   `documentation/agent-notes/x12-variant-icr-ungrounded.md`.
   - **🛑 What this changes for a consumer, and it is a behaviour change on already-published
     decoding.** On a file whose `ST-03` is now recognised: `submission.variant` can differ from what
-    `0.0.16` read, where the first `SVx` in the body disagreed with the declaration; and
+    `0.0.13` read, where the first `SVx` in the body disagreed with the declaration; and
     **`X12_837_AMBIGUOUS_VARIANT` and `X12_837_UNKNOWN_VARIANT` no longer fire at all**, because no
-    guess was made. A predicate written against either code goes quiet on such a file. Re-check any
-    routing driven off `submission.variant` for 837s read on `0.0.16` or earlier.
+    guess was made. A predicate written against either code goes quiet on such a file. **🩺 And a
+    service line whose `SVx` kind disagrees with the declaration is no longer DECODED, so a code
+    STARTS firing on a document that may have carried `warnings: []`**: under `005010X222A1` with a
+    body whose only service segment is an `SV2`, `0.0.13` read `variant` `"I"` and `charge` `7300`
+    with no warnings, and this release reads `variant` `"P"`, `charge` `undefined`, and
+    `X12_837_SERVICE_LINE_NOT_DECODED` at that line's `LX`. A mis-stamped envelope is an ordinary
+    vendor variant and this reader cannot tell one from a conformant document; the loss is warned
+    rather than silent. **Read all of this as ONE property and never as a closed list: where `ST-03`
+    is now recognised the document's own declaration decides the variant instead of its first
+    service segment, and everything downstream follows from that.** Re-check any routing driven off
+    `submission.variant` for 837s read on `0.0.13` or earlier.
   - **🛑 The `SVx` fallback is NOT narrowed.** First-wins still takes the first service segment in the
     body, orphans included, on every document that still reaches it. What changed is which documents
     reach it.
@@ -373,14 +382,15 @@ model.
 
 - **🩺 An 837 variant the `SVx` fallback resolved in a body that names more than one variant raises
   `X12_837_AMBIGUOUS_VARIANT`, anchored at the `ST`.** The fallback is unchanged and is deliberately
-  NOT narrowed: it still takes the **first** `SV1` / `SV2` / `SV3` in the body, orphans included, and
-  which variant a document resolves to is byte-for-byte what it was through `0.0.13`. What this code
+  NOT narrowed: it still takes the **first** `SV1` / `SV2` / `SV3` in the body, orphans included, so on
+  every document that reaches it the variant resolved is byte-for-byte what it was through `0.0.13`.
+  **WHICH documents reach it changed in this release** - see the ST-03 entry at the top of this list. What this code
   adds is that the resolution said so. Through `0.0.13` a stray `SV2` re-typed a whole Professional
   submission Institutional and **only the line-level consequences were on any channel** - a consumer
   routing on `submission.variant` saw a confident `"I"` with nothing to contradict it. Four bounds,
   each a committed test:
   - **It reports the RESOLUTION, never the document.** A caller-supplied `type` wins ahead of the
-    fallback, and so does an `ST-03` naming one of the three known implementation conventions; in
+    fallback, and so does an `ST-03` this reader turns into a variant; in
     either case no guess was made and this code is not raised **however mixed the body is**. Never
     restate it as "the file carries more than one kind of service segment".
   - **🩺 Which service segment is the stray one is NOT decided, and nothing here should ever start
@@ -389,8 +399,11 @@ model.
     variant like any other. Reporting the conflict is honest; picking a winner would be inventing.
   - **It is ADDITIVE and nothing moved onto it.** `X12_837_SERVICE_LINE_NOT_DECODED`,
     `X12_837_SERVICE_SEGMENT_WITHOUT_LX` and `X12_837_SERVICE_LINE_DROPPED` fire on exactly the
-    documents they fired on before, in the same positions. A predicate written against any of them
-    is unaffected.
+    documents they fired on before **this code was added**, in the same positions, and no predicate
+    changes meaning because of this code. **That is a claim about this code and NOT about the
+    release:** the ST-03 entry at the top of this list changed which documents reach the fallback at
+    all, and a line whose `SVx` kind disagrees with a now-recognised `ST-03` stops decoding and
+    starts raising `X12_837_SERVICE_LINE_NOT_DECODED`. Read that entry beside this bound.
   - **It can never travel with `X12_837_UNKNOWN_VARIANT`**, which is the other outcome of the same
     resolution: a body with conflicting service segments has, by construction, at least one to fall
     back on. It fires **once per transaction**, because there is one resolution per transaction.
@@ -438,8 +451,10 @@ model.
     `position.elementIndex`** - measured, and pinned by a committed test. Never read a co-occurring
     pair here as two segments.
   - **It is ADDITIVE and nothing moved onto it.** Every code this reader raised on a document of
-    this shape before, it still raises, at the same position; a predicate written against any of
-    them is unaffected. Read that as invariance and **not** as a list of what else you will see.
+    this shape before **this code was added**, it still raises, at the same position, and no
+    predicate changes meaning because of this code. Read that as invariance and **not** as a list of
+    what else you will see, and **not** as a claim about the release: the ST-03 entry at the top of
+    this list changed which documents reach the variant fallback.
     **The package's own documentation was a consumer that needed updating**: the cookbook's
     "gate before you post a line amount" recipe named four codes, none of which fires on the
     overwrite document, so it was blind to it - it now names this one too, and a committed test

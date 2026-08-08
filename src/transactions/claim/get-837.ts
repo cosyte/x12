@@ -111,7 +111,8 @@ import type {
  * `documentation/agent-notes/x12-variant-icr-ungrounded.md`:
  *
  * - The base guide identifiers and the October 2007 Type 1 errata are the
- *   ones HIPAA adopts, verbatim, at 45 CFR 162.1102(e)(2)(ii)-(iv):
+ *   ones HIPAA adopts for the current compliance window, verbatim, at
+ *   45 CFR 162.1102(c), which adopts the standards of (b)(2)(ii)-(iv):
  *   `005010X222` (Professional), `005010X223` + `005010X223A1`
  *   (Institutional), `005010X224` + `005010X224A1` (Dental). That section
  *   names no `A2` or `A3` guide and does not name `005010X222A1`.
@@ -122,15 +123,25 @@ import type {
  *   Institutional and `005010X224A2` for Dental, and the Louisiana
  *   Medicaid 5010 EDI general companion guide lists the same three.
  * - `005010X222A2`, `005010X223A3` and `005010X224A3` are later published
- *   errata guides in production use at some payers. They are the WEAKEST
- *   leg of this grounding: the citation is a public guide catalog, not a
- *   primary X12 publication record. Read the agent note before quoting
- *   them as adopted - they are not.
+ *   errata guides, named together by X12's own RFI #2334 ("The CLM TR3
+ *   Notes in the 005010X222A2, 005010X223A3 and 005010X224A3 TR3s state
+ *   …"). That is X12 naming its own guides, so their EXISTENCE is well
+ *   grounded, but it is still the weakest leg here because it establishes
+ *   neither adoption nor use: **none of these three is adopted by 45 CFR
+ *   162.1102, and no companion guide read for this table requires one.**
+ *   Never quote them as adopted.
  *
  * **This set is not claimed to be exhaustive and no count of it is
  * published.** An ST-03 outside it is not an error; it reaches the `SVx`
  * fall-back below exactly as it always did, and that fall-back is
  * deliberately unchanged.
+ *
+ * 🩺 **A recognised ST-03 now beats a disagreeing service segment, and that
+ * is a behaviour change on already-published decoding.** Where the
+ * declaration and the first `SVx` disagree, the declaration decides, so a
+ * line whose `SVx` kind does not match it is no longer decoded and raises
+ * `X12_837_SERVICE_LINE_NOT_DECODED` at its `LX`. Read that as one
+ * property and never as a list of consequences.
  *
  * Built through {@link "../../parser/lookup.js".wireLookup} because the key
  * is document bytes. As a plain object literal (which it was through

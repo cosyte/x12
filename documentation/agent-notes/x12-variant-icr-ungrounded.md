@@ -1,7 +1,6 @@
 # x12 - grounding `VARIANT_BY_ICR` (`X12-VARIANT-ICR-UNGROUNDED`, 2026-08-08)
 
-The item `#87` and `#88` each said had to come before the next 837 slice. Base `668afea`
-(published `0.0.16`).
+The item `#87` and `#88` each said had to come before the next 837 slice. Base `668afea`, which is `main` at published `0.0.13`.
 
 **This was commissioned as a GROUNDING unit with two acceptable outcomes: ground the key set from
 publicly-citable information, or record with evidence that it cannot be grounded.** It could be
@@ -35,7 +34,8 @@ references are adopted and which appear in ST-03 / GS-08 on real traffic:
 
 ### Primary, regulatory - the adoption record
 
-45 CFR 162.1102(e)(2), quoted from its own text:
+45 CFR 162.1102(c) adopts, for the period from January 1, 2012 through August 14, 2027, "the
+standards identified in paragraph (b)(2) of this section". Those standards, quoted from (b)(2):
 
 - **(iii) Professional health care claims.** "ASC X12 Standards for Electronic Data Interchange
   Technical Report Type 3, Health Care Claim: Professional (837), May 2006, **ASC X12N/005010X222**".
@@ -44,6 +44,12 @@ references are adopted and which appear in ST-03 / GS-08 on real traffic:
   **ASC X12N/005010X223A1**".
 - **(ii) Dental health care claims.** **ASC X12N/005010X224**, "and Type 1 Errata to Health Care
   Claim: Dental (837) … October 2007, **ASC X12N/005010X224A1**".
+
+**🩺 Cite `(c)`, not `(e)`, and a pass-1 refuter caught this slice citing `(e)`.** Paragraph `(e)` is
+prefaced "For the period from **August 14, 2027 through April 14, 2028**" and `(f)` follows it; both
+name the same three guides, so the substance was right and the clause was not. The provision in force
+on the date this was written is `(c)`, which adopts `(b)(2)`. For a unit whose whole deliverable is
+grounding, the wrong paragraph is exactly the defect the unit exists to prevent.
 
 **🛑 The section names no `A2` or `A3` guide anywhere, and it does not name `005010X222A1`.** So the
 adoption record cannot ground any of the three keys the table shipped with, and **the shipped table
@@ -72,11 +78,18 @@ Two independent payers, agreeing, both read from the source document rather than
 
 ### The weakest leg, and it is labelled as such in the code
 
-`005010X222A2`, `005010X223A3` and `005010X224A3` exist as **published errata guides** and appear in
-payer guides, but the citation for their existence is a public guide catalog rather than a primary
-X12 publication record. **They are not adopted by 45 CFR 162.1102 and this note does not claim they
-are.** Two of them were already in the shipped table; `005010X224A3` was added for symmetry with
-them, at the same strength of evidence, and never on the strength of a pattern.
+`005010X222A2`, `005010X223A3` and `005010X224A3` exist as **published errata guides**. The first
+draft of this note cited only a public guide catalog for them and called that the weakest leg; the
+pass-1 refuter found a better source and it is used instead. **X12's own RFI #2334 ("5010 - 837
+P,I,D-CLM limit") names all three together**, verbatim: "The CLM TR3 Notes in the 005010X222A2,
+005010X223A3 and 005010X224A3 TR3s state …". That is X12 naming its own published guides, which is
+the strongest available evidence that they exist and are the current errata of each family.
+
+**It is still the weakest leg of the three, and for a different reason than the draft gave.** What it
+establishes is existence, not use and not adoption: **these three are NOT adopted by 45 CFR 162.1102,
+and no companion guide read for this unit requires any of them.** Two were already in the shipped
+table; `005010X224A3` was added because the same RFI names it beside the other two, and never on the
+strength of a pattern.
 
 ## What could NOT be grounded
 
@@ -91,7 +104,7 @@ them, at the same strength of evidence, and never on the strength of a pattern.
 ## 🩺 The frequency claim, and it CHANGED
 
 The item asked whether `X12_837_AMBIGUOUS_VARIANT` is the exception or the normal path. **Measured:
-it was the NORMAL path on production professional and institutional traffic through `0.0.16`.** An
+it was the NORMAL path on production professional and institutional traffic through `0.0.13`.** An
 837P carrying the ST-03 that CMS and both companion guides above require - `005010X222A1` - resolved
 to no variant, fell through to the `SVx` scan, and was typed by whichever service segment came first
 in the body, orphans included. `X12_837_UNKNOWN_VARIANT` on such a file was **a fabricated
@@ -121,15 +134,36 @@ has its own negative control**, because a first draft read `ALL_WARNING_MESSAGES
 
 The `SVx` fall-back is **not narrowed**: first-wins still takes the first service segment in the
 body, orphans included, on every document that still reaches it. What changed is **which documents
-reach it**. Three consequences, each pinned:
+reach it**.
 
-1. **`submission.variant` can differ** where ST-03 is now recognised and the first `SVx` disagrees
-   with it. That case was a mis-read: the document declared itself and a stray segment overrode it.
+**🩺 State it as ONE property and never as a census of consequences. A first draft published a closed
+list of three and a pass-1 refuter measured it false by finding a fourth**, which is this repo's
+recorded failure mode for exhaustive lists (`X12-NUMERIC-VALUE-EMITS-EMPTY`: three drafts, three
+refutations, one more found each time). The property:
+
+> **Where ST-03 is now recognised, the document's own declaration decides the variant instead of its
+> first service segment**, and everything downstream follows from that one substitution.
+
+What follows from it, listed as examples and not as a bound:
+
+1. **`submission.variant` can differ** where the first `SVx` disagreed with the declaration. That
+   case was a mis-read: the document declared itself and a stray segment overrode it.
 2. **`X12_837_AMBIGUOUS_VARIANT` stops firing** on such a document - no guess is made, so there is no
    ambiguity to report.
 3. **`X12_837_UNKNOWN_VARIANT` stops firing** on a declared file with no `SVx`.
+4. **🩺 A service line whose `SVx` kind disagrees with the declaration is no longer DECODED, and a
+   code STARTS firing.** The refuter's measurement, verbatim: under ST-03 `005010X222A1` with a body
+   whose only service segment is an `SV2`, base read `variant "I"`, `charge "7300"`, `units "2"`,
+   `revenueCode "0300"` and `warnings: []`; head reads `variant "P"`, `charge` / `units` /
+   `procedureCode` `undefined`, and `["X12_837_SERVICE_LINE_NOT_DECODED"]` at the line's `LX`. **A
+   mis-stamped envelope is an ordinary vendor variant, and this reader can no more tell a mis-stamped
+   ST-03 from a conformant one than it can tell a stray `SVx` from a conformant one.** The loss is
+   warned rather than silent, and `docs-content/cookbook.md`'s post-a-line-amount gate already names
+   `X12_837_SERVICE_LINE_NOT_DECODED` first, so a consumer following the shipped recipe catches it.
+   Pinned with the charge value and a whole-channel `toEqual`.
 
-Consequences 2 and 3 blind a consumer predicate written against those codes, which is the hazard
+Consequences 2 and 3 blind a consumer predicate written against those codes, and 4 moves a document
+onto a code it did not carry, which is the hazard
 `#83` was refuted for. It is taken deliberately here and in the opposite direction from `#87` and
 `#88`: those two refused to narrow a fall-back because narrowing would change how published documents
 decode on evidence the reader does not have. **Here the reader does have the evidence - it is in
@@ -157,13 +191,15 @@ firing would be preserving a mis-read for the sake of a predicate.
 ## Census and controls
 
 Head's new suite was run against a base `src/` restored from `668afea` **by file copy, never
-`git checkout`**. **11 of 28 cases red at base; the 17 green are exactly the controls** - the three
-keys the table already held, every "does not resolve" case, the fall-back-not-narrowed case and the
-precedence case. **Negative control:** the same suite against `hl7`'s `src/` fails all 28 with
-`parseX12 is not a function`, so what was measured was `x12` and not a stale scratch artifact.
+`git checkout`**. **12 of 29 cases red at base; the 17 green are exactly the controls** - every "does
+not resolve" case, the fall-back-not-narrowed case, the precedence case and the message-shape case.
+Note that the three keys the table ALREADY held are red at base too, because every case in section 1
+now also asserts the fourth consequence, which base does not produce. **Negative control:** the same
+suite against `hl7`'s `src/` fails all 29 with `parseX12 is not a function`, so what was measured was
+`x12` and not a stale scratch artifact. **Re-derive both figures by running, never by arithmetic.**
 
 **Three test files stopped using `005010X222A1` as their non-resolving ST-03** and use
-`004010X098A1` instead - the 4010 professional addenda reference, named at 45 CFR 162.1102(b), of a
+`004010X098A1` instead - the 4010 professional addenda reference, named at 45 CFR 162.1102(a)(3), of a
 version this library's v1 scope deliberately excludes. **That substitution is the whole reason those
 files' 14 cases went red**, and each file's constant carries the reason inline, because when a
 document narrates a test, an edit to the test is an edit to the document.
