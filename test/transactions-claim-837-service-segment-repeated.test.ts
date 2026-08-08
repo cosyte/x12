@@ -472,6 +472,27 @@ describe("additivity", () => {
     expect(line(sub).charge).toBeUndefined();
   });
 
+  it("🩺 and that pair sits at the SAME segmentIndex, separated only by elementIndex", () => {
+    // 🛑 A DRAFT OF FOUR PUBLISHED SURFACES SAID THESE TRAVEL "each on its own
+    // segment", AND A REFUTER MEASURED IT FALSE. `X12_UNPARSEABLE_DECIMAL`
+    // raised by the REPEAT's own amount element names the repeat, so the two
+    // codes name ONE segment. Only the decimal code's `elementIndex`
+    // separates them, and this package's own amount-row codes make that
+    // discriminant load-bearing on the money channel, so the wording had to
+    // be corrected rather than left to be inferred. Pinned literally.
+    const { sub } = parse837(
+      "005010X222A2",
+      claimBody(["LX*1~", SV1_FIRST, "SV1*HC:99214*NOTANUMBER*UN*1***1~"]),
+    );
+
+    const repeat = sub.warnings.find((w) => w.code === REPEATED);
+    const decimal = sub.warnings.find((w) => w.code === UNPARSEABLE);
+    expect(repeat?.position).toEqual({ segmentIndex: 12, transactionIndex: 0 });
+    expect(decimal?.position).toEqual({ segmentIndex: 12, transactionIndex: 0, elementIndex: 2 });
+    expect(repeat?.position.segmentIndex).toBe(decimal?.position.segmentIndex);
+    expect(repeat?.position.elementIndex).toBeUndefined();
+  });
+
   it("travels with X12_837_AMBIGUOUS_VARIANT without either changing the other", () => {
     // ST-03 that resolves to nothing this library knows, so the fallback
     // decides: first-wins takes the SV1, and the SV2 both contradicts the

@@ -395,9 +395,11 @@ model.
     second line.
   - **It can never name the same segment as `X12_837_SERVICE_SEGMENT_WITHOUT_LX`**, which requires
     that NO Loop 2400 be open where this one requires that one is. It can travel with
-    `X12_837_SERVICE_LINE_NOT_DECODED` (both service segments foreign to the resolved variant), with
-    `X12_UNPARSEABLE_DECIMAL` (the repeat's own amount bytes), and with
-    `X12_837_AMBIGUOUS_VARIANT`, each on its own segment.
+    `X12_837_SERVICE_LINE_NOT_DECODED` (at the `LX`), with `X12_837_AMBIGUOUS_VARIANT` (at the
+    `ST`), and with `X12_UNPARSEABLE_DECIMAL` raised by the repeat's own amount bytes. **That last
+    pair sits at the SAME `position.segmentIndex`, separated only by the decimal code's own
+    `position.elementIndex`** - measured, and pinned by a committed test. Never read a co-occurring
+    pair here as two segments.
   - **It is ADDITIVE and nothing moved onto it.** Every code this reader raised on a document of
     this shape before, it still raises, at the same position; a predicate written against any of
     them is unaffected. Read that as invariance and **not** as a list of what else you will see.

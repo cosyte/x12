@@ -337,9 +337,10 @@ A fourth round, to fund that slice's trap block from a file that stood at **52,7
 52,723-byte entry with ZERO room**, the entry having been lowered to meet round 7's shrink.
 **Every imperative stayed behind in `CLAUDE.md`**; what moved is mechanism, enumeration and
 incident history that the trap line does not need in order to be actionable. **No trap was
-deleted.** The umbrella still owes the matching ratchet drop to **52,716**, which lives in
-`.claude/hooks/doc-budget.mjs` and is outside this repo. **No count of the pieces is published here** - a
-drifting number is deleted rather than corrected, and the subsections below are the list.
+deleted.** The umbrella still owes the matching ratchet drop, which lives in
+`.claude/hooks/doc-budget.mjs` and is outside this repo. **No count of the pieces and no byte figure is
+published here** - both drifted once already, and a drifting number is deleted rather than
+corrected. The subsections below are the list; derive the size with `wc -c x12/CLAUDE.md`.
 
 ### `X12-DECIMAL-BYPASSES-THE-GUARD` - the §1.10.2 balance terms, enumerated
 

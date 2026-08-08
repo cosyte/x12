@@ -101,9 +101,12 @@ one deliberately does not.
 
 ## Census and controls
 
-**18 of 31** behavioural cases red against a base `src/` restored from `159a62c` by file copy; the
-**13 green are exactly the controls and the invariance pins** (six paired controls, six
-filtered-channel additivity cases, and the decoded-value invariance case). Two existing tests went
+**19 of 33** cases red against a base `src/` restored from `159a62c` by file copy, re-derived by
+RUNNING head's suite against that tree rather than by arithmetic; the **14 green are exactly the
+controls, the never-fires pins and the invariance pins**. **NO PARTITION OF THE GREEN IS PUBLISHED**
+- a partitioned form was wrong four ways once before, and the first draft of this figure was stale
+by two cases and mis-partitioned by one, because the suite grew after it was measured. Two existing
+tests went
 red - `transactions-claim-837-service-segment-without-lx.test.ts`'s trailing-`SV2` case and
 `transactions-claim-837-ambiguous-variant.test.ts`'s "loser inside an already-decoded line"
 additivity case - **and those were the two pins ON this silence, so that is the finding rather than
@@ -123,11 +126,13 @@ check:no-emdash, test:coverage, build, attw, verify:exports), 77 files / **1,669
 
 ## Budget
 
-`x12/CLAUDE.md` went **52,723 (zero room) -> 52,716**, paid for by relocating narrative
-into `documentation/agent-notes/claude-md-relocated-narrative.md` §8 **first**. No trap
-was deleted. `agent-notes.md` untouched, its 18 bytes intact. **The umbrella still owes the matching
-ratchet drop of `REPO_CLAUDE.x12` to 52,716 in `.claude/hooks/doc-budget.mjs`**, which is outside
-this repo.
+`x12/CLAUDE.md` entered this slice at **52,723 with zero room** and leaves it smaller, paid for by
+relocating narrative into `documentation/agent-notes/claude-md-relocated-narrative.md` §8 **first**.
+No trap was deleted. `agent-notes.md` untouched, its 18 bytes intact. **NO NEW BYTE FIGURE IS
+PUBLISHED HERE, DELIBERATELY:** one was, it went stale inside this slice's own correction commit,
+and a drifting number is deleted rather than corrected. **The umbrella still owes the matching
+ratchet drop of `REPO_CLAUDE.x12` in `.claude/hooks/doc-budget.mjs`, which is outside this repo:
+derive the number from `wc -c x12/CLAUDE.md` at the merged sha.**
 
 ## 🔴 What this slice did NOT close
 
