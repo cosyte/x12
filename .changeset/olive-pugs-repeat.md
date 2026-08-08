@@ -20,8 +20,3 @@ a different 837 variant. Those sit on top of the element-type guard every string
 so read them as what this field adds rather than a closed account; no total is published. A
 reference outside the read table is emitted as given, because nothing makes the published-errata set
 provably exhaustive, and the length is not bounded.
-
-Also documented, pre-existing and unchanged: an active delimiter in **any** `GS` or `ST` element
-splits that segment even release-escaped and **shifts every element after it**, so ST-03 / GS-08 can
-be read out of a neighbour's slot with nothing warned. A guard on one element cannot make that
-element trustworthy. Measured in `KNOWN-LIMITATIONS.md`.

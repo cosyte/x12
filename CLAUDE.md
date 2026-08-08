@@ -87,8 +87,8 @@ or financial value on the wire.**
   **NO COUNT, NEVER ENUMERATE THE SET IN A MESSAGE** - a tripwire reds on a quoted TR3 id.
 - **🩺 EMIT TAKES `Build837EnvelopeSpec.implementationConventionReference` INTO BOTH ST-03/GS-08;
   THE DEFAULTS DO NOT MOVE** (a PARTNER fact). **REFUSE ON DISAGREEMENT, NOT ON ABSENCE.**
-  **🩺 AN ACTIVE DELIMITER IN ANY GS/ST ELEMENT SPLITS IT EVEN RELEASE-ESCAPED AND SHIFTS THE REST,
-  SILENTLY** (a BODY element does not): PRE-EXISTING, NOT fixed; A ONE-ELEMENT GUARD CANNOT FIX IT.
+  **🩺 A `?` BEFORE A GS/ST SEPARATOR IS ONE ELEMENT: A FIX IF ESCAPED, A REGRESSION IF LITERAL AND
+  AN ACCEPT `TA1` CAN READ BACK REJECT. ISA EXEMPT** - `agent-notes/x12-envelope-release-split.md`.
 
 ### 🩺 `X12-837-SV1-OVERWRITE` (2026-08-08) · `documentation/agent-notes/x12-837-sv1-overwrite.md`
 

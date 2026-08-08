@@ -36,8 +36,21 @@ export function parseTA1(interchange: X12Interchange): X12AckTA1 | undefined {
   const ta1 = interchange.ta1Segments[0];
   if (ta1 === undefined) return undefined;
 
-  // TA1 is a fixed-position 5-element segment (no `?`-escape applies - the
-  // standard does NOT define escaped TA1 content). Read elements verbatim.
+  // TA1 is a fixed-position 5-element segment and the reads below are VERBATIM
+  // - no `?`-unescape is applied to any of them, exactly as for every other
+  // envelope segment's `elements`.
+  //
+  // 🩺 This comment used to add "no `?`-escape applies - the standard does NOT
+  // define escaped TA1 content", and that was corrected with the code by
+  // `X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE`. TA1 is an ordinary delimited
+  // segment, so its FRAMING is now release-aware like every other envelope
+  // segment's; only the ISA, which is fixed-width, is split positionally. The
+  // consequence is measured and disclosed rather than guarded, because it is
+  // sharp: `buildTA1` escapes nothing, TA1-01 echoes the acknowledged
+  // interchange's ISA-13, and a `?` is content in a fixed-width ISA element, so
+  // an ISA-13 ending in `?` makes an Accept this library emitted read back as a
+  // Reject with the reassociation key merged into TA1-02. See
+  // `KNOWN-LIMITATIONS.md` and `test/parser-envelope-release-split.test.ts`.
   const elements = ta1.elements;
   const interchangeControlNumber = elements[1] ?? "";
   const interchangeDate = elements[2] ?? "";

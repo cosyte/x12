@@ -481,18 +481,21 @@ describe("X12-837-EMIT-IDENTIFIER-FIXED: a reference carrying a delimiter is ref
     ).toThrow("carries an active delimiter or the release character");
   });
 
-  it("🩺 DISCLOSED, NOT GUARDED: a delimiter in ANOTHER envelope field shifts these two", () => {
-    // The refusal above stops this FIELD from being the cause; it cannot make
-    // the element trustworthy. The envelope split shifts every element after
-    // it, so ST-03 / GS-08 come back out of a neighbour's slot - here GS-08
-    // reads the GS-07 agency code, with nothing warned on any channel.
-    // PRE-EXISTING and untouched: changing how envelope segments split changes
-    // how already-published documents decode. Pinned so the public doc cannot
-    // drift back to an unqualified "one value reaches both elements".
-    const shifted = build837P(specFor("P", { ...ENVELOPE, groupControlNumber: "1*2" }));
-    expect(shifted.groups[0]?.gs.elements).toHaveLength(10); // nine, plus the split
-    expect(declaredReference(shifted).gs08).toBe("X");
-    expect(shifted.warnings).toEqual([]);
+  it("🩺 CLOSED by X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE: a delimiter in ANOTHER envelope field no longer shifts these two", () => {
+    // This test used to pin the opposite, and it was a DISCLOSURE rather than a
+    // guarantee: the envelope splitter was a plain `split`, so a released
+    // separator in a control number shifted every element after it and GS-08
+    // came back holding the GS-07 responsible agency code (`"X"`), silently.
+    // `src/parser/envelope.ts`'s `splitElements` now honours the release
+    // character, so the shift is gone and the element is answered whole. The
+    // full argument, the ISA's deliberate exemption and the invariance controls
+    // are in `test/parser-envelope-release-split.test.ts`.
+    const released = build837P(specFor("P", { ...ENVELOPE, groupControlNumber: "1*2" }));
+    expect(released.groups[0]?.gs.elements).toHaveLength(9); // "GS" plus GS-01..GS-08
+    expect(released.groups[0]?.gs.elements[6]).toBe("1?*2"); // RAW, pre-unescape
+    expect(released.groups[0]?.gs.elements[7]).toBe("X"); // GS-07, in its own slot
+    expect(declaredReference(released).gs08).toBe("005010X222A2");
+    expect(released.warnings).toEqual([]);
   });
 
   it("🩺 DISCLOSED, NOT GUARDED: the length is not bounded, and the two maxima differ", () => {
@@ -506,17 +509,12 @@ describe("X12-837-EMIT-IDENTIFIER-FIXED: a reference carrying a delimiter is ref
     expect(declaredReference(build("P", long))).toEqual({ gs08: long, st03: long });
   });
 
-  it("🩺 THE REASON, MEASURED: escaping does not protect ST-03 or GS-08", () => {
-    // Straight through `parseX12`, so it grounds the refusal on the reader
-    // rather than on the builder that refuses. A released element separator
-    // inside GS-08 and ST-03 STILL splits the segment - the envelope splitter
-    // is not release-aware - and nothing is raised on any channel. The CLM in
-    // the same interchange is the control: an identical construct in a body
-    // element holds as ONE element, which is what makes this a property of the
-    // envelope and not of the escape.
-    //
-    // PRE-EXISTING and deliberately not fixed here: changing how envelope
-    // segments split changes how already-published documents decode.
+  it("🩺 THE ORIGINAL REASON IS RETRACTED: escaping DOES now protect ST-03 and GS-08", () => {
+    // The refusal above was justified, when it shipped, by "escaping does not
+    // help here - the envelope splitter is not release-aware". That sentence is
+    // FALSE as of `X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE`, so it is retracted
+    // rather than reworded. Straight through `parseX12`, so it measures the
+    // reader and not the builder that refuses.
     const isa =
       "ISA*00*          *00*          *ZZ*SUBMITTER      *ZZ*RECEIVER       *260601*1200*^*00501*000000001*0*P*:~";
     const ix = parseX12(
@@ -527,16 +525,33 @@ describe("X12-837-EMIT-IDENTIFIER-FIXED: a reference carrying a delimiter is ref
         "SE*3*0001~GE*1*1~IEA*1*000000001~",
     );
     const group = ix.groups[0];
-    expect(group?.gs.elements).toHaveLength(10); // nine expected, ten read
-    expect(group?.gs.elements[8]).toBe("005010?");
-    expect(group?.transactions[0]?.st.elements).toHaveLength(5);
-    expect(group?.transactions[0]?.st.elements[3]).toBe("005010?");
-    // The control: the same released separator in a BODY element holds.
+    expect(group?.gs.elements).toHaveLength(9);
+    expect(group?.gs.elements[8]).toBe("005010?*X222A1");
+    expect(group?.transactions[0]?.st.elements).toHaveLength(4);
+    expect(group?.transactions[0]?.st.elements[3]).toBe("005010?*X222A1");
+    // The control that was always green: the same construct in a BODY element.
     expect(group?.transactions[0]?.segments.find((s) => s.id === "CLM")?.elements).toEqual([
       "CLM",
       "PT?*ACCT",
       "150.00",
     ]);
     expect(ix.warnings).toEqual([]);
+  });
+
+  it("🛑 and the refusal is KEPT ANYWAY, which is a decision and not an oversight", () => {
+    // Now that escaping protects the element, this guard refuses a value the
+    // reader could in fact carry, so it is over-strict rather than necessary.
+    // It is NOT relaxed here. Relaxing it would WIDEN what `build837P` puts on
+    // the wire - a partner's parser is not obliged to be release-aware either,
+    // and an active delimiter in a guide identifier has no legitimate use - and
+    // widening an emit surface is its own decision with its own blast radius,
+    // not a side effect of a reader fix. Pinned so the refusal cannot quietly
+    // disappear on the strength of the retraction above.
+    expect(() => build("P", "005010*X222A1")).toThrow(
+      "carries an active delimiter or the release character",
+    );
+    expect(() => build("P", "005010?X222A1")).toThrow(
+      "carries an active delimiter or the release character",
+    );
   });
 });
