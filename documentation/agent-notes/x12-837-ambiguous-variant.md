@@ -141,20 +141,42 @@ Two further `INTRODUCED` minors from the same pass, both fixed here: this file c
 without saying it reproduces on the **current** release, which is `#71`'s own version trap in
 miniature.
 
-## Filed by the pass-1 refuter, `PRE-EXISTING`, not fixed here
+## Pass 2: NOT REFUTED
+
+It re-measured the corrected claim rather than reading it - **a corrected claim is a new claim** -
+and confirmed both halves on the remedy's own new document: `X12_837_SERVICE_SEGMENT_WITHOUT_LX`
+appears on neither tree, and the replacement invariance sentence holds including the position
+(`segmentIndex` 8, unmoved). It also swept for a half-deleted falsehood and found none:
+`KNOWN-LIMITATIONS.md` and `docs-content/cookbook.md` never carried the enumeration.
+
+One `INTRODUCED` minor, **inside the pass-1 remedy's own prose**, fixed in the ship commit and
+therefore **UNGRADED**: this file said the repo's *fixtures* use `005010X222A1`, which is false - it
+is three test files, inline, and no fixture. Corrected below. No third pass was spent on it, per
+ADR 0016 and pass 2's own recommendation to land.
+
+## Filed by the refuters, `PRE-EXISTING`, not fixed here
 
 - **🩺 A second `SV1` inside an already-open Loop 2400 silently overwrites the first's money and
-  procedure code.** Measured identically on both trees under a resolving `ST-03` `005010X222A2`:
+  procedure code. PASS 2 RE-MEASURED IT AND ESCALATED IT TO STOP-THE-LINE.** Byte-identical on both
+  trees under a resolving `ST-03` `005010X222A2`:
   `LX*1~ SV1*HC:99213*8500*UN*4***1~ SV1*HC:99999*12*UN*1***1~` leaves ONE service line reading
-  `charge` `12` and `procedureCode` `99999`, with **no warning on any channel**. `8500` off the wire
-  becomes `12` on the model. Already named in `X12-837-RESIDUALS` and in `documentation/repos/x12.md`;
-  the refuter's recommendation, recorded rather than acted on here, is that it should not sit behind
-  further disclosure-only slices.
-- **The `VARIANT_BY_ICR` key set is ungrounded.** This repo's own fixtures use `005010X222A1` as the
-  real-world 837P `ST-03` that does **not** resolve, so the package assumes production 837P traffic
-  routes through the `SVx` fallback - which would make this new code the normal path rather than the
-  exception. No primary source was consulted in either direction and none is claimed. Grounding the
-  three references against the WPC / X12 TR3 listing is its own unit.
+  `charge` `12`, `units` `1` and `procedureCode` `99999`, with **`warnings: []`**. `8500` off the
+  wire becomes `12` on the model and CPT `99213` becomes `99999`, on no channel at all. It cannot
+  block this slice - it reproduces at base - but **both refuters independently said it should not sit
+  behind another disclosure-only slice on this item.** Already named in `X12-837-RESIDUALS` and in
+  `documentation/repos/x12.md`; it wants its own item.
+- **The `VARIANT_BY_ICR` key set is ungrounded, and pass 2 named it the thing that most worries it.**
+  Three of this repo's own **test files** reach for `005010X222A1` inline as the real-world 837P
+  `ST-03` that does **not** resolve; `005010X222A1` appears nowhere under `test/fixtures/`, and the
+  golden corpus uses the resolving references (`837p.edi` -> `005010X222A2`, `837i.edi` ->
+  `005010X223A3`, `837d.edi` -> `005010X224A2`). **Say it that way** - a first draft here said
+  "fixtures" and pass 2 measured it false. The substantive worry survives the correction: if the key
+  set misses the HIPAA-adopted errata, the `SVx` fallback is the **normal** path on production 837P
+  traffic rather than the exception, which changes what this code's message ought to say. **No
+  primary source was consulted in either direction and none is claimed** - pass 2 recorded its own
+  recollection of the adopted set as `UNDETERMINED` rather than a citation, and the table is
+  unchanged from base. Grounding the three references against the WPC / X12 TR3 listing is its own
+  unit, and it should come before the next slice on this item.
 
 ## Deferred, filed not fixed
 
