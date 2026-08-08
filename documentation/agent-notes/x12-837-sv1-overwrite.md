@@ -101,12 +101,13 @@ one deliberately does not.
 
 ## Census and controls
 
-**19 of 33** cases red against a base `src/` restored from `159a62c` by file copy, re-derived by
-RUNNING head's suite against that tree rather than by arithmetic; the **14 green are exactly the
-controls, the never-fires pins and the invariance pins**. **NO PARTITION OF THE GREEN IS PUBLISHED**
-- a partitioned form was wrong four ways once before, and the first draft of this figure was stale
-by two cases and mis-partitioned by one, because the suite grew after it was measured. Two existing
-tests went
+Most of the new suite is red against a base `src/` restored from `159a62c` by file copy, and the
+**green are exactly the controls, the never-fires pins and the invariance pins**. **NO COUNT AND NO
+PARTITION IS PUBLISHED, DELIBERATELY.** Three drafts of this census shipped a number and all three
+were wrong: a partitioned form was wrong four ways once before, the first draft here was stale by
+two cases, and the correction was re-broken by the very commit that wrote it, because the suite grew
+again in the same commit. **Derive it, by RUNNING head's suite against a base tree, never by
+arithmetic and never from this paragraph.** Two existing tests went
 red - `transactions-claim-837-service-segment-without-lx.test.ts`'s trailing-`SV2` case and
 `transactions-claim-837-ambiguous-variant.test.ts`'s "loser inside an already-decoded line"
 additivity case - **and those were the two pins ON this silence, so that is the finding rather than
@@ -121,8 +122,8 @@ a regression.** Both were corrected to say what is now true; the second grew an
   (3 red, including the two-`LX` control).
 
 Verify: **11 of 11 steps in `ran:`** (audit, licenses, typecheck, lint, format:check, phi-scan,
-check:no-emdash, test:coverage, build, attw, verify:exports), 77 files / **1,669 tests** (base 76 /
-1,636), lines 98.97%.
+check:no-emdash, test:coverage, build, attw, verify:exports), green. **No suite total is published**
+- one was, and it went stale inside this slice, for the same reason the census did. Derive it.
 
 ## Budget
 

@@ -102,8 +102,8 @@ or financial value on the wire.**
   said "a service segment with no line open still raises `X12_837_SERVICE_SEGMENT_WITHOUT_LX`"; a
   refuter measured it FALSE - a stray `LX` suppresses it. Say only: whatever was raised is still
   raised, same position. Pinned CHANNEL-WIDE with this filtered out. **Never with
-  `X12_837_UNKNOWN_VARIANT`.** **STILL OPEN:** a foreign `SVx` INSIDE an already-decoded Loop 2400 is
-  silent at the segment; there it is the SOLE report.
+  `X12_837_UNKNOWN_VARIANT`.** **NO LONGER SOLE:** a foreign `SVx` inside an already-decoded Loop 2400
+  raises `X12_837_SERVICE_SEGMENT_REPEATED` at itself (trap above).
 
 ### 🩺 `X12-AMT-ADX-ABSENT-AMOUNT` + `X12-STATED-AMOUNT-DISCARDED` (2026-08-07) · `documentation/agent-notes/x12-{amt-adx-absent-amount,stated-amount-discarded}.md`
 
