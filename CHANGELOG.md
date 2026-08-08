@@ -388,8 +388,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **🩺 And a service line whose `SVx` kind disagrees with the declaration is no longer DECODED, so a
   code STARTS firing on a document that may have carried `warnings: []`.** Under an `ST-03` of
   `005010X222A1` with a body whose only service segment is an `SV2`, `0.0.13` read `variant` `"I"`,
-  `charge` `7300`, `units` `2` and `warnings: []`; this release reads `variant` `"P"`, `charge` /
-  `units` / `procedureCode` `undefined`, and `X12_837_SERVICE_LINE_NOT_DECODED` at that line's `LX`.
+  `charge` `7300`, `units` `2` and `warnings: []`; this release reads `variant` `"P"`, `charge` and
+  `units` `undefined` with the rest of the service segment undecoded, and
+  `X12_837_SERVICE_LINE_NOT_DECODED` at that line's `LX`. **Read only the decimal slots as
+  `undefined`:** an undecoded line SEEDS its identity fields, so `procedureCode` is `""` on a P or D
+  line and `revenueCode` is `""` on an I one. A predicate of `procedureCode === undefined` does NOT
+  detect this.
   A mis-stamped envelope is an ordinary vendor variant and this reader can no more tell one from a
   conformant document than it can tell a stray `SVx` from a conformant one, so the loss is **warned
   rather than silent**, and the cookbook's post-a-line-amount gate already names that code first.
@@ -1025,8 +1029,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   are both the line charge, so reading a service segment into a line the walker never opened
   mis-reads money. Refusing to read is the safe half; doing it silently was the defect. **This says
   nothing about how the variant resolved**, and `KNOWN-LIMITATIONS.md` now discloses why: a caller's
-  `type` option wins first, and absent one, where `ST-03` names none of the three known
-  implementation conventions, the reader falls back to the first `SVx` in the transaction body,
+  `type` option wins first, and absent one, where `ST-03` names no implementation convention this
+  reader recognises, the reader falls back to the first `SVx` in the transaction body,
   orphans included, so a stray `SV2` re-types the whole submission. That is pre-existing behaviour, measured identical at `0.0.10`, and is deliberately
   not narrowed here.
 

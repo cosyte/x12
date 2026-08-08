@@ -259,9 +259,10 @@ published errata. **If you read 837 files on `0.0.13` or earlier, re-check any r
 `submission.variant`, and any predicate you wrote on `X12_837_UNKNOWN_VARIANT` or
 `X12_837_AMBIGUOUS_VARIANT`:** on a file whose ST-03 is now recognised, the variant can differ,
 neither code fires any more, and **a service line whose `SVx` kind disagrees with the declaration is
-no longer decoded** - its `charge`, `units` and procedure code read `undefined` and
-`X12_837_SERVICE_LINE_NOT_DECODED` is raised at that line's `LX`, on a document that may have been
-silent before. Read all of that as **one property and not a closed list**: where ST-03 is recognised,
+no longer decoded** - its `charge` and `units` read `undefined`, the rest of the service segment is
+undecoded, and `X12_837_SERVICE_LINE_NOT_DECODED` is raised at that line's `LX`, on a document that
+may have been silent before. **Gate on the warning, not on a slot:** an undecoded line SEEDS its
+identity fields, so `procedureCode` is `""` on a P or D line and `revenueCode` is `""` on an I one. Read all of that as **one property and not a closed list**: where ST-03 is recognised,
 the document's own declaration decides the variant instead of its first service segment. The set is a list of cited identifiers, never a pattern: a reference
 outside it, in a different case, or padded still falls through exactly as before.
 

@@ -245,6 +245,43 @@ describe("X12-VARIANT-ICR-UNGROUNDED: the references production 837s carry", () 
     expect(fellBack.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("7300");
     expect(channel(fellBack)).toEqual([]);
   });
+
+  /**
+   * 🩺 **Only the DECIMAL slots read `undefined`, and the polarity of the
+   * identity fields REVERSES by variant.** Four consumer-facing surfaces
+   * said `procedureCode` was `undefined` on the professional case and a
+   * pass-2 refuter measured it `""`. `KNOWN-LIMITATIONS.md`'s standing
+   * sentence - "`undefined`, not `""`, which on such a line is the
+   * `revenueCode`" - is about the INSTITUTIONAL case and does not port.
+   *
+   * This is why a consumer must gate on the WARNING and never on a slot: a
+   * predicate of `procedureCode === undefined` detects the undecoded line
+   * on neither of the two variants this item is mostly about.
+   */
+  it("🩺 an undecoded line SEEDS its identity fields, and which one depends on the variant", () => {
+    const professional = parse837("005010X222A1", SV2_ONLY).claims[0]?.serviceLines[0];
+    const dental = parse837("005010X224A2", SV1_ONLY).claims[0]?.serviceLines[0];
+    const institutional = parse837("005010X223A2", SV1_ONLY).claims[0]?.serviceLines[0];
+
+    // P and D carry `procedureCode`, seeded to "" rather than left absent.
+    expect(professional?.variant).toBe("P");
+    expect(professional?.procedureCode).toBe("");
+    expect(dental?.variant).toBe("D");
+    expect(dental?.procedureCode).toBe("");
+
+    // I carries `revenueCode` instead, and its `procedureCode` IS absent.
+    // The union is discriminated on `variant`, so narrow rather than cast:
+    // `revenueCode` exists only on the institutional member.
+    if (institutional?.variant !== "I") throw new Error("expected an institutional line");
+    expect(institutional.revenueCode).toBe("");
+    expect(institutional.procedureCode).toBeUndefined();
+
+    // The decimal slots are the ones that read `undefined` on all three.
+    for (const line of [professional, dental, institutional]) {
+      expect(line?.charge).toBeUndefined();
+      expect(line?.units).toBeUndefined();
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -152,15 +152,32 @@ What follows from it, listed as examples and not as a bound:
    ambiguity to report.
 3. **`X12_837_UNKNOWN_VARIANT` stops firing** on a declared file with no `SVx`.
 4. **🩺 A service line whose `SVx` kind disagrees with the declaration is no longer DECODED, and a
-   code STARTS firing.** The refuter's measurement, verbatim: under ST-03 `005010X222A1` with a body
-   whose only service segment is an `SV2`, base read `variant "I"`, `charge "7300"`, `units "2"`,
-   `revenueCode "0300"` and `warnings: []`; head reads `variant "P"`, `charge` / `units` /
-   `procedureCode` `undefined`, and `["X12_837_SERVICE_LINE_NOT_DECODED"]` at the line's `LX`. **A
-   mis-stamped envelope is an ordinary vendor variant, and this reader can no more tell a mis-stamped
-   ST-03 from a conformant one than it can tell a stray `SVx` from a conformant one.** The loss is
-   warned rather than silent, and `docs-content/cookbook.md`'s post-a-line-amount gate already names
-   `X12_837_SERVICE_LINE_NOT_DECODED` first, so a consumer following the shipped recipe catches it.
-   Pinned with the charge value and a whole-channel `toEqual`.
+   code STARTS firing.** Found by the pass-1 refuter; the readings below were re-measured here rather
+   than quoted. Under ST-03 `005010X222A1` with a body whose only service segment is an `SV2`, base
+   read `variant "I"`, `charge "7300"`, `units "2"` and `warnings: []`; head reads `variant "P"`,
+   `charge` and `units` `undefined`, and `["X12_837_SERVICE_LINE_NOT_DECODED"]` at the line's `LX`.
+   **A mis-stamped envelope is an ordinary vendor variant, and this reader can no more tell a
+   mis-stamped ST-03 from a conformant one than it can tell a stray `SVx` from a conformant one.**
+   The loss is warned rather than silent, and `docs-content/cookbook.md`'s post-a-line-amount gate
+   already names `X12_837_SERVICE_LINE_NOT_DECODED` first, so a consumer following the shipped recipe
+   catches it. Pinned with the charge value and a whole-channel `toEqual`.
+
+   **🩺 STATE ONLY THE DECIMAL SLOTS AS `undefined`, AND THE POLARITY REVERSES BY VARIANT.** A pass-2
+   refuter measured this and it cost four consumer-facing surfaces. An undecoded line SEEDS its
+   identity fields, so on a **P** or **D** line `procedureCode` is **`""`** while `revenueCode` is
+   absent, and on an **I** line `revenueCode` is **`""`** while `procedureCode` is absent. Only
+   `charge` and `units` are `undefined` on all three. **`KNOWN-LIMITATIONS.md`'s standing sentence
+   "`undefined`, not `""`, which on such a line is the `revenueCode`" is about the I case and DOES
+   NOT PORT to P or D.** A consumer predicate of `procedureCode === undefined` detects this on
+   neither of the two variants this slice is mostly about. Pinned per variant in
+   `test/transactions-claim-837-variant-icr-grounding.test.ts`; the earlier draft was green over the
+   false claim precisely because the helper asserted `charge` / `units` and nothing else.
+
+   **🛑 And a claim about what a refuter measured is itself a claim.** The draft attributed
+   `procedureCode undefined` to the pass-1 refuter "verbatim". The refuter had printed `charge`,
+   `units` and `revenueCode` and never read `procedureCode` on that line, so an unmeasured value was
+   laundered as measured, and attributed to the gate. **Never write "the refuter measured X" for
+   anything you did not watch it print.**
 
 Consequences 2 and 3 blind a consumer predicate written against those codes, and 4 moves a document
 onto a code it did not carry, which is the hazard
