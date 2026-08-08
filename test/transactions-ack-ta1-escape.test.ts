@@ -54,9 +54,11 @@
  *   did. `ackCode === "R"` stops firing where an Accept had been shifted onto
  *   it and STARTS firing where a Reject had been shifted off it, and the
  *   second needs no run-time-only value to reach.
- * - **Only three values in the escaped set ever shifted an element.** A
- *   mid-string `?`, a `:` and a `^` round-tripped at base and no longer do,
- *   for no framing gain, and so does a caller who was hand-rolling the escape.
+ * - **Only three values in the escaped set ever shifted the segment's own
+ *   element framing.** `^` and `:` moved the DOT-PATH reader instead, and
+ *   releasing them is a GAIN there; the measured pure cost is a mid-string
+ *   `?`, on the raw surfaces only. A caller who was hand-rolling the escape
+ *   regresses on both kinds of surface.
  * - **A caller who embeds a TA1 in a NON-archetype envelope without stating
  *   its delimiters** gets a stray `?` where the value was previously verbatim,
  *   which is why `BuildTA1Options` gained the other three separators rather
@@ -67,10 +69,13 @@
 
 import { describe, expect, it } from "vitest";
 
+import type { X12Segment } from "../src/index.js";
 import {
   ACK_BUILD_ERROR_CODES,
   AckBuildError,
   buildTA1,
+  getAllSegmentValues,
+  getSegmentValue,
   parseTA1,
   parseX12,
   unescapeRelease,
@@ -205,31 +210,49 @@ describe("X12-TA1-EMIT-NOT-RELEASE-AWARE: the two costs, disclosed and pinned", 
     );
   });
 
-  it("🛑 the values that get LONGER bytes for no framing gain, which is not one class", () => {
-    // A draft of this file called the hand-rolled-escape caller "the one class
-    // whose bytes get worse" and pass 1 refuted it. Only THREE values in the
-    // escaped set ever shifted a TA1 element: `*`, `~`, and a `?` immediately
-    // before the separator. A MID-STRING `?`, a `:` and a `^` were emitted
-    // verbatim at base and round-tripped through this package's own reader;
-    // here they are released, the disposition is unaffected, and the
-    // reassociation key stops round-tripping. Released anyway because the
-    // alternative is an escaper that is a SUBSET of `escapeRelease`, which puts
-    // this module back outside the chokepoint. Pinned as the trade it is.
-    expect(roundTrip({ ...ACCEPT, interchangeControlNumber: "0000?0001" })).toMatchObject({
-      raw: "TA1*0000??0001*260601*1200*A*000", // was TA1*0000?0001*260601*1200*A*000
-      ackCode: "A", // "A" at base too - no framing was ever at stake here
-      controlNumber: "0000??0001", // was "0000?0001"
-    });
-    expect(roundTrip({ ...ACCEPT, interchangeControlNumber: "0000:0001" })).toMatchObject({
-      raw: "TA1*0000?:0001*260601*1200*A*000",
-      ackCode: "A",
-      controlNumber: "0000?:0001", // was "0000:0001"
-    });
-    expect(roundTrip({ ...ACCEPT, interchangeControlNumber: "0000^0001" })).toMatchObject({
-      raw: "TA1*0000?^0001*260601*1200*A*000",
-      ackCode: "A",
-      controlNumber: "0000?^0001", // was "0000^0001"
-    });
+  it("🛑 what releasing the REST of the set costs, and where it is a GAIN instead", () => {
+    // TWO drafts of this case were refuted. Pass 1 killed "the one class whose
+    // bytes get worse"; pass 2 measured the replacement ("released for no
+    // framing gain") INVERTED. Only `*`, `~` and a `?` immediately before the
+    // separator ever shifted the segment's own element framing. `^` and `:`
+    // moved the DOT-PATH reader, which unescapes, so releasing them is a gain
+    // there. The pure cost is a MID-STRING `?`, on the raw surfaces only.
+    //
+    // The base column below is the segment `buildTA1` returned at `e8f34b9`:
+    // the caller value verbatim, since it released nothing. Read with the same
+    // unchanged reader, so the only variable is the bytes.
+    const D = { element: "*", repetition: "^", component: ":", segment: "~" } as const;
+    // `Ta1Segment` carries no `id`, so a dot-path read of a `buildTA1` result
+    // needs one added. Both sides below do it the same way, so it is not a
+    // variable in the comparison.
+    const asBuiltAtBase = (icn: string): X12Segment => {
+      const elements = Object.freeze(["TA1", icn, "260601", "1200", "A", "000"]);
+      return Object.freeze({ id: "TA1", raw: elements.join("*"), elements });
+    };
+    const dotPath = (seg: { raw: string; elements: readonly string[] }): X12Segment =>
+      Object.freeze({ id: "TA1", raw: seg.raw, elements: seg.elements });
+
+    // `^`: the reassociation key was SILENTLY TRUNCATED to repetition 0.
+    expect(getSegmentValue(asBuiltAtBase("0000^0001"), "01", D)).toBe("0000");
+    expect(getAllSegmentValues(asBuiltAtBase("0000^0001"), "01", D)).toEqual(["0000", "0001"]);
+    const caret = buildTA1({ ...ACCEPT, interchangeControlNumber: "0000^0001" });
+    expect(caret.raw).toBe("TA1*0000?^0001*260601*1200*A*000");
+    expect(getSegmentValue(dotPath(caret), "01", D)).toBe("0000^0001"); // the whole key now
+    expect(getAllSegmentValues(dotPath(caret), "01", D)).toEqual(["0000^0001"]);
+
+    // `:`: the same shape one level down, on a composite-aware read.
+    expect(getSegmentValue(asBuiltAtBase("0000:0001"), "01-1", D)).toBe("0000");
+    const colon = buildTA1({ ...ACCEPT, interchangeControlNumber: "0000:0001" });
+    expect(colon.raw).toBe("TA1*0000?:0001*260601*1200*A*000");
+    expect(getSegmentValue(dotPath(colon), "01-1", D)).toBe("0000:0001");
+
+    // A MID-STRING `?` is the pure cost, and ONLY on the raw surfaces: every
+    // dot-path read unescapes and answers the same value on both trees.
+    expect(getSegmentValue(asBuiltAtBase("0000?0001"), "01", D)).toBe("0000?0001");
+    const mid = buildTA1({ ...ACCEPT, interchangeControlNumber: "0000?0001" });
+    expect(mid.raw).toBe("TA1*0000??0001*260601*1200*A*000"); // was TA1*0000?0001*…
+    expect(getSegmentValue(dotPath(mid), "01", D)).toBe("0000?0001"); // unchanged
+    expect(mid.elements[1]).toBe("0000??0001"); // raw surface, and this is the cost
   });
 
   it('🛑 the predicate moves in BOTH directions: `ackCode === "R"` STARTS firing here', () => {

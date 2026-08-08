@@ -51,13 +51,17 @@
  *   `interchangeTime: "12*A"` with `ackCode: "R"` read `"A"` before and
  *   reads `"R"` here, every field a valid member of its union. What is
  *   one-directional is the safety, which is a different statement.
- * - **Only three values in the escaped set ever shifted an element**: the
- *   element separator, the segment terminator, and a `?` immediately
- *   before the separator. A MID-STRING `?`, a `:` and a `^` were emitted
- *   verbatim before and are released now, for no framing gain. They are
- *   released anyway because the alternative is an escaper that is a subset
- *   of `escapeRelease`, which would put this module back outside the
- *   type-checking chokepoint. Stated as the trade it is.
+ * - **Only three values in the escaped set ever shifted the segment's own
+ *   element framing**: the element separator, the segment terminator, and
+ *   a `?` immediately before the separator. **`^` and `:` moved the
+ *   dot-path reader instead, and releasing them is a GAIN there.**
+ *   `getSegmentValue(ta1, "01")` answered `"0000"` before for a control
+ *   number of `"0000^0001"`, truncating the reassociation key to the first
+ *   repetition, and answers `"0000^0001"` here; the composite read `"01-1"`
+ *   answered `"0000"` for `"0000:0001"`. **The measured pure cost is a
+ *   MID-STRING `?`, and only on the surfaces documented as raw** - every
+ *   dot-path read unescapes and answered the same value on both. No total
+ *   is published: that is what was measured, not a closed account.
  * - **`parseTA1` reads elements RAW, pre-`?`-unescape**, exactly as
  *   `X12Segment.elements` has always documented. So a control number of
  *   `"00000001?"` now reads back as `"00000001??"` rather than as

@@ -127,9 +127,10 @@ export function unescapeRelease(
  * the untyped-refusal defect this package has fixed elsewhere. This is a pure
  * text utility with no spec, no element and no caller context to name, so
  * `TypeError` is the accurate answer for a wrong-typed argument. **Nothing
- * inside this library can reach it**: all nine builders route every element
+ * inside this library can reach it**: every builder routes its elements
  * through `src/builder/caller-string.ts`, which refuses first with the calling
- * builder's own typed, code-tagged error. This throw is the backstop for a
+ * builder's own typed, code-tagged error. (No count: it is asserted by
+ * `test/builder-string-type.test.ts` and was stale here.) This throw is the backstop for a
  * consumer calling the export directly, where the alternative was silent data
  * loss.
  *

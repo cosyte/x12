@@ -69,24 +69,34 @@ disposition the caller did not ask for. **Do not compress that into "the predica
 - **A value containing none of the four delimiters and no `?` is emitted byte-for-byte as before**,
   and that is every conformant TA1: TA1-01 echoes ISA-13, TA1-02 / TA1-03 echo ISA-09 / ISA-10, and
   TA1-04 / TA1-05 are code list values. Pinned.
-- **🛑 THE CLASS THAT GETS WORSE IS NOT ONE CLASS, AND A DRAFT CALLING IT "the one class" WAS REFUTED
-  IN PASS 1.** Only three values in the escaped set ever shifted a TA1 element: the element
-  separator, the segment terminator, and a `?` IMMEDIATELY BEFORE the separator. **Everything else in
-  the set was verbatim and round-tripped at base and does not here** - a MID-STRING `?`, a `:` and a
-  `^` are released, so the key reads back `"0000??0001"`, `"0000?:0001"` and `"0000?^0001"`, longer
-  in bytes than the caller passed. So is a caller who was hand-rolling the escape, the remedy
-  `KNOWN-LIMITATIONS.md` published while this was open: `"00000001??"` in, `TA1*00000001????*…` out.
-  Framing and disposition stay correct for all of them; what stops round-tripping through this
-  package's own reader is the reassociation key. All pinned.
-- **Releasing those anyway is a DECISION, and this is its whole argument.** `?` has no choice:
-  `escapeRelease` / `unescapeRelease` are a bijective pair only if the release character is ALWAYS
-  released, so releasing it conditionally on position would break the invariant the fix rests on.
-  `:` and `^` do have a choice, and they are released because the alternative is a bespoke escaper
-  that is a SUBSET of `escapeRelease` - which puts `buildTA1` back outside `makeCallerEscaper`, the
-  chokepoint whose absence this whole class came from, and which
-  `test/builder-string-type.test.ts` requires of every builder module. **Uniformity with the declared
-  set was worth more than three byte-identical shapes. Record it as the trade it is; never restate it
-  as free.**
+- **🛑 WHAT RELEASING THE REST OF THE SET COSTS - AND TWO DRAFTS OF THIS BULLET WERE REFUTED, THE
+  SECOND BY THE CORRECTION TO THE FIRST.** Pass 1 killed "the one class whose bytes get worse"; the
+  replacement said the remaining values were released "for no framing gain" and pass 2 measured that
+  **inverted**. What is actually true, measured on both trees:
+  - Only `*`, `~` and a `?` IMMEDIATELY BEFORE the separator ever shifted the segment's own element
+    framing. That much survives.
+  - **`^` and `:` moved this package's DOT-PATH reader, and releasing them is a GAIN there.**
+    `getSegmentValue(ta1, "01")` answered **`"0000"`** at base for a control number of
+    `"0000^0001"` - the reassociation key silently truncated to repetition 0, because that reader
+    splits repetitions with `splitWithRelease` - and answers `"0000^0001"` here. The composite read
+    `"01-1"` answered `"0000"` at base for `"0000:0001"` and answers the whole value here.
+  - **The measured pure cost is a MID-STRING `?`, and only on the surfaces documented as RAW.**
+    `raw`, `elements` and `parseTA1`'s fields read `"0000??0001"` where they read `"0000?0001"`;
+    every dot-path read unescapes and answered `"0000?0001"` on BOTH trees.
+  - **A caller who was hand-rolling the escape regresses on both kinds of surface** - the remedy
+    `KNOWN-LIMITATIONS.md` published while this was open. `"00000001??"` in, `TA1*00000001????*…`
+    out, and `getSegmentValue` answering `"00000001??"` where it answered `"00000001?"`.
+  - **NO TOTAL IS PUBLISHED. This is what was measured, not a closed account** - which is the lesson
+    of the two refuted drafts, not a hedge added after them.
+- **Releasing `:` and `^` was a DECISION BEFORE it was measured to be a gain, and the argument that
+  carried it stands on its own.** `?` has no choice: `escapeRelease` / `unescapeRelease` are a
+  bijective pair only if the release character is ALWAYS released, so releasing it conditionally on
+  position would break the invariant the fix rests on. `:` and `^` did have a choice, and the
+  alternative was a bespoke escaper that is a SUBSET of `escapeRelease` - which puts `buildTA1` back
+  outside `makeCallerEscaper`, the chokepoint whose absence this whole class came from, and which
+  `test/builder-string-type.test.ts` requires of every builder module. **Record that ordering
+  honestly: uniformity was the reason, the dot-path gain was found afterwards by a refuter, and the
+  slice does not get to claim it foresaw it.**
 - **🩺 The READ half did not move and must not be read as if it had.** `parseTA1` reads elements RAW,
   pre-`?`-unescape, exactly as `X12Segment.elements` has always documented, so `"00000001?"` now
   reads back as `"00000001??"` rather than as `"00000001?*260601"`. **The disposition is correct

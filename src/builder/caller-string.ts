@@ -42,8 +42,10 @@
  * The interchange is frozen, successful-looking, and missing **CLP-01**, which
  * TR3 005010X221A1 Loop 2100 marks required and which is the reassociation key
  * back to the 837's CLM-01. Losing it silently breaks the claim-to-payment
- * link. The same `esc` helper carries every string element of all nine
- * builders, so the class is not one field.
+ * link. The same `esc` helper carried every string element of every builder
+ * that declared one, so the class was not one field. (No count here: this
+ * module publishes none, on the rule that a count beside the gate that asserts
+ * it drifts. `test/builder-string-type.test.ts` holds them.)
  *
  * **The builder's own required-field guard does not catch it, and that is the
  * sharpest part.** `build-835.ts` refuses `patientControlNumber === ""` by
@@ -307,10 +309,12 @@ export function requireCallerString(
 /**
  * Build a builder's `esc` helper: check the type, then escape.
  *
- * Every one of the nine builder modules constructs its escaper here rather than
+ * EVERY builder module that declares an `esc` constructs it here rather than
  * writing `(value) => escapeRelease(value, delimiters)` inline, so the decision
  * above is applied at one site and `test/builder-string-type.test.ts` can prove
- * it by scanning for the shape.
+ * it by scanning for the shape. **That gate holds the count; this line does
+ * not, deliberately** - the figure was published here as "nine" and stayed
+ * nine when `X12-TA1-EMIT-NOT-RELEASE-AWARE` made it ten.
  *
  * @param delimiters the resolved delimiter set for this interchange
  * @param at a library-owned locator naming the builder, e.g. `"build835"`

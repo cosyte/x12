@@ -204,17 +204,20 @@ model.
     read `"A"` before and reads `"R"` now, with every field a valid member of its union.
     `ackCode === "A"` moves the same two ways. What is one-directional is the safety, which is a
     different statement: nothing now reports a disposition the caller did not ask for.
-  - **Three values in the escaped set ever shifted an element; the rest of the set gets longer bytes
-    for nothing.** `*`, `~` and a `?` immediately before the separator are the three. A **mid-string
-    `?`**, a `:` and a `^` were emitted verbatim before and are released now, so `"0000:0001"` reads
-    back as `"0000?:0001"` and `"0000?0001"` as `"0000??0001"`: the disposition is unaffected and
-    the reassociation key stops round-tripping through this library's own reader. They are released
-    anyway because the alternative is an escaper that is a **subset** of `escapeRelease`, which
-    would put `buildTA1` back outside the type-checking chokepoint this fix routes it through.
+  - **What releasing the REST of the set costs, and where it does not cost.** Only `*`, `~` and a
+    `?` immediately before the separator ever shifted the segment's own element framing. **`^` and
+    `:` moved the dot-path reader instead, and releasing them is a gain there:**
+    `getSegmentValue(ta1, "01")` answered `"0000"` through `0.0.14` for a control number of
+    `"0000^0001"`, silently truncating the reassociation key to the first repetition, and answers
+    `"0000^0001"` now; the composite read `"01-1"` answered `"0000"` for `"0000:0001"` and answers
+    the whole value now. **The measured pure cost is a mid-string `?`, and only on the surfaces
+    documented as raw**: `raw`, `elements` and `parseTA1`'s fields read `"0000??0001"` where they
+    read `"0000?0001"`, while every dot-path read unescapes and answered `"0000?0001"` on both.
+    No total is published: that is what was measured, not a closed account.
   - **A caller who was hand-rolling the escape** (the remedy this file named while the defect was
-    open) is in that class too, and now escapes twice: `"00000001??"` in, `TA1*00000001????*…` out.
-    The framing and the disposition stay correct and only the key carries the extra pair, but
-    **drop the hand-rolled escape.**
+    open) regresses on both kinds of surface: `"00000001??"` in, `TA1*00000001????*…` out, and
+    `getSegmentValue` answering `"00000001??"` where it answered `"00000001?"`. The framing and the
+    disposition stay correct, but **drop the hand-rolled escape.**
   - **An EMPTY control number is not refused and never was.** `escapeRelease` early-returns on `""`
     and `buildTA1` carries no required-field guard, so `interchangeControlNumber: ""` emits
     `TA1**260601*1200*A*000` with `warnings: []`, here and at every earlier release. Only a

@@ -86,10 +86,15 @@ or financial value on the wire.**
   STARTS" WAS REFUTED IN ONE PROBE. STATE THE PROPERTY, NEVER THE DIRECTIONS:** head reports the
   disposition THE CALLER PASSED, base reported whatever the shift left in slot 4, so `ackCode === "R"`
   both STOPS and STARTS (`interchangeTime: "12*A"` + `ackCode "R"` read `"A"` at base, all fields
-  in-enum). **ONE-WAY IS THE SAFETY, A DIFFERENT SENTENCE.** **THE CLASS THAT GETS WORSE IS NOT ONE
-  CLASS EITHER:** only `*`, `~` and a `?` BEFORE the separator ever shifted; a MID-STRING `?`, `:`
-  and `^` round-tripped at base and no longer do, alongside a caller who hand-rolled the escape.
-  **THE READ HALF DID NOT MOVE:** `parseTA1` is still pre-`?`-unescape.
+  in-enum). **ONE-WAY IS THE SAFETY, A DIFFERENT SENTENCE.**
+- **🛑 TWO DRAFTS OF THE COST BULLET WERE REFUTED, THE SECOND BY THE CORRECTION TO THE FIRST. NEVER
+  TOTAL IT.** "The one class that gets worse" (pass 1) and "the rest is released for no framing gain"
+  (pass 2, **inverted** by measurement). What holds: only `*`, `~` and a `?` BEFORE the separator
+  ever shifted the SEGMENT's framing; **`^` and `:` moved the DOT-PATH reader and releasing them is a
+  GAIN** (`getSegmentValue(ta1, "01")` answered `"0000"` at base for `"0000^0001"`, the key truncated
+  to repetition 0); **the measured pure cost is a MID-STRING `?` on the RAW surfaces only**, since
+  every dot-path read unescapes. A hand-rolled escape regresses on both. **THE READ HALF DID NOT
+  MOVE:** `parseTA1` is still pre-`?`-unescape.
 - **🛑 RELEASE ONLY AGAINST THE DELIMITER SET THE CALLER STATES** (`BuildTA1Options` took
   `Build999EnvelopeSpec`'s other three; they exist for ESCAPING and `buildTA1` still emits no
   terminator). `unescapeRelease` keeps `?X` verbatim, so releasing against a GUESSED delimiter

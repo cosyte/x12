@@ -33,12 +33,17 @@ with every field a valid member of its union. `ackCode === "A"` moves the same t
 one-directional is the safety, which is a different statement: nothing now reports a disposition the
 caller did not ask for.
 
-**Three values in the escaped set ever shifted an element, and the rest of the set gets longer bytes
-for nothing.** A mid-string `?`, a `:` and a `^` were emitted verbatim before and are released now,
-so a control number of `"0000:0001"` reads back as `"0000?:0001"`. They are released anyway because
-the alternative is an escaper that is a subset of `escapeRelease`, which would put `buildTA1` back
-outside the type-checking chokepoint. If you were escaping the value yourself, as
-`KNOWN-LIMITATIONS.md` advised while this was open, drop that: you are now escaping twice.
+**What releasing the rest of the set costs, and where it does not cost.** Only `*`, `~` and a `?`
+immediately before the separator ever shifted the segment's own element framing. `^` and `:` moved
+the dot-path reader instead, and releasing them is a gain there: `getSegmentValue(ta1, "01")`
+answered `"0000"` before for a control number of `"0000^0001"`, silently truncating the
+reassociation key to the first repetition, and answers `"0000^0001"` now; the composite read
+`"01-1"` answered `"0000"` for `"0000:0001"` and answers the whole value now. The measured pure cost
+is a mid-string `?`, and only on the surfaces documented as raw: `raw`, `elements` and `parseTA1`'s
+fields read `"0000??0001"` where they read `"0000?0001"`, while every dot-path read unescapes and
+answered `"0000?0001"` on both. No total is published. If you were escaping the value yourself, as
+`KNOWN-LIMITATIONS.md` advised while this was open, drop that: you are now escaping twice, on both
+kinds of surface.
 
 **The read half did not move.** `parseTA1` still reads elements RAW, pre-`?`-unescape, exactly as
 `X12Segment.elements` has always documented, so a control number of `"00000001?"` now reads back as
