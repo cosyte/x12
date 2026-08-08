@@ -193,17 +193,16 @@
  *   - AN EMBEDDED SEGMENT UNDER A NON-DEFAULT ELEMENT SEPARATOR IS NOT REACHED.
  *     There is no ISA in an embedded run to declare the delimiters, so the pass
  *     assumes `*`. Narrower than the base state rather than wider than it.
- *   - THE EMBEDDED PASS SKIPS A NAME ELEMENT THAT IS NOT NAME-SHAPED, AND AN ID
- *     ELEMENT CARRYING ANYTHING BUT ASCII ALPHANUMERICS, `.`, `_` OR `-`. A run
- *     found in prose ends at whatever punctuation comes first and can swallow the
- *     sentence around it; both narrowings apply to the EMBEDDED pass only and the
- *     whole-file `.edi` path keeps the base rules unchanged. **SAY THE ID RULE IN
- *     FULL: a draft of this line said "that carries whitespace", which is far
- *     narrower than the predicate and reads as though a `'`- or `;`-bearing id is
- *     still checked.**
+ *   - THE EMBEDDED PASS SKIPS A NAME ELEMENT `EMBEDDED_NAME_SHAPED` REJECTS AND
+ *     AN ID ELEMENT `EMBEDDED_ID_SHAPED` REJECTS. **READ THOSE TWO PREDICATES; DO
+ *     NOT PARAPHRASE THEM HERE** - three successive paraphrases of the id one were
+ *     published and all three were measured too narrow. A run found in prose ends
+ *     at whatever punctuation comes first and can swallow the sentence around it;
+ *     both narrowings apply to the EMBEDDED pass only and the whole-file `.edi`
+ *     path keeps the base rules unchanged.
  *   - A NAME TOKEN WITH NO ASCII LETTER IN IT IS DROPPED BY `nameTokens`, ON BOTH
- *     ROUTES. So the `\p{L}` name class buys MIXED-SCRIPT elements and nothing
- *     else: a wholly non-Latin surname is skipped in a `.ts` literal AND in an
+ *     ROUTES. So the `\p{L}` name class buys only elements in which `nameTokens`
+ *     still finds one: a wholly non-Latin surname is skipped in a `.ts` literal AND in an
  *     `.edi` file, identically at base. PRE-EXISTING, disclosed, not closed here -
  *     widening `nameTokens` changes the whole-file path, which nothing else in
  *     this slice does.
@@ -1146,9 +1145,11 @@ function pushHit(hits: Hit[], path: string, segment: string, value: string, reas
  * reported clean. What this widening buys is MIXED-SCRIPT elements only:
  * `nameTokens` still drops any token with no ASCII letter in it, on BOTH routes,
  * so a wholly non-Latin surname is missed here and in an `.edi` file alike.
- * That gap is PRE-EXISTING and is disclosed in the header rather than closed.
- * **NEVER WRITE THE UNQUALIFIED FORM ("a surname is not an ASCII string, so this
- * catches one") - a draft did, in four places at once.**
+ * What this class buys is exactly the elements the ASCII class rejected while
+ * `nameTokens` still finds an ASCII letter in them. That gap is PRE-EXISTING and
+ * is disclosed in the header rather than closed. **NEVER WRITE THE UNQUALIFIED
+ * FORM ("a surname is not an ASCII string, so this catches one") - a draft did,
+ * in four places at once.**
  *
  * 🩺 AND THE APOSTROPHE IS IN THIS CLASS ONLY BECAUSE `EMBEDDED_RUN_STOP` NO
  * LONGER STOPS AT ONE - the two constants have to be read together. While `'`
@@ -1377,9 +1378,10 @@ const EMBEDDED_SEGMENT_RE = new RegExp(
  * where the double-quoted form exits 1, and a single-quoted name element in a
  * multi-declarator `const` loses its last token the same way. Both the qualifier-
  * 34 SSN and the member id are shapes `scanCommonShapes` does NOT cover. It is a
- * bound of this pass, not a regression (base scanned none of these files), it is
- * listed with the others at `scanEmbeddedSegments`, and the remedy is NEVER to
- * put `'` back - that trades a rare literal style for every apostrophe surname.
+ * bound of this pass and NOT a regression - measured 0 at base on every route,
+ * `src/**` included - it is listed with the others at `scanEmbeddedSegments`, and
+ * the remedy is NEVER to put `'` back: that trades a rare literal style for every
+ * apostrophe surname.
  */
 const EMBEDDED_RUN_STOP = /["`~\\\n\r]/;
 

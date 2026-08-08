@@ -38,7 +38,7 @@ Three corners, each measured and each a committed test:
   `X12-837-SV-UNDEFINED-DECIMAL`, `elementDecimal` answers `undefined` for an absent element, and
   the assignment is unconditional, so `SV1*HC:99214**UN*1***1~` following an `8500` leaves the line
   with no charge at all. **`X12_837_SERVICE_LINE_NOT_DECODED` does NOT fire there**, because
-  `serviceSegmentDecoded` is true: a service segment *did* decode. That makes the new code the only
+  `serviceSegmentDecoded` is true: a service segment _did_ decode. That makes the new code the only
   thing on the channel that explains the empty slot.
 - **A service segment whose kind does not match the resolved variant is read into nothing.**
   `decodeSvN` returns on its variant check, so it overwrites nothing and what it carries reaches no
@@ -123,6 +123,7 @@ a regression.** Both were corrected to say what is now true; the second grew an
 
 Verify: **11 of 11 steps in `ran:`** (audit, licenses, typecheck, lint, format:check, phi-scan,
 check:no-emdash, test:coverage, build, attw, verify:exports), green. **No suite total is published**
+
 - one was, and it went stale inside this slice, for the same reason the census did. Derive it.
 
 ## Budget

@@ -128,12 +128,15 @@ function interchange(...bodySegments: string[]): string {
  *
  * So the framing is built at run time and the VALUES STAY LEGIBLE IN THE SOURCE.
  * Nothing is obscured: `SMITH`, `ROBERT` and the SSN digits are all right there
- * to read. What is absent is a `NM1*`, `DMG*`, `PER*` or `nnn-nn-nnnn` RUN for a
- * scanner to frame, which is the only thing that made this file a hit.
+ * to read. What is absent is a RUN, around those values, for a scanner to frame.
  *
- * This is NOT a claim that the widened gate cannot see this file. It reads it on
- * all three routes, and a literal violator written here reds the gate - which is
- * exactly what the `phi-scan: this file's own controls` case below asserts.
+ * 🛑 SAY THAT OF THE VIOLATOR CONTROLS AND OF NOTHING ELSE. This file ALSO holds
+ * plenty of unassembled literal segments - the CLEAN ones - and the embedded pass
+ * frames every one of them and clears them on their VALUES, not because anything
+ * was assembled. A draft generalised this paragraph over the whole file and a
+ * refuter measured it false. It is not a claim that the gate cannot see this
+ * file: it reads it on all three routes, and a literal violator written here reds
+ * the gate, which is what the `phi-scan: this file's own controls` case asserts.
  */
 function seg(...elements: string[]): string {
   return `${elements.join("*")}~`;

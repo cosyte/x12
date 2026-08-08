@@ -643,3 +643,31 @@ Verbatim, two pieces.
 > - **🩺 The 278 certification decision is response-only and never inferred:** `build278Response`
 >   places HCR-01 VERBATIM and never normalizes or **upgrades** it; `build278Request` REFUSES a review
 >   carrying one.
+
+### 10.8 Four `phi-scan` imperatives that left `CLAUDE.md` and were not landed anywhere (2026-08-08)
+
+**PASTED VERBATIM FROM `7d50305`'s `CLAUDE.md`, NOT REWRITTEN.** A refuter measured that
+`PHI-SCAN-WALK-ROOT-SCOPE`'s compression of that trap section dropped these four outright: they were
+removed from `CLAUDE.md` and appeared in no agent-notes file, which is the exact trade ADR 0023
+exists to prevent and which the note claiming "Nothing was dropped" asserted had not happened. They
+govern the `--staged` commit-blocking route's own semantics.
+
+> - **▶ 🩺 THE `--staged` ARGV IS THE GATE AND EVERY FLAG IN IT IS LOAD-BEARING; NEVER SHORTEN IT. ONE
+>   RULE: DO NOT TRUST THE CALLER'S GIT CONFIG.** Five holes, all exit 0 over PHI, closed by
+>   `--no-renames --ignore-submodules=none --diff-filter=AMTUB`. `T` is what
+>   makes the mode check reachable. **`U` is closed by the FILTER, not `--no-renames`; never conflate
+>   them**, and it refuses FIRST with its OWN message (mode `000000`). **ZERO stride work. Never add `-M`, `-C` or `--find-copies-harder`** - each
+>   re-empties the route. **No test may run `git merge`** - it reds on CI on its own premise; stage the
+>   conflict with `update-index`.
+> - **▶ 🩺 QUOTE THE CLASSIFICATION, NEVER THE LETTER: `--diff-filter` classifies a broken pair as `B`
+>   WHATEVER LETTER IT PRINTS** (what `-B` prints instead: relocated narrative §8). **A short fixture
+>   does NOT break; the case needs bulk. NEVER RECORD A SIMILARITY
+>   SCORE** - it drifts; **DELETE a drifting number, never correct it.**
+>   **"Strict superset" REFUTED; EQUAL absent a rename/copy/gitlink/unmerged path.**
+> - **🩺 Both enumerating routes REFUSE a symlink (exit 2), naming every offender**; neither FOLLOWS
+>   an ENTRY it enumerated. Say ENTRY, not "anything": **a walk ROOT that is itself a link IS
+>   followed** - a superset, not blind. **🔴 AND NOTHING UNDER SUCH A ROOT IS RECONCILED** (its files
+>   are outside the `git ls-files` pathspec), so an EMPTIED link target reads **exit 0**.
+>   PRE-EXISTING, OPEN: **the closure is "within the declared roots", NOT a universal.** **A refusal
+>   NEVER reports the link target:** a diagnostic ABOUT a PHI leak is itself a PHI surface, so
+>   describe the shape, never exemplify it.

@@ -103,8 +103,7 @@ became false; what changed is that the third remedy shipped.
   slice both say the `CLM`-open `NM1*87` "lands in `claim.providers`". Measured here, head and base:
   that holds only where **no Loop 2400 is open**. With one open it lands on that line's
   `serviceLine.providers` instead - `get-837.ts` tests `currentServiceLine` FIRST and only falls to
-  `currentClaim` when no line is open - and a provider at line level is TR3 Loop **2420**, not
-  2310. **NAME THE LOOP, NEVER ITS LETTER SPAN:** a remedy draft wrote `2420A-H`, which is 837P's
+  `currentClaim` when no line is open - and a provider at line level is TR3 Loop **2420**, not 2310. **NAME THE LOOP, NEVER ITS LETTER SPAN:** a remedy draft wrote `2420A-H`, which is 837P's
   range, on a sentence generalized over P/I/D whose I and D ranges are shorter - the census shape
   `X12-VARIANT-LOOKUP-PROTOTYPE` forbids, committed while fixing a different overclaim. Cut back to
   `2420`, which is how the rest of this repo already writes it.
@@ -117,4 +116,3 @@ became false; what changed is that the third remedy shipped.
 - **DEFERRED, EXPLICITLY, AND NOT STARTED HERE: the `X12Decimal | undefined` breaking slice.** An
   absent required `SV1-02` still reads a confident `0`. It is its own unit and touching it inside
   this one is what the item forbids.
-

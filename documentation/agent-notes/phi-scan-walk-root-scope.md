@@ -4,9 +4,13 @@ The `x12` leg of the org-wide item. Two sides, each **in addition to** the other
 it: the **enumeration** (what the routes open) and the **recogniser** (what the scanner can see once
 a file is open). Enumerating alone buys the `scanCommonShapes` floor and nothing else.
 
-Also relocated here, under ADR 0023, is the narrative that used to sit in the `phi-scan` trap section
-of `CLAUDE.md`. **Nothing was dropped.** The trap there keeps the imperative; this file carries the
-measurement, the sources and the refutation history.
+Also relocated here, under ADR 0023, is narrative that used to sit in the `phi-scan` trap section of
+`CLAUDE.md`. **DO NOT WRITE "Nothing was dropped" OVER A COMPRESSION - a draft did, and a refuter
+measured four imperatives gone from the tree entirely** (`T` in the diff filter, the `U` path's own
+message and its zero stride work, "a short fixture does NOT break", and "describe the shape, never
+exemplify it"). They are pasted verbatim into `claude-md-relocated-narrative.md` §10.8. The trap in
+`CLAUDE.md` keeps the imperative; this file carries the measurement, the sources and the refutation
+history.
 
 ---
 
@@ -105,15 +109,17 @@ times for breaking. Each below is pinned by a case:
   surname - but **the price is real, and a draft claimed the shape predicates "already handle" the
   overrun when what they do is discard it.**
 - **A name token with no ASCII letter in it is dropped by `nameTokens`, on BOTH routes.** So the
-  `\p{L}` name class buys MIXED-SCRIPT elements and nothing more: a wholly non-Latin surname is
-  skipped in a `.ts` literal and in an `.edi` file alike. PRE-EXISTING and identical at base.
+  `\p{L}` name class buys only elements in which `nameTokens` still finds an ASCII letter: a wholly
+  non-Latin surname is skipped in a `.ts` literal and in an `.edi` file alike. PRE-EXISTING and
+  identical at base.
 - **The segment ids are matched case-sensitively**, as `scanX12` matches them.
-- **It skips an element that is not name-shaped, and an id element carrying anything but ASCII
-  alphanumerics, `.`, `_` or `-`.** A run found in prose ends at whatever punctuation comes first and
+- **It skips a name element that is not name-shaped, and an id element `EMBEDDED_ID_SHAPED` rejects.
+  READ THAT PREDICATE; DO NOT PARAPHRASE IT** - three successive descriptions of it were published
+  and all three were measured too narrow.** A run found in prose ends at whatever punctuation comes first and
   can swallow the sentence around it: before these two predicates, a fenced doc table in
   `test/builder-string-type.test.ts` reported its arrow column as an SSN-qualified id, and an `NM1`
   quoted in a `//` comment in `test/parser-segment.test.ts` reported the following English word as a
-  person name. **Both predicates apply to the EMBEDDED pass only** and the whole-file `.edi` path
+  person name. **Both predicates apply to the EMBEDDED pass only\*\* and the whole-file `.edi` path
   keeps the base rules unchanged, which is asserted with the same bytes on both sides.
 - **A fixture expressed as a BUILDER SPEC OBJECT is segment text to nobody.** `{ lastName: "…" }`
   becomes a segment only when the builder runs. **Found by hand-reading, not by the gate**, and pinned
@@ -145,8 +151,8 @@ the `\p{L}` class catches one" - a draft published exactly that, in four places 
 measured it false.** `nameTokens` filters tokens with `/[A-Za-z]/` and that line is untouched by this
 slice, so a token with **no ASCII letter at all** is dropped after the class admits it. Measured at
 head, both routes, all exit 0: a Cyrillic name, a Greek one and a Han one. What the class widening
-actually buys is **MIXED-SCRIPT elements** - the tilde-n and acute-accent case above - and nothing
-more. The wholly non-Latin gap is PRE-EXISTING, measures identically on the `.edi` route at base, and
+actually buys is the elements the ASCII class rejected while `nameTokens` still finds an ASCII letter
+in them - the tilde-n and acute-accent case above - and nothing more. The wholly non-Latin gap is PRE-EXISTING, measures identically on the `.edi` route at base, and
 is disclosed rather than closed: widening `nameTokens` would change the whole-file path, which
 nothing else in this slice does.
 
@@ -268,13 +274,13 @@ commits under. `SMITH` survives in two files as an org name (`SMITH CLINIC`) and
 surname in a **builder spec object**, both read and neither PHI - and the spec-object one is the
 disclosed reach gap above, not a clearance.
 
-**🛑 STATE THE CRITERION, NEVER A LIST - THE LIST WENT STALE INSIDE ONE COMMIT.** A draft named
-`2124440101` (the fictional non-555 biller's phone in the gate's own controls) on the ground that
-**assembling a control moves its value out of the gate's view**, and the same commit added seven more
-values of exactly that class without naming them. The rule instead: **every PHI-SHAPED value in
-`test/scripts/phi-scan.test.ts` is invented for a detector to trip on, and assembling the controls
-puts all of them out of the gate's view.** None is PHI, none is attributable to anyone, and
-"nothing is obscured" is true of the values as written in the source and not of what the gate sees.
+**🛑 THE GATE'S OWN TEST FILE HAS HAD THREE DESCRIPTIONS AND ALL THREE WERE MEASURED FALSE.** A list
+of which of its values the gate can and cannot see went stale inside one commit; the universal that
+replaced it ("all of them are out of the gate's view") was false too, because that file still holds
+unassembled literals the embedded pass frames and clears on their values. **Publish the MEASUREMENT
+and nothing else, and re-derive it every run:** `pnpm phi-scan` exits 0 over the whole tree,
+`test/scripts/phi-scan.test.ts` included. What is true of the ASSEMBLED controls specifically is
+written where they are built, not here.
 
 ## Residuals, all PRE-EXISTING and all disclosed
 
@@ -293,9 +299,7 @@ puts all of them out of the gate's view.** None is PHI, none is attributable to 
   verbatim** - which this widening does, over 85 more files. Still deferred, and the reason is still
   direction: the remedy TOLERATES a failed read, which pulls against every other rule here.
 - **60 tracked files remain outside both routes at head.** Named above, and **re-derive rather than trusting that number** - it moves with every file the next slice adds.
-- **🩺 THIS NOTE AND `scripts/phi-scan.ts` BOTH CARRY LITERAL SEGMENT RUNS**, in the tables and
-  docblocks that record what the apostrophe bug hid. Both files are outside the walk roots today, so
-  nothing scans them - **a widening to `documentation/` or `scripts/` reds the gate on the very files
-  that document it.** The changeset was deliberately written without such runs, because
-  `changeset version` copies its summary verbatim into `CHANGELOG.md`; these two were not. Latent,
-  named here rather than left to be rediscovered by whoever takes the next scope slice.
+- **🩺 THIS NOTE CARRIES LITERAL SEGMENT RUNS** in the tables that record what the apostrophe bug
+  hid, and it is outside the walk roots today, so nothing scans it. Measured on the `paths` route:
+  **a widening to `documentation/` reds the gate on this note.** Latent, named here rather than left
+  to be rediscovered by whoever takes the next scope slice.
