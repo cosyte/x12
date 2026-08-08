@@ -572,3 +572,102 @@ The bullet still says the race is deferred and that the reason is DIRECTION:
 
 > Its remedy TOLERATES a failed read; these two rules NARROW what the enumeration admits. Mixing the
 > two directions in one change is what makes a widening reintroduce the race verbatim.
+
+## 10. Per-transaction-invariant narrative relocated by `PHI-SCAN-WALK-ROOT-SCOPE` (2026-08-08)
+
+Relocated to pay for that slice's trap block. `CLAUDE.md` stood at **52,708 of a 52,708-byte entry**
+with **zero** headroom, and the walk-root-scope slice found a real defect (`REQUIRED_DIRECTORIES`)
+that had to be recordable. **The imperatives all stayed behind.** What moved is the long-form
+explanation of two bullets in `### 🩺 Per-transaction invariants that shipped with the phases`, a
+section whose own header already says the full detail is in the phase sections of
+`documentation/agent-notes.md`. **Nothing was deleted and no trap was touched.** The umbrella owes the
+matching ratchet drop in `.claude/hooks/doc-budget.mjs`, which is **LOWERED on a shrink, never raised
+to meet a trap** - and a drain worker may not write it, so it is reported rather than made.
+
+Verbatim, two pieces.
+
+### 10.1 The 278's EV/SS review level, the one caller-supplied HL-03
+
+> - **🩺 The one caller-supplied HL-03 is the 278's EV/SS REVIEW level** (`review.levelCode`, default
+>   `EV`; `esc` never constrained the value). **Both entry points now REFUSE anything else**
+>   (`X12_278_BUILD_INVALID_SPEC`, no new code): the emit is well-formed but opens a loop no reader
+>   opens, so the review **and its HCR-01 decision FAIL TO DECODE - they are NOT decoded WRONGLY**, and
+>   never write the stronger form. **Resolve via the emitter's own `?? "EV"`, NEVER `!== undefined`** -
+>   `null` is absent, and `undefined`-only refused a spec the emitter would have built. Reaches nested
+>   and dependent reviews. **Do not restate this as a property of `build278`'s HL-03 generally, and do
+>   not write "every builder that has one" over it** - its other four levels are library constants.
+
+### 10.2 The read side never re-numbers a broken HL pointer
+
+> - **🩺 On the READ side the walker NEVER silently re-numbers a broken HL pointer** - it emits
+>   `X12_HL_PARENT_MISMATCH` / `X12_HL_PARENT_LEVEL_INVALID`. The 278 `EV` / `SS` levels are
+>   deliberately tolerant (omitted from the expected-parent map), which is why nothing on the read side
+>   catches an out-of-enum HL-03 on a document this library did not emit. Untouched; a warning needs a
+>   new registry code.
+
+### 10.3 Every DOMAIN builder's own refusal message, and the ack-path exception
+
+> - **🩺 Every DOMAIN builder's own refusal message carries structural locators, counts and numeric
+>   totals only** - never an identifier, a name, a trace or a clinical code. **State this PER BUILDER,
+>   never as a property of every builder.** Standing exception, the **ack path**:
+>   `build999` interpolates the acknowledged ST-02 and `buildTA1` its TA1-05 note code. **The negative
+>   list is NOT an absolute PHI guarantee; it is one about the builder's own TEMPLATES**, which still
+>   render control numbers and codes.
+
+### 10.4 No caller guard echoes what a caller put in an element
+
+> - **🩺 NO CALLER GUARD ECHOES WHAT A CALLER PUT IN AN ELEMENT** - string/segment/decimal and the
+>   array guard's PRIMITIVE arm report the TYPE only. **Never re-add a value, never fold the decimal
+>   one back out. And state the two things this does NOT say, both drafted false once:** the array
+>   guard STILL renders a forged array-like's `length` and class tag (SHAPE, not element contents),
+>   and **only the SEGMENT guard names the slot** (`esc`/`escDec` name the BUILDER).
+
+### 10.5 The profile-quirk hard rule, and how it is enforced
+
+> - **🩺 HARD RULE, LOCKED: a profile quirk with no Tier-2 fixture demonstrating the deviation is
+>   FORBIDDEN. No invented quirks.** Enforced three ways, incl. a per-quirk DEMONSTRATOR registry, so a
+>   real-but-irrelevant fixture cannot slip past. Built-ins reach consumers ONLY via `profiles`.
+
+### 10.6 Why composing builders emit the envelope inline
+
+> - Emit the envelope INLINE, not via `buildInterchange`, in any domain builder that composes a
+>   composite element (835, 837), so a pre-composed composite is never double-escaped. Composites
+>   escape each component then join with the RAW component separator.
+
+### 10.7 The 278 certification decision, and the maintenance-type primitive
+
+> - **🩺 Maintenance type is the 834's safety primitive: emit VERBATIM, refuse the unknown.** The
+>   builder places the caller's INS-03 / HD-01 (code source 875) verbatim and NEVER infers or
+>   normalizes; where the read side only WARNS (`X12_834_UNKNOWN_MAINTENANCE_TYPE`, **scoped to the
+>   affected member only**) the builder REFUSES.
+> - **🩺 The 278 certification decision is response-only and never inferred:** `build278Response`
+>   places HCR-01 VERBATIM and never normalizes or **upgrades** it; `build278Request` REFUSES a review
+>   carrying one.
+
+### 10.8 Four `phi-scan` imperatives that left `CLAUDE.md` and were not landed anywhere (2026-08-08)
+
+**PASTED VERBATIM FROM `7d50305`'s `CLAUDE.md`, NOT REWRITTEN.** A refuter measured that
+`PHI-SCAN-WALK-ROOT-SCOPE`'s compression of that trap section dropped these four outright: they were
+removed from `CLAUDE.md` and appeared in no agent-notes file, which is the exact trade ADR 0023
+exists to prevent and which the note claiming "Nothing was dropped" asserted had not happened. They
+govern the `--staged` commit-blocking route's own semantics.
+
+> - **▶ 🩺 THE `--staged` ARGV IS THE GATE AND EVERY FLAG IN IT IS LOAD-BEARING; NEVER SHORTEN IT. ONE
+>   RULE: DO NOT TRUST THE CALLER'S GIT CONFIG.** Five holes, all exit 0 over PHI, closed by
+>   `--no-renames --ignore-submodules=none --diff-filter=AMTUB`. `T` is what
+>   makes the mode check reachable. **`U` is closed by the FILTER, not `--no-renames`; never conflate
+>   them**, and it refuses FIRST with its OWN message (mode `000000`). **ZERO stride work. Never add `-M`, `-C` or `--find-copies-harder`** - each
+>   re-empties the route. **No test may run `git merge`** - it reds on CI on its own premise; stage the
+>   conflict with `update-index`.
+> - **▶ 🩺 QUOTE THE CLASSIFICATION, NEVER THE LETTER: `--diff-filter` classifies a broken pair as `B`
+>   WHATEVER LETTER IT PRINTS** (what `-B` prints instead: relocated narrative §8). **A short fixture
+>   does NOT break; the case needs bulk. NEVER RECORD A SIMILARITY
+>   SCORE** - it drifts; **DELETE a drifting number, never correct it.**
+>   **"Strict superset" REFUTED; EQUAL absent a rename/copy/gitlink/unmerged path.**
+> - **🩺 Both enumerating routes REFUSE a symlink (exit 2), naming every offender**; neither FOLLOWS
+>   an ENTRY it enumerated. Say ENTRY, not "anything": **a walk ROOT that is itself a link IS
+>   followed** - a superset, not blind. **🔴 AND NOTHING UNDER SUCH A ROOT IS RECONCILED** (its files
+>   are outside the `git ls-files` pathspec), so an EMPTIED link target reads **exit 0**.
+>   PRE-EXISTING, OPEN: **the closure is "within the declared roots", NOT a universal.** **A refusal
+>   NEVER reports the link target:** a diagnostic ABOUT a PHI leak is itself a PHI surface, so
+>   describe the shape, never exemplify it.

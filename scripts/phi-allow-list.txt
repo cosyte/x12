@@ -10,11 +10,19 @@
 # Format: `<TAG> <value>` per line. `#` comments and blank lines are ignored.
 #   NAME <token>         synthetic person/contact-name word (NM1 / PER name elements), case-insensitive
 #   DOB <CCYYMMDD>       synthetic date of birth (DMG*D8), exempt from the date-of-service cutoff
-#   ID <value>           synthetic id that legitimately matches an SSN/EIN/NPI 9-or-10-digit shape
+#   ID <value>           synthetic id: an SSN/EIN/NPI 9-or-10-digit shape, OR an NM1 member id
 #   EMAILDOMAIN <domain> reserved/test email domain that is allowed to appear
 #
 # To add a new synthetic fixture: reuse the tokens below, or append new ones here
 # and commit. Adding a token is a reviewed, intentional act, never silent.
+#
+# AN ENTRY HERE IS GLOBAL AND ROUTE-BLIND, AND THAT IS THE COST OF EVERY LINE IN
+# THIS FILE. It clears that literal for the whole-tree sweep, for `phi-scan
+# <path>`, AND for `pnpm phi-scan --staged`, which is the commit-blocking
+# pre-commit gate. So a NAME token added here is a surname the gate will never
+# flag again, on any route, in any file. That is why the tokens below are
+# placeholders nobody is called rather than plausible names, and why the fix for
+# a plausible one is to change the fixture instead of declaring it.
 
 # --- Synthetic person + contact name tokens (NM1 entity-type-1, PER02) ---
 # Patient / subscriber / dependent placeholders
@@ -57,6 +65,21 @@ NAME COORDINATOR
 NAME AVAILITY
 NAME OPS
 NAME PAYER
+# Placeholders the walk-root widening brought into scope: every one of these is a
+# role word or a `<ROLE><POSITION>` coinage from an INLINE fixture under `test/`,
+# hand-read when the roots widened to cover them. None is a name anyone has.
+NAME FIRST
+NAME MEMBER
+NAME DESK
+NAME CLINIC
+NAME SYNTHLAST
+NAME SYNTHFIRST
+NAME PROPLAST
+NAME PROPFIRST
+NAME SUBLAST
+NAME SUBFIRST
+NAME OLDLAST
+NAME OLDFIRST
 
 # --- Synthetic dates of birth (DMG*D8) ---
 DOB 19750505
@@ -73,6 +96,15 @@ ID 111223333
 ID 444556666
 ID 555667777
 ID 111111111
+# A descending-digit NPI placeholder from an inline 837 fixture. It is not the
+# `123456789`-ascending shape `isSyntheticNpi` recognises, so it is declared.
+ID 1987654320
+# NM1 member ids from inline fixtures under `test/`. They carry no prefix
+# `isSyntheticMemberId` recognises, and renaming them in the fixtures would move
+# values the same tests assert on, so they are declared instead.
+ID SYNTH-MBR-1
+ID PROP-MEMBER
+ID OLD-MEM
 
 # --- Reserved / test email domains ---
 EMAILDOMAIN example.test

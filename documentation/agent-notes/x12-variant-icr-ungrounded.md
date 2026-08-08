@@ -64,11 +64,11 @@ identifier `005010X222`. That grounds the stem-to-claim-type mapping directly.
 
 **Arizona AHCCCS 837 standard companion guide**, three separate transaction sections, verbatim:
 
-| section | GS-08 "Version Identifier Code" | ST-03 "Implementation Convention Reference" |
-| --- | --- | --- |
-| Professional | `Expect 005010X222A1` | `Expect 005010X222A1` |
-| Institutional | `Expect 005010X223A2` | `Expect 005010X223A2` |
-| Dental | `Expect 005010X224A2` | `Expect 005010X224A2` |
+| section       | GS-08 "Version Identifier Code" | ST-03 "Implementation Convention Reference" |
+| ------------- | ------------------------------- | ------------------------------------------- |
+| Professional  | `Expect 005010X222A1`           | `Expect 005010X222A1`                       |
+| Institutional | `Expect 005010X223A2`           | `Expect 005010X223A2`                       |
+| Dental        | `Expect 005010X224A2`           | `Expect 005010X224A2`                       |
 
 **Louisiana Medicaid 5010 EDI general companion guide**, supported-transactions table, verbatim:
 "Health Care Claim: Dental `ASC X12N 837-005010X224A2`; Health Care Claim: Professional

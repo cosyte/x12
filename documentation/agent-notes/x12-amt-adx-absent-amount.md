@@ -15,12 +15,12 @@ qualifier and id, went with the amount.
 
 Reproduced on the base tree at `9db104b`, on all four readers, before anything was designed:
 
-| reader | segment | amount element | at base |
-|---|---|---|---|
-| `get835` | `AMT` (claim and service line) | AMT-02 | `amounts: []`, `warnings: []` |
-| `get837Claims` | `AMT` (claim and service line) | AMT-02 | `amounts: []`, `warnings: []` |
-| `get834Enrollments` | `AMT` (coverage) | AMT-02 | `amounts: []`, member `warnings: []` |
-| `get820Payments` | `ADX` | ADX-01 | `adjustments: []`, `warnings: []` |
+| reader              | segment                        | amount element | at base                              |
+| ------------------- | ------------------------------ | -------------- | ------------------------------------ |
+| `get835`            | `AMT` (claim and service line) | AMT-02         | `amounts: []`, `warnings: []`        |
+| `get837Claims`      | `AMT` (claim and service line) | AMT-02         | `amounts: []`, `warnings: []`        |
+| `get834Enrollments` | `AMT` (coverage)               | AMT-02         | `amounts: []`, member `warnings: []` |
+| `get820Payments`    | `ADX`                          | ADX-01         | `adjustments: []`, `warnings: []`    |
 
 **▶ 🩺 THE ABSENT / UNPARSEABLE DISTINCTION IS THE WHOLE FILING, AND THE WIDER FORM IS FALSE.** An
 **ABSENT** amount element was silent on every channel. A **PRESENT** one holding bytes that do not
@@ -71,8 +71,8 @@ all.
 
 The sweep that goes with it, because "no case moved" is not the same as "no doc went stale":
 `KNOWN-LIMITATIONS.md`, `docs-content/spec-notes-money.md`, `docs-content/troubleshooting.md` and
-`docs-content/cookbook.md` each carried a sentence of the form *"an absent element does not warn"* or
-*"a row whose amount does not decode is sometimes dropped whole instead"*. Every one is now qualified
+`docs-content/cookbook.md` each carried a sentence of the form _"an absent element does not warn"_ or
+_"a row whose amount does not decode is sometimes dropped whole instead"_. Every one is now qualified
 to say what it is actually about - `X12_UNPARSEABLE_DECIMAL` specifically, not silence generally.
 
 **A `PRE-EXISTING` doc defect corrected in passing, disclosed rather than folded in:**

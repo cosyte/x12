@@ -116,9 +116,9 @@ nothing else reported it: the new code was then the sole entry on that channel.
 
 **🩺 The `INTRODUCED` major, and it is the sixth consecutive finding in this lineage that was a claim
 defect rather than a code defect.** The registry message's closing sentence enumerated what else a
-contested document raises: *"a Loop 2400 carrying only a service segment for another variant still
+contested document raises: _"a Loop 2400 carrying only a service segment for another variant still
 raises `X12_837_SERVICE_LINE_NOT_DECODED` at its own LX, and a service segment arriving with no line
-open still raises `X12_837_SERVICE_SEGMENT_WITHOUT_LX` at itself."* The second clause is **false**,
+open still raises `X12_837_SERVICE_SEGMENT_WITHOUT_LX` at itself."_ The second clause is **false**,
 and false on a document that raises this very code: `reportOrphanServiceSegment` returns early on
 `droppedLineReported`, so after a stray `LX` that opened no line, the service segments inside it are
 **silent**. That suppression is deliberate, pre-existing and documented in `KNOWN-LIMITATIONS.md`;
@@ -132,8 +132,8 @@ stray-`LX` route.
 
 **Remedy: cut the claim back, do not grow the guard** - the same correction `#70` and `#80` were
 forced into. The enumeration is deleted from the message and from the troubleshooting row and
-replaced by the invariance statement alone: *whatever this reader raised on such a document before,
-it still raises, at the same position, and this one is added beside them* - explicitly **not** a list
+replaced by the invariance statement alone: _whatever this reader raised on such a document before,
+it still raises, at the same position, and this one is added beside them_ - explicitly **not** a list
 of what else you will see. `CHANGELOG.md` and the changeset carry the same qualifier. **The
 stray-`LX` document is now a committed case** pinning the whole channel and the absence of
 `X12_837_SERVICE_SEGMENT_WITHOUT_LX` on it. No behaviour changed in the remedy; no guard was added.
@@ -152,7 +152,7 @@ appears on neither tree, and the replacement invariance sentence holds including
 `KNOWN-LIMITATIONS.md` and `docs-content/cookbook.md` never carried the enumeration.
 
 One `INTRODUCED` minor, **inside the pass-1 remedy's own prose**, fixed in the ship commit and
-therefore **UNGRADED**: this file said the repo's *fixtures* use `005010X222A1`, which is false - it
+therefore **UNGRADED**: this file said the repo's _fixtures_ use `005010X222A1`, which is false - it
 is three test files, inline, and no fixture. Corrected below. No third pass was spent on it, per
 ADR 0016 and pass 2's own recommendation to land.
 

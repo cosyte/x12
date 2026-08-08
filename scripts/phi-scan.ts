@@ -59,9 +59,10 @@
  * is worth stating because the sentence reads absolute otherwise. A walk root
  * that is ITSELF a link is still followed, because `existsSync` and
  * `readdirSync` both follow: measured identically at base and head, with
- * `test/fixtures` pointing outside, the walk enumerates the target's files
- * under their `test/fixtures/*` names and HITS (exit 1). That direction is a
- * superset scan rather than a blind one, so it is left alone here.
+ * the outermost root pointing outside, the walk enumerates the target's files
+ * under their `<root>/*` names and HITS (exit 1). That direction is a superset
+ * scan rather than a blind one, so it is left alone here. `test/fixtures` is no
+ * longer a walk root, so a link AT that path is an ENTRY now and is refused.
  *
  * `--diff-filter=AMTUB` INCLUDES `T`, AND LEAVING IT OUT MAKES THE MODE CHECK
  * UNREACHABLE FOR AN ALREADY-TRACKED FILE. Replacing a TRACKED regular file
@@ -86,11 +87,12 @@
  * at exit 0 over a payload that hits as an ordinary add. The argv's own comment
  * carries each measurement.
  *
- * "In scope" is each route's own existing boundary, not a new one: the walk
- * still excludes a gitignored entry (the same rule that already excludes a
- * gitignored file, so links do not get a second, stricter boundary of their
- * own), and `--staged` still only looks at `test/fixtures/**` and `src/**.ts`.
- * This narrows what those scopes ADMIT; it does not widen the scopes.
+ * "In scope" is each route's own existing boundary: the walk excludes a
+ * gitignored entry (the same rule that already excludes a gitignored file, so
+ * links do not get a second, stricter boundary of their own), and `--staged`
+ * looks at `test/**` and `src/**`. The non-regular-entry rules NARROW what those
+ * scopes admit and do not widen them; the scopes themselves were widened
+ * separately, by `PHI-SCAN-WALK-ROOT-SCOPE`, and that is described below.
  *
  * `paths` mode is deliberately unchanged, because it was never blind: it reads
  * with `readFileSync`, which FOLLOWS a link, so a named path that is a link to
@@ -119,7 +121,7 @@
  * laid out like this one, against the same synthetic payload, all at exit 0 or a
  * crash before:
  *
- *   - with BOTH walk roots absent, and with `test/fixtures` alone absent, the
+ *   - with BOTH walk roots absent, and with either one alone absent, the
  *     walk returned immediately and all-mode printed `OK - no hits` at exit 0.
  *     A root that never existed is the worst shape of this, because the gate
  *     then reads clean on every run it ever makes and no run looks wrong;
@@ -144,7 +146,7 @@
  *
  * 🩺 SO SAY "WITHIN THE DECLARED ROOTS, AS GIT NAMES THEM", NEVER A UNIVERSAL
  * OVER ANY CORPUS. What the two rules close is a sweep reporting clean over the
- * files `git ls-files` returns for `test/fixtures` and `src`. A corpus reached
+ * files `git ls-files` returns for `test` and `src`. A corpus reached
  * through a SYMLINKED root is not among them, and the first item below is the
  * measured counterexample. A draft stated the universal and a refuter broke it
  * with one tree.
@@ -154,9 +156,9 @@
  *   - A SYMLINKED WALK ROOT'S TARGET CORPUS IS NOT RECONCILED AT ALL, not merely
  *     the root entry that `reconcileObserved` exempts. Everything the walk reads
  *     through the link lives under the target's own names, OUTSIDE the
- *     `git ls-files -- test/fixtures src` pathspec, so the index side of the
- *     comparison is empty for all of it. Measured at head with
- *     `test/fixtures -> ../elsewhere` and a committed `elsewhere/violator.edi`:
+ *     `git ls-files -- test src` pathspec, so the index side of the
+ *     comparison is empty for all of it. Measured at head with the outermost
+ *     root linked outside and a committed violator behind it:
  *     present, exit 1; removed from disk but still in the index, `OK - no hits`
  *     at EXIT 0. That is the EMPTIED-ROOT shape these rules exist to close,
  *     alive through the exempted path. It is PRE-EXISTING (base is exit 0 over
@@ -165,7 +167,7 @@
  *     scope decision as the two below. Disclosed rather than closed.
  *   - A ROOT THAT IS A DIRECTORY THE PROCESS CANNOT READ IS NOT CAUGHT, and this
  *     is the boundary of the first rule rather than a slip in it. Measured
- *     identically at base and at head, with `test/fixtures` at mode `000` over a
+ *     identically at base and at head, with a walk root at mode `000` over a
  *     committed PHI payload: `readdirSync` throws an UNCAUGHT `EACCES` and the
  *     process ends at exit 1, the same shape the regular-file root used to have.
  *     An unreadable SUBDIRECTORY under a root, and the window between
@@ -173,37 +175,60 @@
  *     tolerating or classifying a failed directory read, which is the deferred
  *     enumerate-then-read remedy below pulling in the same direction, so it
  *     belongs there and not here. It is nonzero, so it is not a false clean.
- *   - the `--staged` route's scope is still `test/fixtures/**` plus `src/**.ts`,
- *     and the walk's roots are still `test/fixtures` and `src`. Two consequences
- *     were measured and are left open, both PRE-EXISTING and both a scope
- *     decision rather than this one: a tracked file directly under `test/` is
- *     enumerated by NEITHER route (exit 0 over a payload that hits as an
- *     ordinary fixture), and an index entry at exactly a scan root's own path
- *     (`test/fixtures`, `src`) matches no `--staged` clause, because every
- *     clause tests a `<root>/` PREFIX (exit 0 over the same payload staged
- *     there). NEITHER IS CLOSED BY THE RECONCILIATION ABOVE, and the reason is
- *     worth stating because it reads as though it should be: the reconciliation
- *     checks the walk against the index WITHIN the declared scope, so a path
- *     nothing declares in scope is absent from both sides of the comparison and
- *     the check is silent on it. Widening the scope is the remedy, and it is a
- *     slice of its own because ENUMERATING THOSE FILES BUYS ONLY THE
- *     `scanCommonShapes` FLOOR: they are `.ts` sources whose fixtures are string
- *     literals, so `looksLikeX12` is false for them and the NM1 name, DMG date
- *     of birth, PER phone and service-date recognisers never run. NAME THAT
- *     FLOOR AS THREE DETECTORS AND NEVER AS TWO. A draft of this header said
- *     "the dashed-SSN and email floor" and a refuter measured it false: the
- *     `REF*SY` undashed nine-digit SSN recogniser is NOT segment-aware either,
- *     and it fires on a bare string literal exactly as the other two do. The
- *     two-detector wording understated the deferred scope by precisely the
- *     shape a dashed-SSN regex cannot see, which is the worst direction for it
- *     to be wrong in. Widening the enumeration and widening the recogniser are
- *     two sides of it, each in addition to the other. Measured on this
- *     package's own corpus today, the
- *     current recogniser over the tracked non-fixture files under `test/` finds
- *     8 shapes in exactly one file, `test/scripts/phi-scan.test.ts`, which is
- *     this scanner's own negative-control corpus; excusing it needs an exclusion
- *     surface that does not exist, because a bare `--allow-fixture` seeds the
- *     positional path set and selects `paths` mode.
+ *   - AN INDEX ENTRY AT EXACTLY A WALK ROOT'S OWN PATH (`test`, `src`) MATCHES NO
+ *     `--staged` CLAUSE, because every clause tests a `<root>/` PREFIX (exit 0
+ *     over a payload staged there). PRE-EXISTING and still open. The
+ *     reconciliation does not close it and the reason is worth stating because
+ *     it reads as though it should: the reconciliation checks the walk against
+ *     the index WITHIN the declared scope, so a path nothing declares in scope
+ *     is absent from BOTH sides of the comparison and the check is silent on it.
+ *     `PHI-SCAN-WALK-ROOT-SCOPE` moved this residual up a level rather than
+ *     closing it - it used to be reachable at `test/fixtures` as well.
+ *   - A FIXTURE EXPRESSED AS A BUILDER SPEC OBJECT IS SEGMENT TEXT TO NOBODY.
+ *     `{ lastName: "…", dateOfBirth: "…" }` becomes a segment only when the
+ *     builder runs, so no static pass reaches it - not `scanEmbeddedSegments`,
+ *     not the shape floor. Found by hand-reading the files the widening opened,
+ *     not by this gate, and pinned as a case so the silence is not read as
+ *     coverage.
+ *   - AN EMBEDDED SEGMENT UNDER A NON-DEFAULT ELEMENT SEPARATOR IS NOT REACHED.
+ *     There is no ISA in an embedded run to declare the delimiters, so the pass
+ *     assumes `*`. Narrower than the base state rather than wider than it.
+ *   - THE EMBEDDED PASS SKIPS A NAME ELEMENT `EMBEDDED_NAME_SHAPED` REJECTS AND
+ *     AN ID ELEMENT `EMBEDDED_ID_SHAPED` REJECTS. **READ THOSE TWO PREDICATES; DO
+ *     NOT PARAPHRASE THEM HERE** - three successive paraphrases of the id one were
+ *     published and all three were measured too narrow. A run found in prose ends
+ *     at whatever punctuation comes first and can swallow the sentence around it;
+ *     both narrowings apply to the EMBEDDED pass only and the whole-file `.edi`
+ *     path keeps the base rules unchanged.
+ *   - A NAME TOKEN WITH NO ASCII LETTER IN IT IS DROPPED BY `nameTokens`, ON BOTH
+ *     ROUTES. So the `\p{L}` name class buys only elements in which `nameTokens`
+ *     still finds one: a wholly non-Latin surname is skipped in a `.ts` literal AND in an
+ *     `.edi` file, identically at base. PRE-EXISTING, disclosed, not closed here -
+ *     widening `nameTokens` changes the whole-file path, which nothing else in
+ *     this slice does.
+ *
+ * `PHI-SCAN-WALK-ROOT-SCOPE`, AND THE TWO SIDES IT HAS. The walk root moved from
+ * `test/fixtures` to `test` and the `--staged` clauses from `test/fixtures/**`
+ * plus `src/**.ts` to `test/**` plus `src/**`, both by UNION. That was only half
+ * of it: ENUMERATING THOSE FILES BUYS ONLY THE `scanCommonShapes` FLOOR, because
+ * they are `.ts` sources whose fixtures are string literals, so `looksLikeX12`
+ * is false for every one of them and the NM1 name, NM1 member-id, NM1 NPI, PER
+ * contact-name, PER communication-number, DMG date-of-birth and service-date
+ * recognisers never ran. NAME THAT FLOOR AS THREE DETECTORS AND NEVER AS TWO: a
+ * draft of this header said "the dashed-SSN and email floor" and a refuter
+ * measured it false, because the `REF*SY` undashed nine-digit SSN recogniser is
+ * not segment-aware either and fires on a bare string literal exactly as the
+ * other two do. `scanEmbeddedSegments` is the other side, and each side is IN
+ * ADDITION TO the other rather than instead of it.
+ *
+ * THE ONE CELL OF THAT WIDENING THAT WAS NOT ADDITIVE, AND IT WAS FOUND BY A
+ * BASE/HEAD GRID RATHER THAN BY READING THE DIFF: `refuseUnusableRoots` used to
+ * iterate the walk roots, so while `test/fixtures` WAS one, deleting it refused
+ * at exit 2. Making `test` the root turned `test/fixtures` into an ordinary
+ * subdirectory and, on a tree whose corpus was not yet COMMITTED, the same
+ * deletion read `OK - no hits` at EXIT 0. `REQUIRED_DIRECTORIES` is the fix: what
+ * must BE a directory is declared separately from what the sweep walks, because
+ * the walk roots must stay disjoint and that list has no such constraint.
  *   - the enumerate-then-read window in `all` mode is untouched: this scan
  *     lists its roots first and reads each file afterwards, so a file deleted
  *     inside that window makes the read throw and the whole sweep refuse. That
@@ -226,15 +251,17 @@ const REPO_ROOT = process.cwd();
 const ALLOW_LIST_PATH = join(REPO_ROOT, "scripts", "phi-allow-list.txt");
 const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 
-// Roots walked in "all" mode. test/fixtures gets the full X12-aware scan;
-// src gets the conservative `scanCommonShapes` text pass because it is
-// hand-written code, not data - JSDoc `@example` snippets must not trip it.
+// Roots walked in "all" mode. A file that IS an interchange gets the full
+// X12-aware scan; every other file gets `scanCommonShapes` PLUS
+// `scanEmbeddedSegments`, which reaches segment text a string literal is
+// holding. That second pass is why `src/` and the `.ts` fixtures under `test/`
+// are no longer covered by the shape floor alone.
 // THAT PASS IS THREE DETECTORS, NOT TWO: dashed SSN, the `REF*SY` undashed
 // nine-digit SSN, and a non-test email. This comment used to say "dashed-SSN +
 // non-test email only" and it was measurably false - `REF*SY` is not
 // segment-aware and fires on a bare string literal. Derive the set from
 // `scanCommonShapes` rather than trusting any prose count of it, here included.
-const FIXTURE_ROOT = join(REPO_ROOT, "test", "fixtures");
+const TEST_ROOT = join(REPO_ROOT, "test");
 const SRC_ROOT = join(REPO_ROOT, "src");
 
 /**
@@ -243,10 +270,47 @@ const SRC_ROOT = join(REPO_ROOT, "src");
  * directory) and `reconcileObserved` (every tracked file under one must actually
  * have been opened). The repo-relative half is what a refusal prints and what
  * the `git ls-files` pathspec uses.
+ *
+ * `test` REPLACES `test/fixtures` AND THAT IS A UNION, NOT A SUBSTITUTION: the
+ * old root is a subtree of the new one, so every file the walk opened before it
+ * still opens. It is written as a replacement rather than an addition because
+ * THE ROOTS MUST STAY DISJOINT - listing both would enumerate every fixture
+ * twice and report each hit twice. Measured before this widening: 306 tracked
+ * files, 163 opened, 143 opened by NEITHER the walk nor `--staged`, and 85 of
+ * those were tracked `.ts` files sitting directly under `test/`, `test/property`,
+ * `test/scripts` and `test/_helpers` - the inline-fixture corpus, which in an EDI
+ * package is `.ts` string literals holding segment text rather than `.edi` files.
+ * Derive both figures with `git ls-files`; never trust a number written down.
  */
 const WALK_ROOTS: readonly { abs: string; rel: string }[] = [
-  { abs: FIXTURE_ROOT, rel: "test/fixtures" },
+  { abs: TEST_ROOT, rel: "test" },
   { abs: SRC_ROOT, rel: "src" },
+];
+
+/**
+ * Directories that must EXIST AND BE DIRECTORIES. THIS IS A WIDER LIST THAN THE
+ * WALK ROOTS, ON PURPOSE, AND SEPARATING THE TWO IS WHAT KEPT THE WIDENING FROM
+ * COSTING A DETECTION.
+ *
+ * `refuseUnusableRoots` used to iterate the walk roots, so when `test/fixtures`
+ * WAS a root, deleting it refused at exit 2. Widening the walk to `test` made
+ * `test/fixtures` an ordinary subdirectory, and measured on a throwaway repo
+ * whose corpus was not yet committed, deleting it went from exit 2 to
+ * `OK - no hits` at EXIT 0 - the fixture corpus gone and the gate reporting
+ * clean. `reconcileObserved` catches it once the corpus is COMMITTED, which is
+ * the real repository's state, but "committed" is a precondition and a rule that
+ * holds only under one is not the rule that was there before.
+ *
+ * So the declaration is kept and the walk is not. The two lists answer different
+ * questions - "what does the sweep enumerate" and "what must be on disk for the
+ * sweep to mean anything" - and conflating them is what made the widening look
+ * additive when one cell of it was not. THE WALK ROOTS THEMSELVES MUST STAY
+ * DISJOINT (nested roots enumerate a file twice and report every hit twice);
+ * this list has no such constraint, because nothing walks it.
+ */
+const REQUIRED_DIRECTORIES: readonly { abs: string; rel: string }[] = [
+  ...WALK_ROOTS,
+  { abs: join(TEST_ROOT, "fixtures"), rel: "test/fixtures" },
 ];
 
 // Service / transaction-date segments. Their dates are CCYYMMDD and a real feed
@@ -492,8 +556,8 @@ function rootProblem(abs: string): string | undefined {
  * A ROOT is not an ENTRY, and it fails in its own way: an entry the walk cannot
  * read is one file's worth of blindness, while a root the walk cannot enumerate
  * is EVERY file under it. Measured on this package, both failures read as
- * success: with `test/fixtures` absent the walk returns immediately and all-mode
- * prints `OK - no hits` at exit 0, and with `test/fixtures` replaced by a
+ * success: with a declared directory absent the walk returns immediately and
+ * all-mode prints `OK - no hits` at exit 0, and with a walk root replaced by a
  * regular file `readdirSync` threw an UNCAUGHT `ENOTDIR` that left the process
  * at exit 1, which is this scanner's code for "hits found" and is a stack trace
  * rather than anything a developer can act on.
@@ -505,18 +569,18 @@ function rootProblem(abs: string): string | undefined {
  * `reconcileObserved` below is the other half.
  */
 function refuseUnusableRoots(): void {
-  const bad = WALK_ROOTS.map((r) => ({ rel: r.rel, problem: rootProblem(r.abs) })).filter(
+  const bad = REQUIRED_DIRECTORIES.map((r) => ({ rel: r.rel, problem: rootProblem(r.abs) })).filter(
     (r): r is { rel: string; problem: string } => r.problem !== undefined,
   );
   if (bad.length === 0) return;
   const lines = bad.map((r) => `  - ${r.rel} (${r.problem})`).join("\n");
-  const noun = bad.length === 1 ? "root is" : "roots are";
+  const noun = bad.length === 1 ? "directory is" : "directories are";
   throw new InvocationError(
     `refusing the scan: ${String(bad.length)} declared scan ${noun} not a directory:\n` +
       `${lines}\n` +
-      "A root that is not a directory contributes no files at all, so the sweep would report " +
-      "clean over every file that root was supposed to cover. Restore it as a directory, or " +
-      "update the roots in scripts/phi-scan.ts if the layout genuinely changed.",
+      "A declared directory that is not one contributes no files at all, so the sweep would " +
+      "report clean over every file it was supposed to cover. Restore it as a directory, or " +
+      "update the declarations in scripts/phi-scan.ts if the layout genuinely changed.",
   );
 }
 
@@ -596,9 +660,9 @@ function gitTrackedUnderRoots(): string[] {
  * AND IS EXEMPT. The walk enumerates `<root>/<name>` and never `<root>` itself,
  * so such an entry can never appear in `observed` and comparing it would refuse
  * unconditionally. The shape that makes this concrete is a walk root that is a
- * TRACKED symbolic link to a directory: `git ls-files` returns `test/fixtures`,
- * the walk follows the link and enumerates the target's files under their
- * `test/fixtures/*` names, and that is a documented SUPERSET scan which exits 1
+ * TRACKED symbolic link to a directory: `git ls-files` returns the root's own
+ * path, the walk follows the link and enumerates the target's files under their
+ * `<root>/*` names, and that is a documented SUPERSET scan which exits 1
  * over a PHI-bearing target at base. Without this exemption the sweep refused
  * (exit 2) over exactly that tree, which would have traded a working superset
  * scan for a refusal and falsified four surfaces that say it is unchanged. It is
@@ -611,10 +675,10 @@ function gitTrackedUnderRoots(): string[] {
  * tracked regular file, or a link to one, is refused by `refuseUnusableRoots`
  * first. That is true and it is not the whole of it. When a root is a tracked
  * link to a DIRECTORY, everything the walk reads through it lives OUTSIDE the
- * `git ls-files -- test/fixtures src` pathspec, under the target's own names, so
+ * `git ls-files -- test src` pathspec, under the target's own names, so
  * the entire link-target corpus is unreconciled rather than just the root entry.
- * Measured at head with `test/fixtures -> ../elsewhere` and a committed
- * `elsewhere/violator.edi`: present, exit 1; deleted from disk but still in the
+ * Measured at head with the outermost root linked outside and a committed
+ * violator behind it: present, exit 1; deleted from disk but still in the
  * index, `OK - no hits` at EXIT 0. That is verbatim the EMPTIED-ROOT shape this
  * function exists to close, surviving through the exempted path.
  *
@@ -943,10 +1007,21 @@ function buildTargetsForStaged(): Target[] {
     i += 2;
   }
 
-  const inScope = staged.filter(
-    (s) =>
-      s.path.startsWith("test/fixtures/") || (s.path.startsWith("src/") && s.path.endsWith(".ts")),
-  );
+  // WIDENED BY UNION, NEVER BY REPLACEMENT. `test/` strictly contains the old
+  // `test/fixtures/` clause and `src/` strictly contains the old `src/**.ts`
+  // one, so every record this route enumerated before it still enumerates: this
+  // can only ADD staged paths to the blocking route, never subtract one. There
+  // is no exemption here and no predicate excusing anything, deliberately - a
+  // corpus exemption that reaches the commit-blocking route is the defect
+  // `@cosyte/dicom` paid an `INTRODUCED` major for, and the way to avoid
+  // needing one is for the corpus to be clean rather than excused.
+  //
+  // The `.md` asymmetry with the walk is PRE-EXISTING and kept: the walk skips
+  // a `.md` file by name, this route does not, so a staged markdown file under
+  // one of these prefixes is scanned here and not there. That is the direction
+  // that costs nothing (a staged `README` under a scan root carrying a name
+  // exits 1) and removing it would subtract a detection.
+  const inScope = staged.filter((s) => s.path.startsWith("test/") || s.path.startsWith("src/"));
 
   // Unmerged first: such a record's destination mode is `000000`, which the mode
   // check below would otherwise refuse with a sentence about symbolic links and
@@ -1009,8 +1084,16 @@ function nameTokens(value: string): string[] {
     .filter((t) => t.length >= 2 && /[A-Za-z]/.test(t));
 }
 
-function isSyntheticMemberId(id: string): boolean {
+function isSyntheticMemberId(id: string, allow: AllowList): boolean {
   const v = id.toUpperCase();
+  // A DECLARED id clears here for the same reason it clears the `REF*SY` and NPI
+  // checks: `ID <value>` in scripts/phi-allow-list.txt is the positive, reviewed
+  // declaration that a value is synthetic, and this check had no route to it at
+  // all - a member id that did not match one of the shapes below could only be
+  // cleared by renaming it in every fixture that used it. Adding the route flips
+  // NO cell this scanner already reported: every `ID` entry that predates it is
+  // all-digit and so already matched the third shape.
+  if (allow.ids.has(v)) return true;
   // documented synthetic shapes: MEMBER- / MEM- / MBR / AV-MEMBER- / OTHER /
   // ORPHAN / GROUP prefixes, or an all-digit padded id.
   if (/^(AV-)?MEMBER[-_]?[0-9A-Z]*$/.test(v)) return true;
@@ -1031,13 +1114,78 @@ function pushHit(hits: Hit[], path: string, segment: string, value: string, reas
   hits.push({ path, segment, value, reason });
 }
 
-function checkNm1(path: string, elems: string[], allow: AllowList, hits: Hit[]): void {
+/**
+ * ELEMENT ELIGIBILITY IN AN EMBEDDED RUN, AND WHY IT EXISTS AT ALL.
+ *
+ * A whole-file `.edi` target has an ISA, so `splitSegments` knows where every
+ * segment starts and ends and each element it produces IS an element. An
+ * embedded run has neither: it is found by its segment id inside a `.ts` source
+ * and ends at whatever punctuation comes first, so a run written in prose or in
+ * a doc table can swallow the sentence around it and hand a "name" or an "id"
+ * that is neither. These two predicates are the only difference between the
+ * embedded checks and the whole-file ones, they apply to the EMBEDDED pass ONLY,
+ * and they exist to stop the pass claiming a hit over text it mis-framed.
+ *
+ * Measured on this tree before they were added: an `NM1` inside a fenced doc
+ * table in `test/builder-string-type.test.ts` reported its arrow column as an
+ * SSN-qualified id, and an `NM1` quoted in a `//` comment in
+ * `test/parser-segment.test.ts` reported the following English word as a person
+ * name. Neither is PHI and neither is a fixture.
+ *
+ * SAY WHAT THIS COSTS, because it is a real narrowing of the EMBEDDED pass and
+ * not a free win: a name element carrying anything but a letter, a combining
+ * mark, a space, an apostrophe, a period or a hyphen is skipped there, and so is
+ * an id element carrying anything but ASCII alphanumerics, `.`, `_` or `-`. The
+ * whole-file `.edi` path is NOT narrowed - it does not take these predicates -
+ * so nothing this scanner detected before detects less now.
+ *
+ * 🩺 "LETTER" IS `\p{L}` HERE, NOT `[A-Za-z]`, AND A REFUTER PAID FOR THAT - BUT
+ * STATE WHAT IT BUYS AND NOTHING MORE. With the ASCII class, a name element
+ * carrying a tilde-n or an acute accent was skipped outright and the file
+ * reported clean. What this widening buys is MIXED-SCRIPT elements only:
+ * `nameTokens` still drops any token with no ASCII letter in it, on BOTH routes,
+ * so a wholly non-Latin surname is missed here and in an `.edi` file alike.
+ * What this class buys is exactly the elements the ASCII class rejected while
+ * `nameTokens` still finds an ASCII letter in them. That gap is PRE-EXISTING and
+ * is disclosed in the header rather than closed. **NEVER WRITE THE UNQUALIFIED
+ * FORM ("a surname is not an ASCII string, so this catches one") - a draft did,
+ * in four places at once.**
+ *
+ * 🩺 AND THE APOSTROPHE IS IN THIS CLASS ONLY BECAUSE `EMBEDDED_RUN_STOP` NO
+ * LONGER STOPS AT ONE - the two constants have to be read together. While `'`
+ * was a run stop, this branch was DEAD and the failure was worse than a skip:
+ * the run was TRUNCATED at the apostrophe, so every element after it ceased to
+ * exist. Measured then, all clean: an `NM1` person name of the `O'Brien` shape
+ * together with its `MI` member id; the same segment carrying a qualifier-34
+ * SSN instead; and a `PER` contact name with a non-555 phone. `O'Brien`,
+ * `D'Angelo` and `N'Diaye` are exactly the surnames a real de-identification
+ * failure drops into a fixture, and the id, the SSN and the phone went with
+ * them.
+ */
+const EMBEDDED_NAME_SHAPED = /^\p{L}[\p{L}\p{M}' .-]*$/u;
+const EMBEDDED_ID_SHAPED = /^[0-9A-Za-z][0-9A-Za-z._-]*$/;
+
+function nameElementEligible(el: string, embedded: boolean): boolean {
+  return !embedded || EMBEDDED_NAME_SHAPED.test(el);
+}
+
+function idElementEligible(el: string, embedded: boolean): boolean {
+  return !embedded || EMBEDDED_ID_SHAPED.test(el);
+}
+
+function checkNm1(
+  path: string,
+  elems: string[],
+  allow: AllowList,
+  hits: Hit[],
+  embedded: boolean,
+): void {
   const entityType = elems[2] ?? "";
   const qualifier = elems[8] ?? "";
   const idValue = elems[9] ?? "";
 
   // SSN qualifier (34) must never appear in a synthetic fixture.
-  if (qualifier === "34" && idValue.length > 0) {
+  if (qualifier === "34" && idValue.length > 0 && idElementEligible(idValue, embedded)) {
     pushHit(hits, path, "NM1", idValue, "SSN (NM1 qualifier 34) in fixture");
   }
 
@@ -1045,13 +1193,19 @@ function checkNm1(path: string, elems: string[], allow: AllowList, hits: Hit[]):
     // person - last / first / middle name elements
     for (const el of [elems[3], elems[4], elems[5]]) {
       if (el === undefined || el.length === 0) continue;
+      if (!nameElementEligible(el, embedded)) continue;
       for (const tok of nameTokens(el)) {
         if (!allow.names.has(tok.toUpperCase())) {
           pushHit(hits, path, "NM1", tok, "person-name token not in synthetic allow-list");
         }
       }
     }
-    if (qualifier === "MI" && idValue.length > 0 && !isSyntheticMemberId(idValue)) {
+    if (
+      qualifier === "MI" &&
+      idValue.length > 0 &&
+      idElementEligible(idValue, embedded) &&
+      !isSyntheticMemberId(idValue, allow)
+    ) {
       pushHit(hits, path, "NM1", idValue, "member-id shape not recognized as synthetic");
     }
   }
@@ -1061,10 +1215,16 @@ function checkNm1(path: string, elems: string[], allow: AllowList, hits: Hit[]):
   }
 }
 
-function checkPer(path: string, elems: string[], allow: AllowList, hits: Hit[]): void {
+function checkPer(
+  path: string,
+  elems: string[],
+  allow: AllowList,
+  hits: Hit[],
+  embedded: boolean,
+): void {
   // PER02 is a free-text contact name; PER04/06/08 are communication numbers.
   const name = elems[2];
-  if (name !== undefined) {
+  if (name !== undefined && nameElementEligible(name, embedded)) {
     for (const tok of nameTokens(name)) {
       if (!allow.names.has(tok.toUpperCase())) {
         pushHit(hits, path, "PER", tok, "contact-name token not in synthetic allow-list");
@@ -1124,13 +1284,127 @@ function checkServiceDates(path: string, elems: string[], hits: Hit[]): void {
 function scanX12(target: Target, text: string, allow: AllowList, hits: Hit[]): void {
   for (const elems of splitSegments(text)) {
     const id = elems[0] ?? "";
-    if (id === "NM1") checkNm1(target.path, elems, allow, hits);
-    else if (id === "PER") checkPer(target.path, elems, allow, hits);
+    if (id === "NM1") checkNm1(target.path, elems, allow, hits, false);
+    else if (id === "PER") checkPer(target.path, elems, allow, hits, false);
     else if (id === "DMG") checkDmg(target.path, elems, allow, hits);
     if (DATE_SEGMENTS.has(id)) checkServiceDates(target.path, elems, hits);
   }
   // Cross-cutting shape checks over the whole payload.
   scanCommonShapes(target, text, allow, hits);
+}
+
+// ---------------------------------------------------------------------------
+// Embedded X12 segments inside a file that is not itself an interchange
+// ---------------------------------------------------------------------------
+
+/**
+ * THE RECOGNISER HALF OF THE WALK-ROOT WIDENING, AND IT IS "IN ADDITION TO", NEVER
+ * "INSTEAD OF".
+ *
+ * Enumerating the tracked files under `test/` buys the `scanCommonShapes` floor
+ * and NOTHING ELSE, because `looksLikeX12` asks whether the FILE IS an
+ * interchange - it must start with `ISA` and be at least 106 bytes - and this
+ * package's inline fixtures are `.ts` string literals holding segment text. So a
+ * `.ts` file carrying `NM1*IL*1*<real surname>*<real given name>` went down the
+ * plain-text branch, where the NM1 person-name, NM1 member-id, NM1 NPI, PER
+ * contact-name, PER communication-number, DMG date-of-birth and service-date
+ * recognisers never ran at all. NAME THE FLOOR AS THREE DETECTORS AND NEVER AS
+ * TWO: dashed SSN, the `REF*SY` undashed nine-digit SSN and a non-test email are
+ * all unanchored `matchAll` passes, so they DID reach a string literal already.
+ * Everything else did not, and this pass is what closes that half.
+ *
+ * 🛑 WHAT IT DOES NOT DO. THIS IS A SYNTACTIC TRIPWIRE OVER SOURCE TEXT AND NOT A
+ * PARSER, SO THE LIST BELOW IS WHAT HAS BEEN MEASURED AND IS EXPLICITLY NOT A
+ * CLOSED CENSUS. A draft published it as "four bounds" in four places and a
+ * refuter found two more in one pass; finding one more is EXPECTED and is not a
+ * new finding. **Cut the claim back, never grow the guard**, and NEVER PUBLISH A
+ * COUNT OF THESE - that is the same rule `X12-NUMERIC-VALUE-EMITS-EMPTY` was
+ * refuted three times for breaking.
+ *   - it infers NO delimiters, because there is no ISA to declare them. The
+ *     element separator is taken to be `*`, which is what every fixture in this
+ *     package uses and what X12 uses by overwhelming convention. A segment
+ *     embedded in a `.ts` literal under a NON-DEFAULT element separator is not
+ *     reached. Open, disclosed, and narrower than the base state rather than
+ *     wider than it.
+ *   - it recognises only the segment ids the checks below actually consume. A
+ *     generic "any segment" recogniser over arbitrary source text is what
+ *     produces a gate nobody believes; the rule here is cut back, never grow.
+ *   - it does not run on a whole-file interchange. Those go through `scanX12`,
+ *     which has real delimiters, and running both would report every hit twice.
+ *   - a BRACE-FREE template placeholder is removed before the split
+ *     (`/\$\{[^{}]*\}/g`). That keeps an interpolated fixture's ELEMENT
+ *     POSITIONS, which truncating at the `$` would not - but say the other two
+ *     halves too, because a draft named only the benefit: THE REMOVED BYTES LEAVE
+ *     THIS PASS'S VIEW ENTIRELY, so a name an interpolation holds is never
+ *     checked; and the strip is NOT recursive, so a placeholder containing braces
+ *     survives and a `"` inside it then truncates the run.
+ *   - A SEGMENT SPLIT ACROSS A CONCATENATION IS NOT REACHED. A segment id and its
+ *     elements written as two adjacent string literals is clean where the same
+ *     bytes unsplit are two hits. Nothing in this corpus is written that way
+ *     today, which is what makes it latent rather than noise.
+ *   - the run stops at the FIRST `"`, backtick, `~`, backslash or newline, so a
+ *     segment carrying any of those inside an element is truncated there and
+ *     every later element ceases to exist. `'` IS NOT IN THAT SET, and both what
+ *     that buys and what it costs are written out at `EMBEDDED_RUN_STOP`.
+ *   - the segment ids are matched CASE-SENSITIVELY, as `scanX12` matches them.
+ */
+const EMBEDDED_SEGMENT_IDS = ["NM1", "PER", "DMG", "DTP", "DTM", "BHT", "GS"] as const;
+const EMBEDDED_SEGMENT_RE = new RegExp(
+  `(?:^|[^0-9A-Za-z])(${EMBEDDED_SEGMENT_IDS.join("|")})\\*`,
+  "g",
+);
+/**
+ * Where an embedded run ends. `~` is the conventional segment terminator; `"` and
+ * the backtick are where a `.ts` string literal ends; a backslash is where an
+ * escape begins and the bytes stop being the fixture's own; and a newline ends
+ * any of them. A run is NOT required to end at `~`: measured on this tree, three
+ * real inline-fixture hits in `test/phi-diagnostic-surface.test.ts` are written
+ * with no terminator at all, so requiring one would have been a hole a leak fits
+ * through exactly.
+ *
+ * 🩺 `'` IS DELIBERATELY ABSENT AND MUST STAY ABSENT. It is a string-literal
+ * delimiter in TypeScript, so it belongs here by symmetry with `"` - and putting
+ * it here TRUNCATES every embedded run at the first apostrophe, which silently
+ * dropped an `O'Brien`-shaped surname along with the member id, qualifier-34 SSN
+ * or phone that followed it. A surname's apostrophe is worth more than a
+ * single-quoted literal's boundary.
+ *
+ * 🛑 SAY WHAT THAT COSTS, BECAUSE A DRAFT SAID THE PREDICATES "ALREADY HANDLE"
+ * IT AND THEY DO NOT - THEY DISCARD IT. A run inside a SINGLE-QUOTED literal now
+ * overruns that literal's own closing delimiter and absorbs the surrounding
+ * source into its LAST element, which the shape predicates then skip. So a
+ * single-quoted fixture whose id is its final element is not checked at all:
+ * measured, `'NM1*IL*1******34*<9 digits>'` and the `MI` equivalent each exit 0
+ * where the double-quoted form exits 1, and a single-quoted name element in a
+ * multi-declarator `const` loses its last token the same way. Both the qualifier-
+ * 34 SSN and the member id are shapes `scanCommonShapes` does NOT cover. It is a
+ * bound of this pass and NOT a regression - measured 0 at base on every route,
+ * `src/**` included - it is listed with the others at `scanEmbeddedSegments`, and
+ * the remedy is NEVER to put `'` back: that trades a rare literal style for every
+ * apostrophe surname.
+ */
+const EMBEDDED_RUN_STOP = /["`~\\\n\r]/;
+
+function scanEmbeddedSegments(
+  target: Target,
+  content: string,
+  allow: AllowList,
+  hits: Hit[],
+): void {
+  const text = content.replace(/\$\{[^{}]*\}/g, "");
+  for (const m of text.matchAll(EMBEDDED_SEGMENT_RE)) {
+    const id = m[1];
+    if (id === undefined) continue;
+    // `m[0]` ends with the `*` separator; the run starts there so the split
+    // below produces the segment id as element 0, exactly as `splitSegments`.
+    let end = (m.index ?? 0) + m[0].length - 1;
+    while (end < text.length && !EMBEDDED_RUN_STOP.test(text.charAt(end))) end += 1;
+    const elems = (id + text.slice((m.index ?? 0) + m[0].length - 1, end)).split("*");
+    if (id === "NM1") checkNm1(target.path, elems, allow, hits, true);
+    else if (id === "PER") checkPer(target.path, elems, allow, hits, true);
+    else if (id === "DMG") checkDmg(target.path, elems, allow, hits);
+    if (DATE_SEGMENTS.has(id)) checkServiceDates(target.path, elems, hits);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1175,9 +1449,13 @@ function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
   if (looksLikeX12(text)) {
     scanX12(target, text, allow, hits);
   } else {
-    // Non-X12 target (hand-written src, plain-text notes): conservative shape
-    // pass only - no segment model to lean on.
+    // Non-X12 target (hand-written src, a test holding inline fixtures,
+    // plain-text notes). BOTH passes run, and the second is IN ADDITION TO the
+    // first rather than instead of it: the shape pass is the only thing that
+    // reaches text with no segment framing at all, and the embedded pass is the
+    // only thing that reaches segment text a string literal is holding.
     scanCommonShapes(target, text, allow, hits);
+    scanEmbeddedSegments(target, text, allow, hits);
   }
 }
 
