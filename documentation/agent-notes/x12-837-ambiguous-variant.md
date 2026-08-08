@@ -167,6 +167,12 @@ ADR 0016 and pass 2's own recommendation to land.
   block this slice - it reproduces at base - but **both refuters independently said it should not sit
   behind another disclosure-only slice on this item.** Already named in `X12-837-RESIDUALS` and in
   `documentation/repos/x12.md`; it wants its own item.
+- **CLOSED by `X12-VARIANT-ICR-UNGROUNDED` (2026-08-08) -
+  `documentation/agent-notes/x12-variant-icr-ungrounded.md`.** Pass 2's worry was **correct**: the key
+  set held none of the identifiers 45 CFR 162.1102 adopts and was missing the two production 837P and
+  837I traffic carries, so the `SVx` fallback WAS the normal path. The table is corrected and the
+  three test files below now use `004010X098A1`. **This section is left as the dated record it is; read
+  the successor note for what is true now.** The rest of this bullet is that record:
 - **The `VARIANT_BY_ICR` key set is ungrounded, and pass 2 named it the thing that most worries it.**
   Three of this repo's own **test files** reach for `005010X222A1` inline as the real-world 837P
   `ST-03` that does **not** resolve; `005010X222A1` appears nowhere under `test/fixtures/`, and the

@@ -1,6 +1,7 @@
 /**
- * Barrel for the 837 Healthcare Claim surface - TR3s `005010X222A2` (P),
- * `005010X223A3` (I), `005010X224A2` (D). The public entry point is
+ * Barrel for the 837 Healthcare Claim surface - the `005010X222` (P),
+ * `005010X223` (I) and `005010X224` (D) TR3 families and their published
+ * errata. The public entry point is
  * {@link get837Claims}; types surface the typed result shape; the loop
  * specs are exported so consumers can introspect or extend them.
  *

@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   **What that cost.** Variant resolution runs before the walk as
   `explicitType ?? variantFromIcr ?? variantFromSegment`. Absent a caller `type` option, and where
-  `ST-03` names none of `005010X222A2` / `005010X223A3` / `005010X224A2`, the reader falls back to the
+  `ST-03` names no implementation convention this reader recognises, the reader falls back to the
   **first** `SV1` / `SV2` / `SV3` in the body, orphans included. One stray `SV2` ahead of a conformant
   Professional claim therefore re-types the whole submission Institutional: `submission.variant` reads
   `"I"`, and a consumer routing on that field sends a Professional claim down an Institutional path.
@@ -357,6 +357,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   document content, verbatim, exactly like `tx.rawSegments`. Log `context` and `segmentIndex`.
 
 ### Changed
+
+- **🩺 `get837Claims` now recognises every published `ST-03` implementation-convention reference for
+  the three 837 guides, and some already-published files therefore decode differently**
+  (`X12-VARIANT-ICR-UNGROUNDED`). This is a grounding unit: the table `VARIANT_BY_ICR` had three keys
+  and they were grounded against nothing.
+
+  **🩺 What that cost, measured at `668afea` (published `0.0.16`).** The table held exactly
+  `005010X222A2`, `005010X223A3` and `005010X224A2`. **It contained none of the identifiers HIPAA
+  adopts at 45 CFR 162.1102** (`005010X222`; `005010X223` with its `005010X223A1` Type 1 errata;
+  `005010X224` with `005010X224A1`), **and it was missing `005010X222A1` and `005010X223A2`**, which
+  CMS and state Medicaid companion guides require in ST-03 and GS-08 on production professional and
+  institutional claims. So a conformant, HIPAA-mandated 837P declaring `005010X222A1` resolved to no
+  variant at all, fell through to the `SVx` scan, and one stray `SV2` anywhere in the body re-typed
+  the whole submission Institutional. **The `SVx` fallback was the NORMAL path on production
+  professional and institutional traffic rather than the exception**, and `X12_837_UNKNOWN_VARIANT`
+  on such a file was a fabricated non-conformance claim about a document that was not
+  non-conformant. The sources for every key are named beside the table and in
+  `documentation/agent-notes/x12-variant-icr-ungrounded.md`; the three later published errata guides
+  are the weakest leg and say so in place.
+
+  **🛑 This IS a behaviour change on already-published decoding, and it is disclosed rather than
+  buried.** On a file whose `ST-03` is now recognised: `submission.variant` can differ from what
+  `0.0.16` read, wherever the first `SVx` in the body disagreed with the declaration; and
+  **`X12_837_AMBIGUOUS_VARIANT` and `X12_837_UNKNOWN_VARIANT` no longer fire on it at all**, because
+  no guess was made. **A predicate written against either code goes quiet on such a file.** That is
+  the hazard a widening onto a new code carries, taken here in the opposite direction from the two
+  slices before it: they refused to narrow a fallback because the reader had no evidence beyond the
+  segments, and here the reader had the evidence in ST-03 and was ignoring it. Re-check any routing
+  driven off `submission.variant` for 837s you read on `0.0.16` or earlier.
+
+  **🛑 The `SVx` fallback is NOT narrowed.** First-wins still takes the first `SV1` / `SV2` / `SV3` in
+  the body, orphans included, on every document that still reaches it, and precedence is unchanged:
+  a caller `type` still wins ahead of ST-03, and ST-03 ahead of the segments. What changed is which
+  documents reach the fallback.
+
+  **It is a LIST of cited identifiers, never a pattern.** A reference outside the set, in a different
+  case, or carrying leading whitespace still falls through exactly as before. The set is **not
+  claimed exhaustive and no count of it is published**: both variant-resolution messages named the
+  three old keys literally, so both were wrong the moment the table was corrected, and neither
+  enumerates the set any more. A committed tripwire reds if any registry message quotes a TR3
+  identifier again.
+
+  **🩺 OPEN, and deliberately not fixed here: the EMIT side still stamps the old three.** `build837P`
+  / `build837I` / `build837D` write `005010X222A2` / `005010X223A3` / `005010X224A2` and a caller
+  cannot override them, so **a partner that requires `005010X222A1` or `005010X223A2` will reject an
+  837 this builder emits.** Which published guide identifier a partner accepts is a partner fact
+  rather than a spec fact, and changing bytes this library already emitted would break the partners
+  it works with today. `KNOWN-LIMITATIONS.md` carries it as an open residual.
 
 - **🩺 BREAKING (read model): every monetary, percent and quantity slot the readers used to fill with
   a fabricated `X12Decimal.ZERO` is now `X12Decimal | undefined`** (`X12-837-SV-UNDEFINED-DECIMAL`).

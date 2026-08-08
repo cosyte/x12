@@ -103,6 +103,35 @@ import type {
 /**
  * Map ST-03 implementation-convention reference → 837 variant.
  *
+ * Every key is an ASC X12N 837 Technical Report Type 3 identifier taken
+ * from a source outside this repository. Checking one against this
+ * library's own fixtures would only prove the two agree, which is how the
+ * 835 SVC element map stayed wrong (`X12-SVC-ELEMENT-MAP-OFF-BY-ONE`), so
+ * the sources are named here and recorded in
+ * `documentation/agent-notes/x12-variant-icr-ungrounded.md`:
+ *
+ * - The base guide identifiers and the October 2007 Type 1 errata are the
+ *   ones HIPAA adopts, verbatim, at 45 CFR 162.1102(e)(2)(ii)-(iv):
+ *   `005010X222` (Professional), `005010X223` + `005010X223A1`
+ *   (Institutional), `005010X224` + `005010X224A1` (Dental). That section
+ *   names no `A2` or `A3` guide and does not name `005010X222A1`.
+ * - The June 2010 errata identifiers are what payer companion guides
+ *   require on the wire in GS-08 and ST-03 - the Arizona AHCCCS 837
+ *   companion guide states "ST03 Implementation Convention Reference
+ *   Expect 005010X222A1" for Professional, `005010X223A2` for
+ *   Institutional and `005010X224A2` for Dental, and the Louisiana
+ *   Medicaid 5010 EDI general companion guide lists the same three.
+ * - `005010X222A2`, `005010X223A3` and `005010X224A3` are later published
+ *   errata guides in production use at some payers. They are the WEAKEST
+ *   leg of this grounding: the citation is a public guide catalog, not a
+ *   primary X12 publication record. Read the agent note before quoting
+ *   them as adopted - they are not.
+ *
+ * **This set is not claimed to be exhaustive and no count of it is
+ * published.** An ST-03 outside it is not an error; it reaches the `SVx`
+ * fall-back below exactly as it always did, and that fall-back is
+ * deliberately unchanged.
+ *
  * Built through {@link "../../parser/lookup.js".wireLookup} because the key
  * is document bytes. As a plain object literal (which it was through
  * `a33c208`) an ST-03 of `constructor` / `valueOf` / `toString` /
@@ -113,9 +142,20 @@ import type {
  * on any channel. @internal
  */
 const VARIANT_BY_ICR: Readonly<Record<string, X12Claim837Variant>> = wireLookup({
+  // Health Care Claim: Professional (837).
+  "005010X222": "P",
+  "005010X222A1": "P",
   "005010X222A2": "P",
+  // Health Care Claim: Institutional (837).
+  "005010X223": "I",
+  "005010X223A1": "I",
+  "005010X223A2": "I",
   "005010X223A3": "I",
+  // Health Care Claim: Dental (837).
+  "005010X224": "D",
+  "005010X224A1": "D",
   "005010X224A2": "D",
+  "005010X224A3": "D",
 });
 
 /**

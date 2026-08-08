@@ -16,6 +16,43 @@ model.
 
 ## Data / decode boundaries
 
+- **🩺 Which `ST-03` implementation-convention references resolve to an 837 variant CHANGED in this
+  release, and some already-published files therefore decode differently** (`X12-VARIANT-ICR-UNGROUNDED`).
+  Through `0.0.16` `get837Claims` recognised exactly three references: `005010X222A2`, `005010X223A3`
+  and `005010X224A2`. **That set contained none of the identifiers HIPAA adopts at 45 CFR 162.1102**
+  (`005010X222`, `005010X223` + `005010X223A1`, `005010X224` + `005010X224A1`), **and it was missing
+  `005010X222A1` and `005010X223A2`**, which CMS and state Medicaid companion guides require in ST-03
+  and GS-08 on production professional and institutional claims. A conformant 837P declaring
+  `005010X222A1` therefore resolved to no variant at all and fell through to the `SVx` scan, where a
+  single stray `SV2` anywhere in the body re-typed the whole submission, and
+  `X12_837_UNKNOWN_VARIANT` accused a document that was not non-conformant. The reader now recognises
+  each base guide and each of its published errata. Sources for every key are named beside the table
+  in `src/transactions/claim/get-837.ts` and in
+  `documentation/agent-notes/x12-variant-icr-ungrounded.md`.
+  - **🛑 What this changes for a consumer, and it is a behaviour change on already-published
+    decoding.** On a file whose `ST-03` is now recognised: `submission.variant` can differ from what
+    `0.0.16` read, where the first `SVx` in the body disagreed with the declaration; and
+    **`X12_837_AMBIGUOUS_VARIANT` and `X12_837_UNKNOWN_VARIANT` no longer fire at all**, because no
+    guess was made. A predicate written against either code goes quiet on such a file. Re-check any
+    routing driven off `submission.variant` for 837s read on `0.0.16` or earlier.
+  - **🛑 The `SVx` fallback is NOT narrowed.** First-wins still takes the first service segment in the
+    body, orphans included, on every document that still reaches it. What changed is which documents
+    reach it.
+  - **It is a LIST of cited identifiers, never a pattern.** A reference outside the set, in a
+    different case, or carrying leading whitespace, still falls through exactly as before. Nothing
+    trims, lower-cases or prefix-matches `ST-03`, because no source says to.
+  - **The set is not claimed exhaustive and no count of it is published**, here or in any warning
+    message. Both variant messages named the three old keys literally and were wrong the moment the
+    table was corrected, so neither enumerates the set any more.
+  - **🩺 OPEN, and NOT fixed here: the EMIT side still stamps the old three.** `build837P` /
+    `build837I` / `build837D` write `005010X222A2` / `005010X223A3` / `005010X224A2` into ST-03 and
+    GS-08, and **a caller cannot override the value**. Two of those are not what the companion guides
+    above require, so **a trading partner that requires `005010X222A1` or `005010X223A2` will reject
+    an 837 this builder emits.** Deliberately not re-stamped: which published guide identifier a
+    partner accepts is a partner fact rather than a spec fact, and changing bytes this library
+    already emitted would break the partners it works with today. The remedy is a caller-supplied
+    override, which is a public-surface addition and its own slice.
+
 - **🩺 BREAKING for `build277` callers: a 277 service line now REQUIRES `unitsOfService`, because
   SVC-07 is a required element in `005010X212` and this library was not emitting it at all**
   (`X12-277-SVC07-NOT-DECODED`). Through the release before this one `get277Status` read SVC-01
@@ -321,9 +358,9 @@ model.
     confident `0` through `0.0.12`, and this code has nothing to do with either.
   - **🩺 IT SAYS NOTHING ABOUT THE VARIANT, AND A FIRST DRAFT OF THIS BOUND CLAIMED IT DID.** Variant
     resolution runs before the walk. A caller-supplied `type` option wins first; absent one, and
-    where `ST-03` names none of the three known implementation conventions, it **falls back to the
+    where `ST-03` names no implementation convention this reader recognises, it **falls back to the
     first `SVx` segment id anywhere in the transaction body - orphans included**. So a stray `SV2`
-    under an `ST-03` of `005010X222A1` re-types the whole submission as Institutional, and every
+    under an unrecognised `ST-03` re-types the whole submission as Institutional, and every
     conformant `SV1` line in it then reads `charge` `undefined`, `units` `undefined` (both a
     fabricated `0` through `0.0.12`) and an `undefined` procedure
     code - `undefined`, not `""`, which on such a line is the `revenueCode`. Passing

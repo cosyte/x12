@@ -200,7 +200,8 @@ export {
   type X12Remittance,
 } from "./transactions/remit/index.js";
 
-// Phase 5 - 837 Healthcare Claim surface (TR3s 005010X222A2 / X223A3 / X224A2).
+// Phase 5 - 837 Healthcare Claim surface (the 005010X222 / X223 / X224 TR3
+// families and their published errata).
 export {
   CLAIM_837D_LOOP_2000A,
   CLAIM_837D_LOOP_2300,
