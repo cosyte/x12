@@ -9,6 +9,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🩺 `Build837EnvelopeSpec.implementationConventionReference` - the caller now states the ST-03 /
+  GS-08 implementation convention reference `build837P` / `build837I` / `build837D` declares**
+  (`X12-837-EMIT-IDENTIFIER-FIXED`). One value, **both elements**; omit it and the builders emit
+  exactly what they always have.
+
+  **What this fixes, and it is a rejected claim rather than a mis-read one.** The builders stamped
+  `005010X222A2` / `005010X223A3` / `005010X224A2` with no way to change them. Two of those are not
+  what CMS and several state Medicaid companion guides require in ST-03 and GS-08 on production
+  professional and institutional claims, which ask for `005010X222A1` and `005010X223A2`, so **a
+  partner on one of those guides rejected every 837 this library built and a caller had no remedy.**
+  The read side of the same fact was grounded in the release before this one; this is the emit side.
+
+  **🛑 The defaults are UNCHANGED, on purpose, and that is the whole shape of the fix.** Which
+  published guide identifier a trading partner accepts is a **partner fact, not a spec fact**.
+  Re-stamping the default would silently change bytes this library already puts on the wire and
+  break the partners it works with today, so the default stays and the caller states what its own
+  partner asked for. Nothing about an existing call changes.
+
+  **What it refuses of its own, all `Claim837BuildError` with code `X12_837_BUILD_INVALID_SPEC`, and
+  none of them echoes the value you passed.** These sit on top of the element-type guard every string
+  slot in every builder already has, which refuses a non-string with the same code, so read the list
+  as what this field adds and not as a closed account of everything that can refuse. No total is
+  published.
+  - **Empty.** A trailing empty element is not emitted at all, so an empty reference would remove
+    ST-03 and GS-08 rather than send them empty - a silent structural loss on two required elements.
+  - **Carrying an active delimiter or the release character.** 🩺 Escaping does not make this
+    element safe, which is why the value is refused rather than escaped: measured through
+    `parseX12`, a released `005010?*X222A1` in GS-08 and ST-03 still splits the segment, with
+    **nothing raised on any channel**, while the identical construct in a body element holds as one.
+    The envelope segments are read by a splitter that is not release-aware. That is a pre-existing
+    property of the reader, now written down in `KNOWN-LIMITATIONS.md`, and it is **not** changed
+    here: changing how envelope segments split would change how already-published documents decode.
+  - **A reference this library's own reader resolves to a DIFFERENT 837 variant** (`005010X223A2`
+    handed to `build837P`). The emitted file would declare one variant and carry another's service
+    segments, and `get837Claims` would decode none of its service lines. Same class as the existing
+    refusal for a service line whose `variant` disagrees with the builder's. The message names the
+    variant the builder emits and deliberately not the one the reference belongs to.
+
+  **A reference outside the read table is emitted as given, and that is deliberate.** Nothing makes
+  the published-errata set provably exhaustive, so refusing an unrecognised identifier would claim
+  an exhaustiveness this library does not claim when reading either. The honest cost is pinned as a
+  test: on such a file this library's own reader falls back to the `SVx` scan, exactly as it does
+  for any unrecognised ST-03. The **length** is not bounded either, and the two elements' maxima
+  differ: GS-08 is data element 480 (`AN 1/12`), ST-03 is element 1705 (`AN 1/35`).
+
+  **🩺 A guard on this element cannot make the element trustworthy, and the disclosure above is
+  therefore about the whole envelope segment rather than these two elements.** An active delimiter in
+  a _different_ `GS` or `ST` element splits its own segment and **shifts every element after it**, so
+  ST-03 and GS-08 are then read out of a neighbour's slot: an `applicationSenderCode` of `SEND*ER`
+  makes GS-08 read `X` (the GS-07 agency code), and a `groupControlNumber` of `1*2` does the same
+  with **nothing warned on any channel**. Pre-existing, unchanged here, now measured in
+  `KNOWN-LIMITATIONS.md`.
+
 - **🩺 `X12_837_SERVICE_SEGMENT_REPEATED`, the 33rd Tier-2 warning code, plus the public factory
   `serviceSegmentRepeated(position)`** (`X12-837-SV1-OVERWRITE`). A **second** `SV1` / `SV2` / `SV3`
   arriving inside an **already-open** Loop 2400 now says so, at that repeated segment. Through

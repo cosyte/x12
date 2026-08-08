@@ -657,7 +657,7 @@ what `PHI-WARNING-MESSAGE-LEAK` did to `X12Segment.id` on the parse side.
   exists to stop.
 - The `esc` refusal still names the BUILDER and not the slot, and `escDec` likewise. That limit was
   already recorded; this slice made it sharper rather than smaller, because the echoed value used to
-  stand in for the slot. Threading a locator through 406 unary `esc` invocations is the trade
+  stand in for the slot. Threading a locator through every unary `esc` invocation is the trade
   `caller-string.ts` rejects and this slice did not reopen it. **Only the SEGMENT guard names a slot,
   and any surface that says "the type and the slot" unqualified is wrong** - pass 1 measured four
   consumer-facing surfaces saying exactly that, one of them illustrating it with a slot-less message.

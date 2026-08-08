@@ -72,24 +72,23 @@ copying files.** Source of truth: the meta-repo's `documentation/conventions.md`
 history. Do not act on a line here without reading it. 🩺 = getting it wrong mis-states a clinical
 or financial value on the wire.**
 
-### 🩺 `X12-VARIANT-ICR-UNGROUNDED` (2026-08-08) · `documentation/agent-notes/x12-variant-icr-ungrounded.md`
+### 🩺 `X12-VARIANT-ICR-UNGROUNDED` + `X12-837-EMIT-IDENTIFIER-FIXED` (2026-08-08) · `agent-notes/x12-{variant-icr-ungrounded,837-emit-identifier-fixed}.md`
 
-- **🩺 `VARIANT_BY_ICR` HELD NONE OF THE IDENTIFIERS 45 CFR 162.1102 ADOPTS, and MISSED
-  `005010X222A1` / `005010X223A2` WHICH COMPANION GUIDES REQUIRE IN ST-03**, so the `SVx` fallback
-  was the NORMAL path on production 837P/I and `X12_837_UNKNOWN_VARIANT` accused a CONFORMANT
-  document. **EVERY KEY NOW NAMES ITS SOURCE; the later errata are the WEAKEST leg, and say so.**
+- **🩺 `VARIANT_BY_ICR` MISSED EVERY 45 CFR 162.1102 IDENTIFIER AND BOTH COMPANION-GUIDE ONES**, so
+  the `SVx` fallback was the NORMAL path on production 837P/I and `X12_837_UNKNOWN_VARIANT` accused
+  CONFORMANT files. **EVERY KEY NAMES ITS SOURCE; the later errata are the WEAKEST leg.**
 - **🛑 A BEHAVIOUR CHANGE ON PUBLISHED DECODING. STATE IT AS ONE PROPERTY, NEVER A LIST OF
-  CONSEQUENCES** - a draft published three and a refuter found a fourth. The property: **where ST-03
-  now resolves, THE DECLARATION DECIDES INSTEAD OF THE FIRST `SVx`.** So `variant` can differ, both
-  variant codes STOP firing, and **a line whose `SVx` kind disagrees STOPS DECODING and STARTS
-  raising `X12_837_SERVICE_LINE_NOT_DECODED`.** Opposite call to `#87`/`#88` for ONE reason: **the
-  evidence was IN ST-03 and was being ignored.** **The fallback is NOT narrowed and precedence is
-  unchanged** - only WHICH documents reach it changed.
-- **A LIST OF CITED IDENTIFIERS, NEVER A PATTERN** - no trim, no case-fold, no prefix.
-  **PUBLISH NO COUNT AND NEVER ENUMERATE IT IN A MESSAGE:** both frozen messages listed the old three
-  and both went false; a tripwire reds if any message quotes a TR3 id again.
-- **🩺 THE EMIT SIDE STILL STAMPS THE OLD THREE and a caller CANNOT override**, so a partner
-  requiring `005010X222A1` REJECTS what `build837P` emits. Open, disclosed.
+  CONSEQUENCES** - a draft published three, a refuter found a fourth; the set is in the notes. The
+  property: **where ST-03 resolves, THE DECLARATION DECIDES, NOT THE FIRST `SVx`**, so a disagreeing
+  line STOPS DECODING (`X12_837_SERVICE_LINE_NOT_DECODED`) and both variant codes STOP firing.
+  Opposite call to `#87`/`#88`: **evidence was IN ST-03, ignored.** **The fallback is NOT
+  narrowed, precedence unchanged** - only WHICH documents reach it did.
+- **CITED IDENTIFIERS, NEVER A PATTERN, EITHER SIDE** - no trim/case-fold/prefix.
+  **NO COUNT, NEVER ENUMERATE THE SET IN A MESSAGE** - a tripwire reds on a quoted TR3 id.
+- **🩺 EMIT TAKES `Build837EnvelopeSpec.implementationConventionReference` INTO BOTH ST-03/GS-08;
+  THE DEFAULTS DO NOT MOVE** (a PARTNER fact). **REFUSE ON DISAGREEMENT, NOT ON ABSENCE.**
+  **🩺 AN ACTIVE DELIMITER IN ANY GS/ST ELEMENT SPLITS IT EVEN RELEASE-ESCAPED AND SHIFTS THE REST,
+  SILENTLY** (a BODY element does not): PRE-EXISTING, NOT fixed; A ONE-ELEMENT GUARD CANNOT FIX IT.
 
 ### 🩺 `X12-837-SV1-OVERWRITE` (2026-08-08) · `documentation/agent-notes/x12-837-sv1-overwrite.md`
 

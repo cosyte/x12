@@ -150,9 +150,17 @@ import type {
  * `Object.prototype`, `X12_837_UNKNOWN_VARIANT` never fired, and
  * `openServiceLine` - which answers `undefined` for anything that is not
  * `P` / `I` / `D` - dropped EVERY Loop 2400 off the model with no warning
- * on any channel. @internal
+ * on any channel.
+ *
+ * Exported to `build-837.ts` so the emit-side envelope override
+ * (`Build837EnvelopeSpec.implementationConventionReference`) can refuse a
+ * reference THIS READER resolves to a different variant, rather than
+ * declaring a second list of its own. It is used there as a source of
+ * DISAGREEMENT only: a reference the table does not carry is emitted
+ * unchanged, because nothing makes this set provably exhaustive and a
+ * partner may require an identifier nobody here cited. @internal
  */
-const VARIANT_BY_ICR: Readonly<Record<string, X12Claim837Variant>> = wireLookup({
+export const VARIANT_BY_ICR: Readonly<Record<string, X12Claim837Variant>> = wireLookup({
   // Health Care Claim: Professional (837).
   "005010X222": "P",
   "005010X222A1": "P",

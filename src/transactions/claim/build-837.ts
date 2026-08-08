@@ -1,7 +1,8 @@
 /**
  * `build837P` / `build837I` / `build837D` - pure-function builders for a
- * 005010 837 Healthcare Claim (Professional `X222A2`, Institutional
- * `X223A3`, Dental `X224A2`). NEVER auto-sends, NEVER opens a socket, NEVER
+ * 005010 837 Healthcare Claim (Professional, Institutional, Dental; the
+ * ST-03 / GS-08 guide reference defaults to `X222A2` / `X223A3` / `X224A2`
+ * and the caller may state another). NEVER auto-sends, NEVER opens a socket, NEVER
  * touches the filesystem. The library mechanically emits the claim it is
  * told; a spec whose billing-provider → subscriber → (claims | patient)
  * tree cannot form a valid HL hierarchy is REFUSED via {@link
@@ -50,6 +51,7 @@ import type {
   Build837Spec,
   Build837SubscriberSpec,
 } from "./build-837-types.js";
+import { VARIANT_BY_ICR } from "./get-837.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import type { X12Decimal } from "../../decimal.js";
@@ -103,14 +105,114 @@ function escDec(value: X12Decimal, esc: (value: string) => string): string {
 }
 
 /**
- * GS-08 / ST-03 version + release emitted per variant - the WPC TR3
- * implementation guides. @internal
+ * GS-08 / ST-03 version + release emitted per variant when the caller states
+ * none - the WPC TR3 implementation guides. **A default, not a constraint:**
+ * `Build837EnvelopeSpec.implementationConventionReference` overrides it,
+ * because which published identifier a trading partner accepts is a partner
+ * fact and not a spec fact. @internal
  */
 const VERSION_BY_VARIANT: Readonly<Record<"P" | "I" | "D", string>> = {
   P: "005010X222A2",
   I: "005010X223A3",
   D: "005010X224A2",
 };
+
+/**
+ * Resolve the ST-03 / GS-08 implementation convention reference: the
+ * caller's, escaped, or the variant's default, verbatim.
+ *
+ * **The default path is byte-for-byte what it was before the override
+ * existed** - the constant is emitted unescaped, exactly as it always has
+ * been, so no document this builder already produced changes shape. Only a
+ * caller-supplied value goes through `esc`, which is what type-checks it and
+ * keeps a delimiter inside it from splitting the segment.
+ *
+ * What it refuses of its own, and NONE of it echoes the caller's value. These
+ * sit on top of the element-type guard `esc` already applies to every string
+ * slot, so read them as what this field adds rather than as a closed account
+ * of everything that can refuse here; no total is published:
+ *
+ * 1. **Empty.** `seg` strips trailing empty elements, so an empty reference
+ *    would not emit an empty ST-03 and GS-08, it would emit segments that do
+ *    not carry those elements at all. That is a silent structural loss on
+ *    two required elements, so it is refused rather than emitted.
+ * 2. **Carrying an active delimiter or the release character**, detected as
+ *    "the escaper had to change it" rather than by listing characters, so it
+ *    tracks the delimiter set the CALLER chose. 🩺 **Escaping does not make
+ *    this element safe, which is why the value is refused instead**: measured
+ *    on this tree with `parseX12`, a released `005010?*X222A1` in GS-08 and
+ *    ST-03 still splits into two elements, with NO warning on any channel,
+ *    while the same construct in a body element (`CLM*PT?*ACCT`) holds as
+ *    one. The envelope segments are read by a splitter that is not
+ *    release-aware. That is a PRE-EXISTING property of the reader, not
+ *    something this override introduced, and it is left alone here: changing
+ *    how envelope segments split would change how already-published
+ *    documents decode. So the new surface refuses the input it cannot carry.
+ * 3. **A reference this library's own reader resolves to a DIFFERENT
+ *    variant.** `build837P` stamped with an institutional guide emits a file
+ *    declaring `I` whose service segments are all `SV1`, and `get837Claims`
+ *    reads the declaration ahead of the segments, so every service line
+ *    comes back undecoded with `X12_837_SERVICE_LINE_NOT_DECODED`. It is the
+ *    same class the per-claim guard already refuses, where a service line's
+ *    `variant` disagrees with the builder's.
+ *
+ * **A reference the table does not carry is NOT refused**, deliberately.
+ * Nothing makes the set of published errata provably exhaustive, and a
+ * partner may require an identifier nobody here cited; refusing on absence
+ * would re-import an exhaustiveness claim this package does not make on the
+ * read side either. Nor is the LENGTH bounded: GS-08 is data element 480
+ * (`AN 1/12`) and ST-03 is element 1705 (`AN 1/35`), so the two maxima differ
+ * and no envelope field in this library bounds one.
+ *
+ * 🩺 And none of this makes the element trustworthy on READ: an active
+ * delimiter in a different envelope field shifts every element after it, so
+ * ST-03 / GS-08 come back out of a neighbour's slot. PRE-EXISTING, measured in
+ * `KNOWN-LIMITATIONS.md`, and not something a guard here can reach. @internal
+ */
+function resolveVersionRelease(
+  variant: "P" | "I" | "D",
+  reference: string | undefined,
+  esc: (value: string) => string,
+): string {
+  if (reference === undefined) return VERSION_BY_VARIANT[variant];
+  if (reference === "") {
+    throw new Claim837BuildError(
+      CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_SPEC,
+      "build837: envelope.implementationConventionReference is empty. ST-03 and GS-08 are required elements and a trailing empty element is not emitted, so an empty reference would remove them rather than send them empty. Omit the field to take the builder's default.",
+    );
+  }
+  // `esc` FIRST, because it is what type-checks: a non-string never reaches
+  // the comparisons below. Its RESULT is not what is emitted - it is the
+  // discriminant. An escaped value that differs from the input carried
+  // something active, and this element cannot carry it escaped either.
+  if (esc(reference) !== reference) {
+    throw new Claim837BuildError(
+      CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_SPEC,
+      "build837: envelope.implementationConventionReference carries an active delimiter or the release character. Escaping does not make it safe here: the ST and GS segments are read by a splitter that is not release-aware, so a released delimiter still splits the segment and the declaration silently becomes two elements. State a reference that carries neither, or choose different delimiters.",
+    );
+  }
+  // `Object.hasOwn` on a table this package declares through `wireLookup`:
+  // belt and braces, and the form to copy at a read site.
+  const named = Object.hasOwn(VARIANT_BY_ICR, reference) ? VARIANT_BY_ICR[reference] : undefined;
+  // The table's declared value type admits `"unknown"`, which no entry carries
+  // today. If one ever did, this would refuse it, which is the safe direction.
+  //
+  // The message names the variant THIS builder emits and never the one the
+  // reference names: `variant` is fixed by the entry point and is the only
+  // interpolation `test/builder-refusal-bounds.test.ts` sanctions here. Naming
+  // the other one would read a table with a caller-supplied key, which is the
+  // shape that gate exists to keep out of a message, and the caller can act on
+  // this one - they chose both the builder and the reference.
+  if (named !== undefined && named !== variant) {
+    throw new Claim837BuildError(
+      CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_SPEC,
+      `build837: envelope.implementationConventionReference names an implementation guide this library reads as a DIFFERENT 837 variant, but this is build837${variant}. The emitted file would declare one variant and carry another's service segments, and this library's own reader would then decode none of its service lines. State a reference for the ${variant} 837, or build with the entry point that matches the reference.`,
+    );
+  }
+  // Verbatim, having just proved the escaper is the identity on it. Emitting
+  // the escaped copy would be the same bytes and a worse thing to read.
+  return reference;
+}
 
 /** GS-01 functional identifier code for the 837. `HC` = Health Care Claim. @internal */
 const X12_837_FUNCTIONAL_ID = "HC";
@@ -122,7 +224,9 @@ const X12_AGENCY_CODE = "X";
 const HL_LEVEL = { BILLING: "20", SUBSCRIBER: "22", PATIENT: "23" } as const;
 
 /**
- * `build837P` - assemble a 005010X222A2 Professional 837 around the spec.
+ * `build837P` - assemble a Professional 837 around the spec, declaring
+ * `005010X222A2` unless `envelope.implementationConventionReference` states
+ * the guide your trading partner requires.
  *
  * @example
  * ```ts
@@ -157,8 +261,10 @@ export function build837P(spec: Build837Spec): X12Interchange {
 }
 
 /**
- * `build837I` - assemble a 005010X223A3 Institutional 837 around the spec.
- * Service lines must be `variant: "I"` (SV2).
+ * `build837I` - assemble an Institutional 837 around the spec, declaring
+ * `005010X223A3` unless `envelope.implementationConventionReference` states
+ * the guide your trading partner requires. Service lines must be
+ * `variant: "I"` (SV2).
  *
  * @example
  * ```ts
@@ -172,8 +278,10 @@ export function build837I(spec: Build837Spec): X12Interchange {
 }
 
 /**
- * `build837D` - assemble a 005010X224A2 Dental 837 around the spec. Service
- * lines must be `variant: "D"` (SV3); per-line tooth detail rides on TOO.
+ * `build837D` - assemble a Dental 837 around the spec, declaring
+ * `005010X224A2` unless `envelope.implementationConventionReference` states
+ * the guide your trading partner requires. Service lines must be
+ * `variant: "D"` (SV3); per-line tooth detail rides on TOO.
  *
  * @example
  * ```ts
@@ -193,7 +301,6 @@ export function build837D(spec: Build837Spec): X12Interchange {
  */
 function buildClaim837(variant: "P" | "I" | "D", spec: Build837Spec): X12Interchange {
   const { envelope } = spec;
-  const versionRelease = VERSION_BY_VARIANT[variant];
 
   // ---- Structural preconditions (refuse an impossible spine) ------------
 
@@ -228,6 +335,14 @@ function buildClaim837(variant: "P" | "I" | "D", spec: Build837Spec): X12Interch
   };
 
   const ctx: EmitContext = { seg, esc, comp };
+
+  // The caller's declared guide, or the variant's default. Resolved after
+  // `esc` exists because a caller-supplied reference is escaped through it.
+  const versionRelease = resolveVersionRelease(
+    variant,
+    envelope.implementationConventionReference,
+    esc,
+  );
 
   // ---- ISA envelope -----------------------------------------------------
 

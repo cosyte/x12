@@ -23,22 +23,23 @@ import type { X12Decimal } from "../../decimal.js";
 
 /**
  * Interchange + group + transaction identity for the built 837. The builder
- * fixes GS-01 to `"HC"` and the ST-03 / GS-08 version to the variant's TR3
- * (`005010X222A2` / `X223A3` / `X224A2`) so the caller never hand-codes them.
+ * fixes GS-01 to `"HC"`, and defaults the ST-03 / GS-08 reference to the
+ * variant's TR3 (`005010X222A2` / `X223A3` / `X224A2`) so the caller never
+ * has to hand-code it.
  *
- * **🩺 Known limitation, disclosed rather than changed: those three are
- * published errata guides, but they are neither the identifiers HIPAA
- * adopts at 45 CFR 162.1102 nor the ones payer companion guides commonly
- * require in ST-03 / GS-08** (CMS and several state Medicaid guides state
- * `005010X222A1` for Professional, `005010X223A2` for Institutional and
- * `005010X224A2` for Dental). **A partner that requires one of those will
- * reject a Professional or Institutional 837 this builder emits, and there
- * is currently no way for a caller to override the value.** Nothing here
- * was re-stamped on that evidence: which published guide identifier a
- * trading partner accepts is a partner fact, not a spec fact, and silently
- * changing bytes this library already emitted would break the partners it
- * works with today. `KNOWN-LIMITATIONS.md` carries this as an open
- * residual. The READ side is unaffected - `get837Claims` recognises all of
+ * **🩺 That default is not what every trading partner accepts, so
+ * {@link Build837EnvelopeSpec.implementationConventionReference} overrides
+ * it.** The three defaults are published errata guides, but they are
+ * neither the identifiers HIPAA adopts at 45 CFR 162.1102 nor the ones
+ * payer companion guides commonly require in ST-03 / GS-08 (CMS and several
+ * state Medicaid guides state `005010X222A1` for Professional and
+ * `005010X223A2` for Institutional). **A partner that requires one of those
+ * will reject a Professional or Institutional 837 built on the default**,
+ * and the override is how you send what your partner asked for. The default
+ * itself was deliberately NOT re-stamped: which published guide identifier
+ * a partner accepts is a partner fact rather than a spec fact, and changing
+ * bytes this library already emitted would break the partners it works with
+ * today. The READ side is unaffected - `get837Claims` recognises all of
  * these references.
  *
  * @example
@@ -67,6 +68,44 @@ export interface Build837EnvelopeSpec {
   readonly groupControlNumber: string;
   /** ST-02 / SE-02 - transaction set control number. */
   readonly transactionSetControlNumber: string;
+  /**
+   * 🩺 ST-03 **and** GS-08 - the implementation convention reference this
+   * 837 declares. Default: the variant's TR3 (`005010X222A2` Professional,
+   * `005010X223A3` Institutional, `005010X224A2` Dental).
+   *
+   * **Set it to whatever your trading partner's companion guide requires**,
+   * for example `005010X222A1` on a professional claim to a payer that asks
+   * for it. Which published identifier a partner accepts is a partner fact,
+   * so this library will not choose for you: it defaults to a real published
+   * guide and gets out of the way. **One value is written to both elements**,
+   * because this builder has always written the same reference to ST-03 and
+   * GS-08 and nothing grounds a caller making them differ. That is a statement
+   * about the bytes this field emits, not about what each element may legally
+   * hold: GS-08 is data element 480 (`AN 1/12`) and ST-03 is element 1705
+   * (`AN 1/35`), and nothing here bounds the length.
+   *
+   * Refused, all `X12_837_BUILD_INVALID_SPEC`. An **empty** string, because a
+   * trailing empty element is dropped on emit, so it would delete ST-03 and
+   * GS-08 rather than send them empty. One carrying an **active delimiter or
+   * the release character**, because these two elements cannot carry it even
+   * escaped: the ST and GS segments are read by a splitter that is not
+   * release-aware, so the declaration would silently become two elements. And
+   * one **this library's own reader resolves to a different variant**
+   * (`005010X223A2` handed to `build837P`): the file would declare one variant
+   * and carry another's service segments, and `get837Claims` would then decode
+   * none of its service lines. Those are what this field adds, on top of the
+   * element-type guard every string slot already has, which refuses a
+   * non-string with the same code - no total is published. **Anything else is
+   * emitted as given** - the set of published errata is not provably
+   * exhaustive, so an identifier this library does not carry is the caller's
+   * call, not an error.
+   *
+   * 🩺 A guard on this element cannot make the element trustworthy. An active
+   * delimiter in a DIFFERENT envelope field splits its own segment and shifts
+   * every element after it, so ST-03 / GS-08 are then read out of a
+   * neighbour's slot. `KNOWN-LIMITATIONS.md` carries the measurement.
+   */
+  readonly implementationConventionReference?: string;
   /** ISA-05 - interchange sender qualifier. Default `"ZZ"`. */
   readonly senderQualifier?: string;
   /** ISA-07 - interchange receiver qualifier. Default `"ZZ"`. */

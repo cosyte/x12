@@ -59,7 +59,7 @@
  * ## The source scan is the exhaustive half
  *
  * The behavioural cases below drive a number into one element of each builder.
- * What covers all 406 `esc` invocations is {@link escaperDeclarations}: it walks
+ * What covers all 407 `esc` invocations is {@link escaperDeclarations}: it walks
  * every builder module and requires the module's `esc` to be built by
  * `makeCallerEscaper(`, and {@link directEscapeCalls}, which requires no
  * builder module to reach `escapeRelease` on its own. A tenth builder that
@@ -93,11 +93,14 @@
  *    here; delimiter safety is per-slot, and only the slots named in the item
  *    were routed. The ISA fixed-width slots remain outside both - see limit 2.
  * 1. **The refusal names the BUILDER, not the element position.** `esc` is
- *    unary and invoked 406 times on 377 lines (counted comment-stripped on this
+ *    unary and invoked 407 times on 378 lines (counted comment-stripped on this
  *    tree, `ctx.esc(...)` included, and pinned below); threading a per-slot
- *    locator through every one of them would be 406 chances to mislabel a slot.
- *    An earlier draft of this file published "378 call sites", which is the
- *    LINE count. The message names the
+ *    locator through every one of them would be 407 chances to mislabel a slot.
+ *    An earlier draft of this file published "378 call sites", which was the
+ *    LINE count of the day. **That anecdote's 378 and today's line count are
+ *    the same number by coincidence** - the count went 378 -> 377 with
+ *    `X12-DECIMAL-BYPASSES-THE-GUARD` and back to 378 with
+ *    `X12-837-EMIT-IDENTIFIER-FIXED`. Do not "correct" one into the other. The message names the
  *    builder and echoes the offending value bounded, and that is the whole
  *    locator a caller gets. **`requireCallerSegment` does not have this limit**
  *    - it holds the whole segment, so it derives `"HL-03"` from `parts[0]` and
@@ -233,7 +236,10 @@ function directEscapeCalls(file: string): number {
  * slice published "378 `esc` call sites" in four places, and 378 is the number
  * of LINES that contain one. `\besc\(` also has to admit `ctx.esc(`, because
  * the domain builders pass the escaper down inside an emit context and that is
- * where most of the invocations live: 72 of `build-837`'s 82 are `ctx.esc(`.
+ * where most of the invocations live: **61 of `build-837`'s 75 are `ctx.esc(`,
+ * re-derived on this tree.** The sentence read "72 of 82" until
+ * `X12-837-EMIT-IDENTIFIER-FIXED` re-derived it; neither figure was true of
+ * this tree, which is the standing lesson about a subtotal nothing asserts.
  * (An earlier draft of this very sentence wrote "66 of 82", which is the
  * `ctx.esc(` LINE count against the total INVOCATION count. Third instance of
  * the same mistake in this slice; it is not a hard one to make.)
@@ -265,7 +271,7 @@ describe("builder element escaping: the source gate", () => {
   });
 
   it("pins the invocation count, because the first draft published a line count", () => {
-    // 406 invocations on 377 lines, counted comment-stripped on this tree with
+    // 407 invocations on 378 lines, counted comment-stripped on this tree with
     // `ctx.esc(...)` included. The published figure and the asserted figure are
     // the same number, so prose cannot drift away from the code.
     //
@@ -281,8 +287,8 @@ describe("builder element escaping: the source gate", () => {
           .filter((l) => /\besc\(/u.test(l)).length,
       0,
     );
-    expect(invocations).toBe(406);
-    expect(lines).toBe(377);
+    expect(invocations).toBe(407);
+    expect(lines).toBe(378);
     expect(invocations).toBeGreaterThan(lines);
   });
 
