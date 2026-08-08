@@ -159,7 +159,7 @@
  *   type-checks every element at the segment join, on every route **through a
  *   builder's `seg` / `joinSeg` helper**. That is the statement this section
  *   could never make by listing: `esc` is optional on a slot, the join is not.
- *   Keep the qualifier - `buildTA1` uses neither helper, and a draft that
+ *   Keep the qualifier - `buildTA1` uses no joiner, and a draft that
  *   dropped it published a false completeness claim in six places.
  *
  * ### What is still NOT claimed
@@ -176,11 +176,16 @@
  *   is not a function`) and `padControl(1, 9)` throws the module's typed
  *   refusal with the **misleading** text "exceeds the 9-char spec limit". Those
  *   two terminate, which is better than emitting silently, and neither is
- *   improved here. **`buildTA1` has no `esc` at all, and no segment joiner
- *   either** - it emits its five caller-supplied elements with a direct
- *   `.join()`, so nothing checks them. A long-standing draft of this line said
- *   "every TA1 element being fixed-width", which is false in both halves: the
- *   module imports no `pad`, and every element comes from the caller.
+ *   improved here. **`buildTA1` had no `esc` at all and no segment joiner
+ *   either, and `X12-TA1-EMIT-NOT-RELEASE-AWARE` gave it the escaper** - it
+ *   still emits its five caller-supplied elements with a direct `.join()`, so
+ *   the joiner half of that sentence stands and the type check now comes from
+ *   here instead. What made it worth closing was not the type hole: an
+ *   unreleased delimiter in TA1-01 shifted TA1-04, and `parseTA1` narrows an
+ *   out-of-enum TA1-04 to `R`, so an Accept this library emitted read back as
+ *   a Reject. A long-standing draft of this line said "every TA1 element being
+ *   fixed-width", which is false in both halves: the module imports no `pad`,
+ *   and every element comes from the caller.
  *
  * One limit of the guard itself, rather than of its scope:
  *

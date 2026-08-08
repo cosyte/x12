@@ -151,11 +151,15 @@ describe("builder segment joining: the source gate", () => {
     // **A draft of this comment gave the reason as "a TA1 is one fixed-width
     // line with no variable elements", and a refuter measured that false.** All
     // five TA1 elements are caller-supplied, `build-ta1.ts` imports no `pad` at
-    // all, and it emits with a direct `.join()`. The real reason it is excluded
-    // is narrower and less comfortable: nothing checks it, this slice did not
-    // widen the guard into it, and the honest thing is to name it as an
-    // exclusion rather than write a rationale that makes it sound safe. The
-    // behavioural test at the bottom of this file pins what it actually does.
+    // all, and it emits with a direct `.join()`.
+    //
+    // **`X12-TA1-EMIT-NOT-RELEASE-AWARE` changed what the exclusion COSTS, and
+    // not the exclusion.** The reason used to be that nothing checked those
+    // five elements at all; it now is that `buildTA1` type-checks and releases
+    // them through `makeCallerEscaper` instead, which is the other guard. What
+    // it still does not get from `requireCallerSegment` is the SLOT in the
+    // refusal message: a wrong-typed TA1-01 names the builder, not `TA1-01`.
+    // Widening the joiner into it is still its own slice.
     const joining = modules.filter(declaresJoiner);
     expect(joining).toHaveLength(9);
     const ta1 = join("transactions", "ack", "build-ta1.ts");
@@ -164,7 +168,7 @@ describe("builder segment joining: the source gate", () => {
     // And it really is a direct join with no padding, which is the shape that
     // puts it outside a `seg` / `joinSeg` claim.
     const src = code(modules.find((m) => m.endsWith(ta1)) ?? "");
-    expect(/\.join\(elementSeparator\)/u.test(src)).toBe(true);
+    expect(/\.join\(delimiters\.element\)/u.test(src)).toBe(true);
     expect(/\bpad\(/u.test(src)).toBe(false);
   });
 
@@ -490,23 +494,23 @@ describe("the joiners refuse where no element-level gate applies", () => {
   });
 });
 
-describe("buildTA1 is OUTSIDE the property, and this pins what it does instead", () => {
-  // Found by the `conformance-refuter` on this slice, against a first draft that
+describe("buildTA1 is OUTSIDE the joiner property, and this pins what it does instead", () => {
+  // Found by the `conformance-refuter` on `#60`, against a first draft that
   // claimed "no non-string reaches an element of a segment ANY BUILDER emits".
   // `buildTA1` emits `["TA1", ...five caller values].join(sep)` directly - no
-  // `seg`, no `joinSeg`, no `esc`, no `pad` - so nothing checks it.
+  // `seg`, no `joinSeg`, no `pad`.
   //
   // **TA1-01 is data element I12, the interchange control number echoed from
   // ISA-13.** It is the reassociation key from the acknowledgment back to the
   // interchange being acknowledged, so emitting it empty is the same
-  // silent-identifier-loss class `#60` existed to close. Behaviour is identical
-  // at base `15abbd4`, so this is `PRE-EXISTING` and unchanged - but it is why
-  // the property this file asserts is about `seg` / `joinSeg` and not about
-  // "any builder", and every published statement of it now says so.
+  // silent-identifier-loss class `#60` existed to close.
   //
-  // Pinned rather than fixed on purpose: widening `requireCallerSegment` into
-  // `buildTA1` is a behaviour change to a public builder, so it is filed as its
-  // own item and gets its own graded slice.
+  // **`X12-TA1-EMIT-NOT-RELEASE-AWARE` closed the behaviour these two cases
+  // pinned as a DISCLOSURE, and they now pin the closure.** The five elements
+  // go through `esc`, so they are type-checked and released; what is still
+  // absent is `requireCallerSegment`, and the only thing that costs is the SLOT
+  // in the refusal message. The property this file asserts is still about
+  // `seg` / `joinSeg` and not about "any builder".
   const spec = (interchangeControlNumber: unknown): unknown => ({
     interchangeControlNumber,
     interchangeDate: "250101",
@@ -515,16 +519,25 @@ describe("buildTA1 is OUTSIDE the property, and this pins what it does instead",
     noteCode: "000",
   });
 
-  it("emits a non-string TA1-01 with no error and no warning", () => {
-    expect(buildTA1(asJsCaller(spec(undefined))).raw).toBe("TA1**250101*1200*A*000");
-    expect(buildTA1(asJsCaller(spec(null))).raw).toBe("TA1**250101*1200*A*000");
-    expect(buildTA1(asJsCaller(spec(123_456_789))).raw).toBe("TA1*123456789*250101*1200*A*000");
-    expect(buildTA1(asJsCaller(spec({ a: 1 }))).raw).toBe("TA1*[object Object]*250101*1200*A*000");
+  it("refuses a non-string TA1-01 rather than emitting the reassociation key away", () => {
+    // Each of these built at base: `undefined` and `null` emitted
+    // `TA1**250101*1200*A*000`, the number emitted `TA1*123456789*…` with the
+    // NUMBER surviving onto `elements`, and the object emitted
+    // `TA1*[object Object]*…`.
+    for (const bad of [undefined, null, 123_456_789, { a: 1 }]) {
+      expect(() => buildTA1(asJsCaller(spec(bad)))).toThrow(
+        /buildTA1: every element value must be a string/u,
+      );
+    }
+    // The refusal is this module's typed one, not a bare TypeError out of
+    // `escapeRelease`, which is what routing through the chokepoint buys.
+    expect(() => buildTA1(asJsCaller(spec(123_456_789)))).toThrow(AckBuildError);
   });
 
-  it("also admits an unescaped delimiter, for the same reason", () => {
-    // No `esc` either, so a delimiter in the control number shifts every element
-    // after it. Same class as the raw slots this slice DID route.
-    expect(buildTA1(asJsCaller(spec("1*BOGUS"))).raw).toBe("TA1*1*BOGUS*250101*1200*A*000");
+  it("releases an active delimiter instead of letting it shift every later element", () => {
+    // `1*BOGUS` emitted `TA1*1*BOGUS*250101*1200*A*000` at base, which reads
+    // back with the disposition one slot out. Same class as the raw slots
+    // `#60` routed, closed on the same helper.
+    expect(buildTA1(asJsCaller(spec("1*BOGUS"))).raw).toBe("TA1*1?*BOGUS*250101*1200*A*000");
   });
 });

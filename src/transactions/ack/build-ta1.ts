@@ -13,13 +13,58 @@
  * library does NOT silently invent envelope bytes around it - the caller's
  * application boundary owns whether the TA1 is embedded in an outbound
  * interchange or sent as a standalone TA1-only interchange.
+ *
+ * ## 🩺 Why every element is released, and what that changed
+ *
+ * `raw` used to be `[...five caller values].join(elementSeparator)` with
+ * nothing in between, so a caller value carrying an active delimiter took
+ * a slot of its own and shifted every element after it down one. TA1-04 is
+ * the disposition and TA1-05 the note, so the shift landed the read on the
+ * wrong pair, and `parseTA1` narrows an out-of-enum TA1-04 to `R`:
+ * **an Accept this library emitted read back as a Reject**, with the TA1-01
+ * reassociation key merged into TA1-02 and `warnings: []` on every channel.
+ * The inverse is the less safe one and also existed: a `noteCode` of
+ * literally `"A"` (a value the type forbids and nothing checks at run time)
+ * shifted onto TA1-04 and made a **Reject read back as an Accept**, which a
+ * sender never resubmits against.
+ *
+ * The grounding is inside the package, not in a spec clause, which is the
+ * same tiebreak `X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE` recorded: one
+ * function disagreed with itself. This module emitted bytes that this
+ * package's own reader decoded into a different disposition than the one
+ * the caller asked for, and every other builder already released the same
+ * class of element through the same helper.
+ *
+ * **It changes bytes, and that is the cost that kept it open for a slice.**
+ * A value containing none of the four delimiters or the release character
+ * is emitted byte-for-byte as before, which is every conformant TA1. A
+ * value containing one is now released, so its bytes differ from the ones
+ * `0.0.14` and earlier put on the wire. Two consequences are worth stating
+ * outright rather than arguing away:
+ *
+ * - **`parseTA1` reads elements RAW, pre-`?`-unescape**, exactly as
+ *   `X12Segment.elements` has always documented. So a control number of
+ *   `"00000001?"` now reads back as `"00000001??"` rather than as
+ *   `"00000001?*260601"`. The disposition is correct where it was
+ *   inverted; the key still needs `unescapeRelease` applied by the reader.
+ *   That is a property of the read half and is not changed here.
+ * - **A caller who was pre-releasing the value themselves** (the remedy
+ *   `KNOWN-LIMITATIONS.md` named while this was open) is now escaping
+ *   twice: `"00000001??"` in, `"00000001????"` out. The framing and the
+ *   disposition stay correct; the key carries the extra pair. Drop the
+ *   hand-rolled escape.
+ *
+ * And the release is scoped to the delimiter set the caller states through
+ * {@link BuildTA1Options} - see that interface for why guessing one is a
+ * value corruption rather than a safe default.
  */
 
-import type { Ta1Segment } from "../../parser/types.js";
+import type { Delimiters, Ta1Segment } from "../../parser/types.js";
 
 import { TA1_ACK_CODES, type Ta1AckCode, type Ta1NoteCode } from "./codes.js";
 import { ACK_BUILD_ERROR_CODES, AckBuildError } from "./errors.js";
 import type { BuildTA1Spec } from "./types.js";
+import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 
 /**
@@ -34,7 +79,18 @@ import { renderCallerValue } from "../../builder/caller-value.js";
  * - `ackCode === "A"` paired with `noteCode !== "000"` →
  *   {@link "./errors.js".ACK_BUILD_ERROR_CODES.X12_TA1_ACCEPT_WITH_NOTE}.
  *   Accept must mean accept. Use `E` (accept with errors) when the
- *   inbound had structural defects you elected to ignore.
+ *   inbound had structural defects you elected to ignore. This one runs
+ *   FIRST and its precedence is unchanged.
+ * - Any of the five element values that is not a `string` →
+ *   {@link "./errors.js".ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC}. This
+ *   is not a bonus guard: releasing a value means routing it through
+ *   {@link "../../builder/caller-string.js".makeCallerEscaper}, and the
+ *   bare `escapeRelease` underneath it returns its empty accumulator for a
+ *   `number`, so escaping without the type check would have replaced the
+ *   shifted-element defect with a silently VANISHED TA1-01. **A number or
+ *   an `undefined` control number used to emit as `TA1*12345*…` (the
+ *   number surviving onto `elements`, in a `readonly string[]`) or
+ *   `TA1**250101*…`; both now refuse.**
  *
  * @param spec - The TA1 fields. `interchangeControlNumber` echoes the
  *               inbound ISA-13; `interchangeDate` / `interchangeTime` echo
@@ -73,28 +129,64 @@ import { renderCallerValue } from "../../builder/caller-value.js";
 export function buildTA1(spec: BuildTA1Spec, options: BuildTA1Options = {}): Ta1Segment {
   enforceAcceptIsClean(spec);
 
-  const elementSeparator = options.elementSeparator ?? "*";
+  const delimiters: Delimiters = {
+    element: options.elementSeparator ?? "*",
+    repetition: options.repetitionSeparator ?? "^",
+    component: options.componentSeparator ?? ":",
+    segment: options.segmentTerminator ?? "~",
+  };
+  const esc = makeCallerEscaper(delimiters, "buildTA1", refuseSpec);
 
   const elements: readonly string[] = Object.freeze([
     "TA1",
-    spec.interchangeControlNumber,
-    spec.interchangeDate,
-    spec.interchangeTime,
-    spec.ackCode,
-    spec.noteCode,
+    esc(spec.interchangeControlNumber),
+    esc(spec.interchangeDate),
+    esc(spec.interchangeTime),
+    esc(spec.ackCode),
+    esc(spec.noteCode),
   ]);
-  const raw = elements.join(elementSeparator);
+  const raw = elements.join(delimiters.element);
   return Object.freeze({ raw, elements });
 }
 
 /**
- * Options accepted by {@link buildTA1}. Both fields are optional - pass
- * none for the cosyte default envelope (`*` element separator). Override
- * only when the TA1 is being embedded in an outer envelope whose declared
- * delimiters differ from the cosyte default.
+ * Options accepted by {@link buildTA1}: the delimiter set the returned
+ * segment will be read against. Every field is optional and defaults to the
+ * cosyte parser archetype (`*` element, `^` repetition, `:` component, `~`
+ * segment), which is the same four `build999` takes on
+ * {@link "./types.js".Build999EnvelopeSpec}.
+ *
+ * **The three non-element fields exist for ESCAPING and nothing else.**
+ * `buildTA1` still emits no segment terminator, no repetition and no
+ * composite. It has to know them because a caller value carrying one of
+ * them has to be released, and because escaping a byte that is NOT a
+ * delimiter where the segment lands corrupts the value: `unescapeRelease`
+ * preserves `?X` verbatim for any `X` outside the declared set, so a value
+ * released against a guessed delimiter comes back carrying a stray `?`.
+ * **If you embed a TA1 in an envelope whose delimiters are not the
+ * archetype, state them here** - the defaults are an assumption this
+ * function cannot verify, exactly as they were before it escaped anything.
  */
 export interface BuildTA1Options {
   readonly elementSeparator?: string;
+  readonly repetitionSeparator?: string;
+  readonly componentSeparator?: string;
+  readonly segmentTerminator?: string;
+}
+
+/**
+ * Throw this module's typed refusal for a spec field the builder cannot
+ * emit. `X12_ACK_INVALID_SPEC` is the existing code for exactly this
+ * ("a spec field violated a structural constraint the builder cannot
+ * recover from") and is reused rather than joined by a new one: a consumer
+ * does not have to ACT differently on a wrong-typed TA1 element than on
+ * `build999`'s wrong-typed one, and minting a code because the CAUSE
+ * differs is what moves cases off predicates consumers already wrote.
+ *
+ * @internal
+ */
+function refuseSpec(message: string): never {
+  throw new AckBuildError(ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC, message);
 }
 
 /**

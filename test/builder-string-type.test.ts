@@ -59,10 +59,10 @@
  * ## The source scan is the exhaustive half
  *
  * The behavioural cases below drive a number into one element of each builder.
- * What covers all 407 `esc` invocations is {@link escaperDeclarations}: it walks
+ * What covers all 412 `esc` invocations is {@link escaperDeclarations}: it walks
  * every builder module and requires the module's `esc` to be built by
  * `makeCallerEscaper(`, and {@link directEscapeCalls}, which requires no
- * builder module to reach `escapeRelease` on its own. A tenth builder that
+ * builder module to reach `escapeRelease` on its own. An eleventh builder that
  * writes the base one-liner reds this file without anyone remembering to add a
  * case.
  *
@@ -93,14 +93,11 @@
  *    here; delimiter safety is per-slot, and only the slots named in the item
  *    were routed. The ISA fixed-width slots remain outside both - see limit 2.
  * 1. **The refusal names the BUILDER, not the element position.** `esc` is
- *    unary and invoked 407 times on 378 lines (counted comment-stripped on this
+ *    unary and invoked 412 times on 383 lines (counted comment-stripped on this
  *    tree, `ctx.esc(...)` included, and pinned below); threading a per-slot
- *    locator through every one of them would be 407 chances to mislabel a slot.
+ *    locator through every one of them would be 412 chances to mislabel a slot.
  *    An earlier draft of this file published "378 call sites", which was the
- *    LINE count of the day. **That anecdote's 378 and today's line count are
- *    the same number by coincidence** - the count went 378 -> 377 with
- *    `X12-DECIMAL-BYPASSES-THE-GUARD` and back to 378 with
- *    `X12-837-EMIT-IDENTIFIER-FIXED`. Do not "correct" one into the other. The message names the
+ *    LINE count of the day. The message names the
  *    builder and echoes the offending value bounded, and that is the whole
  *    locator a caller gets. **`requireCallerSegment` does not have this limit**
  *    - it holds the whole segment, so it derives `"HL-03"` from `parts[0]` and
@@ -113,10 +110,17 @@
  *    spec limit". Both are wrong in their own way; neither is silent, so
  *    neither is this defect. Pinned below so they cannot quietly become silent,
  *    and disclosed in `KNOWN-LIMITATIONS.md`.
- * 3. **`buildTA1` has no `esc` at all** - every TA1 element is fixed-width and
- *    goes through `pad`. Outside this chokepoint by construction.
+ * 3. **`buildTA1` was the one builder with no `esc` at all, and
+ *    `X12-TA1-EMIT-NOT-RELEASE-AWARE` brought it inside.** The justification
+ *    this limit used to carry - "every TA1 element is fixed-width and goes
+ *    through `pad`" - was false in both halves and had already been measured
+ *    so: `build-ta1.ts` imports no `pad`, and all five of its elements come
+ *    from the caller. It now declares an escaper like the other nine, so the
+ *    count below is TEN. What it still does not have is a segment joiner, so
+ *    `test/builder-segment-type.test.ts` keeps naming it as that gate's
+ *    exclusion.
  * 4. **The scan is syntactic.** It keys on the `const esc = ` shape this
- *    library uses in all nine modules. A module that escaped inline, or through
+ *    library uses in all ten modules. A module that escaped inline, or through
  *    a differently-named binding, would not be seen. A strong tripwire for the
  *    shape this library actually uses, not a proof - the same honesty the two
  *    sibling gates carry.
@@ -258,21 +262,27 @@ describe("builder element escaping: the source gate", () => {
   const declarations = modules.flatMap(escaperDeclarations);
 
   it("finds an escaper in every builder that emits variable-width elements", () => {
-    // Re-derived on this tree: NINE modules declare an `esc`. `build-ta1.ts` is
-    // the deliberate absence - every TA1 element is fixed-width and goes
-    // through `pad`. Pinned so a module that stops being scanned (a rename, a
-    // moved directory) is a failure rather than a silently smaller sweep.
-    expect(declarations).toHaveLength(9);
-    expect(new Set(declarations.map((d) => d.file)).size).toBe(9);
+    // Re-derived on this tree: TEN modules declare an `esc`. `build-ta1.ts` was
+    // the deliberate absence and stopped being one in
+    // `X12-TA1-EMIT-NOT-RELEASE-AWARE` - the reason recorded for the absence
+    // ("every TA1 element is fixed-width and goes through `pad`") was false in
+    // both halves, and the real consequence was that an Accept this library
+    // emitted read back as a Reject. Pinned so a module that stops being
+    // scanned (a rename, a moved directory) is a failure rather than a silently
+    // smaller sweep.
+    expect(declarations).toHaveLength(10);
+    expect(new Set(declarations.map((d) => d.file)).size).toBe(10);
     expect(modules.some((m) => m.endsWith(join("transactions", "ack", "build-ta1.ts")))).toBe(true);
     expect(
       declarations.some((d) => d.file.endsWith(join("transactions", "ack", "build-ta1.ts"))),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("pins the invocation count, because the first draft published a line count", () => {
-    // 407 invocations on 378 lines, counted comment-stripped on this tree with
-    // `ctx.esc(...)` included. The published figure and the asserted figure are
+    // 412 invocations on 383 lines, counted comment-stripped on this tree with
+    // `ctx.esc(...)` included. `X12-TA1-EMIT-NOT-RELEASE-AWARE` added five of
+    // each, one per TA1 element, which is why both moved by the same amount.
+    // The published figure and the asserted figure are
     // the same number, so prose cannot drift away from the code.
     //
     // A legitimate builder edit WILL red this. The remedy is to update this
@@ -287,8 +297,8 @@ describe("builder element escaping: the source gate", () => {
           .filter((l) => /\besc\(/u.test(l)).length,
       0,
     );
-    expect(invocations).toBe(407);
-    expect(lines).toBe(378);
+    expect(invocations).toBe(412);
+    expect(lines).toBe(383);
     expect(invocations).toBeGreaterThan(lines);
   });
 
