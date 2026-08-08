@@ -78,6 +78,7 @@ export const WARNING_CODES = {
   X12_UNKNOWN_HI_QUALIFIER: "X12_UNKNOWN_HI_QUALIFIER",
   X12_MISSING_REQUIRED_LOOP: "X12_MISSING_REQUIRED_LOOP",
   X12_837_UNKNOWN_VARIANT: "X12_837_UNKNOWN_VARIANT",
+  X12_837_AMBIGUOUS_VARIANT: "X12_837_AMBIGUOUS_VARIANT",
   X12_UNKNOWN_CLAIM_STATUS_CATEGORY: "X12_UNKNOWN_CLAIM_STATUS_CATEGORY",
   X12_UNKNOWN_CLAIM_STATUS: "X12_UNKNOWN_CLAIM_STATUS",
   X12_834_UNKNOWN_MAINTENANCE_TYPE: "X12_834_UNKNOWN_MAINTENANCE_TYPE",
@@ -328,6 +329,8 @@ const WARNING_MESSAGES = {
     'Missing required loop "2010BB" (Payer Name): no Payer Name follows the Subscriber HL.',
   X12_837_UNKNOWN_VARIANT:
     '837 variant could not be resolved: ST-03\'s implementation convention reference is not one of "005010X222A2" / "005010X223A3" / "005010X224A2", and no SVx service-line segment was present to fall back on. The verbatim reference is preserved on the model.',
+  X12_837_AMBIGUOUS_VARIANT:
+    '837 variant resolved from a service segment while the transaction body carries service segments of more than one variant: no caller `type` option was supplied and ST-03\'s implementation convention reference is not one of "005010X222A2" / "005010X223A3" / "005010X224A2", so this reader fell back to the FIRST SV1 / SV2 / SV3 in the body, and a later one names a different variant. `submission.variant` is therefore a guess between contradictory evidence, and every claim and service line in the submission was read against it. Which service segment is the stray one is NOT decided here and is not derivable from the TR3s: this reader cannot tell a stray service segment from a conformant one, and the fallback takes the first regardless of whether any Loop 2400 was open at it, so an orphan segment decides the variant like any other. Read the bound literally, as a property of the RESOLUTION rather than of the document: this reports the fallback\'s own ambiguity, so a caller-supplied `type`, or an ST-03 naming a known implementation convention, means no guess was made and this code is NOT raised however mixed the body is. Nothing moves onto this code and no line is read differently because of it: every warning this reader raised on a document of this shape before, it still raises, at the same position, and this one is added beside them. It is NOT a list of what else you will see, and it does not promise that any particular loss on such a document is reported at all. Re-read with the `type` option to decode the document against a variant you trust. The verbatim segments are preserved on the transaction set; read them there before acting on the submission\'s type.',
   X12_UNKNOWN_CLAIM_STATUS_CATEGORY:
     "Unknown claim status category (CSCC): the STC composite's first component is outside the bundled snapshot. The verbatim code is preserved on the status; only its description is unavailable.",
   X12_UNKNOWN_CLAIM_STATUS:
@@ -916,6 +919,45 @@ export function unknown837Variant(position: X12Position): X12ParseWarning {
 }
 
 /**
+ * Build an `X12_837_AMBIGUOUS_VARIANT` warning. Emitted by the 837 helper
+ * when the SVx fall-back is what resolved the variant AND the transaction
+ * body carries service segments naming more than one variant, so the
+ * resolution is a guess between contradictory evidence. The submission still
+ * ships with the resolved variant on `submission.variant`; nothing about how
+ * any claim or line decodes is changed by this warning.
+ *
+ * It reports the RESOLUTION, not the document. A caller-supplied `opts.type`
+ * wins ahead of the fall-back, and so does an ST-03 naming one of the three
+ * known implementation-convention references, and in either case no guess was
+ * made and this code is not raised however mixed the body is.
+ *
+ * Which service segment is the stray one is deliberately not decided: this
+ * reader cannot tell a stray service segment from a conformant one, and the
+ * fall-back takes the first in the body whether or not a Loop 2400 was open
+ * at it. Distinct from {@link unknown837Variant}, which is raised where
+ * NOTHING resolved a variant; the two can never travel together, because a
+ * body with conflicting service segments has at least one to fall back on.
+ *
+ * `get837Claims` anchors this at the **ST**, which is `tx.segments[0]` and
+ * carries the ST-03 that would have settled the question. No `elementIndex`
+ * is set: the conflict is a property of the body rather than of an element,
+ * and one route into it is an ST-03 that is absent altogether.
+ *
+ * @example
+ * ```ts
+ * import { ambiguous837Variant } from "@cosyte/x12";
+ * const w = ambiguous837Variant({ segmentIndex: 0, transactionIndex: 0 });
+ * ```
+ */
+export function ambiguous837Variant(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_837_AMBIGUOUS_VARIANT,
+    message: WARNING_MESSAGES.X12_837_AMBIGUOUS_VARIANT,
+    position,
+  };
+}
+
+/**
  * Build an `X12_837_SERVICE_LINE_NOT_DECODED` warning. Emitted by the 837
  * helper when a Loop 2400 service line is closed without ever having
  * decoded an SV1 / SV2 / SV3 for the resolved variant: either the line
@@ -992,7 +1034,10 @@ export function serviceLineDropped(position: X12Position): X12ParseWarning {
  * implementation convention, the reader falls back to the first
  * SV1 / SV2 / SV3 in the transaction, and a segment reported here is
  * eligible for that fallback like any other - pre-existing behaviour,
- * documented in `KNOWN-LIMITATIONS.md`.
+ * documented in `KNOWN-LIMITATIONS.md` and unchanged. Where that fallback
+ * decided the variant and the body names more than one,
+ * {@link ambiguous837Variant} reports the resolution as contested; it is
+ * additive and does not change which documents reach this code.
  *
  * @example
  * ```ts

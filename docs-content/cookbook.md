@@ -248,6 +248,18 @@ with their code-system provenance.
 implementation-convention reference (`X222A2` → P, `X223A3` → I, `X224A2` → D), with an SVx fallback;
 an unresolvable one raises `X12_837_UNKNOWN_VARIANT`.
 
+**🩺 When the fallback is what decided and the body contradicts itself, that is reported too.** The
+fallback takes the **first** `SV1` / `SV2` / `SV3` in the transaction body, whether or not a Loop 2400
+was open at it, so one stray `SV2` ahead of a Professional claim re-types the whole submission
+Institutional. Where the body carries service segments for more than one variant and the fallback is
+what resolved it, `X12_837_AMBIGUOUS_VARIANT` is raised at the `ST`: `submission.variant` is a guess
+between contradictory evidence, and **which segment is the stray one is not decided**, because this
+reader cannot tell a stray service segment from a conformant one. Re-read with the `type` option to
+decode against a variant you trust. Read the bound as a property of the **resolution**: a `type` you
+pass, or an `ST-03` naming a known convention, means no guess was made and the code is not raised
+however mixed the body is. It is additive, so every existing warning on such a document still fires
+exactly where it did.
+
 The reference wins over the segments when the two disagree, and the `type` option wins over both. A
 service line whose `SVx` then does not match is **not** decoded (reading an `SV2` into a Professional
 line would mis-read the charge), so its `charge` and `units` read `undefined` and

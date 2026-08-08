@@ -12,14 +12,12 @@ identity paragraph, the north star and the sibling section are in
 
 **Every `###` heading in "Traps" below names the section carrying that trap's measurement, its
 sources and its reasoning - open it before you act on the line.** Most are in
-[`documentation/agent-notes.md`](documentation/agent-notes.md); **that file is now on its own
-250,000-byte budget too**, so the newest ones are their own files under
-`documentation/agent-notes/`. The bound and the per-repo ratchet are at
-`documentation/agent-notes.md#claude-md-audit-2026-08-04`. **Nothing was deleted - a trap deleted to
-hit a number is the one failure mode this bound exists to prevent.** This file is bounded at write
-time by the umbrella's `.claude/hooks/doc-budget.mjs`; **never quote its number here, read
-`REPO_CLAUDE` in the hook.** **A new trap here is PAID FOR BY RELOCATING FIRST**, and the entry is
-LOWERED as the relocation lands, never raised to meet it.
+[`documentation/agent-notes.md`](documentation/agent-notes.md), itself budgeted, so the newest are
+their own files under `documentation/agent-notes/` (mechanism: relocated narrative §7). **A trap
+deleted to hit a number is the one failure mode this bound exists to prevent.** **Never quote this
+file's number here, read `REPO_CLAUDE` in the umbrella's `.claude/hooks/doc-budget.mjs`.** **A new
+trap here is PAID FOR BY RELOCATING FIRST**, and the entry is LOWERED as the relocation lands, never
+raised to meet it.
 
 ## Status
 
@@ -73,6 +71,22 @@ copying files.** Source of truth: the meta-repo's `documentation/conventions.md`
 **Each was paid for; each `###` names the section carrying its measurement, sources and refutation
 history. Do not act on a line here without reading it. 🩺 = getting it wrong mis-states a clinical
 or financial value on the wire.**
+
+### 🩺 `X12-837-AMBIGUOUS-VARIANT` (2026-08-08) · `documentation/agent-notes/x12-837-ambiguous-variant.md`
+
+- **🩺 THE `SVx` FALLBACK IS NOT NARROWED AND MUST NOT BE; THIS CLOSED ONLY THE SILENCE.**
+  `X12_837_AMBIGUOUS_VARIANT` at the `ST`, NO `elementIndex`, ONCE per transaction, ONLY where the
+  fallback DECIDED and the body names more than one variant. **A caller `type` or a resolving
+  `ST-03` means NO guess, so it is NOT raised however mixed the body is: a property of the
+  RESOLUTION, never of the document.**
+- **🩺 NEVER PICK A WINNER: a stray `SVx` and a conformant one are indistinguishable here**, and
+  first-wins takes the first, open Loop 2400 or not. Choosing would be inventing.
+- **🩺 ADDITIVITY HERE IS INVARIANCE, NEVER A LIST OF WHAT ELSE YOU WILL SEE.** The frozen message
+  said "a service segment with no line open still raises `X12_837_SERVICE_SEGMENT_WITHOUT_LX`"; a
+  refuter measured it FALSE - a stray `LX` suppresses it. Say only: whatever was raised is still
+  raised, same position. Pinned CHANNEL-WIDE with this filtered out. **Never with
+  `X12_837_UNKNOWN_VARIANT`.** **STILL OPEN:** a foreign `SVx` INSIDE an already-decoded Loop 2400 is
+  silent at the segment; there it is the SOLE report.
 
 ### 🩺 `X12-AMT-ADX-ABSENT-AMOUNT` + `X12-STATED-AMOUNT-DISCARDED` (2026-08-07) · `documentation/agent-notes/x12-{amt-adx-absent-amount,stated-amount-discarded}.md`
 
@@ -268,11 +282,9 @@ or financial value on the wire.**
   `seg`/`joinSeg` helper**. A `string` carrying an active delimiter in a slot that skipped `esc` is
   still emitted verbatim.
 - **The raw slots routed through `esc`: delimiter-safe and type-checked, and value-constrained only
-  where a trap below says so.** `build999`'s GS-06/GE-02, ST-02/SE-02, AK9-01, IK5-01 and GS-07;
-  `groupDate`/`groupTime` (GS-04/GS-05) in **all seven** domain builders, not just the 999;
-  `build278`'s **HL-03** (the one that IS, `EV`/`SS`); `build837`'s LX-01. **Only these were routed.** **The
-  residual delimiter injection is NOT stop-the-line: these fail at the receiver, they do not mint a
-  wrong clinical value.** Do not escalate it as if they did.
+  where a trap below says so. Only these were routed** (the enumeration: relocated narrative §7).
+  **The residual delimiter injection is NOT stop-the-line: these fail at the receiver, they do not
+  mint a wrong clinical value.** Do not escalate it as if they did.
 - **`buildTA1` uses NEITHER `seg` NOR `joinSeg`** - it joins its five caller-supplied elements
   directly, no `esc`, no `pad`. TA1-01 is data element I12, the reassociation key back to the
   acknowledged interchange. **This was the FOURTH iteration of the completeness claim; do not write
@@ -311,8 +323,7 @@ or financial value on the wire.**
 - **🩺 Refuse, never coerce, and that is the whole item.** Coercion mints a _different_ identifier: a
   payload carrying `"0012345"` as a number already lost its leading zeros, and reassociating to the
   wrong claim is worse than failing to reassociate. **The builder's own required-field guard is
-  defeated by a number** - `build-835.ts` refused `patientControlNumber === ""` by name, and a number
-  is not `""`, so it passed and became `""` one line later. Check the type, not the sentinel.
+  defeated by a number** (the instance: relocated narrative §7). Check the type, not the sentinel.
 - **The `#51` asymmetry is deliberate, not an inconsistency.** `renderCallerValue` **coerces**;
   `esc` **refuses**. _Survive anything_ vs _invent nothing_.
 - **🩺 NEVER PUBLISH AN EXHAUSTIVE CENSUS OF WHAT BYPASSES THE CHOKEPOINT.** Three drafts did; a
@@ -404,10 +415,8 @@ or financial value on the wire.**
   refusing**; most probes HUNG at base. Both censuses are in the agent-notes section.
 - **`requireCallerArray` takes the module's own `refuse` callback, never a shared throw** - each
   builder owns a distinct error class and code consumers branch on.
-- **`requireCallerArray` answers `null` as ABSENT.** Every site it replaced read `x.dates ?? []`, so
-  guarding only `undefined` turned a valid 834 into a refusal. `null` is what a `JSON.parse`d payload
-  carries for an absent list. **`build835`'s `claims` is the measured exception** (`enforceBalance`
-  reads `spec.claims.map`, not the checked binding); pinned by a test.
+- **`requireCallerArray` answers `null` as ABSENT** (why: relocated narrative §7). **`build835`'s
+  `claims` is the measured exception**, pinned by a test.
 - **Scope the claim: a forged non-array is availability, not `STOP-THE-LINE`.** Nothing decodes a
   document differently. Unreachable from TypeScript, reachable from JS / JSON / `@cosyte/cli`.
   **`for...of` sites throw `TypeError: ... is not iterable` with NO `code`** (`buildInterchange`'s
@@ -418,10 +427,8 @@ or financial value on the wire.**
   WEDGES the test rather than failing it.** A synchronous infinite loop never yields, so
   `testTimeout` cannot interrupt it. **That is the argument for keeping the source scan exhaustive
   rather than trusting the examples.**
-- **Drive the shipped table, not a side probe**, and **431 is a measurement at a 120,000-character
-  value, not a maximum** (that site's derived ceiling is 443; every site is asserted under 500).
-  **The `QUIRK_ID_RE` comment claimed a bound the pattern never had.** Corrected the comment to the
-  code, not the grammar to the comment.
+- **Drive the shipped table, not a side probe**, and **every figure this area publishes is a
+  MEASUREMENT, not a maximum** (the figures and the `QUIRK_ID_RE` correction: relocated narrative §7).
 - **Known and NOT claimed away:** bounding a message here **redacts nothing** (the caller passed the
   value in), the surviving characters are **not escaped**, the bound is on UTF-16 **code units, not
   bytes**, both scans are syntactic tripwires and not proofs, and **neither gate scans indexed loops
@@ -436,11 +443,9 @@ or financial value on the wire.**
 - **A type is NOT a runtime guarantee** (the four holes the item's census missed: relocated
   narrative). **State a ceiling as a ceiling and a measurement as a
   measurement:** 90 is the ceiling on the FRAGMENT, and three published figures were wrong once.
-- **This is NOT `PHI-WARNING-MESSAGE-LEAK` on the emit side:** there the value was the DOCUMENT's so
-  bounding it was redaction; here the caller passed it in and still holds it. Escaping was
-  **deliberately not done**, so a refusal message is bounded but **not** one log line. **The
-  caller-vs-document dichotomy is NOT categorical** - TR3 005010X231A1 has AK2-02 copy the
-  acknowledged ST-02, and `buildTA1` echoes an inbound ISA-13.
+- **This is NOT `PHI-WARNING-MESSAGE-LEAK` on the emit side; escaping was deliberately NOT done, so
+  a refusal message is bounded but one log line is not; and the caller-vs-document dichotomy is NOT
+  categorical.** Long form + the two counterexamples: relocated narrative §7.
 - **`test/builder-refusal-bounds.test.ts` must never allow `String(...)` or `String(<expr>.length)`.**
   Its first allowlist admitted any `String(...)`; its second inspected the property NAME and not the
   operand, so a forged `{length}` sailed through. What remains allowed is a single-letter loop index
@@ -461,8 +466,8 @@ or financial value on the wire.**
   index, `segmentOffset` never `0`, `transaction` reachable only by a `TA1`) in the agent-notes
   section.
 - **🩺 SE-01 must count the BYTES THE SERIALIZER WRITES, not the model rows** (X12.6: "segments
-  included in the transaction set, including ST and SE"). Pass 1 counted only `tx.rawSegments`, so
-  spec-clean mode **rewrote a CORRECT `SE*4*` down to `SE*3*`**. `segCount` now adds every orphan
+  included in the transaction set, including ST and SE"). What the undercount did: relocated narrative
+  §7. `segCount` now adds every orphan
   flushed between the `ST` and the `SE`. GE-01/IEA-01 are unaffected: an orphan is never a `GS`.
 - **`KNOWN-LIMITATIONS.md` holds the canonical not-reproduced list; derive its size.**
 - **Case 6 (the empty-first-element segment `*A*B~` outside a transaction) is deliberately NOT in
@@ -513,9 +518,8 @@ or financial value on the wire.**
   the table before the fix** (never quote its size - derive it). Registry membership is asserted
   separately, so a factory that starts interpolating again fails without anyone extending the table.
 - **`^0.0.1` resolves EXACTLY on npm for a `0.0.x`.**
-- **The shipped disclosure was wrong in five places at once** (the five are listed in the
-  agent-notes section). **Correct the disclosure in the same commit as the fix that makes the new
-  wording true.**
+- **The shipped disclosure was wrong in several places at once** (relocated narrative §7).
+  **Correct the disclosure in the same commit as the fix that makes the new wording true.**
 
 ### 🩺 Per-transaction invariants that shipped with the phases
 
@@ -609,16 +613,15 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   types it means the declarations were **not in the tarball**: a broken publish reported as a pass.
 - **`scripts/verify.sh` needs no change; do not touch it.** It propagates the step's status
   faithfully. The step is what lies to it.
-- **The timing supplies the condition; the exit code is the defect.** `tsup` emits JS in one pass and
-  declarations in a later one, so **every** build has an interval where `dist/` holds `.mjs`/`.cjs`
-  and no `.d.ts` (**1.92 s measured on this package**). **Re-measure per repo; do not carry a
-  sibling's figure over.** The answer is **not** a lock, a lease or a build queue (ADR 0015): the
-  gate has to be able to say its own inputs were missing, whatever removed them.
+- **The timing supplies the condition; the exit code is the defect** (the `tsup` build interval:
+  relocated narrative §7). **Re-measure per repo; do not carry a sibling's figure over.** The answer
+  is **not** a lock, a lease or a build queue (ADR 0015): the gate has to be able to say its own
+  inputs were missing, whatever removed them.
 - **Keep BOTH nets in `scripts/attw.mjs`; they catch different things.** The **preflight** checks
   every relative path `package.json` promises exists and is non-empty, which catches the build
   interval and NAMES the missing file. The **post-check** on the untyped sentence catches what the
   preflight structurally cannot: declarations on disk but excluded from the tarball by
-  `files`/`.npmignore`. No instance of that second case has occurred in this repo yet.
+  `files`/`.npmignore`.
 - **The post-check reads a string, so anything that could hide it is REFUSED by option name,
   wholesale, not by value** (four routes; a nonexistent `--config-path` blinds nothing).
 - **`test/scripts/attw-gate.test.ts` pins the upstream exit-0 itself**, so an `attw` upgrade that

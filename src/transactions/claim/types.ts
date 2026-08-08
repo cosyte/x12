@@ -18,7 +18,11 @@
  * walker reads ST-03's implementation convention reference (X222A2 /
  * X223A3 / X224A2) where present; otherwise infers from service-line
  * segment id (SV1 → P, SV2 → I, SV3 → D); otherwise marks the variant
- * `"unknown"` and emits `X12_837_UNKNOWN_VARIANT`.
+ * `"unknown"` and emits `X12_837_UNKNOWN_VARIANT`. That inference takes the
+ * FIRST such segment in the body, whether or not a Loop 2400 was open at it,
+ * and where the body names more than one variant it emits
+ * `X12_837_AMBIGUOUS_VARIANT` as well: the variant it resolved is a guess,
+ * and a caller's `type` option is what settles it.
  */
 
 import type { X12Decimal } from "../../decimal.js";

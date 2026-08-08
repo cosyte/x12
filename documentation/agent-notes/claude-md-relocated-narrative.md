@@ -229,3 +229,104 @@ than by deleting anything. Verbatim:
 > derive its size there.
 
 > a tripwire this repo has hit repeatedly.
+
+## 7. Trap-bullet narrative relocated by `X12-837-AMBIGUOUS-VARIANT` (2026-08-08)
+
+A third round, to fund that slice's trap block from a file that stood at **52,728 of a
+52,728-byte entry with ZERO room** - the entry having been lowered to meet the shrink round 6
+bought, exactly as the rule says it should be. **Every imperative stayed behind in `CLAUDE.md`**;
+what moved is mechanism and incident history that the trap line does not need in order to be
+actionable. **No trap was deleted.** The umbrella still owes the matching ratchet drop, which lives
+in `.claude/hooks/doc-budget.mjs` and is outside this repo. Four pieces, verbatim.
+
+### The `documentation/agent-notes*` preamble - the mechanism half
+
+What stayed behind is the instruction: open the section a `###` heading names before acting on its
+line; the newest sections are their own files under `documentation/agent-notes/`; never quote the
+byte number, read `REPO_CLAUDE` in the hook; a new trap is PAID FOR BY RELOCATING FIRST and the
+entry is LOWERED as the relocation lands, never raised; and **a trap deleted to hit a number is the
+one failure mode this bound exists to prevent**. What moved is the account of how the bound came to
+be split in two:
+
+> Most are in [`documentation/agent-notes.md`](documentation/agent-notes.md); **that file is now on
+> its own 250,000-byte budget too**, so the newest ones are their own files under
+> `documentation/agent-notes/`. The bound and the per-repo ratchet are at
+> `documentation/agent-notes.md#claude-md-audit-2026-08-04`. **Nothing was deleted - a trap deleted
+> to hit a number is the one failure mode this bound exists to prevent.** This file is bounded at
+> write time by the umbrella's `.claude/hooks/doc-budget.mjs`.
+
+### `X12-BUILDER-BOUNDS` - why it is not the PHI leak, long form
+
+The bullet still says this is NOT `PHI-WARNING-MESSAGE-LEAK`, still says escaping was deliberately
+not done, and still says the caller-vs-document dichotomy is NOT categorical. What moved is the
+reasoning and the two counterexamples:
+
+> there the value was the DOCUMENT's so bounding it was redaction; here the caller passed it in and
+> still holds it. Escaping was **deliberately not done**, so a refusal message is bounded but
+> **not** one log line. **The caller-vs-document dichotomy is NOT categorical** - TR3 005010X231A1
+> has AK2-02 copy the acknowledged ST-02, and `buildTA1` echoes an inbound ISA-13.
+
+### `X12-CALLER-VALUE-RESIDUALS` - why `null` is ABSENT, long form
+
+The bullet still says `requireCallerArray` answers `null` as ABSENT and still names `build835`'s
+`claims` as the measured exception. What moved is why:
+
+> Every site it replaced read `x.dates ?? []`, so guarding only `undefined` turned a valid 834 into
+> a refusal. `null` is what a `JSON.parse`d payload carries for an absent list.
+> (`enforceBalance` reads `spec.claims.map`, not the checked binding); pinned by a test.
+
+### `X12-CALLER-VALUE-RESIDUALS` - the 431-character measurement
+
+The bullet still says to drive the shipped table rather than a side probe, and still says every
+figure here is a measurement rather than a maximum. What moved is the figures themselves, which go
+stale and are carried in the agent-notes section anyway:
+
+> **431 is a measurement at a 120,000-character value, not a maximum** (that site's derived ceiling
+> is 443; every site is asserted under 500). **The `QUIRK_ID_RE` comment claimed a bound the pattern
+> never had.** Corrected the comment to the code, not the grammar to the comment.
+
+### `X12-DECIMAL-BYPASSES-THE-GUARD` - the enumerated list of raw slots routed through `esc`
+
+The bullet still says the routed raw slots are delimiter-safe and type-checked, still says **only
+these were routed**, and still says the residual delimiter injection is NOT stop-the-line. What
+moved is the enumeration itself, which is a census of the shape this repo's own rule says to keep
+out of `CLAUDE.md`:
+
+> `build999`'s GS-06/GE-02, ST-02/SE-02, AK9-01, IK5-01 and GS-07; `groupDate`/`groupTime`
+> (GS-04/GS-05) in **all seven** domain builders, not just the 999; `build278`'s **HL-03** (the one
+> that IS, `EV`/`SS`); `build837`'s LX-01.
+
+### `ASSETS-P8` - the build-interval mechanism, and the second net's zero instances
+
+The two bullets still say to re-measure the interval per repo rather than carrying a sibling's
+figure, still say the answer is NOT a lock, a lease or a build queue (ADR 0015), and still say to
+keep BOTH nets in `scripts/attw.mjs`. What moved is the mechanism and one piece of history:
+
+> `tsup` emits JS in one pass and declarations in a later one, so **every** build has an interval
+> where `dist/` holds `.mjs`/`.cjs` and no `.d.ts` (**1.92 s measured on this package**).
+
+> No instance of that second case has occurred in this repo yet.
+
+### `PHI-WARNING-MESSAGE-LEAK` - the five wrong places
+
+The bullet still says to correct the disclosure in the same commit as the fix that makes the new
+wording true. What moved is the count, which is history:
+
+> **The shipped disclosure was wrong in five places at once** (the five are listed in the
+> agent-notes section).
+
+### `X12-ORPHAN-REEMIT` - what the SE-01 undercount actually did
+
+The bullet still says SE-01 must count the bytes the serializer writes rather than the model rows,
+and still cites X12.6. What moved is the incident:
+
+> Pass 1 counted only `tx.rawSegments`, so spec-clean mode **rewrote a CORRECT `SE*4*` down to
+> `SE*3*`**.
+
+### `X12-NUMERIC-VALUE-EMITS-EMPTY` - how the required-field guard was defeated
+
+The bullet still says the builder's own required-field guard is defeated by a number, and still says
+to check the TYPE rather than the sentinel. What moved is the instance:
+
+> `build-835.ts` refused `patientControlNumber === ""` by name, and a number is not `""`, so it
+> passed and became `""` one line later.

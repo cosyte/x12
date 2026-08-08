@@ -331,7 +331,36 @@ model.
     identical at `0.0.10`, **not** introduced or changed by this code, and **not** narrowed here - excluding
     orphans from the fallback would change how existing documents decode and is its own slice. It
     is warned rather than silent (`X12_837_SERVICE_LINE_NOT_DECODED` at each `LX`), and
-    `submission.variant` is the field that tells you.
+    `submission.variant` is the field that tells you. **The resolution itself is now reported too
+    wherever it was contested**, which is the entry below; the fallback is still not narrowed.
+
+- **🩺 An 837 variant the `SVx` fallback resolved in a body that names more than one variant raises
+  `X12_837_AMBIGUOUS_VARIANT`, anchored at the `ST`.** The fallback is unchanged and is deliberately
+  NOT narrowed: it still takes the **first** `SV1` / `SV2` / `SV3` in the body, orphans included, and
+  which variant a document resolves to is byte-for-byte what it was through `0.0.13`. What this code
+  adds is that the resolution said so. Through `0.0.13` a stray `SV2` re-typed a whole Professional
+  submission Institutional and **only the line-level consequences were on any channel** - a consumer
+  routing on `submission.variant` saw a confident `"I"` with nothing to contradict it. Four bounds,
+  each a committed test:
+  - **It reports the RESOLUTION, never the document.** A caller-supplied `type` wins ahead of the
+    fallback, and so does an `ST-03` naming one of the three known implementation conventions; in
+    either case no guess was made and this code is not raised **however mixed the body is**. Never
+    restate it as "the file carries more than one kind of service segment".
+  - **🩺 Which service segment is the stray one is NOT decided, and nothing here should ever start
+    deciding it.** This reader cannot tell a stray service segment from a conformant one, and the
+    fallback takes the first whether or not a Loop 2400 was open at it, so an orphan decides the
+    variant like any other. Reporting the conflict is honest; picking a winner would be inventing.
+  - **It is ADDITIVE and nothing moved onto it.** `X12_837_SERVICE_LINE_NOT_DECODED`,
+    `X12_837_SERVICE_SEGMENT_WITHOUT_LX` and `X12_837_SERVICE_LINE_DROPPED` fire on exactly the
+    documents they fired on before, in the same positions. A predicate written against any of them
+    is unaffected.
+  - **It can never travel with `X12_837_UNKNOWN_VARIANT`**, which is the other outcome of the same
+    resolution: a body with conflicting service segments has, by construction, at least one to fall
+    back on. It fires **once per transaction**, because there is one resolution per transaction.
+  - **What it does NOT close:** a foreign or duplicate `SVx` arriving inside a Loop 2400 the resolved
+    variant already decoded is still read into nothing in silence at the segment level, and where
+    that segment is the only one contradicting the resolution this code is now the sole report on the
+    channel. Narrowing the fallback, and warning at that segment, are each their own slice.
 
 - **🩺 An `N3` / `N4` / `PER` / `REF` discarded after a stray `LX` raises
   `X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`, anchored at the discarded segment itself.** This is

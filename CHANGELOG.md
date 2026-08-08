@@ -9,6 +9,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **🩺 `X12_837_AMBIGUOUS_VARIANT`, the 32nd Tier-2 warning code, plus the public factory
+  `ambiguous837Variant(position)`** (`X12-837-RESIDUALS`). An 837 whose variant was decided by the
+  `SVx` fallback, in a transaction body that carries service segments for **more than one variant**,
+  now says so at the `ST`. Through `0.0.13` it said nothing at all about that resolution.
+
+  **What that cost.** Variant resolution runs before the walk as
+  `explicitType ?? variantFromIcr ?? variantFromSegment`. Absent a caller `type` option, and where
+  `ST-03` names none of `005010X222A2` / `005010X223A3` / `005010X224A2`, the reader falls back to the
+  **first** `SV1` / `SV2` / `SV3` in the body, orphans included. One stray `SV2` ahead of a conformant
+  Professional claim therefore re-types the whole submission Institutional: `submission.variant` reads
+  `"I"`, and a consumer routing on that field sends a Professional claim down an Institutional path.
+  The line-level consequences were reported; **the submission-level typing that produced them was on
+  no channel**, so `submission.variant` carried a confident value with nothing to contradict it.
+
+  **🛑 THIS CLOSES ONLY THE SILENCE, AND THE RESTRAINT IS THE POINT.** The fallback is **not**
+  narrowed and first-wins is unchanged: which variant a document resolves to, which lines decode and
+  which warnings the walk raises are byte-for-byte what they were at `0.0.13`. Excluding orphans from
+  the fallback would change how already-published documents decode and is its own slice.
+
+  **🩺 Which service segment is the stray one is NOT decided.** This reader cannot tell a stray
+  service segment from a conformant one, and the fallback takes the first whether or not a Loop 2400
+  was open at it. Reporting the conflict is honest; picking a winner would be inventing. Re-read with
+  `get837Claims(delimiters, tx, { type })` to decode against a variant you trust.
+
+  **It reports the RESOLUTION, never the document.** A caller `type`, or an `ST-03` naming a known
+  convention, means no guess was made and this code is **not** raised however mixed the body is.
+
+  **Anchored at the `ST`** (`tx.segments[0]`, which carries `ST-03`), with **no `elementIndex`**: the
+  conflict is a property of the body rather than of an element, and one route into it is an `ST-03`
+  that is absent altogether. Raised **once per transaction**, because there is one resolution per
+  transaction, and it can never travel with `X12_837_UNKNOWN_VARIANT`, which is the other outcome of
+  that same resolution.
+
+  **🩺 It is additive, and nothing moved onto it.** `X12_837_SERVICE_LINE_NOT_DECODED`,
+  `X12_837_SERVICE_SEGMENT_WITHOUT_LX` and `X12_837_SERVICE_LINE_DROPPED` fire on exactly the
+  documents they fired on before, in the same positions, pinned by committed tests that assert the
+  whole warning channel with the new code filtered out. **No consumer predicate written against any
+  existing code changes meaning.** Read that as **invariance and not as a list of what else you will
+  see** on a contested document: it does not promise that any particular loss on one is reported at
+  all, and one that is not was not reported before this code existed either. A stray `LX` that opened
+  no line, for one, already suppressed `X12_837_SERVICE_SEGMENT_WITHOUT_LX` for the service segments
+  inside it, and still does.
+
 - **🩺 `X12_STATED_AMOUNT_DISCARDED`, the 31st Tier-2 warning code, plus the public factory
   `statedAmountDiscarded(position)`** (`X12-STATED-AMOUNT-DISCARDED`). The entry below reports a row
   whose amount this library could not read. This one is the opposite case: **the reader discarded

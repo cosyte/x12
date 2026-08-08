@@ -32,6 +32,7 @@ export {
   REQUIRED_LOOPS,
   UNEXPECTED_SEGMENT_CONTEXTS,
   WARNING_CODES,
+  ambiguous837Variant,
   amountRowDropped,
   balanceNotEvaluable,
   controlNumberMismatch,
