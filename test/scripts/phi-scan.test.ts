@@ -1794,6 +1794,70 @@ describe("phi-scan: the recogniser reaches segment text a string literal is hold
     expect(r.stderr, "the interpolated one is NOT: disclosed").not.toContain("MCALLISTER");
   });
 
+  it("DISCLOSED PRICE: a run inside a SINGLE-QUOTED literal overruns that literal's own delimiter", () => {
+    // 🩺 THE COST OF TAKING `'` OUT OF THE RUN-STOP SET, PINNED RATHER THAN
+    // ARGUED. A draft claimed the shape predicates "already handle" the source
+    // text a longer run picks up; what they do is DISCARD it, because the
+    // surrounding source lands in the run's LAST element. So a single-quoted
+    // fixture whose id is its final element is not checked - and both shapes
+    // below are ones `scanCommonShapes` does NOT cover. It is worth paying:
+    // putting `'` back trades a rare literal style for every apostrophe surname.
+    const root = makeRepo();
+    const p = join(root, "test", "quoted.ts");
+    // No terminator, so the run ends at the literal's delimiter or the newline.
+    const unterminated = seg("NM1", "IL", "1", "", "", "", "", "", "34", "222334444").slice(0, -1);
+
+    writeFileSync(p, ["export const S = '", unterminated, "';\n"].join(""));
+    expect(runIn(root, ["test/quoted.ts"]).code, "single-quoted: not checked, disclosed").toBe(0);
+
+    // The positive beside it: the same bytes, the same detector, double-quoted.
+    writeFileSync(p, ["export const S = ", JSON.stringify(unterminated), ";\n"].join(""));
+    const r = runIn(root, ["test/quoted.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("SSN (NM1 qualifier 34)");
+  });
+
+  it("DISCLOSED GAP: a name token with NO ASCII letter is dropped, on BOTH routes", () => {
+    // 🩺 WHAT `\p{L}` BUYS AND WHAT IT DOES NOT. The class admits the element;
+    // `nameTokens` then filters tokens on `/[A-Za-z]/` and that line is untouched
+    // by this slice, so a wholly non-Latin surname is dropped after the class
+    // lets it through. PRE-EXISTING: the `.edi` control measures the same, which
+    // is the point of asserting both here.
+    const root = makeRepo();
+    const cyrillic = seg(
+      "NM1",
+      "IL",
+      "1",
+      "\u0418\u0412\u0410\u041d\u041e\u0412",
+      "\u0421\u0415\u0420\u0413\u0415\u0419",
+    );
+
+    writeFileSync(
+      join(root, "test", "script.ts"),
+      `export const S = ${JSON.stringify(cyrillic)};\n`,
+    );
+    expect(runIn(root, ["test/script.ts"]).code, "embedded: dropped, disclosed").toBe(0);
+
+    writeFileSync(join(root, "test", "fixtures", "script.edi"), interchange(cyrillic));
+    expect(
+      runIn(root, ["test/fixtures/script.edi"]).code,
+      "and the whole-file route drops it too, identically to base",
+    ).toBe(0);
+
+    // The positives: a mixed-script element IS checked (that is what the class
+    // widening bought), and so is an all-ASCII one.
+    writeFileSync(
+      join(root, "test", "script.ts"),
+      `export const S = ${JSON.stringify(seg("NM1", "IL", "1", "NU\u00d1EZ", "JOS\u00c9"))};\n`,
+    );
+    expect(runIn(root, ["test/script.ts"]).code, "mixed script IS checked").toBe(1);
+    writeFileSync(
+      join(root, "test", "script.ts"),
+      `export const S = ${JSON.stringify(seg("NM1", "IL", "1", "IVANOV", "SERGEI"))};\n`,
+    );
+    expect(runIn(root, ["test/script.ts"]).code, "ASCII IS checked").toBe(1);
+  });
+
   it("DISCLOSED GAP: a fixture expressed as a BUILDER SPEC OBJECT is segment text to nobody", () => {
     // 🩺 FOUND BY HAND-READING THE 85 FILES THE WIDENING OPENED, NOT BY THE GATE.
     // A name in `{ lastName: "…" }` becomes a segment only when the builder runs,

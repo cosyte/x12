@@ -193,11 +193,20 @@
  *   - AN EMBEDDED SEGMENT UNDER A NON-DEFAULT ELEMENT SEPARATOR IS NOT REACHED.
  *     There is no ISA in an embedded run to declare the delimiters, so the pass
  *     assumes `*`. Narrower than the base state rather than wider than it.
- *   - THE EMBEDDED PASS SKIPS AN ELEMENT THAT IS NOT NAME-SHAPED OR, FOR AN ID,
- *     THAT CARRIES WHITESPACE. A run found in prose ends at whatever punctuation
- *     comes first and can swallow the sentence around it; both narrowings apply
- *     to the EMBEDDED pass only and the whole-file `.edi` path keeps the base
- *     rules unchanged.
+ *   - THE EMBEDDED PASS SKIPS A NAME ELEMENT THAT IS NOT NAME-SHAPED, AND AN ID
+ *     ELEMENT CARRYING ANYTHING BUT ASCII ALPHANUMERICS, `.`, `_` OR `-`. A run
+ *     found in prose ends at whatever punctuation comes first and can swallow the
+ *     sentence around it; both narrowings apply to the EMBEDDED pass only and the
+ *     whole-file `.edi` path keeps the base rules unchanged. **SAY THE ID RULE IN
+ *     FULL: a draft of this line said "that carries whitespace", which is far
+ *     narrower than the predicate and reads as though a `'`- or `;`-bearing id is
+ *     still checked.**
+ *   - A NAME TOKEN WITH NO ASCII LETTER IN IT IS DROPPED BY `nameTokens`, ON BOTH
+ *     ROUTES. So the `\p{L}` name class buys MIXED-SCRIPT elements and nothing
+ *     else: a wholly non-Latin surname is skipped in a `.ts` literal AND in an
+ *     `.edi` file, identically at base. PRE-EXISTING, disclosed, not closed here -
+ *     widening `nameTokens` changes the whole-file path, which nothing else in
+ *     this slice does.
  *
  * `PHI-SCAN-WALK-ROOT-SCOPE`, AND THE TWO SIDES IT HAS. The walk root moved from
  * `test/fixtures` to `test` and the `--staged` clauses from `test/fixtures/**`
@@ -1131,20 +1140,26 @@ function pushHit(hits: Hit[], path: string, segment: string, value: string, reas
  * whole-file `.edi` path is NOT narrowed - it does not take these predicates -
  * so nothing this scanner detected before detects less now.
  *
- * 🩺 "LETTER" IS `\p{L}`, NOT `[A-Za-z]`, AND A REFUTER PAID FOR THAT. With the
- * ASCII class, `NM1*IL*1*NUÑEZ*JOSÉ~` in a `.ts` literal was skipped on BOTH
- * name elements and reported clean. A surname is not an ASCII string and a
- * recogniser that assumes it is fails in the leak-hiding direction.
+ * 🩺 "LETTER" IS `\p{L}` HERE, NOT `[A-Za-z]`, AND A REFUTER PAID FOR THAT - BUT
+ * STATE WHAT IT BUYS AND NOTHING MORE. With the ASCII class, a name element
+ * carrying a tilde-n or an acute accent was skipped outright and the file
+ * reported clean. What this widening buys is MIXED-SCRIPT elements only:
+ * `nameTokens` still drops any token with no ASCII letter in it, on BOTH routes,
+ * so a wholly non-Latin surname is missed here and in an `.edi` file alike.
+ * That gap is PRE-EXISTING and is disclosed in the header rather than closed.
+ * **NEVER WRITE THE UNQUALIFIED FORM ("a surname is not an ASCII string, so this
+ * catches one") - a draft did, in four places at once.**
  *
  * 🩺 AND THE APOSTROPHE IS IN THIS CLASS ONLY BECAUSE `EMBEDDED_RUN_STOP` NO
  * LONGER STOPS AT ONE - the two constants have to be read together. While `'`
  * was a run stop, this branch was DEAD and the failure was worse than a skip:
  * the run was TRUNCATED at the apostrophe, so every element after it ceased to
- * exist. Measured then, all clean: `NM1*IL*1*O'BRIEN*SEAN****MI*W123456789~`,
- * the same segment carrying a qualifier-34 SSN, and
- * `PER*IC*JOHN O'BRIEN*TE*2124440101~`. `O'Brien`, `D'Angelo` and `N'Diaye` are
- * exactly the surnames a real de-identification failure drops into a fixture,
- * and the member id, the SSN and the phone went with them.
+ * exist. Measured then, all clean: an `NM1` person name of the `O'Brien` shape
+ * together with its `MI` member id; the same segment carrying a qualifier-34
+ * SSN instead; and a `PER` contact name with a non-555 phone. `O'Brien`,
+ * `D'Angelo` and `N'Diaye` are exactly the surnames a real de-identification
+ * failure drops into a fixture, and the id, the SSN and the phone went with
+ * them.
  */
 const EMBEDDED_NAME_SHAPED = /^\p{L}[\p{L}\p{M}' .-]*$/u;
 const EMBEDDED_ID_SHAPED = /^[0-9A-Za-z][0-9A-Za-z._-]*$/;
@@ -1315,19 +1330,22 @@ function scanX12(target: Target, text: string, allow: AllowList, hits: Hit[]): v
  *     produces a gate nobody believes; the rule here is cut back, never grow.
  *   - it does not run on a whole-file interchange. Those go through `scanX12`,
  *     which has real delimiters, and running both would report every hit twice.
- *   - a template placeholder is REMOVED before the split (`${...}` -> nothing).
- *     That keeps an interpolated fixture's ELEMENT POSITIONS, which truncating at
- *     the `$` would not - but say the other half too, because a draft named only
- *     the benefit: THE REMOVED BYTES LEAVE THIS PASS'S VIEW ENTIRELY, so a name
- *     an interpolation holds is never checked.
- *   - A SEGMENT SPLIT ACROSS A CONCATENATION IS NOT REACHED.
- *     `"NM1*IL*1*" + "MCALLISTER*BRENDAN~"` is clean where the same bytes
- *     unsplit are two hits. Nothing in this corpus is written that way today,
- *     which is what makes it latent rather than noise.
+ *   - a BRACE-FREE template placeholder is removed before the split
+ *     (`/\$\{[^{}]*\}/g`). That keeps an interpolated fixture's ELEMENT
+ *     POSITIONS, which truncating at the `$` would not - but say the other two
+ *     halves too, because a draft named only the benefit: THE REMOVED BYTES LEAVE
+ *     THIS PASS'S VIEW ENTIRELY, so a name an interpolation holds is never
+ *     checked; and the strip is NOT recursive, so a placeholder containing braces
+ *     survives and a `"` inside it then truncates the run.
+ *   - A SEGMENT SPLIT ACROSS A CONCATENATION IS NOT REACHED. A segment id and its
+ *     elements written as two adjacent string literals is clean where the same
+ *     bytes unsplit are two hits. Nothing in this corpus is written that way
+ *     today, which is what makes it latent rather than noise.
  *   - the run stops at the FIRST `"`, backtick, `~`, backslash or newline, so a
  *     segment carrying any of those inside an element is truncated there and
- *     every later element ceases to exist. `'` USED TO BE IN THAT SET AND IS NOT
- *     ANY MORE; the trap is written out at `EMBEDDED_NAME_SHAPED`.
+ *     every later element ceases to exist. `'` IS NOT IN THAT SET, and both what
+ *     that buys and what it costs are written out at `EMBEDDED_RUN_STOP`.
+ *   - the segment ids are matched CASE-SENSITIVELY, as `scanX12` matches them.
  */
 const EMBEDDED_SEGMENT_IDS = ["NM1", "PER", "DMG", "DTP", "DTM", "BHT", "GS"] as const;
 const EMBEDDED_SEGMENT_RE = new RegExp(
@@ -1346,10 +1364,22 @@ const EMBEDDED_SEGMENT_RE = new RegExp(
  * 🩺 `'` IS DELIBERATELY ABSENT AND MUST STAY ABSENT. It is a string-literal
  * delimiter in TypeScript, so it belongs here by symmetry with `"` - and putting
  * it here TRUNCATES every embedded run at the first apostrophe, which silently
- * dropped `O'Brien`, its member id, its qualifier-34 SSN and a non-555 phone in
- * the same segment. A surname's apostrophe is worth more than a single-quoted
- * literal's boundary, and the element-shape predicates already handle the source
- * text a longer run picks up.
+ * dropped an `O'Brien`-shaped surname along with the member id, qualifier-34 SSN
+ * or phone that followed it. A surname's apostrophe is worth more than a
+ * single-quoted literal's boundary.
+ *
+ * 🛑 SAY WHAT THAT COSTS, BECAUSE A DRAFT SAID THE PREDICATES "ALREADY HANDLE"
+ * IT AND THEY DO NOT - THEY DISCARD IT. A run inside a SINGLE-QUOTED literal now
+ * overruns that literal's own closing delimiter and absorbs the surrounding
+ * source into its LAST element, which the shape predicates then skip. So a
+ * single-quoted fixture whose id is its final element is not checked at all:
+ * measured, `'NM1*IL*1******34*<9 digits>'` and the `MI` equivalent each exit 0
+ * where the double-quoted form exits 1, and a single-quoted name element in a
+ * multi-declarator `const` loses its last token the same way. Both the qualifier-
+ * 34 SSN and the member id are shapes `scanCommonShapes` does NOT cover. It is a
+ * bound of this pass, not a regression (base scanned none of these files), it is
+ * listed with the others at `scanEmbeddedSegments`, and the remedy is NEVER to
+ * put `'` back - that trades a rare literal style for every apostrophe surname.
  */
 const EMBEDDED_RUN_STOP = /["`~\\\n\r]/;
 

@@ -417,10 +417,11 @@ or financial value on the wire.**
   file _IS_ an interchange**, so inline `.ts` fixtures holding segment text reached NO segment-aware
   detector; `scanEmbeddedSegments` is the other side. **IT IS A TRIPWIRE, NOT A PARSER: NEVER PUBLISH
   A CLOSED COUNT OF WHAT IT MISSES** - a draft said "four bounds", a refuter found two more in one
-  pass. **🩺 `'` MUST NOT BE A RUN STOP** - it TRUNCATED the run, losing a surname AND the member id,
-  qualifier-34 SSN and phone after it - and **"letter" is `\p{L}`, NEVER `[A-Za-z]`.** Its narrowings
-  are **EMBEDDED-ONLY; `.edi` is unchanged.** **A BUILDER SPEC OBJECT is segment text to nobody** -
-  found by hand-reading, not by the gate.
+  pass. **🩺 `'` MUST NOT BE A RUN STOP** - it TRUNCATED the run, losing a surname AND whatever
+  followed it - **but its absence has a PRICE, so never write that the shape predicates "handle" the
+  overrun.** **`\p{L}` buys MIXED-SCRIPT elements ONLY** - `nameTokens` still drops a token with no
+  ASCII letter, on BOTH routes. Its narrowings are **EMBEDDED-ONLY; `.edi` is unchanged.**
+  **A BUILDER SPEC OBJECT is segment text to nobody** - found by hand-reading, not by the gate.
 - **▶ 🛑 THIS GATE'S OWN CONTROLS ARE ASSEMBLED WITH `seg(...)`, NEVER LITERAL SEGMENT TEXT; WRITE
   THE NEXT ONE THE SAME WAY.** Declaring them disarms the detector they prove; a literal-path
   exemption would have to reach `--staged` or the file could never be committed again. **STILL OPEN:

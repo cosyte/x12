@@ -86,14 +86,28 @@ times for breaking. Each below is pinned by a case:
 - **It recognises only the ids the checks consume** (`NM1`, `PER`, `DMG`, `DTP`, `DTM`, `BHT`, `GS`).
 - **It does not run on a whole-file interchange.** Those go through `scanX12`, which has real
   delimiters. Running both would report every hit twice, and there is a case asserting it does not.
-- **A template placeholder is REMOVED before the split**, which keeps an interpolated fixture's
-  element positions. **Say the other half too, because a draft named only the benefit: the removed
-  bytes leave this pass's view entirely**, so a name an interpolation holds is never checked.
-- **A segment split across a concatenation is not reached.** `"NM1*IL*1*" + "MCALLISTER*BRENDAN~"` is
-  clean where the same bytes unsplit are two hits. Nothing in this corpus is written that way today,
-  which is what makes it latent rather than noise.
+- **A BRACE-FREE template placeholder is removed before the split** (`/\$\{[^{}]*\}/g`), which
+  keeps an interpolated fixture's element positions. **Say the other two halves too, because a draft
+  named only the benefit:** the removed bytes leave this pass's view entirely, so a name an
+  interpolation holds is never checked; and **the strip is not recursive**, so a placeholder
+  containing braces survives and a `"` inside it then truncates the run.
+- **A segment split across a concatenation is not reached.** A segment id and its elements written as
+  two adjacent string literals is clean where the same bytes unsplit are two hits. Nothing in this
+  corpus is written that way today, which is what makes it latent rather than noise.
 - **The run stops at the first `"`, backtick, `~`, backslash or newline**, so a segment carrying any
   of those inside an element is truncated there and every later element ceases to exist.
+- **🩺 A SEGMENT INSIDE A SINGLE-QUOTED LITERAL OVERRUNS THAT LITERAL'S OWN CLOSING DELIMITER**, and
+  the surrounding source lands in the run's LAST element, which the shape predicates then skip. So a
+  single-quoted fixture whose id is its final element is not checked: a bare `'NM1…34*<9 digits>'`
+  and its `MI` equivalent each exit 0 where the double-quoted form exits 1. Both shapes are ones
+  `scanCommonShapes` does **not** cover. This is the price of taking `'` out of the run-stop set and
+  it is worth paying, because putting it back trades a rare literal style for every apostrophe
+  surname - but **the price is real, and a draft claimed the shape predicates "already handle" the
+  overrun when what they do is discard it.**
+- **A name token with no ASCII letter in it is dropped by `nameTokens`, on BOTH routes.** So the
+  `\p{L}` name class buys MIXED-SCRIPT elements and nothing more: a wholly non-Latin surname is
+  skipped in a `.ts` literal and in an `.edi` file alike. PRE-EXISTING and identical at base.
+- **The segment ids are matched case-sensitively**, as `scanX12` matches them.
 - **It skips an element that is not name-shaped, and an id element carrying anything but ASCII
   alphanumerics, `.`, `_` or `-`.** A run found in prose ends at whatever punctuation comes first and
   can swallow the sentence around it: before these two predicates, a fenced doc table in
@@ -123,9 +137,18 @@ every one of these reported clean in a `.ts` literal:
 
 `O'Brien`, `D'Angelo` and `N'Diaye` are exactly the surnames a real de-identification failure drops
 into a fixture, and the `scanCommonShapes` floor covers neither the member id nor the qualifier-34
-SSN. **A surname is not an ASCII string**, so the name class is `\p{L}` with combining marks. The
-disclosure that shipped in the first draft said apostrophes were permitted, which was true of the
-class and false of the pass.
+SSN. The disclosure that shipped in the first draft said apostrophes were permitted, which was true
+of the class and false of the pass.
+
+**🛑 AND THE SECOND HALF IS NOT WHAT IT LOOKS LIKE. NEVER WRITE "a surname is not an ASCII string, so
+the `\p{L}` class catches one" - a draft published exactly that, in four places at once, and pass 2
+measured it false.** `nameTokens` filters tokens with `/[A-Za-z]/` and that line is untouched by this
+slice, so a token with **no ASCII letter at all** is dropped after the class admits it. Measured at
+head, both routes, all exit 0: a Cyrillic name, a Greek one and a Han one. What the class widening
+actually buys is **MIXED-SCRIPT elements** - the tilde-n and acute-accent case above - and nothing
+more. The wholly non-Latin gap is PRE-EXISTING, measures identically on the `.edi` route at base, and
+is disclosed rather than closed: widening `nameTokens` would change the whole-file path, which
+nothing else in this slice does.
 
 ## The one cell of the widening that was NOT additive, and the grid is what found it
 
@@ -170,7 +193,8 @@ for the corpus to be clean rather than excused.
 
 ## The base/head grid
 
-35 tree shapes across all three routes, plus 28 allow-list cells, run against a base copy of
+35 tree shapes across all three routes, plus 26 allow-list cells (13 payloads on two routes), run
+against a base copy of
 `scripts/phi-scan.ts` and `scripts/phi-allow-list.txt` taken by **file copy** from `7d50305`.
 
 **Every base `1` is still non-zero. Nothing went `1 -> 0` except the declared allow-list clearances
@@ -242,11 +266,15 @@ codes `00093721410` and `00378010401` (public labeler codes, in the 837 drug-ide
 fixtures); the CMS test NPI `1234567893`; and `t@example.com`, the git identity a throwaway test repo
 commits under. `SMITH` survives in two files as an org name (`SMITH CLINIC`) and a placeholder
 surname in a **builder spec object**, both read and neither PHI - and the spec-object one is the
-disclosed reach gap above, not a clearance. **`2124440101` belongs on this list too**, the fictional
-biller's phone in the gate's own controls: it is off the 555 convention deliberately, because the
-communication-number detector exists to flag exactly that, and assembling the control moved it out of
-the gate's view. It is invented, and "nothing is obscured" was true of the names and the SSN digits
-only.
+disclosed reach gap above, not a clearance.
+
+**🛑 STATE THE CRITERION, NEVER A LIST - THE LIST WENT STALE INSIDE ONE COMMIT.** A draft named
+`2124440101` (the fictional non-555 biller's phone in the gate's own controls) on the ground that
+**assembling a control moves its value out of the gate's view**, and the same commit added seven more
+values of exactly that class without naming them. The rule instead: **every PHI-SHAPED value in
+`test/scripts/phi-scan.test.ts` is invented for a detector to trip on, and assembling the controls
+puts all of them out of the gate's view.** None is PHI, none is attributable to anyone, and
+"nothing is obscured" is true of the values as written in the source and not of what the gate sees.
 
 ## Residuals, all PRE-EXISTING and all disclosed
 
@@ -265,3 +293,9 @@ only.
   verbatim** - which this widening does, over 85 more files. Still deferred, and the reason is still
   direction: the remedy TOLERATES a failed read, which pulls against every other rule here.
 - **60 tracked files remain outside both routes at head.** Named above, and **re-derive rather than trusting that number** - it moves with every file the next slice adds.
+- **🩺 THIS NOTE AND `scripts/phi-scan.ts` BOTH CARRY LITERAL SEGMENT RUNS**, in the tables and
+  docblocks that record what the apostrophe bug hid. Both files are outside the walk roots today, so
+  nothing scans them - **a widening to `documentation/` or `scripts/` reds the gate on the very files
+  that document it.** The changeset was deliberately written without such runs, because
+  `changeset version` copies its summary verbatim into `CHANGELOG.md`; these two were not. Latent,
+  named here rather than left to be rediscovered by whoever takes the next scope slice.
