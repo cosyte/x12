@@ -25,7 +25,14 @@ scope, to catch a carrier that describes the reader without naming it. Then a re
   is by IDENTIFIER, so an aliased envelope segment reads as a body segment to it. **`#110`'s lesson
   applied: this is the successor to "the grep anchored on a backtick".**
 
-## The census grid - filed as 1 type and 2 prescriptions; measured as 7 and 9
+## The census grid - the filed line was a floor again, in both halves
+
+**On the TYPES the filed line understated the MEASUREMENT, not the enumeration.** Three carriers at
+base (`CLAUDE.md:125-126`, `.changeset/olive-comets-point.md:40-41`,
+`x12-envelope-value-pointers.md:171-172`) already NAMED all seven, and the backlog line says
+"envelope types", plural. What `#110` actually measured with the compiler was **three**
+(`GsSegment`, `IsaSegment`, `Ta1Segment`); this slice measured **all seven**. A draft here said
+*"filed as one type"* and that is **false, deleted rather than reworded.**
 
 **`getSegmentValue` takes an `X12Segment`, which requires `id`.** Measured with the repo's own
 compiler, one probe per type, `error TS2345: Property 'id' is missing`:
@@ -40,21 +47,37 @@ compiler, one probe per type, `error TS2345: Property 'id' is missing`:
 | inline ST on `X12TransactionSet` | `tx.st` | yes |
 | inline SE on `X12TransactionSet` | `tx.se` | yes |
 
-**Every carrier naming the call with an envelope receiver.** ⏳ = freezes into `CHANGELOG.md` on
-release. **CUT** = corrected by this slice.
+**The prose carriers, by base line number.** ⏳ = freezes into `CHANGELOG.md` on release.
+**13 rows, 14 sites, 9 files.** Count the rows rather than trusting a summary figure; a draft here
+published "9 prescriptions in 6 files" against a grid of ten rows, and the gate caught it.
 
-| # | carrier | receiver | class | action |
-|---|---|---|---|---|
-| 1 | `KNOWN-LIMITATIONS.md:308` | `gs` | prescription, no disclosure | **CUT** ⬅ filed |
-| 2 | `.changeset/tidy-lamps-argue.md:46` ⏳ | GS-07 | prescription, no disclosure | **CUT** ⬅ filed, the deadline |
-| 3 | `KNOWN-LIMITATIONS.md:481` | `getSegmentValue(gs, "07")` | call, no disclosure | **CUT** |
-| 4 | `CHANGELOG.md:1452` ⏳ | `getSegmentValue(gs, "07")` | call, no disclosure | **CUT** |
-| 5 | `KNOWN-LIMITATIONS.md:40` | TA1-01 | prescription, no disclosure in section | **CUT** |
-| 6 | `CHANGELOG.md:132` ⏳ | TA1-01 | prescription, no disclosure in entry | **CUT** |
-| 7 | `.changeset/tidy-herons-decode.md:24` ⏳ | TA1-01 | prescription, no disclosure | **CUT** |
-| 8 | `src/transactions/ack/parse-ta1.ts:63` | TA1-01 | prescription in a body comment | **CUT** |
-| 9 | `agent-notes/x12-interchange-gs-escape.md:25`, `:78` | `getSegmentValue(gs, "07")` | call, no disclosure | **CUT** |
-| 10 | `agent-notes/x12-ta1-residuals.md:131` | `getSegmentValue(tx.st, "03", d)` | call, no disclosure | **CUT** |
+**🛑 READ THE `remedy` COLUMN, BECAUSE THEY ARE NOT ALL DELETIONS AND A DRAFT CALLED THEM ALL "CUT".**
+Two carriers freeze on release, and for those the remedy is deletion of the falsified clause and
+nothing else. Elsewhere the falsified token is deleted and the surviving sentence stands on its own
+antecedent, which is a deletion in the diff; row 1 is the one carrier that OWED the consumer a
+route, so it is the one replacement.
+
+| # | carrier | receiver | remedy |
+|---|---|---|---|
+| 1 | `KNOWN-LIMITATIONS.md:308` | `gs` | **REPLACED** with the two routes that work ⬅ filed |
+| 2 | `.changeset/tidy-lamps-argue.md:46` ⏳ | GS-07 | **clause DELETED** ⬅ filed, the deadline |
+| 3 | `KNOWN-LIMITATIONS.md:481` | `getSegmentValue(gs, "07")` | call deleted |
+| 4 | `CHANGELOG.md:1452` ⏳ | `getSegmentValue(gs, "07")` | call deleted |
+| 5 | `KNOWN-LIMITATIONS.md:40` | TA1-01 | phrase deleted |
+| 6 | `CHANGELOG.md:132` ⏳ | TA1-01 | phrase deleted |
+| 7 | `.changeset/tidy-herons-decode.md:24` ⏳ | TA1-01 | phrase deleted |
+| 8 | `src/transactions/ack/parse-ta1.ts:63` | TA1-01 | phrase deleted (a `//` body comment) |
+| 9 | `agent-notes/x12-interchange-gs-escape.md:25`, `:78` | `getSegmentValue(gs, "07")` | call deleted, 2 sites |
+| 10 | `agent-notes/x12-ta1-residuals.md:131` | `getSegmentValue(tx.st, "03", d)` | call deleted |
+| 11 | `agent-notes/x12-ta1-residuals.md:41` | TA1 table column header | header deleted |
+| 12 | `agent-notes/x12-ta1-emit-escape.md:230` | `getSegmentValue(ta1, "01")` | call deleted |
+| 13 | `test/transactions-ack-ta1-residuals.test.ts:18` | TA1 | phrase deleted |
+
+Rows 11, 12 and 13 were added by the gate, and rows 11 and 12 are the instructive ones. **Row 11 is
+the shape of row 9 in a different file** (a `getSegmentValue` column in a measurement table) and a
+draft dropped it while publishing a completeness claim, which is `#110`'s pass-1 blocker recurring
+one slice later. **Row 12 was excused by a rule this note states as "same section or JSDoc block"
+and then applied as "same file"**, 139 lines apart. The rule is now applied as stated.
 
 **Left alone, and the rule that decided it: a call is DISCLOSED when the wrap requirement is stated
 for THAT receiver type in the same section or JSDoc block.** These are the in-tree controls:
@@ -64,8 +87,19 @@ for THAT receiver type in the same section or JSDoc block.** These are the in-tr
 | `KNOWN-LIMITATIONS.md:554`, `:566` | `ta1` | `:560-561`, same bullet list |
 | `CHANGELOG.md:1526`, `:1535` ⏳ | `ta1` | `:1532-1533`, same paragraph |
 | `src/transactions/ack/build-ta1.ts:59` | `ta1` | `:67-68`, same JSDoc |
-| `agent-notes/x12-ta1-emit-escape.md:79`, `:90`, `:230` | `ta1` | `:91`, same file |
-| `test/transactions-ack-ta1-residuals.test.ts:18` | TA1 | the `withId` helper's own comment, `:74` |
+| `agent-notes/x12-ta1-emit-escape.md:79`, `:90` | `ta1` | `:91`, same bullet list |
+
+**Matched by the receiver filter and NOT defects, which is a property of the filter and not of them.**
+The filter is by IDENTIFIER, so a local named `gs`, `ta1`, `caret` or `colon` matches it whatever its
+type. In `test/builder-interchange-gs-escape.test.ts:157-268`,
+`test/transactions-ack-ta1-escape.test.ts:242-260` and `test/parser-envelope-release-split.test.ts:429`
+every such local is **already a wrapped `X12Segment`** (`gsOf()`, `withId()`, `dotPath()`), so the
+calls compile and are this slice's in-tree controls, not carriers.
+Naming `getSegmentValue` with **no receiver at all** is likewise not this defect:
+`agent-notes/x12-ta1-residuals.md:60`, `agent-notes/x12-envelope-release-split.md:32`,
+`agent-notes/x12-st03-read-not-release-aware.md:56`.
+`agent-notes/x12-envelope-value-pointers.md:205` is a correct RECORD of the defect and is the
+artifact, not a carrier of it.
 
 **Body-segment and unbound receivers, correct and untouched:** `src/parser/segment.ts:288-290` and
 `:426`/`:445`/`:466`; `src/transactions/ack/parse-999.ts:348`/`:364`; `CHANGELOG.md:1393`, `:3672`;
@@ -153,16 +187,27 @@ re-indexed off `":"` onto ISA-15's `"P"` - **all three surfaces wrong.** Row 3: 
 `X12_CONTROL_NUMBER_MISMATCH` on these rows is the **fixture** (IEA-02 carries the plain number), not
 a finding.
 
-**🛑 That is the measurement, and no rule is derived from it.** *"The ISA is positional so raw IS the
-value"* was the FOURTH falsified which-member-is-special story in this lineage (`#110`); row 2 is
-why. This slice therefore prescribes **no route for the ISA** rather than naming one, and files the
-question with `decodeIsa`'s missing arity check where it belongs.
+**🩺 A FOURTH ISA CELL, FOUND BY THE GATE, AND IT NEEDS NO RELEASE CHARACTER AT ALL.** On a fully
+conformant interchange with no `?` anywhere, Route B answers **`""` for ISA-11** (raw `"^"`), because
+a bare dot-path splits on the repetition separator and takes repetition 0. `PRE-EXISTING`. It is the
+strongest cell here, because the other three all need a `?`.
+
+**🛑 That is the measurement, and NO RULE IS DERIVED FROM IT - not even a negative one.** The three
+`?`-bearing rows are a `?`-shaped sample and ISA-11 is a different mechanism; between them they do
+not license *"neither route is right on an ISA element"*, which a draft of this slice published
+unhedged in the shipped `KNOWN-LIMITATIONS.md` and which the gate falsified with row 3 and with the
+plain ISA-06 / ISA-08 / ISA-16 of any conformant interchange. **That sentence is deleted, not
+reworded.** *"The ISA is positional so raw IS the value"* was the FOURTH falsified
+which-member-is-special story in this lineage (`#110`) and row 2 is why; a fifth is not being
+written here in the opposite direction. This slice prescribes **no route for the ISA**, states no
+rule about the ISA, and files the question with `decodeIsa`'s missing arity check where it belongs.
 
 ## What shipped
 
-**No runtime line changed.** Nine prose carriers cut across six files, plus the two false `#110`
-claims. `src/parser/segment.ts` is byte-identical to `HEAD` (diffed, twice, after each mutation was
-reverted **by file copy**).
+**No runtime line changed.** The 13 grid rows above, plus the two false `#110` claims.
+`src/parser/segment.ts` is byte-identical to `HEAD` (diffed, twice, after each mutation was
+reverted **by file copy**). `dist/index.mjs`, `index.cjs` and `index.d.ts` are byte-identical base to
+head, built from both trees and compared with `cmp`.
 
 **One thing was ADDED, deliberately, and it is not a deletion:**
 `test/parser-envelope-value-routes.test.ts`. Every finding in this lineage has been a claim defect in

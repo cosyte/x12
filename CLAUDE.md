@@ -123,8 +123,13 @@ FLOOR, FILED NOT CLOSED - A GREP ANCHORED ON A BACKTICK MISSES THEM, they sit ba
 
 - **🩺 NO DOC MAY NAME `getSegmentValue` AS THE READ OF AN ENVELOPE ELEMENT.** It takes an
   `X12Segment`; **ALL SEVEN envelope-level types** (`Isa`/`Iea`/`Gs`/`Ge`/`Ta1` and the INLINE ST/SE
-  on `X12TransactionSet`) declare only `raw`+`elements`, so the call is `TS2345`. **FILED AS 2
-  PRESCRIPTIONS AND 1 TYPE; CUT: 9 PRESCRIPTIONS IN 6 FILES, 7 TYPES MEASURED.**
+  on `X12TransactionSet`) declare only `raw`+`elements`, so the call is `TS2345`. **`#110` MEASURED
+  THREE OF THE SEVEN; THIS MEASURED ALL SEVEN. THE GRID IS IN THE NOTE - COUNT ITS ROWS, DO NOT
+  QUOTE A FIGURE: a draft published "9 in 6 files" against its own ten-row grid, AND the gate then
+  added THREE MORE ROWS.**
+- **🛑 NOT EVERY REMEDY WAS A DELETION, AND A DRAFT CALLED THEM ALL "CUT".** Two carriers FREEZE on
+  release and those got deletion only; one OWED the consumer a route and is the one REPLACEMENT.
+  **CHECK THE `remedy` COLUMN BEFORE REPEATING THE WORD "CUT".**
 - **🛑 THE SIGNATURE WAS NOT WIDENED, AND THAT WAS THE DECISION.** The body never reads `id`, so
   widening to `elements`-only is FREE, non-breaking and emits nothing - **and it would make a
   SILENTLY WRONG ISA READ COMPILE.** A capability that is right on six types and wrong on the
@@ -143,26 +148,14 @@ FLOOR, FILED NOT CLOSED - A GREP ANCHORED ON A BACKTICK MISSES THEM, they sit ba
 
 ### 🩺 `X12-ST03-READ-NOT-RELEASE-AWARE` (2026-08-09) · `agent-notes/x12-st03-read-not-release-aware.md`
 
-- **🩺 EVERY TYPED READER THAT PUBLISHES `implementationConventionReference` PUBLISHES IT
-  POST-`?`-UNESCAPE, THROUGH ONE `decodeSt03`. FILED AS THREE READERS; MEASURED AS FOUR RAW READS
-  OF `tx.st.elements[3]` IN THREE FILES, REACHED BY FIVE PUBLIC READERS** (`walk277` serves
-  `get277Status` AND `get277CADisposition`; `walk278` serves BOTH 278 directions). **GROUNDED ON THIS
-  PACKAGE DISAGREEING WITH ITSELF, NEVER ON A TR3 CLAUSE** - every dot-path read already unescaped
-  and `parse999` already decoded AK2-03, the same field.
-- **🛑 THE THREE `ST-03` TESTS STILL KEY ON THE RAW TEXT, DELIBERATELY; MOVING ONE IS A DIFFERENT
-  SLICE:** `VARIANT_BY_ICR`, `walk277`'s `transactionType`, and `get277CADisposition`'s ADMISSION
-  GATE. Measured: with `componentSeparator: "X"` an ST-03 of `005010?X222A1` decodes to a guide
-  identifier, so keying on the decoded text makes **THE DECLARATION BEAT THE `SVx` FALLBACK**
-  (`X12-VARIANT-ICR-UNGROUNDED`'s property) and **STOPS A SERVICE LINE DECODING**. **THE MOVE IS
-  ONE-WAY: nothing that resolved or was admitted at base stops** - no identifier keyed on carries a
-  delimiter or `?`, so a raw text equal to one decodes to itself.
-- **⚖️ NO NORMALISATION AND NO NEW WARNING.** Nothing trimmed or case-folded; whitespace still
-  publishes untrimmed. **THE SINK IS A NO-OP**, so `X12_DANGLING_RELEASE_CHAR` is dropped as
-  `getSegmentValue`'s default, `parseTA1` and `parse999` drop it - `PRE-EXISTING` and OPEN, not
-  absorbed.
-- **🛑 PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH READER IS SPECIAL.** Each reader's own `""` /
-  absent mapping is UNCHANGED and pinned: `walk278` collapses `""` to `undefined`, the other two
-  publish `""`.
+**RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-ENVELOPE-VALUE-ROUTES` trap above, on that trap's SECOND relocation.
+**🩺 Open it before you touch `decodeSt03`, any typed reader's `implementationConventionReference` or
+an ST-03 key: every reader publishes it POST-`?`-unescape through ONE `decodeSt03`, filed as three
+readers and measured as FOUR raw reads in THREE files reached by FIVE public readers, GROUNDED ON
+THIS PACKAGE DISAGREEING WITH ITSELF and never on a TR3 clause; 🛑 THE THREE ST-03 TESTS STILL KEY ON
+THE RAW TEXT, DELIBERATELY, and moving one is a different slice; NO NORMALISATION AND NO NEW WARNING,
+THE SINK IS A NO-OP; and 🛑 PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH READER IS SPECIAL.**
 
 ### 🩺 `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-interchange-gs-escape.md`
 

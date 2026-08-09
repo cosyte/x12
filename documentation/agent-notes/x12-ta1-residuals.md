@@ -38,7 +38,7 @@ required-field guard at TA1-01 alone.
 ### Read half - `parseTA1` vs. the dot-path read, from BYTES
 
 ```text
-raw element content        parseTA1 field   getSegmentValue   warnings
+raw element content        parseTA1 field   dot-path read     warnings
 00000001?? (release char)  "00000001??"     "00000001?"       []
 0000?*0001 (element sep)   "0000?*0001"     "0000*0001"       []
 0000?~0001 (segment term)  "0000?~0001"     "0000~0001"       []

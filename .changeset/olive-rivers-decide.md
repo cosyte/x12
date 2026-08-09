@@ -2,15 +2,17 @@
 "@cosyte/x12": patch
 ---
 
-Nine documentation carriers that told you to read an envelope element's logical value through
+The documentation carriers that told you to read an envelope element's logical value through
 `getSegmentValue` are corrected (`X12-ENVELOPE-VALUE-ROUTES`). **Documentation and tests only: no
 runtime line changed and the emitted JS is byte-identical, so no behaviour moved.**
 
 `getSegmentValue` takes an `X12Segment`, which requires `id`. `IsaSegment`, `IeaSegment`,
 `GsSegment`, `GeSegment`, `Ta1Segment` and the inline ST/SE types on `X12TransactionSet` declare only
-`raw` and `elements`, so passing any one of them is `TS2345`, "Property 'id' is missing". Filed as one
-type and two prescriptions; measured as **seven types and nine prescriptions in six files**, including
-`KNOWN-LIMITATIONS.md`'s *"Read through `getSegmentValue` if you want the logical value"* for a `gs`.
+`raw` and `elements`, so passing any one of them is `TS2345`, "Property 'id' is missing". **All seven
+are measured here**, where the previous release measured three. The carriers include
+`KNOWN-LIMITATIONS.md`'s *"Read through `getSegmentValue` if you want the logical value"* for a `gs`,
+which is the one that owed you a route and so is the one replaced rather than cut; two of the others
+are pending release notes, and those are corrected by deleting the falsified clause and nothing else.
 
 **Two routes reach the decoded text, both were already published in this package, and neither is
 universal.** `unescapeRelease` on the element string is a public export. Adding an `id` and taking the

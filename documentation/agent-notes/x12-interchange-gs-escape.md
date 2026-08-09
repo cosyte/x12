@@ -75,7 +75,7 @@ of `"X|Y"` took GS-08's slot at base and `"X*Y"` was inert. The property, which 
 **only the ELEMENT SEPARATOR and the SEGMENT TERMINATOR ever shifted the segment's own element
 framing, plus a `?` immediately before the element separator.** The **repetition** and **component**
 separators moved the DOT-PATH reader instead, and releasing them is a **gain** there: on the default
-set it answered `"X"` at base for a GS-07 of `"X^Y"`, truncating to repetition 0, and
+set it answered `"X"` at base for `"X^Y"`, truncating to repetition 0, and
 the composite read `"07-1"` answered `"X"` for `"X:Y"`. **The measured pure cost is a MID-STRING `?`,
 on the surfaces documented as raw only** - `gs.elements[4]` reads `"2026??0601"` where it read
 `"2026?0601"`, while the dot-path read of that value unescapes and is unchanged. Recorded in that

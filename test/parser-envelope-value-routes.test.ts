@@ -7,8 +7,10 @@
  * `getSegmentValue` takes an {@link X12Segment}, which requires `id`.
  * `IsaSegment`, `IeaSegment`, `GsSegment`, `GeSegment`, `Ta1Segment` and the
  * INLINE ST/SE types on `X12TransactionSet` declare only `raw` and `elements`,
- * so passing any one of them is `TS2345`. Filed as ONE type (`gs`) and TWO
- * prescriptions; measured as SEVEN types and NINE prescriptions in six files.
+ * so passing any one of them is `TS2345`. `#110` measured THREE of the seven
+ * with the compiler; all seven are measured here, and the prose carriers are
+ * gridded in `agent-notes/x12-envelope-value-routes.md`. No figure is quoted
+ * here: a draft published one that its own grid contradicted.
  *
  * ## Why the signature was NOT widened, which was the decision
  *

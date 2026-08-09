@@ -9,16 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
-- **Nine documentation carriers that told you to read an envelope element's logical value through
+- **The documentation carriers that told you to read an envelope element's logical value through
   `getSegmentValue` are corrected** (`X12-ENVELOPE-VALUE-ROUTES`). **Documentation and tests only: no
   runtime line changed and the emitted JS is byte-identical, so no behaviour moved.**
 
   `getSegmentValue` takes an `X12Segment`, which requires `id`. `IsaSegment`, `IeaSegment`,
   `GsSegment`, `GeSegment`, `Ta1Segment` and the inline ST/SE types on `X12TransactionSet` declare
   only `raw` and `elements`, so passing any one of them is `TS2345`, "Property 'id' is missing".
-  Filed as one type and two prescriptions; measured as **seven types and nine prescriptions in six
-  files**, including `KNOWN-LIMITATIONS.md`'s _"Read through `getSegmentValue` if you want the
-  logical value"_ for a `gs`.
+  **All seven are measured here**, where the previous release measured three. The carriers include
+  `KNOWN-LIMITATIONS.md`'s _"Read through `getSegmentValue` if you want the logical value"_ for a
+  `gs`, which is the one that owed you a route and so is the one replaced rather than cut; two of the
+  others are pending release notes, and those are corrected by deleting the falsified clause and
+  nothing else.
 
   **Two routes reach the decoded text, both were already published in this package, and neither is
   universal.** `unescapeRelease` on the element string is a public export. Adding an `id` and taking
@@ -191,7 +193,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 
   Every row `warnings: []`. TA1-01 is the reassociation key, so the left column is a key that
-  matches no ISA-13. The right column is the same element read through a dot-path, which
+  matches no ISA-13. The right column is the same element, which
   already unescaped; `parse999` does the same on its IK4-01 composite. The grounding is that
   disagreement and nothing else - no clause anyone here has read settles what a TA1 element may
   contain.
@@ -1512,7 +1514,7 @@ required control number and this builder never invents one, so nothing is emitte
   SEGMENT TERMINATOR ever shifted the segment's own framing, plus a `?` immediately before the
   element separator.** The **repetition** and **component** separators moved the dot-path reader
   instead, and releasing them is a **gain** there: on the default set it
-  answered `"X"` for a GS-07 of `"X^Y"`, truncating the value to repetition 0, and the composite read `"07-1"`
+  answered `"X"` for `"X^Y"`, truncating the value to repetition 0, and the composite read `"07-1"`
   answered `"X"` for `"X:Y"`. **The measured cost is a mid-string `?`, and only on the surfaces
   documented as raw** - `gs.elements[4]` reads `"2026??0601"` where it read `"2026?0601"`, while the
   dot-path read of that value unescapes and is unchanged. No total is published: that is what was
