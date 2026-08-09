@@ -275,11 +275,15 @@ describe("X12-EMIT-DEGENERATE-RELEASE-DELIMITER: the precedence a builder's own 
     ).toThrow(/An accept must cite/);
   });
 
-  it("🛑 what YIELDS: every `requireControlNumber` slot, and it is not one report", () => {
-    // Base reported the control-number refusal at each of these; head reports
-    // the delimiter one. Same code, different message - the escaper is built
-    // before `requireControlNumber` runs, in EVERY builder that has one. A draft
-    // pinned only the first row and called it "the one report that moved".
+  it("🛑 what YIELDS: two `requireControlNumber` slots, pinned as instances", () => {
+    // 🛑 READ THE TITLE AS ITS SCOPE. These are two slots in ONE builder and
+    // only the empty mechanism; the ORDERING claim they illustrate is wider
+    // (`requireControlNumber` is built after the escaper in every builder that
+    // has one, so the non-string mechanism yields at every slot too) and is
+    // carried by the source, not by this case. Nothing here reds if a future
+    // builder puts `requireControlNumber` above its escaper - said rather than
+    // claimed away, because a drift pin over a hand-list proves nothing.
+    // A draft pinned one row and called it "the one report that moved".
     const isa = { ...interchangeSpec({ elementSeparator: "?" }), interchangeControlNumber: "" };
     expect(() => buildInterchange(isa)).toThrow(/is the X12 release character/);
 

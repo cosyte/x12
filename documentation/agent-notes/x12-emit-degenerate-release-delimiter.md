@@ -121,8 +121,15 @@ and the gate falsified both with one line:
 ```text
 buildInterchange({ segmentTerminator: "??" })  -> BUILDS
   ix.delimiters  { element:"*", repetition:"^", component:":", segment:"?" }   warnings: []
-  HI*ABK?:J45.50 frames as ["HI","HI*ABK"] + ["", ":J45.50"]
-build837P({ envelope: { segmentTerminator: "??" } }) -> BUILDS, phantom segments SE-01 never counted
+  a ["HI","ABK:J45.50"] segment spec comes back as, in order:
+    id "ST"          ["ST","837","0001"]
+    id ""            [""]
+    id "HI"          ["HI","ABK"]          <- the qualifier alone
+    id "(non-spec)"  [":J45.50"]           <- the ICD-10 code, where no reader looks
+    id ""            [""]
+    id "SE"          ["SE","3","0001"]
+build837P({ envelope: { segmentTerminator: "??" } }) -> BUILDS; SE-01 declares 22 against 43
+  framed segments, 21 of them phantoms, warnings: []
 ```
 
 Nothing in any builder checks that a delimiter is a single byte, and the ISA line writes the declared
@@ -133,8 +140,10 @@ ADR 0016 exists to stop. What was wrong is the sentence, and the sentence is wha
 disclosed in `KNOWN-LIMITATIONS.md`, `docs-content/spec-notes-envelope.md` and both source modules,
 and pinned as an honest control in `test/builder-degenerate-release-delimiter.test.ts`.
 
-The wider family this belongs to - **no builder validates the SHAPE of a delimiter at all** - is a
-backlog line and not this slice's, per ADR 0016 rule 2.
+The wider family this belongs to - **no builder validates the SHAPE of a delimiter at all**, and it
+is not `?`-specific (`segmentTerminator: "~~"` does the identical thing) - is out of this slice's
+scope per ADR 0016 rule 2. **It is OWED an item in `operations/BACKLOG.md` and did not have one when
+this landed**; do not read the classification as evidence that one exists.
 
 ## 🛑 What is deliberately NOT changed
 
@@ -156,9 +165,12 @@ The claim swept by wording rather than by file, per `#102`'s finding. Carriers t
 falsified form - _"`buildInterchange({ componentSeparator: "?" })` … today"_, _"do NOT declare `?` as
 the ELEMENT separator"_, _"all THREE roles"_: `CLAUDE.md`, `KNOWN-LIMITATIONS.md`,
 `docs-content/spec-notes-envelope.md` (**which SHIPS**), `src/parser/release.ts`'s `splitWithRelease`
-JSDoc (**source only - it is `@internal` and unexported, so it does NOT render into `dist`; a draft
-said it did and the gate measured that false against a real `tsup` build. `escapeRelease`'s JSDoc in
-the same file DOES ship, so the distinction is real and worth keeping**),
+JSDoc (**source only, and the REASON matters: `src/index.ts` re-exports just `escapeRelease`,
+`RELEASE_CHAR` and `unescapeRelease` from this module, so `splitWithRelease` never reaches the public
+surface. It is NOT because of `@internal` - nothing sets `stripInternal`, and `RELEASE_CHAR`'s
+`@internal` docblock ships verbatim. Two drafts of this parenthesis were wrong: the first said it
+DOES ship, the second blamed `@internal`. Check the re-export list, never the tag.**
+`escapeRelease`'s JSDoc in the same file DOES ship, so the distinction is real and worth keeping),
 `documentation/agent-notes/x12-body-degenerate-release-separator.md`,
 `test/parser-segment-degenerate-release-separator.test.ts`, the pending changeset
 `.changeset/olive-doors-repeat.md` and its `[Unreleased]` `CHANGELOG.md` entry. **The two pending

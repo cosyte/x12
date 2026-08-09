@@ -288,8 +288,9 @@ model.
     degenerate set by another route, `warnings: []`. **Never read the refusal as "this library cannot
     compose a document against a degenerate set"**; it is a property of the SET a caller declares,
     never of the document. Deliberately not guarded: a delimiter-length rule is a decision nobody has
-    made here, and the wider family (**no builder validates the SHAPE of a delimiter at all**) is a
-    backlog line rather than that slice's. Pinned as an honest control in the same file.
+    made here, and the wider family (**no builder validates the SHAPE of a delimiter at all**, and it is
+    not `?`-specific - a `segmentTerminator` of `"~~"` does the identical thing) is out of that
+    slice's scope. Pinned as an honest control in the same file.
 
   - **🩺 PRE-EXISTING and NOT closed here: on a degenerate set a `?~` still swallows the segment
     terminator.** `findUnescapedTerminator` guards its own role only, so with `?` as the element
