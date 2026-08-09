@@ -91,12 +91,13 @@ here has read one that settles what a TA1 element may contain, and nothing shipp
 
 ## 🩺 The carrier sweep, by WORDING across the whole tree
 
-The `#102` lesson, applied. **Three** clauses were falsified, and each carrier found was corrected
-BY DELETION, never reworded. **🛑 No completeness claim is published here, and the reason is that
-one was and it was refuted:** a draft of this section said every carrier had been corrected while
-clause 3 below was still standing in the very file the remedy had just edited. **The sweep is a
-discipline, not a proof.** Grep the WORDING, tree-wide, every time - and note that clause 3 was
-found by the GATE and not by the sweep that claimed to be complete.
+The `#102` lesson, applied. **Three** clauses were falsified. **🛑 No completeness claim and no
+method claim is published here, and the reason is that each was published in turn and each was
+refuted:** a draft said every carrier had been corrected while clause 3 was still standing in the
+file the remedy had just edited, and its replacement claimed a method the same commit did not follow
+at a fourth carrier. **The sweep is a discipline, not a proof.** Grep the WORDING, tree-wide, every
+time - and note that clause 3 was found by the GATE and not by the sweep that claimed to be
+complete.
 
 1. _"the READ half did not move / `parseTA1` is still pre-`?`-unescape"_ - `CLAUDE.md`,
    `KNOWN-LIMITATIONS.md`, `CHANGELOG.md` (the whole file is still `[Unreleased]`, so it is a
