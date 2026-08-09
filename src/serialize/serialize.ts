@@ -83,9 +83,7 @@
  * Every warning it emits is built by the same value-free factories the parser
  * uses: `message` is a frozen-registry lookup and `position` locates the
  * control segment, so a declared count or control number can never reach a
- * diagnostic. Read the declared and actual values off the model
- * (`se.elements[1]` against `tx.rawSegments.length`, `ge.elements[1]` against
- * `group.transactions.length`, `iea.elements[1]` against `ix.groups.length`).
+ * diagnostic.
  */
 
 import type {

@@ -450,9 +450,7 @@ export interface X12ParseWarning {
  * Neither side is echoed, not truncated and not hashed. A control number is
  * free-form trading-partner text on five of the six slots (only ISA-13 is
  * fixed-width), routinely carries a batch or patient-account identifier in
- * the field, and is entirely sender-controlled. Read `isa.elements[13]`,
- * `iea.elements[2]`, `gs.elements[6]`, `ge.elements[2]`, `st.elements[2]`
- * and `se.elements[2]` off the model when you need the values.
+ * the field, and is entirely sender-controlled.
  *
  * @example
  * ```ts
@@ -501,8 +499,7 @@ export function pre005010(position: X12Position): X12ParseWarning {
  * Build an `X12_GROUP_COUNT_MISMATCH` warning. Emitted when IEA-01 does not
  * equal the actual number of GS..GE groups present in the interchange.
  * Trading partners use this to detect transmission truncation. Both numbers
- * stay on the model (`iea.elements[1]` and `ix.groups.length`) and neither
- * is silently corrected.
+ * stay on the model and neither is silently corrected.
  *
  * @example
  * ```ts
@@ -521,8 +518,7 @@ export function groupCountMismatch(position: X12Position): X12ParseWarning {
 /**
  * Build an `X12_TRANSACTION_COUNT_MISMATCH` warning. Emitted when GE-01
  * does not equal the actual number of ST..SE transaction sets present in
- * the group. Both numbers stay on the model (`ge.elements[1]` and
- * `group.transactions.length`).
+ * the group. Both numbers stay on the model.
  *
  * @example
  * ```ts

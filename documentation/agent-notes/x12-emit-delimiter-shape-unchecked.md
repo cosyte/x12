@@ -210,3 +210,43 @@ permanently into `CHANGELOG.md`. Re-grepped clean.
 
 **The umbrella's `documentation/repos/x12/emit-degenerate-release-delimiter.md` carries the same
 claim and was NOT edited here** - this slice is scoped to the submodule. It is owed a correction.
+
+---
+
+## The `CLAUDE.md` trap text, RELOCATED HERE VERBATIM 2026-08-09
+
+Moved out of `CLAUDE.md` in full to pay for the `X12-ENVELOPE-VALUE-POINTERS` trap, under this
+repo's own ratchet (relocate first, lower the entry as it lands, never raise). **Nothing is
+dropped and nothing is reworded** - a revert re-publishes claims, so the wording is preserved
+exactly as it stood at `61b5981`.
+
+- **🩺 A DELIMITER MUST BE A STRING OF EXACTLY ONE VISIBLE CHARACTER, THE FOUR DISTINCT; REFUSED ON
+  EMIT BY EVERY BUILDER IN `requireWellShapedDelimiters`. THE RULE IS `detectDelimiters`' OWN,
+  IMPORTED NOT RESTATED (`isVisibleDelimiterChar`)** - a builder composing what its own parser FATALS
+  on disagreed with itself. **NO NORMALISATION** (nothing trimmed or coerced), so no source is owed.
+  **THE READ SIDE DID NOT MOVE.**
+- **🩺 THREE MECHANISMS, FILED AS ONE. NEVER WRITE THEM AS ONE.** **LENGTH:** `"~~"` -> 31 rows
+  against `SE-01` 16; `componentSeparator: ":~"` reads back through a well-formed ISA. Both
+  `warnings: []`. **🛑 PUBLISH NO ASYMMETRY ABOUT WHICH ROLES WERE SILENT, IN ANY QUALIFIED FORM** -
+  three drafts did and the gate falsified every one. **STATE THE CELLS THAT WERE RUN.**
+  **TYPE: the JOIN coerces, the ESCAPE does not**, so `componentSeparator: 1` framed
+  on `"1"` unprotected - `SV1-01-2` read `992`, not `99213`; **A LENGTH RULE CANNOT REACH IT.**
+  **`buildTA1` HAD NO NET AT ALL, EVERY ROLE AND SHAPE** (no trailing `parseX12`): `""` RETURNED
+  `TA10000000012606011200A000`, `"||"` a TA1 reading back **TA1-01 EMPTY, `ackCode` `R`: AN ACCEPT
+  AS A REJECT.** `warnings: []` throughout.
+- **🛑 A UTF-16 CODE-UNIT RULE, NOT A BYTE RULE - a one-code-unit MULTI-BYTE separator STILL BUILDS**
+  (a byte receiver then reads ISA-16 as `0xC2`). **DISCLOSED, NOT GUARDED; NEVER RESTATE THE BOUND IN
+  BYTES** - every first draft did, all false - and **DO NOT MOVE ONE SIDE ALONE**, `charAt` counts
+  code units too. **PUBLISH NO COUNT OF WHAT BUILT SILENTLY:** a draft said "two shapes" and a boxed
+  `new String("|")` outside the census made it more.
+- **🛑 THE ERROR CLASS MOVES, BOTH WAYS; NO CODE MINTED.** Base threw
+  `X12ParseError`/`X12_INVALID_DELIMITERS` OUT OF A `build*` CALL; head uses the builder's own.
+  **CATCHING THE PARSE CLASS STOPS WORKING, THE BUILD CLASS STARTS - BOTH DIRECTIONS (`#83`).** A
+  MESSAGE moves too (`requireControlNumber` is LATER, so `#101`/`#102` yield); **NEVER COUNT SITES.**
+- **🛑 IT REFUSES SPECS THAT BUILT WITH `warnings: []`; THE PLAUSIBLE ONE IS
+  `segmentTerminator: "~\r\n"`** - which never put a line break on the wire either (CR/LF between
+  segments is absorbed on READ, so the model recorded `~`). **READING one is UNAFFECTED.**
+- **⚖️ RUNS AFTER THE `?` GUARD SO NOTHING `#106` PINNED MOVES** (a `?` in two roles is degenerate AND
+  non-distinct; the sharper message wins). **A LETTER OR DIGIT IS STILL ADMISSIBLE**
+  (`componentSeparator: "S"`); one colliding with DATA is a different family, still open.
+  **NO REFUSAL ECHOES THE DECLARED VALUE.**
