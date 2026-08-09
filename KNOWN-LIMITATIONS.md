@@ -100,8 +100,13 @@ model.
   - **🛑 The published reference can name a guide this reader did NOT resolve to, and nothing warns
     about the divergence.** On the `componentSeparator: "X"` document above,
     `submission.implementationConventionReference` reads `005010X222A1`, which the variant table
-    holds, while `submission.variant` is `I` from the `SVx` fallback and neither
-    `X12_837_UNKNOWN_VARIANT` nor `X12_837_AMBIGUOUS_VARIANT` is raised; the 277 shape publishes
+    holds, while `submission.variant` is `I` from the `SVx` fallback. **"Nothing warns" is NOT the
+    boundary of it:** on the same delimiters a body with no `SVx` publishes `005010X222A1` with
+    `variant: "unknown"` and raises `X12_837_UNKNOWN_VARIANT`, and a body naming more than one
+    variant publishes it with `variant: "P"` and raises `X12_837_AMBIGUOUS_VARIANT` - each time the
+    code that fired says `ST-03` named no identifier this reader recognises while the model field
+    holds one it does. **Both frozen messages therefore point at NO model field.** The 277 shape
+    publishes
     `005010X214` while `transactionType` is `claim-status` and `get277CADisposition` returns
     `undefined`. **Through `0.0.15` the published value WAS the keyed value, so the model could not
     disagree with itself. Gate on `variant` / `transactionType`, never on the published reference.**

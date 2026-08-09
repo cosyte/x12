@@ -259,6 +259,58 @@ describe("🛑 no keyed decision moves: the three ST-03 tests still key on the r
     ]);
   });
 
+  /**
+   * The divergence is NOT bounded by "nothing warns". These two cells are the
+   * shapes where it coincides with a variant warning, and they are pinned
+   * because the item's standing rule is to publish the cells that were run:
+   * the published reference reads an identifier the reader's own table holds
+   * while the code that just fired says `ST-03` named none it recognises.
+   * That is why both frozen messages now point at no model field.
+   */
+  const HEADER_837 = [
+    "BHT*0019*00*REF1*20250101*1200*CH",
+    "HL*1**20*1",
+    "CLM*ACCT1*150.00***11:B:1*Y*A*Y*Y",
+  ];
+
+  it("the divergence coincides with X12_837_UNKNOWN_VARIANT when the body has no SVx at all", () => {
+    const { delimiters, tx } = firstTransaction(
+      interchange("837", "005010?X222A1", HEADER_837, componentIsX),
+    );
+    const submission = get837Claims(delimiters, tx);
+    expect(submission?.implementationConventionReference).toBe("005010X222A1");
+    expect(submission?.variant).toBe("unknown");
+    expect(submission?.warnings.map((w) => w.code)).toEqual([
+      "X12_837_UNKNOWN_VARIANT",
+      "X12_MISSING_REQUIRED_LOOP",
+    ]);
+  });
+
+  it("and with X12_837_AMBIGUOUS_VARIANT when the body names more than one variant", () => {
+    const { delimiters, tx } = firstTransaction(
+      interchange(
+        "837",
+        "005010?X222A1",
+        [
+          ...HEADER_837,
+          "LX*1",
+          "SV1*HC:99213*150.00*UN*1",
+          "LX*2",
+          "SV2*0300*HC:99213*150.00*UN*1",
+        ],
+        componentIsX,
+      ),
+    );
+    const submission = get837Claims(delimiters, tx);
+    expect(submission?.implementationConventionReference).toBe("005010X222A1");
+    expect(submission?.variant).toBe("P");
+    expect(submission?.warnings.map((w) => w.code)).toEqual([
+      "X12_837_AMBIGUOUS_VARIANT",
+      "X12_MISSING_REQUIRED_LOOP",
+      "X12_837_SERVICE_LINE_NOT_DECODED",
+    ]);
+  });
+
   it("the 277CA admission gate and transactionType are still decided by the raw text", () => {
     const componentIs4: Delimiters = { ...DEFAULT_DELIMITERS, component: "4" };
     const { delimiters, tx } = firstTransaction(

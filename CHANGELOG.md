@@ -50,8 +50,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reference can name a guide this reader did NOT resolve to, and nothing warns about the
   divergence.** On the `componentSeparator: "X"` document above,
   `submission.implementationConventionReference` reads `005010X222A1`, which the variant table
-  holds, while `submission.variant` is `I` from the `SVx` fallback and neither
-  `X12_837_UNKNOWN_VARIANT` nor `X12_837_AMBIGUOUS_VARIANT` is raised. The 277 shape is the same:
+  holds, while `submission.variant` is `I` from the `SVx` fallback. **"Nothing warns" is NOT the
+  boundary of it.** On the same delimiters, a body with no `SVx` at all publishes `005010X222A1`
+  with `variant: "unknown"` and raises `X12_837_UNKNOWN_VARIANT`, and a body naming more than one
+  variant publishes it with `variant: "P"` and raises `X12_837_AMBIGUOUS_VARIANT` - in both cases
+  the code that fired says `ST-03` named no identifier this reader recognises while the model field
+  holds one it does. **That is why both frozen messages now point at NO model field**, and it is why
+  `X12_837_UNKNOWN_VARIANT`'s closing pointer is deleted rather than reworded. The 277 shape is the
+  same:
   the model publishes `005010X214` while `transactionType` is `claim-status` and
   `get277CADisposition` returns `undefined`. **Through `0.0.15` the published value WAS the keyed
   value, so the model could not disagree with itself. Gate on `variant` / `transactionType`, never

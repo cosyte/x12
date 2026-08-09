@@ -329,7 +329,7 @@ const WARNING_MESSAGES = {
   X12_MISSING_REQUIRED_LOOP_2010BB:
     'Missing required loop "2010BB" (Payer Name): no Payer Name follows the Subscriber HL.',
   X12_837_UNKNOWN_VARIANT:
-    "837 variant could not be resolved: ST-03's implementation convention reference is absent, empty, or not an 837 Technical Report Type 3 identifier this reader recognises, and no SVx service-line segment was present to fall back on. The set of references it recognises covers the professional, institutional and dental 837 guides HIPAA adopts at 45 CFR 162.1102 together with their published errata; it is NOT claimed to be exhaustive, and this message deliberately does not enumerate it, because a list here goes stale the moment a guide is added. A reference outside that set is not asserted to be invalid - all this code reports is that this reader could not turn it into a variant and had nothing to fall back on. The reference is on the model; read it there rather than inferring what the sender meant.",
+    "837 variant could not be resolved: ST-03's implementation convention reference is absent, empty, or not an 837 Technical Report Type 3 identifier this reader recognises, and no SVx service-line segment was present to fall back on. The set of references it recognises covers the professional, institutional and dental 837 guides HIPAA adopts at 45 CFR 162.1102 together with their published errata; it is NOT claimed to be exhaustive, and this message deliberately does not enumerate it, because a list here goes stale the moment a guide is added. A reference outside that set is not asserted to be invalid - all this code reports is that this reader could not turn it into a variant and had nothing to fall back on.",
   X12_837_AMBIGUOUS_VARIANT:
     "837 variant resolved from a service segment while the transaction body carries service segments of more than one variant: no caller `type` option was supplied and ST-03's implementation convention reference is absent, empty, or not an 837 Technical Report Type 3 identifier this reader recognises, so this reader fell back to the FIRST SV1 / SV2 / SV3 in the body, and a later one names a different variant. `submission.variant` is therefore a guess between contradictory evidence, and every claim and service line in the submission was read against it. Which service segment is the stray one is NOT decided here and is not derivable from the TR3s: this reader cannot tell a stray service segment from a conformant one, and the fallback takes the first regardless of whether any Loop 2400 was open at it, so an orphan segment decides the variant like any other. Read the bound literally, as a property of the RESOLUTION rather than of the document: this reports the fallback's own ambiguity, so a caller-supplied `type`, or an ST-03 this reader does turn into a variant, means no guess was made and this code is NOT raised however mixed the body is. Whatever else this reader raised on a document that reaches this code, it still raises, at the same position, and this one is added beside them. It is NOT a list of what else you will see, and it does not promise that any particular loss on such a document is reported at all. Re-read with the `type` option to decode the document against a variant you trust. The verbatim segments are preserved on the transaction set; read them there before acting on the submission's type.",
   X12_UNKNOWN_CLAIM_STATUS_CATEGORY:
@@ -898,10 +898,15 @@ export function missingRequiredLoop(position: X12Position, loop: X12RequiredLoop
  * Build an `X12_837_UNKNOWN_VARIANT` warning. Emitted when the 837 helper
  * cannot resolve the variant from ST-03's implementation-convention
  * reference AND no SVx service-line segment is present to fall back on.
- * The parsed submission still ships with `variant: "unknown"` and the
- * reference on `submission.implementationConventionReference`; the
+ * The parsed submission still ships with `variant: "unknown"`, and the
  * walker does its best on shared structure (envelope, HL, claim header) and
- * skips variant-specific service-line decoding.
+ * skips variant-specific service-line decoding. **This message deliberately
+ * points at no model field.** Recognition reads `ST-03` as FRAMED while
+ * `submission.implementationConventionReference` is decoded of any `?` release
+ * escape, so on a document that escapes a delimiter inside `ST-03` the two
+ * differ and the model field can hold an identifier this code just said was
+ * not recognised (`X12-ST03-READ-NOT-RELEASE-AWARE`). A pointer stood here and
+ * in the message text and is DELETED, not reworded.
  *
  * `get837Claims` anchors this at the **ST**, which is `tx.segments[0]` and
  * carries the ST-03 the resolution reads. Through `0.0.10` it passed

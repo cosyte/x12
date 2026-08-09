@@ -156,7 +156,33 @@ wording that made your change necessary.** The gate found four such carriers, th
 
 **Every remedy is a deletion of the falsified word**, plus one added disclosure sentence naming the
 consequence the gate said was never stated: the published reference can name a guide this reader did
-not resolve to, and nothing warns.
+not resolve to.
+
+**🛑 PASS 2 THEN FOUND THAT REMEDY WAS ONE WORD DEEP, AND THE LESSON IS THE SHAPE.** Deleting
+*"verbatim"* left `X12_837_UNKNOWN_VARIANT` saying *"ST-03's reference is not an identifier this
+reader recognises"* and, in the same breath, *"the reference is on the model; read it there"* - a
+pointer at a field that on those very documents holds an identifier it DOES recognise, because
+recognition reads the FRAMED text and the field is decoded. **The falsity was in the PAIRING, not in
+the adjective.** The pointer is deleted from the message and from the `unknown837Variant` JSDoc; the
+nuance went into the shipped disclosure rather than into a frozen message, because growing a message
+is growth. `X12_837_AMBIGUOUS_VARIANT` carries the same recognition clause and points at SEGMENTS
+rather than at the reference, so it needed no change once the pointer was gone.
+
+**And the first disclosure drafted its own boundary wrong**: it said the divergence occurs where
+*"neither `X12_837_UNKNOWN_VARIANT` nor `X12_837_AMBIGUOUS_VARIANT` is raised"*, which reads as a
+bound. Measured on `componentSeparator: "X"` with `ST-03` framed `005010?X222A1`:
+
+```text
+body                          published        variant      warnings
+SV1 only                      005010X222A1     P            [MISSING_REQUIRED_LOOP]
+SV2 only                      005010X222A1     I            [MISSING_REQUIRED_LOOP]
+no SVx at all                 005010X222A1     unknown      [UNKNOWN_VARIANT, MISSING_REQUIRED_LOOP]
+SV1 then SV2                  005010X222A1     P            [AMBIGUOUS_VARIANT, MISSING_REQUIRED_LOOP,
+                                                             SERVICE_LINE_NOT_DECODED]
+```
+
+**The divergence is present in all four rows and warned in two.** Both warned rows are pinned in
+`test/transactions-st03-release-decode.test.ts`, on the whole warnings array.
 
 The predecessor's clause was *"three more readers publish ST-03 raw"*. It was carried by `CLAUDE.md`,
 `src/transactions/ack/parse-ta1.ts`, `test/transactions-ack-ta1-residuals.test.ts` and

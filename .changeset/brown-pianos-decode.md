@@ -26,7 +26,12 @@ left open. The difference is one-way: nothing that resolved a variant, or was ad
 
 **🛑 So the published reference can name a guide this reader did NOT resolve to, and nothing warns
 about the divergence.** On that document `implementationConventionReference` reads `005010X222A1`
-while `variant` is `I` from the fallback; on a 277 the model can publish `005010X214` while
+while `variant` is `I` from the fallback. **"Nothing warns" is not the boundary:** with no `SVx` at
+all the same reference publishes with `variant: "unknown"` and `X12_837_UNKNOWN_VARIANT`, and with a
+mixed body with `X12_837_AMBIGUOUS_VARIANT` - each time the code that fired says `ST-03` named no
+identifier this reader recognises while the model field holds one it does. **Both frozen messages
+therefore point at NO model field**, and `X12_837_UNKNOWN_VARIANT`'s closing pointer at the model is
+DELETED, not reworded. On a 277 the model can publish `005010X214` while
 `transactionType` is `claim-status` and `get277CADisposition` returns `undefined`. Through `0.0.15`
 the published value WAS the keyed value, so the model could not disagree with itself. **Gate on
 `variant` / `transactionType`, never on the published reference.** `X12_837_UNKNOWN_VARIANT`'s
