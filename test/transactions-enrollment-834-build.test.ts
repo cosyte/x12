@@ -373,3 +373,63 @@ describe("build834 - refusal-message bounds (X12-BUILDER-BOUNDS)", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// X12-EMPTY-CONTROL-NUMBER-FABRICATED: the three envelope control-number pairs.
+// ---------------------------------------------------------------------------
+
+describe("build834 - an empty envelope control number is refused", () => {
+  // All three were silent at base commit `28b417f`, in two different ways.
+  // ISA-13 / IEA-02 FABRICATED `000000000` out of `""`, because `padControl`
+  // zero-pads and nothing stood in front of it; GS-06 / GE-02 and ST-02 / SE-02
+  // reach the wire through `esc`, which early-returns on `""`, so the required
+  // element went out short.
+  //
+  // 🛑 Say `warnings: []`, never "the pair reconciled against itself". That
+  // holds only for `buildInterchange` and `build999`, which join untrimmed.
+  // This builder's `seg` trims a trailing empty element, so the trailer carried
+  // no GE-02 and no SE-02 at all, with GS-06 and ST-02 empty mid-segment.
+  // Measured at base in all seven domain builders. The census across the
+  // builders and the refuse-rather-than-warn reasoning live in
+  // `src/builder/caller-control-number.ts`; the cross-builder cases are in
+  // `test/builder-control-number-empty.test.ts`.
+  //
+  // The message is asserted, never only the class: `toThrow(SomeBuildError)`
+  // passes on any unrelated refusal in these specs.
+
+  it("🩺 refuses an empty interchangeControlNumber (ISA-13 / IEA-02)", () => {
+    expect(() =>
+      build834({ ...CANONICAL_SPEC, envelope: { ...ENVELOPE, interchangeControlNumber: "" } }),
+    ).toThrow(
+      /build834: interchangeControlNumber is empty\. ISA-13 \/ IEA-02 is a required control number/,
+    );
+  });
+
+  it("refuses an empty groupControlNumber (GS-06 / GE-02)", () => {
+    expect(() =>
+      build834({ ...CANONICAL_SPEC, envelope: { ...ENVELOPE, groupControlNumber: "" } }),
+    ).toThrow(
+      /build834: groupControlNumber is empty\. GS-06 \/ GE-02 is a required control number/,
+    );
+  });
+
+  it("refuses an empty transactionSetControlNumber (ST-02 / SE-02)", () => {
+    expect(() =>
+      build834({ ...CANONICAL_SPEC, envelope: { ...ENVELOPE, transactionSetControlNumber: "" } }),
+    ).toThrow(
+      /build834: transactionSetControlNumber is empty\. ST-02 \/ SE-02 is a required control number/,
+    );
+  });
+
+  it("still builds the unmodified spec, and still zero-pads a SHORT control number", () => {
+    // The green control for the three cases above, and the pin that the guard
+    // is not "ISA-13 must be nine characters": padding a value the caller DID
+    // supply is what `padControl` is for and is unchanged.
+    expect(build834(CANONICAL_SPEC).warnings).toHaveLength(0);
+    const short = build834({
+      ...CANONICAL_SPEC,
+      envelope: { ...ENVELOPE, interchangeControlNumber: "1" },
+    });
+    expect(short.isa.elements[13]).toBe("000000001");
+  });
+});

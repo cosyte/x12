@@ -29,6 +29,7 @@ import type { X12Interchange } from "../../parser/types.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
+import { requireControlNumber } from "../../builder/caller-control-number.js";
 
 /**
  * Refuse with this module's typed error, for {@link makeCallerEscaper}. A
@@ -133,6 +134,50 @@ export function build999(spec: Build999Spec): X12Interchange {
   const senderQualifier = envelope.senderQualifier ?? "ZZ";
   const receiverQualifier = envelope.receiverQualifier ?? "ZZ";
   const usageIndicator = envelope.usageIndicator ?? "P";
+  // ---- Envelope control numbers -----------------------------------------
+  //
+  // Refused before the envelope is assembled, because every one of the three
+  // pairs was silent on an empty value and two of them were silent in different
+  // ways: `padControl("", 9)` FABRICATES `"000000000"` into ISA-13 / IEA-02,
+  // while GS-06 / GE-02 and ST-02 / SE-02 reach the wire through `esc`, which
+  // early-returns on `""` and emits the required element EMPTY on both ends of
+  // the pair, so each pair still reconciled against itself.
+  //
+  // 🛑 THAT LAST CLAUSE IS TRUE HERE AND FALSE IN THE SEVEN DOMAIN BUILDERS, so
+  // do not copy it out of this file: `joinSeg` keeps a trailing empty element
+  // (`GE*1*~`), while their `seg` trims it and the trailer loses GE-02 / SE-02
+  // outright. `warnings: []` is the property that holds in both. The
+  // measurement and the refuse-rather-than-warn reasoning are in
+  // `src/builder/caller-control-number.ts`.
+  //
+  // Placed here rather than at the top of the function, so every guard ABOVE
+  // this line keeps its precedence. It does NOT preserve every ordering, and a
+  // draft of this comment claimed it did: a defect this builder detects LATER,
+  // during body assembly, now reports THIS refusal instead, on this module's
+  // own `*_INVALID_SPEC` code. Measured in `build999` and disclosed in
+  // `CHANGELOG.md`; do not restate it as "the same first refusal as before".
+  requireControlNumber(
+    envelope.interchangeControlNumber,
+    "ISA-13 / IEA-02",
+    "interchangeControlNumber",
+    "build999",
+    refuseSpec,
+  );
+  requireControlNumber(
+    envelope.groupControlNumber,
+    "GS-06 / GE-02",
+    "groupControlNumber",
+    "build999",
+    refuseSpec,
+  );
+  requireControlNumber(
+    envelope.transactionSetControlNumber,
+    "ST-02 / SE-02",
+    "transactionSetControlNumber",
+    "build999",
+    refuseSpec,
+  );
+
   const interchangeControlNumber = padControl(envelope.interchangeControlNumber, 9);
   const isa =
     [
@@ -184,6 +229,21 @@ export function build999(spec: Build999Spec): X12Interchange {
     ["ST", "999", esc(stControlNumber), X231A1_VERSION_RELEASE],
     elementSeparator,
     segmentTerminator,
+  );
+
+  // AK1-02 is not this ack's own control number: it ECHOES the GS-06 of the
+  // group being acknowledged, and it is the whole reason the sender can match
+  // this 999 to what they sent. An empty one emitted `AK1*HC**005010X222A2~`
+  // and acknowledged nothing, with no error and no warning. Same class as the
+  // envelope trio above and refused the same way. An inbound GS-06 that really
+  // is absent is not this case: the caller supplies what they read, and there
+  // is no value to read out of an absent element either.
+  requireControlNumber(
+    functionalGroup.groupControlNumber,
+    "AK1-02",
+    "functionalGroup.groupControlNumber",
+    "build999",
+    refuseSpec,
   );
 
   const ak1 = joinSeg(
@@ -348,6 +408,18 @@ function buildAk2(
   elementSeparator: string,
   segmentTerminator: string,
 ): string {
+  // AK2-02 echoes the ST-02 of the transaction set being acknowledged, the same
+  // role AK1-02 plays one level up. An empty one emitted `AK2*837*~` and the
+  // IK5 that follows it then reported a disposition for a transaction set the
+  // sender cannot identify.
+  requireControlNumber(
+    response.transactionSetControlNumber,
+    "AK2-02",
+    "transactionResponses[].transactionSetControlNumber",
+    "build999",
+    refuseSpec,
+  );
+
   const parts: string[] = [
     "AK2",
     esc(response.transactionSetIdCode),

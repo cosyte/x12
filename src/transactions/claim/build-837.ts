@@ -60,6 +60,7 @@ import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
+import { requireControlNumber } from "../../builder/caller-control-number.js";
 
 /**
  * Refuse with this module's typed error, for {@link requireCallerArray}. A
@@ -349,6 +350,51 @@ function buildClaim837(variant: "P" | "I" | "D", spec: Build837Spec): X12Interch
   const senderQualifier = envelope.senderQualifier ?? "ZZ";
   const receiverQualifier = envelope.receiverQualifier ?? "ZZ";
   const usageIndicator = envelope.usageIndicator ?? "P";
+  // ---- Envelope control numbers -----------------------------------------
+  //
+  // Refused before the envelope is assembled, because every one of the three
+  // pairs was silent on an empty value and two of them were silent in different
+  // ways: `padControl("", 9)` FABRICATES `"000000000"` into ISA-13 / IEA-02,
+  // while GS-06 / GE-02 and ST-02 / SE-02 reach the wire through `esc`, which
+  // early-returns on `""`.
+  //
+  // 🛑 SAY `warnings: []`, NEVER "the pair reconciled against itself". That is
+  // true only of `buildInterchange` and `build999`, which join untrimmed. THIS
+  // builder's `seg` trims a trailing empty element, so the trailer carried no
+  // GE-02 and no SE-02 at all, with GS-06 and ST-02 empty mid-segment and
+  // `warnings: []` throughout - measured at `28b417f` in all seven domain
+  // builders. A draft published the `buildInterchange` reading as the class and
+  // pass 2 measured it false here. The refuse-rather-than-warn reasoning is in
+  // `src/builder/caller-control-number.ts`.
+  //
+  // Placed here rather than at the top of the function, so every guard ABOVE
+  // this line keeps its precedence. It does NOT preserve every ordering, and a
+  // draft of this comment claimed it did: a defect this builder detects LATER,
+  // during body assembly, now reports THIS refusal instead, on this module's
+  // own `*_INVALID_SPEC` code. Measured in `build999` and disclosed in
+  // `CHANGELOG.md`; do not restate it as "the same first refusal as before".
+  requireControlNumber(
+    envelope.interchangeControlNumber,
+    "ISA-13 / IEA-02",
+    "interchangeControlNumber",
+    "build837",
+    refuseSpec,
+  );
+  requireControlNumber(
+    envelope.groupControlNumber,
+    "GS-06 / GE-02",
+    "groupControlNumber",
+    "build837",
+    refuseSpec,
+  );
+  requireControlNumber(
+    envelope.transactionSetControlNumber,
+    "ST-02 / SE-02",
+    "transactionSetControlNumber",
+    "build837",
+    refuseSpec,
+  );
+
   const interchangeControlNumber = padControl(envelope.interchangeControlNumber, 9);
   const isa =
     [

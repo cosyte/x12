@@ -63,8 +63,10 @@
  *   its delimiters** gets a stray `?` where the value was previously verbatim,
  *   which is why `BuildTA1Options` gained the other three separators rather
  *   than the escape being run against a guess.
- * - **An EMPTY control number is still not refused**, here or at any earlier
- *   release. Only a non-string refuses.
+ * - **An EMPTY control number is refused as of `X12-EMPTY-CONTROL-NUMBER-
+ *   FABRICATED`**, which is a LATER slice than this one. It was open here and
+ *   at every earlier release, and the case below pinned that. A whitespace-only
+ *   one still builds.
  */
 
 import { describe, expect, it } from "vitest";
@@ -274,15 +276,21 @@ describe("X12-TA1-EMIT-NOT-RELEASE-AWARE: the two costs, disclosed and pinned", 
     expect(read.controlNumber).toBe("000000001");
   });
 
-  it("does NOT refuse an empty control number, and never did", () => {
-    // `escapeRelease` early-returns on `""` and `buildTA1` has no
-    // required-field guard, unlike `build835`'s `patientControlNumber`. Only a
-    // NON-string refuses. Pinned so "a silently empty TA1-01 is no longer
-    // possible" cannot be written again: a draft of `caller-segment.ts` wrote
-    // it and pass 1 refuted it.
-    expect(buildTA1({ ...ACCEPT, interchangeControlNumber: "" }).raw).toBe(
-      "TA1**260601*1200*A*000",
+  it("refuses an empty control number as of X12-EMPTY-CONTROL-NUMBER-FABRICATED", () => {
+    // This case pinned the OPPOSITE assertion until `X12-EMPTY-CONTROL-NUMBER-
+    // FABRICATED`: `escapeRelease` early-returns on `""` and `buildTA1` had no
+    // required-field guard, so `TA1**260601*1200*A*000` went out with no error
+    // at every release through `0.0.15`. It is now refused through
+    // `src/builder/caller-control-number.ts`, on the same footing as
+    // `build835`'s `patientControlNumber === ""`.
+    expect(() => buildTA1({ ...ACCEPT, interchangeControlNumber: "" })).toThrow(
+      /buildTA1: interchangeControlNumber is empty\. TA1-01 is a required control number/,
     );
+
+    // 🩺 The guard is byte-strict `=== ""` and does NOT trim. A whitespace-only
+    // control number still builds, exactly as it did before. This is a residual
+    // disclosed in `KNOWN-LIMITATIONS.md`, not an oversight: trimming would be a
+    // normalisation rule and no source consulted for this package states one.
     expect(buildTA1({ ...ACCEPT, interchangeControlNumber: "   " }).raw).toBe(
       "TA1*   *260601*1200*A*000",
     );

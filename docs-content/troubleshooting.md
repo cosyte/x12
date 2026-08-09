@@ -225,6 +225,33 @@ TR3 X221A1 §1.10.2 invariants. Named by spec field rather than element number, 
 refuses typed, including `claim.patientResponsibilityAmount`, `serviceLine.paidUnitsOfService` and
 every `amounts[].amount`.
 
+**An EMPTY control number is refused now too, and that one used to be INVENTED rather than dropped.**
+Every builder that assembles an ISA zero-pads the control number to nine characters, so
+`interchangeControlNumber: ""` came back as `000000000`: a frozen, well-formed interchange with zero
+warnings, ISA-13 reconciling against IEA-02, carrying a control number you never sent. The group and
+transaction-set control numbers went out short a required element instead: empty in
+`buildInterchange` and `build999`, and dropped altogether by the seven domain builders, whose segment
+helper trims a trailing empty, so their `GE` and `SE` carried no control number at all. The
+acknowledgment builders did the same at the slots that echo what they are acknowledging
+(`AK1*HC**…`, `AK2*837*~`, `TA1**260601*1200*A*000`). Every one of those emitted `warnings: []`.
+All of them refuse as of this release, naming the slot and the property: `build837:
+groupControlNumber is empty. GS-06 / GE-02 is a required control number …`. No new error code and no
+warning code, and a build that used to hand you a document now throws.
+
+**One ordering did move, so read this before you branch on a builder error code.** The guards sit at
+the envelope-assembly site, so everything that already ran before them still wins: `build835`'s
+balance equation, `build999`'s AK9 counts, `buildTA1`'s accept-must-mean-accept check, the hierarchy
+checks. A defect detected **later**, during body assembly, now reports the control-number refusal
+instead. `build999` with an empty `interchangeControlNumber` and six AK9 syntax error codes threw
+`X12_ACK_COUNT_MISMATCH` at `0.0.15` and throws `X12_ACK_INVALID_SPEC` now.
+
+**The check is byte-strict, which leaves blanks open and is the one thing to screen for.** A
+whitespace-only control number is still accepted and still padded, so `" "` emits ISA-13 as
+`00000000 `; `buildTA1` does no padding at all and emits whatever whitespace you hand it, verbatim.
+Trimming would be a normalisation rule and nothing this library can cite says to. A **short** control
+number is not affected and never was: `"1"` still pads to `000000001`, which is what the padding is
+for.
+
 One other behaviour change: the exported `escapeRelease` now throws `TypeError` on a non-string
 instead of returning `""`, and a boxed `new String("…")` is refused where it built at `0.0.8`. See
 `KNOWN-LIMITATIONS.md`.
