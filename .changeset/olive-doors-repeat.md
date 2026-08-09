@@ -46,13 +46,15 @@ today and reads `"PATIENT?ACCT"` back out of it. Splitting those roles literally
 as two empty components, trading a separator that never splits for a value this library itself
 emitted and could no longer read back.
 
-🩺 That same emit property reaches the ELEMENT role, so a value carrying a literal `?` still does not
-survive `buildInterchange({ elementSeparator: "?" })` - and on this one route the failure got WORSE.
-A CLM-01 of `PATIENT?ACCT` is emitted as `CLM?PATIENT??ACCT?150.00`, and the literal split frames
-five elements with `getSegmentValue(clm, "01")` reading `"PATIENT"`. Through `0.0.15` the same bytes
-read as one `(non-spec)` element and that dot-path answered `undefined`, so a detectable absence
-became a confident, truncated reassociation key with an empty warning array. All three roles belong
-to the emit-side change and none of them is closed here.
+🩺 So do NOT declare `?` as the element separator on the emit side. `buildInterchange` protects a
+value by prefixing `?` to the byte that needs protecting, so when `?` IS the element separator the
+protecting byte is itself a separator, and no value containing any active delimiter or a literal `?`
+survives the round trip - composites included, silently, with no value-level workaround. What it
+costs is not always a truncation: a `HI-01` of `ABK:J45.50` is written `HI?ABK?:J45.50` and reads
+back as `HI-01 "ABK"` with the diagnosis code stranded in a phantom `HI-02`. Through `0.0.15` every
+one of these read as a single `(non-spec)` element and every dot-path answered `undefined`, so a
+detectable absence became a confident wrong value. All three roles belong to the emit-side change and
+none of them is closed here.
 
 What else this does not close, pinned rather than left to be rediscovered: on a degenerate set a `?~`
 still swallows the segment terminator, because `findUnescapedTerminator` guards its own role only,

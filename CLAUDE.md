@@ -80,12 +80,15 @@ or financial value on the wire.**
   element, id `(non-spec)`, **while the ENVELOPE framed correctly and every count reconciled -
   `warnings: []`, and readers dispatch on `seg.id`, so a clean document gave an EMPTY claim list.**
   THREE SITES NOW; KEEP THEM IN STEP.
-- **🛑 PER ROLE; DO NOT HOIST IT INTO `splitWithRelease`. 🩺 `esc` DOUBLES A LITERAL `?` IN EVERY
-  ROLE, SO ALL THREE NEED THE EMIT SIDE - THE ONE FIXED HERE INCLUDED (pass-1 major; a draft drew it
-  for TWO):** `elementSeparator:"?"` + `PATIENT?ACCT` emits `PATIENT??ACCT`, READS `"PATIENT"` where
-  base read `undefined` - **AN ABSENCE BECAME A CONFIDENT TRUNCATED KEY. CORRECTED AS A CLAIM, NOT
-  GUARDED.** `componentSeparator:"?"` ROUND-TRIPS TODAY; splitting it breaks a value WE EMITTED
-  (`#99`'s pass-1 major, inverted).
+- **🛑 PER ROLE; DO NOT HOIST IT INTO `splitWithRelease`.** `componentSeparator:"?"` ROUND-TRIPS
+  TODAY; splitting it breaks a value WE EMITTED (`#99`'s pass-1 major, inverted). **ALL THREE ROLES
+  NEED THE EMIT SIDE, THE ONE FIXED HERE INCLUDED.**
+- **🩺 NEVER DECLARE `?` AS THE ELEMENT SEPARATOR ON EMIT. STATE THE PROPERTY, NEVER A TRIGGER BYTE -
+  TWO DRAFTS NAMED ONE AND THE GATE PRODUCED ONE MORE EACH TIME:** `esc` PREFIXES `?` to the byte it
+  protects, which IS the separator, so **NO value holding ANY active delimiter or `?` round-trips,
+  composites included, `warnings: []`, NO value-level workaround.** Base read `undefined` on all of
+  them, so **AN ABSENCE BECAME A CONFIDENT WRONG VALUE - AND NOT ALWAYS A TRUNCATION**
+  (`HI?ABK?:J45.50` strands the code in a phantom `HI-02`). **CORRECTED AS A CLAIM, NOT GUARDED.**
 - **⚖️ CHANGES PUBLISHED DECODING, ON CONSISTENCY, NOT SPEC - NEVER RESTATE `#96`'s SYMMETRY: A
   `(non-spec)` BLOB IS NOT A SECOND READING.** No code minted; ONE subtracted. **`PRE-EXISTING`,
   OPEN: `?~` still swallows the TERMINATOR. FRAMING UNTOUCHED - BUT THE MERGED BLOB'S READ MOVED

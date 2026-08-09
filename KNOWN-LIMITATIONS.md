@@ -206,19 +206,21 @@ model.
     a separator that never splits for a value this library itself emitted and could no longer read
     back. Deciding those two roles means deciding the emit side with them, and that is its own
     change.
-  - **🩺 INTRODUCED and NOT closed: that same emit property reaches the ELEMENT role, so a value
-    carrying a literal `?` still does not survive `buildInterchange({ elementSeparator: "?" })` - and
-    on this ONE route the failure got WORSE.** A CLM-01 of `PATIENT?ACCT` is emitted as
-    `CLM?PATIENT??ACCT?150.00`, because the escaper doubles a literal `?` in every role, and the
-    literal split then frames five elements with `getSegmentValue(clm, "01")` reading `"PATIENT"`.
-    Through `0.0.15` the same bytes read as one `(non-spec)` element and that dot-path answered
-    `undefined`: **a detectable absence became a confident, truncated reassociation key with an empty
-    warning array.** The `?` is unrecoverable afterwards, because `raw` holds `PATIENT??ACCT`, which
-    this parser's own new rule reads as two separators. **Do not read the entry above as
-    "`buildInterchange` stops disagreeing with itself"** - it does so for a value with no `?` in it,
-    and that is the whole of the claim. Closing this means deciding `escapeRelease` for a degenerate
-    set, which is the same decision the repetition and component roles need, so **all THREE roles
-    belong to that emit-side change** and none of them is closed here. Pinned in
+  - **🩺 INTRODUCED and NOT closed: DO NOT DECLARE `?` AS THE ELEMENT SEPARATOR ON THE EMIT SIDE.**
+    `buildInterchange` protects a value by prefixing `?` to the byte that needs protecting, so when
+    `?` IS the element separator the protecting byte is itself a separator, and **no value containing
+    any active delimiter or a literal `?` survives the round trip** - composites included, silently
+    (`warnings: []`), **with no value-level workaround.** Stated as a property and not as a list of
+    trigger bytes on purpose: two successive drafts named one trigger each and a refuter falsified
+    both by producing one more. What it costs is not always a truncation: a `HI-01` of `ABK:J45.50`
+    is written `HI?ABK?:J45.50` and read back as `HI-01 "ABK"` with the diagnosis code stranded in a
+    phantom `HI-02`, so `getSegmentValue(hi, "01-2")` answers `undefined`. Through `0.0.15` every one
+    of these read as a single `(non-spec)` element and every dot-path answered `undefined`, so **a
+    detectable absence became a confident wrong value.** **Do not read the entry above as
+    "`buildInterchange` stops disagreeing with itself"** - it does so for a value carrying none of
+    those bytes, and that is the whole of the claim. Closing it means deciding `escapeRelease` for a
+    degenerate set, the same decision the repetition and component roles need, so **all THREE roles
+    belong to that emit-side change** and none is closed here. Instances (not a census) are pinned in
     `test/parser-segment-degenerate-release-separator.test.ts`.
   - **🩺 PRE-EXISTING and NOT closed here: on a degenerate set a `?~` still swallows the segment
     terminator.** `findUnescapedTerminator` guards its own role only, so with `?` as the element

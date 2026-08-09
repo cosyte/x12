@@ -53,15 +53,20 @@
  * does NOT close
  *
  * A first draft of this file stopped at the paragraph above and drew the
- * consequence for two roles when the property it rests on holds for three. The
- * gate refuted it. `buildInterchange({ elementSeparator: "?" })` given a CLM-01
- * of `PATIENT?ACCT` emits `CLM?PATIENT??ACCT?150.00`, and the literal split
- * frames that as five elements with CLM-01 reading `"PATIENT"`. At base the
- * same bytes read `undefined`, so on this ONE route a detectable absence became
- * a confident wrong value on a reassociation key. It is pinned below as a
- * disclosure rather than guarded: closing it means deciding `escapeRelease` for
- * a degenerate set, which is the same emit-side decision the other two roles
- * need, and all THREE belong to that slice rather than this one.
+ * consequence for two roles when the property it rests on holds for three; a
+ * second named `?` as the trigger. The gate refuted both, the second by
+ * producing one more trigger byte. **State it once, in the form one more byte
+ * cannot falsify:** the builder protects a value by PREFIXING `?` to the byte
+ * that needs protecting, so when `?` IS the element separator that prefix is
+ * itself a separator, and NO value containing any active delimiter or a literal
+ * `?` survives the round trip. Composites included, silently, with no
+ * value-level workaround: do not declare `?` as the element separator on the
+ * emit side. At base every one of these read as a single `(non-spec)` element
+ * and every dot-path answered `undefined`, so a detectable absence became a
+ * confident wrong value. It is pinned below as a disclosure rather than
+ * guarded: closing it means deciding `escapeRelease` for a degenerate set,
+ * which is the same emit-side decision the other two roles need, and all THREE
+ * belong to that slice rather than this one.
  *
  * The segment-terminator scanner is likewise role-blind in the other
  * direction, and that residual is PRE-EXISTING and pinned below rather than
@@ -192,25 +197,94 @@ describe("X12-BODY-DEGENERATE-RELEASE-SEPARATOR: a body segment frames its eleme
     expect(built.warnings).toEqual([]);
   });
 
-  it("🩺 INTRODUCED and NOT closed: a literal `?` in a value still does not round-trip, and now MIS-FRAMES", () => {
-    // `escapeRelease` writes `??` for a literal `?` in EVERY role, so with `?`
-    // as the ELEMENT separator the builder emits two separators where the
-    // caller stated one content byte. The literal split - which is the only
-    // coherent reading of an INBOUND degenerate document - then frames them as
-    // an empty element, and CLM-01 comes back truncated.
-    //
-    // 🩺 THE DIRECTION IS WHAT MATTERS AND IT GOT WORSE ON THIS ONE ROUTE: at
-    // base the same bytes gave ONE `(non-spec)` element and `getSegmentValue`
-    // answered `undefined` - a detectable absence. Here they give a confident
-    // wrong value on a patient-account / reassociation key, with an empty
-    // warning array. The `?` is unrecoverable afterwards: `raw` holds
-    // `PATIENT??ACCT`, which this parser's own new rule reads as two
-    // separators.
-    //
-    // It is left as a DISCLOSURE and not guarded here, deliberately. Closing it
-    // means deciding `escapeRelease` for a degenerate set, which is the same
-    // emit-side decision the repetition and component roles need, and doing it
-    // inside a read-side slice is how a fix outgrows the thing it fixes.
+  // 🩺 INTRODUCED and NOT closed: with `?` as the ELEMENT separator, NO value
+  // carrying an active delimiter or the release character survives a
+  // `buildInterchange` round trip. The property, not a trigger list: the
+  // builder protects a value by PREFIXING `?` to the byte that needs
+  // protecting, and when `?` IS the element separator that prefix is itself a
+  // separator, so the protection becomes a split. Two drafts of this control
+  // named one trigger each (`?`, then `?` again) and the gate falsified both by
+  // producing one more, which is why what follows is a table of INSTANCES and
+  // never a census: adding a row cannot falsify the sentence above.
+  //
+  // 🩺 THE DIRECTION IS WHAT MATTERS AND IT GOT WORSE: at base every one of
+  // these read as a single `(non-spec)` element and every dot-path answered
+  // `undefined` - a detectable absence. Here they give a confident wrong value
+  // with an empty warning array, and not always a truncation - the `HI` row
+  // strands a diagnosis code in a phantom `HI-02` that `01-2` cannot reach.
+  //
+  // It is left as a DISCLOSURE and not guarded, deliberately. Closing it means
+  // deciding `escapeRelease` for a degenerate set, which is the same emit-side
+  // decision the repetition and component roles need, and doing it inside a
+  // read-side slice is how a fix outgrows the thing it fixes. There is no
+  // value-level workaround: do not declare `?` as the element separator.
+  const emitInstances: readonly (readonly [
+    string,
+    readonly string[],
+    string,
+    readonly string[],
+  ])[] = [
+    [
+      "a literal release character",
+      ["CLM", "PATIENT?ACCT", "150.00"],
+      "CLM?PATIENT??ACCT?150.00",
+      ["CLM", "PATIENT", "", "ACCT", "150.00"],
+    ],
+    [
+      "a component separator inside a composite",
+      ["HI", "ABK:J45.50"],
+      "HI?ABK?:J45.50",
+      ["HI", "ABK", ":J45.50"],
+    ],
+    [
+      "a repetition separator",
+      ["CLM", "ACME^CLINIC", "150.00"],
+      "CLM?ACME?^CLINIC?150.00",
+      ["CLM", "ACME", "^CLINIC", "150.00"],
+    ],
+    ["a segment terminator", ["REF", "EA", "A~B"], "REF?EA?A?~B", ["REF", "EA", "A", "~B"]],
+  ];
+
+  it.each(emitInstances)(
+    '🩺 INTRODUCED and NOT closed: %s in a value does not round-trip on `elementSeparator: "?"`',
+    (_name, segment, raw, elements) => {
+      const built = buildInterchange({
+        senderId: "SENDER",
+        receiverId: "RECEIVER",
+        interchangeDate: "260601",
+        interchangeTime: "1200",
+        interchangeControlNumber: "000000001",
+        elementSeparator: "?",
+        groups: [
+          {
+            functionalIdCode: "HC",
+            groupControlNumber: "1",
+            versionRelease: "005010X222A2",
+            transactions: [
+              {
+                transactionSetIdCode: "837",
+                transactionSetControlNumber: "0001",
+                segments: [segment],
+              },
+            ],
+          },
+        ],
+      });
+      const seg = built.groups[0]?.transactions[0]?.segments[1];
+      if (seg === undefined) throw new Error("the built interchange carries no body segment");
+      expect(seg.raw).toBe(raw);
+      expect(seg.elements).toEqual(elements);
+      // The property every row shares, asserted without naming a slot, because
+      // WHICH element carries the offending byte varies by row and a
+      // slot-specific assertion is the instrument-pointing mistake twice over:
+      // the segment does not read back the segment the caller supplied, and
+      // nothing is raised about it.
+      expect([...seg.elements]).not.toEqual([...segment]);
+      expect(built.warnings).toEqual([]);
+    },
+  );
+
+  it("🩺 and the loss is not always a truncation - a composite is stranded where no dot-path reaches it", () => {
     const built = buildInterchange({
       senderId: "SENDER",
       receiverId: "RECEIVER",
@@ -227,17 +301,18 @@ describe("X12-BODY-DEGENERATE-RELEASE-SEPARATOR: a body segment frames its eleme
             {
               transactionSetIdCode: "837",
               transactionSetControlNumber: "0001",
-              segments: [["CLM", "PATIENT?ACCT", "150.00"]],
+              segments: [["HI", "ABK:J45.50"]],
             },
           ],
         },
       ],
     });
-    const clm = built.groups[0]?.transactions[0]?.segments[1];
-    if (clm === undefined) throw new Error("the built interchange carries no CLM");
-    expect(clm.raw).toBe("CLM?PATIENT??ACCT?150.00");
-    expect(clm.elements).toEqual(["CLM", "PATIENT", "", "ACCT", "150.00"]);
-    expect(getSegmentValue(clm, "01", built.delimiters)).toBe("PATIENT");
+    const hi = built.groups[0]?.transactions[0]?.segments[1];
+    if (hi === undefined) throw new Error("the built interchange carries no HI");
+    expect(getSegmentValue(hi, "01-1", built.delimiters)).toBe("ABK");
+    // The diagnosis code is in a phantom HI-02 the composite read cannot see.
+    expect(getSegmentValue(hi, "01-2", built.delimiters)).toBeUndefined();
+    expect(getSegmentValue(hi, "02", built.delimiters)).toBe(":J45.50");
     expect(built.warnings).toEqual([]);
   });
 

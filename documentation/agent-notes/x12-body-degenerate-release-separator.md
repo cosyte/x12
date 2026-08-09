@@ -57,7 +57,9 @@ half has its own red control: removing (1) reds seven tests, removing (2) reds e
 A draft put one line in `splitWithRelease` - `if (sep === RELEASE_CHAR) return input.split(sep)` -
 which is smaller and covers all three roles at once. It is wrong, and the reason is on the EMIT side.
 
-`escapeRelease` writes `??` for a literal `?` **whatever role `?` was declared in**. So today:
+`escapeRelease` protects a value by **prefixing `?`** to the byte that needs protecting, and it does
+that **whatever role `?` was declared in** - so with `?` as a component separator a literal `?` in a
+value is written `??`. So today:
 
 ```text
 buildInterchange({ componentSeparator: "?" }) with CLM-01 "PATIENT?ACCT"
@@ -75,38 +77,56 @@ working counterpart to protect. The REPETITION and COMPONENT roles are left alon
 degenerate behaviour is merely a separator that never splits AND the emit half depends on it.
 Deciding those two means deciding `escapeRelease` with them. That is a different slice.
 
-## 🩺 The pass-1 refutation: that emit property reaches the ELEMENT role too, and the draft drew the consequence for TWO roles
+## 🩺 The refutations: the emit half reaches the ELEMENT role too, and TWO drafts named a trigger instead of the property
 
-**Read this before you write the next sentence about `buildInterchange` and a degenerate set.** The
-paragraph above rests on `escapeRelease` doubling a literal `?` **in every role** - and then a first
-draft of this slice's four prose surfaces drew the consequence for two of the three. The gate refuted
-it with a value one character away from the control the draft did pin. Measured at head:
+**Read this before you write the next sentence about `buildInterchange` and a degenerate set. Two
+drafts were refuted here, the second by the correction to the first.**
+
+- **Pass 1.** The "per ROLE" paragraph above rests on the escaper acting **in every role**, and the
+  draft then drew the consequence for two of the three. The gate refuted it with a value one
+  character away from the control the draft did pin.
+- **Pass 2.** The pass-1 remedy named the trigger as _"a value carrying a literal `?`"_ and shipped a
+  consumer instruction to _"keep `?` out of your values"_. The gate refuted that by producing one
+  more trigger byte, and the instruction protected nobody.
+
+**The property, which one more trigger byte cannot falsify.** `escapeRelease` protects a value by
+**prefixing `?`** to the byte that needs protecting - any of `element | repetition | component |
+segment | ?`. When `?` IS the element separator, that prefix is itself a separator, so the protection
+becomes a split. **No value containing any active delimiter or a literal `?` survives a
+`buildInterchange` round trip on `elementSeparator: "?"`, and there is no value-level workaround.**
+Do not declare `?` as the element separator on the emit side.
+
+Instances, measured at head, **not a census**:
 
 ```text
-buildInterchange({ elementSeparator: "?" }) with CLM-01 "PATIENT?ACCT"
-  emits    CLM?PATIENT??ACCT?150.00
-  frames   ["CLM","PATIENT","","ACCT","150.00"]     id "CLM", warnings: []
-  reads    getSegmentValue(clm, "01") === "PATIENT"
-
-at base 72bafc2, the same bytes:
-  frames   ["CLM?PATIENT??ACCT?150.00"]             id "(non-spec)"
-  reads    getSegmentValue(clm, "01") === undefined
+["CLM","PATIENT?ACCT","150.00"] -> CLM?PATIENT??ACCT?150.00  ["CLM","PATIENT","","ACCT","150.00"]
+["HI","ABK:J45.50"]             -> HI?ABK?:J45.50            ["HI","ABK",":J45.50"]
+["CLM","ACME^CLINIC","150.00"]  -> CLM?ACME?^CLINIC?150.00   ["CLM","ACME","^CLINIC","150.00"]
+["REF","EA","A~B"]              -> REF?EA?A?~B               ["REF","EA","A","~B"]
+warnings: [] on every row. At base 72bafc2 every row read ONE `(non-spec)` element,
+every dot-path `undefined`.
 ```
 
 **The round-trip failure is `PRE-EXISTING`; the DIRECTION is not.** A detectable absence became a
-confident, truncated patient-account / reassociation key with an empty warning array - the one
-direction `src/builder/caller-string.ts`'s own module doc forbids. It is unrecoverable after the
-fact, because `raw` holds `PATIENT??ACCT` and this parser's own new rule reads that as two
-separators.
+confident wrong value with an empty warning array - the one direction
+`src/builder/caller-string.ts`'s own module doc forbids. **And it is not always a truncation:** the
+`HI` row strands the diagnosis code in a phantom `HI-02`, so `getSegmentValue(hi, "01-2")` answers
+`undefined` while `"02"` answers `":J45.50"`. `:` composites are routine in the 837 and the 835, so
+this is not the exotic corner the `?` framing implied.
 
-**It is corrected as a CLAIM and deliberately NOT guarded** (conventions.md rule 3, and the refuter
-said so in as many words). A guard here means deciding `escapeRelease` for a degenerate set inside a
-read-side slice, which is how a fix outgrows the thing it fixes. What changed instead: the test that
-claimed the builder "no longer disagrees with itself" is retitled to the qualified claim it can
-support, the case above is pinned as its own control, and every surface now says **THREE** roles need
-the emit side decided, not two.
+**It is corrected as a CLAIM and deliberately NOT guarded** (conventions.md rule 3, and both refuter
+passes said so in as many words). A guard here means deciding `escapeRelease` for a degenerate set
+inside a read-side slice, which is how a fix outgrows the thing it fixes. What changed instead: the
+test that claimed the builder "no longer disagrees with itself" is retitled to the qualified claim it
+can support, the property is pinned by a table of instances that states it is not a census, the
+value-level mitigation is **deleted** rather than reworded, and every surface says **THREE** roles
+need the emit side decided.
 
-**The second, smaller refutation, same shape.** The `?~` residual control pinned `raw` and the id
+**Not measured, and flagged for that emit-side slice rather than for this one:** only the generic
+`buildInterchange` segment-spec route (`buildTransaction`'s `segment.map(esc)`) was probed. The
+per-TR3 domain builders were not.
+
+**The third refutation, smaller and the same shape (pass 1).** The `?~` residual control pinned `raw` and the id
 list but not `elements`, and "framing is untouched" read as "nothing about this residual moved". The
 read of the merged blob DID move: `PER?IC?NAME?TE?5551234?EX?~SE?3?0001` now frames as
 `["PER","IC","NAME","TE","5551234","EX","~SE","3","0001"]`, so `~SE` and the SE's own control number
