@@ -43,8 +43,7 @@ State the delimiter set by ROLE, never by byte: `InterchangeSpec` lets you decla
 BYTES shift is a property of the set you declared. Only the ELEMENT SEPARATOR and the SEGMENT
 TERMINATOR ever shifted the segment's own framing, plus a `?` immediately before the element
 separator. The REPETITION and COMPONENT separators moved the dot-path reader instead, and releasing
-them is a gain there: with the default set, `getSegmentValue` answered `"X"` for a GS-07 of `"X^Y"`,
-truncating to repetition 0. The measured cost is a mid-string `?`, and only on the surfaces
+them is a gain there. The measured cost is a mid-string `?`, and only on the surfaces
 documented as raw: `gs.elements[4]` reads `"2026??0601"` where it read `"2026?0601"`, while the
 dot-path read of that value unescapes and is unchanged. No total is published. A caller who was
 pre-releasing these values themselves is now escaping twice and should drop the hand-rolled escape.

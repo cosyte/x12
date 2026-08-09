@@ -37,7 +37,7 @@ model.
   ```
 
   Every row `warnings: []`. TA1-01 is the reassociation key, so the left column is a key that
-  matches no ISA-13. The right column is the same element read through `getSegmentValue`, which
+  matches no ISA-13. The right column is the same element read through a dot-path, which
   already unescaped, and `parse999` does the same on its IK4-01 composite. The grounding is that
   disagreement and nothing else - no clause anyone here has read settles what a TA1 element may
   contain.
@@ -304,8 +304,10 @@ model.
     `X12_DANGLING_RELEASE_CHAR` fires only for an odd run of `?` at the very END of a segment, so a
     mid-segment one reaches no check. That is true of body elements too and is unchanged here.
   - **Values are still RAW, pre-`?`-unescape**, exactly as `X12Segment.elements` has always
-    documented: `gs.elements[2]` on the first row reads `"SEND?*ER"`, not `"SEND*ER"`. Read through
-    `getSegmentValue` if you want the logical value. `elements.join(separator)` therefore still
+    documented: `gs.elements[2]` on the first row reads `"SEND?*ER"`, not `"SEND*ER"`. For the
+    logical value, `unescapeRelease` the element string, or add an `id` and take the dot-path:
+    `GsSegment` carries no `id`, so `getSegmentValue` does not accept a `gs` (`TS2345`). Neither
+    route is right on an **ISA** element, which is positional. `elements.join(separator)` therefore still
     reproduces the segment byte for byte, which is what `serializeX12` relies on when it substitutes
     a recomputed `SE-01` / `GE-01` / `IEA-01` into a control segment.
   - **🩺 The ISA is deliberately exempt and stays positional.** ASC X12 .5 makes the ISA fixed-width,
@@ -477,8 +479,8 @@ model.
     GS-07 of `"X|Y"` that took GS-08's slot and `"X*Y"` that was inert. **Only the element separator
     and the segment terminator ever shifted the segment's own framing, plus a `?` immediately before
     the element separator.** The **repetition** and **component** separators moved the dot-path
-    reader instead, and releasing them is a **gain** there: on the default set
-    `getSegmentValue(gs, "07")` answered `"X"` for `"X^Y"`, truncating to repetition 0, and the
+    reader instead, and releasing them is a **gain** there: on the default set it answered `"X"` for
+    a GS-07 of `"X^Y"`, truncating to repetition 0, and the
     composite read `"07-1"` answered `"X"` for `"X:Y"`. **The measured cost is a mid-string `?`,
     and only on the surfaces documented as raw** - `gs.elements[4]` reads `"2026??0601"` where it
     read `"2026?0601"`, while the dot-path read of that value unescapes and is unchanged. No total is

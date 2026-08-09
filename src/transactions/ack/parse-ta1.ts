@@ -60,7 +60,7 @@ export function parseTA1(interchange: X12Interchange): X12AckTA1 | undefined {
   //
   // Every row `warnings: []`, and TA1-01 is the reassociation key: a value the
   // caller stated came back as one that matches no ISA-13. The same value read
-  // through `getSegmentValue` answered the caller's string on all five rows,
+  // through a dot-path answered the caller's string on all five rows,
   // because every dot-path read already unescapes - and so does `parse999`, on
   // the IK4-01 composite, in this same directory. 🛑 A sentence here called this
   // function "the only typed reader in the package that did not" and is DELETED,

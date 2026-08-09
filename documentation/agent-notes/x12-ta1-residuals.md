@@ -128,7 +128,7 @@ ADR 0016 rule 2. Both reproduce at base `67f1831` and neither is a refutation of
    field `implementationConventionReference` from `tx.st.elements[3]` PRE-`?`-unescape, the same
    defect shape this slice closed at `parseTA1`. Measured at this slice's head, on
    `ST*837*0001*005010?*X222A1~`: the model field read `"005010?*X222A1"` while
-   `getSegmentValue(tx.st, "03", d)` read `"005010*X222A1"`. **This is what falsified the "only typed
+   the dot-path read of ST-03 read `"005010*X222A1"`. **This is what falsified the "only typed
    reader" clause, and the clause was cut rather than the readers changed** - widening this slice to
    reach them is exactly the growth ADR 0016 rule 2 exists to stop. **The count of readers written
    here is DELETED rather than corrected: it was three, the successor measured four raw sites reached
