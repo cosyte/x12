@@ -27,19 +27,31 @@ At base, for the nine builders that end in `parseX12`:
 all. `null` and `undefined` are the `?? default` and are NOT a defect - they are the control that
 stops the type arm from being written as "not a string".
 
+🛑 **THE GRID IS A MEASUREMENT, NOT A CLOSED SET OF SHAPES.** The gate reached a ninth shape this
+census had not enumerated - a boxed `new String("|")`, which built silently at base in most cells and
+is refused at head by the type arm. **Finding one more shape is expected and is not a new finding**;
+publish no total of what built silently, and never read the eight columns as exhaustive.
+
 **REFUSED appears nowhere at base. No builder validated a delimiter's shape in any role.** At head
 every non-`null` cell is REFUSED, with each builder's own error class and its own existing code.
 
 ## Three mechanisms, and they must never be written as one
 
-**1. LENGTH, and it is silent at the segment terminator ALONE.** `build837P` with
-`segmentTerminator: "~~"` built with `warnings: []` and put **31 segment rows on a transaction whose
-SE-01 declares 16** - every other row a phantom with `id: ""`. The asymmetry is the interesting part
-and it is structural: the terminator is appended AFTER the fixed-width ISA, so it displaces no ISA
-byte and `detectDelimiters` reads a perfectly well-formed header. A multi-character value in the
-other three roles moves ISA-11, ISA-16 or the fixed element positions, and the builder's own
-`parseX12` fatals. **"A multi-byte delimiter builds" would have been false for three roles out of
-four.**
+**1. LENGTH. Among the NINE builders that end in `parseX12`, silent at the segment terminator
+alone.** `build837P` with `segmentTerminator: "~~"` built with `warnings: []` and put **31 segment
+rows on a transaction whose SE-01 declares 16** - every other row a phantom with `id: ""`. The
+asymmetry is structural: the terminator is appended AFTER the fixed-width ISA, so it displaces no ISA
+position and `detectDelimiters` reads a perfectly well-formed header. A multi-character value in the
+other three roles moves ISA-11, ISA-16 or the fixed element positions, and those nine builders' own
+`parseX12` fatals.
+
+🛑 **NEVER WRITE THAT AS AN ABSOLUTE ABOUT ROLES.** A draft said *"silent at that role and nowhere
+else"* and the gate falsified it in one probe: `buildTA1` ends in no parse, so the LENGTH mechanism
+was silent there at EVERY role, and `{ elementSeparator: "||" }` returned
+`TA1||000000001||260601||1200||A||000` - which, inside an ISA that can declare only `|`, reads back
+with **TA1-01 EMPTY and `ackCode: "R"`, parse warnings 0. An Accept emitted as a Reject**, which is
+`X12-TA1-EMIT-NOT-RELEASE-AWARE`'s safety class reached by this mechanism. The correct bound names
+the nine, and `buildTA1` is mechanism 3.
 
 **2. TYPE, where the JOIN coerces and the ESCAPE does not.** `Array.prototype.join` coerces a
 non-string delimiter to its digits and the document frames on that byte; `escapeRelease` compares
@@ -72,8 +84,9 @@ character, and that character must satisfy **`isVisibleDelimiterChar`**; then th
 **mutually distinct**.
 
 **The rule is not invented here - it is the READ side's, imported.** `detectDelimiters` already
-decides what a delimiter is for this package, and decides it as a Tier-3 fatal: one byte at each of
-four fixed ISA positions, each visible, the four distinct, else `X12_INVALID_DELIMITERS` thrown even
+decides what a delimiter is for this package, and decides it as a Tier-3 fatal: one character at
+each of four fixed ISA positions, each visible, the four distinct, else `X12_INVALID_DELIMITERS`
+thrown even
 in lenient mode. That predicate was a closure inside `detectDelimiters`; it is now a module-level
 `isVisibleDelimiterChar` with two callers and **the read side's behaviour is unchanged** - the
 expression is the same. Hoisting it is what stops the emit refusal and the read fatal from drifting
@@ -87,9 +100,20 @@ rule - whitespace-only control numbers still pad, unfixed by design, for exactly
 refusal needs no such source.
 
 **The one-character requirement is structural, not conventional.** The ISA is fixed-width per ASC
-X12 .5: ISA-11 is one byte at position 83, ISA-16 one byte at position 105, the terminator the single
-byte after it, and `Delimiters` records exactly one character per role. A multi-character value
-cannot be transmitted as a delimiter at all; the only question was whether the caller was told.
+X12 .5: ISA-11, ISA-16 and the terminator each occupy one fixed position, and `Delimiters` records
+exactly one character per role. A multi-character value cannot be transmitted as a delimiter at all;
+the only question was whether the caller was told.
+
+🛑 **IT IS A UTF-16 CODE-UNIT RULE, NOT A BYTE RULE, AND THE DIFFERENCE IS AN UNCLOSED RESIDUAL.**
+`String.prototype.length` here and `charAt` on read both count code units, so a character that is one
+code unit but several BYTES on the wire passes and still displaces every ISA position after it.
+Measured at head, `warnings: []`: `buildInterchange({ componentSeparator: "\u00a7" })` builds, and a
+byte-oriented receiver reads ISA-16 as `0xC2` and the terminator as `0xA7`, framing the whole
+interchange as one segment. `"\u2019"` - the smart quote a companion-guide PDF hands you instead of
+`'` - does the same. **DISCLOSED, NOT GUARDED, and do not grow this guard to reach it:** an
+encoding-width rule is a decision nobody here has made, and the read side counts code units too, so
+moving one side alone re-opens the drift this guard exists to close. **Never restate the bound in
+BYTES** - the first draft of every carrier did, and every one was measured false the same way.
 
 **⚖️ Refuse rather than warn**, following `X12-EMPTY-CONTROL-NUMBER-FABRICATED` and
 `X12-EMIT-DEGENERATE-RELEASE-DELIMITER`: a warning would have to travel the READ registry a builder
@@ -116,8 +140,12 @@ earlier with the builder's own typed error. **A consumer catching `X12ParseError
 call STOPS catching; one catching that builder's own error STARTS.** No new code. Both directions are
 pinned, because `#83`'s lesson is that a moved predicate is stated in both or not at all.
 
-**🛑 It refuses two shapes that built with `warnings: []`, and one of them is plausible.**
-`segmentTerminator: "~\r\n"` is a caller asking for line-broken output. Measured at base: it built
+**🛑 It refuses shapes that built with `warnings: []`, and NO COUNT OF THEM IS PUBLISHED.** A draft
+said "two"; the gate found more as soon as it tried a shape the census had not enumerated (a boxed
+`new String("|")`, which `typeof` reports as an object and which head refuses). That is this
+package's standing rule about censuses of what bypasses a chokepoint: finding one more is expected
+and is not a new finding. The one worth naming is `segmentTerminator: "~\r\n"`, a caller asking for
+line-broken output. Measured at base: it built
 clean **and the CRLF was never on the wire.** `parseX12` tolerates a run of CR/LF between segments,
 so the model recorded `segment: "~"` and `serializeX12` re-emitted with no line breaks. The caller
 declared one thing and the library silently did another. Refusing is the same call the previous slice
@@ -143,8 +171,8 @@ made about specs that built at `0.0.15`: what this library happens to read back 
 ## Still open, each its own slice
 
 - `parseTA1` does not unescape; `TA1-02`/`TA1-03` drop silently on `""`.
-- The `#101` type hole: the empty-control-number guard is `=== ""` and does not type-check, so
-  `interchangeControlNumber: []` and `new String("")` still emit the fabricated `000000000`.
+- **Encoding width.** The rule above counts UTF-16 code units, so a multi-BYTE single-code-unit
+  delimiter still builds. Disclosed above; not guarded here, and not guardable on one side alone.
 - Whitespace-only control numbers still pad, unfixed BY DESIGN - a trim is a normalisation rule and
   no source states one.
 

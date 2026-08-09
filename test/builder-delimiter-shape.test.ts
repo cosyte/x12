@@ -7,7 +7,7 @@
  *
  * `src/parser/delimiters.ts`'s `detectDelimiters` already decides what a
  * delimiter is for this package, and it decides it as a **Tier-3 fatal**: one
- * byte at each of four fixed ISA positions, each satisfying
+ * character at each of four fixed ISA positions, each satisfying
  * `isVisibleDelimiterChar`, the four distinct, else `X12_INVALID_DELIMITERS`
  * thrown even in lenient mode. This slice imports that predicate rather than
  * restating it and applies it to the set a CALLER declares. **A builder that
@@ -16,24 +16,32 @@
  * normalisation rule is invented, because none is needed for a refusal.
  *
  * The one-character requirement is structural, not conventional: the ISA is
- * fixed-width per ASC X12 .5, ISA-11 is one byte at position 83, ISA-16 one
- * byte at position 105, the terminator the single byte after it, and
- * `Delimiters` records exactly one character per role.
+ * fixed-width per ASC X12 .5, ISA-11, ISA-16 and the terminator each occupy one
+ * fixed POSITION, and `Delimiters` records exactly one character per role.
+ *
+ * 🛑 **It is a UTF-16 CODE-UNIT rule and NOT a byte rule, and that residual is
+ * NOT closed** - pinned as an honest control below. Never restate the bound in
+ * BYTES; every first draft of this file did, and the gate measured each one
+ * false the same way.
  *
  * ## Three mechanisms, measured at base `a21f8ea`, and they are NOT one defect
  *
  * The filed line named ONE of them - the multi-byte segment terminator. The
  * census over 10 builders x 4 roles x 8 shapes found three, each with
- * `warnings: []`:
+ * `warnings: []`. **The eight shapes are a measurement, not a closed set:** the
+ * gate reached a ninth (a boxed `new String("|")`) that this census had not
+ * enumerated, so publish no total of what built silently.
  *
  * ```text
- * LENGTH, and only at the segment terminator
+ * LENGTH. Of the NINE builders that end in parseX12, silent at the segment
+ * terminator alone - NEVER state that as an absolute about ROLES, because
+ * buildTA1 ends in no parse and was silent at every one of them.
  *   build837P { segmentTerminator: "~~" }
  *     31 segment rows in a transaction whose SE-01 declares 16; every other row
- *     a phantom with id "". Silent HERE and nowhere else, because the
- *     terminator is appended AFTER the fixed-width ISA and displaces no ISA
- *     byte - a multi-byte value in the other three roles moves ISA-11, ISA-16
- *     or the element positions, and the builder's own trailing `parseX12`
+ *     a phantom with id "". Silent at that role because the terminator is
+ *     appended AFTER the fixed-width ISA and displaces no ISA position - a
+ *     multi-character value in the other three roles moves ISA-11, ISA-16 or
+ *     the element positions, and those nine builders' own trailing `parseX12`
  *     fatals on it.
  *
  * TYPE, where the joiner and the escaper end up disagreeing
@@ -46,10 +54,15 @@
  *   build271 { repetitionSeparator: 1 }
  *     EB*1**3011 - EB-03's two service type codes stop reading back as two.
  *
- * NO NET AT ALL, at buildTA1
+ * NO NET AT ALL, at buildTA1 - every role, every shape
  *   buildTA1 with { elementSeparator: "" } RETURNED
  *     TA10000000012606011200A000 - one undelimited blob fusing the
  *     reassociation key, the date, the time, the disposition and the note code.
+ *   buildTA1 with { elementSeparator: "||" } RETURNED
+ *     TA1||000000001||260601||1200||A||000, which inside an ISA - which can
+ *     declare only "|" - reads back with TA1-01 EMPTY and ackCode "R".
+ *     🩺 An Accept emitted as a Reject: X12-TA1-EMIT-NOT-RELEASE-AWARE's
+ *     safety class, reached by the LENGTH mechanism.
  * ```
  *
  * 🩺 The TYPE mechanism needs no unusual caller value: `99213`, `11`, `30` and
@@ -68,7 +81,7 @@
  * lesson is that a moved predicate is stated in both directions or not at all,
  * so both are pinned below.
  *
- * ## The cost, which is a spec that built with `warnings: []`
+ * ## The cost: specs that built with `warnings: []`, and NO count is published
  *
  * `segmentTerminator: "~\r\n"` - a caller asking for line-broken output - built
  * clean at base. Measured: the CRLF was never on the wire. `parseX12` tolerates
@@ -651,7 +664,7 @@ describe("every builder refuses a delimiter that is not one visible character", 
       const other = option === "elementSeparator" ? "~" : "*";
       const go = (): unknown => run({ [option]: other });
       expect(go).toThrow("are the same character");
-      expect(go).toThrow("A reader cannot tell which role a byte is playing.");
+      expect(go).toThrow("A reader cannot tell which role a character is playing.");
       expect(go).toThrow(ctor);
     },
   );
@@ -753,11 +766,17 @@ describe("🩺 mechanism 1 - LENGTH, and it is silent ONLY at the segment termin
     expect(tx?.segments.some((s) => s.elements.join("") === "")).toBe(true);
   });
 
-  it("🩺 the multi-byte hole in the OTHER three roles was never silent, and that is the asymmetry", () => {
+  it("🛑 in a PARSING builder's other three roles it was never silent, and that bound names the NINE", () => {
     // A multi-character value in any other role shifts a FIXED ISA position, so
-    // at base the builder's own `parseX12` fatalled. Stating the class as "a
-    // multi-byte delimiter builds" would have been false for three roles out of
-    // four - the census is what separated them.
+    // at base `build837P`'s own trailing `parseX12` fatalled. Stating the class
+    // as "a multi-byte delimiter builds" would have been false for three roles
+    // out of four - the census is what separated them.
+    //
+    // 🛑 But the bound is about the NINE builders that end in `parseX12`, and a
+    // draft of this file wrote it as an absolute about ROLES ("silent at that
+    // role and nowhere else"). The gate falsified that in one probe, at
+    // `buildTA1`, which ends in no parse - the case below. Never restate this
+    // as a property of the role alone.
     expect(() => build837PWith({ elementSeparator: "**" })).toThrow(
       "build837: the element separator must be exactly one character",
     );
@@ -824,6 +843,25 @@ describe("🩺 mechanism 3 - buildTA1 had NO net, not even the accidental one", 
     expect(() => buildTA1(ACCEPT, asJsCaller({ elementSeparator: "\n" }))).toThrow(
       "buildTA1: the element separator must be a visible character",
     );
+  });
+
+  it("🩺 refuses the MULTI-CHARACTER separator that emitted an Accept which reads back a Reject", () => {
+    // 🛑 This is the case that falsified "LENGTH is silent at the segment
+    // terminator alone". At base `{ elementSeparator: "||" }` RETURNED
+    // `TA1||000000001||260601||1200||A||000` - and an ISA can declare only `|`,
+    // so read against that set TA1-01 (data element I12, the reassociation key)
+    // is EMPTY and TA1-04 has shifted, which `parseTA1` narrows out of enum to
+    // `R`. An Accept this library emitted read back as a Reject, and nobody
+    // resubmits against an Accept: `X12-TA1-EMIT-NOT-RELEASE-AWARE`'s safety
+    // class, reached by the LENGTH mechanism at a role no PARSING builder was
+    // ever silent at. So the bound is about the nine builders that end in
+    // `parseX12`, never about the role.
+    expect(() => buildTA1(ACCEPT, asJsCaller({ elementSeparator: "||" }))).toThrow(
+      "buildTA1: the element separator must be exactly one character",
+    );
+    // The read half of the claim, from bytes: this is what that segment did.
+    const base = "TA1||000000001||260601||1200||A||000";
+    expect(base.split("|")[1]).toBe("");
   });
 
   it("still emits the canonical Accept, byte for byte", () => {
@@ -898,6 +936,63 @@ describe("🛑 the class a caller catches MOVES, and it moves both ways", () => 
     expect(() => parseX12(doubled)).not.toThrow();
     // And `serializeX12` still round-trips such a model rather than refusing.
     expect(serializeX12(parseX12(doubled))).toContain("ISA*00*");
+  });
+});
+
+describe("🛑 PRE-EXISTING and NOT closed: it is a CODE-UNIT rule, never a BYTE rule", () => {
+  it("still builds a delimiter that is one code unit and several bytes on the wire", () => {
+    // `String.prototype.length` here and `charAt` on the read side both count
+    // UTF-16 code units, so a character that is one code unit but several BYTES
+    // when the interchange is encoded satisfies this guard and still displaces
+    // every ISA position after it: a byte-oriented receiver reads ISA-16 as
+    // 0xC2 and the terminator as 0xA7. The smart quote a companion-guide PDF
+    // hands you instead of `'` does the same.
+    //
+    // Pinned as an HONEST CONTROL and deliberately NOT guarded. An
+    // encoding-width rule is a decision nobody here has made, and the read side
+    // counts code units too, so moving one side alone would put emit and read
+    // back out of step - which is the drift this guard exists to close. The
+    // remedy for the overclaim was cutting the word "byte" out of every
+    // carrier, never growing the guard.
+    const built = buildInterchange(
+      asJsCaller({
+        ...ENVELOPE,
+        componentSeparator: "§",
+        groups: [
+          {
+            functionalIdCode: "HC",
+            groupControlNumber: "1",
+            versionRelease: "005010X222A2",
+            transactions: [
+              {
+                transactionSetIdCode: "837",
+                transactionSetControlNumber: "0001",
+                segments: [["CLM", "PATIENTACCT", "150.00"]],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(built.warnings).toEqual([]);
+    expect(built.delimiters.component).toBe("§");
+    // One code unit, two bytes in UTF-8. That is the whole of the residual.
+    expect("§").toHaveLength(1);
+    expect(Buffer.from("§", "utf8")).toHaveLength(2);
+  });
+
+  it("🛑 no refusal message and no shipped page may state the bound in BYTES", () => {
+    // Every first draft of this claim said "ONE fixed byte of the ISA" and the
+    // gate measured it false the same way each time. The message says
+    // POSITION, and this pins that it keeps saying so.
+    let message = "";
+    try {
+      buildInterchange(asJsCaller({ ...ENVELOPE, componentSeparator: "::", groups: [] }));
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain("ONE fixed position of the ISA");
+    expect(message).not.toContain("byte");
   });
 });
 

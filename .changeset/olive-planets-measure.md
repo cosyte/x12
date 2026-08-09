@@ -16,11 +16,12 @@ Nothing is trimmed, coerced or substituted: the set is refused.
 Three mechanisms, and they are not one defect:
 
 ```text
-LENGTH, and silent at the segment terminator ALONE
+LENGTH, and among the nine builders that end in parseX12 it was silent at the
+segment terminator alone (buildTA1 ends in no parse; see the third mechanism)
   build837P { segmentTerminator: "~~" }   warnings: []
     31 segment rows in a transaction whose SE-01 declares 16, every other row a
-    phantom the caller never wrote. Silent at that role alone, because the
-    terminator is appended AFTER the fixed-width ISA and displaces no ISA byte.
+    phantom the caller never wrote. Silent at that role because the terminator
+    is appended AFTER the fixed-width ISA and displaces no ISA position.
 
 TYPE, where the JOIN coerces and the ESCAPE does not
   build837P { componentSeparator: 1 }    warnings: []
@@ -35,7 +36,10 @@ NO NET AT ALL, at buildTA1
   buildTA1 { elementSeparator: "" } RETURNED
     TA10000000012606011200A000 - the reassociation key, the date, the time, the
     disposition and the note code in one undelimited blob. It is the only
-    builder with no trailing parseX12.
+    builder with no trailing parseX12, so EVERY role and EVERY shape was silent
+    here: { elementSeparator: "||" } returned
+    TA1||000000001||260601||1200||A||000, which inside an ISA reads back with
+    TA1-01 empty and ackCode "R" - an Accept emitted as a Reject.
 ```
 
 🩺 The TYPE mechanism needs no unusual value: `99213`, `11`, `30` and `1` are ordinary, and a length
@@ -51,10 +55,15 @@ moves and its equality test is unchanged.
 own trailing `parseX12`. They now refuse earlier with that builder's own error, so a consumer
 catching the parse class stops catching and one catching the build class starts.
 
-🛑 It refuses two shapes that built with `warnings: []`, and the plausible one is
-`segmentTerminator: "~\r\n"`. If you declared that to get line-broken output, it never produced any:
+🛑 It refuses shapes that built with `warnings: []`, and no count of them is published. The
+plausible one is `segmentTerminator: "~\r\n"`. If you declared that to get line-broken output, it never produced any:
 CR/LF between segments is tolerated on READ, so the model recorded `~` and `serializeX12` emitted no
 line breaks. Reading a file written that way is unaffected; only declaring it on emit is.
+
+🛑 It is a UTF-16 code-unit rule and not a byte rule. A character that is one code unit but several
+bytes on the wire satisfies it and still displaces every ISA position after it, so
+`componentSeparator: "\u00a7"` still builds. Disclosed, not guarded: the read side counts code units
+too, so moving one side alone would put them back out of step.
 
 🛑 The read side and `serializeX12` are untouched. `parseX12` accepts everything it accepted before,
 because documents declaring these sets exist and Postel's Law puts them on the lenient half. A letter

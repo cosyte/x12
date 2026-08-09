@@ -437,21 +437,37 @@ function requireEscapableDelimiters(
  * the read side's own predicate is refused rather than repaired.
  *
  * The one-character requirement is structural rather than conventional. The ISA
- * is fixed-width per ASC X12 .5: ISA-11 is ONE byte at position 83 and ISA-16
- * ONE byte at position 105, the terminator is the single byte after it, and
- * {@link "../parser/types.js".Delimiters} records exactly one character per
- * role. A multi-character value cannot be transmitted as a delimiter at all -
- * the question is only whether the caller is told.
+ * is fixed-width per ASC X12 .5: ISA-11, ISA-16 and the terminator each occupy
+ * ONE fixed position, and {@link "../parser/types.js".Delimiters} records
+ * exactly one character per role. A multi-character value cannot be transmitted
+ * as a delimiter at all - the question is only whether the caller is told.
+ *
+ * 🛑 **It is a UTF-16 CODE-UNIT rule, not a byte rule, and the difference is a
+ * residual this does NOT close.** `String.prototype.length` and the read side's
+ * `charAt` both count code units, so a character that is one code unit but
+ * several BYTES on the wire satisfies this guard and still displaces every ISA
+ * position downstream of it. Measured at head, `warnings: []`:
+ * `buildInterchange({ componentSeparator: "§" })` builds, and a
+ * byte-oriented receiver reads ISA-16 as `0xC2` and the terminator as `0xA7`.
+ * `"’"` - the smart-quote a companion-guide PDF gives you instead of `'` -
+ * does the same. **Do not grow this guard to reach it**: an encoding-width rule
+ * is a decision nobody here has made, and the read side counts code units too,
+ * so moving one side alone would re-open the drift this guard exists to close.
+ * Never restate the bound in BYTES; every draft of this module that did was
+ * measured false the same way.
  *
  * ## Three mechanisms, measured at base `a21f8ea`, and they are NOT one defect
  *
  * ```text
- * LENGTH, and only at the segment terminator
+ * LENGTH. Among the NINE builders that end in parseX12 it was silent at the
+ * segment terminator alone; buildTA1 ends in no parse and was silent at every
+ * role, which is mechanism 3 and not this one.
  *   build837P { segmentTerminator: "~~" }  warnings: []
  *     31 segment rows in a transaction whose SE-01 declares 16; every other
- *     row is a phantom with id "" that no caller wrote. It is silent HERE and
- *     nowhere else because the terminator is appended AFTER the fixed-width
- *     ISA and so displaces no ISA byte.
+ *     row is a phantom with id "" that no caller wrote. Silent because the
+ *     terminator is appended AFTER the fixed-width ISA and so displaces no ISA
+ *     position; a multi-character value in the other three roles displaces one,
+ *     and those nine builders' own trailing parseX12 fatalled.
  *
  * TYPE, and the joiner and the escaper end up disagreeing
  *   build837P { componentSeparator: 1 }    warnings: []
@@ -463,17 +479,26 @@ function requireEscapableDelimiters(
  *   build271 { repetitionSeparator: 1 }    warnings: []
  *     EB*1**3011 - EB-03's two service type codes no longer read back as two.
  *
- * NO NET AT ALL, at buildTA1
+ * NO NET AT ALL, at buildTA1 - EVERY role, EVERY shape, all 32 cells
  *   buildTA1 with { elementSeparator: "" } returned
  *     TA10000000012606011200A000 - one undelimited blob fusing the
- *     reassociation key, date, time, disposition and note code. Every other
- *     builder ends in `parseX12`, which caught most mis-shaped sets by
- *     accident; `buildTA1` returns a segment and never parses.
+ *     reassociation key, date, time, disposition and note code.
+ *   buildTA1 with { elementSeparator: "||" } returned
+ *     TA1||000000001||260601||1200||A||000, and inside an ISA - which can
+ *     declare only "|" - that Accept reads back with TA1-01 EMPTY and
+ *     ackCode "R", parse warnings 0. 🩺 An Accept emitting as a Reject is
+ *     X12-TA1-EMIT-NOT-RELEASE-AWARE's safety class reached by the LENGTH
+ *     mechanism, at a role no parsing builder was ever silent at.
+ *   Every other builder ends in `parseX12`, which caught most mis-shaped sets
+ *   by accident; `buildTA1` returns a segment and never parses.
  * ```
  *
  * 🩺 The TYPE mechanism needs no unusual caller value - `99213`, `11` and `30`
  * are ordinary - and a length rule cannot reach it, which is why the two are
- * stated separately.
+ * stated separately. 🛑 **Never write the LENGTH bound as an absolute about
+ * roles.** *"Silent at the segment terminator alone"* is true of the nine
+ * parsing builders and FALSE of `buildTA1`, which is why the third mechanism is
+ * a mechanism and not a footnote to the first.
  *
  * ## What a caller catches CHANGES, and it changes in both directions
  *
@@ -487,8 +512,12 @@ function requireEscapableDelimiters(
  * minted, but the class moves, and `#83`'s lesson is that a moved predicate is
  * stated in both directions or not at all.
  *
- * 🛑 **It refuses sets that built with `warnings: []`, and the plausible one is
- * `segmentTerminator: "~\r\n"`** - a caller asking for line-broken output.
+ * 🛑 **It refuses sets that built with `warnings: []`. No count of them is
+ * published** - a draft said "two" and the measurement found more the moment a
+ * shape the census had not enumerated (a boxed `new String("|")`) was tried,
+ * which is the census-cannot-be-closed rule this package already carries. The
+ * one worth naming is `segmentTerminator: "~\r\n"` - a caller asking for
+ * line-broken output.
  * Measured at base: the interchange built clean, and the CRLF was NOT on the
  * wire. `parseX12` tolerates a run of CR/LF between segments, so the model
  * recorded `segment: "~"` and `serializeX12` re-emitted without line breaks.
@@ -507,11 +536,16 @@ function requireEscapableDelimiters(
  * It runs AFTER {@link requireEscapableDelimiters} so that nothing that slice
  * pinned moves. A set with `?` in two roles is both degenerate AND
  * non-distinct; running the release-character check first keeps the message
- * that names the sharper defect.
+ * that names the sharper defect. It runs BEFORE
+ * {@link "./caller-control-number.js".requireControlNumber} in every builder
+ * that has one, for the same reason the escaper does, so on a mis-shaped set a
+ * control-number refusal a caller saw at base is reported as this one instead.
+ * **A MESSAGE moves, never a code, and the sites are not counted** - that is a
+ * property of the ordering, and a total drifts with the next builder.
  *
  * **No refusal echoes the declared value.** The role is named and the defect is
  * described - `REFUSAL-MESSAGE-PHI-ECHO`'s decision, kept even though a
- * delimiter is a structural byte rather than an element value, because a
+ * delimiter is a structural character rather than an element value, because a
  * slot-generic guard cannot know what a caller put in the slot.
  *
  * @param delimiters the resolved delimiter set for this interchange
@@ -525,10 +559,16 @@ function requireWellShapedDelimiters(
   at: string,
   refuse: (message: string) => never,
 ): void {
+  // 🛑 The remedy says CHARACTER and never BYTE. The rule is a UTF-16 code-unit
+  // rule on both sides (`String.prototype.length` here, `charAt` on read), so a
+  // one-code-unit character that is several bytes on the wire satisfies it and
+  // still displaces every ISA position after it. That residual is disclosed in
+  // the module doc rather than guarded, and the message must not imply
+  // otherwise.
   const REMEDY =
-    `A delimiter occupies ONE fixed byte of the ISA (ISA-11, ISA-16 and the byte after it), ` +
-    `so this set cannot be transmitted and this library's own parser would reject a document ` +
-    `declaring it. Declare four distinct, visible, single-character delimiters.`;
+    `A delimiter occupies ONE fixed position of the ISA (ISA-11, ISA-16 and the position ` +
+    `after it), so this set cannot be transmitted and this library's own parser would reject a ` +
+    `document declaring it. Declare four distinct, visible, single-character delimiters.`;
 
   for (const [role, name] of DELIMITER_ROLES) {
     // The declared value is typed `string` and is not trusted to be one: a
@@ -563,7 +603,7 @@ function requireWellShapedDelimiters(
     if (earlier !== undefined) {
       refuse(
         `${at}: the ${name} and the ${earlier[1]} are the same character. ` +
-          `A reader cannot tell which role a byte is playing. ${REMEDY}`,
+          `A reader cannot tell which role a character is playing. ${REMEDY}`,
       );
     }
   }

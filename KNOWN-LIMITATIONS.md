@@ -290,22 +290,33 @@ model.
 
     Three things it closed, and they are not one defect. A **multi-character** `segmentTerminator`
     such as `"~~"` built with `warnings: []` and put phantom segments on the model that `SE-01` never
-    counted - silent at that role alone, because the terminator is appended after the fixed-width ISA
-    and displaces no ISA byte. A **non-string** delimiter was coerced by the join but not by the
+    counted - among the nine builders that end in `parseX12`, silent at that role alone, because the
+    terminator is appended after the fixed-width ISA and displaces no ISA position. A **non-string** delimiter was coerced by the join but not by the
     escape, so the document framed on a byte no element value was protected from: an 837 with
     `componentSeparator: 1` read `SV1-01-2` back as `992` rather than the procedure code `99213`,
     `warnings: []`. And **`buildTA1` had no net at all** - it is the one builder with no trailing
-    `parseX12`, so `elementSeparator: ""` returned `TA10000000012606011200A000`, the reassociation
-    key and the disposition fused into one blob.
+    `parseX12`, so EVERY role and EVERY shape was silent there: `elementSeparator: ""` returned
+    `TA10000000012606011200A000`, the reassociation key and the disposition fused into one blob, and
+    `elementSeparator: "||"` returned `TA1||000000001||260601||1200||A||000`, which inside an ISA
+    reads back with `TA1-01` empty and `ackCode: "R"` - an Accept emitted as a Reject.
 
     **🛑 Two things change for a caller.** A spec that failed at base with an `X12ParseError` /
     `X12_INVALID_DELIMITERS` escaping out of the `build*` call now refuses earlier with that
     builder's own typed error and its existing code, so a consumer catching the parse class stops
     catching and one catching the build class starts; no code is minted. And a
     `segmentTerminator` of `"~\r\n"` - asking for line-broken output - **built with `warnings: []`
-    before and is refused now**. It never did what it looked like it did: `parseX12` tolerates CR/LF
+    before and is refused now** (no count of such shapes is published; that is not the only one). It never did what it looked like it did: `parseX12` tolerates CR/LF
     between segments, so the model recorded `~` and `serializeX12` emitted no line breaks. Reading a
     file that is written that way is unaffected; only declaring it on emit is.
+
+  - **🩺 `PRE-EXISTING` and NOT closed by that refusal: it is a UTF-16 CODE-UNIT rule, not a byte
+    rule.** A character that is one code unit but several bytes on the wire satisfies it and still
+    displaces every ISA position after it, so `componentSeparator: "\u00a7"` builds with
+    `warnings: []` and a byte-oriented receiver reads ISA-16 as `0xC2` and the terminator as `0xA7`.
+    The smart quote `"\u2019"` a companion-guide PDF gives you instead of `'` does the same.
+    Disclosed rather than guarded: the read side counts code units too (`charAt`), so moving one side
+    alone would put emit and read back out of step, which is exactly what that refusal exists to
+    prevent. **Declare delimiters from the basic single-byte set.**
 
   - **🩺 PRE-EXISTING and NOT closed here: on a degenerate set a `?~` still swallows the segment
     terminator.** `findUnescapedTerminator` guards its own role only, so with `?` as the element

@@ -100,10 +100,15 @@ property of the SET you declare, never as a guarantee about the documents this l
 be a string of exactly one visible character, and the four must be mutually distinct - the same
 predicate `parseX12` applies to an inbound ISA, where failing it is the fatal
 `X12_INVALID_DELIMITERS`. So `segmentTerminator: "~~"`, an empty or whitespace delimiter, a numeric
-one, and a set that uses one character in two roles are all refused on emit. Two of those used to
+one, and a set that uses one character in two roles are all refused on emit. Some of those used to
 build with `warnings: []`, including `segmentTerminator: "~\r\n"` - if you were declaring that to get
 line-broken output, it never produced any: line breaks between segments are tolerated on READ, so the
-model recorded `~` and `serializeX12` emitted none. All of it is recorded in `KNOWN-LIMITATIONS.md`.
+model recorded `~` and `serializeX12` emitted none.
+
+**It counts UTF-16 code units, not bytes**, so a single-code-unit character that is several bytes on
+the wire (`"\u00a7"`, or the smart quote `"\u2019"` a companion-guide PDF gives you instead of `'`)
+still builds and still displaces every ISA position after it. Declare delimiters from the basic
+single-byte set. All of it is recorded in `KNOWN-LIMITATIONS.md`.
 
 ## Line endings between segments
 

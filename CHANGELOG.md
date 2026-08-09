@@ -1035,13 +1035,24 @@ required control number and this builder never invents one, so nothing is emitte
   the set is refused. The one-character requirement is structural rather than conventional, because
   the ISA is fixed-width per ASC X12 .5 and `Delimiters` records exactly one character per role.
 
+  **🛑 It is a UTF-16 code-unit rule and NOT a byte rule, and that difference is a residual it does
+  not close.** A character that is one code unit but several bytes on the wire satisfies it and still
+  displaces every ISA position after it: `componentSeparator: "\u00a7"` builds with `warnings: []`,
+  and a byte-oriented receiver reads ISA-16 as `0xC2` and the terminator as `0xA7`. The smart quote
+  `"\u2019"` that a companion-guide PDF gives you instead of `'` does the same. Disclosed, not
+  guarded: the read side counts code units too, so moving one side alone would put them back out of
+  step.
+
   **Three mechanisms, and they are not one defect.**
-  - **LENGTH, and silent at the segment terminator alone.** `build837P` with
-    `segmentTerminator: "~~"` built with `warnings: []` and put 31 segment rows on a transaction
-    whose `SE-01` declares 16, every other row a phantom the caller never wrote. It is silent at
-    that role and nowhere else because the terminator is appended AFTER the fixed-width ISA and
-    displaces no ISA byte; in the other three roles the builder's own trailing `parseX12` already
-    fatalled.
+  - **LENGTH.** Among the nine builders that end in `parseX12`, silent at the segment terminator
+    alone: `build837P` with `segmentTerminator: "~~"` built with `warnings: []` and put 31 segment
+    rows on a transaction whose `SE-01` declares 16, every other row a phantom the caller never
+    wrote. Silent at that role because the terminator is appended AFTER the fixed-width ISA and
+    displaces no ISA position; in the other three roles those builders' own trailing `parseX12`
+    already fatalled. That bound is about the nine and is **not** an absolute about roles:
+    `buildTA1` ends in no parse, so the same mechanism was silent there at every role, and
+    `{ elementSeparator: "||" }` returned `TA1||000000001||260601||1200||A||000`, which inside an
+    ISA reads back with `TA1-01` empty and `ackCode: "R"` - an Accept emitted as a Reject.
   - **TYPE, where the join coerces and the escape does not.** `Array.prototype.join` coerces a
     non-string delimiter and the document frames on the coerced byte, but `escapeRelease` compares
     delimiters with `===`, so no element value is escaped against it. `build837P` with
@@ -1066,8 +1077,9 @@ required control number and this builder never invents one, so nothing is emitte
   and its existing code, **so a consumer catching the parse class around a `build*` call stops
   catching and one catching the build class starts.**
 
-  **🛑 It refuses two shapes that built with `warnings: []`, and the plausible one is
-  `segmentTerminator: "~\r\n"`.** If you declared that to get line-broken output it never produced
+  **🛑 It refuses shapes that built with `warnings: []`, and no count of them is published** - a
+  draft said "two" and one more turned up the moment a shape the census had not enumerated was tried.
+  **The plausible one is `segmentTerminator: "~\r\n"`.** If you declared that to get line-broken output it never produced
   any: CR/LF between segments is tolerated on READ, so the model recorded `~` and `serializeX12`
   emitted no line breaks. Reading a file written that way is unaffected; only declaring it on emit
   is.

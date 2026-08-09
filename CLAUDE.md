@@ -119,31 +119,35 @@ HOIST IT INTO `splitWithRelease`; and `?~` STILL SWALLOWS THE TERMINATOR, `PRE-E
 
 ### 🩺 `X12-EMIT-DELIMITER-SHAPE-UNCHECKED` (2026-08-09) · `agent-notes/x12-emit-delimiter-shape-unchecked.md`
 
-- **🩺 A DELIMITER MUST BE A STRING OF EXACTLY ONE VISIBLE CHARACTER AND THE FOUR MUST BE DISTINCT,
-  REFUSED ON EMIT BY EVERY BUILDER, IN `requireWellShapedDelimiters` BESIDE THE `?` GUARD.**
-  **🛑 THE RULE IS `detectDelimiters`' OWN, IMPORTED NOT RESTATED (`isVisibleDelimiterChar`) - a
-  builder composing a document its own parser FATALS on was disagreeing with itself. NO
-  NORMALISATION: nothing is trimmed, coerced or substituted, so it needs no source a refusal cannot
-  have.** THE READ SIDE DID NOT MOVE.
-- **🩺 THREE MECHANISMS, FILED AS ONE. NEVER WRITE THEM AS ONE.** **LENGTH is silent at the SEGMENT
-  TERMINATOR ALONE** (`"~~"` -> 31 rows against `SE-01` 16, `warnings: []`) because it is appended
-  AFTER the fixed-width ISA; the other three roles shift an ISA byte and the builder's own `parseX12`
-  already fatalled. **TYPE: the JOIN coerces and the ESCAPE does not**, so `componentSeparator: 1`
-  framed on `"1"` while `escapeRelease` protected nothing - `SV1-01-2` read `992`, not the procedure
-  code `99213`, `warnings: []`; **A LENGTH RULE CANNOT REACH IT.** **`buildTA1` HAD NO NET AT ALL** -
-  the one builder with no trailing `parseX12`; `elementSeparator: ""` RETURNED
-  `TA10000000012606011200A000`.
-- **🛑 THE ERROR CLASS MOVES, BOTH WAYS, AND NO CODE IS MINTED.** Most mis-shaped sets threw
-  `X12ParseError`/`X12_INVALID_DELIMITERS` OUT OF A `build*` CALL at base (with a 64-byte `snippet`);
-  head refuses earlier with the builder's own. **A consumer catching the PARSE class STOPS catching
-  and one catching the BUILD class STARTS - state both directions (`#83`).**
-- **🛑 IT REFUSES SPECS THAT BUILT WITH `warnings: []`, AND THE PLAUSIBLE ONE IS
-  `segmentTerminator: "~\r\n"`** - it never put a line break on the wire either (CR/LF between
-  segments is tolerated on READ, so the model recorded `~`). **READING such a file is UNAFFECTED.**
-- **⚖️ RUNS AFTER THE `?` GUARD SO NOTHING `#106` PINNED MOVES** - a `?` in two roles is degenerate
-  AND non-distinct, and the sharper message wins. **A LETTER OR DIGIT IS STILL ADMISSIBLE**
-  (`componentSeparator: "S"`); a delimiter that collides with DATA is a different family, still open.
-  **NO REFUSAL ECHOES THE DECLARED VALUE** - role plus defect, type alone for a non-string.
+- **🩺 A DELIMITER MUST BE A STRING OF EXACTLY ONE VISIBLE CHARACTER, THE FOUR DISTINCT; REFUSED ON
+  EMIT BY EVERY BUILDER IN `requireWellShapedDelimiters`. THE RULE IS `detectDelimiters`' OWN,
+  IMPORTED NOT RESTATED (`isVisibleDelimiterChar`)** - a builder composing what its own parser FATALS
+  on disagreed with itself. **NO NORMALISATION** (nothing trimmed or coerced), so no source is owed.
+  **THE READ SIDE DID NOT MOVE.**
+- **🩺 THREE MECHANISMS, FILED AS ONE. NEVER WRITE THEM AS ONE.** **LENGTH: of the NINE builders
+  ending in `parseX12`, silent at the SEGMENT TERMINATOR alone** (`"~~"` -> 31 rows against `SE-01` 16) - it is appended AFTER the fixed-width ISA; other roles shift a position and those nine
+  fatalled. **🛑 NEVER AS AN ABSOLUTE ABOUT ROLES** - a draft said "nowhere else"; the gate falsified
+  it at `buildTA1`. **TYPE: the JOIN coerces, the ESCAPE does not**, so `componentSeparator: 1` framed
+  on `"1"` unprotected - `SV1-01-2` read `992`, not `99213`; **A LENGTH RULE CANNOT REACH IT.**
+  **`buildTA1` HAD NO NET AT ALL, EVERY ROLE AND SHAPE** (no trailing `parseX12`): `""` RETURNED
+  `TA10000000012606011200A000`, `"||"` a TA1 reading back **TA1-01 EMPTY, `ackCode` `R`: AN ACCEPT
+  AS A REJECT.** `warnings: []` throughout.
+- **🛑 A UTF-16 CODE-UNIT RULE, NOT A BYTE RULE - a one-code-unit MULTI-BYTE separator STILL BUILDS**
+  (a byte receiver then reads ISA-16 as `0xC2`). **DISCLOSED, NOT GUARDED; NEVER RESTATE THE BOUND IN
+  BYTES** - every first draft did, all false - and **DO NOT MOVE ONE SIDE ALONE**, `charAt` counts
+  code units too. **PUBLISH NO COUNT OF WHAT BUILT SILENTLY:** a draft said "two shapes" and a boxed
+  `new String("|")` outside the census made it more.
+- **🛑 THE ERROR CLASS MOVES, BOTH WAYS; NO CODE MINTED.** Base threw
+  `X12ParseError`/`X12_INVALID_DELIMITERS` OUT OF A `build*` CALL; head uses the builder's own.
+  **CATCHING THE PARSE CLASS STOPS WORKING, THE BUILD CLASS STARTS - BOTH DIRECTIONS (`#83`).** A
+  MESSAGE moves too (`requireControlNumber` is LATER, so `#101`/`#102` yield); **NEVER COUNT SITES.**
+- **🛑 IT REFUSES SPECS THAT BUILT WITH `warnings: []`; THE PLAUSIBLE ONE IS
+  `segmentTerminator: "~\r\n"`** - which never put a line break on the wire either (CR/LF between
+  segments is absorbed on READ, so the model recorded `~`). **READING one is UNAFFECTED.**
+- **⚖️ RUNS AFTER THE `?` GUARD SO NOTHING `#106` PINNED MOVES** (a `?` in two roles is degenerate AND
+  non-distinct; the sharper message wins). **A LETTER OR DIGIT IS STILL ADMISSIBLE**
+  (`componentSeparator: "S"`); one colliding with DATA is a different family, still open.
+  **NO REFUSAL ECHOES THE DECLARED VALUE.**
 
 ### 🩺 `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-interchange-gs-escape.md`
 
