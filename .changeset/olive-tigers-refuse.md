@@ -29,7 +29,9 @@ build834          transactionSetControlNumber:  ST*834**005010X220A1~ … ~SE*21
 ```
 
 Every one of those emitted `warnings: []`, which is the property that holds across both families: no
-diagnostic on any channel separated an absent control number from a supplied one. The acknowledgment builders carried the same class at the slots
+diagnostic on any channel separated an absent control number from a supplied one.
+
+The acknowledgment builders carried the same class at the slots
 where they echo the document being acknowledged, which is the whole reason a sender can match an ack
 to what they sent: `build999` emitted `AK1*HC**005010X222A2~` and `AK2*837*~`, and `buildTA1` emitted
 `TA1**260601*1200*A*000`. The `buildTA1` case was already disclosed in `KNOWN-LIMITATIONS.md` as
@@ -63,8 +65,9 @@ source consulted for this package states one, and the five in-package guards thi
 byte-strict for the same reason. It also does not type-check, so nothing about a non-string changed
 on any route, measured over seven non-string values across three routes. What each route already does
 is not restated here, and `KNOWN-LIMITATIONS.md` records why: a draft said a number "or `undefined`"
-draws the typed refusal, and `padControl(undefined, 9)` throws a bare `TypeError` with no `code`. And a SHORT control number still zero-pads, because that is what the padding is for: `"1"`
-still emits `000000001`.
+draws the typed refusal, and `padControl(undefined, 9)` throws a bare `TypeError` with no `code`.
+And a SHORT control number still zero-pads, because that is what the padding is for: `"1"` still
+emits `000000001`.
 
 No census of the slots that are NOT routed through the guard is published; the claim is the property,
 that a control number routed through it is refused when empty.

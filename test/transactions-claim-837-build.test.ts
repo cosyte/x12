@@ -873,7 +873,7 @@ describe("build837 - an empty envelope control number is refused", () => {
   // ISA-13 / IEA-02 FABRICATED `000000000` out of `""`, because `padControl`
   // zero-pads and nothing stood in front of it; GS-06 / GE-02 and ST-02 / SE-02
   // reach the wire through `esc`, which early-returns on `""`, so the required
-  // element was LOST.
+  // element went out short.
   //
   // 🛑 Say `warnings: []`, never "the pair reconciled against itself". That
   // holds only for `buildInterchange` and `build999`, which join untrimmed.

@@ -50,10 +50,6 @@
  * build834          GS*BE*…*1200**X*005010X220A1~ … ~GE*1~      ST*834**…~ … ~SE*21~
  * ```
  *
- * `build271`, `build277`, `build278`, `build820`, `build835` and `build837P` all
- * answered in the `build834` shape, differing only in their own SE-01 counts
- * (`SE*15`, `SE*17`, `SE*18`, `SE*19`, `SE*25`, `SE*22`).
- *
  * Every one of those emitted `warnings: []`, which is the property that holds
  * across both families and is all this module needs: no diagnostic separated an
  * absent control number from a supplied one, on any channel. **State the

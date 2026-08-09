@@ -11,6 +11,28 @@ in-package assertion** carried by `padControl`, by `build-interchange.ts`'s own 
 refuse-versus-warn call rests on in-package CONSISTENCY, stated as such below, and **not** on any
 005010 clause.
 
+## Gate record, including the one UNGRADED commit
+
+Three conformance-refuter passes, the ADR 0016 cap: **REFUTED, REFUTED, NOT REFUTED.**
+**No pass found a defect in the CODE.** Every one of the twenty-plus findings was a claim defect,
+which is this repo's recorded pattern for a parser slice and is why the prose here is longer than
+the fix.
+
+- **Pass 1** (major + five minors): "nothing a consumer branches on changes" was false, because a
+  defect detected later in a builder now reports the control-number refusal instead. Plus a
+  one-builder measurement published as a class, a fabricated `TA1*   *…`, an `undefined` route that
+  does not behave as claimed, an over-sold drift pin, and a missing `Provenance:` field.
+- **Pass 2** (major + minor): the finding-2 remedy reached seven surfaces and missed fourteen, and
+  half-corrected the public troubleshooting page into a contradiction.
+- **Pass 3** (four minors, none blocker or major): converged.
+
+**🛑 One commit after pass 3 is UNGRADED and is disclosed here because it exists.** It is
+**deletion only** apart from this section: it removes the "so the required element is LOST" lead-in
+(false of GS-06 and ST-02, and the tripwire below it already said so) and the seven `SE*NN` figures
+that had been hand-copied to fifteen sites. Nothing was added, no guard moved, no test changed, and
+the working state therefore asserts strictly less than the state pass 3 graded, which is ADR 0027's
+reason that a deletion-only commit cannot introduce what nobody checked.
+
 ## The filed line, and what re-measuring it found
 
 `operations/BACKLOG.md`'s `X12-837-RESIDUALS` carried:
