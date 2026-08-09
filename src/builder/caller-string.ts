@@ -245,6 +245,13 @@ import { escapeRelease } from "../parser/release.js";
  * The type is what the caller has to act on in any case: the remedy for every
  * arm here is the same, and it is named in the message.
  *
+ * **Exported for {@link "./caller-control-number.js".requireControlNumber} and
+ * for nothing else.** That guard needed the same PHI-safe description and the
+ * alternative was a THIRD describer beside this one and `caller-array.ts`'s
+ * `describeShape`. A control number is exactly the kind of primitive the
+ * paragraph above refuses to echo, so sharing this one is what keeps that
+ * decision in a single place rather than re-deciding it per guard.
+ *
  * **What it costs, stated rather than argued away:** this refusal names the
  * BUILDER and not the slot (see the limit recorded at the bottom of the module
  * doc above), so with the value gone a caller holding a large spec has neither.
@@ -254,7 +261,7 @@ import { escapeRelease } from "../parser/release.js";
  * and this slice did not reopen it.
  * @internal
  */
-function describeCallerValue(value: unknown): string {
+export function describeCallerValue(value: unknown): string {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
   const type = typeof value;

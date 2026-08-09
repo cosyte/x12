@@ -524,9 +524,16 @@ describe("buildTA1 is OUTSIDE the joiner property, and this pins what it does in
     // `TA1**250101*1200*A*000`, the number emitted `TA1*123456789*…` with the
     // NUMBER surviving onto `elements`, and the object emitted
     // `TA1*[object Object]*…`.
+    //
+    // `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED` moved this MESSAGE: TA1-01 is
+    // routed through `requireControlNumber`, which type-checks one step ahead
+    // of `esc` and can name the slot, so the refusal names TA1-01 where the
+    // escaper's could only name the builder. Same class, same code. The
+    // escaper's own wording is still pinned, on `ackCode`, in
+    // `test/transactions-ack-ta1-escape.test.ts`.
     for (const bad of [undefined, null, 123_456_789, { a: 1 }]) {
       expect(() => buildTA1(asJsCaller(spec(bad)))).toThrow(
-        /buildTA1: every element value must be a string/u,
+        /buildTA1: interchangeControlNumber must be a string, but received .*\. TA1-01 is a required control number/u,
       );
     }
     // The refusal is this module's typed one, not a bare TypeError out of

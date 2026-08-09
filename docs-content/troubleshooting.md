@@ -117,10 +117,7 @@ as often `CLP-01` or `NM1-09` as a control number. They report the type now
 (`build835: every element value must be a string, but received a number.`) and never the value. If you
 were parsing a value back out of one of those messages, that is the change to know about.
 
-**Only the segment-join guard names the SLOT as well** (`build999: "AK9"-01 must be a string, ...`),
-because it holds the whole segment. The `esc` and `X12Decimal` guards name the builder, so on those
-two the value used to stand in for a locator and now nothing does. That is a real diagnostic cost and
-it is stated rather than hidden. **And one arm is deliberately NOT redacted:** the array guard still
+**One arm is deliberately NOT redacted:** the array guard still
 reports the `length` and the class tag of a forged array-like, bounded, because those describe the
 shape you forged rather than the contents of a document element, and they are the whole diagnostic for
 `{ length: "9".repeat(120000) }`.

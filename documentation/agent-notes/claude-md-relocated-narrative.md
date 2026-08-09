@@ -137,10 +137,9 @@ behind. What moved is the worked example and the locator detail.
 >   array guard's PRIMITIVE arm report the TYPE only. A `JSON.parse`d spec used to put a NUMERIC
 >   `claimId` or member id in the message, bounded to 90, NOT redacted. **The old disclosure named
 >   `requireCallerSegment`; `requireCallerString` fires for `CLP-01`, and both echoed. Never re-add a
->   value, never fold the decimal one back out. And state the two things this does NOT say, both
->   drafted false once:** the array guard STILL renders a forged array-like's `length` and class tag
->   (SHAPE, not element contents); and **only the SEGMENT guard names the slot** - `esc`/`escDec`
->   name the BUILDER, so there nothing replaces the value as a locator. Its locator admits
+>   value, never fold the decimal one back out. And state what this does NOT say, drafted false
+>   once:** the array guard STILL renders a forged array-like's `length` and class tag
+>   (SHAPE, not element contents). The segment guard's locator admits
 >   `parts[0]` by the segment-id GRAMMAR, never by length.
 
 ### The domain-builder refusal message
@@ -620,9 +619,8 @@ Verbatim, two pieces.
 
 > - **🩺 NO CALLER GUARD ECHOES WHAT A CALLER PUT IN AN ELEMENT** - string/segment/decimal and the
 >   array guard's PRIMITIVE arm report the TYPE only. **Never re-add a value, never fold the decimal
->   one back out. And state the two things this does NOT say, both drafted false once:** the array
->   guard STILL renders a forged array-like's `length` and class tag (SHAPE, not element contents),
->   and **only the SEGMENT guard names the slot** (`esc`/`escDec` name the BUILDER).
+>   one back out. And state what this does NOT say, drafted false once:** the array
+>   guard STILL renders a forged array-like's `length` and class tag (SHAPE, not element contents).
 
 ### 10.5 The profile-quirk hard rule, and how it is enforced
 

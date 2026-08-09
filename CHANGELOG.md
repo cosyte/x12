@@ -468,11 +468,6 @@ required control number and this builder never invents one, so nothing is emitte
     rule, no source consulted for this package states one, and the five in-package guards this
     mirrors are byte-strict for the same reason. Pinned as a test and disclosed in
     `KNOWN-LIMITATIONS.md` as the one shape still worth screening at your own boundary.
-  - **It does NOT type-check, so nothing about a non-string changed**, on any route. Seven
-    non-string values across three routes were measured byte-identical before and after. What each
-    route already does is deliberately not restated here, because a draft of this bullet restated it
-    wrongly: it said a number "or `undefined`" draws the typed refusal, and `padControl(undefined, 9)`
-    throws a bare `TypeError` with no `code`, unchanged by this release.
   - **A SHORT control number still zero-pads.** The guard is not "ISA-13 must be nine characters":
     `"1"` still emits `000000001`, which is what the padding is for.
   - **🛑 Every guard sits at the envelope-assembly site, so every guard that runs BEFORE it keeps its
@@ -763,13 +758,10 @@ required control number and this builder never invents one, so nothing is emitte
   "An `X12Decimal` slot holds no identifier today" would have been the wrong kind of argument: a fact
   about today's slots rather than a property of the guard.
 
-  **Two things that property does NOT say, and both were drafted as absolutes first.** The array
+  **What that property does NOT say, and it was drafted as an absolute first.** The array
   guard still renders a forged array-like's `length` and its class tag through `renderCallerValue`,
   bounded: those describe the SHAPE a caller forged rather than an element's contents, and they are
-  the whole diagnostic for `{ length: "9".repeat(120000) }`. And **only the segment-join guard names
-  the SLOT** - `esc` and `escDec` name the BUILDER, a limit `caller-string.ts` already recorded, so on
-  those two the echoed value used to stand in for a locator and now nothing does. That is a real
-  diagnostic cost and it is disclosed rather than argued away.
+  the whole diagnostic for `{ length: "9".repeat(120000) }`.
 
   **The segment guard's slot locator is now bounded by GRAMMAR rather than by length.** `parts[0]` is
   caller-supplied in `buildInterchange`, which takes `[segmentId, ...elements]` wholesale, so it is
@@ -1028,6 +1020,43 @@ required control number and this builder never invents one, so nothing is emitte
   and no published type changed.
 
 ### Fixed
+
+- **🩺 A control number that is not a STRING is refused on emit, so `interchangeControlNumber: []`
+  and `new String("")` no longer fabricate ISA-13 as `000000000`**
+  (`X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED`). Reproduced on the base tree at `a226595`. The
+  empty-control-number guard above is byte-strict, and byte-strict means a value that is not a string
+  is not `""`, so a non-string walked past it and reached `padControl`, which reads `.length` and
+  then concatenates. Measured through `buildInterchange`:
+
+  ```text
+  interchangeControlNumber: []                 ISA-13 = "000000000"   warnings: []
+  interchangeControlNumber: new String("")     ISA-13 = "000000000"   warnings: []
+  interchangeControlNumber: new String("ABC")  ISA-13 = "000000ABC"   warnings: []
+  interchangeControlNumber: new String(" ")    ISA-13 = "00000000 "   warnings: []
+  ```
+
+  The first two are the **same fabricated `000000000`** the empty guard closed, reached through a
+  different input type. The other two are silent **coercions** of a boxed string, a value this
+  library refuses by name wherever it escapes one. `requireControlNumber` refuses a non-string ahead
+  of the empty test now, reporting the TYPE through `caller-string.ts`'s describer and never echoing
+  the value.
+  - **🛑 No error code is minted and no warning code moves, but DIAGNOSTICS DO MOVE, so "nothing
+    else changed" would be false.** `undefined` and `null` threw a bare `TypeError` with no `code`
+    and now throw the builder's typed refusal, so **a consumer catching `TypeError` there no longer
+    catches**. Shapes that used to make the builder write a malformed fixed-width ISA its own
+    re-parse rejected as `X12_INVALID_DELIMITERS` refuse before anything is written now, so **a
+    predicate on that code stops firing for them**. And **the MESSAGE moved at the control-number
+    slots that already refused a non-string**, because they refuse from this guard one step earlier:
+    same class, same code, wording that names the slot and the spec property. Read that as the
+    property and not as a claim about what the old message said. **If you match on message text at a
+    control-number slot, re-read it.**
+  - **It narrows what a control number may BE, never what it may CONTAIN.** A whitespace-only
+    control number is still accepted, unchanged and by design: trimming would be a
+    normalisation rule and no source consulted for this package states one. The asymmetry that
+    creates is stated rather than smoothed over - `new String(" ")` is refused because it is not a
+    string, and the primitive `" "` is not. A SHORT control number still zero-pads. The ISA's other
+    fixed-width slots go through `pad` rather than `padControl`, are guarded by no control-number
+    test, and a numeric one still throws a bare `TypeError`; disclosed rather than closed.
 
 - **🩺 A BODY segment in an interchange whose ELEMENT SEPARATOR is `?` now frames its elements,
   where it used to come back as ONE element with an id of `(non-spec)`**

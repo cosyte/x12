@@ -1026,7 +1026,17 @@ describe("every builder with an escaper refuses a number in an element", () => {
     // `err.code` is the surface this library tells consumers to use, and a
     // silently-dropped element gives them nothing to branch on at all.
     expect(typeof (thrown as { code?: unknown }).code).toBe("string");
-    expect((thrown as Error).message).toContain("every element value must be a string");
+    // AK2-02 is the ONE slot in this sweep that is also routed through
+    // `requireControlNumber`, which type-checks one step earlier;
+    // `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED` moved its message there.
+    // Asserted PER SLOT rather than as an alternation: an alternation inside a
+    // sweep passes when a slot drifts onto the OTHER arm, which is the same
+    // vacuous shape this file's own header warns about.
+    const expectedPrefix =
+      _label === "build999 transactionResponse.transactionSetControlNumber (AK2-02)"
+        ? "build999: transactionResponses[].transactionSetControlNumber must be a string"
+        : "every element value must be a string";
+    expect((thrown as Error).message).toContain(expectedPrefix);
     // `REFUSAL-MESSAGE-PHI-ECHO`: the type, never the value. Two of the slots
     // driven above are the exact ones the PHI claim named - `build837P`'s
     // `claim.claimId` (CLM-01) and `build834`'s `member.member.idCode`
@@ -1061,12 +1071,15 @@ describe("the fixed-width envelope slots: the disclosed residual", () => {
     expect((thrown as { code?: unknown }).code).toBeUndefined();
   });
 
-  it("gives a MISLEADING typed refusal for a numeric ISA-13, pinned as such", () => {
-    // `padControl(1, 9)` compares `undefined === 9` then `undefined < 9`, both
-    // false, and falls through to the over-long branch. The caller is told a
-    // one-digit number "exceeds the 9-char spec limit". Wrong text, right
-    // outcome (it refuses); PRE-EXISTING, and disclosed in
-    // `KNOWN-LIMITATIONS.md` rather than fixed in this slice.
+  it("no longer calls a numeric ISA-13 over-long, and the CODE did not move", () => {
+    // WAS the misleading half of this residual: `padControl(1, 9)` compared
+    // `undefined === 9` then `undefined < 9`, both false, and fell through to
+    // the over-long branch, so a one-digit number was told it "exceeds the
+    // 9-char spec limit". Closed by `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED`
+    // - `requireControlNumber` type-checks first. It refused at base and
+    // refuses now, on the SAME class and the SAME code; only the sentence
+    // changed. The ISA-06 case above is the half that is NOT closed and is
+    // still a bare `TypeError`, which is why the two are pinned side by side.
     let thrown: unknown;
     try {
       build834(
@@ -1080,7 +1093,11 @@ describe("the fixed-width envelope slots: the disclosed residual", () => {
       thrown = err;
     }
     expect(thrown).toBeInstanceOf(Enrollment834BuildError);
-    expect((thrown as Error).message).toContain("exceeds the 9-char spec limit");
+    expect((thrown as { code?: unknown }).code).toBe("X12_834_BUILD_INVALID_SPEC");
+    expect((thrown as Error).message).not.toContain("exceeds the 9-char spec limit");
+    expect((thrown as Error).message).toContain(
+      "interchangeControlNumber must be a string, but received a number.",
+    );
   });
 });
 
@@ -1119,7 +1136,11 @@ describe("string-typed slots that never called esc: now routed, and refusing", (
   // `groupControlNumber: "1*BOGUS"` emitted `GS*FA*...*1*BOGUS*X*005010X231A1`
   // at base, shifting GS-07/GS-08 by one. That is a STRING, so the type guard
   // never applied to it; only the escape does. Pinned below.
-  const cases: readonly (readonly [string, () => X12Interchange, string])[] = [
+  // The fourth tuple element is the EXACT message prefix that slot refuses
+  // with, per slot. `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED` moved two of the
+  // three onto `requireControlNumber`'s wording; asserting an alternation over
+  // all three would pass when a slot drifted onto the wrong arm.
+  const cases: readonly (readonly [string, () => X12Interchange, string, string])[] = [
     [
       "build999 envelope.groupControlNumber (GS-06 / GE-02)",
       () =>
@@ -1130,6 +1151,7 @@ describe("string-typed slots that never called esc: now routed, and refusing", (
           }),
         ),
       "GE*1*12345",
+      "build999: groupControlNumber must be a string",
     ],
     [
       "build999 envelope.transactionSetControlNumber (ST-02 / SE-02)",
@@ -1141,6 +1163,7 @@ describe("string-typed slots that never called esc: now routed, and refusing", (
           }),
         ),
       "ST*999*12345*005010X231A1",
+      "build999: transactionSetControlNumber must be a string",
     ],
     [
       "build999 functionalGroup.disposition (AK9-01)",
@@ -1152,16 +1175,32 @@ describe("string-typed slots that never called esc: now routed, and refusing", (
           }),
         ),
       "AK9*12345*1*1*1",
+      "build999: every element value must be a string",
     ],
   ];
 
-  it.each(cases)("refuses instead of emitting a number verbatim for %s", (_label, run, base) => {
-    // The base rendering is asserted to be what it no longer is, so a
-    // regression that re-opens the slot fails on the message AND on the string.
-    expect(run).toThrow(AckBuildError);
-    expect(run).toThrow(/every element value must be a string/u);
-    expect(base).toMatch(/12345/u);
-  });
+  it.each(cases)(
+    "refuses instead of emitting a number verbatim for %s",
+    (_label, run, base, expected) => {
+      // The base rendering is asserted to be what it no longer is, so a
+      // regression that re-opens the slot fails on the message AND on the
+      // string. GS-06 and ST-02 are ALSO routed through `requireControlNumber`,
+      // which type-checks one step earlier, and
+      // `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED` moved their message there;
+      // AK9-01 is not a control number and keeps the escaper's wording. Each is
+      // asserted PER SLOT rather than as an alternation, because an alternation
+      // inside a sweep passes when a slot drifts onto the other arm.
+      expect(base).toMatch(/12345/u);
+      let thrown: unknown;
+      try {
+        run();
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(AckBuildError);
+      expect((thrown as Error).message).toContain(expected);
+    },
+  );
 
   it("no longer walks past build999's own disposition guard", () => {
     // AK9-01 is an `ID` element bound to X12 code list 715, so `12345` told a

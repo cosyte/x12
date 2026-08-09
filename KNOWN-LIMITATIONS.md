@@ -51,7 +51,7 @@ model.
   minted and no warning code moved.** What changes is that a build that used to return a document now
   throws, and that a spec wrong in two ways can now report a different one of the two: see the
   precedence bullet below, which is the qualifier a draft of this entry left out.
-  - **🛑 The guard is byte-strict `=== ""`. It does NOT trim, and a whitespace-only control number is
+  - **🛑 The guard does NOT trim, and a whitespace-only control number is
     still accepted**: `interchangeControlNumber: " "` still emits ISA-13 as `00000000 `, and
     `buildTA1` does no padding at all, so it emits whatever whitespace it was handed, verbatim. This
     is a real residual rather than an oversight. Trimming
@@ -59,12 +59,6 @@ model.
     empty-required-element guard this one mirrors (`patientControlNumber`, `claimId`,
     `maintenanceTypeCode`, `requestCategoryCode`, the 277's `categoryCode`) is byte-strict for the
     same reason. **Validate at your own boundary if your partner can send you blanks.**
-  - **It does NOT type-check, so nothing about a non-string changed**, on any route. Seven
-    non-string values across three routes were measured byte-identical before and after. What each
-    route already does is deliberately not restated here, because a draft of this bullet restated it
-    wrongly: it said a number "or `undefined`" draws the typed refusal, and `padControl(undefined, 9)`
-    throws a bare `TypeError` with no `code`, unchanged by this release. Entry 3 of the builder-guard
-    list further down covers the numeric routes and not that one.
   - **A SHORT control number still zero-pads.** The guard is not "ISA-13 must be nine characters":
     `interchangeControlNumber: "1"` still emits `000000001`, which is what `padControl` is for.
   - **🛑 Every guard sits at the envelope-assembly site, so every guard that runs BEFORE it keeps its
@@ -1216,14 +1210,10 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   the array guard's primitive arm. If you were reading a value back out of one of those messages, that
   is a behaviour change.
 
-  **Two things that sentence does NOT say, both deliberate.** The array guard still reports the
+  **What that sentence does NOT say, and it is deliberate.** The array guard still reports the
   `length` and the class tag of a forged array-like, bounded through the same renderer: those describe
   the SHAPE you forged rather than the contents of a document element, and they are the whole
-  diagnostic for `{ length: "9".repeat(120000) }`. And only the segment-join guard names the SLOT
-  alongside the type (`build999: "AK9"-01 must be a string, ...`), because it holds the whole segment;
-  the escape-helper and `X12Decimal` guards name the **builder**, so on those two the value used to
-  stand in for a locator and now nothing does. That is a real diagnostic cost, and it is written down
-  rather than hidden.
+  diagnostic for `{ length: "9".repeat(120000) }`.
 
 - **`defineProfile()` refusals are bounded on the same terms, since `0.0.6`.** `X12ProfileError.message`
   used to interpolate your profile name, quirk id, effect, fixture path and expected-warning codes
