@@ -51,42 +51,6 @@ model.
   minted and no warning code moved.** What changes is that a build that used to return a document now
   throws, and that a spec wrong in two ways can now report a different one of the two: see the
   precedence bullet below, which is the qualifier a draft of this entry left out.
-  - **🩺 The guard TYPE-CHECKS as of this release too, and that is a second behaviour change**
-    (`X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED`). Byte-strict means a value that is not a string is
-    not `""`, so at `0.0.15` a non-string walked past the empty test and reached `padControl`, which
-    reads `.length` and then concatenates. Measured through `buildInterchange` and identically in all
-    nine builders that assemble an ISA: `interchangeControlNumber: []` and `new String("")` both
-    emitted ISA-13 as the **fabricated `000000000`** with `warnings: []`, and `new String("ABC")` and
-    `new String(" ")` were silently **coerced** to `000000ABC` and `00000000 `. The nine ISA-13 /
-    IEA-02 slots were the exposed ones; the slots that reach the wire through the escape helper were
-    already type-checked and refused a non-string at `0.0.15`.
-
-    **What moved, in both directions, because some of it is a predicate you may branch on.** No error
-    code was minted and no warning code moved: every refusal is the same class and code the builder
-    already raised. But `interchangeControlNumber: undefined` and `null` threw a bare `TypeError`
-    with no `code` at `0.0.15` and now throw the builder's typed error, so **a consumer catching
-    `TypeError` there no longer catches**. Several shapes measured at `0.0.15` - `[""]`, `["12345"]`, `["1","2"]`, `["000000001"]` and `{ length: 0 }` among those probed -
-    made the builder write a malformed fixed-width ISA that its own re-parse rejected with
-    `X12_INVALID_DELIMITERS`, a _parse_ error naming delimiters for a caller mistake in one named
-    field, so **a predicate on `X12_INVALID_DELIMITERS` stops firing for them**; they now refuse
-    before anything is written. **Those are measured members and not a rule, and no count of them is
-    published** - `[]` reached neither and is the case at the top of this entry. A `number`, a plain object or a boolean was told it "exceeds the 9-char spec limit",
-    which was false; same code, corrected sentence. And **the MESSAGE moved at the control-number
-    slots that already refused a non-string** - GS-06 / GE-02, ST-02 / SE-02, AK1-02, AK2-02 and
-    TA1-01 now refuse from this guard one step earlier, with a message naming the slot and the spec
-    property. Read that as the property, not as a claim about what the old message said: the guards
-    that stood there are not uniform and at least one already named a slot. **If you match on message
-    text at any control-number slot, re-read it. `err.code` moved at ISA-13 / IEA-02 only, for the
-    shapes named above.**
-
-    **What it does NOT cover:** the type test narrows what a control number may BE, never what it may
-    CONTAIN. The whitespace bullet below is unchanged and is the residual. The asymmetry is real and
-    is stated rather than smoothed over: `new String(" ")` is refused because it is not a string, and
-    the primitive `" "` still pads to `00000000 ` and still builds. The ISA's other fixed-width slots
-    (`senderId`, `receiverId`, `interchangeDate`, `interchangeTime`) go through `pad` rather than
-    `padControl`, are guarded by no control-number test, and still throw a bare `TypeError` for some
-    non-strings - unchanged, and its own entry further down.
-
   - **🛑 The guard is byte-strict `=== ""`. It does NOT trim, and a whitespace-only control number is
     still accepted**: `interchangeControlNumber: " "` still emits ISA-13 as `00000000 `, and
     `buildTA1` does no padding at all, so it emits whatever whitespace it was handed, verbatim. This
@@ -1246,15 +1210,10 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   the array guard's primitive arm. If you were reading a value back out of one of those messages, that
   is a behaviour change.
 
-  **Two things that sentence does NOT say, both deliberate.** The array guard still reports the
+  **What that sentence does NOT say, and it is deliberate.** The array guard still reports the
   `length` and the class tag of a forged array-like, bounded through the same renderer: those describe
   the SHAPE you forged rather than the contents of a document element, and they are the whole
-  diagnostic for `{ length: "9".repeat(120000) }`. And which guard names the SLOT alongside the type is
-  not uniform: the segment-join guard derives one from the segment it holds
-  (`build999: "AK9"-01 must be a string, ...`) and the control-number guard is handed one, while the
-  escape-helper and `X12Decimal` guards name only the **builder**, so on those two the value used to
-  stand in for a locator and now nothing does. That is a real diagnostic cost, and it is written down
-  rather than hidden.
+  diagnostic for `{ length: "9".repeat(120000) }`.
 
 - **`defineProfile()` refusals are bounded on the same terms, since `0.0.6`.** `X12ProfileError.message`
   used to interpolate your profile name, quirk id, effect, fixture path and expected-warning codes

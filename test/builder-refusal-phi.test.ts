@@ -42,10 +42,7 @@
  * value", and `describeShape`'s two OBJECT arms falsify that: they still render a
  * forged array-like's `length` and its class tag, bounded and not redacted. Those
  * describe the SHAPE a caller forged rather than an element's contents, they are
- * `PRE-EXISTING` and unchanged, and the case below pins them KEPT. Separately,
- * only the SEGMENT guard names the slot - `esc` and `escDec` name the builder -
- * so "the type and the slot" is wrong over the family and was published on four
- * consumer surfaces before it was caught.
+ * `PRE-EXISTING` and unchanged, and the case below pins them KEPT.
  *
  * ## Why this file exists beside `test/builder-refusal-bounds.test.ts`
  *

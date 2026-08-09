@@ -1,8 +1,41 @@
 # `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED` (2026-08-09)
 
-The measurement, the sources and the decisions behind the `CLAUDE.md` trap of the same name. Open
-this before you touch `src/builder/caller-control-number.ts`, `padControl`, or any refusal message at
-a control-number slot.
+The measurement, the sources and the decisions behind the guard. Open this before you touch
+`src/builder/caller-control-number.ts`, `padControl`, or any refusal message at a control-number
+slot.
+
+> ## The slice was CUT BACK by a founder-directed re-scope, and the pass count did not reset silently
+>
+> **Cumulative `conformance-refuter` passes across this lineage before the re-scope: three, all
+> `REFUTED`** (`61d9af1`, `cd3f963`, `70e494a`), which is the ADR 0016 ceiling. **No pass ever found
+> a defect in the guard.** Every finding was a CLAIM defect, and one sentence ate all three passes by
+> surviving in a carrier the previous remedy had not opened.
+>
+> The founder authorised a **strictly smaller** re-scope under ADR 0016's 2026-07-29 amendment: the
+> guard, its tests, and a short **count-free** changeset, with **one sweep that greps the SENTENCE
+> rather than the reported site.** That reset the budget; this line records the count so the reset is
+> not silent.
+>
+> **What was cut out of the slice rather than qualified again:** the broad documentation correction.
+> `CLAUDE.md`, `README.md`, `docs-content/troubleshooting.md`, `KNOWN-LIMITATIONS.md` and
+> `CHANGELOG.md` were returned to base and then touched **only** to delete claims. **No `CLAUDE.md`
+> trap was written for this item** and no trap was relocated to pay for one; the trap is filed as its
+> own follow-up. **Read this file before you touch the guard, because nothing in `CLAUDE.md` will
+> send you here yet.**
+>
+> **The sweep, and how the carrier list was derived.** The disputed sentence was *"only the
+> segment-join guard names the SLOT; `esc`/`escDec` name only the builder"* - true at base, falsified
+> by this guard, because the control-number guard names the slot too. Grepping the **claim's wording**
+> rather than the reported file found it at base in `README.md`, `KNOWN-LIMITATIONS.md`,
+> `CHANGELOG.md`, `docs-content/troubleshooting.md` (which **ships**),
+> `test/builder-refusal-phi.test.ts`, `agent-notes/claude-md-relocated-narrative.md` (twice) and
+> `agent-notes/per-transaction-invariants.md`. **Every one was DELETED rather than reworded**, and
+> the enumerating framing around it ("two things this does NOT say") was made count-free rather than
+> decremented. **Re-run the grep before you re-add any sentence about which guard names a slot.**
+>
+> **Not a carrier, checked and left alone:** `CHANGELOG.md` and `documentation/agent-notes.md` each
+> say `requireCallerString` refuses first at **`CLP-01`** and names only the builder. `CLP-01` is not
+> routed through `requireControlNumber`, so that statement is still true.
 
 ## What was filed, and what it measured
 

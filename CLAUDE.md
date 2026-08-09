@@ -72,34 +72,6 @@ copying files.** Source of truth: the meta-repo's `documentation/conventions.md`
 history. Do not act on a line here without reading it. 🩺 = getting it wrong mis-states a clinical
 or financial value on the wire.**
 
-### 🩺 `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED` (2026-08-09) · `agent-notes/x12-control-number-guard-type.md`
-
-- **🩺 `requireControlNumber` TYPE-CHECKS NOW, NOT JUST `=== ""`.** A NON-STRING is not `""`, so it
-  walked the guard into `padControl`, which reads `.length` then CONCATENATES: `[]` and
-  `new String("")` emitted the SAME FABRICATED `000000000`, `warnings: []`; `new String("ABC")` was
-  silently COERCED. **A CLOSED CLASS RE-OPENED THROUGH A DIFFERENT INPUT TYPE: RE-PROBE A GUARD'S
-  TYPE, NOT JUST ITS VALUE.**
-- **🛑 NINE SLOTS, NOT THIRTY; THE SPLIT IS BY ROUTE.** The `esc` slots were ALREADY type-checked
-  (`makeCallerEscaper`); only ISA-13 / IEA-02 was exposed - the ISA is fixed-width, joined DIRECTLY,
-  outside the escaper AND `requireCallerSegment`. **NEVER RESTATE `#101`'s 30 AS THIS CLASS.**
-- **🛑 NO CODE MINTED - BUT DIAGNOSTICS MOVED, ONE OFF A JS BUILTIN. NEVER WRITE "NOTHING ELSE
-  CHANGED".** `undefined`/`null` left a BARE `TypeError` (no `code`), so a `catch` narrowing on
-  `TypeError` STOPS catching; ENUMERATED SHAPES left `X12_INVALID_DELIMITERS` (the builder's OWN
-  re-parse of a malformed ISA) - **NEVER GENERALISE THAT TO "AN ARRAY-LIKE" AND NEVER COUNT THEM: TWO
-  DRAFTS GENERALISED, ONE THEN COUNTED, AND `[]` REACHED NEITHER ROUTE**; `0`/`{}`/`true` stop being
-  told they "exceed the 9-char spec limit", same code; and **THE MESSAGE MOVED AT EVERY
-  CONTROL-NUMBER SLOT THAT ALREADY REFUSED** - it names the SLOT now. **STATE THAT, NEVER WHAT THE OLD ONE SAID: THE GUARDS THERE ARE NOT UNIFORM**
-  (`requireCallerSegment` beat `esc` to `buildInterchange`'s GS-06 and ALREADY named it; a draft said
-  otherwise and pass 1 refuted it). Three suites reddened; the escaper's wording is kept pinned on a
-  NON-control element.
-- **⚖️ IT NARROWS WHAT A CONTROL NUMBER MAY _BE_, NEVER WHAT IT MAY _CONTAIN_.** Whitespace STILL
-  pads (`" "` -> `00000000 `) - **A TRIM IS A NORMALISATION RULE AND NO SOURCE STATES ONE.** State the
-  asymmetry: **`new String(" ")` IS refused, the primitive `" "` IS NOT.** The `pad` slots
-  (ISA-06/08/09/10) are NOT in this class and still throw a bare `TypeError`.
-- The describer is `caller-string.ts`'s, EXPORTED not copied: TYPE only, **never echoes the value**
-  (`REFUSAL-MESSAGE-PHI-ECHO`). 30 slots, each with a RED control. **PUBLISH NO CENSUS OF WHAT IS
-  NOT ROUTED.**
-
 ### 🩺 `X12-EMPTY-CONTROL-NUMBER-FABRICATED` (2026-08-09) · `agent-notes/x12-empty-control-number.md`
 
 - **🩺 AN EMPTY CONTROL NUMBER IS REFUSED ON EMIT NOW, EVERY BUILDER, VIA
@@ -387,19 +359,45 @@ or financial value on the wire.**
   flag-set reds a control.
 - **🩺 `X12-837-SV-UNDEFINED-DECIMAL` CLOSED THE `0`** - its own trap above.
 
-### 🩺 `X12-QUANTITY-SILENT-DEFAULTS` (2026-08-05) · `agent-notes/x12-quantity-silent-defaults.md`
+### 🩺 `X12-QUANTITY-SILENT-DEFAULTS` (2026-08-05) · `documentation/agent-notes.md#x12-quantity-silent-defaults-2026-08-05`
 
-**RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED** - it paid for the trap at the top of this
-list. **🩺 Open it before you touch `X12_UNPARSEABLE_DECIMAL`, a decimal sink argument or the 835
-balance invariant: an ABSENT decimal emits nothing, an unwarned value is NOT one the sender sent, and
-a green suite proved nothing because a round trip CANNOT make an unparseable decimal.**
+- **🩺 A PRESENT decimal that does not decode emits `X12_UNPARSEABLE_DECIMAL` at its
+  `position.elementIndex`, in all six readers; an ABSENT one emits nothing.** Both pinned.
+- **🩺 THIS slice closed only the SILENCE; `X12-837-SV-UNDEFINED-DECIMAL` closed the `0`.**
+- **🩺 NEVER INVERT IT INTO "an unwarned value is one the sender sent". A slot a reader never read
+  cannot warn**; three shipped docs carried the bare form. Guarantee: unwarned **at an element a
+  reader decoded**. The 837 instance of the other kind is the trap above.
+- **PUBLISH NO CENSUS OF THE FALLBACK OUTCOMES.** The
+  RULE holds: a property of the READ, not the USE.
+- **ONE message, NO discriminant** (where a `ZERO`/`NOT_DECODED` pair was wrong: relocated narrative
+  §8). **And assert nothing about what X12.6 type R permits;** nobody here has read it, so the
+  message says "could not decode".
+- **The 835 balance invariant is NOT a net: it names an equation, never an element, and exists in no
+  other reader.**
+- **The sink is an OPTIONAL 4th arg; the public helpers stay silent without one**, held by a source
+  scan counting TOP-LEVEL ARGS, never a `, sink)` regex. **A green suite proved nothing: no fixture
+  holds an unparseable decimal and a round trip CANNOT make one.**
 
-### 🩺 `X12-SVC-ELEMENT-MAP-OFF-BY-ONE` (2026-08-04) · `agent-notes/x12-svc-element-map-off-by-one.md`
+### 🩺 `X12-SVC-ELEMENT-MAP-OFF-BY-ONE` (2026-08-04) · `documentation/agent-notes.md#x12-svc-element-map-off-by-one-2026-08-04`
 
-**RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED** - it paid for the trap at the top of this
-list. **🩺 Open it before you touch the 835 `SVC` map: SVC-05 is the PAID count and SVC-07 the
-ORIGINAL one, a round trip is green for ANY pair of positions the two modules agree on, and 835s
-emitted at `0.0.9` or earlier are non-conformant.**
+- **🩺 The 835 SVC map is `revenueCode` -> SVC-04 (element 234, the NUBC revenue code, a **string**),
+  `paidUnitsOfService` -> SVC-05 (element 380, Units of Service **PAID** Count) and
+  `originalUnitsOfService` -> SVC-07 (element 380, **ORIGINAL** Units of Service Count). Never move
+  them back.**
+- **Never fix a mis-read position while leaving its sibling element unread** - that turns a mis-read
+  into a **fresh silent drop**. **Retention is non-decreasing, on purpose.**
+- **🩺 A round trip cannot test an element map; only bytes can** - it is green for ANY pair of
+  positions the two modules agree on. `test/transactions-remit-835-svc-element-map.test.ts` pins the
+  map literally. **Never weaken those to round trips.**
+- **🩺 Checking a spec claim against this repo's own implementation is NOT a check** - it only proves
+  the two agree, which is exactly how the wrong map survived. Ground an element number OUTSIDE the
+  repo (sources in `KNOWN-LIMITATIONS.md`). **TR3 005010X221A1 is paid for and nobody here has read
+  it.**
+- **Never default an absent SVC-05 to one.** X221A1 is _reported_ to assume one, secondhand and from
+  no clause anyone here read. Fabricating a count is inventing.
+- **`undefined` still means "not decoded", not "absent"** - the next trap says what tells them apart.
+- **🩺 835s this library emitted at `0.0.9` or earlier are non-conformant and should be re-emitted**
+  (the mechanism: relocated narrative §8).
 
 ### 🩺 `X12-DECIMAL-BYPASSES-THE-GUARD` (2026-08-04) · `documentation/agent-notes.md#x12-decimal-bypasses-the-guard-2026-08-04`
 

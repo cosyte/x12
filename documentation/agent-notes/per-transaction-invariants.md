@@ -67,9 +67,9 @@ Full detail for EVERY bullet below is in the phase sections of `documentation/ag
   as a property of every builder.** Standing exception, the **ack path** (`build999`, `buildTA1`).
   **It is NOT an absolute PHI guarantee, only one about TEMPLATES** - relocated narrative §10.3.
 - **🩺 NO CALLER GUARD ECHOES WHAT A CALLER PUT IN AN ELEMENT** - they report the TYPE only.
-  **Never re-add a value, never fold the decimal one back out. Two things this does NOT say, both
-  drafted false once:** the array guard STILL renders a forged array-like's `length` and class tag,
-  and **only the SEGMENT guard names the slot** - relocated narrative §10.4.
+  **Never re-add a value, never fold the decimal one back out. What this does NOT say, drafted
+  false once:** the array guard STILL renders a forged array-like's `length` and class tag -
+  relocated narrative §10.4.
 - **The `?`-release escape is honored losslessly**; dot-path traversal walks elements, composites
   (`-N`, 1-indexed) and repetitions (`[N]`, 0-indexed).
 - **Known read-side limitations are documented, not accidental, and `KNOWN-LIMITATIONS.md`

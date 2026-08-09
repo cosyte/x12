@@ -121,9 +121,9 @@
  * and then concatenates, so an array-like of length 0 is indistinguishable from
  * `""` to it.
  *
- * **The test went into the shared guard rather than at the nine `padControl`
- * sites, and that choice has a consequence on the OTHER slots that must not be
- * described as "nothing changed".** Every slot routed through here now refuses
+ * **The test went into the shared guard rather than at the individual
+ * `padControl` sites, and that choice has a consequence on the OTHER slots that
+ * must not be described as "nothing changed".** Every slot routed through here now refuses
  * a non-string from this guard instead of from whatever guard reached it first,
  * one step earlier. The error class and code are the same either way - each
  * builder's own `refuseSpec` - but **the MESSAGE moved at those slots too**, to
