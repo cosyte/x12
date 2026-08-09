@@ -148,3 +148,34 @@ there was zero headroom. The `X12-TA1-EMIT-NOT-RELEASE-AWARE` `###` section was 
 into `agent-notes/x12-ta1-emit-escape.md` first - verbatim except the one clause above, deleted
 inline and on the record, because **a revert re-publishes claims**. **Derive both numbers; do not
 trust a figure written here.**
+
+---
+
+## The `CLAUDE.md` trap text, RELOCATED HERE VERBATIM 2026-08-09
+
+Moved out of `CLAUDE.md` in full to pay for the `X12-ENVELOPE-VALUE-POINTERS` trap, under this
+repo's own ratchet (relocate first, lower the entry as it lands, never raise). **Nothing is
+dropped and nothing is reworded** - a revert re-publishes claims, so the wording is preserved
+exactly as it stood at `61b5981`.
+
+- **🩺 `parseTA1`'s FIVE DECODED FIELDS ARE POST-`?`-UNESCAPE; `raw` IS THE VERBATIM BYTE SURFACE AND
+  IS NOT.** The emit half released and the read half decoded the ESCAPE, so a released TA1-01 came
+  back matching NO ISA-13, `warnings: []`. **GROUNDED ON THIS PACKAGE DISAGREEING WITH ITSELF, NEVER
+  A TR3 CLAUSE:** every dot-path read already unescaped and so does `parse999` on IK4-01.
+  **🛑 A CLAUSE CALLING `parseTA1` "THE ONLY TYPED READER THAT DID NOT" IS DELETED - MEASURED FALSE
+  BY THE ST-03 READERS, WHICH ARE THEIR OWN TRAP IN THIS LIST. STATE THE CELLS RUN, NEVER WHICH
+  MEMBER IS SPECIAL.** **THE SINK IS `noop`** - no
+  `X12_DANGLING_RELEASE_CHAR` here, same as `parse999`.
+- **🩺 AN EMPTY TA1-02 / TA1-03 / TA1-04 / TA1-05 IS REFUSED ON EMIT. FILED AS TWO SLOTS, MEASURED AS
+  FOUR** (`escapeRelease` early-returns on `""` and TA1-01 had the only required-field guard); each
+  BUILT an absent element with `warnings: []`. **🛑 READ TA1-05's CELL AGAINST A NON-ACCEPT
+  DISPOSITION OR `enforceAcceptIsClean` REACHES IT FIRST AND YOU MEASURE THAT GUARD** - a first
+  census did exactly that. **EXISTING `X12_ACK_INVALID_SPEC`, NO CODE MINTED.**
+- **🛑 PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH SLOT IS SPECIAL.** An out-of-enum `ackCode: "X"`
+  reads back `R` exactly as the empty one did, so **THE CLAIM IS ABSENCE ON EMIT AND NOTHING ELSE** -
+  no narrowing of what a non-empty element may CONTAIN, and the lenient read is unmoved.
+- **⚖️ NO NORMALISATION: WHITESPACE STILL BUILDS AT ALL FIVE SLOTS**, as at TA1-01 - a trim is a rule
+  and no source states one. **🛑 EVERY EARLIER GUARD KEEPS PRECEDENCE** (`enforceAcceptIsClean`
+  first, then TA1-01's control-number refusal, then the escaper's TYPE refusal): **all five `esc`
+  calls run BEFORE any emptiness test, so NO SPEC REFUSED AT BASE IS REFUSED DIFFERENTLY.**
+  **NEVER COUNT WHAT MOVED.**

@@ -100,36 +100,48 @@ on EVERY document), and 🛑 THE READ SIDE AND `serializeX12` ARE UNTOUCHED, DEL
 
 ### 🩺 `X12-EMIT-DELIMITER-SHAPE-UNCHECKED` (2026-08-09) · `agent-notes/x12-emit-delimiter-shape-unchecked.md`
 
-- **🩺 A DELIMITER MUST BE A STRING OF EXACTLY ONE VISIBLE CHARACTER, THE FOUR DISTINCT; REFUSED ON
-  EMIT BY EVERY BUILDER IN `requireWellShapedDelimiters`. THE RULE IS `detectDelimiters`' OWN,
-  IMPORTED NOT RESTATED (`isVisibleDelimiterChar`)** - a builder composing what its own parser FATALS
-  on disagreed with itself. **NO NORMALISATION** (nothing trimmed or coerced), so no source is owed.
-  **THE READ SIDE DID NOT MOVE.**
-- **🩺 THREE MECHANISMS, FILED AS ONE. NEVER WRITE THEM AS ONE.** **LENGTH:** `"~~"` -> 31 rows
-  against `SE-01` 16; `componentSeparator: ":~"` reads back through a well-formed ISA. Both
-  `warnings: []`. **🛑 PUBLISH NO ASYMMETRY ABOUT WHICH ROLES WERE SILENT, IN ANY QUALIFIED FORM** -
-  three drafts did and the gate falsified every one. **STATE THE CELLS THAT WERE RUN.**
-  **TYPE: the JOIN coerces, the ESCAPE does not**, so `componentSeparator: 1` framed
-  on `"1"` unprotected - `SV1-01-2` read `992`, not `99213`; **A LENGTH RULE CANNOT REACH IT.**
-  **`buildTA1` HAD NO NET AT ALL, EVERY ROLE AND SHAPE** (no trailing `parseX12`): `""` RETURNED
-  `TA10000000012606011200A000`, `"||"` a TA1 reading back **TA1-01 EMPTY, `ackCode` `R`: AN ACCEPT
-  AS A REJECT.** `warnings: []` throughout.
-- **🛑 A UTF-16 CODE-UNIT RULE, NOT A BYTE RULE - a one-code-unit MULTI-BYTE separator STILL BUILDS**
-  (a byte receiver then reads ISA-16 as `0xC2`). **DISCLOSED, NOT GUARDED; NEVER RESTATE THE BOUND IN
-  BYTES** - every first draft did, all false - and **DO NOT MOVE ONE SIDE ALONE**, `charAt` counts
-  code units too. **PUBLISH NO COUNT OF WHAT BUILT SILENTLY:** a draft said "two shapes" and a boxed
-  `new String("|")` outside the census made it more.
-- **🛑 THE ERROR CLASS MOVES, BOTH WAYS; NO CODE MINTED.** Base threw
-  `X12ParseError`/`X12_INVALID_DELIMITERS` OUT OF A `build*` CALL; head uses the builder's own.
-  **CATCHING THE PARSE CLASS STOPS WORKING, THE BUILD CLASS STARTS - BOTH DIRECTIONS (`#83`).** A
-  MESSAGE moves too (`requireControlNumber` is LATER, so `#101`/`#102` yield); **NEVER COUNT SITES.**
-- **🛑 IT REFUSES SPECS THAT BUILT WITH `warnings: []`; THE PLAUSIBLE ONE IS
-  `segmentTerminator: "~\r\n"`** - which never put a line break on the wire either (CR/LF between
-  segments is absorbed on READ, so the model recorded `~`). **READING one is UNAFFECTED.**
-- **⚖️ RUNS AFTER THE `?` GUARD SO NOTHING `#106` PINNED MOVES** (a `?` in two roles is degenerate AND
-  non-distinct; the sharper message wins). **A LETTER OR DIGIT IS STILL ADMISSIBLE**
-  (`componentSeparator: "S"`); one colliding with DATA is a different family, still open.
-  **NO REFUSAL ECHOES THE DECLARED VALUE.**
+**RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-ENVELOPE-VALUE-POINTERS` trap below.
+**🩺 Open it before you touch `requireWellShapedDelimiters`, any builder's delimiter handling or
+`buildTA1`: a delimiter must be ONE VISIBLE CHARACTER and the four distinct, there are THREE
+mechanisms filed as one (LENGTH, TYPE - the JOIN coerces where the ESCAPE does not - and `buildTA1`
+having NO net at all, which read an Accept back as a REJECT), the rule counts UTF-16 CODE UNITS AND
+NOT BYTES, and 🛑 PUBLISH NO ASYMMETRY ABOUT WHICH ROLES WERE SILENT - three drafts did and the gate
+falsified every one.**
+
+### 🩺 `X12-ENVELOPE-VALUE-POINTERS` (2026-08-09) · `agent-notes/x12-envelope-value-pointers.md`
+
+- **🩺 NO DOC MAY POINT A CONSUMER AT AN ENVELOPE `elements[n]` FOR A VALUE.** Envelope `elements` are
+  RAW (pre-`?`-unescape), so a pointer promising "the values" or "both numbers" hands over FRAMED
+  BYTES. **FILED AS 2 POINTERS IN 1 FILE; CUT HERE: 11 POINTERS, 4 JSDoc BLOCKS, 2 FILES** (6 at the
+  control-number factory, 2 at the count factories, 3 in `serializeX12`'s module doc). One measured
+  cell: `gs.elements[6]` reads `"000?*99"` where the value is `"000*99"`. **THE CELLS ARE IN THE
+  NOTE; DO NOT RESTATE THEM HERE - a compressed row here named five pointers by one pointer's bytes
+  and was measured false for three of them.**
+- **🛑 THE REMEDY IS DELETION, NEVER A CORRECTED POINTER.** Nothing was added to make a pointer true;
+  the DIFF IS COMMENT-ONLY and the EMITTED JS IS BYTE-IDENTICAL base to head, the control that no
+  decision moved. **Re-read the whole sentence a clause lived in** - the parentheticals named one raw
+  index AND one decoded count, so half a cut leaves one naming one of two.
+- **🩺 `IsaSegment` / `IeaSegment` / `GsSegment` / `GeSegment` / `Ta1Segment` AND THE INLINE ST/SE
+  TYPES ARE NOT `X12Segment` - THEY CARRY NO `id`, SO `getSegmentValue` DOES NOT TYPECHECK ON ONE**
+  (measured `TS2345`, "Property 'id' is missing"). So there is NO decoded read for an envelope
+  element; `unescapeRelease` on the string is the only route. **`PRE-EXISTING`, DISCLOSED, OPEN, NOT
+  ABSORBED** - `KNOWN-LIMITATIONS.md:308` still prescribes `getSegmentValue` on a `gs`.
+- **🛑 THE SWEEP DID NOT BOUND THE CLASS; THE EIGHTH FLOOR IS FILED, NOT CLOSED.**
+  `src/parser/types.ts` carries the SAME pointer UNLABELLED in the `@example` of `IeaSegment` /
+  `GsSegment` / `GeSegment` / `Ta1Segment` and in four prose blocks, all shipping in
+  `dist/index.d.ts`. **`ta1.elements[1]` is the sharp one** - TA1-01 is the reassociation key, so a
+  consumer following it compares FRAMED BYTES to an ISA-13. `PRE-EXISTING` at `61b5981`, NOT
+  ABSORBED. **A GREP ANCHORED ON A BACKTICK MISSES THEM: they are bare inside `@example`.**
+- **🛑 THE ISA IS NOT A CONTROL FOR THIS CLASS, AND A DRAFT SAYING SO WAS FALSIFIED.** It IS exempt
+  from `?`-release (that much is true and stays), so **a raw-vs-`unescapeRelease` cell on it is a
+  TAUTOLOGY that detects nothing.** But `decodeIsa` does `isaHead.split(delimiters.element)` and its
+  _"exactly 17 by construction"_ DOES NOT HOLD: an ISA-13 of `0000?*001` yields **18**,
+  `elements[13]` is `"0000?"`, and ISA-14/15/16 RE-INDEX - so **`isa.elements[13]` raw is NOT always
+  the value.** `PRE-EXISTING`. **PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH POINTER IS SPECIAL: this
+  was the FOURTH such story falsified in this lineage.**
+- A pointer that LABELS its surface raw (`raw.elements[5]` "is the byte surface", `gs.elements[8]`
+  "the sender's bytes", `seg.elements[0]` "verbatim") is CORRECT and was left alone.
 
 ### 🩺 `X12-ST03-READ-NOT-RELEASE-AWARE` (2026-08-09) · `agent-notes/x12-st03-read-not-release-aware.md`
 
@@ -169,27 +181,13 @@ on EVERY document), and 🛑 THE READ SIDE AND `serializeX12` ARE UNTOUCHED, DEL
 
 ### 🩺 `X12-TA1-RESIDUALS` (2026-08-09) · `agent-notes/x12-ta1-residuals.md`
 
-- **🩺 `parseTA1`'s FIVE DECODED FIELDS ARE POST-`?`-UNESCAPE; `raw` IS THE VERBATIM BYTE SURFACE AND
-  IS NOT.** The emit half released and the read half decoded the ESCAPE, so a released TA1-01 came
-  back matching NO ISA-13, `warnings: []`. **GROUNDED ON THIS PACKAGE DISAGREEING WITH ITSELF, NEVER
-  A TR3 CLAUSE:** every dot-path read already unescaped and so does `parse999` on IK4-01.
-  **🛑 A CLAUSE CALLING `parseTA1` "THE ONLY TYPED READER THAT DID NOT" IS DELETED - MEASURED FALSE
-  BY THE ST-03 READERS, WHICH ARE THEIR OWN TRAP IN THIS LIST. STATE THE CELLS RUN, NEVER WHICH
-  MEMBER IS SPECIAL.** **THE SINK IS `noop`** - no
-  `X12_DANGLING_RELEASE_CHAR` here, same as `parse999`.
-- **🩺 AN EMPTY TA1-02 / TA1-03 / TA1-04 / TA1-05 IS REFUSED ON EMIT. FILED AS TWO SLOTS, MEASURED AS
-  FOUR** (`escapeRelease` early-returns on `""` and TA1-01 had the only required-field guard); each
-  BUILT an absent element with `warnings: []`. **🛑 READ TA1-05's CELL AGAINST A NON-ACCEPT
-  DISPOSITION OR `enforceAcceptIsClean` REACHES IT FIRST AND YOU MEASURE THAT GUARD** - a first
-  census did exactly that. **EXISTING `X12_ACK_INVALID_SPEC`, NO CODE MINTED.**
-- **🛑 PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH SLOT IS SPECIAL.** An out-of-enum `ackCode: "X"`
-  reads back `R` exactly as the empty one did, so **THE CLAIM IS ABSENCE ON EMIT AND NOTHING ELSE** -
-  no narrowing of what a non-empty element may CONTAIN, and the lenient read is unmoved.
-- **⚖️ NO NORMALISATION: WHITESPACE STILL BUILDS AT ALL FIVE SLOTS**, as at TA1-01 - a trim is a rule
-  and no source states one. **🛑 EVERY EARLIER GUARD KEEPS PRECEDENCE** (`enforceAcceptIsClean`
-  first, then TA1-01's control-number refusal, then the escaper's TYPE refusal): **all five `esc`
-  calls run BEFORE any emptiness test, so NO SPEC REFUSED AT BASE IS REFUSED DIFFERENTLY.**
-  **NEVER COUNT WHAT MOVED.**
+**RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-ENVELOPE-VALUE-POINTERS` trap above.
+**🩺 Open it before you touch `parseTA1`, `buildTA1`'s element guards or any TA1 slot: the five
+decoded fields are POST-`?`-unescape while `raw` is the verbatim byte surface, an empty TA1-02..05 is
+REFUSED on emit (FILED AS TWO SLOTS, MEASURED AS FOUR), 🛑 READ TA1-05's CELL AGAINST A NON-ACCEPT
+DISPOSITION OR `enforceAcceptIsClean` REACHES IT FIRST, and PUBLISH THE CELLS, NEVER A STORY ABOUT
+WHICH SLOT IS SPECIAL - whitespace still builds at all five, no source grounds a trim.**
 
 ### 🩺 `X12-TA1-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-ta1-emit-escape.md`
 
