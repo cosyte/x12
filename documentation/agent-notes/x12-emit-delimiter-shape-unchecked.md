@@ -58,8 +58,10 @@ a parsing builder:**
 buildInterchange { componentSeparator: ":~" }   warnings: []
   ISA-16 reads ":" and the terminator "~", so detectDelimiters sees a well-formed
   header; the builder's OWN appended terminator becomes an uncounted empty segment.
-  And escapeRelease compared each character against the declared TWO-character
-  ":~", so === never matched and NO element value was escaped against ":" or "~".
+  No element value is escaped against ":".
+  🛑 A draft added "or ~, and === never matched" and the gate measured it FALSE:
+  segmentTerminator still defaults to "~", so escapeRelease DOES escape "~" here.
+  Only ":" is unprotected. Say only what was run.
 buildInterchange { componentSeparator: ":;" }   X12_UNEXPECTED_SEGMENT, X12_MISSING_IEA
 buildInterchange { componentSeparator: "::" }   FATAL X12_INVALID_DELIMITERS
 ```

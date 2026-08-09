@@ -124,10 +124,11 @@ HOIST IT INTO `splitWithRelease`; and `?~` STILL SWALLOWS THE TERMINATOR, `PRE-E
   IMPORTED NOT RESTATED (`isVisibleDelimiterChar`)** - a builder composing what its own parser FATALS
   on disagreed with itself. **NO NORMALISATION** (nothing trimmed or coerced), so no source is owed.
   **THE READ SIDE DID NOT MOVE.**
-- **🩺 THREE MECHANISMS, FILED AS ONE. NEVER WRITE THEM AS ONE.** **LENGTH: of the NINE builders
-  ending in `parseX12`, silent at the SEGMENT TERMINATOR alone** (`"~~"` -> 31 rows against `SE-01` 16) - it is appended AFTER the fixed-width ISA; other roles shift a position and those nine
-  fatalled. **🛑 NEVER AS AN ABSOLUTE ABOUT ROLES** - a draft said "nowhere else"; the gate falsified
-  it at `buildTA1`. **TYPE: the JOIN coerces, the ESCAPE does not**, so `componentSeparator: 1` framed
+- **🩺 THREE MECHANISMS, FILED AS ONE. NEVER WRITE THEM AS ONE.** **LENGTH:** `"~~"` -> 31 rows
+  against `SE-01` 16; `componentSeparator: ":~"` reads back through a well-formed ISA. Both
+  `warnings: []`. **🛑 PUBLISH NO ASYMMETRY ABOUT WHICH ROLES WERE SILENT, IN ANY QUALIFIED FORM** -
+  three drafts did and the gate falsified every one. **STATE THE CELLS THAT WERE RUN.**
+  **TYPE: the JOIN coerces, the ESCAPE does not**, so `componentSeparator: 1` framed
   on `"1"` unprotected - `SV1-01-2` read `992`, not `99213`; **A LENGTH RULE CANNOT REACH IT.**
   **`buildTA1` HAD NO NET AT ALL, EVERY ROLE AND SHAPE** (no trailing `parseX12`): `""` RETURNED
   `TA10000000012606011200A000`, `"||"` a TA1 reading back **TA1-01 EMPTY, `ackCode` `R`: AN ACCEPT

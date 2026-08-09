@@ -42,9 +42,7 @@
  *     a phantom with id "".
  *   buildInterchange { componentSeparator: ":~" }
  *     reads back through a well-formed ISA, the builder's own terminator left
- *     as an uncounted empty segment - and escapeRelease compared against the
- *     declared TWO-character value, so no element value was escaped against
- *     ":" or "~" either.
+ *     as an uncounted empty segment, and no element value escaped against ":".
  *
  * TYPE, where the joiner and the escaper end up disagreeing
  *   build837P { componentSeparator: 1 }
@@ -746,12 +744,12 @@ describe("🩺 mechanism 1 - LENGTH, with NO claim about which roles were silent
     );
   });
 
-  it("🩺 pins WHY that role was the silent one, from bytes and not through a builder", () => {
-    // The terminator is appended AFTER the fixed-width ISA, so it displaces no
-    // ISA byte and `detectDelimiters` reads a perfectly well-formed header -
-    // which is exactly why nothing downstream noticed. Built here from bytes
-    // rather than from a builder, because a builder now refuses and would
-    // assert the refusal instead of the read.
+  it("🩺 pins the doubled-terminator READ, from bytes and not through a builder", () => {
+    // Built from bytes rather than from a builder, because a builder now
+    // refuses and would assert the refusal instead of the read. 🛑 This pins
+    // WHAT the doubled terminator did, and deliberately says nothing about WHY
+    // that role rather than another: two drafts published such a story and the
+    // gate falsified both.
     const isa =
       "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       " +
       "*260601*1200*^*00501*000000001*0*P*:~";
@@ -806,13 +804,14 @@ describe("🩺 mechanism 1 - LENGTH, with NO claim about which roles were silent
     expect(parsed.delimiters.segment).toBe("~");
     expect(parsed.warnings).toEqual([]);
 
-    // And the second half, which is why it belongs beside mechanism 2 as much
-    // as mechanism 1: `escapeRelease` compares each delimiter with `===`, so
-    // against a declared TWO-character value nothing matched and no element
-    // value was escaped against `:` or `~` at all.
-    expect(
-      escapeRelease("a:b~c", { element: "*", repetition: "^", component: ":~", segment: ":~" }),
-    ).toBe("a:b~c");
+    // 🛑 The escape half, measured against the set `buildInterchange` ACTUALLY
+    // resolves - `segmentTerminator` still defaults to `"~"`. A draft asserted
+    // it against `{ ..., segment: ":~" }`, a set no builder call produces, and
+    // was therefore vacuous while green: `~` IS escaped here and only `:` is
+    // unprotected. Assert the scenario's own set, never a set built to fit the
+    // sentence.
+    const asResolved = { element: "*", repetition: "^", component: ":~", segment: "~" };
+    expect(escapeRelease("a:b~c", asResolved)).toBe("a:b?~c");
 
     // Head refuses it, which is the whole point of pinning the base reading.
     expect(() => build837PWith({ componentSeparator: ":~" })).toThrow(

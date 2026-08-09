@@ -1052,7 +1052,7 @@ required control number and this builder never invents one, so nothing is emitte
     which inside an ISA reads back with `TA1-01` empty and `ackCode: "R"` - an Accept emitted as a
     Reject. And `buildInterchange` with `componentSeparator: ":~"` built with `warnings: []` too,
     reading back through a well-formed ISA while the builder's own terminator became an uncounted
-    empty segment, with no element value escaped against `:` or `~` at all.
+    empty segment, with no element value escaped against `:`.
   - **TYPE, where the join coerces and the escape does not.** `Array.prototype.join` coerces a
     non-string delimiter and the document frames on the coerced byte, but `escapeRelease` compares
     delimiters with `===`, so no element value is escaped against it. `build837P` with

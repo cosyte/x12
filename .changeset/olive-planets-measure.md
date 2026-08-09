@@ -23,9 +23,8 @@ asymmetry and both were measured false, so what follows is what was run.
     phantom the caller never wrote.
   buildInterchange { componentSeparator: ":~" } warnings: []
     a two-character value that reads back through a well-formed ISA, leaving the
-    builder's own terminator as an uncounted empty segment - and escapeRelease
-    compared against the declared TWO-character value, so no element value was
-    escaped against ":" or "~" either.
+    builder's own terminator as an uncounted empty segment. No element value was
+    escaped against ":".
 
 TYPE, where the JOIN coerces and the ESCAPE does not
   build837P { componentSeparator: 1 }    warnings: []

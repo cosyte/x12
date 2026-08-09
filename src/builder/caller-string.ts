@@ -469,9 +469,7 @@ function requireEscapableDelimiters(
  *   buildInterchange { componentSeparator: ":~" }  warnings: []
  *     a two-character value at a role a draft called safe. The reader sees a
  *     well-formed ISA, the builder's own appended terminator becomes an
- *     uncounted empty segment, and because escapeRelease compares against the
- *     declared TWO-character value, === never matched and NO element value was
- *     escaped against ":" or "~" either.
+ *     uncounted empty segment, and no element value is escaped against ":".
  *
  * TYPE, and the joiner and the escaper end up disagreeing
  *   build837P { componentSeparator: 1 }    warnings: []
