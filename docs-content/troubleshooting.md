@@ -225,6 +225,23 @@ TR3 X221A1 §1.10.2 invariants. Named by spec field rather than element number, 
 refuses typed, including `claim.patientResponsibilityAmount`, `serviceLine.paidUnitsOfService` and
 every `amounts[].amount`.
 
+**An EMPTY control number is refused now too, and that one used to be INVENTED rather than dropped.**
+Every builder that assembles an ISA zero-pads the control number to nine characters, so
+`interchangeControlNumber: ""` came back as `000000000`: a frozen, well-formed interchange with zero
+warnings, ISA-13 reconciling against IEA-02, carrying a control number you never sent. The group and
+transaction-set control numbers went out as an empty required element on **both** ends of their pair,
+so those reconciled against themselves too, and the acknowledgment builders did the same at the slots
+that echo what they are acknowledging (`AK1*HC**…`, `AK2*837*~`, `TA1**260601*1200*A*000`). All of
+them refuse as of this release, naming the slot and the property: `build837: groupControlNumber is
+empty. GS-06 / GE-02 is a required control number …`. No new error code and no warning code, so
+nothing you branch on moves; a build that used to hand you a document now throws.
+
+**The check is byte-strict, which leaves blanks open and is the one thing to screen for.** A
+whitespace-only control number is still accepted and still padded, so `" "` emits ISA-13 as
+`00000000 ` and `buildTA1` emits `TA1*   *…`. Trimming would be a normalisation rule and nothing this
+library can cite says to. A **short** control number is not affected and never was: `"1"` still pads
+to `000000001`, which is what the padding is for.
+
 One other behaviour change: the exported `escapeRelease` now throws `TypeError` on a non-string
 instead of returning `""`, and a boxed `new String("…")` is refused where it built at `0.0.8`. See
 `KNOWN-LIMITATIONS.md`.

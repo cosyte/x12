@@ -72,6 +72,26 @@ copying files.** Source of truth: the meta-repo's `documentation/conventions.md`
 history. Do not act on a line here without reading it. 🩺 = getting it wrong mis-states a clinical
 or financial value on the wire.**
 
+### 🩺 `X12-EMPTY-CONTROL-NUMBER-FABRICATED` (2026-08-09) · `agent-notes/x12-empty-control-number.md`
+
+- **🩺 AN EMPTY CONTROL NUMBER IS REFUSED ON EMIT NOW, EVERY BUILDER, VIA
+  `builder/caller-control-number.ts`.** `padControl("", 9)` FABRICATED `000000000` into ISA-13/IEA-02
+  and the interchange RECONCILED, `warnings: []`; GS-06/GE-02 and ST-02/SE-02 went out EMPTY at BOTH
+  ends, so each pair reconciled AGAINST ITSELF and no mismatch fired either. **TWO MECHANISMS, ONE
+  CLASS: INVENT and DROP. A DEFECT AT ONE SLOT WAS A CENSUS - the ack ECHOES (`TA1-01`, `AK1-02`,
+  `AK2-02`) carried it too**, and `TA1-01` was the disclosure that named this item.
+- **🛑 BYTE-STRICT `=== ""`. NO TRIM, NO TYPE CHECK.** Whitespace STILL pads to `00000000 ` and
+  STILL builds - **DISCLOSED, NOT FIXED: A TRIM IS A NORMALISATION RULE AND NO SOURCE STATES ONE.**
+  A non-string is UNCHANGED (`esc` refuses; `padControl` still says "exceeds the 9-char spec limit").
+  **A SHORT one STILL ZERO-PADS - never read the guard as "ISA-13 must be nine characters".**
+- **⚖️ REFUSE NOT WARN, ON CONSISTENCY WITH FIVE IN-PACKAGE `=== ""` GUARDS, NOT ON SPEC** - 005010
+  settles neither; a warning would have to travel the READ registry, and a widening onto a NEW CODE
+  blinds every predicate (`#83`). **NO NEW CODE; each builder's own `refuseSpec`.**
+- **PLACED AT THE ENVELOPE SITE, SO EVERY EARLIER GUARD KEEPS PRECEDENCE** (835 balance, 999 AK9
+  counts, TA1 `enforceAcceptIsClean` all still fire first). 30 sites, EACH with a RED negative
+  control. **THE DRIFT PIN IS A SOURCE REGEX AND PROVES NOTHING; the behavioural cases are the
+  evidence. PUBLISH NO CENSUS OF WHAT IS NOT ROUTED.**
+
 ### 🩺 `X12-BODY-DEGENERATE-RELEASE-SEPARATOR` (2026-08-09) · `agent-notes/x12-body-degenerate-release-separator.md`
 
 - **🩺 `decodeSegment` FALLS BACK TO A LITERAL SPLIT WHEN THE ELEMENT SEPARATOR IS `?`, AND SKIPS
@@ -485,34 +505,13 @@ liveness net people assume** - an infinite synchronous loop gives NO verdict and
   the enumerate-then-read race, the reason being DIRECTION** (relocated narrative §9) - x12 escaped
   it by a **scope accident**, and **this widening reintroduced it.**
 
-### 🩺 `X12-CALLER-VALUE-RESIDUALS` (2026-08-02) · `documentation/agent-notes.md#x12-caller-value-residuals-2026-08-02`
+### 🩺 `X12-CALLER-VALUE-RESIDUALS` (2026-08-02) · `agent-notes/x12-caller-value-residuals.md`
 
-- **Every caller-value hole across the `src/profiles/validate.ts` refusal sites routes through
-  `renderCallerValue` or `renderCallerJson`. Derive both counts; never quote them here.**
-- **`renderCallerJson` keeps `JSON.stringify` and bounds its OUTPUT; it never throws and fabricates
-  no closing quote. `X12ProfileError.profileName` is deliberately NOT bounded**, asserted as a test
-  (both reasons: relocated narrative §9).
-- **🩺 Every indexed loop bound in a builder comes from a `requireCallerArray` binding.** A forged
-  `{ length: "9".repeat(120000) }` coerces to `Infinity` and the builder **spins forever instead of
-  refusing**; most probes HUNG at base. Both censuses are in the agent-notes section.
-- **`requireCallerArray` takes the module's own `refuse` callback, never a shared throw** - each
-  builder owns a distinct error class and code consumers branch on.
-- **`requireCallerArray` answers `null` as ABSENT** (why: relocated narrative §7). **`build835`'s
-  `claims` is the measured exception**, pinned by a test.
-- **Scope the claim: a forged non-array is availability, not `STOP-THE-LINE`** - nothing decodes a
-  document differently. **`for...of` sites throw `TypeError: ... is not iterable` with NO `code`**;
-  those sites and the reachability: relocated narrative §9. Disclosed, pinned.
-- **`test/builder-array-bounds.test.ts` keys on the OPERAND, never on the property NAME** - that is
-  the mistake `#51`'s allowlist made twice. Its scan strips comments first.
-- **🩺 The negative control found something worse than a red: removing a `requireCallerArray` call
-  WEDGES the test rather than failing it** (why: relocated narrative §8). **That is the argument for
-  keeping the source scan exhaustive rather than trusting the examples.**
-- **Drive the shipped table, not a side probe**, and **every figure this area publishes is a
-  MEASUREMENT, not a maximum** (the figures and the `QUIRK_ID_RE` correction: relocated narrative §7).
-- **Known and NOT claimed away:** bounding a message here **redacts nothing**, the survivors are
-  **not escaped**, the bound is UTF-16 **code units, not bytes**, both scans are syntactic tripwires
-  and not proofs, and **neither gate scans indexed loops outside the `build*` scope** (the four
-  places: relocated narrative §9).
+**RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED** - it paid for the trap at the top of
+this list. **🩺 Open it before you touch `renderCallerValue`, `renderCallerJson`,
+`requireCallerArray` or any indexed loop bound in a `build*` module: a forged array-like coerces to
+`Infinity` and the builder SPINS FOREVER instead of refusing, and removing a guard WEDGES its
+negative control rather than reddening it.**
 
 ### `X12-BUILDER-BOUNDS` (2026-08-02) · `agent-notes/x12-builder-bounds.md`
 
@@ -527,26 +526,12 @@ never a neutral sentinel.**
 list. **🩺 Open it before you touch orphan placement or `SE-01`: an orphan is placed by its ANCHOR
 and NEVER by `segmentIndex`, and `SE-01` counts the BYTES THE SERIALIZER WRITES, not the model rows.**
 
-### 🩺 `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` (2026-08-02) · `documentation/agent-notes.md#x12-segment-outside-transaction-dropped-2026-08-02`
+### 🩺 `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` (2026-08-02) · `agent-notes/x12-segment-outside-transaction-dropped.md`
 
-- **🩺 A segment the envelope walker cannot place is RETAINED on `X12Interchange.orphanSegments`, not
-  discarded.** All orphans go through one `recordOrphan` chokepoint so the warning and the retained
-  segment can never disagree; `segmentIndex` is the join key back to `position.segmentIndex`.
-- **🩺 Line-break tolerance is 15 of 15 CR/LF sequences of length 0 to 3.** What 4 of 15 cost:
-  relocated narrative §8.
-- **🩺 NEVER replay an orphan at its recorded `segmentIndex`. Read the refutation before touching the
-  emit again.** `segmentIndex` indexes the INPUT stream and the emit is not in input order, so replay
-  splices the orphan into whatever occupies that slot; the three corruption shapes measured, and why
-  trading a warned omission for silent structural corruption is the wrong direction here: relocated
-  narrative.
-  **The defect is in the ADDRESSING SCHEME and comes straight back if anyone reaches for
-  `segmentIndex`.**
-- **A segment with an empty first element, outside a transaction, is dropped with NO warning at all** -
-  the only construct on the list with no diagnostic whatsoever. Inside an open transaction the same
-  segment round-trips normally.
-- **Neither a doubled terminator nor a segment with an empty first element is recorded.**
-- **The `X12_UNEXPECTED_SEGMENT` messages were corrected** - they said the segment was not retained,
-  now false. Nothing became fatal.
+**RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED** - it paid for the trap at the top of
+this list. **🩺 Open it before you touch orphan placement or retention: an orphan is RETAINED on
+`orphanSegments` and NEVER replayed at its recorded `segmentIndex`, which indexes the INPUT stream
+and splices it into whatever occupies that slot on emit.**
 
 ### 🩺 `PHI-WARNING-MESSAGE-LEAK` (2026-07-31) · `documentation/agent-notes.md#phi-warning-message-leak-2026-07-31`
 

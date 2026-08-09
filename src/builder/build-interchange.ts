@@ -24,6 +24,7 @@ import type { X12Interchange } from "../parser/types.js";
 import { requireCallerSegment } from "./caller-segment.js";
 import { renderCallerValue } from "./caller-value.js";
 import { makeCallerEscaper } from "./caller-string.js";
+import { requireControlNumber } from "./caller-control-number.js";
 
 /**
  * Refuse with this module's typed error, for {@link makeCallerEscaper}. A
@@ -78,6 +79,19 @@ export function buildInterchange(spec: InterchangeSpec): X12Interchange {
   const receiverQualifier = spec.receiverQualifier ?? "ZZ";
   const usageIndicator = spec.usageIndicator ?? "P";
   const version = spec.version ?? "00501";
+  // The guard runs BEFORE `padControl`, because `padControl` is the mechanism:
+  // it answers `"000000000"` for `""` and the interchange then reconciles
+  // ISA-13 against IEA-02 on a control number nobody supplied. See
+  // `caller-control-number.ts` for the measurement and for why this refuses
+  // rather than warning. The group and transaction pairs are guarded at their
+  // own sites below, because this builder takes many of each.
+  requireControlNumber(
+    spec.interchangeControlNumber,
+    "ISA-13 / IEA-02",
+    "interchangeControlNumber",
+    "buildInterchange",
+    refuseSpec,
+  );
   const interchangeControlNumber = padControl(spec.interchangeControlNumber, 9);
 
   // ISA is fixed-width per ASC X12 .5 - pad each element, never escape (the
@@ -126,6 +140,18 @@ function buildGroup(
   elementSeparator: string,
   segmentTerminator: string,
 ): string {
+  // GS-06 does not fabricate the way ISA-13 does - it reaches the wire through
+  // `esc`, and `escapeRelease` early-returns on `""` - so an empty one emitted a
+  // required element as EMPTY, and GE-02 emitted the same empty value, so the
+  // pair still reconciled and nothing warned. Same class, refused the same way.
+  requireControlNumber(
+    group.groupControlNumber,
+    "GS-06 / GE-02",
+    "groupControlNumber",
+    "buildInterchange",
+    refuseSpec,
+  );
+
   const applicationSenderCode = group.applicationSenderCode ?? spec.senderId;
   const applicationReceiverCode = group.applicationReceiverCode ?? spec.receiverId;
   const groupDate = group.groupDate ?? expandYY(spec.interchangeDate);
@@ -219,6 +245,17 @@ function buildTransaction(
   elementSeparator: string,
   segmentTerminator: string,
 ): string {
+  // ST-02 / SE-02 take the same shape as GS-06 / GE-02: emitted through `esc`,
+  // so an empty one used to reach the wire as an empty required element on both
+  // ends of the pair, reconciling against itself.
+  requireControlNumber(
+    tx.transactionSetControlNumber,
+    "ST-02 / SE-02",
+    "transactionSetControlNumber",
+    "buildInterchange",
+    refuseSpec,
+  );
+
   const stParts = ["ST", esc(tx.transactionSetIdCode), esc(tx.transactionSetControlNumber)];
   if (tx.implementationConventionReference !== undefined) {
     stParts.push(esc(tx.implementationConventionReference));

@@ -81,10 +81,12 @@
  *   surface - the dot-path read answers `"00000001??"` where it answered
  *   `"00000001?"`. Drop the hand-rolled escape.
  *
- * **And an EMPTY control number is still not refused.** `escapeRelease`
- * early-returns on `""` and this module has no required-field guard, so
- * `interchangeControlNumber: ""` emits `TA1**260601*1200*A*000` with no
- * error, here and at every earlier release. Only a NON-string refuses.
+ * **And an EMPTY control number USED to go out unrefused.** `escapeRelease`
+ * early-returns on `""` and this module had no required-field guard, so
+ * `interchangeControlNumber: ""` emitted `TA1**260601*1200*A*000` with no
+ * error, through `0.0.15`. `X12-EMPTY-CONTROL-NUMBER-FABRICATED` closed it:
+ * see {@link "../../builder/caller-control-number.js".requireControlNumber}.
+ * The guard is byte-strict, so a whitespace-only TA1-01 still builds.
  *
  * And the release is scoped to the delimiter set the caller states through
  * {@link BuildTA1Options} - see that interface for why guessing one is a
@@ -97,6 +99,7 @@ import { TA1_ACK_CODES, type Ta1AckCode, type Ta1NoteCode } from "./codes.js";
 import { ACK_BUILD_ERROR_CODES, AckBuildError } from "./errors.js";
 import type { BuildTA1Spec } from "./types.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
+import { requireControlNumber } from "../../builder/caller-control-number.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 
 /**
@@ -168,6 +171,24 @@ export function buildTA1(spec: BuildTA1Spec, options: BuildTA1Options = {}): Ta1
     segment: options.segmentTerminator ?? "~",
   };
   const esc = makeCallerEscaper(delimiters, "buildTA1", refuseSpec);
+
+  // TA1-01 is data element I12, the reassociation key: it ECHOES the ISA-13 of
+  // the interchange being acknowledged, and a TA1 that does not carry it
+  // acknowledges nothing the sender can match. `escapeRelease` early-returns on
+  // `""` and this module had no required-field guard, so `TA1**260601*1200*A*000`
+  // went out with no error at every release through `0.0.15`. That was disclosed
+  // in `KNOWN-LIMITATIONS.md` as tracked-but-open; this closes it.
+  //
+  // AFTER `enforceAcceptIsClean`, deliberately. That guard's precedence is
+  // documented and pinned, and an Accept carrying a note code is the more
+  // dangerous spec of the two.
+  requireControlNumber(
+    spec.interchangeControlNumber,
+    "TA1-01",
+    "interchangeControlNumber",
+    "buildTA1",
+    refuseSpec,
+  );
 
   const elements: readonly string[] = Object.freeze([
     "TA1",

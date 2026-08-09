@@ -16,6 +16,54 @@ model.
 
 ## Data / decode boundaries
 
+- **🩺 An EMPTY control number is REFUSED on emit as of this release, where it used to be
+  FABRICATED, and that is a behaviour change for any caller passing one**
+  (`X12-EMPTY-CONTROL-NUMBER-FABRICATED`). Every builder that assembles an ISA zero-pads its control
+  number to the nine characters ASC X12 .5 fixes ISA-13 at. `padControl("1", 9)` answering
+  `"000000001"` is the point of that; `padControl("", 9)` answering `"000000000"` was not, and
+  nothing stood in front of it, so `interchangeControlNumber: ""` produced a frozen, well-formed
+  interchange carrying a nine-digit control number nobody supplied, with `warnings: []` and ISA-13
+  reconciling perfectly against IEA-02. A control number is how an interchange is reconciled and
+  acknowledged, so a fabricated one does not fail: it succeeds against the wrong thing.
+
+  The other control numbers took the same input and were silent in a different way. They reach the
+  wire through the escape helper, which early-returns on `""`, so the required element went out
+  EMPTY at **both** ends of its pair, which means each pair still reconciled against itself and no
+  `X12_CONTROL_NUMBER_MISMATCH` fired either. Measured at `0.0.15`, through `buildInterchange`:
+
+  ```text
+  interchangeControlNumber: ""        ISA*…*00501*000000000*0*P*:~ … ~IEA*1*000000000~
+  groupControlNumber: ""              GS*HC*…*1200**X*005010X222A2~ … ~GE*1*~
+  transactionSetControlNumber: ""     ST*837**005010X222A2~ … ~SE*3*~
+  ```
+
+  All three emitted `warnings: []`. The acknowledgment builders carried the same class at the slots
+  where they **echo** the document being acknowledged, which is the whole reason a sender can match
+  an ack to what they sent: `build999` emitted `AK1*HC**005010X222A2~` and `AK2*837*~`, and
+  `buildTA1` emitted `TA1**260601*1200*A*000`. Every one of these now draws that builder's own typed,
+  code-tagged refusal (`X12_BUILD_INVALID_SPEC` and its siblings; `X12_ACK_INVALID_SPEC` on the ack
+  path) naming the slot and the spec property, before anything is emitted. **No new error code was
+  minted and no warning code moved**, so no consumer predicate changes; what changes is that a build
+  that used to return a document now throws.
+  - **🛑 The guard is byte-strict `=== ""`. It does NOT trim, and a whitespace-only control number is
+    still accepted**: `interchangeControlNumber: " "` still emits ISA-13 as `00000000 `, and
+    `buildTA1` still emits `TA1*   *…`. This is a real residual rather than an oversight. Trimming
+    would be a normalisation rule, no source consulted for this package states one, and every
+    empty-required-element guard this one mirrors (`patientControlNumber`, `claimId`,
+    `maintenanceTypeCode`, `requestCategoryCode`, the 277's `categoryCode`) is byte-strict for the
+    same reason. **Validate at your own boundary if your partner can send you blanks.**
+  - **It does NOT type-check, and nothing about a non-string changed.** A number or `undefined`
+    control number behaves exactly as it did: through the escape helper it draws the type refusal,
+    and at the ISA slots `padControl` still throws the typed refusal whose text misleadingly says
+    "exceeds the 9-char spec limit". That wart is entry 3 of the builder-guard list further down and
+    is untouched here.
+  - **A SHORT control number still zero-pads.** The guard is not "ISA-13 must be nine characters":
+    `interchangeControlNumber: "1"` still emits `000000001`, which is what `padControl` is for.
+  - **Every guard sits at the envelope-assembly site, so every guard that already ran keeps its
+    precedence.** A spec that is wrong in two ways reports the same first refusal it reported before:
+    `build835`'s balance equation, `build999`'s AK9 counts and `buildTA1`'s accept-must-mean-accept
+    check all still fire ahead of this one.
+
 - **🩺 Which `ST-03` implementation-convention references resolve to an 837 variant CHANGED in this
   release, and some already-published files therefore decode differently** (`X12-VARIANT-ICR-UNGROUNDED`).
   Through `0.0.13` `get837Claims` recognised exactly three references: `005010X222A2`, `005010X223A3`
@@ -357,10 +405,11 @@ model.
     open) regresses on both kinds of surface: `"00000001??"` in, `TA1*00000001????*…` out, and
     `getSegmentValue` answering `"00000001??"` where it answered `"00000001?"`. The framing and the
     disposition stay correct, but **drop the hand-rolled escape.**
-  - **An EMPTY control number is not refused and never was.** `escapeRelease` early-returns on `""`
-    and `buildTA1` carries no required-field guard, so `interchangeControlNumber: ""` emits
-    `TA1**260601*1200*A*000` with `warnings: []`, here and at every earlier release. Only a
-    NON-string refuses. Unchanged and tracked as its own item.
+  - **An EMPTY control number was not refused by this slice, and is refused by the NEXT one.**
+    `escapeRelease` early-returns on `""` and `buildTA1` carried no required-field guard, so
+    `interchangeControlNumber: ""` emitted `TA1**260601*1200*A*000` with `warnings: []`, here and at
+    every earlier release. `X12-EMPTY-CONTROL-NUMBER-FABRICATED` closed it across every builder; see
+    the entry at the top of this file, including the whitespace-only residual it leaves open.
   - **🩺 The READ half did not move. `parseTA1` still reads elements RAW, pre-`?`-unescape**, exactly
     as `X12Segment.elements` has always documented, so a control number of `"00000001?"` now reads
     back as `"00000001??"` rather than as `"00000001?*260601"`. The disposition is correct where it

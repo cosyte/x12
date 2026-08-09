@@ -50,6 +50,7 @@ import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
+import { requireControlNumber } from "../../builder/caller-control-number.js";
 
 /**
  * Refuse with this module's typed error, for {@link requireCallerArray}. A
@@ -197,6 +198,42 @@ export function build835(spec: Build835Spec): X12Interchange {
   const senderQualifier = envelope.senderQualifier ?? "ZZ";
   const receiverQualifier = envelope.receiverQualifier ?? "ZZ";
   const usageIndicator = envelope.usageIndicator ?? "P";
+  // ---- Envelope control numbers -----------------------------------------
+  //
+  // Refused before the envelope is assembled, because every one of the three
+  // pairs was silent on an empty value and two of them were silent in different
+  // ways: `padControl("", 9)` FABRICATES `"000000000"` into ISA-13 / IEA-02,
+  // while GS-06 / GE-02 and ST-02 / SE-02 reach the wire through `esc`, which
+  // early-returns on `""` and emits the required element EMPTY on both ends of
+  // the pair, so each pair still reconciled against itself. The measurement and
+  // the refuse-rather-than-warn reasoning are in
+  // `src/builder/caller-control-number.ts`.
+  //
+  // Placed here rather than at the top of the function so every guard that
+  // already ran keeps its precedence: a spec that is wrong in two ways reports
+  // the same first refusal it reported before.
+  requireControlNumber(
+    envelope.interchangeControlNumber,
+    "ISA-13 / IEA-02",
+    "interchangeControlNumber",
+    "build835",
+    refuseSpec,
+  );
+  requireControlNumber(
+    envelope.groupControlNumber,
+    "GS-06 / GE-02",
+    "groupControlNumber",
+    "build835",
+    refuseSpec,
+  );
+  requireControlNumber(
+    envelope.transactionSetControlNumber,
+    "ST-02 / SE-02",
+    "transactionSetControlNumber",
+    "build835",
+    refuseSpec,
+  );
+
   const interchangeControlNumber = padControl(envelope.interchangeControlNumber, 9);
   const isa =
     [
