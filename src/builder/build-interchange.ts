@@ -180,10 +180,18 @@ function buildGroup(
   // admissible today - turned the literal `"GS"` into `G?S`, so the group header
   // stopped being a `GS` at all: `groups.length` went 1 -> 0, five segments fell
   // out as orphans, and `X12_UNEXPECTED_SEGMENT` and `X12_GROUP_COUNT_MISMATCH`
-  // started firing on a spec that built clean at `0.0.15`. A segment id is a
-  // structural byte this library owns, not caller content, which is the rule the
-  // ISA line above already states and the rule `GE` / `ST` / `SE` / `IEA` follow
-  // by never routing their literal ids through `esc` either.
+  // started firing on a spec that built clean at `0.0.15`. A LITERAL segment id
+  // this library writes is a structural byte and is never escaped, which is the
+  // rule the ISA line above already states and the rule `GE` / `ST` / `SE` /
+  // `IEA` follow by never routing their literal ids through `esc` either.
+  //
+  // Read "literal" strictly. A draft wrote the wider form - "a segment id is a
+  // structural byte this library owns, not caller content" - and a refuter
+  // measured it false 60 lines down: `SegmentSpec` is `[segmentId, ...elements]`
+  // supplied wholesale, so `buildTransaction`'s `segment.map(esc)` DOES release
+  // a caller-supplied id, and `caller-segment.ts` says so explicitly. That
+  // disagreement with `SegmentSpec`'s own JSDoc predates this slice and is
+  // unchanged by it.
   const gs = joinSeg(
     gsParts.map((value, index) => (index === 0 ? value : esc(value))),
     elementSeparator,

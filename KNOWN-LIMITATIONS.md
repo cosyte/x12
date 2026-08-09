@@ -211,10 +211,17 @@ model.
     degrading to the builder-named message the escaper alone would give. The five slots that already
     escaped gained the slot name with it. **`null` and `undefined` in these three fields are ABSENT,
     not refused** - each resolves through a default before either guard sees it.
-  - **The segment id is never escaped, and that is a rule rather than an omission.** `esc` releases
-    against the delimiter set the CALLER declared, and a `componentSeparator` of `"S"` is admissible,
-    so escaping element 0 would turn the literal `"GS"` into `G?S` and the group header would stop
-    being a `GS`. `GE`, `ST`, `SE` and `IEA` already followed that rule.
+  - **A LITERAL segment id this library writes is never escaped, and that is a rule rather than an
+    omission.** `esc` releases against the delimiter set the CALLER declared, and a
+    `componentSeparator` of `"S"` is admissible, so escaping element 0 would turn the literal `"GS"`
+    into `G?S` and the group header would stop being a `GS`. `GE`, `ST`, `SE` and `IEA` already
+    followed that rule. **Read "literal" strictly, and this one is `PRE-EXISTING` rather than
+    anything this release changed:** a `SegmentSpec` body segment is `[segmentId, ...elements]`
+    supplied wholesale, `buildInterchange` has released that caller-supplied id since before this
+    release, and `SegmentSpec`'s JSDoc says it is emitted verbatim. The two disagree. It is noisy
+    rather than silent - a `?`-prefixed id is rejected by the envelope walker as an orphan with
+    `X12_UNEXPECTED_SEGMENT` - and which side is wrong is a decision, so it is recorded rather than
+    changed here.
   - **What this does NOT close.** `buildInterchange`'s IEA-02 does not go through the escaper: it is
     padded and has to stay byte-equal to the fixed-width ISA-13 it reconciles against, so that is a
     decision of its own. The ISA fixed-width slots are still outside both guards. And an unescaped

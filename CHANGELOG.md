@@ -984,9 +984,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **🛑 No warning code is added and no case moves onto a new code. Read the property rather than a
   direction list:** the interchange the call returns now reports the values the caller passed, where
   before it reported whatever the shift left in each slot. **What is narrower here than in the two
-  entries below, and is the part to carry away: no reader moved.** The parser is untouched, so an
-  inbound document from a trading partner decodes exactly as it did at `0.0.15`; what changed is what
-  this library emits, and therefore how its own output reads back.
+  entries below, and is the part to carry away: no reader moved.** No executable line under
+  `src/parser/` changed, so an inbound document from a trading partner decodes exactly as it did at
+  `0.0.15`; what changed is what this library emits, and therefore how its own output reads back.
+  **Say it that way rather than "the parser is untouched"** - this slice's own graded review forced a
+  JSDoc correction in `src/parser/envelope.ts`, where a stale census of the released GS/ST slots had
+  been published.
 
   **State the delimiter set by ROLE, never by byte.** `InterchangeSpec` lets you declare all four, so
   which BYTES shift is a property of the set you declared: with `elementSeparator: "|"` a GS-07 of
@@ -1008,11 +1011,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of the value. **`null` and `undefined` in these three fields are ABSENT, not refused** - each
   resolves through a default before either guard sees it.
 
-  **The segment id is never escaped.** `esc` releases against the delimiter set the CALLER declared,
-  and a `componentSeparator` of `"S"` is admissible, so mapping the escaper over element 0 would turn
-  the literal `"GS"` into `G?S` and the group header would stop being a `GS`. A segment id is a
-  structural byte this library owns, not caller content, and `GE` / `ST` / `SE` / `IEA` already
-  followed that rule.
+  **A LITERAL segment id this library writes is never escaped.** `esc` releases against the
+  delimiter set the CALLER declared, and a `componentSeparator` of `"S"` is admissible, so mapping
+  the escaper over element 0 would turn the literal `"GS"` into `G?S` and the group header would stop
+  being a `GS`. `GE` / `ST` / `SE` / `IEA` already followed that rule. **Read "literal" strictly:** a
+  `SegmentSpec` body segment carries a CALLER-supplied id, `buildTransaction` has released it since
+  before this slice, and `SegmentSpec`'s own JSDoc still says it is emitted verbatim. That
+  disagreement predates this slice, is unchanged by it, and is filed rather than closed here.
 
   **What this does not close:** `buildInterchange`'s IEA-02 is padded rather than escaped and has to
   stay byte-equal to the fixed-width ISA-13 it reconciles against, so that is a decision of its own;

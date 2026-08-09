@@ -61,8 +61,10 @@ direction list is published; two drafts of the sibling slices' cost bullets publ
 were refuted.
 
 **What IS narrower here than in either sibling, and is checkable rather than argued: no reader
-moved.** `src/parser/` is untouched, so an inbound document from a trading partner decodes exactly as
-it did at `0.0.15`. `X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE` changed how already-published documents
+moved.** **🛑 SAY "NO EXECUTABLE LINE UNDER `src/parser/` CHANGED", NEVER "THE PARSER IS UNTOUCHED"
+- pass 2 measured the file-level form false, because this slice's own remedy for finding 5 corrected
+a stale census in `src/parser/envelope.ts`'s JSDoc.** The operative claim survives and is the one to
+publish: an inbound document from a trading partner decodes exactly as it did at `0.0.15`. `X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE` changed how already-published documents
 DECODE; this one changes what this library EMITS, and therefore how its own output reads back. Do not
 flatten the two into one sentence.
 
@@ -135,13 +137,23 @@ header and asserted in the same file, so prose cannot drift from code. Read them
   distinctness, so a `componentSeparator` of `"S"` turned the literal `"GS"` into `G?S` - the group
   header stopped being a `GS`, `groups.length` went 1 -> 0, five segments fell out as orphans, and
   two warning codes started firing on a spec that built clean at `0.0.15`. `GE` / `ST` / `SE` / `IEA`
-  already followed the rule, and the module's own ISA comment states it.
+  already followed the rule, and the module's own ISA comment states it. **🛑 STATE THE RULE FOR A
+  LITERAL ID ONLY.** A draft wrote "a segment id is a structural byte this library owns, not caller
+  content" and pass 2 measured it false inside this same module: a `SegmentSpec` body segment is
+  `[segmentId, ...elements]` supplied wholesale and `buildTransaction` routes that id through `esc`,
+  which `caller-segment.ts` already says out loud.
 - **The fixed-width ISA slots** are outside both guards, exactly as `caller-string.ts` and
   `KNOWN-LIMITATIONS.md` already disclose. `pad(1, 15)` still throws an untyped `TypeError` and
   `padControl(1, 9)` still throws the misleadingly-worded typed refusal.
 - **A mid-segment dangling `?`** still raises no `X12_DANGLING_RELEASE_CHAR`, in envelope or body.
 - **`splitWithRelease` still has no degenerate-`?`-separator guard for BODY segments.**
 - **`parseTA1` still does not unescape**, and an **empty** control number is still not refused.
+- **`PRE-EXISTING`, filed by pass 2 and NOT closed here:** `SegmentSpec`'s JSDoc says the segment id
+  (`spec[0]`) is emitted verbatim, and `buildTransaction` has released it since before this slice -
+  identical at `837d4bc` and at head, so it cannot be this slice's defect. Not stop-the-line: a body
+  id carrying a declared delimiter comes out `?`-prefixed and the walker rejects it loudly as an
+  orphan with `X12_UNEXPECTED_SEGMENT`, so it is noisy rather than a silently wrong clinical value.
+  Whether the contract or the code is wrong is a decision, which is why it is filed.
 
 **No closed account of what still bypasses the escaper is published here.** Three consecutive drafts
 of the sibling module's census were measured false, each by someone finding one more; the standing

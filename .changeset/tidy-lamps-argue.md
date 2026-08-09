@@ -34,8 +34,10 @@ none of the four delimiters and no `?` is emitted byte-for-byte as before, which
 GS-04 / GS-05 / GS-07. No warning code is added and no case moves onto a new code. Read the property
 rather than a direction list: the interchange the call returns now reports the values the caller
 passed, where before it reported whatever the shift left in each slot. What is narrower here than in
-the two release-escaping fixes before it: no reader moved. The parser is untouched, so an inbound
-document decodes exactly as it did at `0.0.15`.
+the two release-escaping fixes before it: no reader moved. No executable line under `src/parser/`
+changed, so an inbound document decodes exactly as it did at `0.0.15`. Say it that way and not "the
+parser is untouched": this slice's own graded review forced a JSDoc correction in
+`src/parser/envelope.ts`, where a stale census of the released GS/ST slots had been published.
 
 State the delimiter set by ROLE, never by byte: `InterchangeSpec` lets you declare all four, so which
 BYTES shift is a property of the set you declared. Only the ELEMENT SEPARATOR and the SEGMENT
@@ -54,11 +56,13 @@ gained the slot name with it. Same class, same `X12_BUILD_INVALID_SPEC`, still n
 `null` and `undefined` in these three fields are absent, not refused: each resolves through a default
 before either guard sees it.
 
-The segment id is never escaped. `esc` releases against the delimiter set the CALLER declared, and a
-`componentSeparator` of `"S"` is admissible, so mapping the escaper over index 0 would turn the
-literal `"GS"` into `G?S` and the group header would stop being a `GS`. A segment id is a structural
-byte this library owns, not caller content, and `GE` / `ST` / `SE` / `IEA` already followed that
-rule.
+A LITERAL segment id this library writes is never escaped. `esc` releases against the delimiter set
+the CALLER declared, and a `componentSeparator` of `"S"` is admissible, so mapping the escaper over
+element 0 would turn the literal `"GS"` into `G?S` and the group header would stop being a `GS`.
+`GE` / `ST` / `SE` / `IEA` already followed that rule. Read "literal" strictly: a `SegmentSpec` body
+segment carries a CALLER-supplied id, `buildTransaction` has released it since before this slice, and
+`SegmentSpec`'s own JSDoc still says it is emitted verbatim. That disagreement predates this slice,
+is unchanged by it, and is filed rather than closed here.
 
 What this does not close: `buildInterchange`'s IEA-02 is padded rather than escaped and has to stay
 byte-equal to the fixed-width ISA-13 it reconciles against, so that is a decision of its own; the ISA

@@ -61,10 +61,14 @@
  * whatever the shift left in each slot.** No direction list is published - two
  * drafts of the sibling slices' cost bullets published one and both were
  * refuted. What IS narrower here than in either sibling, and is checkable
- * rather than argued: **no reader moved.** `src/parser/` is untouched, so an
- * inbound document from a trading partner decodes exactly as it did at
- * `0.0.15`; what changed is the bytes this library emits and therefore how its
- * own output reads back.
+ * rather than argued: **no reader moved.** No EXECUTABLE line under `src/parser/`
+ * changed, so an inbound document from a trading partner decodes exactly as it
+ * did at `0.0.15`; what changed is the bytes this library emits and therefore
+ * how its own output reads back. **Say it that way and not "the parser is
+ * untouched"** - this slice's own graded review forced a JSDoc correction in
+ * `src/parser/envelope.ts`, where a stale census of the released GS/ST slots
+ * had been published, so the file-level form is false and the claim that
+ * matters is not.
  *
  * **State the delimiter set by ROLE, never by byte.** A draft published "only
  * `*` and `~` ever shifted the framing" and a refuter measured it false in one
@@ -275,8 +279,10 @@ describe("X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE: the segment id is never esc
     // literal `"GS"` into `G?S`. The group header stopped being a `GS`:
     // `groups.length` went 1 -> 0, five segments fell out as orphans, and
     // `X12_UNEXPECTED_SEGMENT` plus `X12_GROUP_COUNT_MISMATCH` started firing on
-    // a spec that built clean at `0.0.15`. A segment id is a structural byte
-    // this library owns, not caller content.
+    // a spec that built clean at `0.0.15`. A LITERAL segment id this library
+    // writes is a structural byte and is never escaped. Read "literal"
+    // strictly: a `SegmentSpec` body segment carries a CALLER-supplied id and
+    // `buildTransaction` has released it since before this slice.
     const ix = build({}, { componentSeparator: "S" });
     expect(ix.groups).toHaveLength(1);
     expect(ix.orphanSegments).toEqual([]);
