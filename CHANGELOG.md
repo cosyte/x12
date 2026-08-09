@@ -16,8 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `getSegmentValue` takes an `X12Segment`, which requires `id`. `IsaSegment`, `IeaSegment`,
   `GsSegment`, `GeSegment`, `Ta1Segment` and the inline ST/SE types on `X12TransactionSet` declare
   only `raw` and `elements`, so passing any one of them is `TS2345`, "Property 'id' is missing".
-  **All seven are measured here**, where the entry two below this one measured three. The carriers
-  include
+  **All seven are measured here.** The carriers include
   `KNOWN-LIMITATIONS.md`'s _"Read through `getSegmentValue` if you want the logical value"_ for a
   `gs`, which is the one that owed you a route and so is the one replaced rather than cut; two of the
   others are pending release notes, and those are corrected by deleting the falsified clause and
@@ -1514,8 +1513,7 @@ required control number and this builder never invents one, so nothing is emitte
   `"X|Y"` is what took GS-08's slot and `"X*Y"` was inert. **Only the ELEMENT SEPARATOR and the
   SEGMENT TERMINATOR ever shifted the segment's own framing, plus a `?` immediately before the
   element separator.** The **repetition** and **component** separators moved the dot-path reader
-  instead, and releasing them is a **gain** there: on the default set it
-  answered `"X"` for `"X^Y"`, truncating the value to repetition 0, and the composite read `"07-1"`
+  instead, and releasing them is a **gain** there: the composite read `"07-1"`
   answered `"X"` for `"X:Y"`. **The measured cost is a mid-string `?`, and only on the surfaces
   documented as raw** - `gs.elements[4]` reads `"2026??0601"` where it read `"2026?0601"`, while the
   dot-path read of that value unescapes and is unchanged. No total is published: that is what was

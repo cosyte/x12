@@ -9,7 +9,7 @@ runtime line changed and the emitted JS is byte-identical, so no behaviour moved
 `getSegmentValue` takes an `X12Segment`, which requires `id`. `IsaSegment`, `IeaSegment`,
 `GsSegment`, `GeSegment`, `Ta1Segment` and the inline ST/SE types on `X12TransactionSet` declare only
 `raw` and `elements`, so passing any one of them is `TS2345`, "Property 'id' is missing". **All seven
-are measured here**, where the entry two below this one measured three. The carriers include
+are measured here.** The carriers include
 `KNOWN-LIMITATIONS.md`'s *"Read through `getSegmentValue` if you want the logical value"* for a `gs`,
 which is the one that owed you a route and so is the one replaced rather than cut; two of the others
 are pending release notes, and those are corrected by deleting the falsified clause and nothing else.
