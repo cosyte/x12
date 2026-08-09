@@ -41,12 +41,17 @@ moves onto a new code: each builder refuses with its own existing typed error.
 own parser. That round trip is not the bar: ISA-11 and ISA-16 transmit the declared set, so a
 conformant receiver splits on it.
 
-🛑 One report moved, and it is a message rather than a code. The check runs where a builder resolves
-its delimiters, so every guard a builder runs earlier keeps precedence (`build999`'s AK9 counts and
-`buildTA1`'s `enforceAcceptIsClean` both still report first) and a defect detected later now reports
-this refusal instead: `buildInterchange` with a degenerate set AND an empty
-`interchangeControlNumber` reported the empty-control-number refusal at base and reports this one at
-head, both `X12_BUILD_INVALID_SPEC`.
+🛑 A message moves, never a code, and no count of what moved is published. The check runs where a
+builder resolves its delimiters, so every guard a builder runs earlier keeps precedence (`build835`'s
+balance equations, `build837`'s spine, `build999`'s AK9 counts and `buildTA1`'s
+`enforceAcceptIsClean`) and everything later yields. `requireControlNumber` is later in every builder
+that has one, so on a degenerate set both the empty-control-number and the non-string-control-number
+refusals are preempted at every one of their slots - same code, different message.
+
+🛑 It is an equality test on the value you declare, not a guarantee about the documents this library
+can compose. Nothing checks that a delimiter is a single byte, so a `segmentTerminator` of `"??"` is
+not equal to `"?"`, builds, and still transmits `?` as the terminator, `warnings: []`. That is
+`PRE-EXISTING` and deliberately not closed here: a delimiter-length rule is a different decision.
 
 🛑 The read side is deliberately untouched, and so is `serializeX12`. `parseX12` still accepts every
 degenerate set and still frames a degenerate body segment; `serializeX12` re-emits one byte for byte,

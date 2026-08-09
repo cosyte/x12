@@ -85,11 +85,19 @@ builders has a behavioural case: `buildInterchange`, `build999` and `buildTA1` i
 specs they mutate in their own suites. Deleting the one call reds 16 tests across 8 files.
 
 **Precedence, measured base vs head.** Every guard a builder runs earlier keeps precedence -
-`build999`'s AK9 count invariants and `buildTA1`'s `enforceAcceptIsClean` both still report first.
-**One report moved and it is a MESSAGE, not a code:** `buildInterchange` with a degenerate set AND an
-empty `interchangeControlNumber` reported the empty-control-number refusal at base and reports this
-one at head, both `X12_BUILD_INVALID_SPEC`, because the escaper is built before
-`requireControlNumber` runs. Same trade `#101` recorded, one layer up.
+`build835`'s balance equations, `build837`'s spine, `build999`'s AK9 count invariants and
+`buildTA1`'s `enforceAcceptIsClean` all still report first. Everything a builder checks LATER yields
+to this refusal. **A MESSAGE moves, never a code**, because each builder's `refuseSpec` is the same
+one both guards already used.
+
+**🛑 NEVER COUNT WHAT MOVED. A draft of this section said "one report moved" and the gate measured it
+false in one pass.** `requireControlNumber` runs after the escaper in EVERY builder that has one, so
+on a degenerate set both mechanisms that arc shipped - `#101`'s empty control number and `#102`'s
+non-string one - are preempted at every one of their slots, in builders nobody had probed. That is
+this item's own standing trap arriving one slice later: _the filed line has understated the class
+every time_, and `build-835.ts` already carries the identical warning from `#99`. **The remedy is the
+CLAIM: state which guards keep precedence and that everything later yields, which is a property of
+the ordering. A total of the sites is a census and drifts with the next builder.**
 
 ## 🛑 It refuses specs that BUILT, and one of them round-tripped
 
@@ -102,6 +110,31 @@ reads to that receiver as two empty components. Checking a claim against this re
 implementation is not a check; it only proves the two halves agree, which is how the wrong answer
 survived. The same is true of the repetition role, where scalar values round-tripped for the simpler
 reason that nothing ever split.
+
+## 🛑 The guard is an EQUALITY TEST, and the bound must be stated as one
+
+`delimiters[role] === RELEASE_CHAR`. That is a property of the VALUE A CALLER DECLARES and **not** a
+guarantee about what this library can compose - two drafts said the latter (_"no NEW document of that
+shape is composed here"_, _"what you cannot do is have this library compose a document against one"_)
+and the gate falsified both with one line:
+
+```text
+buildInterchange({ segmentTerminator: "??" })  -> BUILDS
+  ix.delimiters  { element:"*", repetition:"^", component:":", segment:"?" }   warnings: []
+  HI*ABK?:J45.50 frames as ["HI","HI*ABK"] + ["", ":J45.50"]
+build837P({ envelope: { segmentTerminator: "??" } }) -> BUILDS, phantom segments SE-01 never counted
+```
+
+Nothing in any builder checks that a delimiter is a single byte, and the ISA line writes the declared
+string straight in, so the transmitted set is degenerate by another route. **Identical at base, so
+the BEHAVIOUR is `PRE-EXISTING` and the guard must NOT be grown to reach it** - a delimiter-length
+rule is a decision nobody here has made, and growing a guard to make an overclaim true is the runaway
+ADR 0016 exists to stop. What was wrong is the sentence, and the sentence is what changed. It is
+disclosed in `KNOWN-LIMITATIONS.md`, `docs-content/spec-notes-envelope.md` and both source modules,
+and pinned as an honest control in `test/builder-degenerate-release-delimiter.test.ts`.
+
+The wider family this belongs to - **no builder validates the SHAPE of a delimiter at all** - is a
+backlog line and not this slice's, per ADR 0016 rule 2.
 
 ## 🛑 What is deliberately NOT changed
 
@@ -123,7 +156,10 @@ The claim swept by wording rather than by file, per `#102`'s finding. Carriers t
 falsified form - _"`buildInterchange({ componentSeparator: "?" })` … today"_, _"do NOT declare `?` as
 the ELEMENT separator"_, _"all THREE roles"_: `CLAUDE.md`, `KNOWN-LIMITATIONS.md`,
 `docs-content/spec-notes-envelope.md` (**which SHIPS**), `src/parser/release.ts`'s `splitWithRelease`
-JSDoc (**which ships in `dist`**), `documentation/agent-notes/x12-body-degenerate-release-separator.md`,
+JSDoc (**source only - it is `@internal` and unexported, so it does NOT render into `dist`; a draft
+said it did and the gate measured that false against a real `tsup` build. `escapeRelease`'s JSDoc in
+the same file DOES ship, so the distinction is real and worth keeping**),
+`documentation/agent-notes/x12-body-degenerate-release-separator.md`,
 `test/parser-segment-degenerate-release-separator.test.ts`, the pending changeset
 `.changeset/olive-doors-repeat.md` and its `[Unreleased]` `CHANGELOG.md` entry. **The two pending
 ones were corrected by DELETION, never reworded**, per `documentation/conventions.md` rule 2.

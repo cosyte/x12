@@ -90,9 +90,15 @@ nothing a caller can do about it at the value level:
   `HI-01-2` (the diagnosis code) fused into the preceding component on every document, silently.
 
 If you must exchange with a partner who declares `?` as structure, you can still **read** their
-traffic: `parseX12` accepts every such set, and `serializeX12` re-emits one byte for byte. What you
-cannot do is have this library **compose** a document against one. The read-side bounds above are
-unchanged by the refusal, and all of it is recorded in `KNOWN-LIMITATIONS.md`.
+traffic: `parseX12` accepts every such set, and `serializeX12` re-emits one byte for byte. The
+read-side bounds above are unchanged by the refusal.
+
+**What the refusal is, exactly: an equality test on the delimiter you declare.** No builder checks
+that a delimiter is a single byte, so a `segmentTerminator` of `"??"` is not equal to `"?"`, builds,
+and still transmits `?` as the terminator - a degenerate set by another route, `warnings: []`. That
+is `PRE-EXISTING` and unfixed, so do not read the refusal as "this library cannot compose a document
+against a degenerate set". Declare single-byte delimiters. All of it is recorded in
+`KNOWN-LIMITATIONS.md`.
 
 ## Line endings between segments
 

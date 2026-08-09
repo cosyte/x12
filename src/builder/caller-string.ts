@@ -374,6 +374,15 @@ const DELIMITER_ROLES = [
  *
  * ## What this deliberately does NOT do
  *
+ * - **It tests the DECLARED VALUE for equality with `?`, and that is the whole
+ *   of it. It is not a guarantee about the documents this library can
+ *   compose.** No builder checks that a delimiter is one byte, so a
+ *   `segmentTerminator` of `"??"` is not equal to `"?"`, builds, and still
+ *   transmits `?` as the terminator, `warnings: []`. Measured at head, and
+ *   identical at base: the multi-byte hole is `PRE-EXISTING`, the whole
+ *   delimiter-shape family with it, and **widening this guard to reach it is a
+ *   different slice** - it would be a length rule nothing here has decided.
+ *   State the bound as a property of the SET, never of the document.
  * - **The read side is untouched.** `parseX12` still accepts every degenerate
  *   set, and `src/parser/segment.ts`'s element-role guard still frames such a
  *   document. Documents this library emitted before this guard exist, and
@@ -435,6 +444,14 @@ function requireEscapableDelimiters(
  * the same trade `X12-EMPTY-CONTROL-NUMBER-FABRICATED` recorded one slice
  * earlier, and it moves a MESSAGE rather than a code: no builder mints a code
  * here, each refuses with its own.
+ *
+ * **NEVER COUNT WHAT MOVED. A draft published "one report" and it was measured
+ * false** - `requireControlNumber` runs after the escaper in EVERY builder that
+ * has one, so both mechanisms `X12-EMPTY-CONTROL-NUMBER-FABRICATED` and
+ * `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED` shipped are preempted at every
+ * one of their slots when the set is also degenerate. Say which guards keep
+ * precedence and that everything later yields, which is a property of the
+ * ordering; a total of the sites is a census and drifts with the next builder.
  *
  * @param delimiters the resolved delimiter set for this interchange
  * @param at a library-owned locator naming the builder, e.g. `"build835"`

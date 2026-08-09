@@ -64,15 +64,28 @@
  * valid specs they mutate, in their own suites.
  *
  * Every guard a builder runs EARLIER keeps precedence, measured base vs head:
- * `build999`'s AK9 count invariants and `buildTA1`'s `enforceAcceptIsClean` both
- * still report first. **One report moved and it is a MESSAGE, not a code:**
- * `buildInterchange` with a degenerate set AND an empty `interchangeControlNumber`
- * reported the empty-control-number refusal at base and reports this one at
- * head, both `X12_BUILD_INVALID_SPEC`. No code is minted anywhere; each builder
- * refuses with its own existing one.
+ * `build835`'s balance equations, `build837`'s spine, `build999`'s AK9 count
+ * invariants and `buildTA1`'s `enforceAcceptIsClean` all still report first.
+ * Everything a builder checks LATER yields to this refusal, and a MESSAGE moves
+ * rather than a code - no code is minted anywhere, each builder refuses with its
+ * own existing one.
  *
- * ## What is deliberately NOT changed, and both are pinned below
+ * **🛑 NEVER COUNT WHAT MOVED.** A draft of this file said *"one report moved"*
+ * and the gate measured it false: `requireControlNumber` runs after the escaper
+ * in EVERY builder that has one, so on a degenerate set both control-number
+ * mechanisms this arc shipped are preempted at every one of their slots. The
+ * cases below vary the BUILDER as well as the delimiter set for that reason -
+ * a control that varies only the set cannot see the class.
  *
+ * ## What is deliberately NOT changed, and all three are pinned below
+ *
+ * - **🛑 The guard is an EQUALITY TEST on the value a caller declares, and that
+ *   is the whole of it.** No builder checks that a delimiter is one byte, so a
+ *   `segmentTerminator` of `"??"` is not equal to `"?"`, builds, and still
+ *   transmits `?` as the terminator. Identical at base, so the behaviour is
+ *   `PRE-EXISTING`; **the guard is NOT grown to reach it** - a delimiter-length
+ *   rule is a different decision. Two drafts claimed the document-level form
+ *   (*"no NEW document of that shape is composed"*) and the gate falsified both.
  * - **The read side.** `parseX12` still accepts every degenerate set and
  *   `decodeSegment` still frames a degenerate body segment. Documents this
  *   library emitted before this guard exist.
@@ -262,16 +275,32 @@ describe("X12-EMIT-DEGENERATE-RELEASE-DELIMITER: the precedence a builder's own 
     ).toThrow(/An accept must cite/);
   });
 
-  it("🛑 the one report that MOVED: an empty control number on a degenerate set", () => {
-    // Base reported the empty-control-number refusal here; head reports the
-    // delimiter one. Same code, different message - the escaper is built before
-    // `requireControlNumber` runs. Disclosed rather than claimed away.
-    const spec = { ...interchangeSpec({ elementSeparator: "?" }), interchangeControlNumber: "" };
-    expect(() => buildInterchange(spec)).toThrow(/is the X12 release character/);
-    // The control: with a conventional set the empty control number is still
-    // what gets reported, so nothing moved off that refusal generally.
-    const clean = { ...interchangeSpec({}), interchangeControlNumber: "" };
-    expect(() => buildInterchange(clean)).toThrow(/interchangeControlNumber is empty/);
+  it("🛑 what YIELDS: every `requireControlNumber` slot, and it is not one report", () => {
+    // Base reported the control-number refusal at each of these; head reports
+    // the delimiter one. Same code, different message - the escaper is built
+    // before `requireControlNumber` runs, in EVERY builder that has one. A draft
+    // pinned only the first row and called it "the one report that moved".
+    const isa = { ...interchangeSpec({ elementSeparator: "?" }), interchangeControlNumber: "" };
+    expect(() => buildInterchange(isa)).toThrow(/is the X12 release character/);
+
+    const group = interchangeSpec({ elementSeparator: "?" });
+    const firstGroup = group.groups[0];
+    if (firstGroup === undefined) throw new Error("the probe spec carries no group");
+    expect(() =>
+      buildInterchange({ ...group, groups: [{ ...firstGroup, groupControlNumber: "" }] }),
+    ).toThrow(/is the X12 release character/);
+
+    // The controls: with a conventional set each control-number refusal is still
+    // exactly what gets reported, so nothing moved off them generally.
+    expect(() =>
+      buildInterchange({ ...interchangeSpec({}), interchangeControlNumber: "" }),
+    ).toThrow(/interchangeControlNumber is empty/);
+    const cleanGroup = interchangeSpec({});
+    const cleanFirst = cleanGroup.groups[0];
+    if (cleanFirst === undefined) throw new Error("the control spec carries no group");
+    expect(() =>
+      buildInterchange({ ...cleanGroup, groups: [{ ...cleanFirst, groupControlNumber: "" }] }),
+    ).toThrow(/groupControlNumber is empty/);
   });
 });
 
@@ -360,6 +389,17 @@ describe("X12-EMIT-DEGENERATE-RELEASE-DELIMITER: the honest controls", () => {
     const built = buildInterchange(
       interchangeSpec({ componentSeparator: "|" }, ["REF", "EA", "A?B"]),
     );
+    expect(built.warnings).toEqual([]);
+  });
+
+  it("🩺 PRE-EXISTING and NOT closed: a MULTI-BYTE delimiter is not equal to `?` and still builds", () => {
+    // The guard is `=== "?"`, and no builder checks that a delimiter is one
+    // byte, so this transmits `?` as the terminator by another route. Pinned as
+    // an honest control so it cannot move unnoticed, and NOT guarded: a
+    // delimiter-length rule is a decision nobody here has made, and growing the
+    // guard to make a claim true is how a fix outgrows the thing it fixes.
+    const built = buildInterchange(interchangeSpec({ segmentTerminator: "??" }));
+    expect(built.delimiters.segment).toBe("?");
     expect(built.warnings).toEqual([]);
   });
 

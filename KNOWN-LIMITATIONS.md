@@ -281,6 +281,16 @@ model.
     ISA-11 and ISA-16 transmit the declared set and a conformant receiver splits on it. Pinned in
     `test/builder-degenerate-release-delimiter.test.ts` and, per builder, in each build suite.
 
+  - **🩺 `PRE-EXISTING` and NOT closed by that refusal: the guard is an EQUALITY TEST on the value
+    you declare, so a MULTI-BYTE delimiter walks past it.** No builder checks that a delimiter is a
+    single byte and the ISA line writes the declared string straight in, so a `segmentTerminator` of
+    `"??"` is not equal to `"?"`, builds, and still transmits `?` as the terminator - the same
+    degenerate set by another route, `warnings: []`. **Never read the refusal as "this library cannot
+    compose a document against a degenerate set"**; it is a property of the SET a caller declares,
+    never of the document. Deliberately not guarded: a delimiter-length rule is a decision nobody has
+    made here, and the wider family (**no builder validates the SHAPE of a delimiter at all**) is a
+    backlog line rather than that slice's. Pinned as an honest control in the same file.
+
   - **🩺 PRE-EXISTING and NOT closed here: on a degenerate set a `?~` still swallows the segment
     terminator.** `findUnescapedTerminator` guards its own role only, so with `?` as the element
     separator a segment that ends in an EMPTY LAST ELEMENT puts a `?` immediately before the

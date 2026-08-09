@@ -132,8 +132,14 @@ or financial value on the wire.**
   builder's own `refuseSpec`. **IT REFUSES SPECS THAT BUILT AT `0.0.15`, ONE OF WHICH ROUND-TRIPPED
   THROUGH OUR OWN PARSER - THAT WAS NEVER THE BAR** (ISA-11/16 transmit the set, so a conformant
   receiver splits on it; checking a claim against our own implementation is not a check).
-- **🛑 EVERY EARLIER GUARD KEEPS PRECEDENCE (999 AK9, TA1 `enforceAcceptIsClean`); ONE REPORT MOVED
-  AND IT IS A MESSAGE, NOT A CODE** (`buildInterchange` + degenerate + empty ISA-13).
+- **🛑 EVERY EARLIER GUARD KEEPS PRECEDENCE (835 balance, 837 spine, 999 AK9, TA1
+  `enforceAcceptIsClean`); EVERYTHING LATER YIELDS, AND `requireControlNumber` IS LATER IN EVERY
+  BUILDER, SO BOTH `#101` AND `#102` ARE PREEMPTED AT EVERY SLOT ON A DEGENERATE SET. A MESSAGE
+  MOVES, NEVER A CODE. 🛑 NEVER COUNT WHAT MOVED - a draft said "one report" and was measured false.**
+- **🛑 IT IS AN EQUALITY TEST ON THE DECLARED VALUE, NOT A GUARANTEE ABOUT DOCUMENTS THIS LIBRARY CAN
+  COMPOSE. NOTHING CHECKS A DELIMITER IS ONE BYTE**, so `segmentTerminator:"??"` BUILDS and still
+  transmits `?`, `warnings: []` - **`PRE-EXISTING`, DISCLOSED, NOT GUARDED; a length rule is a
+  different slice. STATE THE BOUND AS A PROPERTY OF THE SET, NEVER OF THE DOCUMENT.**
 - **🛑 THE READ SIDE AND `serializeX12` ARE UNTOUCHED, DELIBERATELY. PIN A READ-SIDE CASE FROM BYTES,
   NEVER THROUGH A BUILDER** - it asserts the refusal instead of the read. **PUBLISH NO CENSUS OF WHAT
   A DEGENERATE SET DOES: the two mechanisms are the claim, and a third route through either is

@@ -1065,12 +1065,21 @@ required control number and this builder never invents one, so nothing is emitte
   the bar: ISA-11 and ISA-16 transmit the declared set, so a conformant receiver splits on it, and
   what this library could read back says nothing about what they read.
 
-  **🛑 One report MOVED, and it is a message rather than a code.** The check runs where a builder
-  resolves its delimiters, so every guard a builder runs earlier keeps precedence (`build999`'s AK9
-  counts and `buildTA1`'s `enforceAcceptIsClean` both still report first, measured base vs head), and
-  a defect detected LATER now reports this refusal instead: `buildInterchange` with a degenerate set
-  AND an empty `interchangeControlNumber` reported the empty-control-number refusal at base and
-  reports this one at head, both `X12_BUILD_INVALID_SPEC`.
+  **🛑 A message moves, never a code, and no count of what moved is published.** The check runs where
+  a builder resolves its delimiters, so every guard a builder runs earlier keeps precedence
+  (`build835`'s balance equations, `build837`'s spine, `build999`'s AK9 counts and `buildTA1`'s
+  `enforceAcceptIsClean` all still report first, measured base vs head) and everything later yields.
+  `requireControlNumber` is later in **every** builder that has one, so on a degenerate set both the
+  empty-control-number and the non-string-control-number refusals above are preempted at every one of
+  their slots - same code, different message. A draft of this bullet said _"one report moved"_ and a
+  refuter measured that false, so the ordering is stated and the sites are not counted.
+
+  **🛑 It is an equality test on the value you declare, not a guarantee about the documents this
+  library can compose.** Nothing in any builder checks that a delimiter is a single byte, so a
+  `segmentTerminator` of `"??"` is not equal to `"?"`, builds, and still transmits `?` as the
+  terminator with `warnings: []`. That is `PRE-EXISTING` (identical at base) and deliberately not
+  closed here: a delimiter-length rule is a different decision. State the bound as a property of the
+  SET, never of the document.
 
   **🛑 The READ side is deliberately untouched, and so is `serializeX12`.** `parseX12` still accepts
   every degenerate set and still frames a degenerate body segment; `serializeX12` re-emits one byte
@@ -1159,7 +1168,7 @@ required control number and this builder never invents one, so nothing is emitte
   in, so documents this library emitted through `0.0.15` carry `CLM*PATIENT??ACCT*150.00` and
   `getSegmentValue(clm, "01")` reads `"PATIENT?ACCT"` back out of them. A literal split of those two
   roles would re-frame that as two empty components, so it would stop reading a value this library
-  itself wrote. **That reason survives the emit-side entry below: those documents exist.**
+  itself wrote. **That reason survives the emit-side entry above: those documents exist.**
 
   **🩺 What else it does not close, pinned rather than left to be rediscovered.** On a degenerate set
   a `?~` still swallows the segment terminator: `findUnescapedTerminator` guards its own role only,
