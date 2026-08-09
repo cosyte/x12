@@ -305,8 +305,11 @@ model.
     mid-segment one reaches no check. That is true of body elements too and is unchanged here.
   - **Values are still RAW, pre-`?`-unescape**, exactly as `X12Segment.elements` has always
     documented: `gs.elements[2]` on the first row reads `"SEND?*ER"`, not `"SEND*ER"`. For the
-    logical value, `unescapeRelease` the element string, or add an `id` and take the dot-path:
-    `GsSegment` carries no `id`, so `getSegmentValue` does not accept a `gs` (`TS2345`).
+    logical value, `unescapeRelease` the element string. `GsSegment` carries no `id`, so
+    `getSegmentValue` does not accept a `gs` (`TS2345`); adding an `id` and taking the dot-path is
+    the other route, and **the two answer different questions**: a bare dot-path splits on the
+    repetition separator and answers repetition 0, so a GS-07 of `"A^B"` reads back `"A"` through it
+    and `"A^B"` through `unescapeRelease`, `warnings: []`.
     `elements.join(separator)` therefore still
     reproduces the segment byte for byte, which is what `serializeX12` relies on when it substitutes
     a recomputed `SE-01` / `GE-01` / `IEA-01` into a control segment.

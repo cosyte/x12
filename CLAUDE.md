@@ -127,9 +127,11 @@ FLOOR, FILED NOT CLOSED - A GREP ANCHORED ON A BACKTICK MISSES THEM, they sit ba
   THREE OF THE SEVEN; THIS MEASURED ALL SEVEN. THE GRID IS IN THE NOTE - COUNT ITS ROWS, DO NOT
   QUOTE A FIGURE: a draft published "9 in 6 files" against its own ten-row grid, AND the gate then
   added THREE MORE ROWS.**
-- **🛑 NOT EVERY REMEDY WAS A DELETION, AND A DRAFT CALLED THEM ALL "CUT".** Two carriers FREEZE on
-  release and those got deletion only; one OWED the consumer a route and is the one REPLACEMENT.
-  **CHECK THE `remedy` COLUMN BEFORE REPEATING THE WORD "CUT".**
+- **🛑 NOT EVERY REMEDY WAS A DELETION, AND TWO DRAFTS IN A ROW SAID OTHERWISE** - one called all
+  thirteen "CUT", the next called four SUBSTITUTIONS "deleted". **FOUR carriers FREEZE on release**
+  (two pending changesets AND their `[Unreleased]` CHANGELOG twins - the whole file is
+  `[Unreleased]`) and only those are deletion-only; one OWED the consumer a route and is the one
+  REPLACEMENT. **CHECK THE `remedy` COLUMN AGAINST THE DIFF, NEVER THE SUMMARY WORD.**
 - **🛑 THE SIGNATURE WAS NOT WIDENED, AND THAT WAS THE DECISION.** The body never reads `id`, so
   widening to `elements`-only is FREE, non-breaking and emits nothing - **and it would make a
   SILENTLY WRONG ISA READ COMPILE.** A capability that is right on six types and wrong on the
@@ -138,9 +140,11 @@ FLOOR, FILED NOT CLOSED - A GREP ANCHORED ON A BACKTICK MISSES THEM, they sit ba
   there are TWO, and the second is prescribed in-tree at `build-ta1.ts:68` ("add one") and is what
   this repo's OWN TESTS do (`gsOf`, `withId`). (b) "a raw-vs-`unescapeRelease` cell on the ISA is a
   TAUTOLOGY that detects nothing" - `unescapeRelease` does not know the ISA is exempt.**
-- **🛑 NO ROUTE MEASURED READS AN ISA ELEMENT CORRECTLY, AND THE TWO ROUTES DISAGREE ON A REPETITION.
-  PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH MEMBER IS SPECIAL** - the ISA one has now been
-  falsified twice, in `#110` and again here. **The cells are in the note; do not restate them.**
+- **🛑 THE TWO ROUTES DISAGREE ON A REPETITION** (a bare dot-path answers repetition 0), **and on the
+  FOUR ISA cells measured no route answered the transmitted value. STATE NO RULE ABOUT THE ISA IN
+  EITHER DIRECTION** - a draft published _"neither route is right on an ISA element"_ and the gate
+  falsified it with a plain ISA-06 / ISA-08 / ISA-16. **PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH
+  MEMBER IS SPECIAL; the cells are in the note, do not restate them here.**
 - **⚖️ `parse-ta1.ts:41` / `KNOWN-LIMITATIONS.md:306` MIS-CITE `X12Segment.elements`. RE-MEASURED AND
   STILL NOT FOLDED IN** - their statement is TRUE and they have a twin, so folding half splits a
   filed slice. **`#110`'s third ground (that no deletion remedy exists for them) IS WITHDRAWN: one

@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `getSegmentValue` takes an `X12Segment`, which requires `id`. `IsaSegment`, `IeaSegment`,
   `GsSegment`, `GeSegment`, `Ta1Segment` and the inline ST/SE types on `X12TransactionSet` declare
   only `raw` and `elements`, so passing any one of them is `TS2345`, "Property 'id' is missing".
-  **All seven are measured here**, where the previous release measured three. The carriers include
+  **All seven are measured here**, where the entry two below this one measured three. The carriers
+  include
   `KNOWN-LIMITATIONS.md`'s _"Read through `getSegmentValue` if you want the logical value"_ for a
   `gs`, which is the one that owed you a route and so is the one replaced rather than cut; two of the
   others are pending release notes, and those are corrected by deleting the falsified clause and

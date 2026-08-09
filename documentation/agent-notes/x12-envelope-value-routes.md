@@ -51,11 +51,18 @@ compiler, one probe per type, `error TS2345: Property 'id' is missing`:
 **13 rows, 14 sites, 9 files.** Count the rows rather than trusting a summary figure; a draft here
 published "9 prescriptions in 6 files" against a grid of ten rows, and the gate caught it.
 
-**🛑 READ THE `remedy` COLUMN, BECAUSE THEY ARE NOT ALL DELETIONS AND A DRAFT CALLED THEM ALL "CUT".**
-Two carriers freeze on release, and for those the remedy is deletion of the falsified clause and
-nothing else. Elsewhere the falsified token is deleted and the surviving sentence stands on its own
-antecedent, which is a deletion in the diff; row 1 is the one carrier that OWED the consumer a
-route, so it is the one replacement.
+**🛑 READ THE `remedy` COLUMN AGAINST THE DIFF, BECAUSE THEY ARE NOT ALL DELETIONS.** Two drafts got
+this wrong in a row: the first called all thirteen "CUT", and the second called four substitutions
+"deleted" while asserting in this very paragraph that every non-changeset remedy *"is a deletion in
+the diff"*. **It is not, and that sentence is deleted rather than reworded.** The column now says
+DELETED only where the diff removes text and adds none. Read it as three kinds:
+
+- **DELETED** - text removed, nothing added. **The four ⏳ carriers freeze on release** (two pending
+  changesets and their `[Unreleased]` `CHANGELOG.md` twins; the whole file is still `[Unreleased]`),
+  and for those this is the only admissible remedy.
+- **SUBSTITUTED** - the falsified token replaced by a term the surrounding text already used. Honest
+  in an agent note or a measurement table, and **not** admissible in a carrier that freezes.
+- **REPLACED** - row 1 only, the one carrier that OWED the consumer a route.
 
 | # | carrier | receiver | remedy |
 |---|---|---|---|
@@ -67,10 +74,10 @@ route, so it is the one replacement.
 | 6 | `CHANGELOG.md:132` ⏳ | TA1-01 | phrase deleted |
 | 7 | `.changeset/tidy-herons-decode.md:24` ⏳ | TA1-01 | phrase deleted |
 | 8 | `src/transactions/ack/parse-ta1.ts:63` | TA1-01 | phrase deleted (a `//` body comment) |
-| 9 | `agent-notes/x12-interchange-gs-escape.md:25`, `:78` | `getSegmentValue(gs, "07")` | call deleted, 2 sites |
-| 10 | `agent-notes/x12-ta1-residuals.md:131` | `getSegmentValue(tx.st, "03", d)` | call deleted |
-| 11 | `agent-notes/x12-ta1-residuals.md:41` | TA1 table column header | header deleted |
-| 12 | `agent-notes/x12-ta1-emit-escape.md:230` | `getSegmentValue(ta1, "01")` | call deleted |
+| 9 | `agent-notes/x12-interchange-gs-escape.md:25`, `:78` | `getSegmentValue(gs, "07")` | `:78` call DELETED; `:25` **SUBSTITUTED** ("the dot-path read of GS-07") |
+| 10 | `agent-notes/x12-ta1-residuals.md:131` | `getSegmentValue(tx.st, "03", d)` | **SUBSTITUTED** ("the dot-path read of ST-03") |
+| 11 | `agent-notes/x12-ta1-residuals.md:41` | TA1 table column header | **SUBSTITUTED** ("dot-path read") |
+| 12 | `agent-notes/x12-ta1-emit-escape.md:230` | `getSegmentValue(ta1, "01")` | **SUBSTITUTED** ("it ... a TA1-01 of") |
 | 13 | `test/transactions-ack-ta1-residuals.test.ts:18` | TA1 | phrase deleted |
 
 Rows 11, 12 and 13 were added by the gate, and rows 11 and 12 are the instructive ones. **Row 11 is
@@ -89,12 +96,18 @@ for THAT receiver type in the same section or JSDoc block.** These are the in-tr
 | `src/transactions/ack/build-ta1.ts:59` | `ta1` | `:67-68`, same JSDoc |
 | `agent-notes/x12-ta1-emit-escape.md:79`, `:90` | `ta1` | `:91`, same bullet list |
 
-**Matched by the receiver filter and NOT defects, which is a property of the filter and not of them.**
-The filter is by IDENTIFIER, so a local named `gs`, `ta1`, `caret` or `colon` matches it whatever its
-type. In `test/builder-interchange-gs-escape.test.ts:157-268`,
-`test/transactions-ack-ta1-escape.test.ts:242-260` and `test/parser-envelope-release-split.test.ts:429`
-every such local is **already a wrapped `X12Segment`** (`gsOf()`, `withId()`, `dotPath()`), so the
-calls compile and are this slice's in-tree controls, not carriers.
+**Reached by the sweep and NOT defects, and a draft got the attribution wrong, so read which pattern
+found what.** The **receiver filter** is by IDENTIFIER, so a local named `gs`, `ta1`, `st` or `se`
+matches it whatever its type; it matches roughly thirty lines in `test/`, chiefly
+`test/parser-segment.test.ts:75-131`, `test/parser-segment-degenerate-release-separator.test.ts:154-201`
+and `test/builder-interchange-gs-escape.test.ts:293`/`:326`. **Pattern 1**, the bare literal, reaches
+further into the same files, to locals the filter never sees because they are named for the case
+rather than the segment: `caret`, `colon`, `shifting`, `inert`, `asDotPath`, `dotPath(...)`,
+`asBuiltAtBase(...)`. **In every one of those the receiver is already a wrapped `X12Segment`**
+(`gsOf()`, `withId()`, `dotPath()`, or an explicit `as X12Segment` at
+`builder-interchange-gs-escape.test.ts:293`), so the calls compile and are this slice's in-tree
+controls, not carriers. **That asymmetry is the point: the receiver filter alone would have missed
+them, and it was Pattern 1 that reached them.**
 Naming `getSegmentValue` with **no receiver at all** is likewise not this defect:
 `agent-notes/x12-ta1-residuals.md:60`, `agent-notes/x12-envelope-release-split.md:32`,
 `agent-notes/x12-st03-read-not-release-aware.md:56`.
