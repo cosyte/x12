@@ -24,6 +24,14 @@ text would make the declaration beat the `SVx` fallback and stop an `SV2` line d
 left open. The difference is one-way: nothing that resolved a variant, or was admitted by
 `get277CADisposition`, stops doing so.
 
+**🛑 So the published reference can name a guide this reader did NOT resolve to, and nothing warns
+about the divergence.** On that document `implementationConventionReference` reads `005010X222A1`
+while `variant` is `I` from the fallback; on a 277 the model can publish `005010X214` while
+`transactionType` is `claim-status` and `get277CADisposition` returns `undefined`. Through `0.0.15`
+the published value WAS the keyed value, so the model could not disagree with itself. **Gate on
+`variant` / `transactionType`, never on the published reference.** `X12_837_UNKNOWN_VARIANT`'s
+message text drops the word `verbatim` for the same reason; no code moved and none was minted.
+
 Nothing is trimmed or case-folded; a whitespace-only `ST-03` is still published untrimmed, and a
 dangling `?` still raises no warning on these readers. `tx.st.elements` is untouched and is still
 the verbatim framed surface: if you were applying `unescapeRelease` to

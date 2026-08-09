@@ -244,7 +244,9 @@ export interface Ta1Segment {
  *
  * `elements` on the ST and SE segments themselves IS decoded at envelope
  * time so envelope invariants can be checked (ST-02 ↔ SE-02 control-number
- * reconciliation, SE-01 segment count).
+ * reconciliation, SE-01 segment count). **Read "decoded" as element-SPLIT and
+ * nothing more: the strings are PRE-`?`-unescape**, and a reader that publishes
+ * one to a consumer unescapes it first (`X12-ST03-READ-NOT-RELEASE-AWARE`).
  *
  * @example
  * ```ts

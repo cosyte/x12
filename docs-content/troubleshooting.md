@@ -228,6 +228,14 @@ escaped a byte the ISA declared as a delimiter, and the difference is one-way - 
 resolved or was admitted before stops doing so. Nothing is trimmed or case-folded, and a dangling
 `?` in `ST-03` still raises no warning on these readers.
 
+**So the published reference can name a guide the reader did not resolve to, and nothing warns about
+the divergence.** With `componentSeparator: "X"` and an `ST-03` framed `005010?X222A1`,
+`submission.implementationConventionReference` reads `005010X222A1` while `submission.variant` came
+from the `SVx` fallback and no variant warning is raised; on a 277 the model can publish
+`005010X214` while `transactionType` is `claim-status` and `get277CADisposition` returns
+`undefined`. Through `0.0.15` the published value WAS the keyed value, so the model could not
+disagree with itself. **Gate on `variant` / `transactionType`, never on the published reference.**
+
 Fourth, **`build835`'s balance-equation amounts refuse UNTYPED.** The balance guard runs before the
 escape helper is built and calls `X12Decimal` methods on your value, so a raw `number` there throws a
 plain `TypeError` with **no `code`** rather than the typed refusal. The rule is the equation, not a

@@ -112,8 +112,12 @@ resolutions. That is what makes it a separate, weighable slice rather than a reg
 ## What shipped
 
 One `@internal` helper, `decodeSt03` in `src/transactions/shared/st03.ts`, called at the three
-PUBLISH sites. No warning code minted, no error code minted, no public type changed. The 277CA
-admission gate is not touched at all.
+PUBLISH sites. **No warning code minted, no error code minted, no public TYPE changed, and the 277CA
+admission gate is not touched at all** - but `X12_837_UNKNOWN_VARIANT`'s frozen MESSAGE TEXT does
+change: the word *"verbatim"* is deleted from it, because this slice made it false. A message text is
+consumer-visible, so it is disclosed in the changeset, `CHANGELOG.md` and `KNOWN-LIMITATIONS.md`
+rather than treated as internal. **The code did not move and none was minted** - which is this repo's
+own rule about what may change in a message.
 
 **Mutation controls, by running:**
 
@@ -131,9 +135,31 @@ Suite at head: **89 files / 2,284 tests**, `tsc` exit 0.
 ## The claim sweep
 
 **By WORDING across the whole tree, not file by file**, which is the `#102` lesson and what `#108`
-needed. The falsifiable clause was *"three more readers publish ST-03 raw"* and its relatives. It was
-carried by `CLAUDE.md`, `src/transactions/ack/parse-ta1.ts`,
-`test/transactions-ack-ta1-residuals.test.ts` and
+needed.
+
+**🛑 AND THE FIRST DRAFT OF THIS SECTION WAS ITSELF OVERSTATED, WHICH IS THE PASS-1 FINDING.** It
+swept only for the PREDECESSOR's clause and never for clauses the NEW behaviour falsifies, while
+claiming a whole-tree sweep. **A sweep is over the wording your change makes false, not over the
+wording that made your change necessary.** The gate found four such carriers, three of which SHIP:
+
+- `src/parser/warnings.ts:332`, the frozen `X12_837_UNKNOWN_VARIANT` message, said *"The **verbatim**
+  reference is preserved on the model"* - and it fires **preferentially** on the very documents this
+  slice changed, because the lookup keys on the raw text so an escaped `ST-03` is almost never in the
+  table.
+- `src/parser/warnings.ts:902`, the exported `unknown837Variant` JSDoc, which ships in the `.d.ts`.
+- Two test comments, in `transactions-claim-837-variant-lookup.test.ts` and
+  `transactions-claim-837-ambiguous-variant.test.ts`.
+- `CHANGELOG.md` + `KNOWN-LIMITATIONS.md` cited *"exactly as `X12Segment.elements` documents"* for a
+  type that is NOT an `X12Segment`, and whose own JSDoc says its elements *"IS decoded at envelope
+  time"* - which reads as release-decoded. The citation is deleted and `types.ts` now says what
+  "decoded" means there.
+
+**Every remedy is a deletion of the falsified word**, plus one added disclosure sentence naming the
+consequence the gate said was never stated: the published reference can name a guide this reader did
+not resolve to, and nothing warns.
+
+The predecessor's clause was *"three more readers publish ST-03 raw"*. It was carried by `CLAUDE.md`,
+`src/transactions/ack/parse-ta1.ts`, `test/transactions-ack-ta1-residuals.test.ts` and
 `documentation/agent-notes/x12-ta1-residuals.md`. **It is false in two ways now** - the readers no
 longer publish raw, and the count was three where the measurement is four sites / five readers - so
 each carrier is corrected, and the count is **deleted rather than restated**, because a live count

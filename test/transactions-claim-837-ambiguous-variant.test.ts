@@ -395,7 +395,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: the warning's shape", () => {
       expect(w.message).not.toContain(MARKER);
       expect(ALL_WARNING_MESSAGES.has(w.message)).toBe(true);
     }
-    // The verbatim reference is still on the model, which is where a
+    // The reference is still on the model, which is where a
     // consumer reads it from.
     expect(sub.implementationConventionReference).toBe(`005010X${MARKER}`);
   });

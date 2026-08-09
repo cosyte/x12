@@ -76,7 +76,7 @@ model.
 - **🩺 `implementationConventionReference` is POST-`?`-unescape as of this release, in every typed
   reader that publishes it, and that is a behaviour change on documents whose `ST-03` carries a
   release escape** (`X12-ST03-READ-NOT-RELEASE-AWARE`). `tx.st.elements` is the ST segment as framed:
-  post-element-split and PRE-unescape, exactly as `X12Segment.elements` documents. Five public
+  post-element-split and PRE-unescape. Five public
   readers were handing one of those strings straight back on the model - `get837Claims`,
   `get277Status`, `get277CADisposition`, `get278Request` and `get278Response` - so a sender that
   escaped a delimiter inside `ST-03` got the escape rather than the value it stated. `parse999` has
@@ -97,6 +97,15 @@ model.
     taken here. **The difference is one-way: no document that resolved or was admitted before stops
     doing so**, because no identifier any of the three tests is keyed on contains a delimiter or the
     release character, so raw text equal to one decodes to itself.
+  - **🛑 The published reference can name a guide this reader did NOT resolve to, and nothing warns
+    about the divergence.** On the `componentSeparator: "X"` document above,
+    `submission.implementationConventionReference` reads `005010X222A1`, which the variant table
+    holds, while `submission.variant` is `I` from the `SVx` fallback and neither
+    `X12_837_UNKNOWN_VARIANT` nor `X12_837_AMBIGUOUS_VARIANT` is raised; the 277 shape publishes
+    `005010X214` while `transactionType` is `claim-status` and `get277CADisposition` returns
+    `undefined`. **Through `0.0.15` the published value WAS the keyed value, so the model could not
+    disagree with itself. Gate on `variant` / `transactionType`, never on the published reference.**
+    `X12_837_UNKNOWN_VARIANT`'s message drops the word `verbatim` for the same reason.
   - **🛑 It introduces no normalisation and no new warning.** Nothing is trimmed, case-folded or
     prefix-matched; a whitespace-only `ST-03` is still published untrimmed. A dangling `?` at the end
     of the element still raises no `X12_DANGLING_RELEASE_CHAR` on these readers: the sink is a no-op,

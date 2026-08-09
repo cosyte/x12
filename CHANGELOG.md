@@ -13,8 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it** (`X12-ST03-READ-NOT-RELEASE-AWARE`). A behaviour change on any document whose `ST-03` carries
   a release escape.
 
-  `X12TransactionSet.st.elements` is the ST segment as framed - post-element-split and PRE-unescape,
-  exactly as `X12Segment.elements` has always documented - and five public readers were handing one
+  `X12TransactionSet.st.elements` is the ST segment as framed - post-element-split and PRE-unescape -
+  and five public readers were handing one
   of those strings straight back on the model: `get837Claims`, `get277Status`,
   `get277CADisposition`, `get278Request` and `get278Response` (`walk277` and `walk278` are shared, so
   three reads serve the five). A sender that escaped a delimiter inside `ST-03` got the escape back
@@ -45,6 +45,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no document that resolved a variant, or was admitted by `get277CADisposition`, stops doing so** -
   no identifier any of the three tests is keyed on carries a delimiter or the release character, so
   raw text equal to one decodes to itself.
+
+  **🛑 The consumer-visible consequence, stated rather than left to be inferred: the published
+  reference can name a guide this reader did NOT resolve to, and nothing warns about the
+  divergence.** On the `componentSeparator: "X"` document above,
+  `submission.implementationConventionReference` reads `005010X222A1`, which the variant table
+  holds, while `submission.variant` is `I` from the `SVx` fallback and neither
+  `X12_837_UNKNOWN_VARIANT` nor `X12_837_AMBIGUOUS_VARIANT` is raised. The 277 shape is the same:
+  the model publishes `005010X214` while `transactionType` is `claim-status` and
+  `get277CADisposition` returns `undefined`. **Through `0.0.15` the published value WAS the keyed
+  value, so the model could not disagree with itself. Gate on `variant` / `transactionType`, never
+  on the published reference.** `X12_837_UNKNOWN_VARIANT`'s message text drops the word `verbatim`
+  for the same reason; no code moved and no code was minted.
 
   **No normalisation and no new warning.** Nothing is trimmed, case-folded or prefix-matched, and a
   whitespace-only `ST-03` is still published untrimmed. A dangling `?` at the end of the element

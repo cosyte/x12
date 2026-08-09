@@ -158,6 +158,12 @@ function walk277(delimiters: Delimiters, tx: X12TransactionSet): X12ClaimStatusR
   // what that shows and what it does not: no document admitted at base stops
   // being admitted, because `ICR_277CA` carries no delimiter and no release
   // character, so a raw text equal to it decodes to itself.
+  //
+  // 🛑 THE CONSUMER-VISIBLE CONSEQUENCE, WHICH THE SHIPPED DISCLOSURE NAMES:
+  // this model can publish `005010X214` while `transactionType` reads
+  // `claim-status` and `get277CADisposition` returns `undefined`, with nothing
+  // warning about the divergence. Through `0.0.15` the published value WAS the
+  // keyed value, so the model could not disagree with itself.
   const implementationConventionReferenceRaw = tx.st.elements[3];
   const implementationConventionReference = decodeSt03(
     implementationConventionReferenceRaw,
