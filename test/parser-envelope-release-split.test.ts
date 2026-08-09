@@ -379,9 +379,14 @@ describe("X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE: 🛑 the exposure is NOT inbo
     const parsed = parseX12(`${ISA}${ta1.raw}~IEA*0*000000001~`);
     const read = parseTA1(parsed);
     expect(read?.ackCode).toBe("A"); // "R" at base
-    expect(read?.interchangeControlNumber).toBe("00000001??"); // "00000001?*260601" at base
+    // The decoded field is post-unescape as of `X12-TA1-RESIDUALS`, so the key
+    // the caller stated is what comes back: "00000001?*260601" at `e8f34b9`,
+    // "00000001??" at `67f1831`, and the caller's own string here. `raw` is
+    // still the verbatim byte surface and still carries the escape.
+    expect(read?.interchangeControlNumber).toBe("00000001?");
+    expect(read?.raw.elements[1]).toBe("00000001??");
     expect(read?.noteCode).toBe("000"); // undefined at base
-    // Still nothing raised on any channel - the read half did not move.
+    // Still nothing raised on any channel.
     expect(parsed.warnings).toEqual([]);
   });
 

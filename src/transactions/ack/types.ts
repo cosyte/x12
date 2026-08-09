@@ -246,12 +246,22 @@ export interface X12Ack999 {
  * - `interchangeTime` - TA1-03: HHMM (echoes inbound ISA-10).
  * - `ackCode` - TA1-04: {@link Ta1AckCode}.
  * - `noteCode` - TA1-05: typed when the value is a known I18 code
- *   ({@link Ta1NoteCode}); the raw string is preserved verbatim alongside
- *   so unknown extensions round-trip.
- * - `noteCodeRaw` - verbatim TA1-05 string. Equal to `noteCode` when the
- *   value is a known I18 code; equal to the raw inbound text when not.
+ *   ({@link Ta1NoteCode}); `noteCodeRaw` carries the un-narrowed string
+ *   alongside so unknown extensions survive. **A clause here said that
+ *   string is preserved VERBATIM and is deleted, not reworded:**
+ *   `X12-TA1-RESIDUALS` made it post-unescape, and `raw.elements[5]` is
+ *   the verbatim surface.
+ * - `noteCodeRaw` - the un-narrowed TA1-05 string. Equal to `noteCode` when
+ *   the value is a known I18 code; equal to the decoded inbound text when
+ *   not.
  * - `raw` - the underlying envelope-level {@link Ta1Segment}, for
  *   byte-exact round-trip.
+ *
+ * **The five decoded fields are POST-`?`-unescape; `raw` is the verbatim
+ * byte surface and is not.** `X12-TA1-RESIDUALS` moved the decoded half:
+ * before it, a released TA1-01 read back carrying its `?` and matched no
+ * ISA-13, while every dot-path read of the same element already unescaped.
+ * Read `raw.elements` when you want the bytes.
  *
  * @example
  * ```ts

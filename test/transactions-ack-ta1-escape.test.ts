@@ -121,21 +121,23 @@ describe("X12-TA1-EMIT-NOT-RELEASE-AWARE: an Accept this library emits no longer
     expect(roundTrip({ ...ACCEPT, interchangeControlNumber: "00000001?" })).toEqual({
       raw: "TA1*00000001??*260601*1200*A*000", // was TA1*00000001?*260601*1200*A*000
       ackCode: "A", // was "R"
-      controlNumber: "00000001??", // was "00000001?*260601"
+      // Post-unescape as of `X12-TA1-RESIDUALS`: "00000001?*260601" at
+      // `e8f34b9`, "00000001??" at `67f1831`, the caller's own string here.
+      controlNumber: "00000001?",
       noteCode: "000", // was undefined
       warnings: [],
     });
     expect(roundTrip({ ...ACCEPT, interchangeControlNumber: "0000*0001" })).toEqual({
       raw: "TA1*0000?*0001*260601*1200*A*000", // was TA1*0000*0001*260601*1200*A*000
       ackCode: "A", // was "R"
-      controlNumber: "0000?*0001", // was "0000"
+      controlNumber: "0000*0001", // was "0000"; "0000?*0001" at `67f1831`
       noteCode: "000",
       warnings: [],
     });
     expect(roundTrip({ ...ACCEPT, interchangeControlNumber: "0000~0001" })).toEqual({
       raw: "TA1*0000?~0001*260601*1200*A*000", // was TA1*0000~0001*260601*1200*A*000
       ackCode: "A", // was "R"
-      controlNumber: "0000?~0001", // was "0000"
+      controlNumber: "0000~0001", // was "0000"; "0000?~0001" at `67f1831`
       noteCode: "000",
       warnings: [], // was ["X12_UNEXPECTED_SEGMENT"]
     });
@@ -196,16 +198,18 @@ describe("X12-TA1-EMIT-NOT-RELEASE-AWARE: an Accept this library emits no longer
 });
 
 describe("X12-TA1-EMIT-NOT-RELEASE-AWARE: the two costs, disclosed and pinned", () => {
-  it("🩺 the key reads back RAW, so it still needs unescapeRelease - the READ half is unchanged", () => {
-    // `parseTA1` reads elements verbatim, exactly as `X12Segment.elements` has
-    // always documented. Closing the disposition inversion does NOT make the
-    // round trip an identity on a released value, and this slice deliberately
-    // does not touch the read half: unescaping there would move every TA1 a
-    // consumer already reads.
+  it("🩺 the decoded key is post-unescape and `raw` is not - `X12-TA1-RESIDUALS` moved the READ half", () => {
+    // 🛑 THE CLAUSE THAT STOOD HERE - "the key reads back RAW, so it still
+    // needs unescapeRelease, the READ half is unchanged" - IS DELETED, NOT
+    // REWORDED. It was true of `#97` and is measured false at head. What the
+    // slice cost was the escape LEAKING into the decoded reassociation key,
+    // which matches no ISA-13; `raw` is still the verbatim byte surface, so
+    // nothing that reads bytes moved.
     const read = roundTrip({ ...ACCEPT, interchangeControlNumber: "00000001?" });
-    expect(read.controlNumber).toBe("00000001??");
-    expect(read.controlNumber).not.toBe("00000001?");
-    // What the consumer does about it, which is the documented route:
+    expect(read.controlNumber).toBe("00000001?");
+    expect(read.raw).toBe("TA1*00000001??*260601*1200*A*000");
+    // The hand-rolled route the docs used to prescribe is now the library's
+    // own, and applying it a second time to the DECODED value is a no-op here.
     const d = { element: "*", repetition: "^", component: ":", segment: "~" };
     expect(unescapeRelease(read.controlNumber ?? "", d, () => {}, { segmentIndex: 0 })).toBe(
       "00000001?",
@@ -304,7 +308,11 @@ describe("X12-TA1-EMIT-NOT-RELEASE-AWARE: the two costs, disclosed and pinned", 
     const read = roundTrip({ ...ACCEPT, interchangeControlNumber: "00000001??" });
     expect(read.raw).toBe("TA1*00000001????*260601*1200*A*000");
     expect(read.ackCode).toBe("A");
-    expect(read.controlNumber).toBe("00000001????");
+    // The BYTES still carry the double escape; the decoded field unescapes one
+    // layer as of `X12-TA1-RESIDUALS`, which is what the caller asked to emit
+    // and still one layer more than the key they started from.
+    expect(read.controlNumber).toBe("00000001??");
+    expect(read.raw).toContain("????");
   });
 
   it("🛑 releases against the delimiters the caller STATES, because guessing one corrupts a value", () => {

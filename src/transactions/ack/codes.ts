@@ -221,7 +221,9 @@ export type Ta1AckCode = (typeof TA1_ACK_CODES)[keyof typeof TA1_ACK_CODES];
  * TA1-05 interchange note code (ASC X12 code list I18). Codes `000`–`028`
  * are defined by the standard; values past `028` exist in some standard
  * revisions and are accepted on parse (Postel's Law) but not enumerated
- * here - the parsed model carries the raw string for verbatim preservation.
+ * here - the parsed model carries the un-narrowed string on `noteCodeRaw`,
+ * post-`?`-unescape as of `X12-TA1-RESIDUALS`. **A clause here said "verbatim"
+ * and is deleted rather than reworded**; `raw.elements[5]` is the byte surface.
  *
  * `000` is the canonical "no error" note paired with a `TA1-04 == 'A'`
  * acceptance. The build-time safety guard refuses a fabricated `A` paired
@@ -299,8 +301,10 @@ export const TA1_NOTE_CODES = {
 /**
  * String-literal union over {@link TA1_NOTE_CODES} - the standard-issued
  * note codes `000`–`028`. Real-world inbound TA1 may carry a value past
- * `028` (some revisions extend the list); `parseTA1` exposes the raw
- * string in that case so the verbatim value survives even when the union
- * cannot statically type it.
+ * `028` (some revisions extend the list); `parseTA1` exposes the
+ * un-narrowed string on `noteCodeRaw` in that case, so the value survives
+ * even when the union cannot statically type it. **It is post-`?`-unescape
+ * as of `X12-TA1-RESIDUALS`, and a clause here calling it VERBATIM is
+ * deleted rather than reworded** - `raw.elements[5]` is the byte surface.
  */
 export type Ta1NoteCode = (typeof TA1_NOTE_CODES)[keyof typeof TA1_NOTE_CODES];

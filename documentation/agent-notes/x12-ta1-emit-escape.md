@@ -39,7 +39,7 @@ sender who reads an Accept does not resubmit.
 **The grounding is INSIDE the package, exactly as `#96`'s was, and it is not a spec fact.** Nobody
 here has read a 005010 clause that settles what a `?` before a separator means; `#96` recorded that
 the class is symmetric and broke the tie on consistency with `decodeSegment`. **Do not re-derive that
-as spec.** What grounds *this* slice is narrower and is a fact about this tree: `buildTA1` emitted
+as spec.** What grounds _this_ slice is narrower and is a fact about this tree: `buildTA1` emitted
 bytes that this package's own reader decoded into a **different disposition than the caller asked
 for**, while every other builder already released the same class of element through the same helper.
 One function disagreeing with itself, which is the same shape `#96` used.
@@ -81,8 +81,10 @@ disposition the caller did not ask for. **Do not compress that into "the predica
     splits repetitions with `splitWithRelease` - and answers `"0000^0001"` here. The composite read
     `"01-1"` answered `"0000"` at base for `"0000:0001"` and answers the whole value here.
   - **The measured pure cost is a MID-STRING `?`, and only on the surfaces documented as RAW.**
-    `raw`, `elements` and `parseTA1`'s fields read `"0000??0001"` where they read `"0000?0001"`;
+    `raw` and `elements` read `"0000??0001"` where they read `"0000?0001"`;
     every dot-path read unescapes and answered `"0000?0001"` on BOTH trees.
+    **🩺 THIS LIST NAMED `parseTA1`'s FIELDS AS A THIRD SUCH SURFACE AND THAT ENTRY IS DELETED, NOT
+    REWORDED** - `X12-TA1-RESIDUALS` made them post-unescape.
   - **A caller who was hand-rolling the escape regresses on both kinds of surface** - the remedy
     `KNOWN-LIMITATIONS.md` published while this was open. `"00000001??"` in, `TA1*00000001????*…`
     out, and `getSegmentValue` answering `"00000001??"` where it answered `"00000001?"`.
@@ -99,11 +101,12 @@ disposition the caller did not ask for. **Do not compress that into "the predica
   `test/builder-string-type.test.ts` requires of every builder module. **Record that ordering
   honestly: uniformity was the reason, the dot-path gain was found afterwards by a refuter, and the
   slice does not get to claim it foresaw it.**
-- **🩺 The READ half did not move and must not be read as if it had.** `parseTA1` reads elements RAW,
-  pre-`?`-unescape, exactly as `X12Segment.elements` has always documented, so `"00000001?"` now
-  reads back as `"00000001??"` rather than as `"00000001?*260601"`. **The disposition is correct
-  where it was inverted; the round trip is still not an identity on a released value.** Unescaping on
-  the read side would move every TA1 a consumer already reads and is a different slice.
+- **🩺 The READ half did not move IN THIS SLICE, and the sentence that stood here in the present
+  tense - "`parseTA1` reads elements RAW, pre-`?`-unescape ... the round trip is still not an
+  identity on a released value" - IS DELETED, NOT REWORDED.** It was the accurate record of `#97`
+  and is measured false at head. This slice left `"00000001?"` reading back as `"00000001??"` rather
+  than as `"00000001?*260601"`; **`X12-TA1-RESIDUALS` is the different slice that closed it**, and
+  the decoded fields are post-unescape now. Do not restate the deleted form.
 
 ## 🛑 Why the release is scoped to a delimiter set the CALLER states
 
@@ -194,3 +197,49 @@ cannot fail measures nothing.
   `decodeSegment` and for the ELEMENT role only. **The dangling half was re-measured there and is
   NOT REACHABLE AS STATED** - a `?` at the end of a non-final element is escaping the separator
   that follows it, so it is never unpaired; read that entry before acting on this line.
+
+---
+
+# Relocated verbatim from `CLAUDE.md`, 2026-08-09, to pay for the `X12-TA1-RESIDUALS` trap
+
+This is that file's `X12-TA1-EMIT-NOT-RELEASE-AWARE` `###` section, moved here whole under the
+ratchet rule (relocate first, lower the entry as the relocation lands, never raise). **Nothing is
+dropped except one clause the successor slice measured FALSE, and that deletion is recorded inline
+below rather than performed silently** - a revert re-publishes claims, so the record of what was cut
+travels with the text.
+
+### 🩺 `X12-TA1-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-ta1-emit-escape.md`
+
+- **🩺 `buildTA1` RELEASES ALL FIVE CALLER ELEMENTS NOW, SO AN ACCEPT THIS LIBRARY EMITS NO LONGER
+  READS BACK AS A REJECT.** A bare delimiter took its own slot and shifted TA1-04, which the read
+  narrows out-of-enum to `R`. **`*` AND `~` DID IT ON EVERY RELEASE; ONLY THE `?` SHAPE IS `#96`'s -
+  never restate the class as something that arc introduced. THE INVERSE IS THE LESS SAFE ONE:** a
+  type-forbidden `noteCode` of `"A"` shifted onto TA1-04 made a **REJECT READ ACCEPT**, and nobody
+  resubmits against an Accept.
+- **🛑 IT CHANGES BYTES ALREADY ON THE WIRE. THAT IS `#96`'s STATED COST, WEIGHED AND TAKEN, NOT AN
+  OVERSIGHT CORRECTED.** Bounded: no delimiter and no `?` means byte-identical, which is every
+  conformant TA1. **THE PREDICATE MOVES BOTH WAYS, LIKE `#96`'s - A DRAFT SAYING "ONE WAY, NOTHING
+  STARTS" WAS REFUTED IN ONE PROBE. STATE THE PROPERTY, NEVER THE DIRECTIONS:** head reports the
+  disposition THE CALLER PASSED, base reported whatever the shift left in slot 4, so `ackCode === "R"`
+  both STOPS and STARTS (`interchangeTime: "12*A"` + `ackCode "R"` read `"A"` at base, all fields
+  in-enum). **ONE-WAY IS THE SAFETY, A DIFFERENT SENTENCE.**
+- **🛑 TWO DRAFTS OF THE COST BULLET WERE REFUTED, THE SECOND BY THE CORRECTION TO THE FIRST. NEVER
+  TOTAL IT.** "The one class that gets worse" (pass 1) and "the rest is released for no framing gain"
+  (pass 2, **inverted** by measurement). What holds: only `*`, `~` and a `?` BEFORE the separator
+  ever shifted the SEGMENT's framing; **`^` and `:` moved the DOT-PATH reader and releasing them is a
+  GAIN** (`getSegmentValue(ta1, "01")` answered `"0000"` at base for `"0000^0001"`, the key truncated
+  to repetition 0); **the measured pure cost is a MID-STRING `?` on the RAW surfaces only**, since
+  every dot-path read unescapes. A hand-rolled escape regresses on both.
+  **🛑 A CLAUSE HERE READ "THE READ HALF DID NOT MOVE: `parseTA1` IS STILL PRE-`?`-UNESCAPE". IT IS
+  DELETED, NOT REWORDED** - `X12-TA1-RESIDUALS` made the decoded fields post-unescape, so it is
+  measured false. It was accurate for THIS slice and is not restated in any tense.
+- **🛑 RELEASE ONLY AGAINST THE DELIMITER SET THE CALLER STATES** (`BuildTA1Options` took
+  `Build999EnvelopeSpec`'s other three; they exist for ESCAPING and `buildTA1` still emits no
+  terminator). `unescapeRelease` keeps `?X` verbatim, so releasing against a GUESSED delimiter
+  corrupts a reassociation key that was correct. **THE DEFAULTS ARE THE ARCHETYPE AND CANNOT BE
+  VERIFIED.**
+- **THE TYPE CHECK IS A PREREQUISITE, NOT A BONUS:** bare `escapeRelease` returns `""` for a
+  `number`, so escaping without the chokepoint trades a shifted TA1-01 for a VANISHED one.
+  **EXISTING `X12_ACK_INVALID_SPEC`, NO NEW CODE; `enforceAcceptIsClean` STILL RUNS FIRST.**
+  **THE `seg`/`joinSeg` QUALIFIER IS UNCHANGED** - still no joiner, so the refusal names the BUILDER
+  and never `TA1-01`.
