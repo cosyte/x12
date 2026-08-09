@@ -1029,10 +1029,10 @@ required control number and this builder never invents one, so nothing is emitte
   then concatenates. Measured through `buildInterchange`:
 
   ```text
-  interchangeControlNumber: []                 ISA-13 = 000000000   warnings: []
-  interchangeControlNumber: new String("")     ISA-13 = 000000000   warnings: []
-  interchangeControlNumber: new String("ABC")  ISA-13 = 000000ABC   warnings: []
-  interchangeControlNumber: new String(" ")    ISA-13 = 00000000    warnings: []
+  interchangeControlNumber: []                 ISA-13 = "000000000"   warnings: []
+  interchangeControlNumber: new String("")     ISA-13 = "000000000"   warnings: []
+  interchangeControlNumber: new String("ABC")  ISA-13 = "000000ABC"   warnings: []
+  interchangeControlNumber: new String(" ")    ISA-13 = "00000000 "   warnings: []
   ```
 
   The first two are the **same fabricated `000000000`** the empty guard closed, reached through a
@@ -1051,7 +1051,7 @@ required control number and this builder never invents one, so nothing is emitte
     property and not as a claim about what the old message said. **If you match on message text at a
     control-number slot, re-read it.**
   - **It narrows what a control number may BE, never what it may CONTAIN.** A whitespace-only
-    control number is still accepted and still padded, unchanged and by design: trimming would be a
+    control number is still accepted, unchanged and by design: trimming would be a
     normalisation rule and no source consulted for this package states one. The asymmetry that
     creates is stated rather than smoothed over - `new String(" ")` is refused because it is not a
     string, and the primitive `" "` is not. A SHORT control number still zero-pads. The ISA's other

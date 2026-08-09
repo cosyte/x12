@@ -109,8 +109,7 @@
  * The first two are the **same fabricated `000000000`** the empty test closed,
  * reached through a different input type. The third is not a fabrication but a
  * **silent coercion**, and it is the one this package had already decided
- * against everywhere else: `makeCallerEscaper` refuses a boxed
- * `new String(...)` by name, so the same value was refused at GS-06 and
+ * against everywhere else: the same value was refused at GS-06 and
  * accepted at ISA-13 in the same call.
  *
  * **The split is by ROUTE.** Every non-string probed at the other slots was

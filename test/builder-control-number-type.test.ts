@@ -22,16 +22,14 @@
  * The first two are the **same fabricated `000000000`**, reached through a
  * different input type: a frozen, well-formed interchange whose ISA-13
  * reconciles against its IEA-02 on nine digits the caller never supplied. The
- * other two are silent **coercions** of a boxed string, which is a value
- * `makeCallerEscaper` refuses by name - so at base the same
+ * other two are silent **coercions** of a boxed string: at base the same
  * `new String("ABC")` was refused at GS-06 and accepted at ISA-13 in one call.
  *
  * ## The census, which is NINE slots and not thirty
  *
  * The thirty slots split by route, and only one route was exposed. The 21 that
- * reach the wire through `esc` were already type-checked, because
- * `makeCallerEscaper` refuses before escaping; every non-string probed at those
- * slots drew that builder's own typed refusal at base. The nine ISA-13 / IEA-02
+ * reach the wire through `esc` were already type-checked; every non-string
+ * probed at those slots drew that builder's own typed refusal at base. The nine ISA-13 / IEA-02
  * slots reach the wire through `padControl`, which reads `.length` and then
  * concatenates, and the ISA is joined directly - outside both the escaper and
  * `requireCallerSegment`. **Nine slots fabricated or coerced; 21 did not.**

@@ -83,11 +83,9 @@ or financial value on the wire.**
   AND A DRAFT PUBLISHED ONE MEASUREMENT AS THE CLASS.** `buildInterchange`/`build999` join untrimmed
   (`GE*1*~`); the SEVEN domain builders' `seg` DROPS a trailing empty, so the trailer loses the
   element outright (`GE*1~`, `SE*21~`). SILENCE is the property that holds across both.
-- **🛑 BYTE-STRICT `=== ""`. NO TRIM, NO TYPE CHECK.** Whitespace STILL pads to `00000000 ` and STILL
+- **🛑 NO TRIM.** Whitespace STILL pads to `00000000 ` and STILL
   builds - **DISCLOSED, NOT FIXED: A TRIM IS A NORMALISATION RULE AND NO SOURCE STATES ONE. `buildTA1`
-  IMPORTS NO `pad`, SO IT EMITS WHITESPACE VERBATIM - NEVER WRITE IT AS PADDED.** A non-string is
-  UNCHANGED ON EVERY ROUTE; **DO NOT RESTATE WHAT EACH ROUTE DOES** (a draft said a number "or
-  `undefined`" gets the typed refusal; `padControl(undefined)` throws a BARE `TypeError`, no `code`).
+  IMPORTS NO `pad`, SO IT EMITS WHITESPACE VERBATIM - NEVER WRITE IT AS PADDED.**
   **A SHORT one STILL ZERO-PADS - never read the guard as "ISA-13 must be nine characters".**
 - **⚖️ REFUSE NOT WARN, ON CONSISTENCY WITH FIVE IN-PACKAGE `=== ""` GUARDS, NOT ON SPEC** - 005010
   settles neither; a warning would have to travel the READ registry, and a widening onto a NEW CODE

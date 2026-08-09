@@ -23,6 +23,16 @@ slot.
 > own follow-up. **Read this file before you touch the guard, because nothing in `CLAUDE.md` will
 > send you here yet.**
 >
+> **Returning `CLAUDE.md` to base is NOT a no-op, and pass 1 of the fresh budget caught it as a
+> major.** `#101`'s own trap there asserted *"NO TYPE CHECK"*, *"a non-string is UNCHANGED ON EVERY
+> ROUTE"*, and a parenthetical that `padControl(undefined)` throws a bare `TypeError` with no `code` -
+> all three true at base and **all three made false by this guard**, in the file every session in this
+> repo loads first. The parenthetical was the sharpest, because it exists to correct an
+> already-refuted draft and so reads as hard-won. **All three clauses are DELETED**, which is the same
+> "touched only to delete claims" operation and is not the deferred trap. **The lesson generalises: a
+> revert to base re-publishes every claim the base made, and a slice that falsifies one of them owns
+> the deletion.**
+>
 > **The sweep, and how the carrier list was derived.** The disputed sentence was *"only the
 > segment-join guard names the SLOT; `esc`/`escDec` name only the builder"* - true at base, falsified
 > by this guard, because the control-number guard names the slot too. Grepping the **claim's wording**
@@ -100,7 +110,7 @@ ISA-13 while refusing it at GS-06, in the same call, was the inconsistency the m
 **What the predicate does NOT cover, stated precisely:**
 
 - **It narrows what a control number may BE, never what it may CONTAIN.** A whitespace-only
-  _primitive_ still pads (`" "` -> `00000000 `) and still builds. Trimming would be a normalisation
+  _primitive_ still builds. Trimming would be a normalisation
   rule and **no source consulted for this package states one** - the same grounding limit that
   governs every identifier slice here.
 - **The asymmetry that creates is real and must be stated, never smoothed over:** `new String(" ")`

@@ -51,7 +51,7 @@ model.
   minted and no warning code moved.** What changes is that a build that used to return a document now
   throws, and that a spec wrong in two ways can now report a different one of the two: see the
   precedence bullet below, which is the qualifier a draft of this entry left out.
-  - **🛑 The guard is byte-strict `=== ""`. It does NOT trim, and a whitespace-only control number is
+  - **🛑 The guard does NOT trim, and a whitespace-only control number is
     still accepted**: `interchangeControlNumber: " "` still emits ISA-13 as `00000000 `, and
     `buildTA1` does no padding at all, so it emits whatever whitespace it was handed, verbatim. This
     is a real residual rather than an oversight. Trimming
