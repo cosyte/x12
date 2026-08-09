@@ -91,31 +91,12 @@ HOIST IT INTO `splitWithRelease`; and `?~` STILL SWALLOWS THE TERMINATOR, `PRE-E
 
 ### 🩺 `X12-EMIT-DEGENERATE-RELEASE-DELIMITER` (2026-08-09) · `agent-notes/x12-emit-degenerate-release-delimiter.md`
 
-- **🩺 A DELIMITER SET WITH `?` IN ANY ROLE IS REFUSED ON EMIT, EVERY BUILDER, INSIDE
-  `makeCallerEscaper`. FOUR ROLES, NOT THREE - THE SEGMENT TERMINATOR DOES IT TOO** (a released byte
-  ends the segment early; a phantom segment follows, uncounted by SE-01).
-- **🩺 TWO MECHANISMS, AND THE SECOND HAS NO CALLER VALUE AT ALL: THE LIBRARY'S OWN JOIN.** `esc`
-  PREFIXES `?`, so the protection is emitted as structure; and a composite/repetition is JOINED with
-  the separator declared, so on `?` the join is emitted as an escape. `build837P` on
-  `componentSeparator:"?"` fused **`SV1-01-2` (procedure) and `HI-01-2` (diagnosis) ON EVERY
-  DOCUMENT, no trigger byte, `warnings: []`.** **NEVER WRITE THEM AS ONE DEFECT** - a value-level
-  guard cannot reach the second, which is why _"keep `?` out of your values"_ protected nobody.
-- **⚖️ REFUSE NOT WARN, THE SET NOT THE VALUES, ON CONSISTENCY NOT SPEC; NO CODE MINTED** - each
-  builder's own `refuseSpec`. **IT REFUSES SPECS THAT BUILT AT `0.0.15`, ONE OF WHICH ROUND-TRIPPED
-  THROUGH OUR OWN PARSER - THAT WAS NEVER THE BAR** (ISA-11/16 transmit the set, so a conformant
-  receiver splits on it; checking a claim against our own implementation is not a check).
-- **🛑 EVERY EARLIER GUARD KEEPS PRECEDENCE (835 balance, 837 spine, 999 AK9, TA1
-  `enforceAcceptIsClean`); EVERYTHING LATER YIELDS, AND `requireControlNumber` IS LATER IN EVERY
-  BUILDER, SO BOTH `#101` AND `#102` ARE PREEMPTED AT EVERY SLOT ON A DEGENERATE SET. A MESSAGE
-  MOVES, NEVER A CODE. 🛑 NEVER COUNT WHAT MOVED - a draft said "one report" and was measured false.**
-- **🛑 IT IS AN EQUALITY TEST ON THE DECLARED VALUE, NOT A GUARANTEE ABOUT DOCUMENTS THIS LIBRARY CAN
-  COMPOSE. STATE THE BOUND AS A PROPERTY OF THE SET, NEVER OF THE DOCUMENT.** `"??"` is refused by
-  the SEPARATE shape guard below, never by growing this one.
-- **🛑 THE READ SIDE AND `serializeX12` ARE UNTOUCHED, DELIBERATELY. PIN A READ-SIDE CASE FROM BYTES,
-  NEVER THROUGH A BUILDER** - it asserts the refusal instead of the read. **PUBLISH NO CENSUS OF WHAT
-  A DEGENERATE SET DOES: the two mechanisms are the claim, and a third route through either is
-  expected.** The source gate proves the chokepoint, NOT the behaviour: all ten builders have their
-  own case, and deleting the one call reds 16 tests across 8 files.
+**RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-ST03-READ-NOT-RELEASE-AWARE` trap below.
+**🩺 Open it before you touch `makeCallerEscaper`, any builder's `refuseSpec` or the read side of a
+degenerate set: a delimiter set with `?` in ANY of FOUR roles is refused on emit, there are TWO
+mechanisms and the second needs NO caller value (`build837P` fused the procedure and diagnosis codes
+on EVERY document), and 🛑 THE READ SIDE AND `serializeX12` ARE UNTOUCHED, DELIBERATELY.**
 
 ### 🩺 `X12-EMIT-DELIMITER-SHAPE-UNCHECKED` (2026-08-09) · `agent-notes/x12-emit-delimiter-shape-unchecked.md`
 
@@ -150,6 +131,29 @@ HOIST IT INTO `splitWithRelease`; and `?~` STILL SWALLOWS THE TERMINATOR, `PRE-E
   (`componentSeparator: "S"`); one colliding with DATA is a different family, still open.
   **NO REFUSAL ECHOES THE DECLARED VALUE.**
 
+### 🩺 `X12-ST03-READ-NOT-RELEASE-AWARE` (2026-08-09) · `agent-notes/x12-st03-read-not-release-aware.md`
+
+- **🩺 EVERY TYPED READER THAT PUBLISHES `implementationConventionReference` PUBLISHES IT
+  POST-`?`-UNESCAPE, THROUGH ONE `decodeSt03`. FILED AS THREE READERS; MEASURED AS FOUR RAW READS
+  OF `tx.st.elements[3]` IN THREE FILES, REACHED BY FIVE PUBLIC READERS** (`walk277` serves
+  `get277Status` AND `get277CADisposition`; `walk278` serves BOTH 278 directions). **GROUNDED ON THIS
+  PACKAGE DISAGREEING WITH ITSELF, NEVER ON A TR3 CLAUSE** - every dot-path read already unescaped
+  and `parse999` already decoded AK2-03, the same field.
+- **🛑 THE THREE `ST-03` TESTS STILL KEY ON THE RAW TEXT, DELIBERATELY; MOVING ONE IS A DIFFERENT
+  SLICE:** `VARIANT_BY_ICR`, `walk277`'s `transactionType`, and `get277CADisposition`'s ADMISSION
+  GATE. Measured: with `componentSeparator: "X"` an ST-03 of `005010?X222A1` decodes to a guide
+  identifier, so keying on the decoded text makes **THE DECLARATION BEAT THE `SVx` FALLBACK**
+  (`X12-VARIANT-ICR-UNGROUNDED`'s property) and **STOPS A SERVICE LINE DECODING**. **THE MOVE IS
+  ONE-WAY: nothing that resolved or was admitted at base stops** - no identifier keyed on carries a
+  delimiter or `?`, so a raw text equal to one decodes to itself.
+- **⚖️ NO NORMALISATION AND NO NEW WARNING.** Nothing trimmed or case-folded; whitespace still
+  publishes untrimmed. **THE SINK IS A NO-OP**, so `X12_DANGLING_RELEASE_CHAR` is dropped as
+  `getSegmentValue`'s default, `parseTA1` and `parse999` drop it - `PRE-EXISTING` and OPEN, not
+  absorbed.
+- **🛑 PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH READER IS SPECIAL.** Each reader's own `""` /
+  absent mapping is UNCHANGED and pinned: `walk278` collapses `""` to `undefined`, the other two
+  publish `""`.
+
 ### 🩺 `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-interchange-gs-escape.md`
 
 - **🩺 `buildInterchange` RELEASES GS-04 / GS-05 / GS-07 NOW** - it disagreed with itself. **GS-07
@@ -169,8 +173,8 @@ HOIST IT INTO `splitWithRelease`; and `?~` STILL SWALLOWS THE TERMINATOR, `PRE-E
   IS NOT.** The emit half released and the read half decoded the ESCAPE, so a released TA1-01 came
   back matching NO ISA-13, `warnings: []`. **GROUNDED ON THIS PACKAGE DISAGREEING WITH ITSELF, NEVER
   A TR3 CLAUSE:** every dot-path read already unescaped and so does `parse999` on IK4-01.
-  **🛑 A CLAUSE CALLING `parseTA1` "THE ONLY TYPED READER THAT DID NOT" IS DELETED - MEASURED FALSE,
-  THREE MORE READERS PUBLISH ST-03 RAW (`PRE-EXISTING`, BELOW). STATE THE CELLS RUN, NEVER WHICH
+  **🛑 A CLAUSE CALLING `parseTA1` "THE ONLY TYPED READER THAT DID NOT" IS DELETED - MEASURED FALSE
+  BY THE ST-03 READERS, WHICH ARE THEIR OWN TRAP IN THIS LIST. STATE THE CELLS RUN, NEVER WHICH
   MEMBER IS SPECIAL.** **THE SINK IS `noop`** - no
   `X12_DANGLING_RELEASE_CHAR` here, same as `parse999`.
 - **🩺 AN EMPTY TA1-02 / TA1-03 / TA1-04 / TA1-05 IS REFUSED ON EMIT. FILED AS TWO SLOTS, MEASURED AS

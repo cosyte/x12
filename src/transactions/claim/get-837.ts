@@ -50,6 +50,7 @@ import {
   type X12Segment,
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
+import { decodeSt03 } from "../shared/st03.js";
 import {
   REQUIRED_LOOPS,
   ambiguous837Variant,
@@ -282,12 +283,49 @@ export function get837Claims(
   const warnings: X12ParseWarning[] = [];
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
 
-  // Variant detection - ST-03 first, then SVx fallback, then unknown.
-  const implementationConventionReference = tx.st.elements[3];
+  // ST-03 is read TWICE on purpose, and the two reads are different values.
+  //
+  // `implementationConventionReferenceRaw` is the element text as framed:
+  // post-element-split, PRE-`?`-unescape. `implementationConventionReference`
+  // is that text decoded, and it is what this reader PUBLISHES - the same
+  // correction `X12-TA1-RESIDUALS` made to `parseTA1`'s five fields, on the
+  // ground that every dot-path read in this package already unescapes and so
+  // does `parse999` on AK2-03, the identically-named field in a sibling
+  // reader. A sender that escapes a delimiter inside ST-03 got the escape
+  // back rather than the value it stated.
+  //
+  // 🛑 THE LOOKUP BELOW DELIBERATELY KEYS ON THE RAW TEXT, AND MOVING IT IS A
+  // SEPARATE SLICE. Measured on this tree, with an SV2 body whose `SVx`
+  // fallback resolves `I` and an ST-03 declaring the professional guide:
+  //
+  //   delimiters                       ST-03 bytes       decoded          variant
+  //   conventional (`* ^ : ~`)         005010X222?A1     005010X222?A1    I  (unmoved)
+  //   componentSeparator "X"           005010?X222A1     005010X222A1     I -> P
+  //   componentSeparator "2"           005010X?222A1     005010X222A1     I -> P
+  //   repetitionSeparator "A"          005010X222?A1     005010X222A1     I -> P
+  //
+  // Keying on the decoded text would therefore make the DECLARATION decide
+  // where the fall-back decides today, which is the behaviour change
+  // `X12-VARIANT-ICR-UNGROUNDED` shipped as one property - and on the P row
+  // above the `SV2` line stops decoding and raises
+  // `X12_837_SERVICE_LINE_NOT_DECODED`. That is a change to how an already
+  // published document decodes a service line, not a decode fix, so it is
+  // filed rather than taken here. Note what the rows show and what they do
+  // not: no row is a document whose variant resolves at base and stops
+  // resolving. Every identifier this table is keyed on is drawn from
+  // `VARIANT_BY_ICR`, and the raw text can differ from the decoded text only
+  // where the sender escaped a byte the ISA declared as a delimiter.
+  const implementationConventionReferenceRaw = tx.st.elements[3];
+  const implementationConventionReference = decodeSt03(
+    implementationConventionReferenceRaw,
+    delimiters,
+    { segmentIndex: 0, transactionIndex: 0 },
+  );
   const explicitType: X12Claim837Variant | undefined = opts?.type;
   const variantFromIcr =
-    implementationConventionReference !== undefined && implementationConventionReference !== ""
-      ? VARIANT_BY_ICR[implementationConventionReference]
+    implementationConventionReferenceRaw !== undefined &&
+    implementationConventionReferenceRaw !== ""
+      ? VARIANT_BY_ICR[implementationConventionReferenceRaw]
       : undefined;
   let variantFromSegment: X12Claim837Variant | undefined;
   /**

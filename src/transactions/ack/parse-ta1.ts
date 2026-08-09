@@ -64,8 +64,9 @@ export function parseTA1(interchange: X12Interchange): X12AckTA1 | undefined {
   // because every dot-path read already unescapes - and so does `parse999`, on
   // the IK4-01 composite, in this same directory. 🛑 A sentence here called this
   // function "the only typed reader in the package that did not" and is DELETED,
-  // not reworded: it was measured false, and the three readers that falsify it
-  // are `PRE-EXISTING` and recorded as a backlog line rather than absorbed.
+  // not reworded: it was measured false by the readers that published `ST-03`
+  // pre-unescape. A count of those readers stood here and is deleted too - it
+  // was wrong, and `X12-ST03-READ-NOT-RELEASE-AWARE` has since closed them.
   //
   // The sink is `noop`, matching `parse999`: a dangling `?` at the end of an
   // element raises `X12_DANGLING_RELEASE_CHAR` through a dot-path read and is

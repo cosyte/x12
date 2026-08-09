@@ -217,6 +217,17 @@ On the read side, **`parseTA1`'s five decoded fields are post-`?`-unescape**, so
 reassociation key comes back as the value rather than the bytes; `ta1.raw.elements` is still the
 verbatim byte surface. If you were applying `unescapeRelease` to those fields yourself, drop it.
 
+The same correction reaches `ST-03`. **`implementationConventionReference` is post-`?`-unescape in
+every typed reader that publishes it** - `get837Claims`, `get277Status`, `get277CADisposition`,
+`get278Request` and `get278Response` - so an `ST-03` framed as `A?*B` now publishes `A*B` where it
+used to publish the escape. `tx.st.elements` is unchanged and is still the verbatim framed surface.
+**What DECIDES an outcome did not move:** the 837 variant lookup, the `transactionType`
+discriminator and `get277CADisposition`'s admission gate all still key on the raw element text, so
+no document changes variant or admission because of this. The two can differ only where the sender
+escaped a byte the ISA declared as a delimiter, and the difference is one-way - nothing that
+resolved or was admitted before stops doing so. Nothing is trimmed or case-folded, and a dangling
+`?` in `ST-03` still raises no warning on these readers.
+
 Fourth, **`build835`'s balance-equation amounts refuse UNTYPED.** The balance guard runs before the
 escape helper is built and calls `X12Decimal` methods on your value, so a raw `number` there throws a
 plain `TypeError` with **no `code`** rather than the typed refusal. The rule is the equation, not a

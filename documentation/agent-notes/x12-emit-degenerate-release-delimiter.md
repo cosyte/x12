@@ -188,3 +188,43 @@ ones were corrected by DELETION, never reworded**, per `documentation/convention
   not a new finding.
 - **Nothing is claimed about what X12 says.** 005010 does not transmit a release character. There is
   no clause behind any of this, on either side.
+
+
+---
+
+## The `CLAUDE.md` trap section, RELOCATED IN FULL, VERBATIM, NOTHING DROPPED (2026-08-09)
+
+Moved out of `x12/CLAUDE.md` by `X12-ST03-READ-NOT-RELEASE-AWARE` to pay for that slice's own trap,
+under this repo's standing rule: relocate BEFORE you write a new trap, never delete one, and never
+raise the entry. Nothing here was measured false and nothing is corrected. **The words "below" and
+"above" inside it refer to `CLAUDE.md`'s trap ORDERING at the time of the move, not to this file** -
+"the SEPARATE shape guard below" is `X12-EMIT-DELIMITER-SHAPE-UNCHECKED`, which still sits inline
+there.
+
+### 🩺 `X12-EMIT-DEGENERATE-RELEASE-DELIMITER` (2026-08-09) · `agent-notes/x12-emit-degenerate-release-delimiter.md`
+
+- **🩺 A DELIMITER SET WITH `?` IN ANY ROLE IS REFUSED ON EMIT, EVERY BUILDER, INSIDE
+  `makeCallerEscaper`. FOUR ROLES, NOT THREE - THE SEGMENT TERMINATOR DOES IT TOO** (a released byte
+  ends the segment early; a phantom segment follows, uncounted by SE-01).
+- **🩺 TWO MECHANISMS, AND THE SECOND HAS NO CALLER VALUE AT ALL: THE LIBRARY'S OWN JOIN.** `esc`
+  PREFIXES `?`, so the protection is emitted as structure; and a composite/repetition is JOINED with
+  the separator declared, so on `?` the join is emitted as an escape. `build837P` on
+  `componentSeparator:"?"` fused **`SV1-01-2` (procedure) and `HI-01-2` (diagnosis) ON EVERY
+  DOCUMENT, no trigger byte, `warnings: []`.** **NEVER WRITE THEM AS ONE DEFECT** - a value-level
+  guard cannot reach the second, which is why _"keep `?` out of your values"_ protected nobody.
+- **⚖️ REFUSE NOT WARN, THE SET NOT THE VALUES, ON CONSISTENCY NOT SPEC; NO CODE MINTED** - each
+  builder's own `refuseSpec`. **IT REFUSES SPECS THAT BUILT AT `0.0.15`, ONE OF WHICH ROUND-TRIPPED
+  THROUGH OUR OWN PARSER - THAT WAS NEVER THE BAR** (ISA-11/16 transmit the set, so a conformant
+  receiver splits on it; checking a claim against our own implementation is not a check).
+- **🛑 EVERY EARLIER GUARD KEEPS PRECEDENCE (835 balance, 837 spine, 999 AK9, TA1
+  `enforceAcceptIsClean`); EVERYTHING LATER YIELDS, AND `requireControlNumber` IS LATER IN EVERY
+  BUILDER, SO BOTH `#101` AND `#102` ARE PREEMPTED AT EVERY SLOT ON A DEGENERATE SET. A MESSAGE
+  MOVES, NEVER A CODE. 🛑 NEVER COUNT WHAT MOVED - a draft said "one report" and was measured false.**
+- **🛑 IT IS AN EQUALITY TEST ON THE DECLARED VALUE, NOT A GUARANTEE ABOUT DOCUMENTS THIS LIBRARY CAN
+  COMPOSE. STATE THE BOUND AS A PROPERTY OF THE SET, NEVER OF THE DOCUMENT.** `"??"` is refused by
+  the SEPARATE shape guard below, never by growing this one.
+- **🛑 THE READ SIDE AND `serializeX12` ARE UNTOUCHED, DELIBERATELY. PIN A READ-SIDE CASE FROM BYTES,
+  NEVER THROUGH A BUILDER** - it asserts the refusal instead of the read. **PUBLISH NO CENSUS OF WHAT
+  A DEGENERATE SET DOES: the two mechanisms are the claim, and a third route through either is
+  expected.** The source gate proves the chokepoint, NOT the behaviour: all ten builders have their
+  own case, and deleting the one call reds 16 tests across 8 files.
