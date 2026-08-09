@@ -74,48 +74,20 @@ or financial value on the wire.**
 
 ### 🩺 `X12-EMPTY-CONTROL-NUMBER-FABRICATED` (2026-08-09) · `agent-notes/x12-empty-control-number.md`
 
-- **🩺 AN EMPTY CONTROL NUMBER IS REFUSED ON EMIT NOW, EVERY BUILDER, VIA
-  `builder/caller-control-number.ts`.** `padControl("", 9)` FABRICATED `000000000` into ISA-13/IEA-02
-  and the interchange RECONCILED, `warnings: []`. **TWO MECHANISMS, ONE CLASS: INVENT and LOSE. A
-  DEFECT AT ONE SLOT WAS A CENSUS - the ack ECHOES (`TA1-01`, `AK1-02`, `AK2-02`) carried it too**,
-  and `TA1-01` was the disclosure that named this item.
-- **🛑 SAY `warnings: []`, NEVER "the pair reconciled against itself" - THE BYTES DIFFER BY FAMILY
-  AND A DRAFT PUBLISHED ONE MEASUREMENT AS THE CLASS.** `buildInterchange`/`build999` join untrimmed
-  (`GE*1*~`); the SEVEN domain builders' `seg` DROPS a trailing empty, so the trailer loses the
-  element outright (`GE*1~`, `SE*21~`). SILENCE is the property that holds across both.
-- **🛑 NO TRIM.** Whitespace STILL pads to `00000000 ` and STILL
-  builds - **DISCLOSED, NOT FIXED: A TRIM IS A NORMALISATION RULE AND NO SOURCE STATES ONE. `buildTA1`
-  IMPORTS NO `pad`, SO IT EMITS WHITESPACE VERBATIM - NEVER WRITE IT AS PADDED.**
-  **A SHORT one STILL ZERO-PADS - never read the guard as "ISA-13 must be nine characters".**
-- **⚖️ REFUSE NOT WARN, ON CONSISTENCY WITH FIVE IN-PACKAGE `=== ""` GUARDS, NOT ON SPEC** - 005010
-  settles neither; a warning would have to travel the READ registry, and a widening onto a NEW CODE
-  blinds every predicate (`#83`). **NO NEW CODE; each builder's own `refuseSpec`.**
-- **🛑 PLACED AT THE ENVELOPE SITE, SO EVERY _EARLIER_ GUARD KEEPS PRECEDENCE (835 balance, 999 AK9
-  counts, TA1 `enforceAcceptIsClean`, the hierarchy checks) - BUT A DEFECT DETECTED _LATER_ NOW
-  REPORTS THIS REFUSAL INSTEAD, SO A BUILDER ERROR CODE DID MOVE.** `build999` + empty ISA-13 + six
-  AK9 syntax codes: `X12_ACK_COUNT_MISMATCH` at base, `X12_ACK_INVALID_SPEC` at head. **NEVER WRITE
-  "nothing a consumer branches on changes" - that was pass 1's MAJOR. THE REMEDY IS THE CLAIM, NEVER
-  THE GUARD.**
-- 30 sites, EACH with a RED negative control. **THE DRIFT PIN IS A SOURCE REGEX OVER A HAND-LISTED
-  NINE AND PROVES NOTHING; IT BUYS NOTHING FOR A TENTH BUILDER IN A NEW FILE.** The behavioural cases
-  are the evidence. **PUBLISH NO CENSUS OF WHAT IS NOT ROUTED.**
+**RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED** - it paid for the trap two below.
+**🩺 Open it before you touch `padControl`, `requireControlNumber` or any control-number slot:
+`padControl("", 9)` FABRICATED `000000000` into ISA-13/IEA-02 and the interchange RECONCILED with
+`warnings: []`, INVENT and LOSE are two mechanisms and not one, and 🛑 THERE IS NO TRIM - whitespace
+still pads, DISCLOSED AND NOT FIXED, because a trim is a normalisation rule and no source states
+one.**
 
 ### 🩺 `X12-BODY-DEGENERATE-RELEASE-SEPARATOR` (2026-08-09) · `agent-notes/x12-body-degenerate-release-separator.md`
 
-- **🩺 `decodeSegment` FALLS BACK TO A LITERAL SPLIT WHEN THE ELEMENT SEPARATOR IS `?`, AND SKIPS
-  THE DANGLING CHECK WITH IT** (a trailing `?` there is an EMPTY LAST ELEMENT). `?` is admissible at
-  any delimiter position and `buildInterchange` takes all four, so a BODY segment came back as ONE
-  element, id `(non-spec)`, **while the ENVELOPE framed correctly and every count reconciled -
-  `warnings: []`, and readers dispatch on `seg.id`, so a clean document gave an EMPTY claim list.**
-  THREE SITES NOW; KEEP THEM IN STEP.
-- **🛑 PER ROLE, ON READ; DO NOT HOIST IT INTO `splitWithRelease`.** Splitting the other two breaks a
-  value WE EMITTED at `0.0.15` (`#99`'s pass-1 major, inverted), and **THAT REASON SURVIVES THE EMIT
-  REFUSAL - THOSE DOCUMENTS EXIST.** The emit half is the trap below; **STATE THE PROPERTY, NEVER A
-  TRIGGER BYTE - TWO DRAFTS NAMED ONE AND THE GATE PRODUCED ONE MORE EACH TIME.**
-- **⚖️ CHANGES PUBLISHED DECODING, ON CONSISTENCY, NOT SPEC - NEVER RESTATE `#96`'s SYMMETRY: A
-  `(non-spec)` BLOB IS NOT A SECOND READING.** No code minted; ONE subtracted. **`PRE-EXISTING`,
-  OPEN: `?~` still swallows the TERMINATOR. FRAMING UNTOUCHED - BUT THE MERGED BLOB'S READ MOVED
-  (`~SE` lands in `PER-06`), SO NEVER SAY "NOTHING MOVED".**
+**RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED** - it paid for the trap two below.
+**🩺 Open it before you touch `decodeSegment`, `splitWithRelease` or any framing role: on
+`elementSeparator: "?"` a BODY segment came back as ONE element with id `(non-spec)` while the
+ENVELOPE framed correctly and every count reconciled, `warnings: []`. 🛑 PER ROLE, ON READ - DO NOT
+HOIST IT INTO `splitWithRelease`; and `?~` STILL SWALLOWS THE TERMINATOR, `PRE-EXISTING` AND OPEN.**
 
 ### 🩺 `X12-EMIT-DEGENERATE-RELEASE-DELIMITER` (2026-08-09) · `agent-notes/x12-emit-degenerate-release-delimiter.md`
 
@@ -137,14 +109,41 @@ or financial value on the wire.**
   BUILDER, SO BOTH `#101` AND `#102` ARE PREEMPTED AT EVERY SLOT ON A DEGENERATE SET. A MESSAGE
   MOVES, NEVER A CODE. 🛑 NEVER COUNT WHAT MOVED - a draft said "one report" and was measured false.**
 - **🛑 IT IS AN EQUALITY TEST ON THE DECLARED VALUE, NOT A GUARANTEE ABOUT DOCUMENTS THIS LIBRARY CAN
-  COMPOSE. NOTHING CHECKS A DELIMITER IS ONE BYTE**, so `segmentTerminator:"??"` BUILDS and still
-  transmits `?`, `warnings: []` - **`PRE-EXISTING`, DISCLOSED, NOT GUARDED; a length rule is a
-  different slice. STATE THE BOUND AS A PROPERTY OF THE SET, NEVER OF THE DOCUMENT.**
+  COMPOSE. STATE THE BOUND AS A PROPERTY OF THE SET, NEVER OF THE DOCUMENT.** `"??"` is refused by
+  the SEPARATE shape guard below, never by growing this one.
 - **🛑 THE READ SIDE AND `serializeX12` ARE UNTOUCHED, DELIBERATELY. PIN A READ-SIDE CASE FROM BYTES,
   NEVER THROUGH A BUILDER** - it asserts the refusal instead of the read. **PUBLISH NO CENSUS OF WHAT
   A DEGENERATE SET DOES: the two mechanisms are the claim, and a third route through either is
   expected.** The source gate proves the chokepoint, NOT the behaviour: all ten builders have their
   own case, and deleting the one call reds 16 tests across 8 files.
+
+### 🩺 `X12-EMIT-DELIMITER-SHAPE-UNCHECKED` (2026-08-09) · `agent-notes/x12-emit-delimiter-shape-unchecked.md`
+
+- **🩺 A DELIMITER MUST BE A STRING OF EXACTLY ONE VISIBLE CHARACTER AND THE FOUR MUST BE DISTINCT,
+  REFUSED ON EMIT BY EVERY BUILDER, IN `requireWellShapedDelimiters` BESIDE THE `?` GUARD.**
+  **🛑 THE RULE IS `detectDelimiters`' OWN, IMPORTED NOT RESTATED (`isVisibleDelimiterChar`) - a
+  builder composing a document its own parser FATALS on was disagreeing with itself. NO
+  NORMALISATION: nothing is trimmed, coerced or substituted, so it needs no source a refusal cannot
+  have.** THE READ SIDE DID NOT MOVE.
+- **🩺 THREE MECHANISMS, FILED AS ONE. NEVER WRITE THEM AS ONE.** **LENGTH is silent at the SEGMENT
+  TERMINATOR ALONE** (`"~~"` -> 31 rows against `SE-01` 16, `warnings: []`) because it is appended
+  AFTER the fixed-width ISA; the other three roles shift an ISA byte and the builder's own `parseX12`
+  already fatalled. **TYPE: the JOIN coerces and the ESCAPE does not**, so `componentSeparator: 1`
+  framed on `"1"` while `escapeRelease` protected nothing - `SV1-01-2` read `992`, not the procedure
+  code `99213`, `warnings: []`; **A LENGTH RULE CANNOT REACH IT.** **`buildTA1` HAD NO NET AT ALL** -
+  the one builder with no trailing `parseX12`; `elementSeparator: ""` RETURNED
+  `TA10000000012606011200A000`.
+- **🛑 THE ERROR CLASS MOVES, BOTH WAYS, AND NO CODE IS MINTED.** Most mis-shaped sets threw
+  `X12ParseError`/`X12_INVALID_DELIMITERS` OUT OF A `build*` CALL at base (with a 64-byte `snippet`);
+  head refuses earlier with the builder's own. **A consumer catching the PARSE class STOPS catching
+  and one catching the BUILD class STARTS - state both directions (`#83`).**
+- **🛑 IT REFUSES SPECS THAT BUILT WITH `warnings: []`, AND THE PLAUSIBLE ONE IS
+  `segmentTerminator: "~\r\n"`** - it never put a line break on the wire either (CR/LF between
+  segments is tolerated on READ, so the model recorded `~`). **READING such a file is UNAFFECTED.**
+- **⚖️ RUNS AFTER THE `?` GUARD SO NOTHING `#106` PINNED MOVES** - a `?` in two roles is degenerate
+  AND non-distinct, and the sharper message wins. **A LETTER OR DIGIT IS STILL ADMISSIBLE**
+  (`componentSeparator: "S"`); a delimiter that collides with DATA is a different family, still open.
+  **NO REFUSAL ECHOES THE DECLARED VALUE** - role plus defect, type alone for a non-string.
 
 ### 🩺 `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-interchange-gs-escape.md`
 

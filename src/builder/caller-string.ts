@@ -214,6 +214,7 @@
  * builder module to build its `esc` through {@link makeCallerEscaper}.
  */
 
+import { isVisibleDelimiterChar } from "../parser/delimiters.js";
 import type { Delimiters } from "../parser/types.js";
 import { escapeRelease, RELEASE_CHAR } from "../parser/release.js";
 
@@ -376,13 +377,9 @@ const DELIMITER_ROLES = [
  *
  * - **It tests the DECLARED VALUE for equality with `?`, and that is the whole
  *   of it. It is not a guarantee about the documents this library can
- *   compose.** No builder checks that a delimiter is one byte, so a
- *   `segmentTerminator` of `"??"` is not equal to `"?"`, builds, and still
- *   transmits `?` as the terminator, `warnings: []`. Measured at head, and
- *   identical at base: the multi-byte hole is `PRE-EXISTING`, the whole
- *   delimiter-shape family with it, and **widening this guard to reach it is a
- *   different slice** - it would be a length rule nothing here has decided.
- *   State the bound as a property of the SET, never of the document.
+ *   compose.** State the bound as a property of the SET, never of the document.
+ *   The separate question of whether a declared value is even SHAPED like a
+ *   delimiter is {@link requireWellShapedDelimiters}, which runs after this one.
  * - **The read side is untouched.** `parseX12` still accepts every degenerate
  *   set, and `src/parser/segment.ts`'s element-role guard still frames such a
  *   document. Documents this library emitted before this guard exist, and
@@ -421,6 +418,158 @@ function requireEscapableDelimiters(
 }
 
 /**
+ * Refuse a delimiter set whose roles are not SHAPED like delimiters: each must
+ * be a string of exactly one visible character, and the four must be mutually
+ * distinct.
+ *
+ * ## The rule is not invented here - it is the READ side's, applied outward
+ *
+ * {@link "../parser/delimiters.js".detectDelimiters} already decides what a
+ * delimiter is for this package, and it decides it as a **Tier-3 fatal**: it
+ * reads one byte at each of four FIXED ISA positions, requires each to satisfy
+ * {@link "../parser/delimiters.js".isVisibleDelimiterChar}, and requires the
+ * four to be distinct - otherwise `X12_INVALID_DELIMITERS`, thrown even in
+ * lenient mode. This guard applies that same predicate, imported rather than
+ * restated, to the set a CALLER declares. **A builder that composes a document
+ * its own parser refuses to read is disagreeing with itself**, and that is the
+ * whole argument. No normalisation rule is invented and none is needed: nothing
+ * is trimmed, coerced, substituted or padded, and a set that does not satisfy
+ * the read side's own predicate is refused rather than repaired.
+ *
+ * The one-character requirement is structural rather than conventional. The ISA
+ * is fixed-width per ASC X12 .5: ISA-11 is ONE byte at position 83 and ISA-16
+ * ONE byte at position 105, the terminator is the single byte after it, and
+ * {@link "../parser/types.js".Delimiters} records exactly one character per
+ * role. A multi-character value cannot be transmitted as a delimiter at all -
+ * the question is only whether the caller is told.
+ *
+ * ## Three mechanisms, measured at base `a21f8ea`, and they are NOT one defect
+ *
+ * ```text
+ * LENGTH, and only at the segment terminator
+ *   build837P { segmentTerminator: "~~" }  warnings: []
+ *     31 segment rows in a transaction whose SE-01 declares 16; every other
+ *     row is a phantom with id "" that no caller wrote. It is silent HERE and
+ *     nowhere else because the terminator is appended AFTER the fixed-width
+ *     ISA and so displaces no ISA byte.
+ *
+ * TYPE, and the joiner and the escaper end up disagreeing
+ *   build837P { componentSeparator: 1 }    warnings: []
+ *     `Array.prototype.join` coerces the number to "1" and the document frames
+ *     on it, but `escapeRelease` compares delimiters with `===` and a number
+ *     never equals a character, so NO caller value is escaped against it:
+ *     SV1*HC199213 reads SV1-01-2 as "992", not the procedure code 99213, and
+ *     CLM-05's place-of-service composite emits as "111B11".
+ *   build271 { repetitionSeparator: 1 }    warnings: []
+ *     EB*1**3011 - EB-03's two service type codes no longer read back as two.
+ *
+ * NO NET AT ALL, at buildTA1
+ *   buildTA1 with { elementSeparator: "" } returned
+ *     TA10000000012606011200A000 - one undelimited blob fusing the
+ *     reassociation key, date, time, disposition and note code. Every other
+ *     builder ends in `parseX12`, which caught most mis-shaped sets by
+ *     accident; `buildTA1` returns a segment and never parses.
+ * ```
+ *
+ * 🩺 The TYPE mechanism needs no unusual caller value - `99213`, `11` and `30`
+ * are ordinary - and a length rule cannot reach it, which is why the two are
+ * stated separately.
+ *
+ * ## What a caller catches CHANGES, and it changes in both directions
+ *
+ * Most mis-shaped sets did not build at base: the builder composed the bytes,
+ * its own trailing `parseX12` read them back, and an `X12ParseError` with
+ * `X12_INVALID_DELIMITERS` escaped out of a `build*` call - the wrong class,
+ * carrying a 64-byte `snippet` of the interchange just composed. At head those
+ * cells refuse EARLIER with the builder's own typed error and its existing
+ * code. So **a consumer catching `X12ParseError` around a `build*` call stops
+ * catching, and one catching that builder's own error starts** - no new code is
+ * minted, but the class moves, and `#83`'s lesson is that a moved predicate is
+ * stated in both directions or not at all.
+ *
+ * 🛑 **It refuses sets that built with `warnings: []`, and the plausible one is
+ * `segmentTerminator: "~\r\n"`** - a caller asking for line-broken output.
+ * Measured at base: the interchange built clean, and the CRLF was NOT on the
+ * wire. `parseX12` tolerates a run of CR/LF between segments, so the model
+ * recorded `segment: "~"` and `serializeX12` re-emitted without line breaks.
+ * The caller never got what they declared; the library silently substituted
+ * something else. Refusing is the same call `X12-EMIT-DEGENERATE-RELEASE-DELIMITER`
+ * made about specs that built at `0.0.15` - what this library happens to read
+ * back was never the bar.
+ *
+ * ## Why REFUSE, and why after the release-character check
+ *
+ * Refuse rather than warn, following `X12-EMPTY-CONTROL-NUMBER-FABRICATED` and
+ * `X12-EMIT-DEGENERATE-RELEASE-DELIMITER`: a warning would have to travel the
+ * READ registry a builder returns, which `#83` was refuted for. No code is
+ * minted; each builder refuses with its own.
+ *
+ * It runs AFTER {@link requireEscapableDelimiters} so that nothing that slice
+ * pinned moves. A set with `?` in two roles is both degenerate AND
+ * non-distinct; running the release-character check first keeps the message
+ * that names the sharper defect.
+ *
+ * **No refusal echoes the declared value.** The role is named and the defect is
+ * described - `REFUSAL-MESSAGE-PHI-ECHO`'s decision, kept even though a
+ * delimiter is a structural byte rather than an element value, because a
+ * slot-generic guard cannot know what a caller put in the slot.
+ *
+ * @param delimiters the resolved delimiter set for this interchange
+ * @param at a library-owned locator naming the builder, e.g. `"build835"`
+ * @param refuse throws the calling module's typed refusal
+ *
+ * @internal
+ */
+function requireWellShapedDelimiters(
+  delimiters: Delimiters,
+  at: string,
+  refuse: (message: string) => never,
+): void {
+  const REMEDY =
+    `A delimiter occupies ONE fixed byte of the ISA (ISA-11, ISA-16 and the byte after it), ` +
+    `so this set cannot be transmitted and this library's own parser would reject a document ` +
+    `declaring it. Declare four distinct, visible, single-character delimiters.`;
+
+  for (const [role, name] of DELIMITER_ROLES) {
+    // The declared value is typed `string` and is not trusted to be one: a
+    // JavaScript or JSON caller reaches this slot, and at base a non-string was
+    // coerced by the join while `escapeRelease` went on comparing against the
+    // uncoerced value.
+    const value: unknown = delimiters[role];
+    if (typeof value !== "string") {
+      refuse(
+        `${at}: the ${name} must be a string, but received ${describeCallerValue(value)}. ` +
+          `Values are never coerced - a coerced delimiter frames the document while the release ` +
+          `escape still compares against what you passed, so no element value is protected from ` +
+          `it. ${REMEDY}`,
+      );
+    }
+    if (value.length !== 1) {
+      refuse(
+        `${at}: the ${name} must be exactly one character, but the declared value is ` +
+          `${value.length === 0 ? "empty" : `${String(value.length)} characters long`}. ${REMEDY}`,
+      );
+    }
+    if (!isVisibleDelimiterChar(value)) {
+      refuse(
+        `${at}: the ${name} must be a visible character, but the declared value is whitespace ` +
+          `or a control character. ${REMEDY}`,
+      );
+    }
+  }
+
+  for (const [i, [role, name]] of DELIMITER_ROLES.entries()) {
+    const earlier = DELIMITER_ROLES.slice(0, i).find(([r]) => delimiters[r] === delimiters[role]);
+    if (earlier !== undefined) {
+      refuse(
+        `${at}: the ${name} and the ${earlier[1]} are the same character. ` +
+          `A reader cannot tell which role a byte is playing. ${REMEDY}`,
+      );
+    }
+  }
+}
+
+/**
  * Build a builder's `esc` helper: check the delimiter set, then per value check
  * the type and escape.
  *
@@ -431,11 +580,16 @@ function requireEscapableDelimiters(
  * not, deliberately** - the figure was published here as "nine" and stayed
  * nine when `X12-TA1-EMIT-NOT-RELEASE-AWARE` made it ten.
  *
- * **The delimiter check is why that gate is worth more than a hand-list.** It
- * runs ONCE, eagerly, when the builder resolves its delimiters - not per value -
- * so it fires on a spec that carries no element values at all, and it reaches
- * every builder without naming one. See {@link requireEscapableDelimiters} for
- * the measurement and for the two things it deliberately leaves alone.
+ * **The delimiter checks are why that gate is worth more than a hand-list.**
+ * There are TWO, and both run ONCE, eagerly, when the builder resolves its
+ * delimiters - not per value - so they fire on a spec that carries no element
+ * values at all, and they reach every builder without naming one. That includes
+ * `buildTA1`, which is the only builder with no trailing `parseX12` and so had
+ * no accidental net of any kind. {@link requireEscapableDelimiters} asks
+ * whether the release character is one of the four;
+ * {@link requireWellShapedDelimiters} asks whether the four are shaped like
+ * delimiters at all. Each carries its own measurement and its own list of what
+ * it deliberately leaves alone.
  *
  * **It runs where the escaper is BUILT, so every guard a builder runs earlier
  * keeps precedence** (`build835`'s balance equations, `build837`'s spine,
@@ -465,6 +619,7 @@ export function makeCallerEscaper(
   refuse: (message: string) => never,
 ): (value: string) => string {
   requireEscapableDelimiters(delimiters, at, refuse);
+  requireWellShapedDelimiters(delimiters, at, refuse);
   return (value: string): string =>
     escapeRelease(requireCallerString(value, at, refuse), delimiters);
 }

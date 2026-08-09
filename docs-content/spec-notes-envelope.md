@@ -93,12 +93,17 @@ If you must exchange with a partner who declares `?` as structure, you can still
 traffic: `parseX12` accepts every such set, and `serializeX12` re-emits one byte for byte. The
 read-side bounds above are unchanged by the refusal.
 
-**What the refusal is, exactly: an equality test on the delimiter you declare.** No builder checks
-that a delimiter is a single byte, so a `segmentTerminator` of `"??"` is not equal to `"?"`, builds,
-and still transmits `?` as the terminator - a degenerate set by another route, `warnings: []`. That
-is `PRE-EXISTING` and unfixed, so do not read the refusal as "this library cannot compose a document
-against a degenerate set". Declare single-byte delimiters. All of it is recorded in
-`KNOWN-LIMITATIONS.md`.
+**What the refusal is, exactly: an equality test on the delimiter you declare.** Read it as a
+property of the SET you declare, never as a guarantee about the documents this library can compose.
+
+**A second refusal sits beside it: a delimiter must be SHAPED like one.** Each of the four roles must
+be a string of exactly one visible character, and the four must be mutually distinct - the same
+predicate `parseX12` applies to an inbound ISA, where failing it is the fatal
+`X12_INVALID_DELIMITERS`. So `segmentTerminator: "~~"`, an empty or whitespace delimiter, a numeric
+one, and a set that uses one character in two roles are all refused on emit. Two of those used to
+build with `warnings: []`, including `segmentTerminator: "~\r\n"` - if you were declaring that to get
+line-broken output, it never produced any: line breaks between segments are tolerated on READ, so the
+model recorded `~` and `serializeX12` emitted none. All of it is recorded in `KNOWN-LIMITATIONS.md`.
 
 ## Line endings between segments
 

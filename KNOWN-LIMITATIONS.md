@@ -281,16 +281,31 @@ model.
     ISA-11 and ISA-16 transmit the declared set and a conformant receiver splits on it. Pinned in
     `test/builder-degenerate-release-delimiter.test.ts` and, per builder, in each build suite.
 
-  - **🩺 `PRE-EXISTING` and NOT closed by that refusal: the guard is an EQUALITY TEST on the value
-    you declare, so a MULTI-BYTE delimiter walks past it.** No builder checks that a delimiter is a
-    single byte and the ISA line writes the declared string straight in, so a `segmentTerminator` of
-    `"??"` is not equal to `"?"`, builds, and still transmits `?` as the terminator - the same
-    degenerate set by another route, `warnings: []`. **Never read the refusal as "this library cannot
-    compose a document against a degenerate set"**; it is a property of the SET a caller declares,
-    never of the document. Deliberately not guarded: a delimiter-length rule is a decision nobody has
-    made here, and the wider family (**no builder validates the SHAPE of a delimiter at all**, and it is
-    not `?`-specific - a `segmentTerminator` of `"~~"` does the identical thing) is out of that
-    slice's scope. Pinned as an honest control in the same file.
+  - **🩺 A delimiter that is not SHAPED like one is refused on emit too, by every builder.** Each of
+    the four roles must be a **string of exactly one visible character**, and the four must be
+    **mutually distinct**. That is not a rule invented for emit: it is the predicate
+    `detectDelimiters` already applies to an inbound ISA, where failing it is the Tier-3 fatal
+    `X12_INVALID_DELIMITERS`. A builder composing a document its own parser refuses to read was
+    disagreeing with itself. Nothing is trimmed, coerced or substituted - the set is refused.
+
+    Three things it closed, and they are not one defect. A **multi-character** `segmentTerminator`
+    such as `"~~"` built with `warnings: []` and put phantom segments on the model that `SE-01` never
+    counted - silent at that role alone, because the terminator is appended after the fixed-width ISA
+    and displaces no ISA byte. A **non-string** delimiter was coerced by the join but not by the
+    escape, so the document framed on a byte no element value was protected from: an 837 with
+    `componentSeparator: 1` read `SV1-01-2` back as `992` rather than the procedure code `99213`,
+    `warnings: []`. And **`buildTA1` had no net at all** - it is the one builder with no trailing
+    `parseX12`, so `elementSeparator: ""` returned `TA10000000012606011200A000`, the reassociation
+    key and the disposition fused into one blob.
+
+    **🛑 Two things change for a caller.** A spec that failed at base with an `X12ParseError` /
+    `X12_INVALID_DELIMITERS` escaping out of the `build*` call now refuses earlier with that
+    builder's own typed error and its existing code, so a consumer catching the parse class stops
+    catching and one catching the build class starts; no code is minted. And a
+    `segmentTerminator` of `"~\r\n"` - asking for line-broken output - **built with `warnings: []`
+    before and is refused now**. It never did what it looked like it did: `parseX12` tolerates CR/LF
+    between segments, so the model recorded `~` and `serializeX12` emitted no line breaks. Reading a
+    file that is written that way is unaffected; only declaring it on emit is.
 
   - **🩺 PRE-EXISTING and NOT closed here: on a degenerate set a `?~` still swallows the segment
     terminator.** `findUnescapedTerminator` guards its own role only, so with `?` as the element

@@ -49,9 +49,7 @@ that has one, so on a degenerate set both the empty-control-number and the non-s
 refusals are preempted at every one of their slots - same code, different message.
 
 🛑 It is an equality test on the value you declare, not a guarantee about the documents this library
-can compose. Nothing checks that a delimiter is a single byte, so a `segmentTerminator` of `"??"` is
-not equal to `"?"`, builds, and still transmits `?` as the terminator, `warnings: []`. That is
-`PRE-EXISTING` and deliberately not closed here: a delimiter-length rule is a different decision.
+can compose. State the bound as a property of the SET, never of the document.
 
 🛑 The read side is deliberately untouched, and so is `serializeX12`. `parseX12` still accepts every
 degenerate set and still frames a degenerate body segment; `serializeX12` re-emits one byte for byte,
