@@ -38,18 +38,22 @@
  * straight because it is the reason this module names a *class* rather than a
  * site. `groupControlNumber` and `transactionSetControlNumber` reach the wire
  * through `esc`, and `escapeRelease` early-returns on `""`, so the same input
- * measured at the same commit emitted a required element as EMPTY instead:
+ * lost the required element instead. **The bytes are not the same in every
+ * builder and a draft of this paragraph published one measurement as the
+ * class**: `buildInterchange` and `build999` join without trimming, so the
+ * element goes out empty; the seven domain builders share a `seg` that drops a
+ * trailing empty element, so the trailer loses it outright. Measured at the
+ * same commit, through `buildInterchange` and through `build834`:
  *
  * ```text
- * GS*HC*SENDER*RECEIVER*20250101*1200**X*005010X222A2~ … ~GE*1*~
- * ST*837**005010X222A2~ … ~SE*3*~
- * warnings: []
+ * buildInterchange  GS*HC*…*1200**X*005010X222A2~ … ~GE*1*~     ST*837**…~ … ~SE*3*~
+ * build834          GS*BE*…*1200**X*005010X220A1~ … ~GE*1~      ST*834**…~ … ~SE*21~
  * ```
  *
- * An empty GS-06 still reconciles against an empty GE-02, so no
- * `X12_CONTROL_NUMBER_MISMATCH` fires on the round trip either. Both shapes are
- * silent; one invents a value and one drops a required element. Refusing covers
- * both without the message having to know which slot it is standing on.
+ * Every one of those emitted `warnings: []`, which is the property that holds
+ * across both families and is all this module needs: no diagnostic separated an
+ * absent control number from a supplied one, on any channel. Refusing covers
+ * both shapes without the message having to know which one it is standing on.
  *
  * ## Why REFUSE and not warn
  *
@@ -85,18 +89,17 @@
  *
  * ## What this does NOT do
  *
- * - **It does not type-check.** The test is `value === ""` and nothing else, so a
- *   non-string reaching a control-number slot behaves exactly as it did before:
- *   `esc` refuses it through {@link "./caller-string.js".requireCallerString},
- *   and `padControl` throws its own typed refusal carrying the misleading text
- *   "exceeds the 9-char spec limit". That wart is disclosed in `caller-string.ts`
- *   and is not touched here.
+ * - **It does not type-check.** The test is `value === ""` and nothing else, so
+ *   **nothing about a non-string changed**, on any route. What each route
+ *   already did, typed refusal or bare `TypeError`, is disclosed in
+ *   `caller-string.ts` and is not touched or restated here.
  * - **It does not trim.** A whitespace-only control number is NOT refused:
- *   `padControl(" ", 9)` still answers `"00000000 "`, and `buildTA1` still emits
- *   `TA1*   *…`. Trimming would be a normalisation rule, and no source consulted
- *   for this package states one. The in-package guards this mirrors are all
- *   byte-strict `=== ""` for the same reason. This is a real residual, and it is
- *   recorded in `KNOWN-LIMITATIONS.md` rather than claimed away.
+ *   `padControl(" ", 9)` still answers `"00000000 "`. `buildTA1` imports no
+ *   `pad` at all, so it emits whatever whitespace it was handed, verbatim.
+ *   Trimming would be a normalisation rule, and no source consulted for this
+ *   package states one. The in-package guards this mirrors are all byte-strict
+ *   `=== ""` for the same reason. This is a real residual, and it is recorded in
+ *   `KNOWN-LIMITATIONS.md` rather than claimed away.
  * - **It publishes no census of the slots it guards.** Which slots route through
  *   here is held by `test/builder-control-number-empty.test.ts`, not by this
  *   prose. What this module guarantees is the property: **a control number

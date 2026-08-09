@@ -27,42 +27,51 @@ model.
   acknowledged, so a fabricated one does not fail: it succeeds against the wrong thing.
 
   The other control numbers took the same input and were silent in a different way. They reach the
-  wire through the escape helper, which early-returns on `""`, so the required element went out
-  EMPTY at **both** ends of its pair, which means each pair still reconciled against itself and no
-  `X12_CONTROL_NUMBER_MISMATCH` fired either. Measured at `0.0.15`, through `buildInterchange`:
+  wire through the escape helper, which early-returns on `""`, so the required element was lost.
+  **The bytes are not the same in every builder**: `buildInterchange` and `build999` join without
+  trimming, so the element goes out empty, while the seven domain builders share a segment helper
+  that drops a trailing empty element, so the trailer loses it outright. Measured at `0.0.15`,
+  through `buildInterchange` and `build834`:
 
   ```text
-  interchangeControlNumber: ""        ISA*…*00501*000000000*0*P*:~ … ~IEA*1*000000000~
-  groupControlNumber: ""              GS*HC*…*1200**X*005010X222A2~ … ~GE*1*~
-  transactionSetControlNumber: ""     ST*837**005010X222A2~ … ~SE*3*~
+  buildInterchange  interchangeControlNumber: ""  ISA*…*00501*000000000*0*P*:~ … ~IEA*1*000000000~
+  buildInterchange  groupControlNumber: ""        GS*HC*…*1200**X*005010X222A2~ … ~GE*1*~
+  buildInterchange  transactionSetControlNumber:  ST*837**005010X222A2~ … ~SE*3*~
+  build834          groupControlNumber: ""        GS*BE*…*1200**X*005010X220A1~ … ~GE*1~
+  build834          transactionSetControlNumber:  ST*834**005010X220A1~ … ~SE*21~
   ```
 
-  All three emitted `warnings: []`. The acknowledgment builders carried the same class at the slots
+  Every one of those emitted `warnings: []`, which is the property that holds across both families:
+  no diagnostic on any channel separated an absent control number from a supplied one. The acknowledgment builders carried the same class at the slots
   where they **echo** the document being acknowledged, which is the whole reason a sender can match
   an ack to what they sent: `build999` emitted `AK1*HC**005010X222A2~` and `AK2*837*~`, and
   `buildTA1` emitted `TA1**260601*1200*A*000`. Every one of these now draws that builder's own typed,
   code-tagged refusal (`X12_BUILD_INVALID_SPEC` and its siblings; `X12_ACK_INVALID_SPEC` on the ack
   path) naming the slot and the spec property, before anything is emitted. **No new error code was
-  minted and no warning code moved**, so no consumer predicate changes; what changes is that a build
-  that used to return a document now throws.
+  minted and no warning code moved.** What changes is that a build that used to return a document now
+  throws, and that a spec wrong in two ways can now report a different one of the two: see the
+  precedence bullet below, which is the qualifier a draft of this entry left out.
   - **🛑 The guard is byte-strict `=== ""`. It does NOT trim, and a whitespace-only control number is
     still accepted**: `interchangeControlNumber: " "` still emits ISA-13 as `00000000 `, and
-    `buildTA1` still emits `TA1*   *…`. This is a real residual rather than an oversight. Trimming
+    `buildTA1` does no padding at all, so it emits whatever whitespace it was handed, verbatim. This
+    is a real residual rather than an oversight. Trimming
     would be a normalisation rule, no source consulted for this package states one, and every
     empty-required-element guard this one mirrors (`patientControlNumber`, `claimId`,
     `maintenanceTypeCode`, `requestCategoryCode`, the 277's `categoryCode`) is byte-strict for the
     same reason. **Validate at your own boundary if your partner can send you blanks.**
-  - **It does NOT type-check, and nothing about a non-string changed.** A number or `undefined`
-    control number behaves exactly as it did: through the escape helper it draws the type refusal,
-    and at the ISA slots `padControl` still throws the typed refusal whose text misleadingly says
-    "exceeds the 9-char spec limit". That wart is entry 3 of the builder-guard list further down and
-    is untouched here.
+  - **It does NOT type-check, so nothing about a non-string changed**, on any route. What each route
+    already did is entry 3 of the builder-guard list further down; it is untouched here and is
+    deliberately not restated, because a draft of this bullet restated it wrongly.
   - **A SHORT control number still zero-pads.** The guard is not "ISA-13 must be nine characters":
     `interchangeControlNumber: "1"` still emits `000000001`, which is what `padControl` is for.
-  - **Every guard sits at the envelope-assembly site, so every guard that already ran keeps its
-    precedence.** A spec that is wrong in two ways reports the same first refusal it reported before:
-    `build835`'s balance equation, `build999`'s AK9 counts and `buildTA1`'s accept-must-mean-accept
-    check all still fire ahead of this one.
+  - **🛑 Every guard sits at the envelope-assembly site, so every guard that runs BEFORE it keeps its
+    precedence, and that is the whole claim.** `build835`'s balance equation, `build999`'s AK9
+    counts, `buildTA1`'s accept-must-mean-accept check, the 837's and 277's hierarchy checks and
+    `build834`'s unknown-maintenance-type refusal all still fire ahead of this one. **What it does
+    NOT preserve is an ordering against a defect detected LATER**, during body assembly, which now
+    reports the control-number refusal instead: `build999` with an empty `interchangeControlNumber`
+    and six AK9 syntax error codes threw `X12_ACK_COUNT_MISMATCH` at `0.0.15` and throws
+    `X12_ACK_INVALID_SPEC` now. If you branch on a specific builder error code, that pairing moved.
 
 - **🩺 Which `ST-03` implementation-convention references resolve to an 837 variant CHANGED in this
   release, and some already-published files therefore decode differently** (`X12-VARIANT-ICR-UNGROUNDED`).

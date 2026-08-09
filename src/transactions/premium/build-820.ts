@@ -156,9 +156,12 @@ export function build820(spec: Build820Spec): X12Interchange {
   // the refuse-rather-than-warn reasoning are in
   // `src/builder/caller-control-number.ts`.
   //
-  // Placed here rather than at the top of the function so every guard that
-  // already ran keeps its precedence: a spec that is wrong in two ways reports
-  // the same first refusal it reported before.
+  // Placed here rather than at the top of the function, so every guard ABOVE
+  // this line keeps its precedence. It does NOT preserve every ordering, and a
+  // draft of this comment claimed it did: a defect this builder detects LATER,
+  // during body assembly, now reports THIS refusal instead, on this module's
+  // own `*_INVALID_SPEC` code. Measured in `build999` and disclosed in
+  // `CHANGELOG.md`; do not restate it as "the same first refusal as before".
   requireControlNumber(
     envelope.interchangeControlNumber,
     "ISA-13 / IEA-02",

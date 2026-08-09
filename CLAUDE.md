@@ -76,21 +76,31 @@ or financial value on the wire.**
 
 - **🩺 AN EMPTY CONTROL NUMBER IS REFUSED ON EMIT NOW, EVERY BUILDER, VIA
   `builder/caller-control-number.ts`.** `padControl("", 9)` FABRICATED `000000000` into ISA-13/IEA-02
-  and the interchange RECONCILED, `warnings: []`; GS-06/GE-02 and ST-02/SE-02 went out EMPTY at BOTH
-  ends, so each pair reconciled AGAINST ITSELF and no mismatch fired either. **TWO MECHANISMS, ONE
-  CLASS: INVENT and DROP. A DEFECT AT ONE SLOT WAS A CENSUS - the ack ECHOES (`TA1-01`, `AK1-02`,
-  `AK2-02`) carried it too**, and `TA1-01` was the disclosure that named this item.
-- **🛑 BYTE-STRICT `=== ""`. NO TRIM, NO TYPE CHECK.** Whitespace STILL pads to `00000000 ` and
-  STILL builds - **DISCLOSED, NOT FIXED: A TRIM IS A NORMALISATION RULE AND NO SOURCE STATES ONE.**
-  A non-string is UNCHANGED (`esc` refuses; `padControl` still says "exceeds the 9-char spec limit").
+  and the interchange RECONCILED, `warnings: []`. **TWO MECHANISMS, ONE CLASS: INVENT and LOSE. A
+  DEFECT AT ONE SLOT WAS A CENSUS - the ack ECHOES (`TA1-01`, `AK1-02`, `AK2-02`) carried it too**,
+  and `TA1-01` was the disclosure that named this item.
+- **🛑 SAY `warnings: []`, NEVER "the pair reconciled against itself" - THE BYTES DIFFER BY FAMILY
+  AND A DRAFT PUBLISHED ONE MEASUREMENT AS THE CLASS.** `buildInterchange`/`build999` join untrimmed
+  (`GE*1*~`); the SEVEN domain builders' `seg` DROPS a trailing empty, so the trailer loses the
+  element outright (`GE*1~`, `SE*21~`). SILENCE is the property that holds across both.
+- **🛑 BYTE-STRICT `=== ""`. NO TRIM, NO TYPE CHECK.** Whitespace STILL pads to `00000000 ` and STILL
+  builds - **DISCLOSED, NOT FIXED: A TRIM IS A NORMALISATION RULE AND NO SOURCE STATES ONE. `buildTA1`
+  IMPORTS NO `pad`, SO IT EMITS WHITESPACE VERBATIM - NEVER WRITE IT AS PADDED.** A non-string is
+  UNCHANGED ON EVERY ROUTE; **DO NOT RESTATE WHAT EACH ROUTE DOES** (a draft said a number "or
+  `undefined`" gets the typed refusal; `padControl(undefined)` throws a BARE `TypeError`, no `code`).
   **A SHORT one STILL ZERO-PADS - never read the guard as "ISA-13 must be nine characters".**
 - **⚖️ REFUSE NOT WARN, ON CONSISTENCY WITH FIVE IN-PACKAGE `=== ""` GUARDS, NOT ON SPEC** - 005010
   settles neither; a warning would have to travel the READ registry, and a widening onto a NEW CODE
   blinds every predicate (`#83`). **NO NEW CODE; each builder's own `refuseSpec`.**
-- **PLACED AT THE ENVELOPE SITE, SO EVERY EARLIER GUARD KEEPS PRECEDENCE** (835 balance, 999 AK9
-  counts, TA1 `enforceAcceptIsClean` all still fire first). 30 sites, EACH with a RED negative
-  control. **THE DRIFT PIN IS A SOURCE REGEX AND PROVES NOTHING; the behavioural cases are the
-  evidence. PUBLISH NO CENSUS OF WHAT IS NOT ROUTED.**
+- **🛑 PLACED AT THE ENVELOPE SITE, SO EVERY _EARLIER_ GUARD KEEPS PRECEDENCE (835 balance, 999 AK9
+  counts, TA1 `enforceAcceptIsClean`, the hierarchy checks) - BUT A DEFECT DETECTED _LATER_ NOW
+  REPORTS THIS REFUSAL INSTEAD, SO A BUILDER ERROR CODE DID MOVE.** `build999` + empty ISA-13 + six
+  AK9 syntax codes: `X12_ACK_COUNT_MISMATCH` at base, `X12_ACK_INVALID_SPEC` at head. **NEVER WRITE
+  "nothing a consumer branches on changes" - that was pass 1's MAJOR. THE REMEDY IS THE CLAIM, NEVER
+  THE GUARD.**
+- 30 sites, EACH with a RED negative control. **THE DRIFT PIN IS A SOURCE REGEX OVER A HAND-LISTED
+  NINE AND PROVES NOTHING; IT BUYS NOTHING FOR A TENTH BUILDER IN A NEW FILE.** The behavioural cases
+  are the evidence. **PUBLISH NO CENSUS OF WHAT IS NOT ROUTED.**
 
 ### 🩺 `X12-BODY-DEGENERATE-RELEASE-SEPARATOR` (2026-08-09) · `agent-notes/x12-body-degenerate-release-separator.md`
 

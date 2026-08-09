@@ -25,14 +25,22 @@
  * The item named ISA-13 / IEA-02. The other two envelope pairs take the same
  * empty input and are silent too, in a different way: they reach the wire
  * through `esc`, and `escapeRelease` early-returns on `""`, so the required
- * element is emitted EMPTY at **both** ends of the pair, which means each pair
- * still reconciles against itself and no `X12_CONTROL_NUMBER_MISMATCH` fires.
- * Measured at the same commit:
+ * element is lost. **The bytes differ by builder family**, which a draft of this
+ * header got wrong by publishing one measurement as the class:
+ * `buildInterchange` and `build999` join without trimming, so the element goes
+ * out empty; the seven domain builders' `seg` drops a trailing empty, so the
+ * trailer loses it outright. Measured at the same commit:
  *
  * ```text
- * groupControlNumber: ""            GS*HC*…*1200**X*005010X222A2~ … ~GE*1*~   warnings: []
- * transactionSetControlNumber: ""   ST*837**005010X222A2~ … ~SE*3*~           warnings: []
+ * buildInterchange  groupControlNumber: ""   GS*HC*…*1200**X*005010X222A2~ … ~GE*1*~
+ * buildInterchange  transactionSetControl…   ST*837**005010X222A2~ … ~SE*3*~
+ * build834          groupControlNumber: ""   GS*BE*…*1200**X*005010X220A1~ … ~GE*1~
+ * build834          transactionSetControl…   ST*834**005010X220A1~ … ~SE*21~
  * ```
+ *
+ * All of them emitted `warnings: []`, which is the property that holds across
+ * both families and is what this file asserts. Say that, never "the pair
+ * reconciled against itself".
  *
  * The acknowledgment builders carry the same class at the slots where they
  * ECHO the document being acknowledged, which is the whole reason a sender can
@@ -47,8 +55,8 @@
  * ## What this file asserts, and what it does not
  *
  * One red case per slot routed through
- * {@link "../src/builder/caller-control-number.js".requireControlNumber}, plus
- * the drift pin that no builder reaches `padControl` with a raw spec field.
+ * {@link "../src/builder/caller-control-number.js".requireControlNumber}, the
+ * disclosed precedence move, and the drift pin.
  * `buildTA1`'s case lives in `test/transactions-ack-ta1-escape.test.ts` beside
  * the disclosure it replaces, and the seven domain builders' envelope cases
  * live in their own build suites beside the valid specs they mutate.
@@ -56,8 +64,11 @@
  * **The drift pin is a source regex and it establishes nothing about the
  * property** - that is this repo's own recorded finding about same-line scans,
  * and it is written here so the pin is not read as proof. What carries the
- * property is the behavioural cases; what the pin buys is that a tenth builder
- * copying the `padControl` block cannot land unguarded without going red.
+ * property is the behavioural cases. What the pin buys is narrow: it reds if one
+ * of the NINE builders it names loses a guard or its import. **It buys nothing
+ * for a tenth builder in a new file** - `ISA_BUILDERS` is a hand-maintained
+ * list, so adding one is an edit to that list, and a draft of this header
+ * claimed the opposite.
  *
  * **No census of the slots that are NOT routed is published here.** Growing one
  * is the runaway ADR 0016 exists to stop, and this package has been refuted for
@@ -242,6 +253,50 @@ describe("X12-EMPTY-CONTROL-NUMBER-FABRICATED: build999", () => {
     ).toThrow(/build999: transactionSetControlNumber is empty\. ST-02 \/ SE-02 is a required/);
   });
 
+  it("🛑 the guard sits AFTER the AK9 count reconciliation, and one ordering did move", () => {
+    // Two halves, and the second is the disclosed cost.
+    //
+    // The guards are placed at the envelope-assembly site, so a guard that runs
+    // BEFORE them keeps its precedence: `enforceCountInvariants` still wins over
+    // an empty envelope control number.
+    expect(() =>
+      build999({
+        envelope: { ...ACK_SPEC.envelope, interchangeControlNumber: "" },
+        functionalGroup: { ...ACK_SPEC.functionalGroup, numberOfReceivedTransactionSets: 2 },
+      }),
+    ).toThrow(/AK9-03 received/);
+
+    // But a defect this builder detects LATER, during body assembly, now reports
+    // the control-number refusal instead, on the same class with a different
+    // code. Measured at base `28b417f`: `X12_ACK_COUNT_MISMATCH`. So a consumer
+    // predicate on that exported code goes base-true / head-false on this spec,
+    // which is why `CHANGELOG.md`, `KNOWN-LIMITATIONS.md`, the changeset and the
+    // troubleshooting page all say so rather than "nothing you branch on moves".
+    // Pinned here so that disclosure cannot go stale.
+    const run = (): unknown =>
+      build999({
+        envelope: { ...ACK_SPEC.envelope, interchangeControlNumber: "" },
+        functionalGroup: {
+          ...ACK_SPEC.functionalGroup,
+          disposition: "R",
+          numberOfAcceptedTransactionSets: 0,
+          syntaxErrorCodes: ["1", "2", "3", "4", "5", "6"],
+          transactionResponses: [
+            { transactionSetIdCode: "837", transactionSetControlNumber: "0001", disposition: "R" },
+          ],
+        },
+      });
+    expect(run).toThrow(/interchangeControlNumber is empty/);
+    try {
+      run();
+      expect.unreachable("build999 accepted an empty interchangeControlNumber");
+    } catch (error) {
+      expect(error).toBeInstanceOf(AckBuildError);
+      expect((error as AckBuildError).code).toBe(ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC);
+      expect((error as AckBuildError).code).not.toBe(ACK_BUILD_ERROR_CODES.X12_ACK_COUNT_MISMATCH);
+    }
+  });
+
   it("🩺 refuses an empty AK1-02, the group control number being acknowledged", () => {
     // Distinct from the envelope's own GS-06: AK1-02 echoes the group being
     // acknowledged, so an empty one used to emit `AK1*HC**005010X222A2~` and
@@ -321,9 +376,10 @@ describe("X12-EMPTY-CONTROL-NUMBER-FABRICATED: the drift pin", () => {
 
   it("no builder calls padControl on a value that has not been named to a guard", () => {
     // Every `padControl` call site takes the same spec field the guard above it
-    // names. Pinning the pair keeps a tenth builder from copying the ISA block
-    // without the guard. It says nothing about ORDER, which is why the
-    // behavioural cases above and in the seven domain suites are the evidence.
+    // names. Pinning the pair keeps one of the NINE listed builders from losing
+    // its guard while keeping the call. It says nothing about ORDER, and nothing
+    // about a builder that is not on the list, which is why the behavioural
+    // cases above and in the seven domain suites are the evidence.
     const offenders: string[] = [];
     for (const rel of ISA_BUILDERS) {
       const source = readFileSync(join(__dirname, "..", rel), "utf8");

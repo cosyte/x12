@@ -15,26 +15,35 @@ one does not fail: it succeeds against the wrong thing, and the sender gets no s
 
 The class is wider than that slot and it has two mechanisms rather than one. The group and
 transaction-set control numbers reach the wire through the release escaper, which early-returns on
-`""`, so an empty one went out as an EMPTY required element at both ends of its pair, which means
-each pair still reconciled against itself and `X12_CONTROL_NUMBER_MISMATCH` did not fire either.
-Measured through `buildInterchange` at `0.0.15`, one variable at a time:
+`""`, so an empty one lost the required element. The bytes are not the same in every builder:
+`buildInterchange` and `build999` join without trimming, so the element goes out empty, while the
+seven domain builders share a segment helper that drops a trailing empty element, so the trailer
+loses it outright. Measured at `0.0.15`, one variable at a time:
 
 ```text
-interchangeControlNumber: ""       ISA*…*00501*000000000*0*P*:~ … ~IEA*1*000000000~
-groupControlNumber: ""             GS*HC*…*1200**X*005010X222A2~ … ~GE*1*~
-transactionSetControlNumber: ""    ST*837**005010X222A2~ … ~SE*3*~
+buildInterchange  interchangeControlNumber: ""  ISA*…*00501*000000000*0*P*:~ … ~IEA*1*000000000~
+buildInterchange  groupControlNumber: ""        GS*HC*…*1200**X*005010X222A2~ … ~GE*1*~
+buildInterchange  transactionSetControlNumber:  ST*837**005010X222A2~ … ~SE*3*~
+build834          groupControlNumber: ""        GS*BE*…*1200**X*005010X220A1~ … ~GE*1~
+build834          transactionSetControlNumber:  ST*834**005010X220A1~ … ~SE*21~
 ```
 
-All three emitted `warnings: []`. The acknowledgment builders carried the same class at the slots
+Every one of those emitted `warnings: []`, which is the property that holds across both families: no
+diagnostic on any channel separated an absent control number from a supplied one. The acknowledgment builders carried the same class at the slots
 where they echo the document being acknowledged, which is the whole reason a sender can match an ack
 to what they sent: `build999` emitted `AK1*HC**005010X222A2~` and `AK2*837*~`, and `buildTA1` emitted
 `TA1**260601*1200*A*000`. The `buildTA1` case was already disclosed in `KNOWN-LIMITATIONS.md` as
 tracked and open; the two `build999` echoes were not disclosed anywhere.
 
 All of them now draw that builder's own typed, code-tagged refusal before anything is emitted, naming
-the slot and the spec property. No new error code is minted and no warning code moves, so nothing a
-consumer branches on changes. What changes is that a call which used to hand you a document now
-throws.
+the slot and the spec property. No new error code is minted and no warning code moves. What changes
+is that a call which used to hand you a document now throws, and that a spec wrong in two ways can
+now report a different one of the two: the guards sit at the envelope-assembly site, so every guard
+that ran BEFORE them keeps its precedence (`build835`'s balance equation, `build999`'s AK9 counts,
+`buildTA1`'s accept-must-mean-accept check, the hierarchy checks, `build834`'s unknown-maintenance-
+type refusal), but a defect detected LATER, during body assembly, now reports the control-number
+refusal instead. Measured: `build999` with an empty `interchangeControlNumber` and six AK9 syntax
+error codes threw `X12_ACK_COUNT_MISMATCH` at `0.0.15` and throws `X12_ACK_INVALID_SPEC` now.
 
 🛑 Why refuse rather than warn, stated as a decision because the standard does not settle it. 005010
 says nothing about what a builder should do with an absent control number. The tiebreak is
@@ -48,16 +57,13 @@ what they were shipping was `000000000`, a real value a trading partner may alre
 something else.
 
 🛑 The guard is byte-strict `=== ""` and does NOT trim. A whitespace-only control number is still
-accepted and still padded: `" "` emits ISA-13 as `00000000 `, and `buildTA1` emits `TA1*   *…`.
-Trimming would be a normalisation rule, no source consulted for this package states one, and the five
-in-package guards this mirrors are byte-strict for the same reason. It also does not type-check, so
-nothing about a non-string changed: through the escaper it draws the type refusal, and at the ISA
-slots `padControl` still throws the typed refusal whose text misleadingly says "exceeds the 9-char
-spec limit". And a SHORT control number still zero-pads, because that is what the padding is for:
-`"1"` still emits `000000001`.
+accepted and still padded: `" "` emits ISA-13 as `00000000 `, and `buildTA1` does no padding at all,
+so it emits whatever whitespace it was handed, verbatim. Trimming would be a normalisation rule, no
+source consulted for this package states one, and the five in-package guards this mirrors are
+byte-strict for the same reason. It also does not type-check, so nothing about a non-string changed
+on any route; what each route already did is disclosed in `KNOWN-LIMITATIONS.md` and is not restated
+here. And a SHORT control number still zero-pads, because that is what the padding is for: `"1"`
+still emits `000000001`.
 
-Every guard sits at the envelope-assembly site, so every guard that already ran keeps its precedence:
-`build835`'s balance equation, `build999`'s AK9 count reconciliation and `buildTA1`'s
-accept-must-mean-accept check all still fire ahead of this one. No census of the slots that are NOT
-routed through the guard is published; the claim is the property, that a control number routed
-through it is refused when empty.
+No census of the slots that are NOT routed through the guard is published; the claim is the property,
+that a control number routed through it is refused when empty.

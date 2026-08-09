@@ -2,6 +2,15 @@
 
 The narrative for the `CLAUDE.md` trap of the same name. Base commit `28b417f` (`0.0.15`).
 
+Provenance: this repo's own source tree at `28b417f` and at the head of this slice, measured (every
+byte string, every warning array and every base/head reading below is a run, not a recollection).
+**No primary X12 record was read for this slice and it grounds nothing new.** The one spec-shaped
+statement it repeats, that ISA-13 is nine characters wide "per ASC X12 .5", is a **pre-existing
+in-package assertion** carried by `padControl`, by `build-interchange.ts`'s own ISA comment and by
+`test/_helpers/envelope.ts`'s `ISA_WIDTHS`; this slice inherits it and does not verify it. The
+refuse-versus-warn call rests on in-package CONSISTENCY, stated as such below, and **not** on any
+005010 clause.
+
 ## The filed line, and what re-measuring it found
 
 `operations/BACKLOG.md`'s `X12-837-RESIDUALS` carried:
@@ -31,14 +40,29 @@ transactionSetControlNumber: ""
 
 Two mechanisms, not one:
 
-- **ISA-13 / IEA-02 FABRICATE.** `padControl` zero-pads to the nine characters ASC X12 .5 fixes
-  ISA-13 at, and nothing stood in front of it, so `""` became a nine-digit identifier the caller
-  never supplied. The interchange is frozen, well-formed and reconciles.
-- **GS-06 / GE-02 and ST-02 / SE-02 DROP.** They reach the wire through `esc`, and `escapeRelease`
-  early-returns on `""`, so a required element goes out empty. Because it goes out empty at **both**
-  ends of the pair, `X12_CONTROL_NUMBER_MISMATCH` does not fire either.
+- **ISA-13 / IEA-02 FABRICATE.** `padControl` zero-pads to nine characters and nothing stood in front
+  of it, so `""` became a nine-digit identifier the caller never supplied. The interchange is frozen,
+  well-formed and reconciles.
+- **GS-06 / GE-02 and ST-02 / SE-02 LOSE the element.** They reach the wire through `esc`, and
+  `escapeRelease` early-returns on `""`.
 
-Both are silent. The first is the worse one: an absent identifier fails loudly at the receiver; an
+**🛑 The second mechanism's BYTES differ by builder family, and a draft of this file published one
+measurement as the class.** `buildInterchange` and `build999` join without trimming, so the element
+goes out empty on both ends of the pair. The seven domain builders share a `seg` that drops a
+trailing empty element, so the trailer loses it outright. Measured at the same commit through
+`build834`:
+
+```text
+groupControlNumber: ""            GS*BE*EMPLOYERCO*MEDPAY*20260601*1200**X*005010X220A1 | GE*1
+transactionSetControlNumber: ""   ST*834**005010X220A1 | SE*21
+```
+
+Both silent, `warnings: []`. **Say `warnings: []`, never "each pair reconciled against itself"** -
+in the domain builders there is no second element to reconcile with. The property that holds across
+both families is the silence: no diagnostic on any channel separated an absent control number from a
+supplied one.
+
+The fabrication is the worse of the two: an absent identifier fails loudly at the receiver; an
 invented one reconciles against the wrong thing.
 
 `#100` had already recorded the sibling half of this while picking its own slice
@@ -106,15 +130,18 @@ running the suite between each.
 
 ### Three bounds, all deliberate, all disclosed
 
-- **Byte-strict `=== ""`. No trim.** `padControl(" ", 9)` still answers `"00000000 "` and `buildTA1`
-  still emits `TA1*   *…`. Trimming is a **normalisation rule** and no source consulted for this
+- **Byte-strict `=== ""`. No trim.** `padControl(" ", 9)` still answers `"00000000 "`. `buildTA1`
+  imports no `pad` at all, so it emits whatever whitespace it was handed, VERBATIM - never write it
+  as padded. Trimming is a **normalisation rule** and no source consulted for this
   package states one; the five in-package guards this mirrors are all byte-strict for the same
   reason. Pinned as a test so it cannot quietly change, and disclosed in `KNOWN-LIMITATIONS.md` and
   in `docs-content/troubleshooting.md` as the one shape a caller should still screen for.
-- **No type check.** A non-string behaves exactly as before: `esc` refuses it, and `padControl`
-  throws the typed refusal whose text misleadingly says "exceeds the 9-char spec limit". That wart is
-  disclosed in `caller-string.ts` and untouched here. Widening this guard into a type guard would
-  have changed a documented message for a defect that is already loud.
+- **No type check, so nothing about a non-string changed on any route.** What each route already did
+  is disclosed in `caller-string.ts` and in `KNOWN-LIMITATIONS.md`; it is **deliberately not restated
+  here**, because a draft restated it wrongly - it said a number "or `undefined`" draws the typed
+  refusal, and `padControl(undefined, 9)` throws a bare `TypeError` with no `code`, at both shas.
+  Widening this guard into a type guard would have changed a documented message for a defect that is
+  already loud.
 - **A SHORT control number still zero-pads.** The guard is not "ISA-13 must be nine characters":
   `"1"` still emits `000000001`, which is the entire point of `padControl`. Pinned in every suite the
   slice touches, because reading the guard the other way is the obvious mis-generalisation.
@@ -122,9 +149,18 @@ running the suite between each.
 ### Placement, and why precedence did not move
 
 Every guard sits at the envelope-assembly site rather than at the top of its builder, so **every
-guard that already ran keeps its precedence**: a spec that is wrong in two ways reports the same
-first refusal it reported before. Measured: `build835`'s `enforceBalance`, `build999`'s AK9 count
-reconciliation and `buildTA1`'s `enforceAcceptIsClean` all still fire ahead of this one.
+guard that runs BEFORE it keeps its precedence.** Measured: `build835`'s `enforceBalance`,
+`build999`'s AK9 count reconciliation, `buildTA1`'s `enforceAcceptIsClean`, the 837's and 277's
+hierarchy checks and `build834`'s unknown-maintenance-type refusal all still fire ahead of this one.
+
+**🛑 It does NOT preserve every ordering, and a draft of this file claimed it did.** A defect the
+builder detects LATER, during body assembly, now reports the control-number refusal instead, on that
+builder's own `*_INVALID_SPEC` code. Measured: `build999` with an empty `interchangeControlNumber`
+and six AK9 syntax error codes threw `X12_ACK_COUNT_MISMATCH` at base and throws
+`X12_ACK_INVALID_SPEC` at head, so a consumer predicate on that exported code goes base-true /
+head-false. **The remedy for that is the CLAIM, never the guard**: moving guards earlier would
+destroy the precedence that currently holds correctly. It is disclosed in `CHANGELOG.md`,
+`KNOWN-LIMITATIONS.md`, the changeset and `docs-content/troubleshooting.md`.
 
 ## What is pinned, and the honest limit of the pin
 
@@ -138,10 +174,13 @@ reconciliation and `buildTA1`'s `enforceAcceptIsClean` all still fire ahead of t
 - **The message is asserted, never only the class.** `toThrow(SomeBuildError)` passes on any
   unrelated refusal in these specs, which is how four of six cases in an earlier slice were vacuous.
 
-**The drift pin is a source regex and establishes nothing about the property.** It requires every ISA
-builder to name all three slot literals and to import the guard. That is drift protection for a tenth
-builder copying the ISA block; the behavioural cases are the evidence. This is written down because
-this repo has been caught before reading a same-line scan as a proof.
+**The drift pin is a source regex and establishes nothing about the property.** It requires each of
+the NINE named ISA builders to name all three slot literals and to import the guard, so it reds if
+one of them loses a guard. **It buys nothing for a tenth builder in a new file** - `ISA_BUILDERS` is
+a hand-maintained list, deliberately, so adding one is an edit to that list. A draft of this file and
+of the test said the pin covered a tenth builder; it does not. The behavioural cases are the
+evidence. This is written down because this repo has been caught before reading a same-line scan as a
+proof.
 
 **No census of the slots NOT routed through the guard is published**, here or in the module doc or in
 `CLAUDE.md`. Three earlier slices published one and a refuter falsified each by finding one more. The
