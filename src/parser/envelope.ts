@@ -217,9 +217,15 @@ function splitSegments(
  * answered out of GS-07's slot. Nothing warned on the shift itself, and the
  * one warning that did appear (`X12_CONTROL_NUMBER_MISMATCH`, when the
  * displaced slot happened to be a control number) named a different problem.
- * The package's own `buildInterchange` releases GS-02 / GS-03 / GS-06 /
- * GS-08 and ST-01 / ST-02 / ST-03 on emit and then returns `parseX12` of its
- * own bytes, so the two halves disagreed inside a single call.
+ * The package's own `buildInterchange` releases the caller-supplied elements
+ * it emits into a `GS` or an `ST` and then returns `parseX12` of its own bytes,
+ * so the two halves disagreed inside a single call. **That sentence used to
+ * enumerate the slots (`GS-02 / GS-03 / GS-06 / GS-08` and `ST-01 / ST-02 /
+ * ST-03`) and the enumeration went stale twice** - it never included GS-01, and
+ * `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` then added GS-04 / GS-05 / GS-07,
+ * which are exactly the slots it omitted. A property does not go stale; a
+ * census does. The slots that are still NOT released are recorded in
+ * `KNOWN-LIMITATIONS.md`, beside the reason, rather than here.
  *
  * Values stay RAW here - the release sequence is preserved inside the token,
  * never unescaped - which is the same contract {@link "./segment.js".X12Segment}

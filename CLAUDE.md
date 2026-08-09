@@ -74,13 +74,16 @@ or financial value on the wire.**
 
 ### 🩺 `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-interchange-gs-escape.md`
 
-- **🩺 `buildInterchange` RELEASES GS-04 / GS-05 / GS-07 NOW** - it disagreed with itself.
-  **GS-07 WAS THE SILENT ONE:** `"X*Y"` took GS-08's slot, `warnings: []`. **🛑 BYTES CHANGE, NO
-  READER MOVED - A DIFFERENT SCOPE FROM `#96`. STATE THE PROPERTY** (the model reports what THE
-  CALLER PASSED), **NEVER A DIRECTION OR A TOTAL:** `^`/`:` were a dot-path GAIN, the cost a
-  MID-STRING `?` on RAW.
+- **🩺 `buildInterchange` RELEASES GS-04 / GS-05 / GS-07 NOW** - it disagreed with itself. **GS-07
+  WAS THE SILENT ONE:** `"X*Y"` took GS-08's slot, `warnings: []`. **🛑 BYTES CHANGE, NO READER
+  MOVED - A DIFFERENT SCOPE FROM `#96`. STATE THE PROPERTY** (the model reports what THE CALLER
+  PASSED), **NEVER A DIRECTION, A TOTAL, OR A DELIMITER BY BYTE - NAME THE ROLE:** the caller
+  declares all four; REPETITION/COMPONENT were a dot-path GAIN, the cost a MID-STRING `?` on RAW.
+- **🛑 NEVER ESCAPE ELEMENT 0: A SEGMENT ID IS OURS, NOT CALLER CONTENT.** `esc` uses the CALLER's
+  set, so `componentSeparator: "S"` made `"GS"` read `G?S` and the group fell out as orphans.
 - **⚖️ TYPE-CHECK BEFORE ESCAPING** - bare `esc` names only the BUILDER, losing `"GS"-04`. **`esc`
-  AFTER `expandYY`; `null` HERE IS ABSENT, NOT REFUSED; NO CENSUS - IEA-02 IS ITS OWN CALL.**
+  AFTER `expandYY`; `null` HERE IS ABSENT, NOT REFUSED; NO CENSUS, AND THE SIBLING PRECEDENT IS NOT
+  UNIFORM - GS-07 IS A CALLER VALUE IN `build999` ALONE.**
 
 ### 🩺 `X12-TA1-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-ta1-emit-escape.md`
 
@@ -407,9 +410,8 @@ or financial value on the wire.**
 ### `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX` (2026-08-03) · `agent-notes/parser-testtimeout-asserts-an-idle-box.md`
 
 **RELOCATED IN FULL 2026-08-08, VERBATIM, NOTHING DROPPED** - it paid for the trap at the top of this
-list, under this file's own ratchet. **🩺 Open it before you touch `testTimeout`, a timing figure or
-`attw-gate`: it is NOT the liveness net people assume** - an infinite synchronous loop gives NO
-verdict and wedges the worker. No value changed; re-derive every figure, per tree.
+list. **🩺 Open it before you touch `testTimeout`, a timing figure or `attw-gate`: it is NOT the
+liveness net people assume** - an infinite synchronous loop gives NO verdict and wedges the worker.
 
 ### 🩺 The `phi-scan` gate · `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (2026-08-03), `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` + `PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL` (2026-08-06), `PHI-SCAN-WALK-ROOT-SCOPE` (2026-08-08) · one `agent-notes.md` section per id, the last `agent-notes/phi-scan-walk-root-scope.md`, + `#phi-commit-gate-armed-2026-06-28`
 
@@ -590,25 +592,12 @@ PHI-free and never auto-send; `build999` / `buildTA1` refusals; per-builder refu
 structural locators ONLY, stated PER BUILDER; NO caller guard echoes a caller's element value; the
 `?`-release escape is honored losslessly; and `KNOWN-LIMITATIONS.md` is the canonical read-side list.
 
-### `ASSETS-P8`: the `attw` gate lies · `documentation/agent-notes.md#assets-p8-the-attw-wrapper`
+### `ASSETS-P8`: the `attw` gate lies · `agent-notes/assets-p8-attw-gate.md`
 
-- **🩺 `attw` prints "does not contain types" and EXITS 0, so the `attw` script is `scripts/attw.mjs`,
-  a wrapper, NEVER the bare CLI** (the upstream line that does it: relocated narrative §8). For a
-  package that ships types it means the declarations were **not in the tarball**: a broken publish reported as a pass.
-- **`scripts/verify.sh` needs no change; do not touch it** - it propagates the step's status
-  faithfully; the step is what lies to it.
-- **The timing supplies the condition; the exit code is the defect** (the `tsup` build interval:
-  relocated narrative §7). **Re-measure per repo; do not carry a sibling's figure over.** The answer
-  is **not** a lock, a lease or a build queue (ADR 0015): the gate has to be able to say its own
-  inputs were missing, whatever removed them.
-- **Keep BOTH nets in `scripts/attw.mjs`; they catch different things** - the preflight and the
-  post-check, and what each one catches that the other structurally cannot: relocated narrative §9.
-- **The post-check reads a string, so anything that could hide it is REFUSED by option name,
-  wholesale, not by value** (four routes; a nonexistent `--config-path` blinds nothing).
-- **`test/scripts/attw-gate.test.ts` pins the upstream exit-0 itself**, so an `attw` upgrade reds the
-  suite instead of letting the net go quietly slack.
-- **The port is NOT finished org-wide, including `config/scripts/parser-template/`, which
-  `scaffold-parser.mjs` mints new parsers from.** Derive the set; never trust a count.
+**RELOCATED IN FULL 2026-08-08, VERBATIM, NOTHING DROPPED** - it paid for the trap at the top of this
+list, with the section above. **🩺 `attw` prints "does not contain types" and EXITS 0**, so the
+`attw` script is `scripts/attw.mjs`, a wrapper, NEVER the bare CLI - a broken publish reported as a
+pass. Open that file before you touch `scripts/attw.mjs`, `verify.sh` or the attw gate test.
 
 ## Standing disciplines (every change)
 

@@ -1,7 +1,7 @@
 # `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` (2026-08-08)
 
-`buildInterchange` released GS-02, GS-03, GS-06 and GS-08 on emit and wrote GS-04, GS-05 and GS-07
-raw. It returns `parseX12` of the bytes it just wrote, so **one function disagreed with itself** on
+`buildInterchange` released GS-01, GS-02, GS-03, GS-06 and GS-08 on emit and wrote GS-04, GS-05 and
+GS-07 raw. It returns `parseX12` of the bytes it just wrote, so **one function disagreed with itself** on
 three of its own slots. This note carries the measurement, the decisions and the limits; the
 imperatives are in `CLAUDE.md`.
 
@@ -37,10 +37,15 @@ Same tiebreak the two sibling slices recorded, and **not re-derived here as a sp
 
 - `buildInterchange` returns `parseX12` of its own output, so the disagreement is internal and
   measurable without reading a TR3.
-- **All seven domain builders already released these same three slots** through their own `esc`
-  (`build-835.ts`, `build-837.ts`, `build-999.ts`, `build-834.ts`, `build-820.ts`, `build-271.ts`,
-  `build-277.ts`, `build-278.ts` for GS-04/GS-05; `build-999.ts` also for GS-07). The general-purpose
-  builder was the odd one out.
+- **The sibling-builder precedent is NOT uniform, and a draft that said it was got REFUTED in pass
+  1.** Measured on this tree: the domain builders release GS-04 and GS-05 through their own `esc`;
+  **GS-07 is a CALLER value in `build999` alone** and is released there, while the rest stamp a
+  module constant into GS-07 and route it nowhere. So the precedent covers two of these three slots
+  broadly and the third in one builder - **and GS-07, the slot whose base defect raised nothing on
+  any channel, is the one with the least of it.** Do not compress this back into "the domain builders
+  already released these same three slots"; that sentence shipped to five surfaces including the
+  CHANGELOG and was measured false. **Publish no count of the builders either** - a draft said
+  "seven" and enumerated eight files in its own parenthetical.
 - `SegmentSpec`'s own JSDoc promises the builder applies the release escape so an active delimiter
   inside a value survives.
 
@@ -61,11 +66,16 @@ it did at `0.0.15`. `X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE` changed how alread
 DECODE; this one changes what this library EMITS, and therefore how its own output reads back. Do not
 flatten the two into one sentence.
 
-**Only `*` and `~` ever shifted the segment's own element framing, plus a `?` immediately before the
-separator.** `^` and `:` moved the DOT-PATH reader instead, and releasing them is a **gain** there:
-`getSegmentValue(gs, "07")` answered `"X"` at base for `"X^Y"`, truncating to repetition 0, and the
-composite read `"07-1"` answered `"X"` for `"X:Y"`. **The measured pure cost is a MID-STRING `?`, on
-the surfaces documented as raw only** - `gs.elements[4]` reads `"2026??0601"` where it read
+**🛑 STATE THE DELIMITER SET BY ROLE, NEVER BY BYTE - a draft said "only `*` and `~`" and pass 1
+refuted it in one probe.** `InterchangeSpec` lets the caller declare all four, so which BYTES shift
+is a property of the DECLARED set: with `elementSeparator: "|"` and `segmentTerminator: "!"`, a GS-07
+of `"X|Y"` took GS-08's slot at base and `"X*Y"` was inert. The property, which holds for any set:
+**only the ELEMENT SEPARATOR and the SEGMENT TERMINATOR ever shifted the segment's own element
+framing, plus a `?` immediately before the element separator.** The **repetition** and **component**
+separators moved the DOT-PATH reader instead, and releasing them is a **gain** there: on the default
+set `getSegmentValue(gs, "07")` answered `"X"` at base for `"X^Y"`, truncating to repetition 0, and
+the composite read `"07-1"` answered `"X"` for `"X:Y"`. **The measured pure cost is a MID-STRING `?`,
+on the surfaces documented as raw only** - `gs.elements[4]` reads `"2026??0601"` where it read
 `"2026?0601"`, while the dot-path read of that value unescapes and is unchanged. Recorded in that
 order, and **no total is published**: that is what was measured, not a closed account.
 
@@ -83,7 +93,8 @@ package's one live route where the segment guard fired FIRST rather than as a ba
 `test/builder-refusal-phi.test.ts` had a committed case saying exactly that.
 
 So `buildGroup` runs `requireCallerSegment` over the **unescaped** GS parts, then maps `esc` over
-them, and `joinSeg`'s own call stays where it is as the structural backstop. This is the same shape
+every one of them except element 0 (the trap below), and `joinSeg`'s own call stays where it is as
+the structural backstop. This is the same shape
 as `X12-TA1-EMIT-NOT-RELEASE-AWARE`'s "route through `makeCallerEscaper`, not bare `escapeRelease`":
 the escape is not the whole job, and the way past it is where the second defect gets introduced.
 
@@ -104,18 +115,27 @@ here made it so, and it is pinned so the claim stays scoped.
 
 ## The count gate moved DOWN while the coverage widened
 
-`test/builder-string-type.test.ts` pins the `esc` invocation count, and it went 412 -> 408 on 383 ->
-379 lines: `buildGroup` used to invoke `esc` five times on five lines and now maps one `esc` over the
-whole GS parts array. **That assertion is a drift detector and has never measured coverage** - a
-falling count is not evidence of a shrinking guard. The figure is published in that file's own header
-and asserted in the same file, deliberately, so prose cannot drift from code. Never quote it
-anywhere else.
+`test/builder-string-type.test.ts` pins the `esc` invocation count, and it moved DOWN across this
+slice while the coverage widened: `buildGroup` used to invoke `esc` once per already-escaped GS slot,
+on one line each, and now maps one `esc` over the GS parts array. **That assertion is a drift
+detector and has never measured coverage** - a falling count is not evidence of a shrinking guard.
+**🩺 THE FIGURES ARE NOT REPEATED HERE, DELIBERATELY.** A draft of this section published them beside
+the sentence telling the reader never to quote them anywhere else, which is the exact duplication
+`caller-string.ts` records as the thing that drifts. They are published in that test file's own
+header and asserted in the same file, so prose cannot drift from code. Read them there.
 
 ## What this does NOT close, stated without a census
 
 - **`buildInterchange`'s IEA-02** does not go through `esc`. It is `padControl`ed and it must stay
   byte-equal to the fixed-width ISA-13 it reconciles against, so releasing one and not the other is a
   decision of its own and not a line of code. Untouched here.
+- **The segment id is never escaped, and that is a RULE this slice had to learn.** A draft mapped
+  `esc` over element 0 and pass 1 measured it: `esc` releases against the delimiter set the CALLER
+  declared, `InterchangeSpec` screens the four only for whitespace, control characters, emptiness and
+  distinctness, so a `componentSeparator` of `"S"` turned the literal `"GS"` into `G?S` - the group
+  header stopped being a `GS`, `groups.length` went 1 -> 0, five segments fell out as orphans, and
+  two warning codes started firing on a spec that built clean at `0.0.15`. `GE` / `ST` / `SE` / `IEA`
+  already followed the rule, and the module's own ISA comment states it.
 - **The fixed-width ISA slots** are outside both guards, exactly as `caller-string.ts` and
   `KNOWN-LIMITATIONS.md` already disclose. `pad(1, 15)` still throws an untyped `TypeError` and
   `padControl(1, 9)` still throws the misleadingly-worded typed refusal.
@@ -141,6 +161,9 @@ had a committed test asserting the base behaviour as a DISCLOSURE and it was **r
 closure pin**, the same remedy `X12-TA1-EMIT-NOT-RELEASE-AWARE` applied to its own disclosure - a
 committed test that asserts what the tree no longer does is a false disclosure with a green tick
 beside it.
+
+The segment-id rule and the by-ROLE delimiter property each have their own pins, both added in the
+pass-1 remedy.
 
 Every closure pin sits against a negative control:
 

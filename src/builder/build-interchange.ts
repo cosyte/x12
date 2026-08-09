@@ -132,14 +132,21 @@ function buildGroup(
   const groupTime = group.groupTime ?? spec.interchangeTime;
   const responsibleAgencyCode = group.responsibleAgencyCode ?? "X";
 
-  // GS-04, GS-05 and GS-07 used to be emitted RAW while their six siblings went
-  // through `esc`, so a caller value carrying an active delimiter took a slot of
-  // its own and shifted every element after it down one. `buildInterchange`
-  // returns `parseX12` of the bytes it just wrote, so the function disagreed
-  // with itself: a `responsibleAgencyCode` of `"X*Y"` came back with GS-08
-  // reading `"Y"` instead of the guide reference the caller stated, on an
-  // interchange whose `warnings` array was empty. Every one of the seven domain
-  // builders already released these same three slots through its own `esc`.
+  // GS-04, GS-05 and GS-07 used to be emitted RAW while the segment's other
+  // caller-supplied elements went through `esc`, so a caller value carrying an
+  // active delimiter took a slot of its own and shifted every element after it
+  // down one. `buildInterchange` returns `parseX12` of the bytes it just wrote,
+  // so the function disagreed with itself: a `responsibleAgencyCode` of `"X*Y"`
+  // came back with GS-08 reading `"Y"` instead of the guide reference the caller
+  // stated, on an interchange whose `warnings` array was empty.
+  //
+  // The in-package precedent is NOT uniform and the exact shape matters, because
+  // a draft compressed it into "all seven domain builders already released these
+  // same three slots" and a refuter measured that false. What is true: the
+  // domain builders release GS-04 / GS-05 through their own `esc`, and `GS-07`
+  // is a caller value in `build999` alone (released there); the others stamp a
+  // module constant into GS-07 and never route it anywhere. So the precedent
+  // covers two of these three slots broadly and the third in one builder.
   //
   // The values are escaped AFTER `expandYY` has run, never before: that helper
   // decides on `length === 6`, and a released value is longer than the one the
@@ -165,8 +172,20 @@ function buildGroup(
   ];
   requireCallerSegment(gsParts, "buildInterchange", refuseSpec);
 
+  // 🩺 INDEX 0 IS THE LIBRARY'S OWN SEGMENT ID AND IS NEVER ESCAPED. A draft
+  // mapped `esc` over the whole array and a refuter measured what that cost:
+  // `esc` releases against the delimiter set the CALLER declared, and
+  // `InterchangeSpec` exposes all four, screened only for whitespace, control
+  // characters, emptiness and distinctness. A `componentSeparator` of `"S"` -
+  // admissible today - turned the literal `"GS"` into `G?S`, so the group header
+  // stopped being a `GS` at all: `groups.length` went 1 -> 0, five segments fell
+  // out as orphans, and `X12_UNEXPECTED_SEGMENT` and `X12_GROUP_COUNT_MISMATCH`
+  // started firing on a spec that built clean at `0.0.15`. A segment id is a
+  // structural byte this library owns, not caller content, which is the rule the
+  // ISA line above already states and the rule `GE` / `ST` / `SE` / `IEA` follow
+  // by never routing their literal ids through `esc` either.
   const gs = joinSeg(
-    gsParts.map((value) => esc(value)),
+    gsParts.map((value, index) => (index === 0 ? value : esc(value))),
     elementSeparator,
     segmentTerminator,
   );

@@ -192,10 +192,14 @@ model.
     the shift left in each slot. **What is narrower here than in the two entries below: no reader
     moved.** An inbound document from a trading partner decodes exactly as it did at `0.0.15`; what
     changed is what this library emits.
-  - **Only `*` and `~` ever shifted the segment's own framing, plus a `?` immediately before the
-    separator.** `^` and `:` moved the dot-path reader instead, and releasing them is a **gain**
-    there: `getSegmentValue(gs, "07")` answered `"X"` for `"X^Y"`, truncating to repetition 0, and
-    the composite read `"07-1"` answered `"X"` for `"X:Y"`. **The measured cost is a mid-string `?`,
+  - **Read the delimiter set by ROLE, never by byte.** `InterchangeSpec` lets you declare all four,
+    so which BYTES shift is a property of the set you declared: with `elementSeparator: "|"` it was a
+    GS-07 of `"X|Y"` that took GS-08's slot and `"X*Y"` that was inert. **Only the element separator
+    and the segment terminator ever shifted the segment's own framing, plus a `?` immediately before
+    the element separator.** The **repetition** and **component** separators moved the dot-path
+    reader instead, and releasing them is a **gain** there: on the default set
+    `getSegmentValue(gs, "07")` answered `"X"` for `"X^Y"`, truncating to repetition 0, and the
+    composite read `"07-1"` answered `"X"` for `"X:Y"`. **The measured cost is a mid-string `?`,
     and only on the surfaces documented as raw** - `gs.elements[4]` reads `"2026??0601"` where it
     read `"2026?0601"`, while the dot-path read of that value unescapes and is unchanged. No total is
     published: that is what was measured, not a closed account.
@@ -207,6 +211,10 @@ model.
     degrading to the builder-named message the escaper alone would give. The five slots that already
     escaped gained the slot name with it. **`null` and `undefined` in these three fields are ABSENT,
     not refused** - each resolves through a default before either guard sees it.
+  - **The segment id is never escaped, and that is a rule rather than an omission.** `esc` releases
+    against the delimiter set the CALLER declared, and a `componentSeparator` of `"S"` is admissible,
+    so escaping element 0 would turn the literal `"GS"` into `G?S` and the group header would stop
+    being a `GS`. `GE`, `ST`, `SE` and `IEA` already followed that rule.
   - **What this does NOT close.** `buildInterchange`'s IEA-02 does not go through the escaper: it is
     padded and has to stay byte-equal to the fixed-width ISA-13 it reconciles against, so that is a
     decision of its own. The ISA fixed-width slots are still outside both guards. And an unescaped

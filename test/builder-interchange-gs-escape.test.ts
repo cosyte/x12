@@ -34,10 +34,20 @@
  *
  * The same tiebreak `X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE` and
  * `X12-TA1-EMIT-NOT-RELEASE-AWARE` recorded, and it is NOT re-derived here as a
- * spec fact: one function disagreed with itself, and every one of the seven
- * domain builders already released these same three slots through its own
- * `esc`. `SegmentSpec`'s documented contract says the builder applies the
- * release escape so an active delimiter inside a value survives.
+ * spec fact: **one function disagreed with itself** - it returns `parseX12` of
+ * bytes it wrote and then answers a slot out of its neighbour's. `SegmentSpec`'s
+ * documented contract says the builder applies the release escape so an active
+ * delimiter inside a value survives, and that was true of five GS slots and
+ * false of three.
+ *
+ * **The sibling-builder precedent is NOT uniform, and a draft that said it was
+ * got refuted.** Measured on this tree: the domain builders release GS-04 and
+ * GS-05 through their own `esc`; GS-07 is a CALLER value in `build999` alone and
+ * is released there, while the rest stamp a module constant into GS-07 and route
+ * it nowhere. So the precedent covers two of these three slots broadly and the
+ * third in one builder - and GS-07, the slot whose base defect raised nothing on
+ * any channel, is the one with the least of it. Do not compress this into "the
+ * domain builders already released these same three slots".
  *
  * ## 🛑 It changes bytes, and the property is the thing to read
  *
@@ -56,11 +66,17 @@
  * `0.0.15`; what changed is the bytes this library emits and therefore how its
  * own output reads back.
  *
- * **Only `*` and `~` ever shifted the segment's own element framing, plus a `?`
- * immediately before the separator.** `^` and `:` moved the DOT-PATH reader
- * instead, and releasing them is a GAIN there - pinned below. The measured pure
- * cost is a MID-STRING `?`, and only on the surfaces documented as raw. No
- * total is published: that is what was measured, not a closed account.
+ * **State the delimiter set by ROLE, never by byte.** A draft published "only
+ * `*` and `~` ever shifted the framing" and a refuter measured it false in one
+ * probe: `InterchangeSpec` lets the caller declare all four, so with
+ * `elementSeparator: "|"` and `segmentTerminator: "!"` it was `|` and `!` that
+ * shifted and `*` that was inert. The property, which holds for any declared
+ * set: **only the ELEMENT SEPARATOR and the SEGMENT TERMINATOR ever shifted the
+ * segment's own framing, plus a `?` immediately before the element separator.**
+ * The **repetition** and **component** separators moved the DOT-PATH reader
+ * instead, and releasing them is a GAIN there - pinned below, both ways. The
+ * measured pure cost is a MID-STRING `?`, and only on the surfaces documented as
+ * raw. No total is published: that is what was measured, not a closed account.
  *
  * ## The type check was kept where it names the slot
  *
@@ -89,7 +105,7 @@ import { buildIsa } from "./_helpers/envelope.js";
 const VERSION_RELEASE = "005010X222A2";
 
 /** One group, one transaction, with the group fields under test overridable. */
-function build(group: Record<string, unknown>): X12Interchange {
+function build(group: Record<string, unknown>, interchange: Record<string, unknown> = {}) {
   return buildInterchange({
     senderId: "SENDER",
     receiverId: "RECEIVER",
@@ -111,6 +127,7 @@ function build(group: Record<string, unknown>): X12Interchange {
         ...group,
       },
     ],
+    ...interchange,
   });
 }
 
@@ -189,12 +206,14 @@ describe("X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE: what it costs and what it g
     expect(ix.warnings.map((w) => w.code)).toEqual([]);
   });
 
-  it("`^` and `:` never shifted the framing - they moved the DOT-PATH reader, and this is a gain", () => {
-    // Neither is an element separator or a segment terminator, so the GS framed
-    // identically at base. What they did was truncate the dot-path read: `^` is
-    // the repetition separator, so `getSegmentValue(gs, "07")` answered
-    // repetition 0 alone, and `:` is the component separator, so the composite
-    // read answered component 1 alone. Both now round-trip.
+  it("the REPETITION and COMPONENT separators never shifted the framing - they moved the DOT-PATH reader, and this is a gain", () => {
+    // Named by ROLE, not by byte: a draft said "`^` and `:`" and a refuter
+    // measured that false, because the caller declares all four. Neither role
+    // ends an element or a segment, so the GS framed identically at base. What
+    // they did was truncate the dot-path read: the repetition separator made
+    // `getSegmentValue(gs, "07")` answer repetition 0 alone, and the component
+    // separator made the composite read answer component 1 alone. Both now
+    // round-trip.
     const caret = gsOf(build({ responsibleAgencyCode: "X^Y" }));
     expect(caret.raw).toBe("GS*HC*SENDER*RECEIVER*20260601*1200*1*X?^Y*005010X222A2");
     expect(getSegmentValue(caret, "07", D)).toBe("X^Y"); // "X" at base
@@ -202,6 +221,25 @@ describe("X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE: what it costs and what it g
     const colon = gsOf(build({ responsibleAgencyCode: "X:Y" }));
     expect(colon.raw).toBe("GS*HC*SENDER*RECEIVER*20260601*1200*1*X?:Y*005010X222A2");
     expect(getSegmentValue(colon, "07-1", D)).toBe("X:Y"); // "X" at base
+  });
+
+  it("🩺 which BYTES shift is a property of the DECLARED set, and `*` is not privileged", () => {
+    // The probe that refuted the by-byte wording, kept as the pin. With `|` as
+    // the element separator, a GS-07 of `"X|Y"` is what took GS-08's slot at
+    // base and `"X*Y"` was inert there - the exact inverse of the default set.
+    const custom = { elementSeparator: "|", segmentTerminator: "!" };
+    const CUSTOM_D = { element: "|", repetition: "^", component: ":", segment: "!" } as const;
+
+    const shifting = gsOf(build({ responsibleAgencyCode: "X|Y" }, custom));
+    expect(shifting.raw).toBe("GS|HC|SENDER|RECEIVER|20260601|1200|1|X?|Y|005010X222A2");
+    expect(getSegmentValue(shifting, "07", CUSTOM_D)).toBe("X|Y"); // "X" at base
+    expect(getSegmentValue(shifting, "08", CUSTOM_D)).toBe(VERSION_RELEASE); // "Y" at base
+
+    // And `*`, which shifts under the default set, is ordinary content here and
+    // is emitted byte-for-byte - so the claim really is about the ROLE.
+    const inert = gsOf(build({ responsibleAgencyCode: "X*Y" }, custom));
+    expect(inert.raw).toBe("GS|HC|SENDER|RECEIVER|20260601|1200|1|X*Y|005010X222A2");
+    expect(getSegmentValue(inert, "08", CUSTOM_D)).toBe(VERSION_RELEASE);
   });
 
   it("🩺 the measured pure cost is a MID-STRING `?`, and only on the surfaces documented as raw", () => {
@@ -224,6 +262,41 @@ describe("X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE: what it costs and what it g
     const gs = gsOf(build({ groupDate: "2026?*0601" }));
     expect(gs.raw).toBe("GS*HC*SENDER*RECEIVER*2026???*0601*1200*1*X*005010X222A2");
     expect(getSegmentValue(gs, "04", D)).toBe("2026?*0601"); // "2026*0601" at base
+  });
+});
+
+describe("X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE: the segment id is never escaped", () => {
+  it('🩺 a delimiter that occurs inside the literal `"GS"` must not mangle the segment id', () => {
+    // A draft of this slice mapped `esc` over the WHOLE parts array, index 0
+    // included, and a refuter measured what that cost. `esc` releases against
+    // the delimiter set the CALLER declared, and `InterchangeSpec` exposes all
+    // four screened only for whitespace, control characters, emptiness and
+    // distinctness - so `componentSeparator: "S"` is admissible and turned the
+    // literal `"GS"` into `G?S`. The group header stopped being a `GS`:
+    // `groups.length` went 1 -> 0, five segments fell out as orphans, and
+    // `X12_UNEXPECTED_SEGMENT` plus `X12_GROUP_COUNT_MISMATCH` started firing on
+    // a spec that built clean at `0.0.15`. A segment id is a structural byte
+    // this library owns, not caller content.
+    const ix = build({}, { componentSeparator: "S" });
+    expect(ix.groups).toHaveLength(1);
+    expect(ix.orphanSegments).toEqual([]);
+    expect(ix.groups[0]?.gs.raw).toBe("GS*HC*?SENDER*RECEIVER*20260601*1200*1*X*005010X222A2");
+    expect(ix.warnings.map((w) => w.code)).toEqual([]);
+    // GS-02 IS caller content, so it IS released against the declared set -
+    // which is what makes this a claim about the ID and not about escaping.
+    expect(getSegmentValue(ix.groups[0]?.gs as X12Segment, "02", { ...D, component: "S" })).toBe(
+      "SENDER",
+    );
+  });
+
+  it("a repetition separator occurring in the id is the same case, and the other ids follow the same rule", () => {
+    const ix = build({}, { repetitionSeparator: "G" });
+    expect(ix.groups).toHaveLength(1);
+    expect(ix.groups[0]?.gs.raw.startsWith("GS*")).toBe(true);
+    // `GE`, `ST`, `SE` and `IEA` never routed their literal ids through `esc`,
+    // and the GS now agrees with them rather than being the one exception.
+    expect(ix.groups[0]?.ge?.raw.startsWith("GE*")).toBe(true);
+    expect(ix.warnings.map((w) => w.code)).toEqual([]);
   });
 });
 
