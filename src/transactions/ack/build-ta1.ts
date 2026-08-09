@@ -86,7 +86,10 @@
  * `interchangeControlNumber: ""` emitted `TA1**260601*1200*A*000` with no
  * error, through `0.0.15`. `X12-EMPTY-CONTROL-NUMBER-FABRICATED` closed it:
  * see {@link "../../builder/caller-control-number.js".requireControlNumber}.
- * The guard is byte-strict, so a whitespace-only TA1-01 still builds.
+ * `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED` then made the same guard
+ * type-check, so TA1-01 draws a refusal naming TA1-01 rather than the escaper's
+ * one naming only the builder - same class, same code, different words. The
+ * guard is still byte-strict, so a whitespace-only TA1-01 still builds.
  *
  * And the release is scoped to the delimiter set the caller states through
  * {@link BuildTA1Options} - see that interface for why guessing one is a

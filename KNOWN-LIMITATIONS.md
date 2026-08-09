@@ -51,6 +51,38 @@ model.
   minted and no warning code moved.** What changes is that a build that used to return a document now
   throws, and that a spec wrong in two ways can now report a different one of the two: see the
   precedence bullet below, which is the qualifier a draft of this entry left out.
+  - **🩺 The guard TYPE-CHECKS as of this release too, and that is a second behaviour change**
+    (`X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED`). Byte-strict means a value that is not a string is
+    not `""`, so at `0.0.15` a non-string walked past the empty test and reached `padControl`, which
+    reads `.length` and then concatenates. Measured through `buildInterchange` and identically in all
+    nine builders that assemble an ISA: `interchangeControlNumber: []` and `new String("")` both
+    emitted ISA-13 as the **fabricated `000000000`** with `warnings: []`, and `new String("ABC")` and
+    `new String(" ")` were silently **coerced** to `000000ABC` and `00000000 `. The nine ISA-13 /
+    IEA-02 slots were the exposed ones; the slots that reach the wire through the escape helper were
+    already type-checked and refused a non-string at `0.0.15`.
+
+    **What moved, in both directions, because some of it is a predicate you may branch on.** No error
+    code was minted and no warning code moved: every refusal is the same class and code the builder
+    already raised. But `interchangeControlNumber: undefined` and `null` threw a bare `TypeError`
+    with no `code` at `0.0.15` and now throw the builder's typed error, so **a consumer catching
+    `TypeError` there no longer catches**. An array-like of the wrong length used to build a
+    malformed ISA that the builder's own re-parse rejected with `X12_INVALID_DELIMITERS`, a _parse_
+    error naming delimiters for a caller mistake in one named field; it now refuses before anything
+    is written. A `number`, a plain object or a boolean was told it "exceeds the 9-char spec limit",
+    which was false; same code, corrected sentence. And **the MESSAGE changed on the escape-routed
+    control-number slots too** - GS-06 / GE-02, ST-02 / SE-02, AK1-02, AK2-02 and TA1-01 now name the
+    slot and the spec property, where the escaper's refusal could only name the builder. **If you
+    match on message text at any control-number slot, re-read it; if you branch on `err.code`,
+    nothing moved.**
+
+    **What it does NOT cover:** the type test narrows what a control number may BE, never what it may
+    CONTAIN. The whitespace bullet below is unchanged and is the residual. The asymmetry is real and
+    is stated rather than smoothed over: `new String(" ")` is refused because it is not a string, and
+    the primitive `" "` still pads to `00000000 ` and still builds. The ISA's other fixed-width slots
+    (`senderId`, `receiverId`, `interchangeDate`, `interchangeTime`) go through `pad` rather than
+    `padControl`, are guarded by no control-number test, and still throw a bare `TypeError` for some
+    non-strings - unchanged, and its own entry further down.
+
   - **🛑 The guard is byte-strict `=== ""`. It does NOT trim, and a whitespace-only control number is
     still accepted**: `interchangeControlNumber: " "` still emits ISA-13 as `00000000 `, and
     `buildTA1` does no padding at all, so it emits whatever whitespace it was handed, verbatim. This
@@ -59,12 +91,6 @@ model.
     empty-required-element guard this one mirrors (`patientControlNumber`, `claimId`,
     `maintenanceTypeCode`, `requestCategoryCode`, the 277's `categoryCode`) is byte-strict for the
     same reason. **Validate at your own boundary if your partner can send you blanks.**
-  - **It does NOT type-check, so nothing about a non-string changed**, on any route. Seven
-    non-string values across three routes were measured byte-identical before and after. What each
-    route already does is deliberately not restated here, because a draft of this bullet restated it
-    wrongly: it said a number "or `undefined`" draws the typed refusal, and `padControl(undefined, 9)`
-    throws a bare `TypeError` with no `code`, unchanged by this release. Entry 3 of the builder-guard
-    list further down covers the numeric routes and not that one.
   - **A SHORT control number still zero-pads.** The guard is not "ISA-13 must be nine characters":
     `interchangeControlNumber: "1"` still emits `000000001`, which is what `padControl` is for.
   - **🛑 Every guard sits at the envelope-assembly site, so every guard that runs BEFORE it keeps its

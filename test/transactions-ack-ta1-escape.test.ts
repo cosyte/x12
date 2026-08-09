@@ -347,12 +347,20 @@ describe("X12-TA1-EMIT-NOT-RELEASE-AWARE: the type check the escape required", (
   it("🩺 refuses a non-string element instead of coercing it onto the model", () => {
     // At base `elements[1]` came back as the NUMBER 12345, inside a value
     // typed `readonly string[]`, and `raw` read TA1*12345*260601*1200*A*000.
+    //
+    // THE MESSAGE MOVED IN `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED` AND THE
+    // OLD ONE IS PINNED ONE CASE DOWN. TA1-01 is routed through
+    // `requireControlNumber`, which now type-checks one step ahead of `esc`, so
+    // this slot's refusal names TA1-01 where the escaper's could only name the
+    // builder. Same class, same code, different words.
     const run = (): unknown =>
       buildTA1({ ...ACCEPT, interchangeControlNumber: 12345 as unknown as string });
     // Assert the MESSAGE, not the class: `toThrow(AckBuildError)` passes on an
     // unrelated refusal, which is how four cases in a sibling slice went
     // vacuous.
-    expect(run).toThrow(/buildTA1: every element value must be a string, but received a number/u);
+    expect(run).toThrow(
+      /buildTA1: interchangeControlNumber must be a string, but received a number\. TA1-01 is a required control number/u,
+    );
     try {
       run();
       expect.unreachable("buildTA1 accepted a numeric element");
@@ -365,16 +373,31 @@ describe("X12-TA1-EMIT-NOT-RELEASE-AWARE: the type check the escape required", (
     }
   });
 
+  it("still refuses a non-string on the elements the ESCAPER guards, in its own words", () => {
+    // The other four TA1 elements are not control numbers and are not routed
+    // through `requireControlNumber`, so `makeCallerEscaper` is still the guard
+    // that fires and still names the builder rather than the slot. Pinned here
+    // so the case above reads as a message MOVE on one slot and not as the
+    // escaper's guard having been replaced.
+    expect(() =>
+      buildTA1({
+        ...ACCEPT,
+        interchangeControlNumber: "000000001",
+        ackCode: 1 as unknown as "A",
+      }),
+    ).toThrow(/buildTA1: every element value must be a string, but received a number/u);
+  });
+
   it("🩺 refuses an absent control number, which used to emit the key away silently", () => {
     // `TA1**250101*1200*A*000` was the base behaviour and was named as a live
     // hazard in three places. An absent reassociation key is not recoverable
     // by the receiver.
     expect(() =>
       buildTA1({ ...ACCEPT, interchangeControlNumber: undefined as unknown as string }),
-    ).toThrow(/buildTA1: every element value must be a string, but received undefined/u);
+    ).toThrow(/buildTA1: interchangeControlNumber must be a string, but received undefined/u);
     expect(() =>
       buildTA1({ ...ACCEPT, interchangeControlNumber: null as unknown as string }),
-    ).toThrow(/buildTA1: every element value must be a string, but received null/u);
+    ).toThrow(/buildTA1: interchangeControlNumber must be a string, but received null/u);
   });
 
   it("leaves the accept-with-note refusal FIRST, so no existing refusal moves code", () => {

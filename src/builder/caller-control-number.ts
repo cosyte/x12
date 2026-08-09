@@ -1,11 +1,13 @@
 /**
  * The route an **envelope control number** takes into an emitted document, and
- * the decision it encodes: **an EMPTY control number is refused, never padded
- * and never emitted as an empty element.**
+ * the decision it encodes: **a control number that is not a non-empty string is
+ * refused - never padded, never coerced, and never emitted as an empty
+ * element.**
  *
  * `src/builder/caller-string.ts` bounds whether a caller-supplied element value
- * is a real *string*. This module bounds whether a control number the caller
- * left empty ever reaches the wire.
+ * routed through `esc` is a real *string*. This module bounds the same question
+ * plus emptiness for the control numbers, on **both** routes, because the ISA's
+ * fixed-width slots never reach `esc`.
  *
  * ## The defect this exists to stop, which is a FABRICATED identifier
  *
@@ -90,14 +92,48 @@
  * They were shipping `000000000`, which is a real value a trading partner may
  * already have assigned to something else.
  *
+ * ## Why the empty test alone was not enough, which is the TYPE half
+ *
+ * The first version of this guard tested `value === ""` and nothing else, and
+ * `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED` is the hole that left. **A
+ * non-string is not `""`, so it walked past the guard and reached `padControl`,
+ * where the fabrication this module exists to stop happened anyway.** Measured
+ * on this tree at base commit `a226595`, through `buildInterchange`:
+ *
+ * ```text
+ * interchangeControlNumber: []                ISA-13 = 000000000   warnings: []
+ * interchangeControlNumber: new String("")    ISA-13 = 000000000   warnings: []
+ * interchangeControlNumber: new String("ABC") ISA-13 = 000000ABC   warnings: []
+ * ```
+ *
+ * The first two are the **same fabricated `000000000`** the empty test closed,
+ * reached through a different input type. The third is not a fabrication but a
+ * **silent coercion**, and it is the one this package had already decided
+ * against everywhere else: `makeCallerEscaper` refuses a boxed
+ * `new String(...)` by name, so the same value was refused at GS-06 and
+ * accepted at ISA-13 in the same call.
+ *
+ * **The split is by ROUTE.** The slots that reach the wire through `esc` were
+ * already type-checked, because `makeCallerEscaper` refuses before escaping;
+ * the ISA-13 / IEA-02 slots were not, because the ISA is fixed-width, joined
+ * directly, and outside both the escaper and the segment guard. `padControl`
+ * reads `.length` and then concatenates, so an array-like of length 0 is
+ * indistinguishable from `""` to it.
+ *
+ * **The test went into the shared guard rather than at the nine `padControl`
+ * sites, and that choice has a consequence on the OTHER slots that must not be
+ * described as "nothing changed".** Every slot routed through here now refuses
+ * a non-string from this guard instead of from `esc`, one step earlier. The
+ * error class and code are the same either way - each builder's own
+ * `refuseSpec`, so no consumer predicate on a code moves - but **the MESSAGE
+ * changed on the `esc`-routed slots too**: `esc`'s refusal names the builder
+ * and the offending type and cannot name the slot, while this one names the
+ * slot and the spec property as well. That is the reason to prefer one guard
+ * over nine copies, and it is a behaviour change to a diagnostic, not a
+ * no-op.
+ *
  * ## What this does NOT do
  *
- * - **It does not type-check.** The test is `value === ""` and nothing else, so
- *   **nothing about a non-string changed**, on any route. Seven non-string
- *   values across three routes were measured byte-identical at base and head.
- *   What each route already does is deliberately NOT restated here: a draft did
- *   and got `undefined` wrong, and the partial account it pointed at does not
- *   cover every route either.
  * - **It does not trim.** A whitespace-only control number is NOT refused:
  *   `padControl(" ", 9)` still answers `"00000000 "`. `buildTA1` imports no
  *   `pad` at all, so it emits whatever whitespace it was handed, verbatim.
@@ -105,19 +141,38 @@
  *   package states one. The in-package guards this mirrors are all byte-strict
  *   `=== ""` for the same reason. This is a real residual, and it is recorded in
  *   `KNOWN-LIMITATIONS.md` rather than claimed away.
- * - **It publishes no census of the slots it guards.** Which slots route through
- *   here is held by `test/builder-control-number-empty.test.ts`, not by this
- *   prose. What this module guarantees is the property: **a control number
- *   routed through {@link requireControlNumber} is refused when empty.**
+ *
+ *   **The type test does NOT reach it, and the asymmetry it creates has to be
+ *   stated rather than smoothed over.** `new String(" ")` is refused now,
+ *   because it is not a string; the primitive `" "` still pads to `"00000000 "`
+ *   and still builds. Trimming is the rule that would close the primitive, and
+ *   nothing here states one, so it stays open. **Do not read the type test as
+ *   having narrowed what an accepted control number may CONTAIN** - it narrows
+ *   only what it may BE.
+ * - **It does not bound the length either way.** A SHORT control number still
+ *   zero-pads (`"1"` -> `"000000001"`), and one longer than the slot still draws
+ *   `padControl`'s own "exceeds the N-char spec limit" refusal, unchanged.
+ * - **It publishes no census of the slots it guards, and none of the ones it
+ *   does not.** Which slots route through here is held by
+ *   `test/builder-control-number-empty.test.ts` and
+ *   `test/builder-control-number-type.test.ts`, not by this prose. What this
+ *   module guarantees is the property: **a control number routed through
+ *   {@link requireControlNumber} is refused unless it is a non-empty string.**
  *
  * @see `test/builder-control-number-empty.test.ts` - the behavioural gate, one
  * red case per routed slot, the disclosed precedence move, and a drift pin that
  * reds if one of the nine builders it names by hand loses a guard.
+ * @see `test/builder-control-number-type.test.ts` - the type half: the four
+ * input shapes that used to build, the diagnostics that moved, and the
+ * whitespace residual the type test deliberately does not reach.
  */
 
+import { describeCallerValue } from "./caller-string.js";
+
 /**
- * Require a caller-supplied control number to be non-empty before it is emitted,
- * and refuse with the calling builder's own typed error if it is not.
+ * Require a caller-supplied control number to be a real, non-empty string
+ * before it is emitted, and refuse with the calling builder's own typed error
+ * if it is not.
  *
  * `refuse` is passed in rather than thrown from here for the same reason
  * {@link "./caller-string.js".requireCallerString} takes one: each builder owns a
@@ -157,6 +212,13 @@ export function requireControlNumber(
   at: string,
   refuse: (message: string) => never,
 ): string {
+  if (typeof value !== "string") {
+    refuse(
+      `${at}: ${field} must be a string, but received ${describeCallerValue(value)}. ` +
+        `${slot} is a required control number and this builder never coerces one, so nothing is ` +
+        `emitted. Convert ${field} at the call site.`,
+    );
+  }
   if (value !== "") return value;
   refuse(
     `${at}: ${field} is empty. ${slot} is a required control number and this builder never ` +

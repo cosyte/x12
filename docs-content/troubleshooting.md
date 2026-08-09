@@ -245,12 +245,27 @@ checks. A defect detected **later**, during body assembly, now reports the contr
 instead. `build999` with an empty `interchangeControlNumber` and six AK9 syntax error codes threw
 `X12_ACK_COUNT_MISMATCH` at `0.0.15` and throws `X12_ACK_INVALID_SPEC` now.
 
-**The check is byte-strict, which leaves blanks open and is the one thing to screen for.** A
-whitespace-only control number is still accepted and still padded, so `" "` emits ISA-13 as
-`00000000 `; `buildTA1` does no padding at all and emits whatever whitespace you hand it, verbatim.
-Trimming would be a normalisation rule and nothing this library can cite says to. A **short** control
-number is not affected and never was: `"1"` still pads to `000000001`, which is what the padding is
-for.
+**The same guard type-checks as of this release, so a non-string control number is refused too**
+(`X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED`). Byte-strict means a value that is not a string is not
+`""`, so at `0.0.15` `interchangeControlNumber: []` and `new String("")` still emitted ISA-13 as
+`000000000`, and `new String("ABC")` was silently coerced to `000000ABC` - the fabrication above,
+reached through a different input type. **Two things to re-read if you catch or match on builder
+errors.** `undefined` and `null` in that slot threw a bare `TypeError` with no `code` at `0.0.15` and
+now throw the builder's typed error, so a `catch` narrowing on `TypeError` no longer sees them. And
+the refusal **message** at every control-number slot now names the slot and the spec property
+(`build837: groupControlNumber must be a string, but received an array. GS-06 / GE-02 is a required
+control number ...`) where the escape helper's could only name the builder. **`err.code` is
+unchanged at every one of them.**
+
+**The check is byte-strict, which leaves BLANKS open, and that is what is left to screen for at a
+control-number slot.** A whitespace-only *string* is still accepted and still padded, so `" "` emits
+ISA-13 as `00000000 `; `buildTA1` does no padding at all and emits whatever whitespace you hand it,
+verbatim. Trimming would be a normalisation rule and nothing this library can cite says to. **Read
+that as the primitive**: `new String(" ")` is refused, because it is not a string - the two are not
+the same input to this guard and the asymmetry is real. Screening a control number with something
+like `if (n.trim() === "") throw ...` at your own boundary covers the case measured above; nothing in
+the library will. A **short** control number is not affected and never was: `"1"` still pads to
+`000000001`, which is what the padding is for.
 
 One other behaviour change: the exported `escapeRelease` now throws `TypeError` on a non-string
 instead of returning `""`, and a boxed `new String("…")` is refused where it built at `0.0.8`. See

@@ -158,12 +158,16 @@ running the suite between each.
   package states one; the five in-package guards this mirrors are all byte-strict for the same
   reason. Pinned as a test so it cannot quietly change, and disclosed in `KNOWN-LIMITATIONS.md` and
   in `docs-content/troubleshooting.md` as the one shape a caller should still screen for.
-- **No type check, so nothing about a non-string changed on any route.** What each route already did
-  is disclosed in `caller-string.ts` and in `KNOWN-LIMITATIONS.md`; it is **deliberately not restated
-  here**, because a draft restated it wrongly - it said a number "or `undefined`" draws the typed
-  refusal, and `padControl(undefined, 9)` throws a bare `TypeError` with no `code`, at both shas.
-  Widening this guard into a type guard would have changed a documented message for a defect that is
-  already loud.
+- **~~No type check~~ - 🛑 SUPERSEDED 2026-08-09 BY `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED`,
+  AND THE REASONING BELOW WAS MEASURED FALSE. READ `agent-notes/x12-control-number-guard-type.md`
+  BEFORE CITING THIS BULLET.** This bound was stated as "nothing about a non-string changed on any
+  route", which was true, and justified as *"widening this guard into a type guard would have changed
+  a documented message for a defect that is already loud"* - which was **not**. At the nine ISA-13 /
+  IEA-02 slots the defect was not loud: `[]` and `new String("")` emitted the same fabricated
+  `000000000` with `warnings: []`, and `new String("ABC")` was silently coerced. The guard type-checks
+  now. What is left of the original caution is real and is recorded in the successor note: several
+  diagnostics DID move, including one off a bare `TypeError`, and the refusal message moved at every
+  `esc`-routed control-number slot.
 - **A SHORT control number still zero-pads.** The guard is not "ISA-13 must be nine characters":
   `"1"` still emits `000000001`, which is the entire point of `padControl`. Pinned in every suite the
   slice touches, because reading the guard the other way is the obvious mis-generalisation.

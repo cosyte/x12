@@ -385,3 +385,60 @@ describe("build820 - an empty envelope control number is refused", () => {
     expect(short.isa.elements[13]).toBe("000000001");
   });
 });
+
+describe("X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED: build820", () => {
+  // One red case per slot this builder routes through `requireControlNumber`,
+  // with an ARRAY - the shape that, at base commit `a226595`, walked past the
+  // byte-strict `=== ""` test and reached `padControl`, which took the pad
+  // branch on `.length === 0` and emitted ISA-13 as the FABRICATED
+  // `000000000`, `warnings: []`. The other two slots reach the wire through
+  // `esc` and refused a non-string at base too: what changed there is that the
+  // refusal now names the slot. Assert the MESSAGE, never the class - a class
+  // assertion passes on any unrelated refusal in these specs.
+
+  it("🩺 refuses a non-string interchangeControlNumber (ISA-13 / IEA-02)", () => {
+    expect(() =>
+      build820({
+        ...CANONICAL_SPEC,
+        envelope: { ...ENVELOPE, interchangeControlNumber: [] as unknown as string },
+      }),
+    ).toThrow(
+      /build820: interchangeControlNumber must be a string, but received an array\. ISA-13 \/ IEA-02 is a required control number/,
+    );
+  });
+
+  it("refuses a non-string groupControlNumber (GS-06 / GE-02)", () => {
+    expect(() =>
+      build820({
+        ...CANONICAL_SPEC,
+        envelope: { ...ENVELOPE, groupControlNumber: [] as unknown as string },
+      }),
+    ).toThrow(
+      /build820: groupControlNumber must be a string, but received an array\. GS-06 \/ GE-02 is a required control number/,
+    );
+  });
+
+  it("refuses a non-string transactionSetControlNumber (ST-02 / SE-02)", () => {
+    expect(() =>
+      build820({
+        ...CANONICAL_SPEC,
+        envelope: { ...ENVELOPE, transactionSetControlNumber: [] as unknown as string },
+      }),
+    ).toThrow(
+      /build820: transactionSetControlNumber must be a string, but received an array\. ST-02 \/ SE-02 is a required control number/,
+    );
+  });
+
+  it("🩺 still builds the unmodified spec, and a WHITESPACE control number still pads", () => {
+    // The green control for the three cases above, and the residual the type
+    // test deliberately does not reach: `" "` is a real string, so it passes
+    // both tests and still pads. Trimming would be a normalisation rule and no
+    // source consulted for this package states one.
+    expect(build820(CANONICAL_SPEC).warnings).toHaveLength(0);
+    const blank = build820({
+      ...CANONICAL_SPEC,
+      envelope: { ...ENVELOPE, interchangeControlNumber: " " },
+    });
+    expect(blank.isa.elements[13]).toBe("00000000 ");
+  });
+});

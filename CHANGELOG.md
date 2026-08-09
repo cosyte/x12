@@ -468,11 +468,6 @@ required control number and this builder never invents one, so nothing is emitte
     rule, no source consulted for this package states one, and the five in-package guards this
     mirrors are byte-strict for the same reason. Pinned as a test and disclosed in
     `KNOWN-LIMITATIONS.md` as the one shape still worth screening at your own boundary.
-  - **It does NOT type-check, so nothing about a non-string changed**, on any route. Seven
-    non-string values across three routes were measured byte-identical before and after. What each
-    route already does is deliberately not restated here, because a draft of this bullet restated it
-    wrongly: it said a number "or `undefined`" draws the typed refusal, and `padControl(undefined, 9)`
-    throws a bare `TypeError` with no `code`, unchanged by this release.
   - **A SHORT control number still zero-pads.** The guard is not "ISA-13 must be nine characters":
     `"1"` still emits `000000001`, which is what the padding is for.
   - **🛑 Every guard sits at the envelope-assembly site, so every guard that runs BEFORE it keeps its
@@ -1028,6 +1023,65 @@ required control number and this builder never invents one, so nothing is emitte
   and no published type changed.
 
 ### Fixed
+
+- **🩺 A control number that is not a STRING is refused on emit, so `interchangeControlNumber: []`
+  and `new String("")` no longer fabricate ISA-13 as `000000000`**
+  (`X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED`). Reproduced on the base tree at `a226595`. The
+  empty-control-number guard added in the release above is byte-strict, and byte-strict means a value
+  that is not a string is not `""`, so a non-string walked past it and reached `padControl`, which
+  reads `.length` and then concatenates. Measured through `buildInterchange`, and identically in all
+  nine builders that assemble an ISA:
+
+  ```text
+  interchangeControlNumber: []                 ISA-13 = 000000000   warnings: []
+  interchangeControlNumber: new String("")     ISA-13 = 000000000   warnings: []
+  interchangeControlNumber: new String("ABC")  ISA-13 = 000000ABC   warnings: []
+  interchangeControlNumber: new String(" ")    ISA-13 = 00000000    warnings: []
+  ```
+
+  The first two are the **same fabricated `000000000`** the empty guard closed, reached through a
+  different input type: a frozen, well-formed interchange whose ISA-13 reconciles against its IEA-02
+  on nine digits the caller never supplied. The other two are silent **coercions** of a boxed string,
+  which is a value this library refuses by name everywhere it escapes one - so the same
+  `new String("ABC")` was refused at GS-06 and accepted at ISA-13 in a single call.
+
+  **The class is NINE slots, not thirty, and the split is by route.** The slots that reach the wire
+  through the escape helper were already type-checked and refused every non-string probed at
+  `a226595`; the ISA-13 / IEA-02 slots were not, because the ISA is fixed-width, joined directly, and
+  outside both the escaper and the segment guard. The type test went into the guard both routes
+  already share.
+  - **🛑 No error code is minted and no warning code moves, and each refusal is the builder's own
+    typed error - but SEVERAL DIAGNOSTICS DO MOVE, and one of them moves off a JavaScript builtin.**
+    `undefined` and `null` threw a bare `TypeError` with no `code` and now throw the builder's typed,
+    code-tagged refusal, so **a consumer catching `TypeError` there no longer catches**. An
+    array-like whose `.length` was not 9 used to produce a malformed ISA that the builder's own
+    re-parse rejected as `X12_INVALID_DELIMITERS` - a parse error naming delimiters, for a caller
+    mistake in one named spec field - and now refuses before anything is written. A `number`, a plain
+    object or a boolean was told it "exceeds the 9-char spec limit", which was false about a
+    one-digit number; the code is unchanged and the sentence is corrected.
+  - **🛑 The MESSAGE changed on the escape-routed control-number slots too, and "nothing else
+    changed" would be false.** GS-06 / GE-02, ST-02 / SE-02, AK1-02, AK2-02 and TA1-01 now refuse a
+    non-string from this guard, one step ahead of the escaper, and name the slot and the spec
+    property where the escaper's refusal could only name the builder. Same class, same code. **If you
+    match on message text at a control-number slot, re-read it; if you branch on `err.code`, nothing
+    moved.** The escaper's own wording is unchanged everywhere else and is still pinned.
+  - **The refusal never echoes the value.** It reports the TYPE only, through the same describer the
+    escaper uses, because a slot-generic guard cannot know whether the primitive it is about to echo
+    is a control number or a patient identifier (`REFUSAL-MESSAGE-PHI-ECHO`).
+  - **It narrows what a control number may BE, never what it may CONTAIN.** A whitespace-only
+    control number is still accepted and still padded, unchanged and by design: trimming would be a
+    normalisation rule and no source consulted for this package states one. The asymmetry that
+    creates is stated rather than smoothed over - `new String(" ")` is refused because it is not a
+    string, and the primitive `" "` is not. A SHORT control number still zero-pads, and one longer
+    than the slot still draws the length refusal.
+  - **The ISA's other fixed-width slots are NOT in this class and are unchanged.** `senderId`,
+    `receiverId`, `interchangeDate` and `interchangeTime` go through `pad` rather than `padControl`
+    and are guarded by no control-number test; a numeric one still throws a bare `TypeError`. That
+    residual is disclosed in `KNOWN-LIMITATIONS.md` and pinned beside the one this closes.
+  - **Every guard that already ran before it keeps its precedence**, because the test went into the
+    guard the empty test already occupied rather than a new site. `build999`'s count reconciliation
+    is measured on both control-number guards and still wins over both.
+  - Thirty slots have a red case; the nine that fabricated or coerced are the ones this closes.
 
 - **🩺 A BODY segment in an interchange whose ELEMENT SEPARATOR is `?` now frames its elements,
   where it used to come back as ONE element with an id of `(non-spec)`**

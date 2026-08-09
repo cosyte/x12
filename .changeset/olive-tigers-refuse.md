@@ -62,11 +62,7 @@ something else.
 accepted and still padded: `" "` emits ISA-13 as `00000000 `, and `buildTA1` does no padding at all,
 so it emits whatever whitespace it was handed, verbatim. Trimming would be a normalisation rule, no
 source consulted for this package states one, and the five in-package guards this mirrors are
-byte-strict for the same reason. It also does not type-check, so nothing about a non-string changed
-on any route, measured over seven non-string values across three routes. What each route already does
-is not restated here, and `KNOWN-LIMITATIONS.md` records why: a draft said a number "or `undefined`"
-draws the typed refusal, and `padControl(undefined, 9)` throws a bare `TypeError` with no `code`.
-And a SHORT control number still zero-pads, because that is what the padding is for: `"1"` still
+byte-strict for the same reason. And a SHORT control number still zero-pads, because that is what the padding is for: `"1"` still
 emits `000000001`.
 
 No census of the slots that are NOT routed through the guard is published; the claim is the property,
