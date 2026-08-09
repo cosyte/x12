@@ -72,6 +72,23 @@ copying files.** Source of truth: the meta-repo's `documentation/conventions.md`
 history. Do not act on a line here without reading it. 🩺 = getting it wrong mis-states a clinical
 or financial value on the wire.**
 
+### 🩺 `X12-BODY-DEGENERATE-RELEASE-SEPARATOR` (2026-08-09) · `agent-notes/x12-body-degenerate-release-separator.md`
+
+- **🩺 `decodeSegment` FALLS BACK TO A LITERAL SPLIT WHEN THE ELEMENT SEPARATOR IS `?`, AND SKIPS
+  THE DANGLING CHECK WITH IT** (a trailing `?` there is an EMPTY LAST ELEMENT). `?` is admissible at
+  any delimiter position and `buildInterchange` takes all four, so a BODY segment came back as ONE
+  element, id `(non-spec)`, **while the ENVELOPE framed correctly and every count reconciled -
+  `warnings: []`, and readers dispatch on `seg.id`, so a clean document gave an EMPTY claim list.**
+  THREE SITES NOW; KEEP THEM IN STEP.
+- **🛑 PER ROLE; DO NOT HOIST IT INTO `splitWithRelease`.** `escapeRelease` writes `??` for a
+  literal `?` in EVERY role, so `componentSeparator: "?"` ROUND-TRIPS TODAY; splitting
+  repetition/component literally re-frames a value THIS LIBRARY EMITTED - `#99`'s pass-1 major from
+  the other side. **Those two need the EMIT side decided with them.**
+- **⚖️ CHANGES PUBLISHED DECODING, ON CONSISTENCY, NOT SPEC - NEVER RESTATE `#96`'s SYMMETRY: A
+  `(non-spec)` BLOB IS NOT A SECOND READING.** No code minted; ONE subtracted. **`PRE-EXISTING`,
+  OPEN: `?~` still swallows the TERMINATOR**, `findUnescapedTerminator` guarding its own role only.
+  **FRAMING IS UNTOUCHED; its own call.**
+
 ### 🩺 `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-interchange-gs-escape.md`
 
 - **🩺 `buildInterchange` RELEASES GS-04 / GS-05 / GS-07 NOW** - it disagreed with itself. **GS-07
@@ -492,26 +509,12 @@ liveness net people assume** - an infinite synchronous loop gives NO verdict and
   and not proofs, and **neither gate scans indexed loops outside the `build*` scope** (the four
   places: relocated narrative §9).
 
-### `X12-BUILDER-BOUNDS` (2026-08-02) · `documentation/agent-notes.md#x12-builder-bounds-2026-08-02`
+### `X12-BUILDER-BOUNDS` (2026-08-02) · `agent-notes/x12-builder-bounds.md`
 
-- **Every caller-supplied value in a `build*` refusal message goes through `renderCallerValue`**
-  (`src/builder/caller-value.ts`), capping the rendered **fragment** at
-  `BUILD_REFUSAL_VALUE_MAX_RENDERED` = **90**. All three names are public.
-- **A type is NOT a runtime guarantee** (the four holes the item's census missed: relocated
-  narrative). **State a ceiling as a ceiling and a measurement as a
-  measurement:** 90 is the ceiling on the FRAGMENT, and three published figures were wrong once.
-- **This is NOT `PHI-WARNING-MESSAGE-LEAK` on the emit side; escaping was deliberately NOT done, so
-  a refusal message is bounded but one log line is not; and the caller-vs-document dichotomy is NOT
-  categorical.** Long form + the two counterexamples: relocated narrative §7.
-- **`test/builder-refusal-bounds.test.ts` must never allow `String(...)` or `String(<expr>.length)`;
-  what remains allowed is a single-letter loop index and the `width` literal only** (the two
-  allowlists that leaked: relocated narrative §8). **Negative controls run both ways.**
-- **🩺 `segmentIndex: 0` is NOT a neutral sentinel: `tx.segments[0]` is the `ST`.** The remit-total
-  balance warning now carries the BPR's own 1-based body index, and `balance.ts`'s doc was corrected
-  with the code. **The build-side `segmentIndex: 0` was filed as the same defect and is not one**
-  (why, and what fabricating one would have named: relocated narrative §9).
-- **`renderCallerValue` coerces and never throws** (the draft that did not: relocated narrative).
-- **Assert SE-01 outright, never trust it**: a repeatedly-hit tripwire.
+**RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED** - it paid for the trap at the top of this
+list. **Open it before you touch `renderCallerValue`, `BUILD_REFUSAL_VALUE_MAX_RENDERED` or any
+`build*` refusal message: a fragment is BOUNDED, NOT redacted, and `segmentIndex: 0` is the `ST`,
+never a neutral sentinel.**
 
 ### 🩺 `X12-ORPHAN-REEMIT` (2026-08-02) · `documentation/agent-notes.md#x12-orphan-reemit-2026-08-02`
 

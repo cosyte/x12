@@ -245,8 +245,13 @@ function splitElements(segment: string, delimiters: Delimiters): readonly string
   // `detectDelimiters` reads the element separator positionally out of ISA
   // byte 4 and rejects only control characters and a non-distinct set, so `?`
   // there is admissible and such an interchange framed correctly before this
-  // splitter became release-aware. `findUnescapedTerminator` above carries the
-  // identical guard for the identical reason; keep the two in step.
+  // splitter became release-aware. `findUnescapedTerminator` above and
+  // `./segment.js`'s `decodeSegment` each carry the identical guard for the
+  // identical reason; keep the three in step. `decodeSegment` was the one that
+  // did NOT: this splitter framed a degenerate interchange's ENVELOPE
+  // correctly while every BODY segment inside it collapsed to a single
+  // element, with an empty warning array, until
+  // `X12-BODY-DEGENERATE-RELEASE-SEPARATOR`.
   if (delimiters.element === RELEASE_CHAR) {
     return Object.freeze(segment.split(delimiters.element));
   }

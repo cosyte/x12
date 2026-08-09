@@ -62,6 +62,20 @@ detects all four from fixed byte positions in the ISA, so you never configure th
 `ix.delimiters` carries the detected set; every reader and the `getSegmentValue` dot-path resolver use
 it, so a partner who ships `|` elements and `\` components parses with no special handling.
 
+### When a delimiter is `?`
+
+`?` is the conventional X12 release character, and this library treats it as one. It is also
+admissible at any of the four delimiter positions, because nothing in the ISA layout reserves it, so
+a sender can declare it as structure. **One byte cannot both separate and escape**, so wherever a
+role is declared as `?`, the splitter for that role stops treating `?` as an escape and splits
+literally: the segment terminator, an envelope segment's elements, and a body segment's elements.
+Two bounds worth knowing if you receive such a set. A `?` **repetition or component** separator
+still does not split, so `getSegmentValue(seg, "01-2", ix.delimiters)` will not resolve against it.
+And with `?` as the **element** separator, a segment ending in an empty last element puts a `?`
+immediately before the terminator, which the terminator scan still reads as an escape, so that
+segment merges with the one after it and you get `X12_MISSING_SE`. Both are recorded in
+`KNOWN-LIMITATIONS.md`.
+
 ## Line endings between segments
 
 X12 is a single-line format, but most senders write a line break after every segment terminator so the

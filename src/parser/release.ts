@@ -178,6 +178,23 @@ export function escapeRelease(value: string, delimiters: Delimiters): string {
  * the right positional context) re-runs {@link unescapeRelease} on each
  * resulting token to surface them.
  *
+ * **The degenerate case - `sep` IS the release character - is guarded by the
+ * CALLER and deliberately not by this function, one role at a time.** A byte
+ * cannot both separate and escape, so the three sites that split a role a
+ * sender can legally declare as `?` fall back to the literal split:
+ * `envelope.ts`'s `findUnescapedTerminator` (the segment terminator) and
+ * `splitElements` (an envelope segment's elements), and `segment.ts`'s
+ * `decodeSegment` (a body segment's elements). The guard is NOT hoisted in
+ * here, and the reason is measured rather than stylistic: this function also
+ * splits REPETITIONS and COMPONENTS on the read path, and {@link
+ * escapeRelease} writes `??` for a literal `?` on the emit path whatever role
+ * `?` was declared in. A `componentSeparator` of `"?"` therefore round-trips
+ * today through `buildInterchange` + `parseX12`, and a literal split of those
+ * two roles would re-frame that `??` as two empty components - trading a
+ * component that never splits for a value this library itself emitted and can
+ * no longer read back. Those two roles are left alone until the emit side is
+ * decided with them.
+ *
  * @internal
  */
 export function splitWithRelease(input: string, sep: string): string[] {

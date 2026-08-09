@@ -149,6 +149,12 @@ reasoning is what a future slice should re-read rather than re-derive:
   same guard in `splitElements` this slice would have INTRODUCED a regression on that set. It is
   added, and removing it reds its own test.
 
+  **🩺 What this paragraph did NOT say, and it cost a whole transaction body: `decodeSegment` had no
+  such guard either**, so a degenerate interchange framed its ENVELOPE correctly here while every
+  BODY segment collapsed to one `(non-spec)` element with an empty warning array. Closed 2026-08-09
+  by `X12-BODY-DEGENERATE-RELEASE-SEPARATOR`; read
+  `agent-notes/x12-body-degenerate-release-separator.md` before touching any of the three guards.
+
   **Note what was deliberately NOT done:** the guard went into `splitElements`, not into
   `splitWithRelease`. Fixing it in the shared helper would also change `decodeSegment`, `parse-999`
   and every repetition / component split, where the same hole is **PRE-EXISTING** - a body segment

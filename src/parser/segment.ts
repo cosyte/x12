@@ -116,6 +116,12 @@ function boundSegmentId(first: string): string {
  * decodes to an empty segment (`id: ""`, `elements: [""]`); callers that
  * care can guard.
  *
+ * **A degenerate delimiter set whose ELEMENT SEPARATOR is itself `?` splits
+ * literally**, because one byte cannot both separate and escape. Only that
+ * role is guarded here: a `?` repetition or component separator is a
+ * different call and is deliberately unchanged (see
+ * {@link "./release.js".splitWithRelease}).
+ *
  * @example
  * ```ts
  * import { decodeSegment } from "@cosyte/x12";
@@ -131,14 +137,32 @@ export function decodeSegment(
   emit: (w: X12ParseWarning) => void,
   position: X12Position,
 ): X12Segment {
-  const elements = Object.freeze(splitWithRelease(raw, delimiters.element));
+  // Degenerate delimiter set: when the element separator IS the release
+  // character, `?` cannot also escape, so fall back to the literal split.
+  // `detectDelimiters` reads the element separator positionally out of ISA
+  // byte 4 and rejects only control characters and a non-distinct set, so `?`
+  // there is admissible. `envelope.ts`'s `splitElements` and
+  // `findUnescapedTerminator` each carry this guard for their own role; this
+  // is the third site and the one the BODY goes through. Without it every
+  // `?` consumed the byte after it, no split ever happened, and the whole
+  // segment came back as ONE element whose `id` was `NON_SPEC_SEGMENT_ID` -
+  // silently, with an empty warning array, so every reader that dispatches on
+  // `seg.id` saw an empty transaction. Keep the three in step.
+  const degenerate = delimiters.element === RELEASE_CHAR;
+  const elements = Object.freeze(
+    degenerate ? raw.split(delimiters.element) : splitWithRelease(raw, delimiters.element),
+  );
   // Dangling-release detection - a bare `?` at the very end of the
   // segment cannot escape anything. Detection counts consecutive `?` at
   // the segment's tail: an odd run means the trailing `?` is unpaired
   // (dangling); an even run means it is the second half of a `??` escape
   // (well-formed). Single segment-level check is cheaper than per-element
   // re-scan and pin-points the warning to the final element index.
-  if (raw.length > 0 && raw.endsWith(RELEASE_CHAR)) {
+  //
+  // It is skipped for the degenerate set above for the same reason the split
+  // is: a trailing `?` there is an EMPTY LAST ELEMENT, not an unpaired escape,
+  // and `PER?IC?NAME?TE?5551234?` is a well-formed segment.
+  if (!degenerate && raw.length > 0 && raw.endsWith(RELEASE_CHAR)) {
     let trailingRun = 0;
     for (let j = raw.length - 1; j >= 0 && raw.charAt(j) === RELEASE_CHAR; j -= 1) trailingRun += 1;
     if (trailingRun % 2 === 1) {
