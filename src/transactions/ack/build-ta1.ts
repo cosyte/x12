@@ -91,7 +91,9 @@
  * **The other four slots were left open by that slice and `X12-TA1-RESIDUALS`
  * closes them.** TA1-01's guard was the only required-field guard this module
  * had, so `interchangeDate`, `interchangeTime`, `ackCode` and `noteCode` each
- * emitted an absent element on `""` with `warnings: []` - see
+ * emitted an absent element on `""` with `warnings: []`. **TA1-05's cell has to
+ * be read against a NON-Accept disposition, or `enforceAcceptIsClean` reaches
+ * it first and the reading measures that guard instead** - see
  * {@link requireTa1Element}, which carries the grounding and the residual it
  * deliberately leaves.
  *

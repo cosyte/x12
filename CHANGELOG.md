@@ -30,9 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Every row `warnings: []`. TA1-01 is the reassociation key, so the left column is a key that
   matches no ISA-13. The right column is the same element read through `getSegmentValue`, which
-  already unescaped; `parse999` does the same on its IK4-01 composite. **`parseTA1` was the only
-  typed reader in this package that did not.** The grounding is that disagreement and nothing else -
-  no clause anyone here has read settles what a TA1 element may contain.
+  already unescaped; `parse999` does the same on its IK4-01 composite. The grounding is that
+  disagreement and nothing else - no clause anyone here has read settles what a TA1 element may
+  contain.
 
   **`raw` is untouched and is still the verbatim byte surface**, so `ta1.raw.elements` still answers
   the bytes. A value with no `?` in it is unchanged on both surfaces, which is every conformant TA1.

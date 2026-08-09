@@ -39,7 +39,7 @@ required-field guard at TA1-01 alone.
 
 ```text
 raw element content        parseTA1 field   getSegmentValue   warnings
-0000?? (release char)      "00000001??"     "00000001?"       []
+00000001?? (release char)  "00000001??"     "00000001?"       []
 0000?*0001 (element sep)   "0000?*0001"     "0000*0001"       []
 0000?~0001 (segment term)  "0000?~0001"     "0000~0001"       []
 0000?:0001 (component)     "0000?:0001"     "0000:0001"       []
@@ -59,8 +59,8 @@ here has read one that settles what a TA1 element may contain, and nothing shipp
 
 - **Read half:** every dot-path read (`getSegmentValue`, and therefore `elementValue` and every
   typed transaction reader that goes through it) already unescaped, and `parse999` unescapes its
-  IK4-01 composite **in this same directory**. `parseTA1` was the only typed reader in the package
-  that did not.
+  IK4-01 composite **in this same directory**. **🛑 A clause here called `parseTA1` "the only typed
+  reader in the package that did not" and is DELETED, not reworded** - see the `PRE-EXISTING` below.
 - **Emit half:** `BuildTA1Spec` declares all five properties as required `string`s, `""` is the
   shape that defeats that declaration at run time, and the in-package answer to an empty required
   element is uniformly refusal (`build835` `patientControlNumber`, `build837` `claimId`, `build834`
@@ -105,6 +105,26 @@ DELETION, never reworded**:
 
 `docs-content/` **ships**: `troubleshooting.md` carries the caller-facing statement and was updated
 with the code. The other seven pages were swept and carry no falsified claim.
+
+## 🔴 `PRE-EXISTING` from the gate - backlog lines, each its own slice, NOT absorbed
+
+ADR 0016 rule 2. Both reproduce at base `67f1831` and neither is a refutation of this slice.
+
+1. **🩺 Three more typed readers publish a decoded field PRE-`?`-unescape, and it is the same defect
+   shape this slice closed at `parseTA1`.** `get837Claims`, `get277Status` and `get278Request` read
+   `tx.st.elements[3]` raw and publish it as the model field `implementationConventionReference`
+   (`src/transactions/claim/get-837.ts`, `status/get-277.ts`, `auth/get-278.ts`). Measured at head,
+   on `ST*837*0001*005010?*X222A1~`: the model field reads `"005010?*X222A1"` while
+   `getSegmentValue(tx.st, "03", d)` reads `"005010*X222A1"`. **This is what falsified the "only
+   typed reader" clause, and the clause was cut rather than the readers changed** - widening this
+   slice to reach them is exactly the growth ADR 0016 rule 2 exists to stop. ST-03 is the
+   implementation convention reference the variant resolver keys on
+   (`X12-VARIANT-ICR-UNGROUNDED`), so weigh it there.
+2. **The refusal message says "TA1-02 is a required element", which reads as a usage assertion**
+   while every grounding this package publishes for the guard is the TYPE declaration and not a TR3
+   clause. Base's own `requireControlNumber` says "TA1-01 is a required control number" in the same
+   voice, so the class predates the slice. **Nobody on this box has grounded TA1-02..05's
+   mandatory-or-situational status in a primary source, and nothing here claims one either way.**
 
 ## The ratchet
 

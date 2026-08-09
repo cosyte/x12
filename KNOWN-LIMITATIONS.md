@@ -38,9 +38,9 @@ model.
 
   Every row `warnings: []`. TA1-01 is the reassociation key, so the left column is a key that
   matches no ISA-13. The right column is the same element read through `getSegmentValue`, which
-  already unescaped, and `parse999` does the same on its IK4-01 composite: **`parseTA1` was the only
-  typed reader in this package that did not.** The grounding is that disagreement and nothing else -
-  no clause anyone here has read settles what a TA1 element may contain.
+  already unescaped, and `parse999` does the same on its IK4-01 composite. The grounding is that
+  disagreement and nothing else - no clause anyone here has read settles what a TA1 element may
+  contain.
 
   **What that costs, stated rather than argued away.** A consumer who was applying `unescapeRelease`
   to `parseTA1`'s output themselves - the remedy this file used to prescribe - now has the library

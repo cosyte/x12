@@ -22,9 +22,8 @@ interchangeControlNumber   raw emitted                          parseTA1 read   
 
 Every row `warnings: []`. TA1-01 is the reassociation key, so the left column is a key matching no
 ISA-13. The right column is the same element through `getSegmentValue`, which already unescaped, and
-`parse999` does the same on its IK4-01 composite: `parseTA1` was the only typed reader in this
-package that did not. `raw` is untouched and is still the verbatim byte surface. If you were applying
-`unescapeRelease` to `parseTA1`'s output yourself, drop that call.
+`parse999` does the same on its IK4-01 composite. `raw` is untouched and is still the verbatim byte
+surface. If you were applying `unescapeRelease` to `parseTA1`'s output yourself, drop that call.
 
 On the emit half, `escapeRelease` early-returns on `""` and `buildTA1` carried a required-field guard
 for TA1-01 alone, so `interchangeDate: ""` emitted `TA1*000000001**1200*A*000`, `interchangeTime: ""`

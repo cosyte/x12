@@ -168,12 +168,16 @@ HOIST IT INTO `splitWithRelease`; and `?~` STILL SWALLOWS THE TERMINATOR, `PRE-E
 - **🩺 `parseTA1`'s FIVE DECODED FIELDS ARE POST-`?`-UNESCAPE; `raw` IS THE VERBATIM BYTE SURFACE AND
   IS NOT.** The emit half released and the read half decoded the ESCAPE, so a released TA1-01 came
   back matching NO ISA-13, `warnings: []`. **GROUNDED ON THIS PACKAGE DISAGREEING WITH ITSELF, NEVER
-  A TR3 CLAUSE:** every dot-path read already unescaped and so does `parse999` on IK4-01;
-  `parseTA1` was the only typed reader that did not. **THE SINK IS `noop`** - no
+  A TR3 CLAUSE:** every dot-path read already unescaped and so does `parse999` on IK4-01.
+  **🛑 A CLAUSE CALLING `parseTA1` "THE ONLY TYPED READER THAT DID NOT" IS DELETED - MEASURED FALSE,
+  THREE MORE READERS PUBLISH ST-03 RAW (`PRE-EXISTING`, BELOW). STATE THE CELLS RUN, NEVER WHICH
+  MEMBER IS SPECIAL.** **THE SINK IS `noop`** - no
   `X12_DANGLING_RELEASE_CHAR` here, same as `parse999`.
 - **🩺 AN EMPTY TA1-02 / TA1-03 / TA1-04 / TA1-05 IS REFUSED ON EMIT. FILED AS TWO SLOTS, MEASURED AS
   FOUR** (`escapeRelease` early-returns on `""` and TA1-01 had the only required-field guard); each
-  BUILT an absent element with `warnings: []`. **EXISTING `X12_ACK_INVALID_SPEC`, NO CODE MINTED.**
+  BUILT an absent element with `warnings: []`. **🛑 READ TA1-05's CELL AGAINST A NON-ACCEPT
+  DISPOSITION OR `enforceAcceptIsClean` REACHES IT FIRST AND YOU MEASURE THAT GUARD** - a first
+  census did exactly that. **EXISTING `X12_ACK_INVALID_SPEC`, NO CODE MINTED.**
 - **🛑 PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH SLOT IS SPECIAL.** An out-of-enum `ackCode: "X"`
   reads back `R` exactly as the empty one did, so **THE CLAIM IS ABSENCE ON EMIT AND NOTHING ELSE** -
   no narrowing of what a non-empty element may CONTAIN, and the lenient read is unmoved.

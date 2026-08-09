@@ -62,8 +62,10 @@ export function parseTA1(interchange: X12Interchange): X12AckTA1 | undefined {
   // caller stated came back as one that matches no ISA-13. The same value read
   // through `getSegmentValue` answered the caller's string on all five rows,
   // because every dot-path read already unescapes - and so does `parse999`, on
-  // the IK4-01 composite, in this same directory. This function was the only
-  // typed reader in the package that did not.
+  // the IK4-01 composite, in this same directory. 🛑 A sentence here called this
+  // function "the only typed reader in the package that did not" and is DELETED,
+  // not reworded: it was measured false, and the three readers that falsify it
+  // are `PRE-EXISTING` and recorded as a backlog line rather than absorbed.
   //
   // The sink is `noop`, matching `parse999`: a dangling `?` at the end of an
   // element raises `X12_DANGLING_RELEASE_CHAR` through a dot-path read and is

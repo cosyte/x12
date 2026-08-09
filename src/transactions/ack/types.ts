@@ -246,8 +246,11 @@ export interface X12Ack999 {
  * - `interchangeTime` - TA1-03: HHMM (echoes inbound ISA-10).
  * - `ackCode` - TA1-04: {@link Ta1AckCode}.
  * - `noteCode` - TA1-05: typed when the value is a known I18 code
- *   ({@link Ta1NoteCode}); the raw string is preserved verbatim alongside
- *   so unknown extensions round-trip.
+ *   ({@link Ta1NoteCode}); `noteCodeRaw` carries the un-narrowed string
+ *   alongside so unknown extensions survive. **A clause here said that
+ *   string is preserved VERBATIM and is deleted, not reworded:**
+ *   `X12-TA1-RESIDUALS` made it post-unescape, and `raw.elements[5]` is
+ *   the verbatim surface.
  * - `noteCodeRaw` - the un-narrowed TA1-05 string. Equal to `noteCode` when
  *   the value is a known I18 code; equal to the decoded inbound text when
  *   not.

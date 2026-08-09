@@ -18,7 +18,8 @@
  * `warnings: []`. The same elements read through `getSegmentValue` answered
  * the caller's string on all six, because every dot-path read already
  * unescapes, and so does `parse999` on the IK4-01 composite in this same
- * directory. `parseTA1` was the only typed reader in the package that did not.
+ * directory. 🛑 A clause calling `parseTA1` "the only typed reader in the
+ * package that did not" is DELETED, not reworded - it was measured false.
  *
  * ## The grounding, and what it deliberately is NOT
  *
