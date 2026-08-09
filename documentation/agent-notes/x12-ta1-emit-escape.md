@@ -190,3 +190,7 @@ cannot fail measures nothing.
 - **`splitWithRelease` has no degenerate-`?`-separator guard for BODY segments** (`PRE-EXISTING`,
   wider blast radius than the envelope case `#96` closed), and a mid-segment **dangling `?`** raises
   no `X12_DANGLING_RELEASE_CHAR` in envelope or body. Untouched here.
+  **The first half CLOSED 2026-08-09 by `X12-BODY-DEGENERATE-RELEASE-SEPARATOR`**, in
+  `decodeSegment` and for the ELEMENT role only. **The dangling half was re-measured there and is
+  NOT REACHABLE AS STATED** - a `?` at the end of a non-final element is escaping the separator
+  that follows it, so it is never unpaired; read that entry before acting on this line.

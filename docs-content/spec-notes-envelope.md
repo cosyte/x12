@@ -62,6 +62,29 @@ detects all four from fixed byte positions in the ISA, so you never configure th
 `ix.delimiters` carries the detected set; every reader and the `getSegmentValue` dot-path resolver use
 it, so a partner who ships `|` elements and `\` components parses with no special handling.
 
+### When a delimiter is `?`
+
+`?` is the conventional X12 release character, and this library treats it as one. It is also
+admissible at any of the four delimiter positions, because nothing in the ISA layout reserves it, so
+a sender can declare it as structure. **One byte cannot both separate and escape**, so wherever a
+role is declared as `?`, the splitter for that role stops treating `?` as an escape and splits
+literally: the segment terminator, an envelope segment's elements, and a body segment's elements.
+Bounds worth knowing if you meet such a set, and this is not a closed account of what one can do to a
+document. A `?` **repetition or component** separator still does not split, so
+`getSegmentValue(seg, "01-2", ix.delimiters)` will not resolve against it. With `?` as the
+**element** separator, a segment ending in an empty last element puts a `?` immediately before the
+terminator, which the terminator scan still reads as an escape, so that segment merges with the one
+after it and you get `X12_MISSING_SE`.
+
+**🩺 And on the emit side, do not declare `?` as the element separator at all.** `buildInterchange`
+protects a value by prefixing `?` to the byte that needs protecting, so when `?` IS the element
+separator the protecting byte is itself a separator: **no value containing any active delimiter or a
+literal `?` survives the round trip**, composites included, and there is no value-level workaround.
+It is silent (`warnings: []`) and it is not merely a truncation: a `HI-01` of `ABK:J45.50` is written
+as `HI?ABK?:J45.50`, reads back as `HI-01 "ABK"` with the diagnosis code stranded in a phantom
+`HI-02`, so `getSegmentValue(hi, "01-2", …)` answers `undefined`. All of it is recorded in
+`KNOWN-LIMITATIONS.md`.
+
 ## Line endings between segments
 
 X12 is a single-line format, but most senders write a line break after every segment terminator so the
@@ -115,7 +138,7 @@ to make it hold. Six constructs are known not to survive:
 5. **TA1 position.** A TA1 that appeared **after** a functional group is collected onto
    `ix.ta1Segments` and emitted immediately after the ISA, so the emit **reorders** it. Silent, and
    unlike the others nothing is lost: the model and the warning stream both round-trip identically.
-   It is also the only construct that moves something *else* - a segment outside a transaction is
+   It is also the only construct that moves something _else_ - a segment outside a transaction is
    placed correctly relative to the groups but not relative to a TA1 hoisted past it. This library
    takes no position on where ASC X12 requires a TA1 to sit.
 6. **A segment whose first element is empty (`*A*B~`), outside a transaction.** It has no id for the
@@ -159,7 +182,7 @@ inside an open group lands on `ix.orphanSegments` even when it arrived **between
 `SE`** - and it is lifted out of that transaction's `segments` and `rawSegments`. For a document
 containing such a `TA1`, `ix.groups` is not the whole typed model. That is long-standing behaviour;
 what changed is that the segment is retained and re-emitted rather than discarded. It is also the one
-orphan that is anchored *inside* a transaction, so it is the case any re-emission design has to get
+orphan that is anchored _inside_ a transaction, so it is the case any re-emission design has to get
 right - see the second example below.
 
 Each raises `X12_UNEXPECTED_SEGMENT`, is retained verbatim on `ix.orphanSegments`, and is re-emitted
@@ -288,7 +311,7 @@ claim, a service line, a subscriber). The TR3 implementation guides define each 
 hierarchy; the per-transaction readers (`get835`, `get837Claims`, …) walk those loops for you and hand
 back a typed tree, so you rarely touch raw segments.
 
-When you *do* need to describe a loop yourself, or understand how the built-ins are authored, the
+When you _do_ need to describe a loop yourself, or understand how the built-ins are authored, the
 public `defineLoopSpec()` API is the same one the library uses internally (a dogfooding gate: the
 built-in specs like `REMIT_835_LOOP_2100` are authored through it):
 

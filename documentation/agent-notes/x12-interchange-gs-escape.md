@@ -147,6 +147,9 @@ header and asserted in the same file, so prose cannot drift from code. Read them
   `padControl(1, 9)` still throws the misleadingly-worded typed refusal.
 - **A mid-segment dangling `?`** still raises no `X12_DANGLING_RELEASE_CHAR`, in envelope or body.
 - **`splitWithRelease` still has no degenerate-`?`-separator guard for BODY segments.**
+  **CLOSED 2026-08-09 by `X12-BODY-DEGENERATE-RELEASE-SEPARATOR`** - the guard went into
+  `decodeSegment`, per ROLE (element only), not into `splitWithRelease`:
+  `agent-notes/x12-body-degenerate-release-separator.md`.
 - **`parseTA1` still does not unescape**, and an **empty** control number is still not refused.
 - **`PRE-EXISTING`, filed by pass 2 and NOT closed here:** `SegmentSpec`'s JSDoc says the segment id
   (`spec[0]`) is emitted verbatim, and `buildTransaction` has released it since before this slice -

@@ -950,6 +950,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **🩺 A BODY segment in an interchange whose ELEMENT SEPARATOR is `?` now frames its elements,
+  where it used to come back as ONE element with an id of `(non-spec)`**
+  (`X12-BODY-DEGENERATE-RELEASE-SEPARATOR`). Reproduced on the base tree at `72bafc2`.
+  `detectDelimiters` reads the element separator positionally out of ISA byte 4 and rejects only
+  control characters, whitespace and a non-distinct set, so a sender may declare `?` there, and
+  `buildInterchange` accepts `elementSeparator: "?"` from a caller. `src/parser/envelope.ts` guarded
+  that degenerate set in both of its own splitters, once for the segment terminator and once for an
+  envelope segment's elements. `decodeSegment` - which every BODY segment plus the `ST`, the `SE`
+  and every retained orphan goes through - did not. It used the release-aware splitter, where a `?`
+  consumes the byte after it, so on such an interchange no split ever happened:
+
+  ```text
+  ST?837?0001?005010X222A1                 id "(non-spec)", 1 element
+  NM1?85?2?ACME CLINIC?????XX?1234567893   id "(non-spec)", 1 element
+  SE?3?0001                                id "(non-spec)", 1 element
+  warnings: []
+  ```
+
+  **🩺 The envelope framed correctly the whole time, which is what made it silent.** One group, one
+  transaction, `GE-01`, `IEA-01`, `GS-06`/`GE-02` and `ST-02`/`SE-02` all reconciling, an empty
+  warning array - and a transaction body no reader could see, because every reader in this package
+  dispatches on `seg.id`. A consumer got an empty claim list out of a well-formed document.
+  `buildInterchange` disagreed with itself the same way: it returns `parseX12` of the bytes it just
+  wrote, so a caller passing `elementSeparator: "?"` got back a model holding none of the segments
+  it had supplied. **It now reports the segments it wrote, for a value with no `?` in it - read that
+  qualifier, it is load-bearing and the paragraph on the emit side below says why.**
+
+  **🛑 It changes how an already-published document decodes, deliberately**, exactly as the envelope
+  splitter did in the release before it, and on the same tiebreak: CONSISTENCY with the guard this
+  package already carried twice, not a spec clause. 005010 does not transmit a release character at
+  all, so nothing in it says what a `?` means once a sender has declared `?` as structure. **What is
+  NOT the same: this class is not symmetric.** A one-element segment with an id of `(non-spec)` is
+  not a second reading of `NM1?85?2?ACME CLINIC`, so unlike that slice there is no direction in
+  which the old framing was the right one.
+
+  **No warning code is added and no case moves onto a new code.** One is SUBTRACTED, in one place:
+  `X12_DANGLING_RELEASE_CHAR` fired on any degenerate segment ending in an empty last element,
+  because the check keys on a trailing `?`. With `?` as the separator that trailing byte is an empty
+  element and not an unpaired escape, so `PER?IC?NAME?TE?5551234?` is silent now.
+
+  **🛑 The guard is per ROLE, and the two roles left alone are a measurement rather than an
+  oversight.** A `?` REPETITION or COMPONENT separator still does not split. `escapeRelease` writes
+  `??` for a literal `?` whatever role `?` was declared in, so
+  `buildInterchange({ componentSeparator: "?" })` emits `CLM*PATIENT??ACCT*150.00` today and
+  `getSegmentValue(clm, "01")` reads `"PATIENT?ACCT"` back out of it. A literal split of those two
+  roles would re-frame that as two empty components, trading a separator that never splits for a
+  value this library itself emitted and could no longer read back. Deciding them means deciding the
+  emit side with them, and that is its own change.
+
+  **🩺 So do NOT declare `?` as the element separator on the emit side.** `buildInterchange` protects
+  a value by prefixing `?` to the byte that needs protecting, so when `?` IS the element separator the
+  protecting byte is itself a separator, and **no value containing any active delimiter or a literal
+  `?` survives the round trip** - composites included, silently, with **no value-level workaround.**
+  That is stated as a property rather than as a list of trigger bytes on purpose: two successive
+  drafts named one trigger each and the gate falsified both by producing one more. What it costs is
+  not always a truncation: a `HI-01` of `ABK:J45.50` is written `HI?ABK?:J45.50` and reads back as
+  `HI-01 "ABK"` with the diagnosis code stranded in a phantom `HI-02`. Through `0.0.15` every one of
+  these read as a single `(non-spec)` element and every dot-path answered `undefined`, so **a
+  detectable absence became a confident wrong value.** All THREE roles therefore belong to the
+  emit-side change, and none of them is closed here.
+
+  **🩺 What else it does not close, pinned rather than left to be rediscovered.** On a degenerate set
+  a `?~` still swallows the segment terminator: `findUnescapedTerminator` guards its own role only,
+  so a segment ending in an empty last element puts a `?` immediately before the terminator and
+  merges with its successor (`PER?IC?NAME?TE?5551234?EX?~SE?3?0001~` frames as one segment and raises
+  `X12_MISSING_SE`). Framing is untouched - but the READ of that merged blob did move, so do not take
+  it as "nothing moved": it now frames, so `~SE` and the SE's control number land in `PER`'s
+  communication-number slots where at base they sat inside one `(non-spec)` element. Values are still
+  RAW, `elements.join(sep)` still reproduces the segment byte for byte, and the ISA stays positional.
+
 - **🩺 `buildInterchange` now release-escapes GS-04, GS-05 and GS-07, so the interchange it hands
   back reports the group date, group time and responsible agency code you passed**
   (`X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE`). Reproduced on the base tree at `837d4bc`. The
