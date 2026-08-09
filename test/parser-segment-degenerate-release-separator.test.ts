@@ -7,8 +7,9 @@
  *
  * `detectDelimiters` reads the element separator positionally out of ISA byte 4
  * and rejects only control characters, whitespace and a non-distinct set, so a
- * sender may declare `?` there - and `buildInterchange` accepts
- * `elementSeparator: "?"` from a caller. `src/parser/envelope.ts` handles that
+ * sender may declare `?` there - and `buildInterchange` accepted
+ * `elementSeparator: "?"` from a caller at the time this was measured, which is
+ * the emit half, decided since. `src/parser/envelope.ts` handles that
  * degenerate set twice, once in `findUnescapedTerminator` and once in
  * `splitElements`; `src/parser/segment.ts`'s `decodeSegment` did not. It called
  * `splitWithRelease`, where every `?` consumes the byte after it, so on such an
@@ -38,46 +39,41 @@
  * `(non-spec)` is not an alternative reading of `NM1?85?2?ACME`, and no reader
  * in this package could act on it.
  *
- * ## The bound, and it is per ROLE
+ * ## The bound, and it is per ROLE - on the READ side, which is all this file
+ * covers
  *
- * Only the ELEMENT SEPARATOR role is guarded. A `?` REPETITION or COMPONENT
- * separator still does not split, and that is deliberate and measured, not an
- * oversight: `escapeRelease` writes `??` for a literal `?` whatever role `?`
- * was declared in, so `buildInterchange({ componentSeparator: "?" })` emits
- * `CLM*PATIENT??ACCT*150.00` today and reads `"PATIENT?ACCT"` back out of it.
- * A literal split of those two roles would re-frame that as two empty
- * components - trading a separator that never splits for a value this library
- * itself emitted and could no longer read back. Both halves are pinned below.
+ * Only the ELEMENT SEPARATOR role is guarded here. A `?` REPETITION or
+ * COMPONENT separator still does not split on read, and that is deliberate and
+ * measured, not an oversight: `escapeRelease` writes `??` for a literal `?`
+ * whatever role `?` was declared in, so an interchange emitted through
+ * `0.0.15`'s `buildInterchange({ componentSeparator: "?" })` carries
+ * `CLM*PATIENT??ACCT*150.00` and this parser reads `"PATIENT?ACCT"` back out of
+ * it. A literal split of those two roles would re-frame that as two empty
+ * components - so it would stop reading a value this library itself emitted.
+ * **That is a reason the READ side does not move, and it survives the emit-side
+ * slice: those documents exist.** Both halves are pinned below.
  *
- * ## 🩺 And that same emit property reaches the ELEMENT role, which this slice
- * does NOT close
+ * ## 🩺 The emit side is DECIDED ELSEWHERE and is no longer this file's subject
  *
- * A first draft of this file stopped at the paragraph above and drew the
- * consequence for two roles when the property it rests on holds for three; a
- * second named `?` as the trigger. The gate refuted both, the second by
- * producing one more trigger byte. **State it once, in the form one more byte
- * cannot falsify:** the builder protects a value by PREFIXING `?` to the byte
- * that needs protecting, so when `?` IS the element separator that prefix is
- * itself a separator, and NO value containing any active delimiter or a literal
- * `?` survives the round trip. Composites included, silently, with no
- * value-level workaround: do not declare `?` as the element separator on the
- * emit side. At base every one of these read as a single `(non-spec)` element
- * and every dot-path answered `undefined`, so a detectable absence became a
- * confident wrong value. It is pinned below as a disclosure rather than
- * guarded: closing it means deciding `escapeRelease` for a degenerate set,
- * which is the same emit-side decision the other two roles need, and all THREE
- * belong to that slice rather than this one.
+ * The emit half of the same property - `escapeRelease` protects a byte by
+ * PREFIXING `?` to it, so when `?` is a delimiter the protection is structure -
+ * was a disclosure in this file when only the read side had been decided. It is
+ * now a refusal: every builder refuses a delimiter set in which any role is
+ * `?`, measured across FOUR roles and two mechanisms, in
+ * `test/builder-degenerate-release-delimiter.test.ts` and
+ * `src/builder/caller-string.ts`. The `buildInterchange` cases that used to
+ * pin the loss here are gone rather than reworded, because the builder no
+ * longer reaches the bytes they asserted.
  *
  * The segment-terminator scanner is likewise role-blind in the other
- * direction, and that residual is PRE-EXISTING and pinned below rather than
- * closed here.
+ * direction on READ, and that residual is PRE-EXISTING and pinned below rather
+ * than closed here.
  */
 
 import { describe, expect, it } from "vitest";
 
 import {
   NON_SPEC_SEGMENT_ID,
-  buildInterchange,
   decodeSegment,
   getSegmentValue,
   parseX12,
@@ -160,162 +156,6 @@ describe("X12-BODY-DEGENERATE-RELEASE-SEPARATOR: a body segment frames its eleme
     expect(getSegmentValue(segment, "01-2", DEGENERATE)).toBe("J45.50");
   });
 
-  it('🩺 `buildInterchange` reports the segments it wrote on `elementSeparator: "?"`, for a value with no `?` in it', () => {
-    // The builder returns `parseX12` of the bytes it just wrote. At base those
-    // bytes came back as one element per segment, so a caller reading the
-    // returned model saw none of the segments it had passed.
-    //
-    // 🛑 READ THE QUALIFIER. This is NOT "the builder stops disagreeing with
-    // itself" - a first draft of this test said exactly that and the gate
-    // refuted it with the value one character away from the one below. The
-    // element role's EMIT half is unfixed and the next test pins it.
-    const built = buildInterchange({
-      senderId: "SENDER",
-      receiverId: "RECEIVER",
-      interchangeDate: "260601",
-      interchangeTime: "1200",
-      interchangeControlNumber: "000000001",
-      elementSeparator: "?",
-      groups: [
-        {
-          functionalIdCode: "HC",
-          groupControlNumber: "1",
-          versionRelease: "005010X222A2",
-          transactions: [
-            {
-              transactionSetIdCode: "837",
-              transactionSetControlNumber: "0001",
-              segments: [["CLM", "PATIENTACCT", "150.00"]],
-            },
-          ],
-        },
-      ],
-    });
-    const clm = built.groups[0]?.transactions[0]?.segments[1];
-    expect(clm?.id).toBe("CLM");
-    expect(clm?.elements).toEqual(["CLM", "PATIENTACCT", "150.00"]);
-    expect(built.warnings).toEqual([]);
-  });
-
-  // 🩺 INTRODUCED and NOT closed: with `?` as the ELEMENT separator, NO value
-  // carrying an active delimiter or the release character survives a
-  // `buildInterchange` round trip. The property, not a trigger list: the
-  // builder protects a value by PREFIXING `?` to the byte that needs
-  // protecting, and when `?` IS the element separator that prefix is itself a
-  // separator, so the protection becomes a split. Two drafts of this control
-  // named one trigger each (`?`, then `?` again) and the gate falsified both by
-  // producing one more, which is why what follows is a table of INSTANCES and
-  // never a census: adding a row cannot falsify the sentence above.
-  //
-  // 🩺 THE DIRECTION IS WHAT MATTERS AND IT GOT WORSE: at base every one of
-  // these read as a single `(non-spec)` element and every dot-path answered
-  // `undefined` - a detectable absence. Here they give a confident wrong value
-  // with an empty warning array, and not always a truncation - the `HI` row
-  // strands a diagnosis code in a phantom `HI-02` that `01-2` cannot reach.
-  //
-  // It is left as a DISCLOSURE and not guarded, deliberately. Closing it means
-  // deciding `escapeRelease` for a degenerate set, which is the same emit-side
-  // decision the repetition and component roles need, and doing it inside a
-  // read-side slice is how a fix outgrows the thing it fixes. There is no
-  // value-level workaround: do not declare `?` as the element separator.
-  const emitInstances: readonly (readonly [
-    string,
-    readonly string[],
-    string,
-    readonly string[],
-  ])[] = [
-    [
-      "a literal release character",
-      ["CLM", "PATIENT?ACCT", "150.00"],
-      "CLM?PATIENT??ACCT?150.00",
-      ["CLM", "PATIENT", "", "ACCT", "150.00"],
-    ],
-    [
-      "a component separator inside a composite",
-      ["HI", "ABK:J45.50"],
-      "HI?ABK?:J45.50",
-      ["HI", "ABK", ":J45.50"],
-    ],
-    [
-      "a repetition separator",
-      ["CLM", "ACME^CLINIC", "150.00"],
-      "CLM?ACME?^CLINIC?150.00",
-      ["CLM", "ACME", "^CLINIC", "150.00"],
-    ],
-    ["a segment terminator", ["REF", "EA", "A~B"], "REF?EA?A?~B", ["REF", "EA", "A", "~B"]],
-  ];
-
-  it.each(emitInstances)(
-    '🩺 INTRODUCED and NOT closed: %s in a value does not round-trip on `elementSeparator: "?"`',
-    (_name, segment, raw, elements) => {
-      const built = buildInterchange({
-        senderId: "SENDER",
-        receiverId: "RECEIVER",
-        interchangeDate: "260601",
-        interchangeTime: "1200",
-        interchangeControlNumber: "000000001",
-        elementSeparator: "?",
-        groups: [
-          {
-            functionalIdCode: "HC",
-            groupControlNumber: "1",
-            versionRelease: "005010X222A2",
-            transactions: [
-              {
-                transactionSetIdCode: "837",
-                transactionSetControlNumber: "0001",
-                segments: [segment],
-              },
-            ],
-          },
-        ],
-      });
-      const seg = built.groups[0]?.transactions[0]?.segments[1];
-      if (seg === undefined) throw new Error("the built interchange carries no body segment");
-      expect(seg.raw).toBe(raw);
-      expect(seg.elements).toEqual(elements);
-      // The property every row shares, asserted without naming a slot, because
-      // WHICH element carries the offending byte varies by row and a
-      // slot-specific assertion is the instrument-pointing mistake twice over:
-      // the segment does not read back the segment the caller supplied, and
-      // nothing is raised about it.
-      expect([...seg.elements]).not.toEqual([...segment]);
-      expect(built.warnings).toEqual([]);
-    },
-  );
-
-  it("🩺 and the loss is not always a truncation - a composite is stranded where no dot-path reaches it", () => {
-    const built = buildInterchange({
-      senderId: "SENDER",
-      receiverId: "RECEIVER",
-      interchangeDate: "260601",
-      interchangeTime: "1200",
-      interchangeControlNumber: "000000001",
-      elementSeparator: "?",
-      groups: [
-        {
-          functionalIdCode: "HC",
-          groupControlNumber: "1",
-          versionRelease: "005010X222A2",
-          transactions: [
-            {
-              transactionSetIdCode: "837",
-              transactionSetControlNumber: "0001",
-              segments: [["HI", "ABK:J45.50"]],
-            },
-          ],
-        },
-      ],
-    });
-    const hi = built.groups[0]?.transactions[0]?.segments[1];
-    if (hi === undefined) throw new Error("the built interchange carries no HI");
-    expect(getSegmentValue(hi, "01-1", built.delimiters)).toBe("ABK");
-    // The diagnosis code is in a phantom HI-02 the composite read cannot see.
-    expect(getSegmentValue(hi, "01-2", built.delimiters)).toBeUndefined();
-    expect(getSegmentValue(hi, "02", built.delimiters)).toBe(":J45.50");
-    expect(built.warnings).toEqual([]);
-  });
-
   it("🩺 a trailing separator is an EMPTY LAST ELEMENT, not a dangling release character", () => {
     // The dangling-release check keys on a trailing `?`, so without the same
     // guard it fired `X12_DANGLING_RELEASE_CHAR` on every degenerate segment
@@ -341,43 +181,25 @@ describe("X12-BODY-DEGENERATE-RELEASE-SEPARATOR: the honest controls", () => {
     expect(decode("REF*EA*RCV??", NORMAL).codes).toEqual([]);
   });
 
-  it("🛑 a `?` REPETITION separator still does not split, and the emit side is why", () => {
-    // `escapeRelease` writes `??` for a literal `?` whatever role `?` holds, so
-    // this pair round-trips today. A literal split here would break it.
+  // 🛑 THESE TWO ARE WHY THE READ SIDE DID NOT MOVE WHEN THE EMIT SIDE WAS
+  // DECIDED. `buildInterchange` refuses a `?` in either role now, but the bytes
+  // below are what it EMITTED through `0.0.15`, and those documents exist. A
+  // literal split of either role would stop reading a value this library itself
+  // wrote. Both are asserted straight from bytes for that reason: routing them
+  // through the builder would assert the refusal instead of the read.
+  it("🛑 a `?` REPETITION separator still does not split on READ", () => {
     const d: Delimiters = { element: "*", repetition: "?", component: ":", segment: "~" };
     const { segment } = decode("CLM*PATIENT??ACCT*150.00", d);
     expect(segment.elements).toEqual(["CLM", "PATIENT??ACCT", "150.00"]);
     expect(getSegmentValue(segment, "01", d)).toBe("PATIENT?ACCT");
   });
 
-  it("🛑 a `?` COMPONENT separator still does not split, and `buildInterchange` proves the cost", () => {
-    const built = buildInterchange({
-      senderId: "SENDER",
-      receiverId: "RECEIVER",
-      interchangeDate: "260601",
-      interchangeTime: "1200",
-      interchangeControlNumber: "000000001",
-      componentSeparator: "?",
-      groups: [
-        {
-          functionalIdCode: "HC",
-          groupControlNumber: "1",
-          versionRelease: "005010X222A2",
-          transactions: [
-            {
-              transactionSetIdCode: "837",
-              transactionSetControlNumber: "0001",
-              segments: [["CLM", "PATIENT?ACCT", "150.00"]],
-            },
-          ],
-        },
-      ],
-    });
-    const clm = built.groups[0]?.transactions[0]?.segments[1];
-    if (clm === undefined) throw new Error("the built interchange carries no CLM");
-    expect(clm.raw).toBe("CLM*PATIENT??ACCT*150.00");
-    expect(getSegmentValue(clm, "01", built.delimiters)).toBe("PATIENT?ACCT");
-    expect(built.warnings).toEqual([]);
+  it("🛑 a `?` COMPONENT separator still does not split on READ", () => {
+    const d: Delimiters = { element: "*", repetition: "^", component: "?", segment: "~" };
+    const { segment, codes } = decode("CLM*PATIENT??ACCT*150.00", d);
+    expect(segment.elements).toEqual(["CLM", "PATIENT??ACCT", "150.00"]);
+    expect(getSegmentValue(segment, "01", d)).toBe("PATIENT?ACCT");
+    expect(codes).toEqual([]);
   });
 
   it("🩺 PRE-EXISTING and NOT closed here: `?~` still swallows the terminator on a degenerate set", () => {

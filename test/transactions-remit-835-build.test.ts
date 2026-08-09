@@ -857,3 +857,24 @@ describe("X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED: build835", () => {
     expect(blank.isa.elements[13]).toBe("00000000 ");
   });
 });
+
+describe("build835 - X12-EMIT-DEGENERATE-RELEASE-DELIMITER", () => {
+  it('🩺 refuses a delimiter set whose repetition separator is the release character "?"', () => {
+    // The guard is in `makeCallerEscaper`, so it reaches this builder without
+    // naming it - but a source gate establishes nothing about behaviour, so the
+    // behavioural case lives here beside the valid spec it mutates.
+    // A repetition joined with `?` is emitted as an escape sequence.
+    expect(() =>
+      build835({
+        ...BALANCED_SPEC,
+        envelope: { ...ENVELOPE, repetitionSeparator: "?" },
+      }),
+    ).toThrow(
+      'build835: "?" is the X12 release character and cannot also be the repetition separator.',
+    );
+  });
+
+  it("the same spec on the conventional set still builds (the red control)", () => {
+    expect(build835(BALANCED_SPEC).warnings).toEqual([]);
+  });
+});

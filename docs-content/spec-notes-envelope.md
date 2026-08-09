@@ -76,13 +76,28 @@ document. A `?` **repetition or component** separator still does not split, so
 terminator, which the terminator scan still reads as an escape, so that segment merges with the one
 after it and you get `X12_MISSING_SE`.
 
-**🩺 And on the emit side, do not declare `?` as the element separator at all.** `buildInterchange`
-protects a value by prefixing `?` to the byte that needs protecting, so when `?` IS the element
-separator the protecting byte is itself a separator: **no value containing any active delimiter or a
-literal `?` survives the round trip**, composites included, and there is no value-level workaround.
-It is silent (`warnings: []`) and it is not merely a truncation: a `HI-01` of `ABK:J45.50` is written
-as `HI?ABK?:J45.50`, reads back as `HI-01 "ABK"` with the diagnosis code stranded in a phantom
-`HI-02`, so `getSegmentValue(hi, "01-2", …)` answers `undefined`. All of it is recorded in
+**🩺 On the emit side a `?` in ANY of the four roles is REFUSED, and that is the asymmetry: lenient
+on parse, strict on emit.** Every builder - `buildInterchange`, the seven per-TR3 domain builders,
+`build999` and `buildTA1` - refuses such a set with its own existing typed error, naming the role.
+The reason is that one byte cannot both separate and escape on the way out either, and there is
+nothing a caller can do about it at the value level:
+
+- An escape is written by **prefixing** `?` to the byte it protects, so where `?` is a delimiter the
+  protection is emitted as structure.
+- A **composite or a repetition** is joined with the separator you declared, so where that separator
+  is `?` the library's own structural join is emitted as an escape. **This one needs no value of
+  yours at all** - an 837 with a `?` component separator emitted `SV1-01-2` (the procedure code) and
+  `HI-01-2` (the diagnosis code) fused into the preceding component on every document, silently.
+
+If you must exchange with a partner who declares `?` as structure, you can still **read** their
+traffic: `parseX12` accepts every such set, and `serializeX12` re-emits one byte for byte. The
+read-side bounds above are unchanged by the refusal.
+
+**What the refusal is, exactly: an equality test on the delimiter you declare.** No builder checks
+that a delimiter is a single byte, so a `segmentTerminator` of `"??"` is not equal to `"?"`, builds,
+and still transmits `?` as the terminator - a degenerate set by another route, `warnings: []`. That
+is `PRE-EXISTING` and unfixed, so do not read the refusal as "this library cannot compose a document
+against a degenerate set". Declare single-byte delimiters. All of it is recorded in
 `KNOWN-LIMITATIONS.md`.
 
 ## Line endings between segments

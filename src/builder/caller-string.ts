@@ -215,7 +215,7 @@
  */
 
 import type { Delimiters } from "../parser/types.js";
-import { escapeRelease } from "../parser/release.js";
+import { escapeRelease, RELEASE_CHAR } from "../parser/release.js";
 
 /**
  * Describe a wrong-typed element value without echoing it at all.
@@ -314,7 +314,115 @@ export function requireCallerString(
 }
 
 /**
- * Build a builder's `esc` helper: check the type, then escape.
+ * The four roles a caller declares a delimiter for, in ISA order, each paired
+ * with the name the refusal uses. Ordered so a set with more than one
+ * degenerate role reads in the order the ISA transmits them. @internal
+ */
+const DELIMITER_ROLES = [
+  ["element", "element separator"],
+  ["repetition", "repetition separator"],
+  ["component", "component separator"],
+  ["segment", "segment terminator"],
+] as const;
+
+/**
+ * Refuse a delimiter set in which the release character is also a delimiter,
+ * because on such a set this builder cannot emit a document it can read back.
+ *
+ * ## The property, which is not a list of trigger bytes
+ *
+ * {@link "../parser/release.js".escapeRelease} protects a byte by **prefixing**
+ * `?` to it. When `?` is itself one of the four delimiters, that prefix is
+ * structure, so the protection becomes the thing it was protecting against. The
+ * inverse holds at the same time and needs no caller value at all: a builder
+ * joins composites with the component separator and repetitions with the
+ * repetition separator, so when either of those IS `?` the library's own
+ * structural join is emitted as an escape sequence.
+ *
+ * **Two mechanisms, and only the first has anything to do with a caller's
+ * value.** The filed defect named the first and reached three roles; measured,
+ * the class is four roles and the second mechanism fires on documents in which
+ * no value carries any trigger byte at all.
+ *
+ * Measured on this tree at base commit `51de7b2`, `warnings: []` on every row:
+ *
+ * ```text
+ * elementSeparator "?"    buildInterchange ["CLM","PATIENT?ACCT","150.00"]
+ *                           reads ["CLM","PATIENT","","ACCT","150.00"]
+ * segmentTerminator "?"   buildInterchange ["CLM","PAT*ACCT","150.00"]
+ *                           CLM-01 reads "PAT", a phantom segment follows
+ * componentSeparator "?"  build837P, every document, no trigger byte
+ *                           SV1-01-2 (the procedure code) reads undefined
+ *                           HI-01-2 (the diagnosis code) reads undefined
+ * repetitionSeparator "?" build271, every document, no trigger byte
+ *                           EB-03 "30"+"1" reads as one code "30?1"
+ * ```
+ *
+ * ## Why REFUSE, and why the whole set rather than the values that trip
+ *
+ * Refusing follows the call {@link "./caller-control-number.js".requireControlNumber}
+ * made for an empty control number: 005010 settles neither, and the tiebreak is
+ * CONSISTENCY with the guards this package already carries on emit plus the
+ * standing rule that emit is the strict half. A warning would have to travel
+ * the read registry, which `#83` was refuted for.
+ *
+ * Guarding the VALUES that trip instead was rejected on measurement, not taste.
+ * It cannot reach the second mechanism at all - there is no offending value in
+ * an 837 whose procedure code is lost - and it would leave a caller with an
+ * instruction they cannot act on, which is the value-level mitigation this
+ * item's own history had refuted for protecting nobody.
+ *
+ * ## What this deliberately does NOT do
+ *
+ * - **It tests the DECLARED VALUE for equality with `?`, and that is the whole
+ *   of it. It is not a guarantee about the documents this library can
+ *   compose.** No builder checks that a delimiter is one byte, so a
+ *   `segmentTerminator` of `"??"` is not equal to `"?"`, builds, and still
+ *   transmits `?` as the terminator, `warnings: []`. Measured at head, and
+ *   identical at base: the multi-byte hole is `PRE-EXISTING`, the whole
+ *   delimiter-shape family with it, and **widening this guard to reach it is a
+ *   different slice** - it would be a length rule nothing here has decided.
+ *   State the bound as a property of the SET, never of the document.
+ * - **The read side is untouched.** `parseX12` still accepts every degenerate
+ *   set, and `src/parser/segment.ts`'s element-role guard still frames such a
+ *   document. Documents this library emitted before this guard exist, and
+ *   Postel's Law puts them on the lenient half.
+ * - **`serializeX12` is not guarded**, and that is the same distinction: it
+ *   re-emits a set a SENDER declared, out of a model that was parsed, so
+ *   refusing there would refuse round-tripping an inbound document. Measured:
+ *   a degenerate interchange still serializes byte-identically.
+ *
+ * @param delimiters the resolved delimiter set for this interchange
+ * @param at a library-owned locator naming the builder, e.g. `"build835"`
+ * @param refuse throws the calling module's typed refusal
+ *
+ * @internal
+ */
+function requireEscapableDelimiters(
+  delimiters: Delimiters,
+  at: string,
+  refuse: (message: string) => never,
+): void {
+  const degenerate = DELIMITER_ROLES.filter(([role]) => delimiters[role] === RELEASE_CHAR).map(
+    ([, name]) => name,
+  );
+  if (degenerate.length === 0) return;
+  const roles =
+    degenerate.length === 1
+      ? `the ${degenerate[0] ?? ""}`
+      : `the ${degenerate.slice(0, -1).join(", the ")} and the ${degenerate[degenerate.length - 1] ?? ""}`;
+  refuse(
+    `${at}: "${RELEASE_CHAR}" is the X12 release character and cannot also be ${roles}. ` +
+      `An escape is written by prefixing "${RELEASE_CHAR}" to the byte it protects, so on this set the ` +
+      `protection is emitted as structure; and a composite or a repetition joined with ` +
+      `"${RELEASE_CHAR}" is emitted as an escape. Neither reads back, and no element value avoids it. ` +
+      `Declare a delimiter set in which no role is "${RELEASE_CHAR}".`,
+  );
+}
+
+/**
+ * Build a builder's `esc` helper: check the delimiter set, then per value check
+ * the type and escape.
  *
  * EVERY builder module that declares an `esc` constructs it here rather than
  * writing `(value) => escapeRelease(value, delimiters)` inline, so the decision
@@ -322,6 +430,28 @@ export function requireCallerString(
  * it by scanning for the shape. **That gate holds the count; this line does
  * not, deliberately** - the figure was published here as "nine" and stayed
  * nine when `X12-TA1-EMIT-NOT-RELEASE-AWARE` made it ten.
+ *
+ * **The delimiter check is why that gate is worth more than a hand-list.** It
+ * runs ONCE, eagerly, when the builder resolves its delimiters - not per value -
+ * so it fires on a spec that carries no element values at all, and it reaches
+ * every builder without naming one. See {@link requireEscapableDelimiters} for
+ * the measurement and for the two things it deliberately leaves alone.
+ *
+ * **It runs where the escaper is BUILT, so every guard a builder runs earlier
+ * keeps precedence** (`build835`'s balance equations, `build837`'s spine,
+ * `build999`'s AK9 counts, `buildTA1`'s `enforceAcceptIsClean`) and a defect a
+ * builder would have detected LATER now reports this refusal instead. That is
+ * the same trade `X12-EMPTY-CONTROL-NUMBER-FABRICATED` recorded one slice
+ * earlier, and it moves a MESSAGE rather than a code: no builder mints a code
+ * here, each refuses with its own.
+ *
+ * **NEVER COUNT WHAT MOVED. A draft published "one report" and it was measured
+ * false** - `requireControlNumber` runs after the escaper in EVERY builder that
+ * has one, so both mechanisms `X12-EMPTY-CONTROL-NUMBER-FABRICATED` and
+ * `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED` shipped are preempted at every
+ * one of their slots when the set is also degenerate. Say which guards keep
+ * precedence and that everything later yields, which is a property of the
+ * ordering; a total of the sites is a census and drifts with the next builder.
  *
  * @param delimiters the resolved delimiter set for this interchange
  * @param at a library-owned locator naming the builder, e.g. `"build835"`
@@ -334,6 +464,7 @@ export function makeCallerEscaper(
   at: string,
   refuse: (message: string) => never,
 ): (value: string) => string {
+  requireEscapableDelimiters(delimiters, at, refuse);
   return (value: string): string =>
     escapeRelease(requireCallerString(value, at, refuse), delimiters);
 }

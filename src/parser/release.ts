@@ -188,12 +188,23 @@ export function escapeRelease(value: string, delimiters: Delimiters): string {
  * here, and the reason is measured rather than stylistic: this function also
  * splits REPETITIONS and COMPONENTS on the read path, and {@link
  * escapeRelease} writes `??` for a literal `?` on the emit path whatever role
- * `?` was declared in. A `componentSeparator` of `"?"` therefore round-trips
- * today through `buildInterchange` + `parseX12`, and a literal split of those
- * two roles would re-frame that `??` as two empty components - trading a
- * component that never splits for a value this library itself emitted and can
- * no longer read back. Those two roles are left alone until the emit side is
- * decided with them.
+ * `?` was declared in. Through `0.0.15` this library EMITTED such documents -
+ * `buildInterchange({ componentSeparator: "?" })` wrote
+ * `CLM*PATIENT??ACCT*150.00` - and a literal split of those two roles would
+ * re-frame that `??` as two empty components, so it would stop reading a value
+ * this library itself wrote.
+ *
+ * **The emit side is decided and it did not change this function.** A builder
+ * now REFUSES a delimiter set in which a role IS `?`
+ * (`src/builder/caller-string.ts`). **Read that as a property of the SET a
+ * caller declares and never as a guarantee about the documents this library can
+ * compose** - the guard is an equality test on the declared value, and nothing
+ * in any builder checks that a delimiter is one byte, so a `segmentTerminator`
+ * of `"??"` still builds and still transmits `?` as the terminator (measured;
+ * `PRE-EXISTING`, and widening the guard to reach it is a different slice).
+ * Documents of this shape exist either way, and Postel's Law puts them on the
+ * lenient half, so read the read-side bound as a property of those documents
+ * rather than as a decision still pending.
  *
  * @internal
  */

@@ -442,3 +442,24 @@ describe("X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED: build820", () => {
     expect(blank.isa.elements[13]).toBe("00000000 ");
   });
 });
+
+describe("build820 - X12-EMIT-DEGENERATE-RELEASE-DELIMITER", () => {
+  it('🩺 refuses a delimiter set whose element separator is the release character "?"', () => {
+    // The guard is in `makeCallerEscaper`, so it reaches this builder without
+    // naming it - but a source gate establishes nothing about behaviour, so the
+    // behavioural case lives here beside the valid spec it mutates.
+    // Every escape this builder writes would be emitted as an element separator.
+    expect(() =>
+      build820({
+        ...CANONICAL_SPEC,
+        envelope: { ...ENVELOPE, elementSeparator: "?" },
+      }),
+    ).toThrow(
+      'build820: "?" is the X12 release character and cannot also be the element separator.',
+    );
+  });
+
+  it("the same spec on the conventional set still builds (the red control)", () => {
+    expect(build820(CANONICAL_SPEC).warnings).toEqual([]);
+  });
+});

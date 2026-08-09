@@ -24,8 +24,8 @@ warnings: []
 transaction, every count and control-number pair reconciling, an empty warning array, and a
 transaction body no reader could see, because every reader in this package dispatches on `seg.id`.
 `buildInterchange` returns `parseX12` of the bytes it just wrote, so it reported the same collapse
-back to a caller who passed `elementSeparator: "?"`. It now reports the segments it wrote **for a
-value with no `?` in it** - read that qualifier, and see the emit-side paragraph below.
+back to a caller who passed `elementSeparator: "?"` - at the time this was measured. That caller is
+refused now; see the emit-side entry in this release.
 
 🛑 It changes how an already-published document decodes, deliberately, on a tiebreak of CONSISTENCY
 with the guard this package already carried twice rather than on a spec clause: 005010 does not
@@ -39,22 +39,14 @@ No warning code is added and no case moves onto a new code. One is subtracted, i
 the check keys on a trailing `?`. With `?` as the separator that byte is an empty element, not an
 unpaired escape.
 
-🛑 The guard is per ROLE. A `?` repetition or component separator still does not split, and that is
-measured rather than overlooked: `escapeRelease` writes `??` for a literal `?` whatever role `?` was
-declared in, so `buildInterchange({ componentSeparator: "?" })` emits `CLM*PATIENT??ACCT*150.00`
-today and reads `"PATIENT?ACCT"` back out of it. Splitting those roles literally would re-frame that
-as two empty components, trading a separator that never splits for a value this library itself
-emitted and could no longer read back.
+🛑 The guard is per ROLE, on the READ side. A `?` repetition or component separator still does not
+split, and that is measured rather than overlooked: `escapeRelease` writes `??` for a literal `?`
+whatever role `?` was declared in, so documents emitted through `0.0.15` carry
+`CLM*PATIENT??ACCT*150.00` and this parser reads `"PATIENT?ACCT"` back out of them. Splitting those
+roles literally would stop reading a value this library itself wrote.
 
-🩺 So do NOT declare `?` as the element separator on the emit side. `buildInterchange` protects a
-value by prefixing `?` to the byte that needs protecting, so when `?` IS the element separator the
-protecting byte is itself a separator, and no value containing any active delimiter or a literal `?`
-survives the round trip - composites included, silently, with no value-level workaround. What it
-costs is not always a truncation: a `HI-01` of `ABK:J45.50` is written `HI?ABK?:J45.50` and reads
-back as `HI-01 "ABK"` with the diagnosis code stranded in a phantom `HI-02`. Through `0.0.15` every
-one of these read as a single `(non-spec)` element and every dot-path answered `undefined`, so a
-detectable absence became a confident wrong value. All three roles belong to the emit-side change and
-none of them is closed here.
+The emit half of the same property is a separate entry in this release, and it went the other way:
+a builder now refuses the set outright.
 
 What else this does not close, pinned rather than left to be rediscovered: on a degenerate set a `?~`
 still swallows the segment terminator, because `findUnescapedTerminator` guards its own role only,
