@@ -288,10 +288,11 @@ model.
     `X12_INVALID_DELIMITERS`. A builder composing a document its own parser refuses to read was
     disagreeing with itself. Nothing is trimmed, coerced or substituted - the set is refused.
 
-    Three things it closed, and they are not one defect. A **multi-character** `segmentTerminator`
-    such as `"~~"` built with `warnings: []` and put phantom segments on the model that `SE-01` never
-    counted - among the nine builders that end in `parseX12`, silent at that role alone, because the
-    terminator is appended after the fixed-width ISA and displaces no ISA position. A **non-string** delimiter was coerced by the join but not by the
+    Three things it closed, and they are not one defect. A **multi-character** delimiter built with
+    `warnings: []`: a `segmentTerminator` of `"~~"` put phantom segments on the model that `SE-01`
+    never counted, and a `componentSeparator` of `":~"` read back through a well-formed ISA while the
+    builder's own terminator became an uncounted empty segment. **No claim is made about which roles
+    were affected**; declare one character per role. A **non-string** delimiter was coerced by the join but not by the
     escape, so the document framed on a byte no element value was protected from: an 837 with
     `componentSeparator: 1` read `SV1-01-2` back as `992` rather than the procedure code `99213`,
     `warnings: []`. And **`buildTA1` had no net at all** - it is the one builder with no trailing
@@ -305,7 +306,10 @@ model.
     builder's own typed error and its existing code, so a consumer catching the parse class stops
     catching and one catching the build class starts; no code is minted. And a
     `segmentTerminator` of `"~\r\n"` - asking for line-broken output - **built with `warnings: []`
-    before and is refused now** (no count of such shapes is published; that is not the only one). It never did what it looked like it did: `parseX12` tolerates CR/LF
+    before and is refused now** (no count of such shapes is published; that is not the only one).
+    The check also runs **before** the control-number guards, so a spec that is mis-shaped _and_
+    carries an empty control number now reports the delimiter refusal rather than the control-number
+    one, on the same code. A message moves; no code does. It never did what it looked like it did: `parseX12` tolerates CR/LF
     between segments, so the model recorded `~` and `serializeX12` emitted no line breaks. Reading a
     file that is written that way is unaffected; only declaring it on emit is.
 

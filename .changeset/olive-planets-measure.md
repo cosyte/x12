@@ -7,7 +7,7 @@ four roles must be a **string of exactly one visible character**, and the four m
 distinct**.
 
 That rule is not invented for emit. `detectDelimiters` already decides what a delimiter is for this
-package and decides it as a Tier-3 fatal: one byte at each of four fixed ISA positions, each visible,
+package and decides it as a Tier-3 fatal: one character at each of four fixed ISA positions, each visible,
 the four distinct, else `X12_INVALID_DELIMITERS` thrown even in lenient mode. The predicate is now
 imported by the builders rather than restated, so the emit refusal and the read fatal cannot drift
 apart. A builder composing a document its own parser refuses to read was disagreeing with itself.
@@ -16,12 +16,16 @@ Nothing is trimmed, coerced or substituted: the set is refused.
 Three mechanisms, and they are not one defect:
 
 ```text
-LENGTH, and among the nine builders that end in parseX12 it was silent at the
-segment terminator alone (buildTA1 ends in no parse; see the third mechanism)
-  build837P { segmentTerminator: "~~" }   warnings: []
+LENGTH. No claim is made about which roles were silent: two drafts published an
+asymmetry and both were measured false, so what follows is what was run.
+  build837P { segmentTerminator: "~~" }        warnings: []
     31 segment rows in a transaction whose SE-01 declares 16, every other row a
-    phantom the caller never wrote. Silent at that role because the terminator
-    is appended AFTER the fixed-width ISA and displaces no ISA position.
+    phantom the caller never wrote.
+  buildInterchange { componentSeparator: ":~" } warnings: []
+    a two-character value that reads back through a well-formed ISA, leaving the
+    builder's own terminator as an uncounted empty segment - and escapeRelease
+    compared against the declared TWO-character value, so no element value was
+    escaped against ":" or "~" either.
 
 TYPE, where the JOIN coerces and the ESCAPE does not
   build837P { componentSeparator: 1 }    warnings: []

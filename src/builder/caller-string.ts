@@ -426,7 +426,7 @@ function requireEscapableDelimiters(
  *
  * {@link "../parser/delimiters.js".detectDelimiters} already decides what a
  * delimiter is for this package, and it decides it as a **Tier-3 fatal**: it
- * reads one byte at each of four FIXED ISA positions, requires each to satisfy
+ * reads one character at each of four FIXED ISA positions, requires each to satisfy
  * {@link "../parser/delimiters.js".isVisibleDelimiterChar}, and requires the
  * four to be distinct - otherwise `X12_INVALID_DELIMITERS`, thrown even in
  * lenient mode. This guard applies that same predicate, imported rather than
@@ -459,15 +459,19 @@ function requireEscapableDelimiters(
  * ## Three mechanisms, measured at base `a21f8ea`, and they are NOT one defect
  *
  * ```text
- * LENGTH. Among the NINE builders that end in parseX12 it was silent at the
- * segment terminator alone; buildTA1 ends in no parse and was silent at every
- * role, which is mechanism 3 and not this one.
+ * LENGTH. No claim is made about WHICH roles were silent, and that is
+ * deliberate: two successive drafts published an asymmetry ("the segment
+ * terminator alone", then "alone among the nine that end in parseX12") and the
+ * gate falsified both. What is published is what was run.
  *   build837P { segmentTerminator: "~~" }  warnings: []
  *     31 segment rows in a transaction whose SE-01 declares 16; every other
- *     row is a phantom with id "" that no caller wrote. Silent because the
- *     terminator is appended AFTER the fixed-width ISA and so displaces no ISA
- *     position; a multi-character value in the other three roles displaces one,
- *     and those nine builders' own trailing parseX12 fatalled.
+ *     row is a phantom with id "" that no caller wrote.
+ *   buildInterchange { componentSeparator: ":~" }  warnings: []
+ *     a two-character value at a role a draft called safe. The reader sees a
+ *     well-formed ISA, the builder's own appended terminator becomes an
+ *     uncounted empty segment, and because escapeRelease compares against the
+ *     declared TWO-character value, === never matched and NO element value was
+ *     escaped against ":" or "~" either.
  *
  * TYPE, and the joiner and the escaper end up disagreeing
  *   build837P { componentSeparator: 1 }    warnings: []
@@ -495,10 +499,11 @@ function requireEscapableDelimiters(
  *
  * 🩺 The TYPE mechanism needs no unusual caller value - `99213`, `11` and `30`
  * are ordinary - and a length rule cannot reach it, which is why the two are
- * stated separately. 🛑 **Never write the LENGTH bound as an absolute about
- * roles.** *"Silent at the segment terminator alone"* is true of the nine
- * parsing builders and FALSE of `buildTA1`, which is why the third mechanism is
- * a mechanism and not a footnote to the first.
+ * stated separately. 🛑 **Never publish an asymmetry about WHICH roles were
+ * silent, in any qualified form.** Two drafts did and the gate falsified both,
+ * the second inside the fix for the first: a mis-shaped set reaches a clean
+ * read by more routes than a structural story predicts. **Publish the cells
+ * that were run and nothing about the ones that were not.**
  *
  * ## What a caller catches CHANGES, and it changes in both directions
  *

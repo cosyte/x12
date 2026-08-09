@@ -33,16 +33,18 @@
  * enumerated, so publish no total of what built silently.
  *
  * ```text
- * LENGTH. Of the NINE builders that end in parseX12, silent at the segment
- * terminator alone - NEVER state that as an absolute about ROLES, because
- * buildTA1 ends in no parse and was silent at every one of them.
+ * LENGTH. 🛑 NO claim is published about WHICH roles were silent, in any
+ * qualified form. Two drafts published an asymmetry and the gate falsified
+ * both, the second inside the fix for the first. These are the cells that
+ * were RUN:
  *   build837P { segmentTerminator: "~~" }
  *     31 segment rows in a transaction whose SE-01 declares 16; every other row
- *     a phantom with id "". Silent at that role because the terminator is
- *     appended AFTER the fixed-width ISA and displaces no ISA position - a
- *     multi-character value in the other three roles moves ISA-11, ISA-16 or
- *     the element positions, and those nine builders' own trailing `parseX12`
- *     fatals on it.
+ *     a phantom with id "".
+ *   buildInterchange { componentSeparator: ":~" }
+ *     reads back through a well-formed ISA, the builder's own terminator left
+ *     as an uncounted empty segment - and escapeRelease compared against the
+ *     declared TWO-character value, so no element value was escaped against
+ *     ":" or "~" either.
  *
  * TYPE, where the joiner and the escaper end up disagreeing
  *   build837P { componentSeparator: 1 }
@@ -120,6 +122,7 @@ import {
   build999,
   buildInterchange,
   buildTA1,
+  escapeRelease,
   Claim837BuildError,
   ClaimStatus277BuildError,
   Eligibility271BuildError,
@@ -734,7 +737,7 @@ describe("the sets that must still build", () => {
 // The three mechanisms, each pinned at the value it destroyed.
 // ---------------------------------------------------------------------------
 
-describe("🩺 mechanism 1 - LENGTH, and it is silent ONLY at the segment terminator", () => {
+describe("🩺 mechanism 1 - LENGTH, with NO claim about which roles were silent", () => {
   it("refuses the multi-byte terminator that used to desync SE-01 with warnings: []", () => {
     // At base `a21f8ea` this built: 31 segment rows in a transaction whose
     // SE-01 declared 16, every other row a phantom with id "", `warnings: []`.
@@ -766,21 +769,53 @@ describe("🩺 mechanism 1 - LENGTH, and it is silent ONLY at the segment termin
     expect(tx?.segments.some((s) => s.elements.join("") === "")).toBe(true);
   });
 
-  it("🛑 in a PARSING builder's other three roles it was never silent, and that bound names the NINE", () => {
-    // A multi-character value in any other role shifts a FIXED ISA position, so
-    // at base `build837P`'s own trailing `parseX12` fatalled. Stating the class
-    // as "a multi-byte delimiter builds" would have been false for three roles
-    // out of four - the census is what separated them.
-    //
-    // 🛑 But the bound is about the NINE builders that end in `parseX12`, and a
-    // draft of this file wrote it as an absolute about ROLES ("silent at that
-    // role and nowhere else"). The gate falsified that in one probe, at
-    // `buildTA1`, which ends in no parse - the case below. Never restate this
-    // as a property of the role alone.
+  it("🛑 the doubled shape at another role DOES refuse, and that is a cell, not a verdict on the role", () => {
+    // 🛑 This is a MEASUREMENT of the doubled shape, never a verdict on the
+    // role. Two drafts of this file published an asymmetry - "silent at that
+    // role and nowhere else", then "alone among the nine that end in
+    // `parseX12`" - and the gate falsified both, the second at a PARSING
+    // builder: `componentSeparator: ":~"` built with `warnings: []`. The
+    // honest control below pins that. Never restate an asymmetry here.
     expect(() => build837PWith({ elementSeparator: "**" })).toThrow(
       "build837: the element separator must be exactly one character",
     );
     expect(() => build837PWith({ componentSeparator: "::" })).toThrow(
+      "build837: the component separator must be exactly one character",
+    );
+  });
+
+  it("🛑 the HONEST CONTROL: a two-character component separator was SILENT at base too", () => {
+    // `componentSeparator: ":~"` is the probe that falsified the second draft of
+    // the asymmetry, at a PARSING builder. Pinned from bytes rather than through
+    // a builder, because head refuses and would assert the refusal instead of
+    // the read.
+    //
+    // The ISA carries `:` at ISA-16 and `~` at the terminator position, so
+    // `detectDelimiters` sees a perfectly well-formed header; the builder's own
+    // appended terminator lands after it as an uncounted empty segment. Nothing
+    // about the read is unusual, which is exactly why the structural story
+    // ("only the terminator role can be silent") was wrong.
+    const isa =
+      "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       " +
+      "*260601*1200*^*00501*000000001*0*P*:~";
+    const asBuiltAtBase =
+      isa +
+      "~GS*HC*S*R*20260601*1200*1*X*005010X222A2~ST*837*0001~SE*2*0001~GE*1*1~IEA*1*000000001~";
+    const parsed = parseX12(asBuiltAtBase);
+    expect(parsed.delimiters.component).toBe(":");
+    expect(parsed.delimiters.segment).toBe("~");
+    expect(parsed.warnings).toEqual([]);
+
+    // And the second half, which is why it belongs beside mechanism 2 as much
+    // as mechanism 1: `escapeRelease` compares each delimiter with `===`, so
+    // against a declared TWO-character value nothing matched and no element
+    // value was escaped against `:` or `~` at all.
+    expect(
+      escapeRelease("a:b~c", { element: "*", repetition: "^", component: ":~", segment: ":~" }),
+    ).toBe("a:b~c");
+
+    // Head refuses it, which is the whole point of pinning the base reading.
+    expect(() => build837PWith({ componentSeparator: ":~" })).toThrow(
       "build837: the component separator must be exactly one character",
     );
   });
@@ -846,8 +881,8 @@ describe("🩺 mechanism 3 - buildTA1 had NO net, not even the accidental one", 
   });
 
   it("🩺 refuses the MULTI-CHARACTER separator that emitted an Accept which reads back a Reject", () => {
-    // 🛑 This is the case that falsified "LENGTH is silent at the segment
-    // terminator alone". At base `{ elementSeparator: "||" }` RETURNED
+    // 🛑 This is one of the two cases that falsified the asymmetry drafts. At
+    // base `{ elementSeparator: "||" }` RETURNED
     // `TA1||000000001||260601||1200||A||000` - and an ISA can declare only `|`,
     // so read against that set TA1-01 (data element I12, the reassociation key)
     // is EMPTY and TA1-04 has shifted, which `parseTA1` narrows out of enum to

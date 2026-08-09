@@ -23,6 +23,11 @@ At base, for the nine builders that end in `parseX12`:
 | component | PARSE-FATAL | BUILT-WARNED | PARSE-FATAL | PARSE-FATAL | PARSE-FATAL | **BUILT-SILENT** | BUILT-WARNED | default |
 | segment | **BUILT-SILENT** | BUILT-WARNED | PARSE-FATAL | PARSE-FATAL | PARSE-FATAL | BUILT-WARNED | BUILT-WARNED | default |
 
+🛑 **EVERY CELL IS THE SHAPE THAT WAS RUN, NEVER THE CLASS.** `multi-char` here is the role's default
+DOUBLED. A different two-character value in the same cell lands elsewhere: `componentSeparator: ":~"`
+is BUILT-SILENT and `":;"` is BUILT-WARNED, where `"::"` is PARSE-FATAL. **Do not read a column as a
+verdict on a shape family.**
+
 `buildTA1` is its own row and its own finding: **BUILT on all 32 cells**, with no warnings channel at
 all. `null` and `undefined` are the `?? default` and are NOT a defect - they are the control that
 stops the type arm from being written as "not a string".
@@ -37,21 +42,34 @@ every non-`null` cell is REFUSED, with each builder's own error class and its ow
 
 ## Three mechanisms, and they must never be written as one
 
-**1. LENGTH. Among the NINE builders that end in `parseX12`, silent at the segment terminator
-alone.** `build837P` with `segmentTerminator: "~~"` built with `warnings: []` and put **31 segment
-rows on a transaction whose SE-01 declares 16** - every other row a phantom with `id: ""`. The
-asymmetry is structural: the terminator is appended AFTER the fixed-width ISA, so it displaces no ISA
-position and `detectDelimiters` reads a perfectly well-formed header. A multi-character value in the
-other three roles moves ISA-11, ISA-16 or the fixed element positions, and those nine builders' own
-`parseX12` fatals.
+**1. LENGTH.** `build837P` with `segmentTerminator: "~~"` built with `warnings: []` and put **31
+segment rows on a transaction whose SE-01 declares 16** - every other row a phantom with `id: ""`.
 
-🛑 **NEVER WRITE THAT AS AN ABSOLUTE ABOUT ROLES.** A draft said *"silent at that role and nowhere
-else"* and the gate falsified it in one probe: `buildTA1` ends in no parse, so the LENGTH mechanism
-was silent there at EVERY role, and `{ elementSeparator: "||" }` returned
-`TA1||000000001||260601||1200||A||000` - which, inside an ISA that can declare only `|`, reads back
-with **TA1-01 EMPTY and `ackCode: "R"`, parse warnings 0. An Accept emitted as a Reject**, which is
-`X12-TA1-EMIT-NOT-RELEASE-AWARE`'s safety class reached by this mechanism. The correct bound names
-the nine, and `buildTA1` is mechanism 3.
+🛑 **NO ASYMMETRY ABOUT WHICH ROLES WERE SILENT IS PUBLISHED, IN ANY QUALIFIED FORM, AND THAT IS THE
+DELIVERABLE OF TWO GATE ROUNDS.** Draft one said *"silent at that role and nowhere else"*; the gate
+falsified it at `buildTA1`, which ends in no `parseX12`, where `{ elementSeparator: "||" }` returned
+`TA1||000000001||260601||1200||A||000` - inside an ISA that can declare only `|`, that reads back
+with **TA1-01 EMPTY and `ackCode: "R"`, parse warnings 0: an Accept emitted as a Reject**,
+`X12-TA1-EMIT-NOT-RELEASE-AWARE`'s safety class reached by LENGTH. Draft two narrowed it to *"alone
+among the nine builders that end in `parseX12`"* **and the gate falsified that too, in one probe, at
+a parsing builder:**
+
+```text
+buildInterchange { componentSeparator: ":~" }   warnings: []
+  ISA-16 reads ":" and the terminator "~", so detectDelimiters sees a well-formed
+  header; the builder's OWN appended terminator becomes an uncounted empty segment.
+  And escapeRelease compared each character against the declared TWO-character
+  ":~", so === never matched and NO element value was escaped against ":" or "~".
+buildInterchange { componentSeparator: ":;" }   X12_UNEXPECTED_SEGMENT, X12_MISSING_IEA
+buildInterchange { componentSeparator: "::" }   FATAL X12_INVALID_DELIMITERS
+```
+
+The structural story ("the terminator is appended after the fixed-width ISA, so the other roles shift
+a position and fatal") is **wrong**, and the census row `component | multi-char | PARSE-FATAL` is true
+only of the doubled shape the census actually ran. **Publish the cells that were run and nothing
+about the ones that were not.** A corrected claim is a NEW claim and inherits nothing
+(`conventions.md` §3); this one was refuted twice, so the third remedy deletes the paragraph rather
+than qualifying it again.
 
 **2. TYPE, where the JOIN coerces and the ESCAPE does not.** `Array.prototype.join` coerces a
 non-string delimiter to its digits and the document frames on that byte; `escapeRelease` compares

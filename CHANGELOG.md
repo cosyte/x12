@@ -1027,7 +1027,7 @@ required control number and this builder never invents one, so nothing is emitte
   tree at `a21f8ea`.
 
   **The rule is not invented for emit.** `detectDelimiters` already decides what a delimiter is for
-  this package, and decides it as a Tier-3 fatal: one byte at each of four fixed ISA positions, each
+  this package, and decides it as a Tier-3 fatal: one character at each of four fixed ISA positions, each
   visible, the four distinct, else `X12_INVALID_DELIMITERS` thrown even in lenient mode. The
   builders now import that predicate rather than restating it, so the emit refusal and the read fatal
   cannot drift apart into two ideas of what a delimiter is. **A builder composing a document its own
@@ -1044,15 +1044,15 @@ required control number and this builder never invents one, so nothing is emitte
   step.
 
   **Three mechanisms, and they are not one defect.**
-  - **LENGTH.** Among the nine builders that end in `parseX12`, silent at the segment terminator
-    alone: `build837P` with `segmentTerminator: "~~"` built with `warnings: []` and put 31 segment
-    rows on a transaction whose `SE-01` declares 16, every other row a phantom the caller never
-    wrote. Silent at that role because the terminator is appended AFTER the fixed-width ISA and
-    displaces no ISA position; in the other three roles those builders' own trailing `parseX12`
-    already fatalled. That bound is about the nine and is **not** an absolute about roles:
-    `buildTA1` ends in no parse, so the same mechanism was silent there at every role, and
-    `{ elementSeparator: "||" }` returned `TA1||000000001||260601||1200||A||000`, which inside an
-    ISA reads back with `TA1-01` empty and `ackCode: "R"` - an Accept emitted as a Reject.
+  - **LENGTH.** `build837P` with `segmentTerminator: "~~"` built with `warnings: []` and put 31
+    segment rows on a transaction whose `SE-01` declares 16, every other row a phantom the caller
+    never wrote. **No claim is published about which roles were silent** - two drafts of this entry
+    stated an asymmetry and both were measured false, the second inside the fix for the first.
+    `buildTA1` with `{ elementSeparator: "||" }` returned `TA1||000000001||260601||1200||A||000`,
+    which inside an ISA reads back with `TA1-01` empty and `ackCode: "R"` - an Accept emitted as a
+    Reject. And `buildInterchange` with `componentSeparator: ":~"` built with `warnings: []` too,
+    reading back through a well-formed ISA while the builder's own terminator became an uncounted
+    empty segment, with no element value escaped against `:` or `~` at all.
   - **TYPE, where the join coerces and the escape does not.** `Array.prototype.join` coerces a
     non-string delimiter and the document frames on the coerced byte, but `escapeRelease` compares
     delimiters with `===`, so no element value is escaped against it. `build837P` with
