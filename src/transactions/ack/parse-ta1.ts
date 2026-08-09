@@ -83,8 +83,11 @@ export function parseTA1(interchange: X12Interchange): X12AckTA1 | undefined {
 
   // Lenient narrow: unknown ack code (anything past code list I13) falls
   // back to typed reject - fail-safe. Unknown note code (anything past
-  // code list I18 028) collapses the typed narrow to `undefined` but
-  // preserves the verbatim raw string for forensic review.
+  // code list I18 028) collapses the typed narrow to `undefined` but keeps
+  // the un-narrowed string on `noteCodeRaw` for forensic review. 🛑 That
+  // clause said "the VERBATIM raw string" and the word is DELETED, not
+  // reworded: the line three above made it false. `raw.elements[5]` is the
+  // verbatim surface.
   const ackCode = narrowAckCode(ackCodeRaw) ?? TA1_ACK_CODES.R;
   const noteCode = narrowNoteCode(noteCodeRaw);
 

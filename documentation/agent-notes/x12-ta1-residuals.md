@@ -91,8 +91,12 @@ here has read one that settles what a TA1 element may contain, and nothing shipp
 
 ## 🩺 The carrier sweep, by WORDING across the whole tree
 
-The `#102` lesson, applied. Two clauses were falsified and **every carrier was corrected BY
-DELETION, never reworded**:
+The `#102` lesson, applied. **Three** clauses were falsified, and each carrier found was corrected
+BY DELETION, never reworded. **🛑 No completeness claim is published here, and the reason is that
+one was and it was refuted:** a draft of this section said every carrier had been corrected while
+clause 3 below was still standing in the very file the remedy had just edited. **The sweep is a
+discipline, not a proof.** Grep the WORDING, tree-wide, every time - and note that clause 3 was
+found by the GATE and not by the sweep that claimed to be complete.
 
 1. _"the READ half did not move / `parseTA1` is still pre-`?`-unescape"_ - `CLAUDE.md`,
    `KNOWN-LIMITATIONS.md`, `CHANGELOG.md` (the whole file is still `[Unreleased]`, so it is a
@@ -102,9 +106,17 @@ DELETION, never reworded**:
 2. _"`raw`, `elements` and `parseTA1`'s fields"_ as the enumeration of the raw surfaces - the same
    file set. **This one was found only by grepping the CLAUSE rather than the reported file**, which
    is the whole point of the `#102` rule; a file-by-file sweep would have left it in two places.
+3. _"`noteCodeRaw` is preserved VERBATIM"_ - `src/transactions/ack/types.ts`,
+   `src/transactions/ack/codes.ts` (both of which ship in the emitted `.d.ts`) and
+   `src/transactions/ack/parse-ta1.ts`. The unescape moved that field, so the word is false at head.
+   **The first two were found by pass 1 and the third by pass 2, three lines below the line that
+   falsifies it and inside the file the pass-1 remedy had just edited** - which is the whole reason
+   no completeness claim is published above.
 
 `docs-content/` **ships**: `troubleshooting.md` carries the caller-facing statement and was updated
-with the code. The other seven pages were swept and carry no falsified claim.
+with the code. Every other page under `docs-content/` was swept for all three clauses and carries
+none of them. **No page count is published - derive it from `docs-content/sidebars.json`;** a draft
+published one and it was wrong.
 
 ## 🔴 `PRE-EXISTING` from the gate - backlog lines, each its own slice, NOT absorbed
 

@@ -194,8 +194,9 @@ absence of a different code stays green through a real regression.
 The `X12-837-RESIDUALS` "still open" list carried five items. Measured against `72bafc2`:
 
 - **`splitWithRelease` degenerate-`?` guard for BODY segments** - OPEN. This slice.
-- **`parseTA1` does not unescape** - OPEN. `parseTA1` reads `elements` verbatim, so a TA1-01 of
-  `0000?*0001` reads back with its `?`. Unchanged and still disclosed in `parse-ta1.ts`.
+- **`parseTA1` does not unescape** - OPEN **at `72bafc2`**, and **CLOSED since, by
+  `X12-TA1-RESIDUALS`**: the five decoded fields are post-unescape and `raw` is the byte surface.
+  This is a dated measurement, not a live claim; read it as one.
 - **an EMPTY control number is still not refused** - OPEN, and sharper than "not refused":
   `padControl("", 9)` zero-pads it, so `interchangeControlNumber: ""` emits ISA-13 and IEA-02 as
   `000000000` - a FABRICATED control number, silently, with an empty warning array. An empty
