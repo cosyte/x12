@@ -105,12 +105,12 @@ model.
     `variant: "unknown"` and raises `X12_837_UNKNOWN_VARIANT`, and a body naming more than one
     variant publishes it with `variant: "P"` and raises `X12_837_AMBIGUOUS_VARIANT` - each time the
     code that fired says `ST-03` named no identifier this reader recognises while the model field
-    holds one it does. **Both frozen messages therefore point at NO model field.** The 277 shape
+    holds one it does. **`X12_837_UNKNOWN_VARIANT`'s closing pointer at the model is therefore
+    deleted.** The 277 shape
     publishes
     `005010X214` while `transactionType` is `claim-status` and `get277CADisposition` returns
     `undefined`. **Through `0.0.15` the published value WAS the keyed value, so the model could not
     disagree with itself. Gate on `variant` / `transactionType`, never on the published reference.**
-    `X12_837_UNKNOWN_VARIANT`'s message drops the word `verbatim` for the same reason.
   - **🛑 It introduces no normalisation and no new warning.** Nothing is trimmed, case-folded or
     prefix-matched; a whitespace-only `ST-03` is still published untrimmed. A dangling `?` at the end
     of the element still raises no `X12_DANGLING_RELEASE_CHAR` on these readers: the sink is a no-op,

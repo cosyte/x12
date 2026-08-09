@@ -235,9 +235,8 @@ from the `SVx` fallback. **"Nothing warns" is not the boundary of it:** on the s
 with no `SVx` publishes that same reference with `variant: "unknown"` and raises
 `X12_837_UNKNOWN_VARIANT`, and a body naming more than one variant raises
 `X12_837_AMBIGUOUS_VARIANT` - each time the code that fired says `ST-03` named no identifier this
-reader recognises while the model field holds one it does. **Both messages therefore point at no
-model field**, and `X12_837_UNKNOWN_VARIANT` no longer tells you to read the reference off the
-model. On a 277 the model can publish
+reader recognises while the model field holds one it does. **`X12_837_UNKNOWN_VARIANT` therefore no
+longer tells you to read the reference off the model.** On a 277 the model can publish
 `005010X214` while `transactionType` is `claim-status` and `get277CADisposition` returns
 `undefined`. Through `0.0.15` the published value WAS the keyed value, so the model could not
 disagree with itself. **Gate on `variant` / `transactionType`, never on the published reference.**

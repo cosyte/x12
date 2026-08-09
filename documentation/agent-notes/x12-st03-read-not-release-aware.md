@@ -121,16 +121,18 @@ own rule about what may change in a message.
 
 **Mutation controls, by running:**
 
-- Replacing `decodeSt03`'s body with `return raw` **reds 17 tests, all in
-  `test/transactions-st03-release-decode.test.ts`.** The other 88 test files stay green, which is
-  itself the finding: nothing in the suite pinned the raw-escape behaviour.
+- Replacing `decodeSt03`'s body with `return raw` **reds this slice's own test file and NO OTHER
+  file** - which is itself the finding: nothing in the suite pinned the raw-escape behaviour.
+  **No count is published here; two were, and the pass-2 remedy made both stale by adding cells.
+  Re-derive it by running.**
 - Keying `VARIANT_BY_ICR` and `transactionType` on the DECODED text instead **reds exactly the two
   invariance tests** and nothing else. The invariance assertions are behaviour-sensitive, not
   vacuous.
 - Negative control: the census harness run against `hl7`'s `src/` fails with
   `parseX12 is not a function`.
 
-Suite at head: **89 files / 2,284 tests**, `tsc` exit 0.
+`tsc` exit 0 at head. **No suite total is published: it goes stale inside this slice's own
+remedies.** Derive it by running.
 
 ## The claim sweep
 
@@ -181,7 +183,29 @@ SV1 then SV2                  005010X222A1     P            [AMBIGUOUS_VARIANT, 
                                                              SERVICE_LINE_NOT_DECODED]
 ```
 
-**The divergence is present in all four rows and warned in two.** Both warned rows are pinned in
+## Pass 3 - `NOT REFUTED`, and its five minors are all deletions
+
+Pass 3 opened no new attack and found no `INTRODUCED` blocker or major inside the remedy. Its five
+minors are folded in **by deletion or narrowing, none by new text**, which is what it prescribed:
+the `get-837.ts` comment still bounded the divergence by *"nothing warns"* (false on the two warned
+rows, and the shipped disclosure it cited already says so); *"drops the word `verbatim`"* survived in
+five carriers as a materially incomplete description of a whole deleted sentence; *"BOTH frozen
+messages point at no model field"* overstated, since `X12_837_AMBIGUOUS_VARIANT` points at SEGMENTS,
+which are framed and therefore consistent; and this note had published a suite total and a mutation
+count that **its own pass-2 remedy made stale by adding two cells.** Both counts are deleted rather
+than corrected - this note's own rule, applied to itself.
+
+**🩺 The standing worry, unchanged and worth carrying forward: every finding in this lineage, now
+across five slices and three passes here, has been a claim defect in a prose carrier. The parser
+half was never refuted in any pass. Three of pass 3's five minors were the remedy falsifying its own
+earlier sentences.** The code delta is one five-line helper and three call sites; the prose around it
+is the part that keeps breaking.
+
+**The published text differs from the keyed text in all four rows, and the RECOGNITION
+disagreement - the code saying `ST-03` named no identifier it recognises while the model field holds
+one it does - is warned in two.** Read it that way and not as "the reader resolved to a different
+guide": on the `SV1` and `SV1 then SV2` rows the fallback resolves `P`, which IS the guide the
+published text names. Both warned rows are pinned in
 `test/transactions-st03-release-decode.test.ts`, on the whole warnings array.
 
 The predecessor's clause was *"three more readers publish ST-03 raw"*. It was carried by `CLAUDE.md`,

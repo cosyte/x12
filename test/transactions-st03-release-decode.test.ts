@@ -265,7 +265,7 @@ describe("🛑 no keyed decision moves: the three ST-03 tests still key on the r
    * because the item's standing rule is to publish the cells that were run:
    * the published reference reads an identifier the reader's own table holds
    * while the code that just fired says `ST-03` named none it recognises.
-   * That is why both frozen messages now point at no model field.
+   * That is why `X12_837_UNKNOWN_VARIANT` now points at no model field.
    */
   const HEADER_837 = [
     "BHT*0019*00*REF1*20250101*1200*CH",

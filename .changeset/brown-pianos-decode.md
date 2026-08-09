@@ -29,13 +29,12 @@ about the divergence.** On that document `implementationConventionReference` rea
 while `variant` is `I` from the fallback. **"Nothing warns" is not the boundary:** with no `SVx` at
 all the same reference publishes with `variant: "unknown"` and `X12_837_UNKNOWN_VARIANT`, and with a
 mixed body with `X12_837_AMBIGUOUS_VARIANT` - each time the code that fired says `ST-03` named no
-identifier this reader recognises while the model field holds one it does. **Both frozen messages
-therefore point at NO model field**, and `X12_837_UNKNOWN_VARIANT`'s closing pointer at the model is
-DELETED, not reworded. On a 277 the model can publish `005010X214` while
+identifier this reader recognises while the model field holds one it does.
+**`X12_837_UNKNOWN_VARIANT`'s closing pointer at the model is therefore DELETED, not reworded.** On a 277 the model can publish `005010X214` while
 `transactionType` is `claim-status` and `get277CADisposition` returns `undefined`. Through `0.0.15`
 the published value WAS the keyed value, so the model could not disagree with itself. **Gate on
-`variant` / `transactionType`, never on the published reference.** `X12_837_UNKNOWN_VARIANT`'s
-message text drops the word `verbatim` for the same reason; no code moved and none was minted.
+`variant` / `transactionType`, never on the published reference.** No code moved and none was
+minted.
 
 Nothing is trimmed or case-folded; a whitespace-only `ST-03` is still published untrimmed, and a
 dangling `?` still raises no warning on these readers. `tx.st.elements` is untouched and is still

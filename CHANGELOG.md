@@ -55,14 +55,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with `variant: "unknown"` and raises `X12_837_UNKNOWN_VARIANT`, and a body naming more than one
   variant publishes it with `variant: "P"` and raises `X12_837_AMBIGUOUS_VARIANT` - in both cases
   the code that fired says `ST-03` named no identifier this reader recognises while the model field
-  holds one it does. **That is why both frozen messages now point at NO model field**, and it is why
-  `X12_837_UNKNOWN_VARIANT`'s closing pointer is deleted rather than reworded. The 277 shape is the
+  holds one it does. **That is why `X12_837_UNKNOWN_VARIANT`'s closing pointer at the model is
+  deleted rather than reworded.** The 277 shape is the
   same:
   the model publishes `005010X214` while `transactionType` is `claim-status` and
   `get277CADisposition` returns `undefined`. **Through `0.0.15` the published value WAS the keyed
   value, so the model could not disagree with itself. Gate on `variant` / `transactionType`, never
-  on the published reference.** `X12_837_UNKNOWN_VARIANT`'s message text drops the word `verbatim`
-  for the same reason; no code moved and no code was minted.
+  on the published reference.** No code moved and no code was minted.
 
   **No normalisation and no new warning.** Nothing is trimmed, case-folded or prefix-matched, and a
   whitespace-only `ST-03` is still published untrimmed. A dangling `?` at the end of the element

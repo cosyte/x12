@@ -317,13 +317,15 @@ export function get837Claims(
   // where the sender escaped a byte the ISA declared as a delimiter.
   //
   // 🛑 THE CONSUMER-VISIBLE CONSEQUENCE, WHICH THE SHIPPED DISCLOSURE NAMES:
-  // the published reference can name a guide this reader did NOT resolve to,
-  // and nothing warns about the divergence. On the `componentSeparator: "X"`
-  // row above the model publishes `005010X222A1` while `variant` is `I` from
-  // the fallback, with neither `X12_837_UNKNOWN_VARIANT` nor
-  // `X12_837_AMBIGUOUS_VARIANT` raised. Through `0.0.15` the published value
-  // WAS the keyed value, so the model could not disagree with itself.
-  // `X12_837_UNKNOWN_VARIANT`'s message text drops the word `verbatim` for
+  // the published reference can name a guide this reader did NOT resolve to.
+  // On the `componentSeparator: "X"` row above the model publishes
+  // `005010X222A1` while `variant` is `I` from the fallback; on the same
+  // delimiters a body with no `SVx` publishes it with `variant: "unknown"` and
+  // RAISES `X12_837_UNKNOWN_VARIANT`, and a mixed body raises
+  // `X12_837_AMBIGUOUS_VARIANT`. A clause bounding this by "nothing warns"
+  // stood here and is DELETED, measured false. Through `0.0.15` the published
+  // value WAS the keyed value, so the model could not disagree with itself.
+  // `X12_837_UNKNOWN_VARIANT`'s closing pointer at the model is DELETED for
   // exactly this reason; no code moved and none was minted.
   const implementationConventionReferenceRaw = tx.st.elements[3];
   const implementationConventionReference = decodeSt03(
