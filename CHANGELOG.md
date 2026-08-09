@@ -9,6 +9,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **🩺 `implementationConventionReference` is POST-`?`-unescape in every typed reader that publishes
+  it** (`X12-ST03-READ-NOT-RELEASE-AWARE`). A behaviour change on any document whose `ST-03` carries
+  a release escape.
+
+  `X12TransactionSet.st.elements` is the ST segment as framed - post-element-split and PRE-unescape -
+  and five public readers were handing one
+  of those strings straight back on the model: `get837Claims`, `get277Status`,
+  `get277CADisposition`, `get278Request` and `get278Response` (`walk277` and `walk278` are shared, so
+  three reads serve the five). A sender that escaped a delimiter inside `ST-03` got the escape back
+  rather than the value it stated. The cells that were run, framed element text on the left:
+
+  ```text
+  ST-03 as framed    published through 0.0.15    published now
+  "A??B"             "A??B"                      "A?B"
+  "A?*B"             "A?*B"                      "A*B"
+  "A?:B"             "A?:B"                      "A:B"
+  "A?~B"             "A?~B"                      "A~B"
+  "A?^B"             "A?^B"                      "A^B"
+  ```
+
+  The grounding is this package disagreeing with itself and nothing else: every dot-path read
+  (`elementValue`, `elementOptional`, `componentOptional`) already unescaped, and `parse999` already
+  decoded `AK2-03`, the identically-named field. No TR3 clause is claimed, on either side.
+
+  **🛑 What DECIDES an outcome did not move, and that was a deliberate scope call.** The 837 variant
+  lookup, the 277 / 277CA `transactionType` discriminator and `get277CADisposition`'s admission gate
+  all still key on the RAW element text, so **no document changes variant, discriminator or
+  admission because of this entry.** They can differ: a letter is an admissible delimiter, so with
+  `componentSeparator: "X"` an `ST-03` framed as `005010?X222A1` decodes to `005010X222A1`, which the
+  variant table holds. Keying on the decoded text would make the declaration beat the `SVx` fallback
+  there, and on a document whose only service segment is an `SV2` that stops the line decoding and
+  raises `X12_837_SERVICE_LINE_NOT_DECODED`. That is a change to how an already published document
+  decodes a service line rather than a decode fix, so it is left open. **The difference is one-way:
+  no document that resolved a variant, or was admitted by `get277CADisposition`, stops doing so** -
+  no identifier any of the three tests is keyed on carries a delimiter or the release character, so
+  raw text equal to one decodes to itself.
+
+  **🛑 The consumer-visible consequence, stated rather than left to be inferred: the published
+  reference can name a guide this reader did NOT resolve to, and nothing warns about the
+  divergence.** On the `componentSeparator: "X"` document above,
+  `submission.implementationConventionReference` reads `005010X222A1`, which the variant table
+  holds, while `submission.variant` is `I` from the `SVx` fallback. **"Nothing warns" is NOT the
+  boundary of it.** On the same delimiters, a body with no `SVx` at all publishes `005010X222A1`
+  with `variant: "unknown"` and raises `X12_837_UNKNOWN_VARIANT`, and a body naming more than one
+  variant publishes it with `variant: "P"` and raises `X12_837_AMBIGUOUS_VARIANT` - in both cases
+  the code that fired says `ST-03` named no identifier this reader recognises while the model field
+  holds one it does. **That is why `X12_837_UNKNOWN_VARIANT`'s closing pointer at the model is
+  deleted rather than reworded.** The 277 shape is the
+  same:
+  the model publishes `005010X214` while `transactionType` is `claim-status` and
+  `get277CADisposition` returns `undefined`. **Through `0.0.15` the published value WAS the keyed
+  value, so the model could not disagree with itself. Gate on `variant` / `transactionType`, never
+  on the published reference.** No code moved and no code was minted.
+
+  **No normalisation and no new warning.** Nothing is trimmed, case-folded or prefix-matched, and a
+  whitespace-only `ST-03` is still published untrimmed. A dangling `?` at the end of the element
+  still raises no `X12_DANGLING_RELEASE_CHAR` here: the sink is a no-op, matching `getSegmentValue`'s
+  default, `parseTA1` and `parse999`, so every other element these readers decode drops it too.
+  Each reader's own empty / absent mapping is unchanged - `walk278` still collapses `""` to
+  `undefined`, the other two still publish `""`. **`tx.st.elements` is untouched and is still the
+  verbatim framed surface.** If you were applying `unescapeRelease` to
+  `submission.implementationConventionReference` yourself, drop that call.
+
 - **🩺 `parseTA1`'s five decoded fields are POST-`?`-unescape, and an empty TA1-02 / TA1-03 / TA1-04
   / TA1-05 is refused on emit** (`X12-TA1-RESIDUALS`). Both are behaviour changes. They ship as one
   entry because they are the two ends of the same disagreement: this package's emit half releases a

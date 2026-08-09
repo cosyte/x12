@@ -123,16 +123,18 @@ published one and it was wrong.
 
 ADR 0016 rule 2. Both reproduce at base `67f1831` and neither is a refutation of this slice.
 
-1. **🩺 Three more typed readers publish a decoded field PRE-`?`-unescape, and it is the same defect
-   shape this slice closed at `parseTA1`.** `get837Claims`, `get277Status` and `get278Request` read
-   `tx.st.elements[3]` raw and publish it as the model field `implementationConventionReference`
-   (`src/transactions/claim/get-837.ts`, `status/get-277.ts`, `auth/get-278.ts`). Measured at head,
-   on `ST*837*0001*005010?*X222A1~`: the model field reads `"005010?*X222A1"` while
-   `getSegmentValue(tx.st, "03", d)` reads `"005010*X222A1"`. **This is what falsified the "only
-   typed reader" clause, and the clause was cut rather than the readers changed** - widening this
-   slice to reach them is exactly the growth ADR 0016 rule 2 exists to stop. ST-03 is the
-   implementation convention reference the variant resolver keys on
-   (`X12-VARIANT-ICR-UNGROUNDED`), so weigh it there.
+1. **✅ CLOSED by `X12-ST03-READ-NOT-RELEASE-AWARE` - see
+   `agent-notes/x12-st03-read-not-release-aware.md`.** The finding: typed readers published the model
+   field `implementationConventionReference` from `tx.st.elements[3]` PRE-`?`-unescape, the same
+   defect shape this slice closed at `parseTA1`. Measured at this slice's head, on
+   `ST*837*0001*005010?*X222A1~`: the model field read `"005010?*X222A1"` while
+   `getSegmentValue(tx.st, "03", d)` read `"005010*X222A1"`. **This is what falsified the "only typed
+   reader" clause, and the clause was cut rather than the readers changed** - widening this slice to
+   reach them is exactly the growth ADR 0016 rule 2 exists to stop. **The count of readers written
+   here is DELETED rather than corrected: it was three, the successor measured four raw sites reached
+   by five public readers, and a live count in a closed record cannot self-correct.** ST-03 is what
+   the variant resolver keys on (`X12-VARIANT-ICR-UNGROUNDED`); the successor weighed it there and
+   deliberately left every keyed decision on the raw text.
 2. **The refusal message says "TA1-02 is a required element", which reads as a usage assertion**
    while every grounding this package publishes for the guard is the TYPE declaration and not a TR3
    clause. Base's own `requireControlNumber` says "TA1-01 is a required control number" in the same

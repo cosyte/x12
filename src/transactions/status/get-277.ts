@@ -44,6 +44,7 @@ import {
   type X12ParseWarning,
 } from "../../parser/warnings.js";
 import { decodeHl, HL_LEVEL_CODES, validateHl, type X12Hl } from "../shared/hl.js";
+import { decodeSt03 } from "../shared/st03.js";
 import type {
   X12ClaimStatus,
   X12ClaimStatusResponse,
@@ -139,9 +140,38 @@ export function get277CADisposition(
 function walk277(delimiters: Delimiters, tx: X12TransactionSet): X12ClaimStatusResponse {
   const warnings: X12ParseWarning[] = [];
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
-  const implementationConventionReference = tx.st.elements[3];
+  // ST-03 is read TWICE on purpose, and the two reads are different values.
+  // `tx.st.elements` is the ST segment as framed - post-element-split, PRE-`?`-
+  // unescape - so the raw text is the escape a sender wrote and not the value
+  // it stated. `implementationConventionReference` is that text decoded, and
+  // it is what this reader PUBLISHES: the same correction
+  // `X12-TA1-RESIDUALS` made to `parseTA1`, and what `parse999` has always
+  // done with `AK2-03`, the identically-named field.
+  //
+  // 🛑 BOTH `ST-03` TESTS IN THIS FILE DELIBERATELY KEY ON THE RAW TEXT - this
+  // one and `get277CADisposition`'s admission gate above - and moving either
+  // is a separate slice, not a decode fix. Measured on this tree with
+  // `componentSeparator: "4"`, an ST-03 of `005010X21?4` decodes to
+  // `005010X214`: keying on the decoded text would flip `transactionType`
+  // from `"claim-status"` to `"claim-acknowledgment"` and would admit through
+  // `get277CADisposition` a transaction that returns `undefined` today. Note
+  // what that shows and what it does not: no document admitted at base stops
+  // being admitted, because `ICR_277CA` carries no delimiter and no release
+  // character, so a raw text equal to it decodes to itself.
+  //
+  // 🛑 THE CONSUMER-VISIBLE CONSEQUENCE, WHICH THE SHIPPED DISCLOSURE NAMES:
+  // this model can publish `005010X214` while `transactionType` reads
+  // `claim-status` and `get277CADisposition` returns `undefined`, with nothing
+  // warning about the divergence. Through `0.0.15` the published value WAS the
+  // keyed value, so the model could not disagree with itself.
+  const implementationConventionReferenceRaw = tx.st.elements[3];
+  const implementationConventionReference = decodeSt03(
+    implementationConventionReferenceRaw,
+    delimiters,
+    { segmentIndex: 0, transactionIndex: 0 },
+  );
   const transactionType =
-    implementationConventionReference === ICR_277CA ? "claim-acknowledgment" : "claim-status";
+    implementationConventionReferenceRaw === ICR_277CA ? "claim-acknowledgment" : "claim-status";
 
   const hierarchies: X12Hl[] = [];
   const hlIndex: Map<string, X12Hl> = new Map();

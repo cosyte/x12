@@ -35,6 +35,7 @@ import {
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
 import { unknownHiQualifier, type X12ParseWarning } from "../../parser/warnings.js";
 import { decodeHl, HL_LEVEL_CODES, validateHl, type X12Hl } from "../shared/hl.js";
+import { decodeSt03 } from "../shared/st03.js";
 import type {
   X12AuthDate,
   X12AuthDiagnosis,
@@ -253,7 +254,23 @@ function walk278(
 
   flushReview();
 
-  const icr = tx.st.elements[3];
+  // `tx.st.elements` is the ST segment as framed: post-element-split, PRE-`?`-
+  // unescape. Publishing that text hands a consumer the escape a sender wrote
+  // rather than the value it stated - the correction `X12-TA1-RESIDUALS` made
+  // to `parseTA1`'s five fields, and what `parse999` has always done with
+  // `AK2-03`, the identically-named field in a sibling reader. This walker
+  // serves BOTH `get278Request` and `get278Response`, so both directions
+  // publish the decoded value.
+  //
+  // Nothing in this file keys on `ST-03`; it is published and never tested,
+  // which is why no lookup or gate can move here. The `""` collapse below is
+  // unchanged and still runs on the decoded text: decoding never empties a
+  // non-empty element, because every step of `unescapeRelease` appends at
+  // least one character.
+  const icr = decodeSt03(tx.st.elements[3], delimiters, {
+    segmentIndex: 0,
+    transactionIndex: 0,
+  });
 
   return Object.freeze({
     direction,

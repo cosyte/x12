@@ -152,7 +152,7 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: an inherited-key ST-03 resolves like any
       // The whole channel, not one code. An unrecognized ST-03 that the SVx
       // fallback resolves has never warned, and still does not.
       expect(channel(sub)).toEqual([]);
-      // The verbatim reference is still preserved, unchanged by the fix.
+      // The reference is still on the model, unchanged by the fix.
       expect(sub.implementationConventionReference).toBe(key);
     });
   }

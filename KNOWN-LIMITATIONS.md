@@ -73,6 +73,55 @@ model.
     refused before this slice is refused differently by it.**
   - **No census of other builders' required elements is published here.** This slice measured TA1.
 
+- **🩺 `implementationConventionReference` is POST-`?`-unescape as of this release, in every typed
+  reader that publishes it, and that is a behaviour change on documents whose `ST-03` carries a
+  release escape** (`X12-ST03-READ-NOT-RELEASE-AWARE`). `tx.st.elements` is the ST segment as framed:
+  post-element-split and PRE-unescape. Five public
+  readers were handing one of those strings straight back on the model - `get837Claims`,
+  `get277Status`, `get277CADisposition`, `get278Request` and `get278Response` - so a sender that
+  escaped a delimiter inside `ST-03` got the escape rather than the value it stated. `parse999` has
+  always decoded the identically-named `AK2-03`, and every dot-path read already unescaped; that
+  disagreement inside this package is the whole grounding, and no TR3 clause is claimed. The cells
+  that were run, on the ST-03 element text a sender framed: `A??B` now publishes `A?B`, `A?*B`
+  publishes `A*B`, `A?:B` publishes `A:B`, `A?~B` publishes `A~B`, `A?^B` publishes `A^B`. Every one
+  of those published the framed bytes before.
+  - **🛑 What decides an outcome did NOT move, deliberately.** The 837 variant lookup, the 277 /
+    277CA `transactionType` discriminator and `get277CADisposition`'s admission gate all still key on
+    the RAW element text, so no document changes variant, discriminator or admission because of this
+    entry. That matters because the two can differ: with `componentSeparator: "X"` - a letter is an
+    admissible delimiter - an `ST-03` framed as `005010?X222A1` decodes to `005010X222A1`, an
+    identifier the variant table holds. Keying on the decoded text would make the declaration beat
+    the `SVx` fallback there, which on a document whose only service segment is an `SV2` stops that
+    line decoding and raises `X12_837_SERVICE_LINE_NOT_DECODED`. That is a change to how an already
+    published document decodes a service line rather than a decode fix, and it is **open**, not
+    taken here. **The difference is one-way: no document that resolved or was admitted before stops
+    doing so**, because no identifier any of the three tests is keyed on contains a delimiter or the
+    release character, so raw text equal to one decodes to itself.
+  - **🛑 The published reference can name a guide this reader did NOT resolve to, and nothing warns
+    about the divergence.** On the `componentSeparator: "X"` document above,
+    `submission.implementationConventionReference` reads `005010X222A1`, which the variant table
+    holds, while `submission.variant` is `I` from the `SVx` fallback. **"Nothing warns" is NOT the
+    boundary of it:** on the same delimiters a body with no `SVx` publishes `005010X222A1` with
+    `variant: "unknown"` and raises `X12_837_UNKNOWN_VARIANT`, and a body naming more than one
+    variant publishes it with `variant: "P"` and raises `X12_837_AMBIGUOUS_VARIANT` - each time the
+    code that fired says `ST-03` named no identifier this reader recognises while the model field
+    holds one it does. **`X12_837_UNKNOWN_VARIANT`'s closing pointer at the model is therefore
+    deleted.** The 277 shape
+    publishes
+    `005010X214` while `transactionType` is `claim-status` and `get277CADisposition` returns
+    `undefined`. **Through `0.0.15` the published value WAS the keyed value, so the model could not
+    disagree with itself. Gate on `variant` / `transactionType`, never on the published reference.**
+  - **🛑 It introduces no normalisation and no new warning.** Nothing is trimmed, case-folded or
+    prefix-matched; a whitespace-only `ST-03` is still published untrimmed. A dangling `?` at the end
+    of the element still raises no `X12_DANGLING_RELEASE_CHAR` on these readers: the sink is a no-op,
+    which is what `getSegmentValue` defaults to and what `parseTA1` and `parse999` do, so every other
+    element these readers decode drops it too. That residual is **unchanged and open.**
+  - **Each reader's own empty / absent mapping is unchanged.** `walk278` still collapses `""` to
+    `undefined`; `get837Claims` and `walk277` still publish `""`. Decoding cannot reach those
+    branches differently, because no non-empty element decodes to `""`.
+  - **`tx.st.elements` is untouched and is still the verbatim framed surface.** If you were applying
+    `unescapeRelease` to `submission.implementationConventionReference` yourself, drop that call.
+
 - **🩺 An EMPTY control number is REFUSED on emit as of this release, where it used to be
   FABRICATED, and that is a behaviour change for any caller passing one**
   (`X12-EMPTY-CONTROL-NUMBER-FABRICATED`). Every builder that assembles an ISA zero-pads its control
