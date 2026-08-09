@@ -468,9 +468,11 @@ required control number and this builder never invents one, so nothing is emitte
     rule, no source consulted for this package states one, and the five in-package guards this
     mirrors are byte-strict for the same reason. Pinned as a test and disclosed in
     `KNOWN-LIMITATIONS.md` as the one shape still worth screening at your own boundary.
-  - **It does NOT type-check, so nothing about a non-string changed**, on any route. What each route
-    already did is disclosed further down this file, and is neither touched nor restated here,
-    because a draft of this bullet restated it wrongly.
+  - **It does NOT type-check, so nothing about a non-string changed**, on any route. Seven
+    non-string values across three routes were measured byte-identical before and after. What each
+    route already does is deliberately not restated here, because a draft of this bullet restated it
+    wrongly: it said a number "or `undefined`" draws the typed refusal, and `padControl(undefined, 9)`
+    throws a bare `TypeError` with no `code`, unchanged by this release.
   - **A SHORT control number still zero-pads.** The guard is not "ISA-13 must be nine characters":
     `"1"` still emits `000000001`, which is what the padding is for.
   - **🛑 Every guard sits at the envelope-assembly site, so every guard that runs BEFORE it keeps its

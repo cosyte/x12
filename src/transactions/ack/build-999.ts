@@ -141,8 +141,13 @@ export function build999(spec: Build999Spec): X12Interchange {
   // ways: `padControl("", 9)` FABRICATES `"000000000"` into ISA-13 / IEA-02,
   // while GS-06 / GE-02 and ST-02 / SE-02 reach the wire through `esc`, which
   // early-returns on `""` and emits the required element EMPTY on both ends of
-  // the pair, so each pair still reconciled against itself. The measurement and
-  // the refuse-rather-than-warn reasoning are in
+  // the pair, so each pair still reconciled against itself.
+  //
+  // 🛑 THAT LAST CLAUSE IS TRUE HERE AND FALSE IN THE SEVEN DOMAIN BUILDERS, so
+  // do not copy it out of this file: `joinSeg` keeps a trailing empty element
+  // (`GE*1*~`), while their `seg` trims it and the trailer loses GE-02 / SE-02
+  // outright. `warnings: []` is the property that holds in both. The
+  // measurement and the refuse-rather-than-warn reasoning are in
   // `src/builder/caller-control-number.ts`.
   //
   // Placed here rather than at the top of the function, so every guard ABOVE

@@ -42,18 +42,25 @@
  * builder and a draft of this paragraph published one measurement as the
  * class**: `buildInterchange` and `build999` join without trimming, so the
  * element goes out empty; the seven domain builders share a `seg` that drops a
- * trailing empty element, so the trailer loses it outright. Measured at the
- * same commit, through `buildInterchange` and through `build834`:
+ * trailing empty element, so the trailer loses it outright. Measured at the same
+ * commit in `buildInterchange` and in all seven domain builders:
  *
  * ```text
  * buildInterchange  GS*HC*…*1200**X*005010X222A2~ … ~GE*1*~     ST*837**…~ … ~SE*3*~
  * build834          GS*BE*…*1200**X*005010X220A1~ … ~GE*1~      ST*834**…~ … ~SE*21~
  * ```
  *
+ * `build271`, `build277`, `build278`, `build820`, `build835` and `build837P` all
+ * answered in the `build834` shape, differing only in their own SE-01 counts
+ * (`SE*15`, `SE*17`, `SE*18`, `SE*19`, `SE*25`, `SE*22`).
+ *
  * Every one of those emitted `warnings: []`, which is the property that holds
  * across both families and is all this module needs: no diagnostic separated an
- * absent control number from a supplied one, on any channel. Refusing covers
- * both shapes without the message having to know which one it is standing on.
+ * absent control number from a supplied one, on any channel. **State the
+ * silence, never "the pair reconciled against itself"** - in the domain
+ * builders there is no second element to reconcile with, and a draft published
+ * the `buildInterchange` reading as the class. Refusing covers both shapes
+ * without the message having to know which one it is standing on.
  *
  * ## Why REFUSE and not warn
  *
@@ -90,9 +97,11 @@
  * ## What this does NOT do
  *
  * - **It does not type-check.** The test is `value === ""` and nothing else, so
- *   **nothing about a non-string changed**, on any route. What each route
- *   already did, typed refusal or bare `TypeError`, is disclosed in
- *   `caller-string.ts` and is not touched or restated here.
+ *   **nothing about a non-string changed**, on any route. Seven non-string
+ *   values across three routes were measured byte-identical at base and head.
+ *   What each route already does is deliberately NOT restated here: a draft did
+ *   and got `undefined` wrong, and the partial account it pointed at does not
+ *   cover every route either.
  * - **It does not trim.** A whitespace-only control number is NOT refused:
  *   `padControl(" ", 9)` still answers `"00000000 "`. `buildTA1` imports no
  *   `pad` at all, so it emits whatever whitespace it was handed, verbatim.
@@ -106,8 +115,8 @@
  *   routed through {@link requireControlNumber} is refused when empty.**
  *
  * @see `test/builder-control-number-empty.test.ts` - the behavioural gate, one
- * red case per routed slot, plus the drift pin that no builder calls
- * `padControl` on a raw spec field.
+ * red case per routed slot, the disclosed precedence move, and a drift pin that
+ * reds if one of the nine builders it names by hand loses a guard.
  */
 
 /**

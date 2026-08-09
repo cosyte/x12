@@ -229,9 +229,9 @@ every `amounts[].amount`.
 Every builder that assembles an ISA zero-pads the control number to nine characters, so
 `interchangeControlNumber: ""` came back as `000000000`: a frozen, well-formed interchange with zero
 warnings, ISA-13 reconciling against IEA-02, carrying a control number you never sent. The group and
-transaction-set control numbers went out as an empty required element on **both** ends of their pair,
-so those went out short a required element too (empty in `buildInterchange` and `build999`, dropped
-altogether by the seven domain builders, whose segment helper trims a trailing empty), and the
+transaction-set control numbers went out short a required element instead: empty in
+`buildInterchange` and `build999`, and dropped altogether by the seven domain builders, whose segment
+helper trims a trailing empty, so their `GE` and `SE` carried no control number at all. The
 acknowledgment builders did the same at the slots that echo what they are acknowledging
 (`AK1*HC**…`, `AK2*837*~`, `TA1**260601*1200*A*000`). Every one of those emitted `warnings: []`.
 All of them refuse as of this release, naming the slot and the property: `build837:

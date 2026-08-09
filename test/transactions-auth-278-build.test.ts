@@ -685,9 +685,14 @@ describe("build278 - an empty envelope control number is refused", () => {
   // ISA-13 / IEA-02 FABRICATED `000000000` out of `""`, because `padControl`
   // zero-pads and nothing stood in front of it; GS-06 / GE-02 and ST-02 / SE-02
   // reach the wire through `esc`, which early-returns on `""`, so the required
-  // element went out EMPTY at BOTH ends of the pair and each pair still
-  // reconciled against itself. The measurement, the census across the builders
-  // and the refuse-rather-than-warn reasoning live in
+  // element was LOST.
+  //
+  // 🛑 Say `warnings: []`, never "the pair reconciled against itself". That
+  // holds only for `buildInterchange` and `build999`, which join untrimmed.
+  // This builder's `seg` trims a trailing empty element, so the trailer carried
+  // no GE-02 and no SE-02 at all, with GS-06 and ST-02 empty mid-segment.
+  // Measured at base in all seven domain builders. The census across the
+  // builders and the refuse-rather-than-warn reasoning live in
   // `src/builder/caller-control-number.ts`; the cross-builder cases are in
   // `test/builder-control-number-empty.test.ts`.
   //

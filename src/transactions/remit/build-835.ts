@@ -204,9 +204,16 @@ export function build835(spec: Build835Spec): X12Interchange {
   // pairs was silent on an empty value and two of them were silent in different
   // ways: `padControl("", 9)` FABRICATES `"000000000"` into ISA-13 / IEA-02,
   // while GS-06 / GE-02 and ST-02 / SE-02 reach the wire through `esc`, which
-  // early-returns on `""` and emits the required element EMPTY on both ends of
-  // the pair, so each pair still reconciled against itself. The measurement and
-  // the refuse-rather-than-warn reasoning are in
+  // early-returns on `""`, so the required element is LOST.
+  //
+  // 🛑 SAY `warnings: []`, NEVER "the pair reconciled against itself". That is
+  // true only of `buildInterchange` and `build999`, which join untrimmed. THIS
+  // builder's `seg` trims a trailing empty element, so the trailer carried no
+  // GE-02 and no SE-02 at all - measured at `28b417f` in all seven domain
+  // builders (`GE*1~`, and `SE*15~`/`17~`/`18~`/`19~`/`21~`/`22~`/`25~`), with
+  // GS-06 and ST-02 empty mid-segment and `warnings: []` throughout. A draft
+  // published the `buildInterchange` reading as the class and pass 2 measured
+  // it false here. The refuse-rather-than-warn reasoning is in
   // `src/builder/caller-control-number.ts`.
   //
   // Placed here rather than at the top of the function, so every guard ABOVE

@@ -59,9 +59,12 @@ model.
     empty-required-element guard this one mirrors (`patientControlNumber`, `claimId`,
     `maintenanceTypeCode`, `requestCategoryCode`, the 277's `categoryCode`) is byte-strict for the
     same reason. **Validate at your own boundary if your partner can send you blanks.**
-  - **It does NOT type-check, so nothing about a non-string changed**, on any route. What each route
-    already did is entry 3 of the builder-guard list further down; it is untouched here and is
-    deliberately not restated, because a draft of this bullet restated it wrongly.
+  - **It does NOT type-check, so nothing about a non-string changed**, on any route. Seven
+    non-string values across three routes were measured byte-identical before and after. What each
+    route already does is deliberately not restated here, because a draft of this bullet restated it
+    wrongly: it said a number "or `undefined`" draws the typed refusal, and `padControl(undefined, 9)`
+    throws a bare `TypeError` with no `code`, unchanged by this release. Entry 3 of the builder-guard
+    list further down covers the numeric routes and not that one.
   - **A SHORT control number still zero-pads.** The guard is not "ISA-13 must be nine characters":
     `interchangeControlNumber: "1"` still emits `000000001`, which is what `padControl` is for.
   - **🛑 Every guard sits at the envelope-assembly site, so every guard that runs BEFORE it keeps its
