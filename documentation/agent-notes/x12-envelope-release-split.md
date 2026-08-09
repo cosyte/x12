@@ -121,9 +121,11 @@ reasoning is what a future slice should re-read rather than re-derive:
      **Reject read as an Accept**, whose sender never resubmits. Unreachable from TypeScript and from
      conformant bytes, which is why it is a line rather than a guard - but state BOTH directions.
 
-   - **`buildInterchange` does not escape GS-04, GS-05 or GS-07.** A `groupDate` of `"2026060?"`
-     emits `GS*HC*SENDER*RECEIVER*2026060?*1200*1*X*005010X222A1` and its own return value reads nine
-     elements at base and **eight** here, GS-08 gone, plus `X12_CONTROL_NUMBER_MISMATCH`.
+   - **`buildInterchange` did not escape GS-04, GS-05 or GS-07 at this slice.** A `groupDate` of
+     `"2026060?"` emitted `GS*HC*SENDER*RECEIVER*2026060?*1200*1*X*005010X222A1` and its own return
+     value read nine elements at base and **eight** here, GS-08 gone, plus
+     `X12_CONTROL_NUMBER_MISMATCH`. **Closed by `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE`** -
+     `agent-notes/x12-interchange-gs-escape.md`.
 
    `src/transactions/ack/parse-ta1.ts` carried "no `?`-escape applies - the standard does NOT define
    escaped TA1 content" beside its element reads. Corrected with the code: the READS are still

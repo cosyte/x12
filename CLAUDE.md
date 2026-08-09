@@ -72,6 +72,16 @@ copying files.** Source of truth: the meta-repo's `documentation/conventions.md`
 history. Do not act on a line here without reading it. 🩺 = getting it wrong mis-states a clinical
 or financial value on the wire.**
 
+### 🩺 `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-interchange-gs-escape.md`
+
+- **🩺 `buildInterchange` RELEASES GS-04 / GS-05 / GS-07 NOW** - it disagreed with itself.
+  **GS-07 WAS THE SILENT ONE:** `"X*Y"` took GS-08's slot, `warnings: []`. **🛑 BYTES CHANGE, NO
+  READER MOVED - A DIFFERENT SCOPE FROM `#96`. STATE THE PROPERTY** (the model reports what THE
+  CALLER PASSED), **NEVER A DIRECTION OR A TOTAL:** `^`/`:` were a dot-path GAIN, the cost a
+  MID-STRING `?` on RAW.
+- **⚖️ TYPE-CHECK BEFORE ESCAPING** - bare `esc` names only the BUILDER, losing `"GS"-04`. **`esc`
+  AFTER `expandYY`; `null` HERE IS ABSENT, NOT REFUSED; NO CENSUS - IEA-02 IS ITS OWN CALL.**
+
 ### 🩺 `X12-TA1-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-ta1-emit-escape.md`
 
 - **🩺 `buildTA1` RELEASES ALL FIVE CALLER ELEMENTS NOW, SO AN ACCEPT THIS LIBRARY EMITS NO LONGER
@@ -394,22 +404,12 @@ or financial value on the wire.**
   returning `""`; nothing in the library can reach it, because the builders refuse first. **"No
   working caller is broken" was too absolute:** a boxed `new String(...)` built at base, refused now.
 
-### `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX` (2026-08-03) · `documentation/agent-notes.md#parser-testtimeout-asserts-an-idle-box-2026-08-03`
+### `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX` (2026-08-03) · `agent-notes/parser-testtimeout-asserts-an-idle-box.md`
 
-- **No timeout value changed; that is the finding, not an omission.**
-- **Count BOTH trees; never reuse one census for the other.**
-- **Re-derive this box's capacity; never inherit a figure.** The item's numbers are stale.
-- **Interleave BASE/HEAD runs, two rounds each. Never one.**
-- **The `tsx` -> `node` substitution is pinned as an EQUIVALENCE, not assumed. Scope it:** `paths`
-  mode only (why: relocated narrative §8).
-- **The global `testTimeout` stays at 10 s on purpose**, and **do not upgrade the `10.0 s` reading
-  into a proven crossing** - the reporter rounds. The 834 stream's figures: relocated narrative §8.
-- **🩺 `testTimeout` is NOT the liveness net people assume.** An **infinite synchronous** loop gives
-  **NO VERDICT AT ALL** and wedges the worker. A liveness regression here reads as an ABSENT verdict,
-  not a red one, and no value of `testTimeout` changes that. The defence is the source scan in
-  `test/builder-array-bounds.test.ts`.
-- **`test/scripts/attw-gate.test.ts` is deliberately left alone** - pinning the REAL binary is the
-  point of it.
+**RELOCATED IN FULL 2026-08-08, VERBATIM, NOTHING DROPPED** - it paid for the trap at the top of this
+list, under this file's own ratchet. **🩺 Open it before you touch `testTimeout`, a timing figure or
+`attw-gate`: it is NOT the liveness net people assume** - an infinite synchronous loop gives NO
+verdict and wedges the worker. No value changed; re-derive every figure, per tree.
 
 ### 🩺 The `phi-scan` gate · `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (2026-08-03), `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` + `PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL` (2026-08-06), `PHI-SCAN-WALK-ROOT-SCOPE` (2026-08-08) · one `agent-notes.md` section per id, the last `agent-notes/phi-scan-walk-root-scope.md`, + `#phi-commit-gate-armed-2026-06-28`
 

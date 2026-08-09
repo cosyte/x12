@@ -42,7 +42,11 @@
  * sharpest instance found in three passes: an Accept acknowledgment this
  * library emitted read back as a Reject. **`X12-TA1-EMIT-NOT-RELEASE-AWARE`
  * closed the `buildTA1` half** and `test/transactions-ack-ta1-escape.test.ts`
- * owns it; the `buildInterchange` half is still open and still pinned below.
+ * owns it; **`X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` closed the
+ * `buildInterchange` GS-04 / GS-05 / GS-07 half** and
+ * `test/builder-interchange-gs-escape.test.ts` owns it. Both disclosures below
+ * were rewritten into closure pins rather than left saying something this tree
+ * no longer does.
  *
  * ## Why it is a defect and not a tolerance
  *
@@ -72,9 +76,11 @@ import {
   buildInterchange as buildInterchangeApi,
   buildTA1,
   get837Claims,
+  getSegmentValue,
   parseTA1,
   parseX12,
   serializeX12,
+  type X12Segment,
 } from "../src/index.js";
 
 import { buildIsa } from "./_helpers/envelope.js";
@@ -345,8 +351,12 @@ describe("X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE: 🛑 the exposure is NOT inbo
   // **The `buildTA1` half was DISCLOSED here and is now CLOSED** by
   // `X12-TA1-EMIT-NOT-RELEASE-AWARE`, which took the byte change this slice
   // would not: `test/transactions-ack-ta1-escape.test.ts` owns the case and
-  // pins what it cost. What remains open here is the `buildInterchange` half
-  // below, which this file keeps disclosing.
+  // pins what it cost. **The `buildInterchange` GS-04 / GS-05 / GS-07 half was
+  // disclosed here too and is now CLOSED** by
+  // `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE`;
+  // `test/builder-interchange-gs-escape.test.ts` owns that case. Both cases
+  // below now pin the CLOSURE, because a committed test that asserts what a
+  // tree no longer does is a false disclosure with a green tick beside it.
 
   it("🩺 the emit route this slice disclosed: an Accept acknowledgment now survives its own read", () => {
     // At base `e8f34b9` `buildTA1` joined its five caller-supplied elements
@@ -375,7 +385,12 @@ describe("X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE: 🛑 the exposure is NOT inbo
     expect(parsed.warnings).toEqual([]);
   });
 
-  it("🩺 `buildInterchange` does not escape GS-04 / GS-05 / GS-07, so its own return value loses GS-08", () => {
+  it("🩺 `buildInterchange` releases GS-04 / GS-05 / GS-07, so its own return value keeps GS-08", () => {
+    // At base `837d4bc` the same call emitted `…*2026060?*1200*…`, which THIS
+    // slice's own release-aware splitter then read as EIGHT elements with GS-08
+    // gone and `X12_CONTROL_NUMBER_MISMATCH` raised, because GS-04 merged with
+    // GS-05 and everything after it shifted left. The bytes are what moved: a
+    // trailing `?` is now released to `??`.
     const built = buildInterchangeApi({
       senderId: "SENDER",
       receiverId: "RECEIVER",
@@ -395,10 +410,20 @@ describe("X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE: 🛑 the exposure is NOT inbo
       ],
     });
     const gs = built.groups[0]?.gs;
-    expect(gs?.raw).toBe("GS*HC*SENDER*RECEIVER*2026060?*1200*1*X*005010X222A1");
-    expect(gs?.elements).toHaveLength(8); // nine at base
-    expect(gs?.elements[8]).toBeUndefined(); // "005010X222A1" at base
-    expect(built.warnings.map((w) => w.code)).toEqual(["X12_CONTROL_NUMBER_MISMATCH"]); // [] at base
+    expect(gs?.raw).toBe("GS*HC*SENDER*RECEIVER*2026060??*1200*1*X*005010X222A1"); // one `?` at base
+    expect(gs?.elements).toHaveLength(9); // eight at base
+    expect(gs?.elements[8]).toBe("005010X222A1"); // undefined at base
+    // The dot-path read unescapes, so it answers the value the caller stated.
+    // `GsSegment` carries no `id`, so a dot-path read of one needs one added -
+    // the same shape `test/transactions-ack-ta1-escape.test.ts` uses.
+    const asDotPath: X12Segment = Object.freeze({
+      id: "GS",
+      raw: gs?.raw ?? "",
+      elements: gs?.elements ?? [],
+    });
+    expect(getSegmentValue(asDotPath, "04", built.delimiters)).toBe("2026060?");
+    // Whole array, so this cannot pass vacuously.
+    expect(built.warnings.map((w) => w.code)).toEqual([]); // [MISMATCH] at base
   });
 });
 

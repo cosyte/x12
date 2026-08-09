@@ -361,12 +361,18 @@ describe("the other shared caller guards redact too, which is what makes it a pr
     expect(() => buildInterchange(asJsCaller(interchangeSpec("MEMBER001")))).not.toThrow();
   });
 
-  it("the SEGMENT guard, on a slot that skips esc, still names the slot", () => {
-    // `buildGroup` emits GS-04 / GS-05 / GS-07 RAW, so this is a real route
-    // where `requireCallerSegment` is the guard that runs rather than the
-    // backstop nothing reaches. It redacts like its siblings AND keeps the
-    // spec-shaped locator, which is the diagnostic the value used to stand in
-    // for.
+  it("the SEGMENT guard, on a GS element, still names the slot", () => {
+    // `buildGroup` emitted GS-04 / GS-05 / GS-07 RAW at `0.0.15`, so this used
+    // to be the one route where `requireCallerSegment` ran as the FIRST guard
+    // rather than the backstop under `esc`.
+    // `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` released those three, and
+    // kept this diagnostic by running the segment guard over the UNESCAPED GS
+    // parts one step earlier instead of letting the unary escaper refuse first
+    // with only the builder named. So the guard that fires here moved and the
+    // message did not, which is the whole point: it redacts like its siblings
+    // AND keeps the spec-shaped locator, which is the diagnostic the value used
+    // to stand in for. `test/builder-interchange-gs-escape.test.ts` pins the
+    // same property against the naive fix.
     let message = "";
     try {
       buildInterchange(asJsCaller(interchangeSpec("MEMBER001", 20_260_601)));

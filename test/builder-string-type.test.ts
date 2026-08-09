@@ -59,7 +59,7 @@
  * ## The source scan is the exhaustive half
  *
  * The behavioural cases below drive a number into one element of each builder.
- * What covers all 412 `esc` invocations is {@link escaperDeclarations}: it walks
+ * What covers all 408 `esc` invocations is {@link escaperDeclarations}: it walks
  * every builder module and requires the module's `esc` to be built by
  * `makeCallerEscaper(`, and {@link directEscapeCalls}, which requires no
  * builder module to reach `escapeRelease` on its own. An eleventh builder that
@@ -93,9 +93,9 @@
  *    here; delimiter safety is per-slot, and only the slots named in the item
  *    were routed. The ISA fixed-width slots remain outside both - see limit 2.
  * 1. **The refusal names the BUILDER, not the element position.** `esc` is
- *    unary and invoked 412 times on 383 lines (counted comment-stripped on this
+ *    unary and invoked 408 times on 379 lines (counted comment-stripped on this
  *    tree, `ctx.esc(...)` included, and pinned below); threading a per-slot
- *    locator through every one of them would be 412 chances to mislabel a slot.
+ *    locator through every one of them would be 408 chances to mislabel a slot.
  *    An earlier draft of this file published "378 call sites", which was the
  *    LINE count of the day. The message names the
  *    builder and echoes the offending value bounded, and that is the whole
@@ -279,11 +279,20 @@ describe("builder element escaping: the source gate", () => {
   });
 
   it("pins the invocation count, because the first draft published a line count", () => {
-    // 412 invocations on 383 lines, counted comment-stripped on this tree with
+    // 408 invocations on 379 lines, counted comment-stripped on this tree with
     // `ctx.esc(...)` included. `X12-TA1-EMIT-NOT-RELEASE-AWARE` added five of
     // each, one per TA1 element, which is why both moved by the same amount.
     // The published figure and the asserted figure are
     // the same number, so prose cannot drift away from the code.
+    //
+    // 🩺 `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` moved both DOWN by four
+    // while WIDENING what is escaped, and that direction is worth reading
+    // rather than assuming: `buildGroup` used to invoke `esc` five times on
+    // five lines, one per already-escaped GS slot, and now maps one `esc` over
+    // the whole GS parts array so GS-04 / GS-05 / GS-07 are covered too. This
+    // assertion is a DRIFT DETECTOR and has never been a measure of coverage;
+    // a falling count is not evidence of a shrinking guard and a rising one
+    // would not be evidence of a growing one.
     //
     // A legitimate builder edit WILL red this. The remedy is to update this
     // number and the places that publish it in the SAME commit, which is the
@@ -297,8 +306,8 @@ describe("builder element escaping: the source gate", () => {
           .filter((l) => /\besc\(/u.test(l)).length,
       0,
     );
-    expect(invocations).toBe(412);
-    expect(lines).toBe(383);
+    expect(invocations).toBe(408);
+    expect(lines).toBe(379);
     expect(invocations).toBeGreaterThan(lines);
   });
 

@@ -151,7 +151,8 @@ justification. A disclosure that becomes false is retracted, not softened:
   falsifies nothing here - it is about `build837`'s guide identifier.
 - `test/parser-envelope-release-split.test.ts` pinned the inversion as `#96`'s sharpest disclosure.
   It now pins the closure and hands the case to `test/transactions-ack-ta1-escape.test.ts`; the
-  `buildInterchange` GS-04 / GS-05 / GS-07 half stays there and stays open.
+  `buildInterchange` GS-04 / GS-05 / GS-07 half stayed there until
+  `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` closed it and rewrote that pin too.
 - `test/builder-segment-type.test.ts` pinned "emits a non-string TA1-01 with no error and no
   warning" and "also admits an unescaped delimiter". **Both now pin the closure.** Its source gate
   keyed on `.join(elementSeparator)` and now keys on `.join(delimiters.element)`.
@@ -181,7 +182,8 @@ cannot fail measures nothing.
 ## Deferred, each its own line
 
 - **`buildInterchange` still does not escape GS-04, GS-05 or GS-07.** Same class, different builder,
-  still pinned in `test/parser-envelope-release-split.test.ts`.
+  still pinned in `test/parser-envelope-release-split.test.ts`. **CLOSED by
+  `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` (2026-08-08)** - `agent-notes/x12-interchange-gs-escape.md`.
 - **`buildTA1` still has no segment joiner**, so `requireCallerSegment` never names its slot.
 - **`parseTA1` does not unescape**, so a released TA1-01 reads back carrying its `?`. Read-side
   widening, would move every TA1 a consumer already reads.

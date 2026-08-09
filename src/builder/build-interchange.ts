@@ -132,18 +132,41 @@ function buildGroup(
   const groupTime = group.groupTime ?? spec.interchangeTime;
   const responsibleAgencyCode = group.responsibleAgencyCode ?? "X";
 
+  // GS-04, GS-05 and GS-07 used to be emitted RAW while their six siblings went
+  // through `esc`, so a caller value carrying an active delimiter took a slot of
+  // its own and shifted every element after it down one. `buildInterchange`
+  // returns `parseX12` of the bytes it just wrote, so the function disagreed
+  // with itself: a `responsibleAgencyCode` of `"X*Y"` came back with GS-08
+  // reading `"Y"` instead of the guide reference the caller stated, on an
+  // interchange whose `warnings` array was empty. Every one of the seven domain
+  // builders already released these same three slots through its own `esc`.
+  //
+  // The values are escaped AFTER `expandYY` has run, never before: that helper
+  // decides on `length === 6`, and a released value is longer than the one the
+  // caller supplied.
+  //
+  // The type check is run over the UNESCAPED parts, before the escape rather
+  // than at the join, so the guard that names the slot is still the guard that
+  // fires. `esc` is unary and its refusal can only name the BUILDER, so routing
+  // these three through it without this line would have traded a shifted
+  // element for a worse diagnostic - `"GS"-04 must be a string` degrading to
+  // `every element value must be a string`. `joinSeg`'s own call is the
+  // structural backstop and stays where it is.
+  const gsParts: readonly string[] = [
+    "GS",
+    group.functionalIdCode,
+    applicationSenderCode,
+    applicationReceiverCode,
+    groupDate,
+    groupTime,
+    group.groupControlNumber,
+    responsibleAgencyCode,
+    group.versionRelease,
+  ];
+  requireCallerSegment(gsParts, "buildInterchange", refuseSpec);
+
   const gs = joinSeg(
-    [
-      "GS",
-      esc(group.functionalIdCode),
-      esc(applicationSenderCode),
-      esc(applicationReceiverCode),
-      groupDate,
-      groupTime,
-      esc(group.groupControlNumber),
-      responsibleAgencyCode,
-      esc(group.versionRelease),
-    ],
+    gsParts.map((value) => esc(value)),
     elementSeparator,
     segmentTerminator,
   );
@@ -211,11 +234,17 @@ function joinSeg(
   elementSeparator: string,
   segmentTerminator: string,
 ): string {
-  // Load-bearing, not redundant. A draft of this comment claimed the check was
+  // Load-bearing, not redundant, and the reason is the `seg` / `joinSeg`
+  // qualifier `caller-segment.ts` insists on rather than any property of this
+  // module's own call sites. A draft of this comment claimed the check was
   // redundant "because this builder already maps `esc` over the whole segment
-  // array", and a refuter measured that false: `buildTransaction` does map `esc`
-  // over the body segments, but `buildGroup` emits GS-04, GS-05 and GS-07 RAW.
-  // A numeric `groupDate` was emitted silently at base and refuses here.
+  // array", and a refuter measured that false against the GS: `buildGroup`
+  // emitted GS-04, GS-05 and GS-07 RAW, so a numeric `groupDate` reached the
+  // join unchecked. Those three are released now and `buildGroup` type-checks
+  // the GS itself, one step earlier, to keep the slot-named refusal - so this
+  // call is the structural backstop and no longer the first guard on that
+  // route. Keep it: a segment that is not joined is not emitted, and that is a
+  // property of the join and not of any list of call sites.
   requireCallerSegment(parts, "buildInterchange", refuseSpec);
   return parts.join(elementSeparator) + segmentTerminator;
 }
