@@ -133,11 +133,12 @@ model.
     here** - what follows is the routes measured to REACH the regression direction, not a closed
     account of what bypasses the escaper.
 
-    **`buildInterchange` does not escape GS-04, GS-05 or GS-07** (`groupDate`, `groupTime`,
-    `responsibleAgencyCode`). A `groupDate` of `"2026060?"` emits
+    **`buildInterchange` did not escape GS-04, GS-05 or GS-07** (`groupDate`, `groupTime`,
+    `responsibleAgencyCode`) at this release. A `groupDate` of `"2026060?"` emitted
     `GS*HC*SENDER*RECEIVER*2026060?*1200*1*X*005010X222A1`, which its own return value read as nine
-    elements with GS-08 intact through `0.0.14` and reads as **eight** here, GS-08 gone, plus
-    `X12_CONTROL_NUMBER_MISMATCH`.
+    elements with GS-08 intact through `0.0.14` and read as **eight** at `0.0.15`, GS-08 gone, plus
+    `X12_CONTROL_NUMBER_MISMATCH`. **Closed by `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE`** - that
+    entry is at the top of this section and it is the one that describes the current tree.
 
   - **An envelope element ending in a literal `?` is a dangling release character and is NOT warned.**
     `X12_DANGLING_RELEASE_CHAR` fires only for an odd run of `?` at the very END of a segment, so a
@@ -162,6 +163,69 @@ model.
     parser is not obliged to be release-aware either. `buildInterchange` applies no domain guard to
     any envelope field and will still emit all of them, though it now reports back what it wrote -
     at `0.0.14` it released GS-02 on emit and then answered GS-08 as `"X"` from its own return value.
+
+- **🩺 `buildInterchange` now RELEASES GS-04, GS-05 and GS-07, so the interchange it hands back
+  reports the values you passed, and the bytes it writes for such a value CHANGED**
+  (`X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE`). Through `0.0.15` it mapped its release escaper over
+  GS-01, GS-02, GS-03, GS-06 and GS-08 and wrote `groupDate` (GS-04), `groupTime` (GS-05) and
+  `responsibleAgencyCode` (GS-07) raw. It returns `parseX12` of the bytes it just wrote, so a value
+  carrying an active delimiter in one of those three took a slot of its own and shifted every element
+  after it down one, inside a single call. Measured on one group with
+  `versionRelease: "005010X222A2"` and `groupControlNumber: "1"`:
+
+  | spec field                     | read GS-06 | read GS-08 | warnings                                                |
+  | ------------------------------ | ---------- | ---------- | ------------------------------------------------------- |
+  | `groupDate: "2026*0601"`       | `"1200"`   | `"X"`      | `X12_CONTROL_NUMBER_MISMATCH`                           |
+  | `groupTime: "12*00"`           | `"00"`     | `"X"`      | `X12_CONTROL_NUMBER_MISMATCH`                           |
+  | `responsibleAgencyCode: "X*Y"` | `"1"`      | `"Y"`      | none                                                    |
+  | `groupTime: "12~00"`           | absent     | absent     | `X12_UNEXPECTED_SEGMENT`, `X12_CONTROL_NUMBER_MISMATCH` |
+  | `groupDate: "20260601?"`       | `"X"`      | absent     | `X12_CONTROL_NUMBER_MISMATCH`                           |
+
+  **🩺 The `responsibleAgencyCode` row is the one to know about, because nothing was raised on any
+  channel.** GS-06 kept its own slot, so it still reconciled against GE-02 and no control-number
+  warning fired; what moved was GS-08, the version / release / industry identifier code. All five
+  rows now read the values the caller passed, with an empty warning array.
+  - **🛑 It changes bytes, and the bound is the same one the two entries below carry.** A value
+    containing none of the four delimiters and no `?` is emitted byte-for-byte as before, which is
+    every conformant GS-04 / GS-05 / GS-07. **Read the property rather than a direction list:** the
+    interchange the call returns now reports the values you passed, where before it reported whatever
+    the shift left in each slot. **What is narrower here than in the two entries below: no reader
+    moved.** An inbound document from a trading partner decodes exactly as it did at `0.0.15`; what
+    changed is what this library emits.
+  - **Read the delimiter set by ROLE, never by byte.** `InterchangeSpec` lets you declare all four,
+    so which BYTES shift is a property of the set you declared: with `elementSeparator: "|"` it was a
+    GS-07 of `"X|Y"` that took GS-08's slot and `"X*Y"` that was inert. **Only the element separator
+    and the segment terminator ever shifted the segment's own framing, plus a `?` immediately before
+    the element separator.** The **repetition** and **component** separators moved the dot-path
+    reader instead, and releasing them is a **gain** there: on the default set
+    `getSegmentValue(gs, "07")` answered `"X"` for `"X^Y"`, truncating to repetition 0, and the
+    composite read `"07-1"` answered `"X"` for `"X:Y"`. **The measured cost is a mid-string `?`,
+    and only on the surfaces documented as raw** - `gs.elements[4]` reads `"2026??0601"` where it
+    read `"2026?0601"`, while the dot-path read of that value unescapes and is unchanged. No total is
+    published: that is what was measured, not a closed account.
+  - **A caller who was pre-releasing these values themselves is now escaping twice.** `"2026?*0601"`
+    in gives `2026???*0601` out and a dot-path read of `"2026?*0601"` where it read `"2026*0601"`.
+    Drop the hand-rolled escape.
+  - **A wrong-typed GS element now names its slot.** The type check runs over the unescaped parts, so
+    a numeric `groupDate` still refuses with `buildInterchange: "GS"-04 must be a string` rather than
+    degrading to the builder-named message the escaper alone would give. The five slots that already
+    escaped gained the slot name with it. **`null` and `undefined` in these three fields are ABSENT,
+    not refused** - each resolves through a default before either guard sees it.
+  - **A LITERAL segment id this library writes is never escaped, and that is a rule rather than an
+    omission.** `esc` releases against the delimiter set the CALLER declared, and a
+    `componentSeparator` of `"S"` is admissible, so escaping element 0 would turn the literal `"GS"`
+    into `G?S` and the group header would stop being a `GS`. `GE`, `ST`, `SE` and `IEA` already
+    followed that rule. **Read "literal" strictly, and this one is `PRE-EXISTING` rather than
+    anything this release changed:** a `SegmentSpec` body segment is `[segmentId, ...elements]`
+    supplied wholesale, `buildInterchange` has released that caller-supplied id since before this
+    release, and `SegmentSpec`'s JSDoc says it is emitted verbatim. The two disagree. It is noisy
+    rather than silent - a `?`-prefixed id is rejected by the envelope walker as an orphan with
+    `X12_UNEXPECTED_SEGMENT` - and which side is wrong is a decision, so it is recorded rather than
+    changed here.
+  - **What this does NOT close.** `buildInterchange`'s IEA-02 does not go through the escaper: it is
+    padded and has to stay byte-equal to the fixed-width ISA-13 it reconciles against, so that is a
+    decision of its own. The ISA fixed-width slots are still outside both guards. And an unescaped
+    active delimiter is still not safe anywhere, because that is what a delimiter is.
 
 - **🩺 `buildTA1` now RELEASES its five caller-supplied elements, so an Accept acknowledgment this
   library emits no longer reads back as a Reject, and the bytes it writes for such a value CHANGED**
@@ -245,8 +309,9 @@ model.
     **No existing refusal moves code:** `ackCode` `"A"` with a non-`000` note still reports
     `X12_TA1_ACCEPT_WITH_NOTE` and still runs first.
   - **What this does NOT close.** `buildTA1` still uses no segment joiner, so its refusal names the
-    builder and never the slot; `buildInterchange` still does not escape GS-04 / GS-05 / GS-07; and
-    an unescaped active delimiter is still not safe anywhere, because that is what a delimiter is.
+    builder and never the slot; `buildInterchange` did not escape GS-04 / GS-05 / GS-07 at this
+    release, which `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` then closed; and an unescaped active
+    delimiter is still not safe anywhere, because that is what a delimiter is.
 
 - **🩺 BREAKING for `build277` callers: a 277 service line now REQUIRES `unitsOfService`, because
   SVC-07 is a required element in `005010X212` and this library was not emitting it at all**
