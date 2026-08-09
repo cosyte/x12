@@ -59,7 +59,7 @@ which is smaller and covers all three roles at once. It is wrong, and the reason
 
 `escapeRelease` protects a value by **prefixing `?`** to the byte that needs protecting, and it does
 that **whatever role `?` was declared in** - so with `?` as a component separator a literal `?` in a
-value is written `??`. So today:
+value is written `??`. At `0.0.15`:
 
 ```text
 buildInterchange({ componentSeparator: "?" }) with CLM-01 "PATIENT?ACCT"
@@ -67,15 +67,19 @@ buildInterchange({ componentSeparator: "?" }) with CLM-01 "PATIENT?ACCT"
   reads  getSegmentValue(clm, "01") === "PATIENT?ACCT"   warnings: []
 ```
 
-That round trip works at `0.0.15`. Hoisting the guard would re-frame that `??` as two empty
-components and break it - a value this library itself emitted and could no longer read back. It is
+**That builder call is REFUSED now** (`X12-EMIT-DEGENERATE-RELEASE-DELIMITER`, the emit-side slice
+that followed this one) - but the argument for leaving the read side alone SURVIVES the refusal and
+gets stronger, because those bytes were emitted and those documents exist. Hoisting the guard would
+re-frame that `??` as two empty components and stop reading a value this library itself wrote. It is
 the same shape as `#99`'s pass-1 code major (mapping `esc` over the whole parts array broke a spec
 that built clean at `0.0.15`), reached from the other side. The repetition role behaves identically.
 
 So: the ELEMENT role is fixed, because there the degenerate behaviour was catastrophic and had no
-working counterpart to protect. The REPETITION and COMPONENT roles are left alone, because there the
-degenerate behaviour is merely a separator that never splits AND the emit half depends on it.
-Deciding those two means deciding `escapeRelease` with them. That is a different slice.
+working counterpart to protect. The REPETITION and COMPONENT roles are left alone on READ, because
+there the degenerate behaviour is merely a separator that never splits AND documents emitted at
+`0.0.15` depend on it. Deciding those two on EMIT meant deciding `escapeRelease` with them, which is
+the different slice named above and is now done: a builder refuses the set rather than the parser
+re-reading it.
 
 ## 🩺 The refutations: the emit half reaches the ELEMENT role too, and TWO drafts named a trigger instead of the property
 
@@ -94,7 +98,8 @@ drafts were refuted here, the second by the correction to the first.**
 segment | ?`. When `?` IS the element separator, that prefix is itself a separator, so the protection
 becomes a split. **No value containing any active delimiter or a literal `?` survives a
 `buildInterchange` round trip on `elementSeparator: "?"`, and there is no value-level workaround.**
-Do not declare `?` as the element separator on the emit side.
+**It is REFUSED now, in all four roles** - and read the mechanism sentence as one of TWO; the section
+at the end of this file says what the other is.
 
 Instances, measured at head, **not a census**:
 
@@ -125,6 +130,15 @@ need the emit side decided.
 **Not measured, and flagged for that emit-side slice rather than for this one:** only the generic
 `buildInterchange` segment-spec route (`buildTransaction`'s `segment.map(esc)`) was probed. The
 per-TR3 domain builders were not.
+
+**They were measured in the emit-side slice, and the flag was right to be there: they carry a SECOND
+mechanism this section never saw.** A domain builder joins composites with the component separator
+and repetitions with the repetition separator, so where either IS `?` the library's own structural
+join is emitted as an escape - `build837P` fused `SV1-01-2` and `HI-01-2` into the preceding
+component on EVERY document, with no trigger byte in any value. So the property stated above is one
+of two, and the sentence _"no value containing any active delimiter or a literal `?` survives"_ is
+true and INCOMPLETE: the second mechanism has no offending value at all. Full measurement:
+`documentation/agent-notes/x12-emit-degenerate-release-delimiter.md`.
 
 **The third refutation, smaller and the same shape (pass 1).** The `?~` residual control pinned `raw` and the id
 list but not `elements`, and "framing is untouched" read as "nothing about this residual moved". The

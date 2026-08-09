@@ -980,3 +980,26 @@ describe("X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED: build837", () => {
     expect(blank.isa.elements[13]).toBe("00000000 ");
   });
 });
+
+describe("build837P - X12-EMIT-DEGENERATE-RELEASE-DELIMITER", () => {
+  it('🩺 refuses a delimiter set whose component separator is the release character "?"', () => {
+    // The guard is in `makeCallerEscaper`, so it reaches this builder without
+    // naming it - but a source gate establishes nothing about behaviour, so the
+    // behavioural case lives here beside the valid spec it mutates.
+    // 🩺 Measured at base: SV1-01-2 (the procedure code) and HI-01-2 (the
+    // diagnosis code) both read `undefined` on EVERY document, no trigger byte
+    // in any value, `warnings: []`.
+    expect(() =>
+      build837P({
+        ...P_SPEC,
+        envelope: { ...ENVELOPE, componentSeparator: "?" },
+      }),
+    ).toThrow(
+      'build837: "?" is the X12 release character and cannot also be the component separator.',
+    );
+  });
+
+  it("the same spec on the conventional set still builds (the red control)", () => {
+    expect(build837P(P_SPEC).warnings).toEqual([]);
+  });
+});

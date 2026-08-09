@@ -225,8 +225,9 @@ model.
   where it used to come back as ONE element with an id of `(non-spec)`**
   (`X12-BODY-DEGENERATE-RELEASE-SEPARATOR`). `detectDelimiters` reads the element separator
   positionally out of ISA byte 4 and rejects only control characters, whitespace and a non-distinct
-  set, so a sender may declare `?` there, and `buildInterchange` accepts `elementSeparator: "?"` from
-  a caller. `src/parser/envelope.ts` guarded that degenerate set in both of its own splitters;
+  set, so a sender may declare `?` there, and `buildInterchange` accepted `elementSeparator: "?"`
+  from a caller when this was measured (it refuses now - see the emit-side entry below).
+  `src/parser/envelope.ts` guarded that degenerate set in both of its own splitters;
   `decodeSegment`, which every BODY segment plus the `ST`, the `SE` and every retained orphan goes
   through, did not. It split with the release-aware splitter, where a `?` consumes the byte after it,
   so no split ever happened. Measured through `parseX12` at `0.0.15`:
@@ -252,30 +253,34 @@ model.
     `X12_DANGLING_RELEASE_CHAR` fired on any degenerate segment ending in an empty last element,
     because the check keys on a trailing `?`. With `?` as the separator that trailing byte is an
     empty element, not an unpaired escape, so `PER?IC?NAME?TE?5551234?` is silent now.
-  - **🛑 The guard is per ROLE. A `?` REPETITION or COMPONENT separator still does not split, and
-    that is deliberate and measured.** `escapeRelease` writes `??` for a literal `?` whatever role
-    `?` was declared in, so `buildInterchange({ componentSeparator: "?" })` emits
-    `CLM*PATIENT??ACCT*150.00` today and `getSegmentValue(clm, "01")` reads `"PATIENT?ACCT"` back out
-    of it. Splitting those two roles literally would re-frame that as two empty components - trading
-    a separator that never splits for a value this library itself emitted and could no longer read
-    back. Deciding those two roles means deciding the emit side with them, and that is its own
-    change.
-  - **🩺 INTRODUCED and NOT closed: DO NOT DECLARE `?` AS THE ELEMENT SEPARATOR ON THE EMIT SIDE.**
-    `buildInterchange` protects a value by prefixing `?` to the byte that needs protecting, so when
-    `?` IS the element separator the protecting byte is itself a separator, and **no value containing
-    any active delimiter or a literal `?` survives the round trip** - composites included, silently
-    (`warnings: []`), **with no value-level workaround.** Stated as a property and not as a list of
-    trigger bytes on purpose: two successive drafts named one trigger each and a refuter falsified
-    both by producing one more. What it costs is not always a truncation: a `HI-01` of `ABK:J45.50`
-    is written `HI?ABK?:J45.50` and read back as `HI-01 "ABK"` with the diagnosis code stranded in a
-    phantom `HI-02`, so `getSegmentValue(hi, "01-2")` answers `undefined`. Through `0.0.15` every one
-    of these read as a single `(non-spec)` element and every dot-path answered `undefined`, so **a
-    detectable absence became a confident wrong value.** **Do not read the entry above as
-    "`buildInterchange` stops disagreeing with itself"** - it does so for a value carrying none of
-    those bytes, and that is the whole of the claim. Closing it means deciding `escapeRelease` for a
-    degenerate set, the same decision the repetition and component roles need, so **all THREE roles
-    belong to that emit-side change** and none is closed here. Instances (not a census) are pinned in
-    `test/parser-segment-degenerate-release-separator.test.ts`.
+  - **🛑 The guard is per ROLE, and it is a READ-side guard. A `?` REPETITION or COMPONENT separator
+    still does not split, and that is deliberate and measured.** `escapeRelease` writes `??` for a
+    literal `?` whatever role `?` was declared in, so documents this library emitted through `0.0.15`
+    carry `CLM*PATIENT??ACCT*150.00` and `getSegmentValue(clm, "01")` reads `"PATIENT?ACCT"` back out
+    of them. Splitting those two roles literally would re-frame that as two empty components, so it
+    would stop reading a value this library itself wrote. **That reason survives the emit-side
+    refusal below - those documents exist**, which is why the read side did not move with it.
+  - **🟢 CLOSED, in the slice after this one, and WIDER than it was filed
+    (`X12-EMIT-DEGENERATE-RELEASE-DELIMITER`): every builder REFUSES a delimiter set in which any of
+    the four roles is `?`.** The entry as filed named the element separator and one mechanism - a
+    caller VALUE the escape cannot protect, because the protecting `?` is itself the separator. Two
+    things were measured wrong about that:
+    - **The class is FOUR roles, not three.** The segment terminator does the same thing: a released
+      byte inside a value ends the segment early, so a phantom segment appears mid-transaction.
+    - **There is a SECOND mechanism, and it needs no caller value at all.** A builder joins
+      composites with the component separator and repetitions with the repetition separator, so
+      where either is `?` the library's own structural join is emitted as an escape. `build837P` on
+      `componentSeparator: "?"` emitted `SV1-01-2` (the procedure code) and `HI-01-2` (the diagnosis
+      code) fused into the preceding component **on every document, no trigger byte in any value**,
+      `warnings: []`. That is the sharper of the two: a claim is adjudicated on those codes.
+
+    A value-level mitigation was refused for a measured reason rather than a stylistic one: it
+    cannot reach the second mechanism, and _"keep `?` out of your values"_ had already been refuted
+    in this arc for protecting nobody. It refuses specs that built at `0.0.15`, some of which
+    round-tripped through this library's own parser - **that round trip is not the bar**, because
+    ISA-11 and ISA-16 transmit the declared set and a conformant receiver splits on it. Pinned in
+    `test/builder-degenerate-release-delimiter.test.ts` and, per builder, in each build suite.
+
   - **🩺 PRE-EXISTING and NOT closed here: on a degenerate set a `?~` still swallows the segment
     terminator.** `findUnescapedTerminator` guards its own role only, so with `?` as the element
     separator a segment that ends in an EMPTY LAST ELEMENT puts a `?` immediately before the

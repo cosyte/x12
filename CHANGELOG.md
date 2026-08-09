@@ -1021,6 +1021,62 @@ required control number and this builder never invents one, so nothing is emitte
 
 ### Fixed
 
+- **🩺 BREAKING (emit side): a delimiter set in which the release character `?` is also a delimiter
+  is REFUSED by every builder, in all FOUR roles** (`X12-EMIT-DEGENERATE-RELEASE-DELIMITER`).
+  Reproduced on the base tree at `51de7b2`.
+
+  **The property, stated so one more trigger byte cannot falsify it.** `escapeRelease` protects a
+  byte by **prefixing** `?` to it, in whatever role `?` was declared, so when `?` is one of the four
+  delimiters the protection is emitted as structure. The inverse holds at the same time: a builder
+  joins composites with the component separator and repetitions with the repetition separator, so
+  where either of those IS `?` the library's own structural join is emitted as an escape sequence.
+
+  **Two mechanisms, and only the first involves a caller's value.** The filed defect named the first
+  and reached three roles; measured, the class is four roles, and the second mechanism fires on
+  documents in which no value carries any trigger byte at all:
+
+  ```text
+  elementSeparator "?"     buildInterchange ["CLM","PATIENT?ACCT","150.00"]
+                             reads ["CLM","PATIENT","","ACCT","150.00"]
+  segmentTerminator "?"    buildInterchange ["CLM","PAT*ACCT","150.00"]
+                             CLM-01 reads "PAT", a phantom segment follows
+  componentSeparator "?"   build837P, EVERY document, no trigger byte:
+                             SV1-01-2 (the procedure code) reads undefined
+                             HI-01-2 (the diagnosis code) reads undefined
+  repetitionSeparator "?"  build271, EVERY document, no trigger byte:
+                             EB-03 "30" + "1" reads back as one code "30?1"
+  warnings: [] on every row.
+  ```
+
+  🩺 The second mechanism is the sharper one: a procedure code and a diagnosis code are what a claim
+  is adjudicated on, and neither the caller nor the receiver had any signal that they were fused.
+
+  **⚖️ REFUSE rather than warn, and the whole SET rather than the values that trip.** 005010 does not
+  transmit a release character at all and settles none of this, so the tiebreak is CONSISTENCY with
+  the guards this package already carries on emit and with emit being the strict half of Postel's
+  Law here - the same call `X12-EMPTY-CONTROL-NUMBER-FABRICATED` made one slice earlier. A
+  value-level guard was rejected on measurement: it cannot reach the second mechanism at all, and
+  _"keep `?` out of your values"_ was already refuted once in this arc for protecting nobody. **No
+  warning code is minted and no case moves onto a new code** - each builder refuses with its own
+  existing typed error.
+
+  **🛑 It refuses specs that built at `0.0.15`, including ones that round-tripped through this
+  library's own parser** - `componentSeparator: "?"` with a scalar value did. That round trip is not
+  the bar: ISA-11 and ISA-16 transmit the declared set, so a conformant receiver splits on it, and
+  what this library could read back says nothing about what they read.
+
+  **🛑 One report MOVED, and it is a message rather than a code.** The check runs where a builder
+  resolves its delimiters, so every guard a builder runs earlier keeps precedence (`build999`'s AK9
+  counts and `buildTA1`'s `enforceAcceptIsClean` both still report first, measured base vs head), and
+  a defect detected LATER now reports this refusal instead: `buildInterchange` with a degenerate set
+  AND an empty `interchangeControlNumber` reported the empty-control-number refusal at base and
+  reports this one at head, both `X12_BUILD_INVALID_SPEC`.
+
+  **🛑 The READ side is deliberately untouched, and so is `serializeX12`.** `parseX12` still accepts
+  every degenerate set and still frames a degenerate body segment; `serializeX12` re-emits one byte
+  for byte, because it works from a model a SENDER's bytes produced. Documents this library emitted
+  before this guard exist, and Postel's Law puts them on the lenient half.
+
 - **🩺 A control number that is not a STRING is refused on emit, so `interchangeControlNumber: []`
   and `new String("")` no longer fabricate ISA-13 as `000000000`**
   (`X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED`). Reproduced on the base tree at `a226595`. The
@@ -1098,26 +1154,12 @@ required control number and this builder never invents one, so nothing is emitte
   because the check keys on a trailing `?`. With `?` as the separator that trailing byte is an empty
   element and not an unpaired escape, so `PER?IC?NAME?TE?5551234?` is silent now.
 
-  **🛑 The guard is per ROLE, and the two roles left alone are a measurement rather than an
-  oversight.** A `?` REPETITION or COMPONENT separator still does not split. `escapeRelease` writes
-  `??` for a literal `?` whatever role `?` was declared in, so
-  `buildInterchange({ componentSeparator: "?" })` emits `CLM*PATIENT??ACCT*150.00` today and
-  `getSegmentValue(clm, "01")` reads `"PATIENT?ACCT"` back out of it. A literal split of those two
-  roles would re-frame that as two empty components, trading a separator that never splits for a
-  value this library itself emitted and could no longer read back. Deciding them means deciding the
-  emit side with them, and that is its own change.
-
-  **🩺 So do NOT declare `?` as the element separator on the emit side.** `buildInterchange` protects
-  a value by prefixing `?` to the byte that needs protecting, so when `?` IS the element separator the
-  protecting byte is itself a separator, and **no value containing any active delimiter or a literal
-  `?` survives the round trip** - composites included, silently, with **no value-level workaround.**
-  That is stated as a property rather than as a list of trigger bytes on purpose: two successive
-  drafts named one trigger each and the gate falsified both by producing one more. What it costs is
-  not always a truncation: a `HI-01` of `ABK:J45.50` is written `HI?ABK?:J45.50` and reads back as
-  `HI-01 "ABK"` with the diagnosis code stranded in a phantom `HI-02`. Through `0.0.15` every one of
-  these read as a single `(non-spec)` element and every dot-path answered `undefined`, so **a
-  detectable absence became a confident wrong value.** All THREE roles therefore belong to the
-  emit-side change, and none of them is closed here.
+  **🛑 The guard is per ROLE, and it is a READ-side guard.** A `?` REPETITION or COMPONENT separator
+  still does not split. `escapeRelease` writes `??` for a literal `?` whatever role `?` was declared
+  in, so documents this library emitted through `0.0.15` carry `CLM*PATIENT??ACCT*150.00` and
+  `getSegmentValue(clm, "01")` reads `"PATIENT?ACCT"` back out of them. A literal split of those two
+  roles would re-frame that as two empty components, so it would stop reading a value this library
+  itself wrote. **That reason survives the emit-side entry below: those documents exist.**
 
   **🩺 What else it does not close, pinned rather than left to be rediscovered.** On a degenerate set
   a `?~` still swallows the segment terminator: `findUnescapedTerminator` guards its own role only,

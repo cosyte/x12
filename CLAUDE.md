@@ -108,19 +108,37 @@ or financial value on the wire.**
   element, id `(non-spec)`, **while the ENVELOPE framed correctly and every count reconciled -
   `warnings: []`, and readers dispatch on `seg.id`, so a clean document gave an EMPTY claim list.**
   THREE SITES NOW; KEEP THEM IN STEP.
-- **🛑 PER ROLE; DO NOT HOIST IT INTO `splitWithRelease`.** `componentSeparator:"?"` ROUND-TRIPS
-  TODAY; splitting it breaks a value WE EMITTED (`#99`'s pass-1 major, inverted). **ALL THREE ROLES
-  NEED THE EMIT SIDE, THE ONE FIXED HERE INCLUDED.**
-- **🩺 NEVER DECLARE `?` AS THE ELEMENT SEPARATOR ON EMIT. STATE THE PROPERTY, NEVER A TRIGGER BYTE -
-  TWO DRAFTS NAMED ONE AND THE GATE PRODUCED ONE MORE EACH TIME:** `esc` PREFIXES `?` to the byte it
-  protects, which IS the separator, so **NO value holding ANY active delimiter or `?` round-trips,
-  composites included, `warnings: []`, NO value-level workaround.** Base read `undefined` on all of
-  them, so **AN ABSENCE BECAME A CONFIDENT WRONG VALUE - AND NOT ALWAYS A TRUNCATION**
-  (`HI?ABK?:J45.50` strands the code in a phantom `HI-02`). **CORRECTED AS A CLAIM, NOT GUARDED.**
+- **🛑 PER ROLE, ON READ; DO NOT HOIST IT INTO `splitWithRelease`.** Splitting the other two breaks a
+  value WE EMITTED at `0.0.15` (`#99`'s pass-1 major, inverted), and **THAT REASON SURVIVES THE EMIT
+  REFUSAL - THOSE DOCUMENTS EXIST.** The emit half is the trap below; **STATE THE PROPERTY, NEVER A
+  TRIGGER BYTE - TWO DRAFTS NAMED ONE AND THE GATE PRODUCED ONE MORE EACH TIME.**
 - **⚖️ CHANGES PUBLISHED DECODING, ON CONSISTENCY, NOT SPEC - NEVER RESTATE `#96`'s SYMMETRY: A
   `(non-spec)` BLOB IS NOT A SECOND READING.** No code minted; ONE subtracted. **`PRE-EXISTING`,
   OPEN: `?~` still swallows the TERMINATOR. FRAMING UNTOUCHED - BUT THE MERGED BLOB'S READ MOVED
   (`~SE` lands in `PER-06`), SO NEVER SAY "NOTHING MOVED".**
+
+### 🩺 `X12-EMIT-DEGENERATE-RELEASE-DELIMITER` (2026-08-09) · `agent-notes/x12-emit-degenerate-release-delimiter.md`
+
+- **🩺 A DELIMITER SET WITH `?` IN ANY ROLE IS REFUSED ON EMIT, EVERY BUILDER, INSIDE
+  `makeCallerEscaper`. FOUR ROLES, NOT THREE - THE SEGMENT TERMINATOR DOES IT TOO** (a released byte
+  ends the segment early; a phantom segment follows, uncounted by SE-01).
+- **🩺 TWO MECHANISMS, AND THE SECOND HAS NO CALLER VALUE AT ALL: THE LIBRARY'S OWN JOIN.** `esc`
+  PREFIXES `?`, so the protection is emitted as structure; and a composite/repetition is JOINED with
+  the separator declared, so on `?` the join is emitted as an escape. `build837P` on
+  `componentSeparator:"?"` fused **`SV1-01-2` (procedure) and `HI-01-2` (diagnosis) ON EVERY
+  DOCUMENT, no trigger byte, `warnings: []`.** **NEVER WRITE THEM AS ONE DEFECT** - a value-level
+  guard cannot reach the second, which is why _"keep `?` out of your values"_ protected nobody.
+- **⚖️ REFUSE NOT WARN, THE SET NOT THE VALUES, ON CONSISTENCY NOT SPEC; NO CODE MINTED** - each
+  builder's own `refuseSpec`. **IT REFUSES SPECS THAT BUILT AT `0.0.15`, ONE OF WHICH ROUND-TRIPPED
+  THROUGH OUR OWN PARSER - THAT WAS NEVER THE BAR** (ISA-11/16 transmit the set, so a conformant
+  receiver splits on it; checking a claim against our own implementation is not a check).
+- **🛑 EVERY EARLIER GUARD KEEPS PRECEDENCE (999 AK9, TA1 `enforceAcceptIsClean`); ONE REPORT MOVED
+  AND IT IS A MESSAGE, NOT A CODE** (`buildInterchange` + degenerate + empty ISA-13).
+- **🛑 THE READ SIDE AND `serializeX12` ARE UNTOUCHED, DELIBERATELY. PIN A READ-SIDE CASE FROM BYTES,
+  NEVER THROUGH A BUILDER** - it asserts the refusal instead of the read. **PUBLISH NO CENSUS OF WHAT
+  A DEGENERATE SET DOES: the two mechanisms are the claim, and a third route through either is
+  expected.** The source gate proves the chokepoint, NOT the behaviour: all ten builders have their
+  own case, and deleting the one call reds 16 tests across 8 files.
 
 ### 🩺 `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-interchange-gs-escape.md`
 
@@ -376,26 +394,12 @@ or financial value on the wire.**
   scan counting TOP-LEVEL ARGS, never a `, sink)` regex. **A green suite proved nothing: no fixture
   holds an unparseable decimal and a round trip CANNOT make one.**
 
-### 🩺 `X12-SVC-ELEMENT-MAP-OFF-BY-ONE` (2026-08-04) · `documentation/agent-notes.md#x12-svc-element-map-off-by-one-2026-08-04`
+### 🩺 `X12-SVC-ELEMENT-MAP-OFF-BY-ONE` (2026-08-04) · `agent-notes/x12-svc-element-map-off-by-one.md`
 
-- **🩺 The 835 SVC map is `revenueCode` -> SVC-04 (element 234, the NUBC revenue code, a **string**),
-  `paidUnitsOfService` -> SVC-05 (element 380, Units of Service **PAID** Count) and
-  `originalUnitsOfService` -> SVC-07 (element 380, **ORIGINAL** Units of Service Count). Never move
-  them back.**
-- **Never fix a mis-read position while leaving its sibling element unread** - that turns a mis-read
-  into a **fresh silent drop**. **Retention is non-decreasing, on purpose.**
-- **🩺 A round trip cannot test an element map; only bytes can** - it is green for ANY pair of
-  positions the two modules agree on. `test/transactions-remit-835-svc-element-map.test.ts` pins the
-  map literally. **Never weaken those to round trips.**
-- **🩺 Checking a spec claim against this repo's own implementation is NOT a check** - it only proves
-  the two agree, which is exactly how the wrong map survived. Ground an element number OUTSIDE the
-  repo (sources in `KNOWN-LIMITATIONS.md`). **TR3 005010X221A1 is paid for and nobody here has read
-  it.**
-- **Never default an absent SVC-05 to one.** X221A1 is _reported_ to assume one, secondhand and from
-  no clause anyone here read. Fabricating a count is inventing.
-- **`undefined` still means "not decoded", not "absent"** - the next trap says what tells them apart.
-- **🩺 835s this library emitted at `0.0.9` or earlier are non-conformant and should be re-emitted**
-  (the mechanism: relocated narrative §8).
+**RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED** - it paid for the trap at the top of this
+list. **🩺 Open it before you touch the 835 `SVC` map, `paidUnitsOfService` or
+`originalUnitsOfService`: a round trip cannot test an element map and only bytes can, and checking a
+spec claim against this repo's own implementation is NOT a check.**
 
 ### 🩺 `X12-DECIMAL-BYPASSES-THE-GUARD` (2026-08-04) · `documentation/agent-notes.md#x12-decimal-bypasses-the-guard-2026-08-04`
 
