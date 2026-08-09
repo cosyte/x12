@@ -13,10 +13,10 @@
  * that assemble an ISA:
  *
  * ```text
- * interchangeControlNumber: []                 ISA-13 = 000000000   warnings: []
- * interchangeControlNumber: new String("")     ISA-13 = 000000000   warnings: []
- * interchangeControlNumber: new String("ABC")  ISA-13 = 000000ABC   warnings: []
- * interchangeControlNumber: new String(" ")    ISA-13 = 00000000    warnings: []
+ * interchangeControlNumber: []                 ISA-13 = "000000000"   warnings: []
+ * interchangeControlNumber: new String("")     ISA-13 = "000000000"   warnings: []
+ * interchangeControlNumber: new String("ABC")  ISA-13 = "000000ABC"   warnings: []
+ * interchangeControlNumber: new String(" ")    ISA-13 = "00000000 "   warnings: []
  * ```
  *
  * The first two are the **same fabricated `000000000`**, reached through a

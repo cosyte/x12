@@ -29,9 +29,13 @@ slot.
 > all three true at base and **all three made false by this guard**, in the file every session in this
 > repo loads first. The parenthetical was the sharpest, because it exists to correct an
 > already-refuted draft and so reads as hard-won. **All three clauses are DELETED**, which is the same
-> "touched only to delete claims" operation and is not the deferred trap. **The lesson generalises: a
-> revert to base re-publishes every claim the base made, and a slice that falsifies one of them owns
-> the deletion.**
+> "touched only to delete claims" operation and is not the deferred trap. **Two adjacent fragments
+> went with them, because both were grammatical riders on a deleted claim rather than sentences of
+> their own:** *"BYTE-STRICT `=== ""`"*, which was true of the empty arm but reads as *"there is no
+> type check"* once the type half exists, and the imperative **`DO NOT RESTATE WHAT EACH ROUTE DOES`**,
+> which is **not** false and is restated in `caller-control-number.ts` and twice in this file. **The
+> lesson generalises: a revert to base re-publishes every claim the base made, and a slice that
+> falsifies one of them owns the deletion.**
 >
 > **The sweep, and how the carrier list was derived.** The disputed sentence was *"only the
 > segment-join guard names the SLOT; `esc`/`escDec` name only the builder"* - true at base, falsified
