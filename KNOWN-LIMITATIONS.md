@@ -65,13 +65,12 @@ model.
     code was minted and no warning code moved: every refusal is the same class and code the builder
     already raised. But `interchangeControlNumber: undefined` and `null` threw a bare `TypeError`
     with no `code` at `0.0.15` and now throw the builder's typed error, so **a consumer catching
-    `TypeError` there no longer catches**. An array-like whose `.length` disagrees with the length
-    of its string form (`[""]`, `["12345"]`, `{ length: 0 }`) used to build a malformed fixed-width
-    ISA that the builder's own re-parse rejected with `X12_INVALID_DELIMITERS`, a _parse_ error
-    naming delimiters for a caller mistake in one named field, so **a predicate on
-    `X12_INVALID_DELIMITERS` stops firing for that input**; it now refuses before anything is
-    written. Where the two agree the ISA was well-formed and the value was fabricated instead, which
-    is the case at the top of this entry. A `number`, a plain object or a boolean was told it "exceeds the 9-char spec limit",
+    `TypeError` there no longer catches**. Several shapes measured at `0.0.15` - `[""]`, `["12345"]`, `["1","2"]`, `["000000001"]` and `{ length: 0 }` among those probed -
+    made the builder write a malformed fixed-width ISA that its own re-parse rejected with
+    `X12_INVALID_DELIMITERS`, a _parse_ error naming delimiters for a caller mistake in one named
+    field, so **a predicate on `X12_INVALID_DELIMITERS` stops firing for them**; they now refuse
+    before anything is written. **Those are measured members and not a rule, and no count of them is
+    published** - `[]` reached neither and is the case at the top of this entry. A `number`, a plain object or a boolean was told it "exceeds the 9-char spec limit",
     which was false; same code, corrected sentence. And **the MESSAGE moved at the control-number
     slots that already refused a non-string** - GS-06 / GE-02, ST-02 / SE-02, AK1-02, AK2-02 and
     TA1-01 now refuse from this guard one step earlier, with a message naming the slot and the spec
@@ -1250,9 +1249,10 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   **Two things that sentence does NOT say, both deliberate.** The array guard still reports the
   `length` and the class tag of a forged array-like, bounded through the same renderer: those describe
   the SHAPE you forged rather than the contents of a document element, and they are the whole
-  diagnostic for `{ length: "9".repeat(120000) }`. And only the segment-join guard names the SLOT
-  alongside the type (`build999: "AK9"-01 must be a string, ...`), because it holds the whole segment;
-  the escape-helper and `X12Decimal` guards name the **builder**, so on those two the value used to
+  diagnostic for `{ length: "9".repeat(120000) }`. And which guard names the SLOT alongside the type is
+  not uniform: the segment-join guard derives one from the segment it holds
+  (`build999: "AK9"-01 must be a string, ...`) and the control-number guard is handed one, while the
+  escape-helper and `X12Decimal` guards name only the **builder**, so on those two the value used to
   stand in for a locator and now nothing does. That is a real diagnostic cost, and it is written down
   rather than hidden.
 

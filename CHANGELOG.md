@@ -761,9 +761,11 @@ required control number and this builder never invents one, so nothing is emitte
   **Two things that property does NOT say, and both were drafted as absolutes first.** The array
   guard still renders a forged array-like's `length` and its class tag through `renderCallerValue`,
   bounded: those describe the SHAPE a caller forged rather than an element's contents, and they are
-  the whole diagnostic for `{ length: "9".repeat(120000) }`. And **only the segment-join guard names
-  the SLOT** - `esc` and `escDec` name the BUILDER, a limit `caller-string.ts` already recorded, so on
-  those two the echoed value used to stand in for a locator and now nothing does. That is a real
+  the whole diagnostic for `{ length: "9".repeat(120000) }`. And **which guard names the SLOT is not
+  uniform** - the segment-join guard does, and so does the control-number guard as of
+  `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED`, while `esc` and `escDec` name the BUILDER, a limit
+  `caller-string.ts` already recorded, so on those two the echoed value used to stand in for a
+  locator and now nothing does. That is a real
   diagnostic cost and it is disclosed rather than argued away.
 
   **The segment guard's slot locator is now bounded by GRAMMAR rather than by length.** `parts[0]` is
@@ -1053,13 +1055,13 @@ required control number and this builder never invents one, so nothing is emitte
   - **🛑 No error code is minted and no warning code moves, and each refusal is the builder's own
     typed error - but SEVERAL DIAGNOSTICS DO MOVE, and one of them moves off a JavaScript builtin.**
     `undefined` and `null` threw a bare `TypeError` with no `code` and now throw the builder's typed,
-    code-tagged refusal, so **a consumer catching `TypeError` there no longer catches**. An
-    array-like whose `.length` disagrees with the length of its string form (`[""]`, `["12345"]`,
-    `{ length: 0 }`) used to produce a malformed fixed-width ISA that the builder's own re-parse
-    rejected as `X12_INVALID_DELIMITERS` - a parse error naming delimiters, for a caller mistake in
-    one named spec field - so **a predicate on `X12_INVALID_DELIMITERS` stops firing for that
-    input**. It now refuses before anything is written. Where the two agree the ISA was well-formed
-    and the value was fabricated instead, which is the headline case above. A `number`, a plain
+    code-tagged refusal, so **a consumer catching `TypeError` there no longer catches**. Several
+    shapes measured at base - `[""]`, `["12345"]`, `["1","2"]`, `["000000001"]` and `{ length: 0 }` among those
+    probed - made the builder write a malformed fixed-width ISA that its own re-parse rejected as
+    `X12_INVALID_DELIMITERS`, a parse error naming delimiters for a caller mistake in one named spec
+    field, so **a predicate on `X12_INVALID_DELIMITERS` stops firing for them**. They now refuse
+    before anything is written. **Those are measured members and not a rule, and no count of them is
+    published** - `[]` reached neither and is the fabricating case above. A `number`, a plain
     object or a boolean was told it "exceeds the 9-char spec limit", which was false about a
     one-digit number; the code is unchanged and the sentence is corrected.
   - **🛑 The MESSAGE moved at the control-number slots that already refused a non-string, so

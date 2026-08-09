@@ -32,9 +32,11 @@ escaper and the segment guard. The test went into the guard both routes already 
 🛑 No error code is minted and no warning code moves, and each refusal is the builder's own typed
 error. But several diagnostics DO move, and one moves off a JavaScript builtin: `undefined` and
 `null` threw a bare `TypeError` with no `code` and now throw the builder's typed refusal, so a
-consumer catching `TypeError` there no longer catches. An array-like used to build a malformed ISA
-that the builder's own re-parse rejected as `X12_INVALID_DELIMITERS`, a parse error naming delimiters
-for a caller mistake in one named spec field. A number, a plain object or a boolean was told it
+consumer catching `TypeError` there no longer catches. Several shapes measured at base - `[""]`, `["12345"]`, `["1","2"]`, `["000000001"]` and `{ length: 0 }` among those probed - made the
+builder write a malformed fixed-width ISA that its own re-parse rejected as
+`X12_INVALID_DELIMITERS`, a parse error naming delimiters for a caller mistake in one named spec
+field, so a predicate on that code stops firing for them. Those are measured members and not a rule,
+and no count of them is published: `[]` reached neither and is the fabricating case above. A number, a plain object or a boolean was told it
 "exceeds the 9-char spec limit", which was false; same code, corrected sentence.
 
 🛑 The MESSAGE moved at the control-number slots that already refused a non-string, so "nothing else

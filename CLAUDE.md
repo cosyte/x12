@@ -82,12 +82,13 @@ or financial value on the wire.**
 - **🛑 NINE SLOTS, NOT THIRTY; THE SPLIT IS BY ROUTE.** The `esc` slots were ALREADY type-checked
   (`makeCallerEscaper`); only ISA-13 / IEA-02 was exposed - the ISA is fixed-width, joined DIRECTLY,
   outside the escaper AND `requireCallerSegment`. **NEVER RESTATE `#101`'s 30 AS THIS CLASS.**
-- **🛑 NO CODE MINTED - BUT FOUR DIAGNOSTICS MOVED, ONE OFF A JS BUILTIN. NEVER WRITE "NOTHING ELSE
+- **🛑 NO CODE MINTED - BUT DIAGNOSTICS MOVED, ONE OFF A JS BUILTIN. NEVER WRITE "NOTHING ELSE
   CHANGED".** `undefined`/`null` left a BARE `TypeError` (no `code`), so a `catch` narrowing on
-  `TypeError` STOPS catching; an array-like left `X12_INVALID_DELIMITERS` (the builder's OWN re-parse
-  of the malformed ISA it wrote); `0`/`{}`/`true` stop being told they "exceed the 9-char spec
-  limit", same code; and **THE MESSAGE MOVED AT EVERY CONTROL-NUMBER SLOT THAT ALREADY REFUSED** - it
-  names the SLOT now. **STATE THAT, NEVER WHAT THE OLD ONE SAID: THE GUARDS THERE ARE NOT UNIFORM**
+  `TypeError` STOPS catching; ENUMERATED SHAPES left `X12_INVALID_DELIMITERS` (the builder's OWN
+  re-parse of a malformed ISA) - **NEVER GENERALISE THAT TO "AN ARRAY-LIKE" AND NEVER COUNT THEM: TWO
+  DRAFTS GENERALISED, ONE THEN COUNTED, AND `[]` REACHED NEITHER ROUTE**; `0`/`{}`/`true` stop being
+  told they "exceed the 9-char spec limit", same code; and **THE MESSAGE MOVED AT EVERY
+  CONTROL-NUMBER SLOT THAT ALREADY REFUSED** - it names the SLOT now. **STATE THAT, NEVER WHAT THE OLD ONE SAID: THE GUARDS THERE ARE NOT UNIFORM**
   (`requireCallerSegment` beat `esc` to `buildInterchange`'s GS-06 and ALREADY named it; a draft said
   otherwise and pass 1 refuted it). Three suites reddened; the escaper's wording is kept pinned on a
   NON-control element.

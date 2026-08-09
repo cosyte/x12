@@ -249,13 +249,15 @@ instead. `build999` with an empty `interchangeControlNumber` and six AK9 syntax 
 (`X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED`). Byte-strict means a value that is not a string is not
 `""`, so at `0.0.15` `interchangeControlNumber: []` and `new String("")` still emitted ISA-13 as
 `000000000`, and `new String("ABC")` was silently coerced to `000000ABC` - the fabrication above,
-reached through a different input type. **🛑 Three things to re-read if you catch or match on builder
+reached through a different input type. **🛑 Two things to re-read if you catch or match on builder
 errors, and one of them is an `err.code` move.** At **ISA-13 / IEA-02 only**, some wrong-typed values
 did not reach a builder refusal at `0.0.15` at all, and they do now: `undefined` and `null` threw a
-bare `TypeError` with no `code`, so a `catch` narrowing on `TypeError` no longer sees them; and an
-array-like made the builder write a malformed fixed-width ISA that its own re-parse rejected as
-`X12ParseError` / `X12_INVALID_DELIMITERS`, so **a predicate on `X12_INVALID_DELIMITERS` stops firing
-for that input** and the builder's own `*_INVALID_SPEC` fires instead. At the control-number slots
+bare `TypeError` with no `code`, so a `catch` narrowing on `TypeError` no longer sees them; and
+several shapes measured at `0.0.15` - `[""]`, `["12345"]`, `["1","2"]`, `["000000001"]` and `{ length: 0 }`
+among those probed - reached `X12ParseError` / `X12_INVALID_DELIMITERS` instead, so **a predicate on
+`X12_INVALID_DELIMITERS` stops firing for them**. **Those are measured members and not a rule, and no
+count of them is published**: `[]` reached neither and is the fabricating case above. If you branch
+on `X12_INVALID_DELIMITERS` around a builder call, re-read that branch. At the control-number slots
 that already refused a non-string, the class and the code are unchanged and only the **message**
 moved: it now names the slot and the spec property (`build837: groupControlNumber must be a string,
 but received an array. GS-06 / GE-02 is a required control number ...`). **If you match on message

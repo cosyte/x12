@@ -21,12 +21,12 @@ Probed every one of `#101`'s thirty routed slots against fourteen non-string sha
 added after the first sweep to reach the length-9 boundary. The result is uniform across builders and
 splits cleanly by **route**, not by builder:
 
-| route                             | slots | base behaviour on a non-string                 |
-| --------------------------------- | ----- | ---------------------------------------------- |
-| ISA-13 / IEA-02, via `padControl` | 9     | **EXPOSED**, four shapes emitted a document    |
-| GS-06 / GE-02, ST-02 / SE-02      | 18    | already refused, typed, the builder's own code |
-| `AK1-02`, `AK2-02`                | 2     | already refused, typed                         |
-| `TA1-01`                          | 1     | already refused, typed                         |
+| route                             | slots | base behaviour on a non-string                   |
+| --------------------------------- | ----- | ------------------------------------------------ |
+| ISA-13 / IEA-02, via `padControl` | 9     | **EXPOSED**, the shapes below emitted a document |
+| GS-06 / GE-02, ST-02 / SE-02      | 18    | already refused, typed, the builder's own code   |
+| `AK1-02`, `AK2-02`                | 2     | already refused, typed                           |
+| `TA1-01`                          | 1     | already refused, typed                           |
 
 **The class is nine, not thirty.** Every non-string probed at the other 21 was already refused at
 base, with that builder's own typed error. **Do not compress WHICH guard did it** - `makeCallerEscaper`
@@ -38,16 +38,16 @@ the ISA is fixed-width and joined directly, so it is outside both.
 
 Measured through `buildInterchange` and identical in all nine:
 
-| input                                                    | base                                                        | why                                                                                                                                               |
-| -------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `[]`                                                     | ISA-13 `000000000`, `warnings: []`                          | `.length === 0`, pad branch, concatenates to `""`                                                                                                 |
-| `new String("")`                                         | ISA-13 `000000000`, `warnings: []`                          | same                                                                                                                                              |
-| `new String("ABC")`                                      | ISA-13 `000000ABC`, `warnings: []`                          | `.length === 3`, pad branch, coerced                                                                                                              |
-| `new String(" ")`                                        | ISA-13 `00000000 `, `warnings: []`                          | same                                                                                                                                              |
-| `[""]`, `["12345"]`, `["1","2"]`, `{length:0}`           | `X12ParseError` / `X12_INVALID_DELIMITERS`                  | a malformed fixed-width ISA the builder's OWN re-parse rejected: `.length` drove the padding, the string form drove the bytes, and they disagreed |
-| `0`, `{}`, `true`, `Object.create(null)`                 | `X12_BUILD_INVALID_SPEC`, _"exceeds the 9-char spec limit"_ | no `.length`, both comparisons false, fell to the over-long branch                                                                                |
-| `undefined`, `null`                                      | bare `TypeError`, no `code`                                 | `.length` read off nothing                                                                                                                        |
-| `new String("000000001")`, `{length:9}`, 9-element array | `X12_BUILD_INVALID_SPEC` naming `"IEA"-02`                  | `padControl` returned the object unchanged; `requireCallerSegment` caught it at the IEA                                                           |
+| input                                                           | base                                                        | why                                                                                     |
+| --------------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `[]`                                                            | ISA-13 `000000000`, `warnings: []`                          | `.length === 0`, pad branch, concatenates to `""`                                       |
+| `new String("")`                                                | ISA-13 `000000000`, `warnings: []`                          | same                                                                                    |
+| `new String("ABC")`                                             | ISA-13 `000000ABC`, `warnings: []`                          | `.length === 3`, pad branch, coerced                                                    |
+| `new String(" ")`                                               | ISA-13 `00000000 `, `warnings: []`                          | same                                                                                    |
+| `[""]`, `["12345"]`, `["1","2"]`, `["000000001"]`, `{length:0}` | `X12ParseError` / `X12_INVALID_DELIMITERS`                  | a malformed fixed-width ISA the builder's OWN re-parse rejected                         |
+| `0`, `{}`, `true`, `Object.create(null)`                        | `X12_BUILD_INVALID_SPEC`, _"exceeds the 9-char spec limit"_ | no `.length`, both comparisons false, fell to the over-long branch                      |
+| `undefined`, `null`                                             | bare `TypeError`, no `code`                                 | `.length` read off nothing                                                              |
+| `new String("000000001")`, `{length:9}`, 9-element array        | `X12_BUILD_INVALID_SPEC` naming `"IEA"-02`                  | `padControl` returned the object unchanged; `requireCallerSegment` caught it at the IEA |
 
 **Two of those rows fabricate, two coerce, and the rest fail loudly with a misdirected diagnostic.**
 Only the first four are safety findings; the rest are why the fix improves more than it fixes.
@@ -100,9 +100,14 @@ builder already raised, through its own `refuseSpec` - the same call `#101` made
 1. **`undefined` / `null` left a JavaScript builtin.** Bare `TypeError` with no `code` at base; the
    builder's typed refusal now. **A consumer catching `TypeError` at that slot stops catching.** This
    is the sharpest move in the slice and the only one that crosses an error _family_.
-2. **Array-likes left `X12_INVALID_DELIMITERS`.** At base the builder wrote a malformed fixed-width
-   ISA and its own `parseX12` of those bytes rejected them - a _parse_ error, naming delimiters, for
-   a caller mistake in one named spec field. Nothing is written now.
+2. **The ENUMERATED shapes in the table above left `X12_INVALID_DELIMITERS`**, and nothing wider. At
+   base the builder wrote a malformed fixed-width ISA and its own `parseX12` of those bytes rejected
+   them: a _parse_ error, naming delimiters, for a caller mistake in one named spec field. Nothing is
+   written now. 🛑 **NEVER GENERALISE THIS TO "AN ARRAY-LIKE", AND NEVER PUBLISH A COUNT OF THE
+   SHAPES.** Two drafts generalised it and one then counted them, and each was refuted on the same
+   sentence: `[]` did not reach this route at all and is the FABRICATING case; `{length:9}` and a
+   9-element array reached a different refusal again, naming `"IEA"-02`; and the probe set was never
+   exhaustive to begin with. The table is the claim; there is no rule and no total.
 3. **`0` / `{}` / `true` stop being told they are too long.** Same code, corrected sentence.
 4. **The MESSAGE moved at the control-number slots that already refused a non-string.** GS-06 /
    GE-02, ST-02 / SE-02, AK1-02, AK2-02 and TA1-01 now refuse from this guard one step earlier, with
@@ -134,10 +139,14 @@ that one turns on a _later_ body-assembly defect, and the count reconciliation i
 
 Thirty slots, one red case each: the nine ISA-13 / IEA-02 ones plus the fourteen domain GS-06 / ST-02
 ones live in the seven domain build suites and in `test/builder-control-number-type.test.ts`; TA1-01
-is in `test/transactions-ack-ta1-escape.test.ts`. Reverting the type test alone reddens every one of
-them and the boundary pins beside them, and **nothing else in the suite** - which is the half that
-carries. **No red/green total is published here.** A first draft published one and it was stale
-before the slice landed, which is this repo's standing rule: re-derive it by deleting the `typeof`
-block and RUNNING the suite, never by arithmetic and never from a figure in prose. **The claim is the
-property - a control number routed through `requireControlNumber` is refused unless it is a non-empty
-string - and no census of what is NOT routed is published anywhere.**
+is in `test/transactions-ack-ta1-escape.test.ts`.
+
+**No red/green total is published here, and no list of the files that go red either.** Both were
+published once and both were wrong within the same slice, the total twice. The rule this repo already
+carries applies: **re-derive the red set by deleting the `typeof` block and RUNNING the suite, never
+by arithmetic and never from a figure in prose.** The re-pinned assertions in
+`test/builder-string-type.test.ts` and `test/builder-segment-type.test.ts` are part of that set,
+which is exactly what a hand-kept list kept missing.
+
+**The claim is the property - a control number routed through `requireControlNumber` is refused
+unless it is a non-empty string - and no census of what is NOT routed is published anywhere.**

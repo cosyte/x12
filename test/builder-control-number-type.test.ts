@@ -209,10 +209,11 @@ describe("X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED: the ISA-13 slots that fabri
 });
 
 // ---------------------------------------------------------------------------
-// The four shapes that BUILT at base. Two fabricated, two coerced.
+// The shapes that BUILT at base, among those probed. Two fabricated, two coerced.
+// No count is asserted anywhere: the probe set was never exhaustive.
 // ---------------------------------------------------------------------------
 
-describe("X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED: the four shapes that used to build", () => {
+describe("X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED: shapes that used to build", () => {
   const shapes: ReadonlyArray<readonly [string, unknown, string]> = [
     ["an empty array", [], "an array"],
     ["a boxed empty string", BOXED_EMPTY, "an object"],
