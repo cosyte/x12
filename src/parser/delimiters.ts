@@ -59,6 +59,41 @@ export const DELIMITER_POSITIONS = {
 } as const;
 
 /**
+ * Whether ONE character is admissible in a delimiter position: not an ASCII
+ * control character, not DEL, not whitespace by the Unicode property.
+ *
+ * **This is the package's delimiter-character predicate and it now has two
+ * callers, deliberately.** {@link detectDelimiters} applies it to the four
+ * bytes it reads out of an ISA and raises the Tier-3 fatal
+ * `X12_INVALID_DELIMITERS` when one fails;
+ * {@link "../builder/caller-string.js".makeCallerEscaper} applies the same
+ * predicate to the set a CALLER declares and refuses the build. The read side
+ * is unchanged by the sharing - the function was a closure inside
+ * `detectDelimiters` and is the same expression - and the point of hoisting it
+ * is that the emit refusal and the read fatal cannot drift apart into two
+ * different ideas of what a delimiter is. If this predicate is ever loosened or
+ * tightened, both directions move together, which is the only reason the emit
+ * guard may describe itself in terms of what this library's own reader accepts.
+ *
+ * **It says nothing about LENGTH or DISTINCTNESS** - it takes one character
+ * because on the read side `charAt` has already supplied one. Each caller
+ * establishes those two properties itself, and on emit both of them are real
+ * work rather than a precondition.
+ *
+ * @param c exactly one UTF-16 code unit
+ *
+ * @internal
+ */
+export function isVisibleDelimiterChar(c: string): boolean {
+  const code = c.charCodeAt(0);
+  // Reject ASCII control chars (0x00–0x1F) and DEL (0x7F).
+  if (code < 0x20 || code === 0x7f) return false;
+  // Reject any whitespace per Unicode property.
+  if (/\s/u.test(c)) return false;
+  return true;
+}
+
+/**
  * Detect the four X12 delimiters from a raw input string by reading fixed
  * byte positions inside the ISA envelope. Validates that:
  *
@@ -119,23 +154,17 @@ export function detectDelimiters(raw: string): Delimiters {
   // position, and not whitespace/control. `noUncheckedIndexedAccess`
   // already narrows charAt() to `string`; the prior `raw.length <
   // ISA_MIN_LENGTH` guard ensures every charAt() above is in bounds and
-  // returns exactly one UTF-16 code unit.
-  const isValidDelimiterChar = (c: string): boolean => {
-    const code = c.charCodeAt(0);
-    // Reject ASCII control chars (0x00–0x1F) and DEL (0x7F).
-    if (code < 0x20 || code === 0x7f) return false;
-    // Reject any whitespace per Unicode property.
-    if (/\s/u.test(c)) return false;
-    return true;
-  };
-
+  // returns exactly one UTF-16 code unit. Hoisted to
+  // `isVisibleDelimiterChar` above so the emit guard applies the same
+  // expression to the set a caller declares; the expression itself is
+  // unchanged and this stage behaves exactly as it did.
   for (const [name, ch] of [
     ["element", element],
     ["repetition", repetition],
     ["component", component],
     ["segment", segment],
   ] as const) {
-    if (!isValidDelimiterChar(ch)) {
+    if (!isVisibleDelimiterChar(ch)) {
       throw new X12ParseError(
         FATAL_CODES.X12_INVALID_DELIMITERS,
         `Delimiter "${name}" at ISA byte ${String(DELIMITER_POSITIONS[name] + 1)} is whitespace, control, or empty.`,

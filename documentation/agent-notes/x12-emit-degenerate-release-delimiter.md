@@ -116,7 +116,8 @@ reason that nothing ever split.
 `delimiters[role] === RELEASE_CHAR`. That is a property of the VALUE A CALLER DECLARES and **not** a
 guarantee about what this library can compose - two drafts said the latter (_"no NEW document of that
 shape is composed here"_, _"what you cannot do is have this library compose a document against one"_)
-and the gate falsified both with one line:
+and the gate falsified both with one line. **⚠️ Everything in the fence below is BASE `a21f8ea`
+behaviour and no longer reproduces - see the superseding note under it:**
 
 ```text
 buildInterchange({ segmentTerminator: "??" })  -> BUILDS
@@ -132,18 +133,21 @@ build837P({ envelope: { segmentTerminator: "??" } }) -> BUILDS; SE-01 declares 2
   framed segments, 21 of them phantoms, warnings: []
 ```
 
-Nothing in any builder checks that a delimiter is a single byte, and the ISA line writes the declared
-string straight in, so the transmitted set is degenerate by another route. **Identical at base, so
-the BEHAVIOUR is `PRE-EXISTING` and the guard must NOT be grown to reach it** - a delimiter-length
-rule is a decision nobody here has made, and growing a guard to make an overclaim true is the runaway
-ADR 0016 exists to stop. What was wrong is the sentence, and the sentence is what changed. It is
-disclosed in `KNOWN-LIMITATIONS.md`, `docs-content/spec-notes-envelope.md` and both source modules,
-and pinned as an honest control in `test/builder-degenerate-release-delimiter.test.ts`.
+Nothing in any builder checked that a delimiter was a single byte, and the ISA line wrote the
+declared string straight in, so the transmitted set was degenerate by another route. **Identical at
+base, so the BEHAVIOUR was `PRE-EXISTING` and the guard was NOT grown to reach it** - growing a guard
+to make an overclaim true is the runaway ADR 0016 exists to stop. What was wrong was the sentence,
+and the sentence is what changed here.
 
-The wider family this belongs to - **no builder validates the SHAPE of a delimiter at all**, and it
-is not `?`-specific (`segmentTerminator: "~~"` does the identical thing) - is out of this slice's
-scope per ADR 0016 rule 2. **It is OWED an item in `operations/BACKLOG.md` and did not have one when
-this landed**; do not read the classification as evidence that one exists.
+> **⚠️ SUPERSEDED, and the transcript above is BASE behaviour, not head.** The wider family - **no
+> builder validated the SHAPE of a delimiter at all**, and it was not `?`-specific - was filed and
+> then closed by `X12-EMIT-DELIMITER-SHAPE-UNCHECKED`
+> (`agent-notes/x12-emit-delimiter-shape-unchecked.md`). `segmentTerminator: "??"` is refused now,
+> by the LENGTH arm of that separate guard, and the equality test above is still byte-for-byte
+> unchanged - which is the whole point of the two being separate guards rather than one grown one.
+> **The census that slice ran found THREE mechanisms where this note names one**, and one of them
+> (a non-string delimiter, which the join coerces and the escape does not) is unreachable by any
+> length rule. Read the transcript in this section as the measurement it was: base `a21f8ea`.
 
 ## 🛑 What is deliberately NOT changed
 

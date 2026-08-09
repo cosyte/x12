@@ -196,13 +196,11 @@ export function escapeRelease(value: string, delimiters: Delimiters): string {
  *
  * **The emit side is decided and it did not change this function.** A builder
  * now REFUSES a delimiter set in which a role IS `?`
- * (`src/builder/caller-string.ts`). **Read that as a property of the SET a
- * caller declares and never as a guarantee about the documents this library can
- * compose** - the guard is an equality test on the declared value, and nothing
- * in any builder checks that a delimiter is one byte, so a `segmentTerminator`
- * of `"??"` still builds and still transmits `?` as the terminator (measured;
- * `PRE-EXISTING`, and widening the guard to reach it is a different slice).
- * Documents of this shape exist either way, and Postel's Law puts them on the
+ * (`src/builder/caller-string.ts`), and refuses one whose roles are not shaped
+ * like delimiters at all. **Read both as properties of the SET a caller
+ * declares and never as a guarantee about the documents this library can
+ * compose.** Documents of this shape exist either way, and Postel's Law puts
+ * them on the
  * lenient half, so read the read-side bound as a property of those documents
  * rather than as a decision still pending.
  *

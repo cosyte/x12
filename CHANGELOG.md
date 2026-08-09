@@ -1021,6 +1021,75 @@ required control number and this builder never invents one, so nothing is emitte
 
 ### Fixed
 
+- **🩺 BREAKING (emit side): a delimiter that is not SHAPED like a delimiter is REFUSED by every
+  builder** (`X12-EMIT-DELIMITER-SHAPE-UNCHECKED`). Each of the four roles must be a **string of
+  exactly one visible character**, and the four must be **mutually distinct**. Reproduced on the base
+  tree at `a21f8ea`.
+
+  **The rule is not invented for emit.** `detectDelimiters` already decides what a delimiter is for
+  this package, and decides it as a Tier-3 fatal: one character at each of four fixed ISA positions, each
+  visible, the four distinct, else `X12_INVALID_DELIMITERS` thrown even in lenient mode. The
+  builders now import that predicate rather than restating it, so the emit refusal and the read fatal
+  cannot drift apart into two ideas of what a delimiter is. **A builder composing a document its own
+  parser refuses to read was disagreeing with itself.** Nothing is trimmed, coerced or substituted:
+  the set is refused. The one-character requirement is structural rather than conventional, because
+  the ISA is fixed-width per ASC X12 .5 and `Delimiters` records exactly one character per role.
+
+  **🛑 It is a UTF-16 code-unit rule and NOT a byte rule, and that difference is a residual it does
+  not close.** A character that is one code unit but several bytes on the wire satisfies it and still
+  displaces every ISA position after it: `componentSeparator: "\u00a7"` builds with `warnings: []`,
+  and a byte-oriented receiver reads ISA-16 as `0xC2` and the terminator as `0xA7`. The smart quote
+  `"\u2019"` that a companion-guide PDF gives you instead of `'` does the same. Disclosed, not
+  guarded: the read side counts code units too, so moving one side alone would put them back out of
+  step.
+
+  **Three mechanisms, and they are not one defect.**
+  - **LENGTH.** `build837P` with `segmentTerminator: "~~"` built with `warnings: []` and put 31
+    segment rows on a transaction whose `SE-01` declares 16, every other row a phantom the caller
+    never wrote. **No claim is published about which roles were silent** - two drafts of this entry
+    stated an asymmetry and both were measured false, the second inside the fix for the first.
+    `buildTA1` with `{ elementSeparator: "||" }` returned `TA1||000000001||260601||1200||A||000`,
+    which inside an ISA reads back with `TA1-01` empty and `ackCode: "R"` - an Accept emitted as a
+    Reject. And `buildInterchange` with `componentSeparator: ":~"` built with `warnings: []` too,
+    reading back through a well-formed ISA while the builder's own terminator became an uncounted
+    empty segment, with no element value escaped against `:`.
+  - **TYPE, where the join coerces and the escape does not.** `Array.prototype.join` coerces a
+    non-string delimiter and the document frames on the coerced byte, but `escapeRelease` compares
+    delimiters with `===`, so no element value is escaped against it. `build837P` with
+    `componentSeparator: 1` emitted `SV1*HC199213`, which reads `SV1-01-2` back as `992` rather than
+    the procedure code `99213`, and `CLM-05`'s place-of-service composite as `111B11`; `build271`
+    with `repetitionSeparator: 1` emitted `EB*1**3011`, and `EB-03`'s two service type codes stopped
+    reading back as two. `warnings: []` on both. 🩺 No unusual caller value is involved, and a
+    length rule cannot reach this at all.
+  - **`buildTA1` had no net.** It is the only builder that does not end in `parseX12`, so
+    `elementSeparator: ""` RETURNED `TA10000000012606011200A000`: the reassociation key, the date,
+    the time, the disposition and the note code in one undelimited blob.
+
+  **⚖️ Refuse rather than warn, and no code is minted.** The tiebreak is consistency with the two
+  guards that shipped before it, not a 005010 clause; a warning would have to travel the READ
+  registry a builder returns, which `#83` was refuted for. Each builder refuses with its own existing
+  typed error. The check runs immediately after the release-character guard, so nothing that guard
+  pinned moves and its equality test is byte for byte unchanged.
+
+  **🛑 What a caller catches MOVES, in both directions.** At base most mis-shaped sets failed as an
+  `X12ParseError` with `X12_INVALID_DELIMITERS` escaping out of the `build*` call, carrying a 64-byte
+  `snippet` of the interchange just composed. They now refuse earlier with that builder's own error
+  and its existing code, **so a consumer catching the parse class around a `build*` call stops
+  catching and one catching the build class starts.**
+
+  **🛑 It refuses shapes that built with `warnings: []`, and no count of them is published** - a
+  draft said "two" and one more turned up the moment a shape the census had not enumerated was tried.
+  **The plausible one is `segmentTerminator: "~\r\n"`.** If you declared that to get line-broken output it never produced
+  any: CR/LF between segments is tolerated on READ, so the model recorded `~` and `serializeX12`
+  emitted no line breaks. Reading a file written that way is unaffected; only declaring it on emit
+  is.
+
+  **🛑 The read side and `serializeX12` are untouched.** `parseX12` accepts everything it accepted
+  before, because documents declaring these sets exist and Postel's Law puts them on the lenient
+  half. A letter or digit is still an admissible delimiter: ASC X12 constrains a delimiter by
+  position, not by character class, and a delimiter that collides with the DATA is a different
+  family that this does not close.
+
 - **🩺 BREAKING (emit side): a delimiter set in which the release character `?` is also a delimiter
   is REFUSED by every builder, in all FOUR roles** (`X12-EMIT-DEGENERATE-RELEASE-DELIMITER`).
   Reproduced on the base tree at `51de7b2`.
@@ -1075,11 +1144,8 @@ required control number and this builder never invents one, so nothing is emitte
   refuter measured that false, so the ordering is stated and the sites are not counted.
 
   **🛑 It is an equality test on the value you declare, not a guarantee about the documents this
-  library can compose.** Nothing in any builder checks that a delimiter is a single byte, so a
-  `segmentTerminator` of `"??"` is not equal to `"?"`, builds, and still transmits `?` as the
-  terminator with `warnings: []`. That is `PRE-EXISTING` (identical at base) and deliberately not
-  closed here: a delimiter-length rule is a different decision. State the bound as a property of the
-  SET, never of the document.
+  library can compose.** State the bound as a property of the SET, never of the document. Whether a
+  declared value is even shaped like a delimiter is the separate refusal below.
 
   **🛑 The READ side is deliberately untouched, and so is `serializeX12`.** `parseX12` still accepts
   every degenerate set and still frames a degenerate body segment; `serializeX12` re-emits one byte

@@ -80,12 +80,13 @@
  * ## What is deliberately NOT changed, and all three are pinned below
  *
  * - **🛑 The guard is an EQUALITY TEST on the value a caller declares, and that
- *   is the whole of it.** No builder checks that a delimiter is one byte, so a
- *   `segmentTerminator` of `"??"` is not equal to `"?"`, builds, and still
- *   transmits `?` as the terminator. Identical at base, so the behaviour is
- *   `PRE-EXISTING`; **the guard is NOT grown to reach it** - a delimiter-length
- *   rule is a different decision. Two drafts claimed the document-level form
+ *   is the whole of it.** Two drafts claimed the document-level form
  *   (*"no NEW document of that shape is composed"*) and the gate falsified both.
+ *   State the bound as a property of the SET, never of the document. The
+ *   separate question of whether a declared value is even SHAPED like a
+ *   delimiter was filed from this slice and closed by
+ *   `X12-EMIT-DELIMITER-SHAPE-UNCHECKED`, as a SECOND guard beside this one -
+ *   this equality test is byte-for-byte unchanged.
  * - **The read side.** `parseX12` still accepts every degenerate set and
  *   `decodeSegment` still frames a degenerate body segment. Documents this
  *   library emitted before this guard exist.
@@ -396,15 +397,18 @@ describe("X12-EMIT-DEGENERATE-RELEASE-DELIMITER: the honest controls", () => {
     expect(built.warnings).toEqual([]);
   });
 
-  it("🩺 PRE-EXISTING and NOT closed: a MULTI-BYTE delimiter is not equal to `?` and still builds", () => {
-    // The guard is `=== "?"`, and no builder checks that a delimiter is one
-    // byte, so this transmits `?` as the terminator by another route. Pinned as
-    // an honest control so it cannot move unnoticed, and NOT guarded: a
-    // delimiter-length rule is a decision nobody here has made, and growing the
-    // guard to make a claim true is how a fix outgrows the thing it fixes.
-    const built = buildInterchange(interchangeSpec({ segmentTerminator: "??" }));
-    expect(built.delimiters.segment).toBe("?");
-    expect(built.warnings).toEqual([]);
+  it("🩺 a MULTI-BYTE delimiter is not equal to `?`, and THIS guard still lets it past", () => {
+    // The guard here is `=== "?"` and it is byte-for-byte unchanged: `"??"` is
+    // not equal to `"?"` and this check does not stop it. What stops it is the
+    // SEPARATE shape guard `X12-EMIT-DELIMITER-SHAPE-UNCHECKED` added beside
+    // this one, on the LENGTH arm - so the refusal a caller sees names the
+    // length and not the release character. That is deliberate: the fix for the
+    // disclosure this test used to carry was a second guard, never a bigger
+    // version of this one. The behavioural coverage lives in
+    // `test/builder-delimiter-shape.test.ts`.
+    expect(() => buildInterchange(interchangeSpec({ segmentTerminator: "??" }))).toThrow(
+      "buildInterchange: the segment terminator must be exactly one character",
+    );
   });
 
   it("🛑 the READ side did not move: a degenerate interchange still parses", () => {

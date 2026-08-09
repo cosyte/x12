@@ -212,3 +212,25 @@ The `X12-837-RESIDUALS` "still open" list carried five items. Measured against `
   already warns for. What genuinely raises nothing is the `?X` Postel case, which `release.ts`
   documents as deliberate and `KNOWN-LIMITATIONS.md` already records as unchanged - warning on it
   would fire on every literal `?` in an `NTE`.
+
+## The `CLAUDE.md` imperatives, RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED
+
+Moved out of `CLAUDE.md` under that file's own ratchet to pay for the
+`X12-EMIT-DELIMITER-SHAPE-UNCHECKED` trap: relocate first, lower the entry as the relocation
+lands, never raise the ceiling. These are the live imperatives, unchanged; `CLAUDE.md` now carries
+only a pointer to them.
+
+- **🩺 `decodeSegment` FALLS BACK TO A LITERAL SPLIT WHEN THE ELEMENT SEPARATOR IS `?`, AND SKIPS
+  THE DANGLING CHECK WITH IT** (a trailing `?` there is an EMPTY LAST ELEMENT). `?` is admissible at
+  any delimiter position and `buildInterchange` takes all four, so a BODY segment came back as ONE
+  element, id `(non-spec)`, **while the ENVELOPE framed correctly and every count reconciled -
+  `warnings: []`, and readers dispatch on `seg.id`, so a clean document gave an EMPTY claim list.**
+  THREE SITES NOW; KEEP THEM IN STEP.
+- **🛑 PER ROLE, ON READ; DO NOT HOIST IT INTO `splitWithRelease`.** Splitting the other two breaks a
+  value WE EMITTED at `0.0.15` (`#99`'s pass-1 major, inverted), and **THAT REASON SURVIVES THE EMIT
+  REFUSAL - THOSE DOCUMENTS EXIST.** The emit half is the trap below; **STATE THE PROPERTY, NEVER A
+  TRIGGER BYTE - TWO DRAFTS NAMED ONE AND THE GATE PRODUCED ONE MORE EACH TIME.**
+- **⚖️ CHANGES PUBLISHED DECODING, ON CONSISTENCY, NOT SPEC - NEVER RESTATE `#96`'s SYMMETRY: A
+  `(non-spec)` BLOB IS NOT A SECOND READING.** No code minted; ONE subtracted. **`PRE-EXISTING`,
+  OPEN: `?~` still swallows the TERMINATOR. FRAMING UNTOUCHED - BUT THE MERGED BLOB'S READ MOVED
+  (`~SE` lands in `PER-06`), SO NEVER SAY "NOTHING MOVED".**
