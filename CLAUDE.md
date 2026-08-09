@@ -163,39 +163,33 @@ HOIST IT INTO `splitWithRelease`; and `?~` STILL SWALLOWS THE TERMINATOR, `PRE-E
   AFTER `expandYY`; `null` HERE IS ABSENT, NOT REFUSED; NO CENSUS, AND THE SIBLING PRECEDENT IS NOT
   UNIFORM - GS-07 IS A CALLER VALUE IN `build999` ALONE.**
 
+### 🩺 `X12-TA1-RESIDUALS` (2026-08-09) · `agent-notes/x12-ta1-residuals.md`
+
+- **🩺 `parseTA1`'s FIVE DECODED FIELDS ARE POST-`?`-UNESCAPE; `raw` IS THE VERBATIM BYTE SURFACE AND
+  IS NOT.** The emit half released and the read half decoded the ESCAPE, so a released TA1-01 came
+  back matching NO ISA-13, `warnings: []`. **GROUNDED ON THIS PACKAGE DISAGREEING WITH ITSELF, NEVER
+  A TR3 CLAUSE:** every dot-path read already unescaped and so does `parse999` on IK4-01;
+  `parseTA1` was the only typed reader that did not. **THE SINK IS `noop`** - no
+  `X12_DANGLING_RELEASE_CHAR` here, same as `parse999`.
+- **🩺 AN EMPTY TA1-02 / TA1-03 / TA1-04 / TA1-05 IS REFUSED ON EMIT. FILED AS TWO SLOTS, MEASURED AS
+  FOUR** (`escapeRelease` early-returns on `""` and TA1-01 had the only required-field guard); each
+  BUILT an absent element with `warnings: []`. **EXISTING `X12_ACK_INVALID_SPEC`, NO CODE MINTED.**
+- **🛑 PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH SLOT IS SPECIAL.** An out-of-enum `ackCode: "X"`
+  reads back `R` exactly as the empty one did, so **THE CLAIM IS ABSENCE ON EMIT AND NOTHING ELSE** -
+  no narrowing of what a non-empty element may CONTAIN, and the lenient read is unmoved.
+- **⚖️ NO NORMALISATION: WHITESPACE STILL BUILDS AT ALL FIVE SLOTS**, as at TA1-01 - a trim is a rule
+  and no source states one. **🛑 EVERY EARLIER GUARD KEEPS PRECEDENCE** (`enforceAcceptIsClean`
+  first, then TA1-01's control-number refusal, then the escaper's TYPE refusal): **all five `esc`
+  calls run BEFORE any emptiness test, so NO SPEC REFUSED AT BASE IS REFUSED DIFFERENTLY.**
+  **NEVER COUNT WHAT MOVED.**
+
 ### 🩺 `X12-TA1-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-ta1-emit-escape.md`
 
-- **🩺 `buildTA1` RELEASES ALL FIVE CALLER ELEMENTS NOW, SO AN ACCEPT THIS LIBRARY EMITS NO LONGER
-  READS BACK AS A REJECT.** A bare delimiter took its own slot and shifted TA1-04, which the read
-  narrows out-of-enum to `R`. **`*` AND `~` DID IT ON EVERY RELEASE; ONLY THE `?` SHAPE IS `#96`'s -
-  never restate the class as something that arc introduced. THE INVERSE IS THE LESS SAFE ONE:** a
-  type-forbidden `noteCode` of `"A"` shifted onto TA1-04 made a **REJECT READ ACCEPT**, and nobody
-  resubmits against an Accept.
-- **🛑 IT CHANGES BYTES ALREADY ON THE WIRE. THAT IS `#96`'s STATED COST, WEIGHED AND TAKEN, NOT AN
-  OVERSIGHT CORRECTED.** Bounded: no delimiter and no `?` means byte-identical, which is every
-  conformant TA1. **THE PREDICATE MOVES BOTH WAYS, LIKE `#96`'s - A DRAFT SAYING "ONE WAY, NOTHING
-  STARTS" WAS REFUTED IN ONE PROBE. STATE THE PROPERTY, NEVER THE DIRECTIONS:** head reports the
-  disposition THE CALLER PASSED, base reported whatever the shift left in slot 4, so `ackCode === "R"`
-  both STOPS and STARTS (`interchangeTime: "12*A"` + `ackCode "R"` read `"A"` at base, all fields
-  in-enum). **ONE-WAY IS THE SAFETY, A DIFFERENT SENTENCE.**
-- **🛑 TWO DRAFTS OF THE COST BULLET WERE REFUTED, THE SECOND BY THE CORRECTION TO THE FIRST. NEVER
-  TOTAL IT.** "The one class that gets worse" (pass 1) and "the rest is released for no framing gain"
-  (pass 2, **inverted** by measurement). What holds: only `*`, `~` and a `?` BEFORE the separator
-  ever shifted the SEGMENT's framing; **`^` and `:` moved the DOT-PATH reader and releasing them is a
-  GAIN** (`getSegmentValue(ta1, "01")` answered `"0000"` at base for `"0000^0001"`, the key truncated
-  to repetition 0); **the measured pure cost is a MID-STRING `?` on the RAW surfaces only**, since
-  every dot-path read unescapes. A hand-rolled escape regresses on both. **THE READ HALF DID NOT
-  MOVE:** `parseTA1` is still pre-`?`-unescape.
-- **🛑 RELEASE ONLY AGAINST THE DELIMITER SET THE CALLER STATES** (`BuildTA1Options` took
-  `Build999EnvelopeSpec`'s other three; they exist for ESCAPING and `buildTA1` still emits no
-  terminator). `unescapeRelease` keeps `?X` verbatim, so releasing against a GUESSED delimiter
-  corrupts a reassociation key that was correct. **THE DEFAULTS ARE THE ARCHETYPE AND CANNOT BE
-  VERIFIED.**
-- **THE TYPE CHECK IS A PREREQUISITE, NOT A BONUS:** bare `escapeRelease` returns `""` for a
-  `number`, so escaping without the chokepoint trades a shifted TA1-01 for a VANISHED one.
-  **EXISTING `X12_ACK_INVALID_SPEC`, NO NEW CODE; `enforceAcceptIsClean` STILL RUNS FIRST.**
-  **THE `seg`/`joinSeg` QUALIFIER IS UNCHANGED** - still no joiner, so the refusal names the BUILDER
-  and never `TA1-01`.
+**RELOCATED IN FULL 2026-08-09, VERBATIM, EXCEPT ONE CLAUSE THE SUCCESSOR MEASURED FALSE, WHICH IS
+DELETED INLINE AND ON THE RECORD** - it paid for the trap above. **🩺 Open it before you touch
+`buildTA1`, `BuildTA1Options` or any TA1 element: an unreleased delimiter shifted TA1-04 and an
+Accept this library emitted read back as a REJECT, the INVERSE is the less safe one, and the
+predicate moves BOTH ways - state the property, never the directions, and never total the cost.**
 
 ### 🩺 `X12-VARIANT-ICR-UNGROUNDED` + `X12-837-EMIT-IDENTIFIER-FIXED` (2026-08-08) · `agent-notes/x12-{variant-icr-ungrounded,837-emit-identifier-fixed}.md`
 

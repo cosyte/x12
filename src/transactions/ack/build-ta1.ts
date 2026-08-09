@@ -60,20 +60,17 @@
  *   number of `"0000^0001"`, truncating the reassociation key to the first
  *   repetition, and answers `"0000^0001"` here; the composite read `"01-1"`
  *   answered `"0000"` for `"0000:0001"`. **The measured pure cost is a
- *   MID-STRING `?`, and only on the surfaces documented as raw**: `raw`,
- *   `elements` and `parseTA1`'s fields read `"0000??0001"` where they read
- *   `"0000?0001"`, while the dot-path read of THAT value unescapes and
- *   answered `"0000?0001"` on both. Read the clause as scoped to the
- *   mid-string `?`, because it is not true of `^` or `:` three sentences
- *   up. **`getSegmentValue` takes an `X12Segment` and `Ta1Segment` carries
- *   no `id`, so add one to read a TA1 through it.** No total is published:
- *   that is what was measured, not a closed account.
- * - **`parseTA1` reads elements RAW, pre-`?`-unescape**, exactly as
- *   `X12Segment.elements` has always documented. So a control number of
- *   `"00000001?"` now reads back as `"00000001??"` rather than as
- *   `"00000001?*260601"`. The disposition is correct where it was
- *   inverted; the key still needs `unescapeRelease` applied by the reader.
- *   That is a property of the read half and is not changed here.
+ *   MID-STRING `?`, and only on the surfaces documented as raw**: `raw` and
+ *   `elements` read `"0000??0001"` where they read `"0000?0001"`, while the
+ *   dot-path read of THAT value unescapes and answered `"0000?0001"` on
+ *   both. Read the clause as scoped to the mid-string `?`, because it is
+ *   not true of `^` or `:` three sentences up. **`getSegmentValue` takes an
+ *   `X12Segment` and `Ta1Segment` carries no `id`, so add one to read a TA1
+ *   through it.** No total is published: that is what was measured, not a
+ *   closed account.
+ *   **🩺 A CLAUSE NAMING `parseTA1`'s FIELDS AS A THIRD SUCH SURFACE STOOD
+ *   HERE AND IS DELETED, NOT REWORDED.** `X12-TA1-RESIDUALS` made those
+ *   fields post-unescape, so it is measured false; do not restate it.
  * - **A caller who was pre-releasing the value themselves** (the remedy
  *   `KNOWN-LIMITATIONS.md` named while this was open) is now escaping
  *   twice: `"00000001??"` in, `"00000001????"` out. The framing and the
@@ -90,6 +87,13 @@
  * type-check, so TA1-01 draws a refusal naming TA1-01 rather than the escaper's
  * one naming only the builder - same class, same code, different words. The
  * guard is still byte-strict, so a whitespace-only TA1-01 still builds.
+ *
+ * **The other four slots were left open by that slice and `X12-TA1-RESIDUALS`
+ * closes them.** TA1-01's guard was the only required-field guard this module
+ * had, so `interchangeDate`, `interchangeTime`, `ackCode` and `noteCode` each
+ * emitted an absent element on `""` with `warnings: []` - see
+ * {@link requireTa1Element}, which carries the grounding and the residual it
+ * deliberately leaves.
  *
  * And the release is scoped to the delimiter set the caller states through
  * {@link BuildTA1Options} - see that interface for why guessing one is a
@@ -193,13 +197,29 @@ export function buildTA1(spec: BuildTA1Spec, options: BuildTA1Options = {}): Ta1
     refuseSpec,
   );
 
+  // Every `esc` call runs BEFORE any emptiness test, and in the same order as
+  // at base, so no spec that was refused at base is refused differently here:
+  // the type refusal `esc` throws still reaches a wrong-typed element first,
+  // whichever slot it sits in. The only behaviour that moves is the four cells
+  // that BUILT.
+  const interchangeControlNumber = esc(spec.interchangeControlNumber);
+  const interchangeDate = esc(spec.interchangeDate);
+  const interchangeTime = esc(spec.interchangeTime);
+  const ackCode = esc(spec.ackCode);
+  const noteCode = esc(spec.noteCode);
+
+  requireTa1Element(interchangeDate, "TA1-02", "interchangeDate");
+  requireTa1Element(interchangeTime, "TA1-03", "interchangeTime");
+  requireTa1Element(ackCode, "TA1-04", "ackCode");
+  requireTa1Element(noteCode, "TA1-05", "noteCode");
+
   const elements: readonly string[] = Object.freeze([
     "TA1",
-    esc(spec.interchangeControlNumber),
-    esc(spec.interchangeDate),
-    esc(spec.interchangeTime),
-    esc(spec.ackCode),
-    esc(spec.noteCode),
+    interchangeControlNumber,
+    interchangeDate,
+    interchangeTime,
+    ackCode,
+    noteCode,
   ]);
   const raw = elements.join(delimiters.element);
   return Object.freeze({ raw, elements });
@@ -243,6 +263,50 @@ export interface BuildTA1Options {
  */
 function refuseSpec(message: string): never {
   throw new AckBuildError(ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC, message);
+}
+
+/**
+ * Refuse an emitted TA1 element that is empty.
+ *
+ * `BuildTA1Spec` declares all five of its properties as required `string`s, and
+ * `""` is the shape that defeats that declaration at run time: `escapeRelease`
+ * early-returns on `""`, and this module carried a required-field guard for
+ * TA1-01 alone. So an empty TA1-02, TA1-03, TA1-04 or TA1-05 was emitted as an
+ * absent element with no error and no warning on any channel. **The grounding
+ * is the type declaration disagreeing with the run time inside this package,
+ * not a TR3 usage anyone here has read** - which is the same tiebreak
+ * {@link "../../builder/caller-control-number.js".requireControlNumber}
+ * recorded, and its in-package precedent is uniform: `build835` refuses
+ * `patientControlNumber === ""`, `build837` `claimId === ""`, `build834`
+ * `maintenanceTypeCode === ""`, `build278` `requestCategoryCode === ""`,
+ * `build277` `categoryCode === ""`, and TA1-01 itself since
+ * `X12-EMPTY-CONTROL-NUMBER-FABRICATED`. **REFUSE and not warn, for the fourth
+ * of that module's reasons that applies unchanged here: a builder's `warnings`
+ * array is the PARSE channel, so a warning would mint an emit-side caller
+ * mistake onto the registry consumers grade INBOUND documents with.**
+ *
+ * **It is byte-strict and does NOT trim, exactly as the control-number guard is
+ * not.** A whitespace-only element still builds. Trimming is a normalisation
+ * rule and no source consulted for this package states one; that residual is
+ * recorded in `KNOWN-LIMITATIONS.md` rather than claimed away.
+ *
+ * **It does not narrow what an accepted element may CONTAIN.** An out-of-enum
+ * TA1-04 that is not empty still builds and still reads back through the read
+ * half's documented fail-safe narrow - the read side is lenient by design and
+ * did not move. This guard bounds absence and nothing else.
+ *
+ * It reuses `X12_ACK_INVALID_SPEC` via {@link refuseSpec} rather than minting a
+ * code, for the reason that function gives, and it names the slot and the spec
+ * property and never the value.
+ *
+ * @internal
+ */
+function requireTa1Element(emitted: string, slot: string, field: string): void {
+  if (emitted !== "") return;
+  refuseSpec(
+    `buildTA1: ${field} is empty. ${slot} is a required element and this builder never invents ` +
+      `one, so nothing is emitted. Supply ${field}.`,
+  );
 }
 
 /**

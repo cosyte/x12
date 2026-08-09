@@ -16,6 +16,63 @@ model.
 
 ## Data / decode boundaries
 
+- **🩺 `parseTA1`'s five decoded fields are POST-`?`-unescape as of this release, and an EMPTY
+  TA1-02 / TA1-03 / TA1-04 / TA1-05 is REFUSED on emit. Both are behaviour changes**
+  (`X12-TA1-RESIDUALS`). They are one slice because they are the two ends of the same disagreement:
+  this package's emit half releases a TA1 element and its read half decoded the escape rather than
+  the value.
+
+  **The read half.** `X12-TA1-EMIT-NOT-RELEASE-AWARE` made `buildTA1` release all five caller
+  elements, and `parseTA1` kept reading `elements` verbatim, so a round trip through this package's
+  own halves was not an identity for any value carrying a delimiter or the release character.
+  Measured at `0.0.15`, over `parseX12` + `parseTA1` of what `buildTA1` had just emitted:
+
+  ```text
+  interchangeControlNumber   raw emitted                          parseTA1 read     dot-path read
+  "00000001?"                TA1*00000001??*260601*1200*A*000     "00000001??"      "00000001?"
+  "0000*0001"                TA1*0000?*0001*260601*1200*A*000     "0000?*0001"      "0000*0001"
+  "0000~0001"                TA1*0000?~0001*260601*1200*A*000     "0000?~0001"      "0000~0001"
+  "0000:0001"                TA1*0000?:0001*260601*1200*A*000     "0000?:0001"      "0000:0001"
+  "0000^0001"                TA1*0000?^0001*260601*1200*A*000     "0000?^0001"      "0000^0001"
+  ```
+
+  Every row `warnings: []`. TA1-01 is the reassociation key, so the left column is a key that
+  matches no ISA-13. The right column is the same element read through `getSegmentValue`, which
+  already unescaped, and `parse999` does the same on its IK4-01 composite: **`parseTA1` was the only
+  typed reader in this package that did not.** The grounding is that disagreement and nothing else -
+  no clause anyone here has read settles what a TA1 element may contain.
+
+  **What that costs, stated rather than argued away.** A consumer who was applying `unescapeRelease`
+  to `parseTA1`'s output themselves - the remedy this file used to prescribe - now has the library
+  doing it, so **drop the hand-rolled call**. And a value with no `?` in it is unchanged on both
+  surfaces, which is every conformant TA1. **`raw` is untouched and is still the verbatim byte
+  surface**: read `ta1.raw.elements` when you want the bytes.
+
+  **The emit half.** `escapeRelease` early-returns on `""` and `buildTA1` carried a required-field
+  guard for TA1-01 alone, so the other four slots emitted an absent element with `warnings: []`:
+  `interchangeDate: ""` gave `TA1*000000001**1200*A*000`, `interchangeTime: ""` gave
+  `TA1*000000001*260601**A*000`, `ackCode: ""` gave `TA1*000000001*260601*1200**000` and
+  `noteCode: ""` gave `TA1*000000001*260601*1200*R*`. **The item filed two of those four.** Each now
+  draws `AckBuildError` / `X12_ACK_INVALID_SPEC` naming the slot and the spec property and never the
+  value. **No new error code was minted and no warning code moved.** The grounding is again inside
+  the package: `BuildTA1Spec` declares all five properties as required `string`s, `""` is what
+  defeats that at run time, and the in-package answer to an empty required element is uniformly
+  refusal (`patientControlNumber`, `claimId`, `maintenanceTypeCode`, `requestCategoryCode`, the
+  277's `categoryCode`, and TA1-01 itself).
+  - **🛑 It does NOT trim, at any of the five slots.** A whitespace-only element still builds -
+    `TA1*000000001*260601*1200*R* ` is still emitted for `noteCode: " "`. Trimming is a
+    normalisation rule and no source consulted for this package states one, exactly as at TA1-01.
+  - **🛑 It does not narrow what a NON-empty element may contain, and the read half stays lenient.**
+    An out-of-enum `ackCode: "X"` still builds and still reads back as `R` through the documented
+    fail-safe narrow - the same answer an empty one gave. This guard bounds ABSENCE on the emit side
+    and nothing else.
+  - **🛑 Every guard that stood before it keeps its precedence.** `enforceAcceptIsClean` still runs
+    first, so an `ackCode: "A"` with an empty note still reports `X12_TA1_ACCEPT_WITH_NOTE`; TA1-01
+    still draws the control-number refusal; and every wrong-TYPED element still draws the escape
+    helper's refusal, because all five escapes run before any emptiness test. **No spec that was
+    refused before this slice is refused differently by it.**
+  - **No census of other builders' required elements is published here.** This slice measured TA1.
+
 - **🩺 An EMPTY control number is REFUSED on emit as of this release, where it used to be
   FABRICATED, and that is a behaviour change for any caller passing one**
   (`X12-EMPTY-CONTROL-NUMBER-FABRICATED`). Every builder that assembles an ISA zero-pads its control
@@ -449,10 +506,12 @@ model.
     `"0000^0001"`, silently truncating the reassociation key to the first repetition, and answers
     `"0000^0001"` now; the composite read `"01-1"` answered `"0000"` for `"0000:0001"` and answers
     the whole value now. **The measured pure cost is a mid-string `?`, and only on the surfaces
-    documented as raw**: `raw`, `elements` and `parseTA1`'s fields read `"0000??0001"` where they
-    read `"0000?0001"`, while every dot-path read unescapes and answered `"0000?0001"` on both.
+    documented as raw**: `raw` and `elements` read `"0000??0001"` where they read `"0000?0001"`,
+    while every dot-path read unescapes and answered `"0000?0001"` on both.
     No total is published: that is what was measured, not a closed account. (`getSegmentValue`
     takes an `X12Segment` and `Ta1Segment` carries no `id`, so add one to read a TA1 through it.)
+    **🩺 A clause naming `parseTA1`'s fields as a third such surface stood here and is DELETED, not
+    reworded** - `X12-TA1-RESIDUALS` made those fields post-unescape, so it is measured false.
   - **A caller who was hand-rolling the escape** (the remedy this file named while the defect was
     open) regresses on both kinds of surface: `"00000001??"` in, `TA1*00000001????*…` out, and
     `getSegmentValue` answering `"00000001??"` where it answered `"00000001?"`. The framing and the
@@ -462,11 +521,11 @@ model.
     `interchangeControlNumber: ""` emitted `TA1**260601*1200*A*000` with `warnings: []`, here and at
     every earlier release. `X12-EMPTY-CONTROL-NUMBER-FABRICATED` closed it across every builder; see
     the entry at the top of this file, including the whitespace-only residual it leaves open.
-  - **🩺 The READ half did not move. `parseTA1` still reads elements RAW, pre-`?`-unescape**, exactly
-    as `X12Segment.elements` has always documented, so a control number of `"00000001?"` now reads
-    back as `"00000001??"` rather than as `"00000001?*260601"`. The disposition is correct where it
-    was inverted; apply `unescapeRelease` if you need the value rather than the bytes. Unescaping on
-    the read side would move every TA1 a consumer already reads and is not done here.
+  - **🩺 The READ half did not move IN THIS SLICE, and `X12-TA1-RESIDUALS` is the one that moved
+    it** - see the entry at the top of this file. A control number of `"00000001?"` read back as
+    `"00000001?*260601"` before this slice and as `"00000001??"` after it; the clause that stood
+    here telling callers to apply `unescapeRelease` themselves is **deleted, not reworded**, because
+    the library now does it.
   - **The release is scoped to the delimiter set the CALLER states.** `BuildTA1Options` gained
     `repetitionSeparator` / `componentSeparator` / `segmentTerminator` beside the existing
     `elementSeparator`, the same four `build999` already takes, and they exist for escaping and
