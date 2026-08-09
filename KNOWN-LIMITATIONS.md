@@ -65,15 +65,20 @@ model.
     code was minted and no warning code moved: every refusal is the same class and code the builder
     already raised. But `interchangeControlNumber: undefined` and `null` threw a bare `TypeError`
     with no `code` at `0.0.15` and now throw the builder's typed error, so **a consumer catching
-    `TypeError` there no longer catches**. An array-like of the wrong length used to build a
-    malformed ISA that the builder's own re-parse rejected with `X12_INVALID_DELIMITERS`, a _parse_
-    error naming delimiters for a caller mistake in one named field; it now refuses before anything
-    is written. A `number`, a plain object or a boolean was told it "exceeds the 9-char spec limit",
-    which was false; same code, corrected sentence. And **the MESSAGE changed on the escape-routed
-    control-number slots too** - GS-06 / GE-02, ST-02 / SE-02, AK1-02, AK2-02 and TA1-01 now name the
-    slot and the spec property, where the escaper's refusal could only name the builder. **If you
-    match on message text at any control-number slot, re-read it; if you branch on `err.code`,
-    nothing moved.**
+    `TypeError` there no longer catches**. An array-like whose `.length` disagrees with the length
+    of its string form (`[""]`, `["12345"]`, `{ length: 0 }`) used to build a malformed fixed-width
+    ISA that the builder's own re-parse rejected with `X12_INVALID_DELIMITERS`, a _parse_ error
+    naming delimiters for a caller mistake in one named field, so **a predicate on
+    `X12_INVALID_DELIMITERS` stops firing for that input**; it now refuses before anything is
+    written. Where the two agree the ISA was well-formed and the value was fabricated instead, which
+    is the case at the top of this entry. A `number`, a plain object or a boolean was told it "exceeds the 9-char spec limit",
+    which was false; same code, corrected sentence. And **the MESSAGE moved at the control-number
+    slots that already refused a non-string** - GS-06 / GE-02, ST-02 / SE-02, AK1-02, AK2-02 and
+    TA1-01 now refuse from this guard one step earlier, with a message naming the slot and the spec
+    property. Read that as the property, not as a claim about what the old message said: the guards
+    that stood there are not uniform and at least one already named a slot. **If you match on message
+    text at any control-number slot, re-read it. `err.code` moved at ISA-13 / IEA-02 only, for the
+    shapes named above.**
 
     **What it does NOT cover:** the type test narrows what a control number may BE, never what it may
     CONTAIN. The whitespace bullet below is unchanged and is the residual. The asymmetry is real and

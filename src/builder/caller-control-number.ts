@@ -113,24 +113,25 @@
  * `new String(...)` by name, so the same value was refused at GS-06 and
  * accepted at ISA-13 in the same call.
  *
- * **The split is by ROUTE.** The slots that reach the wire through `esc` were
- * already type-checked, because `makeCallerEscaper` refuses before escaping;
- * the ISA-13 / IEA-02 slots were not, because the ISA is fixed-width, joined
- * directly, and outside both the escaper and the segment guard. `padControl`
- * reads `.length` and then concatenates, so an array-like of length 0 is
- * indistinguishable from `""` to it.
+ * **The split is by ROUTE.** Every non-string probed at the other slots was
+ * already refused, typed, at base - which guard did it varies by slot and is
+ * deliberately not compressed into one name here. The ISA-13 / IEA-02 slots
+ * were the exposed ones, because the ISA is fixed-width, joined directly, and
+ * outside both the escaper and the segment guard. `padControl` reads `.length`
+ * and then concatenates, so an array-like of length 0 is indistinguishable from
+ * `""` to it.
  *
  * **The test went into the shared guard rather than at the nine `padControl`
  * sites, and that choice has a consequence on the OTHER slots that must not be
  * described as "nothing changed".** Every slot routed through here now refuses
- * a non-string from this guard instead of from `esc`, one step earlier. The
- * error class and code are the same either way - each builder's own
- * `refuseSpec`, so no consumer predicate on a code moves - but **the MESSAGE
- * changed on the `esc`-routed slots too**: `esc`'s refusal names the builder
- * and the offending type and cannot name the slot, while this one names the
- * slot and the spec property as well. That is the reason to prefer one guard
- * over nine copies, and it is a behaviour change to a diagnostic, not a
- * no-op.
+ * a non-string from this guard instead of from whatever guard reached it first,
+ * one step earlier. The error class and code are the same either way - each
+ * builder's own `refuseSpec` - but **the MESSAGE moved at those slots too**, to
+ * one naming the slot and the spec property. **State that as the property and
+ * do NOT state what the old message said**: the guards that stood there are not
+ * uniform, `requireCallerSegment` reaches some of them ahead of `esc` and
+ * already named a slot, and a draft of this paragraph published the `esc`
+ * reading as the class and was refuted in one probe.
  *
  * ## What this does NOT do
  *

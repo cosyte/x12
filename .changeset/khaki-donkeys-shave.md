@@ -37,11 +37,12 @@ that the builder's own re-parse rejected as `X12_INVALID_DELIMITERS`, a parse er
 for a caller mistake in one named spec field. A number, a plain object or a boolean was told it
 "exceeds the 9-char spec limit", which was false; same code, corrected sentence.
 
-🛑 The MESSAGE changed on the escape-routed control-number slots too, so "nothing else changed" would
-be false. GS-06 / GE-02, ST-02 / SE-02, AK1-02, AK2-02 and TA1-01 now refuse a non-string from this
-guard one step ahead of the escaper, naming the slot and the spec property where the escaper's
-refusal could only name the builder. Same class, same code. If you match on message text at a
-control-number slot, re-read it; if you branch on `err.code`, nothing moved.
+🛑 The MESSAGE moved at the control-number slots that already refused a non-string, so "nothing else
+changed" would be false. GS-06 / GE-02, ST-02 / SE-02, AK1-02, AK2-02 and TA1-01 now refuse from this
+guard one step earlier, with a message naming the slot and the spec property. Read that as the
+property and not as a claim about what the old message said: the guards that stood at those slots are
+not uniform and at least one already named a slot. Same class, same code at all of them. If you match
+on message text at a control-number slot, re-read it.
 
 The refusal reports the TYPE only and never echoes the value, through the same describer the escaper
 uses, because a slot-generic guard cannot know whether the primitive it is about to echo is a control

@@ -1054,17 +1054,22 @@ required control number and this builder never invents one, so nothing is emitte
     typed error - but SEVERAL DIAGNOSTICS DO MOVE, and one of them moves off a JavaScript builtin.**
     `undefined` and `null` threw a bare `TypeError` with no `code` and now throw the builder's typed,
     code-tagged refusal, so **a consumer catching `TypeError` there no longer catches**. An
-    array-like whose `.length` was not 9 used to produce a malformed ISA that the builder's own
-    re-parse rejected as `X12_INVALID_DELIMITERS` - a parse error naming delimiters, for a caller
-    mistake in one named spec field - and now refuses before anything is written. A `number`, a plain
+    array-like whose `.length` disagrees with the length of its string form (`[""]`, `["12345"]`,
+    `{ length: 0 }`) used to produce a malformed fixed-width ISA that the builder's own re-parse
+    rejected as `X12_INVALID_DELIMITERS` - a parse error naming delimiters, for a caller mistake in
+    one named spec field - so **a predicate on `X12_INVALID_DELIMITERS` stops firing for that
+    input**. It now refuses before anything is written. Where the two agree the ISA was well-formed
+    and the value was fabricated instead, which is the headline case above. A `number`, a plain
     object or a boolean was told it "exceeds the 9-char spec limit", which was false about a
     one-digit number; the code is unchanged and the sentence is corrected.
-  - **🛑 The MESSAGE changed on the escape-routed control-number slots too, and "nothing else
-    changed" would be false.** GS-06 / GE-02, ST-02 / SE-02, AK1-02, AK2-02 and TA1-01 now refuse a
-    non-string from this guard, one step ahead of the escaper, and name the slot and the spec
-    property where the escaper's refusal could only name the builder. Same class, same code. **If you
-    match on message text at a control-number slot, re-read it; if you branch on `err.code`, nothing
-    moved.** The escaper's own wording is unchanged everywhere else and is still pinned.
+  - **🛑 The MESSAGE moved at the control-number slots that already refused a non-string, so
+    "nothing else changed" would be false.** GS-06 / GE-02, ST-02 / SE-02, AK1-02, AK2-02 and TA1-01
+    now refuse from this guard one step earlier, with a message naming the slot and the spec
+    property. **Read that as the property and not as a statement about what the old message said** -
+    the guards that stood at those slots are not uniform, and at least one of them already named a
+    slot. Same class, same code at every one of them. **If you match on message text at a
+    control-number slot, re-read it.** No guard was replaced, and the wording of the ones that still
+    fire on elements that are not control numbers is unchanged and still pinned.
   - **The refusal never echoes the value.** It reports the TYPE only, through the same describer the
     escaper uses, because a slot-generic guard cannot know whether the primitive it is about to echo
     is a control number or a patient identifier (`REFUSAL-MESSAGE-PHI-ECHO`).

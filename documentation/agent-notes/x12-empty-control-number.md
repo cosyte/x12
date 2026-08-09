@@ -161,8 +161,8 @@ running the suite between each.
 - **~~No type check~~ - 🛑 SUPERSEDED 2026-08-09 BY `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED`,
   AND THE REASONING BELOW WAS MEASURED FALSE. READ `agent-notes/x12-control-number-guard-type.md`
   BEFORE CITING THIS BULLET.** This bound was stated as "nothing about a non-string changed on any
-  route", which was true, and justified as *"widening this guard into a type guard would have changed
-  a documented message for a defect that is already loud"* - which was **not**. At the nine ISA-13 /
+  route", which was true, and justified as _"widening this guard into a type guard would have changed
+  a documented message for a defect that is already loud"_ - which was **not**. At the nine ISA-13 /
   IEA-02 slots the defect was not loud: `[]` and `new String("")` emitted the same fabricated
   `000000000` with `warnings: []`, and `new String("ABC")` was silently coerced. The guard type-checks
   now. What is left of the original caution is real and is recorded in the successor note: several

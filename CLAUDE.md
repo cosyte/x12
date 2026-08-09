@@ -86,9 +86,11 @@ or financial value on the wire.**
   CHANGED".** `undefined`/`null` left a BARE `TypeError` (no `code`), so a `catch` narrowing on
   `TypeError` STOPS catching; an array-like left `X12_INVALID_DELIMITERS` (the builder's OWN re-parse
   of the malformed ISA it wrote); `0`/`{}`/`true` stop being told they "exceed the 9-char spec
-  limit", same code; and **THE MESSAGE MOVED ON THE `esc`-ROUTED CONTROL NUMBERS TOO** - it names the
-  SLOT, not just the builder. Three suites reddened on that; the escaper's wording is kept pinned on
-  a NON-control element.
+  limit", same code; and **THE MESSAGE MOVED AT EVERY CONTROL-NUMBER SLOT THAT ALREADY REFUSED** - it
+  names the SLOT now. **STATE THAT, NEVER WHAT THE OLD ONE SAID: THE GUARDS THERE ARE NOT UNIFORM**
+  (`requireCallerSegment` beat `esc` to `buildInterchange`'s GS-06 and ALREADY named it; a draft said
+  otherwise and pass 1 refuted it). Three suites reddened; the escaper's wording is kept pinned on a
+  NON-control element.
 - **⚖️ IT NARROWS WHAT A CONTROL NUMBER MAY _BE_, NEVER WHAT IT MAY _CONTAIN_.** Whitespace STILL
   pads (`" "` -> `00000000 `) - **A TRIM IS A NORMALISATION RULE AND NO SOURCE STATES ONE.** State the
   asymmetry: **`new String(" ")` IS refused, the primitive `" "` IS NOT.** The `pad` slots
