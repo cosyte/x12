@@ -206,12 +206,30 @@ model.
     a separator that never splits for a value this library itself emitted and could no longer read
     back. Deciding those two roles means deciding the emit side with them, and that is its own
     change.
+  - **🩺 INTRODUCED and NOT closed: that same emit property reaches the ELEMENT role, so a value
+    carrying a literal `?` still does not survive `buildInterchange({ elementSeparator: "?" })` - and
+    on this ONE route the failure got WORSE.** A CLM-01 of `PATIENT?ACCT` is emitted as
+    `CLM?PATIENT??ACCT?150.00`, because the escaper doubles a literal `?` in every role, and the
+    literal split then frames five elements with `getSegmentValue(clm, "01")` reading `"PATIENT"`.
+    Through `0.0.15` the same bytes read as one `(non-spec)` element and that dot-path answered
+    `undefined`: **a detectable absence became a confident, truncated reassociation key with an empty
+    warning array.** The `?` is unrecoverable afterwards, because `raw` holds `PATIENT??ACCT`, which
+    this parser's own new rule reads as two separators. **Do not read the entry above as
+    "`buildInterchange` stops disagreeing with itself"** - it does so for a value with no `?` in it,
+    and that is the whole of the claim. Closing this means deciding `escapeRelease` for a degenerate
+    set, which is the same decision the repetition and component roles need, so **all THREE roles
+    belong to that emit-side change** and none of them is closed here. Pinned in
+    `test/parser-segment-degenerate-release-separator.test.ts`.
   - **🩺 PRE-EXISTING and NOT closed here: on a degenerate set a `?~` still swallows the segment
     terminator.** `findUnescapedTerminator` guards its own role only, so with `?` as the element
     separator a segment that ends in an EMPTY LAST ELEMENT puts a `?` immediately before the
     terminator and the scanner reads it as an escape: `PER?IC?NAME?TE?5551234?EX?~SE?3?0001~` frames
-    as ONE segment and raises `X12_MISSING_SE`. This slice does not touch framing. Pinned in
-    `test/parser-segment-degenerate-release-separator.test.ts` so it cannot move unnoticed.
+    as ONE segment and raises `X12_MISSING_SE`. This slice does not touch framing. But **the READ of
+    that merged blob did move, so do not take "framing is untouched" as "nothing about this residual
+    moved"**: at `0.0.15` the merge produced one `(non-spec)` element no walker looked at, and here
+    it frames, so `~SE` and the SE's own control number land in `PER`'s communication-number slots.
+    `X12_MISSING_SE` still fires, so it is not silent. Both are pinned in
+    `test/parser-segment-degenerate-release-separator.test.ts` so they cannot move unnoticed.
   - **Values are still RAW, pre-`?`-unescape**, and `elements.join(separator)` still reproduces the
     segment byte for byte, so `serializeX12`'s count substitution and the byte-exact round trip are
     unaffected. Both are pinned.

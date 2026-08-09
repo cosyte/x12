@@ -75,6 +75,44 @@ working counterpart to protect. The REPETITION and COMPONENT roles are left alon
 degenerate behaviour is merely a separator that never splits AND the emit half depends on it.
 Deciding those two means deciding `escapeRelease` with them. That is a different slice.
 
+## 🩺 The pass-1 refutation: that emit property reaches the ELEMENT role too, and the draft drew the consequence for TWO roles
+
+**Read this before you write the next sentence about `buildInterchange` and a degenerate set.** The
+paragraph above rests on `escapeRelease` doubling a literal `?` **in every role** - and then a first
+draft of this slice's four prose surfaces drew the consequence for two of the three. The gate refuted
+it with a value one character away from the control the draft did pin. Measured at head:
+
+```text
+buildInterchange({ elementSeparator: "?" }) with CLM-01 "PATIENT?ACCT"
+  emits    CLM?PATIENT??ACCT?150.00
+  frames   ["CLM","PATIENT","","ACCT","150.00"]     id "CLM", warnings: []
+  reads    getSegmentValue(clm, "01") === "PATIENT"
+
+at base 72bafc2, the same bytes:
+  frames   ["CLM?PATIENT??ACCT?150.00"]             id "(non-spec)"
+  reads    getSegmentValue(clm, "01") === undefined
+```
+
+**The round-trip failure is `PRE-EXISTING`; the DIRECTION is not.** A detectable absence became a
+confident, truncated patient-account / reassociation key with an empty warning array - the one
+direction `src/builder/caller-string.ts`'s own module doc forbids. It is unrecoverable after the
+fact, because `raw` holds `PATIENT??ACCT` and this parser's own new rule reads that as two
+separators.
+
+**It is corrected as a CLAIM and deliberately NOT guarded** (conventions.md rule 3, and the refuter
+said so in as many words). A guard here means deciding `escapeRelease` for a degenerate set inside a
+read-side slice, which is how a fix outgrows the thing it fixes. What changed instead: the test that
+claimed the builder "no longer disagrees with itself" is retitled to the qualified claim it can
+support, the case above is pinned as its own control, and every surface now says **THREE** roles need
+the emit side decided, not two.
+
+**The second, smaller refutation, same shape.** The `?~` residual control pinned `raw` and the id
+list but not `elements`, and "framing is untouched" read as "nothing about this residual moved". The
+read of the merged blob DID move: `PER?IC?NAME?TE?5551234?EX?~SE?3?0001` now frames as
+`["PER","IC","NAME","TE","5551234","EX","~SE","3","0001"]`, so `~SE` and the SE's own control number
+sit in `PER`'s communication-number slots, where at base they sat inside one `(non-spec)` element
+that no walker touched. `X12_MISSING_SE` still fires, so it is not silent. `elements` is pinned now.
+
 ## 🩺 The residual this does NOT close, measured
 
 `findUnescapedTerminator` guards its own role only. With `?` as the ELEMENT separator, a segment

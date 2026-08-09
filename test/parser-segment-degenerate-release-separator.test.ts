@@ -49,6 +49,20 @@
  * components - trading a separator that never splits for a value this library
  * itself emitted and could no longer read back. Both halves are pinned below.
  *
+ * ## 🩺 And that same emit property reaches the ELEMENT role, which this slice
+ * does NOT close
+ *
+ * A first draft of this file stopped at the paragraph above and drew the
+ * consequence for two roles when the property it rests on holds for three. The
+ * gate refuted it. `buildInterchange({ elementSeparator: "?" })` given a CLM-01
+ * of `PATIENT?ACCT` emits `CLM?PATIENT??ACCT?150.00`, and the literal split
+ * frames that as five elements with CLM-01 reading `"PATIENT"`. At base the
+ * same bytes read `undefined`, so on this ONE route a detectable absence became
+ * a confident wrong value on a reassociation key. It is pinned below as a
+ * disclosure rather than guarded: closing it means deciding `escapeRelease` for
+ * a degenerate set, which is the same emit-side decision the other two roles
+ * need, and all THREE belong to that slice rather than this one.
+ *
  * The segment-terminator scanner is likewise role-blind in the other
  * direction, and that residual is PRE-EXISTING and pinned below rather than
  * closed here.
@@ -141,10 +155,15 @@ describe("X12-BODY-DEGENERATE-RELEASE-SEPARATOR: a body segment frames its eleme
     expect(getSegmentValue(segment, "01-2", DEGENERATE)).toBe("J45.50");
   });
 
-  it('🩺 `buildInterchange` no longer disagrees with itself on `elementSeparator: "?"`', () => {
+  it('🩺 `buildInterchange` reports the segments it wrote on `elementSeparator: "?"`, for a value with no `?` in it', () => {
     // The builder returns `parseX12` of the bytes it just wrote. At base those
     // bytes came back as one element per segment, so a caller reading the
     // returned model saw none of the segments it had passed.
+    //
+    // 🛑 READ THE QUALIFIER. This is NOT "the builder stops disagreeing with
+    // itself" - a first draft of this test said exactly that and the gate
+    // refuted it with the value one character away from the one below. The
+    // element role's EMIT half is unfixed and the next test pins it.
     const built = buildInterchange({
       senderId: "SENDER",
       receiverId: "RECEIVER",
@@ -170,6 +189,55 @@ describe("X12-BODY-DEGENERATE-RELEASE-SEPARATOR: a body segment frames its eleme
     const clm = built.groups[0]?.transactions[0]?.segments[1];
     expect(clm?.id).toBe("CLM");
     expect(clm?.elements).toEqual(["CLM", "PATIENTACCT", "150.00"]);
+    expect(built.warnings).toEqual([]);
+  });
+
+  it("🩺 INTRODUCED and NOT closed: a literal `?` in a value still does not round-trip, and now MIS-FRAMES", () => {
+    // `escapeRelease` writes `??` for a literal `?` in EVERY role, so with `?`
+    // as the ELEMENT separator the builder emits two separators where the
+    // caller stated one content byte. The literal split - which is the only
+    // coherent reading of an INBOUND degenerate document - then frames them as
+    // an empty element, and CLM-01 comes back truncated.
+    //
+    // 🩺 THE DIRECTION IS WHAT MATTERS AND IT GOT WORSE ON THIS ONE ROUTE: at
+    // base the same bytes gave ONE `(non-spec)` element and `getSegmentValue`
+    // answered `undefined` - a detectable absence. Here they give a confident
+    // wrong value on a patient-account / reassociation key, with an empty
+    // warning array. The `?` is unrecoverable afterwards: `raw` holds
+    // `PATIENT??ACCT`, which this parser's own new rule reads as two
+    // separators.
+    //
+    // It is left as a DISCLOSURE and not guarded here, deliberately. Closing it
+    // means deciding `escapeRelease` for a degenerate set, which is the same
+    // emit-side decision the repetition and component roles need, and doing it
+    // inside a read-side slice is how a fix outgrows the thing it fixes.
+    const built = buildInterchange({
+      senderId: "SENDER",
+      receiverId: "RECEIVER",
+      interchangeDate: "260601",
+      interchangeTime: "1200",
+      interchangeControlNumber: "000000001",
+      elementSeparator: "?",
+      groups: [
+        {
+          functionalIdCode: "HC",
+          groupControlNumber: "1",
+          versionRelease: "005010X222A2",
+          transactions: [
+            {
+              transactionSetIdCode: "837",
+              transactionSetControlNumber: "0001",
+              segments: [["CLM", "PATIENT?ACCT", "150.00"]],
+            },
+          ],
+        },
+      ],
+    });
+    const clm = built.groups[0]?.transactions[0]?.segments[1];
+    if (clm === undefined) throw new Error("the built interchange carries no CLM");
+    expect(clm.raw).toBe("CLM?PATIENT??ACCT?150.00");
+    expect(clm.elements).toEqual(["CLM", "PATIENT", "", "ACCT", "150.00"]);
+    expect(getSegmentValue(clm, "01", built.delimiters)).toBe("PATIENT");
     expect(built.warnings).toEqual([]);
   });
 
@@ -242,10 +310,29 @@ describe("X12-BODY-DEGENERATE-RELEASE-SEPARATOR: the honest controls", () => {
     // element separator a segment ending in an empty last element puts a `?`
     // immediately before the terminator and the scanner reads that as an
     // escape. The two segments merge. This slice does not touch framing.
+    //
+    // 🩺 But the READ of the merged blob DID move, and "framing is untouched"
+    // must not be read as "nothing about this residual moved" - a first draft
+    // pinned only `raw` and the id list and the gate called that understated.
+    // At base the merge produced one `(non-spec)` element no walker looked at.
+    // Here it frames, so `~SE` and the SE's own control number land in `PER`'s
+    // communication-number slots. `X12_MISSING_SE` still fires, so it is not
+    // silent, but a reader taking `PER-06` gets the next segment's id.
     const parsed = parseX12(degenerateIx("PER?IC?NAME?TE?5551234?EX?"));
     const segments = parsed.groups[0]?.transactions[0]?.segments;
     expect(segments?.map((s) => s.id)).toEqual(["ST", "PER"]);
     expect(segments?.[1]?.raw).toBe("PER?IC?NAME?TE?5551234?EX?~SE?3?0001");
+    expect(segments?.[1]?.elements).toEqual([
+      "PER",
+      "IC",
+      "NAME",
+      "TE",
+      "5551234",
+      "EX",
+      "~SE",
+      "3",
+      "0001",
+    ]);
     expect(parsed.warnings.map((w) => w.code)).toEqual(["X12_MISSING_SE"]);
   });
 

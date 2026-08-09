@@ -974,7 +974,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dispatches on `seg.id`. A consumer got an empty claim list out of a well-formed document.
   `buildInterchange` disagreed with itself the same way: it returns `parseX12` of the bytes it just
   wrote, so a caller passing `elementSeparator: "?"` got back a model holding none of the segments
-  it had supplied.
+  it had supplied. **It now reports the segments it wrote, for a value with no `?` in it - read that
+  qualifier, it is load-bearing and the paragraph on the emit side below says why.**
 
   **🛑 It changes how an already-published document decodes, deliberately**, exactly as the envelope
   splitter did in the release before it, and on the same tiebreak: CONSISTENCY with the guard this
@@ -998,12 +999,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   value this library itself emitted and could no longer read back. Deciding them means deciding the
   emit side with them, and that is its own change.
 
-  **🩺 What it does not close, pinned rather than left to be rediscovered.** On a degenerate set a
-  `?~` still swallows the segment terminator: `findUnescapedTerminator` guards its own role only, so
-  a segment ending in an empty last element puts a `?` immediately before the terminator and merges
-  with its successor (`PER?IC?NAME?TE?5551234?EX?~SE?3?0001~` frames as one segment and raises
-  `X12_MISSING_SE`). This slice does not touch framing. Values are still RAW, `elements.join(sep)`
-  still reproduces the segment byte for byte, and the ISA stays positional.
+  **🩺 And that same emit property reaches the ELEMENT role, so a value carrying a literal `?` still
+  does not survive `buildInterchange({ elementSeparator: "?" })` - and on this ONE route the failure
+  got WORSE.** A CLM-01 of `PATIENT?ACCT` is emitted as `CLM?PATIENT??ACCT?150.00`, and the literal
+  split frames five elements with `getSegmentValue(clm, "01")` reading `"PATIENT"`. Through `0.0.15`
+  the same bytes read as one `(non-spec)` element and that dot-path answered `undefined`: a
+  **detectable absence became a confident, truncated reassociation key**, with an empty warning
+  array. The `?` is unrecoverable afterwards, since `raw` holds `PATIENT??ACCT`, which this parser's
+  own new rule reads as two separators. **All THREE roles therefore belong to the emit-side change,
+  and none of them is closed here.**
+
+  **🩺 What else it does not close, pinned rather than left to be rediscovered.** On a degenerate set
+  a `?~` still swallows the segment terminator: `findUnescapedTerminator` guards its own role only,
+  so a segment ending in an empty last element puts a `?` immediately before the terminator and
+  merges with its successor (`PER?IC?NAME?TE?5551234?EX?~SE?3?0001~` frames as one segment and raises
+  `X12_MISSING_SE`). Framing is untouched - but the READ of that merged blob did move, so do not take
+  it as "nothing moved": it now frames, so `~SE` and the SE's control number land in `PER`'s
+  communication-number slots where at base they sat inside one `(non-spec)` element. Values are still
+  RAW, `elements.join(sep)` still reproduces the segment byte for byte, and the ISA stays positional.
 
 - **🩺 `buildInterchange` now release-escapes GS-04, GS-05 and GS-07, so the interchange it hands
   back reports the group date, group time and responsible agency code you passed**

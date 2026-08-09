@@ -23,8 +23,9 @@ warnings: []
 🩺 The envelope framed correctly the whole time, which is what made it silent: one group, one
 transaction, every count and control-number pair reconciling, an empty warning array, and a
 transaction body no reader could see, because every reader in this package dispatches on `seg.id`.
-`buildInterchange` disagreed with itself the same way, since it returns `parseX12` of the bytes it
-just wrote.
+`buildInterchange` returns `parseX12` of the bytes it just wrote, so it reported the same collapse
+back to a caller who passed `elementSeparator: "?"`. It now reports the segments it wrote **for a
+value with no `?` in it** - read that qualifier, and see the emit-side paragraph below.
 
 🛑 It changes how an already-published document decodes, deliberately, on a tiebreak of CONSISTENCY
 with the guard this package already carried twice rather than on a spec clause: 005010 does not
@@ -45,8 +46,18 @@ today and reads `"PATIENT?ACCT"` back out of it. Splitting those roles literally
 as two empty components, trading a separator that never splits for a value this library itself
 emitted and could no longer read back.
 
-What this does not close, pinned rather than left to be rediscovered: on a degenerate set a `?~`
+🩺 That same emit property reaches the ELEMENT role, so a value carrying a literal `?` still does not
+survive `buildInterchange({ elementSeparator: "?" })` - and on this one route the failure got WORSE.
+A CLM-01 of `PATIENT?ACCT` is emitted as `CLM?PATIENT??ACCT?150.00`, and the literal split frames
+five elements with `getSegmentValue(clm, "01")` reading `"PATIENT"`. Through `0.0.15` the same bytes
+read as one `(non-spec)` element and that dot-path answered `undefined`, so a detectable absence
+became a confident, truncated reassociation key with an empty warning array. All three roles belong
+to the emit-side change and none of them is closed here.
+
+What else this does not close, pinned rather than left to be rediscovered: on a degenerate set a `?~`
 still swallows the segment terminator, because `findUnescapedTerminator` guards its own role only,
-so a segment ending in an empty last element merges with its successor and raises
-`X12_MISSING_SE`. Framing is untouched here. Values are still raw, `elements.join(separator)` still
-reproduces the segment byte for byte, and the ISA stays positional.
+so a segment ending in an empty last element merges with its successor and raises `X12_MISSING_SE`.
+Framing is untouched - but the READ of the merged blob did move, so do not take that as "nothing
+moved": it now frames, putting `~SE` and the SE's control number in the preceding segment's slots.
+Values are still raw, `elements.join(separator)` still reproduces the segment byte for byte, and the
+ISA stays positional.

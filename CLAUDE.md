@@ -80,14 +80,16 @@ or financial value on the wire.**
   element, id `(non-spec)`, **while the ENVELOPE framed correctly and every count reconciled -
   `warnings: []`, and readers dispatch on `seg.id`, so a clean document gave an EMPTY claim list.**
   THREE SITES NOW; KEEP THEM IN STEP.
-- **🛑 PER ROLE; DO NOT HOIST IT INTO `splitWithRelease`.** `escapeRelease` writes `??` for a
-  literal `?` in EVERY role, so `componentSeparator: "?"` ROUND-TRIPS TODAY; splitting
-  repetition/component literally re-frames a value THIS LIBRARY EMITTED - `#99`'s pass-1 major from
-  the other side. **Those two need the EMIT side decided with them.**
+- **🛑 PER ROLE; DO NOT HOIST IT INTO `splitWithRelease`. 🩺 `esc` DOUBLES A LITERAL `?` IN EVERY
+  ROLE, SO ALL THREE NEED THE EMIT SIDE - THE ONE FIXED HERE INCLUDED (pass-1 major; a draft drew it
+  for TWO):** `elementSeparator:"?"` + `PATIENT?ACCT` emits `PATIENT??ACCT`, READS `"PATIENT"` where
+  base read `undefined` - **AN ABSENCE BECAME A CONFIDENT TRUNCATED KEY. CORRECTED AS A CLAIM, NOT
+  GUARDED.** `componentSeparator:"?"` ROUND-TRIPS TODAY; splitting it breaks a value WE EMITTED
+  (`#99`'s pass-1 major, inverted).
 - **⚖️ CHANGES PUBLISHED DECODING, ON CONSISTENCY, NOT SPEC - NEVER RESTATE `#96`'s SYMMETRY: A
   `(non-spec)` BLOB IS NOT A SECOND READING.** No code minted; ONE subtracted. **`PRE-EXISTING`,
-  OPEN: `?~` still swallows the TERMINATOR**, `findUnescapedTerminator` guarding its own role only.
-  **FRAMING IS UNTOUCHED; its own call.**
+  OPEN: `?~` still swallows the TERMINATOR. FRAMING UNTOUCHED - BUT THE MERGED BLOB'S READ MOVED
+  (`~SE` lands in `PER-06`), SO NEVER SAY "NOTHING MOVED".**
 
 ### 🩺 `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-interchange-gs-escape.md`
 
@@ -516,24 +518,11 @@ list. **Open it before you touch `renderCallerValue`, `BUILD_REFUSAL_VALUE_MAX_R
 `build*` refusal message: a fragment is BOUNDED, NOT redacted, and `segmentIndex: 0` is the `ST`,
 never a neutral sentinel.**
 
-### 🩺 `X12-ORPHAN-REEMIT` (2026-08-02) · `documentation/agent-notes.md#x12-orphan-reemit-2026-08-02`
+### 🩺 `X12-ORPHAN-REEMIT` (2026-08-02) · `agent-notes/x12-orphan-reemit.md`
 
-- **🩺 `serializeX12` places every orphan by `X12OrphanSegment.anchor` and NEVER by `segmentIndex`.
-  The fix is the ANCHOR, not the re-emission.** An anchor names a SLOT of the typed tree, so it
-  survives both reorderings the emit performs; a raw input index cannot. The three corners are in the
-  agent-notes section.
-- **🩺 SE-01 must count the BYTES THE SERIALIZER WRITES, not the model rows** (X12.6: "segments
-  included in the transaction set, including ST and SE"). What the undercount did: relocated narrative
-  §7. `segCount` now adds every orphan
-  flushed between the `ST` and the `SE`. GE-01/IEA-01 are unaffected: an orphan is never a `GS`.
-- **`KNOWN-LIMITATIONS.md` holds the canonical not-reproduced list; derive its size.**
-- **Case 6 (the empty-first-element segment `*A*B~` outside a transaction) is deliberately NOT in
-  scope** (why, and what closing it would mint: relocated narrative §8).
-- **Retention and placement are NOT promotion:** no `get*` reader sees an orphan, and a `TA1` in a
-  group still does not join `ta1Segments`.
-- **State the four kept regression assertions at the MODEL level, not the byte level.** A
-  `ta1-inside-group` orphan IS written back between the `ST` and the `SE`, so "never lands inside a
-  transaction" would be simply false.
+**RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED** - it paid for the trap at the top of this
+list. **🩺 Open it before you touch orphan placement or `SE-01`: an orphan is placed by its ANCHOR
+and NEVER by `segmentIndex`, and `SE-01` counts the BYTES THE SERIALIZER WRITES, not the model rows.**
 
 ### 🩺 `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` (2026-08-02) · `documentation/agent-notes.md#x12-segment-outside-transaction-dropped-2026-08-02`
 

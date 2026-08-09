@@ -69,11 +69,16 @@ admissible at any of the four delimiter positions, because nothing in the ISA la
 a sender can declare it as structure. **One byte cannot both separate and escape**, so wherever a
 role is declared as `?`, the splitter for that role stops treating `?` as an escape and splits
 literally: the segment terminator, an envelope segment's elements, and a body segment's elements.
-Two bounds worth knowing if you receive such a set. A `?` **repetition or component** separator
-still does not split, so `getSegmentValue(seg, "01-2", ix.delimiters)` will not resolve against it.
-And with `?` as the **element** separator, a segment ending in an empty last element puts a `?`
-immediately before the terminator, which the terminator scan still reads as an escape, so that
-segment merges with the one after it and you get `X12_MISSING_SE`. Both are recorded in
+Three bounds worth knowing if you meet such a set, and none of them is a closed account of what a
+degenerate delimiter set can do to a document. A `?` **repetition or component** separator still does
+not split, so `getSegmentValue(seg, "01-2", ix.delimiters)` will not resolve against it. With `?` as
+the **element** separator, a segment ending in an empty last element puts a `?` immediately before
+the terminator, which the terminator scan still reads as an escape, so that segment merges with the
+one after it and you get `X12_MISSING_SE`. And on the **emit** side, `buildInterchange` escapes a
+literal `?` in a value to `??` whatever role you declared `?` in, so a value carrying one does not
+round-trip through a degenerate set: with `elementSeparator: "?"`, a CLM-01 of `PATIENT?ACCT` is
+written as `CLM?PATIENT??ACCT?150.00` and reads back **truncated** to `PATIENT`, with no warning.
+If you have a partner on a degenerate set, keep `?` out of your values. All three are recorded in
 `KNOWN-LIMITATIONS.md`.
 
 ## Line endings between segments
