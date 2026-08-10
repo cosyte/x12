@@ -198,3 +198,22 @@ ADR 0016 and pass 2's own recommendation to land.
   existing convention rather than fixing it in passing.
 - The four other `PRE-EXISTING` findings in `X12-837-RESIDUALS` are untouched, as is SV3-06's
   ungrounded TR3 usage.
+
+## Relocated from `CLAUDE.md`, 2026-08-10, verbatim
+
+Moved here in full to pay for the new `X12-ENVELOPE-VALUE-ROUTES` trap on deletion remedies. Nothing
+is dropped and nothing is shortened; `CLAUDE.md` keeps only the imperative pointer.
+
+- **🩺 THE `SVx` FALLBACK IS NOT NARROWED AND MUST NOT BE; THIS CLOSED ONLY THE SILENCE.**
+  `X12_837_AMBIGUOUS_VARIANT` at the `ST`, NO `elementIndex`, ONCE per transaction, ONLY where the
+  fallback DECIDED and the body names more than one variant. **A caller `type` or a resolving
+  `ST-03` means NO guess, so it is NOT raised however mixed the body is: a property of the
+  RESOLUTION, never of the document.**
+- **🩺 NEVER PICK A WINNER: a stray `SVx` and a conformant one are indistinguishable here**, and
+  first-wins takes the first, open Loop 2400 or not. Choosing would be inventing.
+- **🩺 ADDITIVITY HERE IS INVARIANCE, NEVER A LIST OF WHAT ELSE YOU WILL SEE.** The frozen message
+  said "a service segment with no line open still raises `X12_837_SERVICE_SEGMENT_WITHOUT_LX`"; a
+  refuter measured it FALSE - a stray `LX` suppresses it. Say only: whatever was raised is still
+  raised, same position. Pinned CHANNEL-WIDE with this filtered out. **Never with
+  `X12_837_UNKNOWN_VARIANT`.** **NO LONGER SOLE:** a foreign `SVx` inside an already-decoded Loop 2400
+  raises `X12_837_SERVICE_SEGMENT_REPEATED` at itself (trap above).

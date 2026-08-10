@@ -18,9 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only `raw` and `elements`, so passing any one of them is `TS2345`, "Property 'id' is missing".
   **All seven are measured here.** The carriers include
   `KNOWN-LIMITATIONS.md`'s _"Read through `getSegmentValue` if you want the logical value"_ for a
-  `gs`, which is the one that owed you a route and so is the one replaced rather than cut; two of the
-  others are pending release notes, and those are corrected by deleting the falsified clause and
-  nothing else.
+  `gs`, which is the one that owed you a route and so is the one replaced rather than cut.
 
   **Two routes reach the decoded text, both were already published in this package, and neither is
   universal.** `unescapeRelease` on the element string is a public export. Adding an `id` and taking
@@ -193,8 +191,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 
   Every row `warnings: []`. TA1-01 is the reassociation key, so the left column is a key that
-  matches no ISA-13. The right column is the same element, which
-  already unescaped; `parse999` does the same on its IK4-01 composite. The grounding is that
+  matches no ISA-13. The right column is the same element. The grounding is that
   disagreement and nothing else - no clause anyone here has read settles what a TA1 element may
   contain.
 
