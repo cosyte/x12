@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **🩺 `X12_ISA_EXTRA_ELEMENT_SEPARATOR` - the ISA element split now has an arity check**
+  (`X12-ISA-ELEMENT-ARITY`). Additions-only: no decoding moved, no existing warning was suppressed or
+  narrowed, and nothing is re-framed.
+
+  `decodeIsa` splits the 105-byte ISA element area on the element separator, and the comment above it
+  asserted the result was "exactly 17 entries by construction because the element-separator-position
+  guard in `delimiters.ts` already verified the layout". That guard verifies the separator at all 16
+  fixed 005010 positions, which bounds the split from BELOW - it can never come out short. It was
+  never bounded from above. An ISA element value carrying that same byte splits again, so the element
+  comes back a prefix and every element after it is displaced by one.
+
+  Planting the element separator inside each of the 16 fixed elements of one conformant interchange,
+  measured at `0.0.16`:
+
+  ```text
+  planted in   split parts   warnings at 0.0.16
+  ISA-01..10   18            X12_PRE_005010, X12_CONTROL_NUMBER_MISMATCH
+  ISA-11       -             X12_INVALID_DELIMITERS (Tier-3, reached first)
+  ISA-12       18            X12_PRE_005010, X12_CONTROL_NUMBER_MISMATCH
+  ISA-13       18            X12_CONTROL_NUMBER_MISMATCH
+  ISA-14       18            (none)
+  ISA-15       18            (none)
+  ISA-16       -             X12_INVALID_DELIMITERS (Tier-3, reached first)
+  ```
+
+  ISA-11 and ISA-16 ARE the in-band repetition and component separator declarations, so the plant
+  collides with them and the Tier-3 refusal reaches it before any of this. That is a boundary of the
+  probe, not a property of those two elements.
+
+  On the `ISA-01..10` and `ISA-12` rows the document declares `00501` at ISA-12's own fixed offset and
+  `X12_PRE_005010` fires anyway; `elements[13]`, the interchange control number and the reassociation
+  key, answers `"00501"`; and `elements[15]`, the test/production usage indicator, answers `"0"` on a
+  document whose ISA-15 says `P`. The `ISA-14` and `ISA-15` rows were reported on no channel at all.
+
+  The new warning is emitted BEFORE the ISA-derived checks that read `elements[12]` and `elements[13]`
+  by index, because when it fires those two may be reading a displaced element rather than the one
+  they name. `{ strict: true }` therefore escalates on it rather than on the warning that follows.
+
+  **It is a report, not a repair.** A byte that is both an element's content under the ISA's fixed
+  widths and the separator that same segment declares in-band has two readings; 005010 makes the
+  interchange non-conformant either way and does not say which to take, so `isa.elements` is left
+  exactly as the split produced it and `isa.raw` still carries all 106 bytes, which is the route back.
+
+  **The emit side is untouched, and this is not a build-side guard.** The fixed-width ISA slots go
+  through `pad` / `padControl` and never through the caller escaper, so `buildInterchange` still
+  writes such a caller value straight onto the wire. It does now surface there, because
+  `buildInterchange` returns `parseX12` of the bytes it just wrote:
+  `interchangeControlNumber: "0000*0001"` came back with ISA-13 reading `"0000"`, ISA-15 reading
+  `"0"` instead of `"P"`, IEA-02 displaced the same way so the control-number reconciliation agreed
+  with the misreading, and `warnings: []`.
+
 ### Documentation
 
 - **`IeaSegment`, `GsSegment`, `GeSegment`, `Ta1Segment` and `X12FunctionalGroup` no longer document

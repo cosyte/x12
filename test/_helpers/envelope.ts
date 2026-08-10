@@ -40,8 +40,11 @@ export interface BuildIsaOptions {
 /**
  * Assemble a 106-byte (including terminator) ISA segment from the named
  * delimiters + field overrides. The returned string is exactly what would
- * appear on the wire - split on `delimiters.element` it has 17 entries
- * (`"ISA"` + 16 elements). The last char is the segment terminator.
+ * appear on the wire, and the last char is the segment terminator. Each
+ * override is padded or truncated to its fixed width and is otherwise written
+ * verbatim, so an override carrying the element separator lands on the wire as
+ * that byte - which is how the `X12_ISA_EXTRA_ELEMENT_SEPARATOR` inputs are
+ * built.
  */
 export function buildIsa(opts: BuildIsaOptions = {}): string {
   const element = opts.element ?? "*";

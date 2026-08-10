@@ -34,6 +34,7 @@ import {
   UNEXPECTED_SEGMENT_CONTEXTS,
   controlNumberMismatch,
   groupCountMismatch,
+  isaExtraElementSeparator,
   missingGe,
   missingIea,
   missingSe,
@@ -43,6 +44,17 @@ import {
   unexpectedSegment,
 } from "./warnings.js";
 import type { X12ParseWarning, X12UnexpectedSegmentContext } from "./warnings.js";
+
+/**
+ * How many parts a conformant ISA element area yields when split on the
+ * element separator: the literal `"ISA"` plus the 16 fixed-width elements.
+ * `detectDelimiters` guarantees this as a floor (it verifies the separator at
+ * all 16 fixed byte positions); anything above it is an element value carrying
+ * the separator byte.
+ *
+ * @internal
+ */
+const ISA_DECODED_PART_COUNT = 17;
 
 /**
  * Slice the ISA from the input and decode its 16 elements. `raw` is the
@@ -69,15 +81,26 @@ import type { X12ParseWarning, X12UnexpectedSegmentContext } from "./warnings.js
  * well-formed. `splitElements` covers every OTHER envelope segment, all of
  * which are ordinary delimited segments.
  *
+ * **The split is NOT guaranteed to yield 17 parts, and this function does not
+ * make it so.** `detectDelimiters` verifies the separator at all 16 fixed
+ * positions, which bounds the split from below - it can never come out SHORT.
+ * It does not bound it from above: an ISA element value carrying the byte that
+ * was declared in-band as the element separator splits again, so that element
+ * comes back a prefix and every element after it is displaced by one.
+ * {@link decodeEnvelope} reports that as `X12_ISA_EXTRA_ELEMENT_SEPARATOR` and
+ * re-frames nothing; `raw` still holds all 106 bytes, which is the route back
+ * to the transmitted bytes.
+ *
  * @internal
  */
 function decodeIsa(raw: string, delimiters: Delimiters): IsaSegment {
   const isaRaw = raw.slice(0, ISA_MIN_LENGTH);
   // The terminator is at byte 105; the 105-byte head is the elements area.
   const isaHead = isaRaw.slice(0, ISA_MIN_LENGTH - 1);
-  // Split into ["ISA", e1, e2, …, e16] - exactly 17 entries by construction
-  // because the element-separator-position guard in delimiters.ts already
-  // verified the layout. Positional, never release-aware: see above.
+  // Split into ["ISA", e1, e2, …, e16]. The element-separator-position guard
+  // in delimiters.ts makes 17 the FLOOR, not the count: a separator byte
+  // inside an element value splits again. Checked by the caller, never
+  // corrected here. Positional, never release-aware: see above.
   const parts = isaHead.split(delimiters.element);
   return { raw: isaRaw, elements: Object.freeze(parts.slice()) };
 }
@@ -305,6 +328,16 @@ export function decodeEnvelope(
     warnings.push(w);
   };
   const isa = decodeIsa(raw, delimiters);
+
+  // ISA arity - the header must split into "ISA" plus its 16 fixed-width
+  // elements. Reported FIRST, because when it fails every ISA element after
+  // the extra separator is displaced by one and the two checks below read
+  // `elements[12]` and `elements[13]` by index. Nothing is re-framed and no
+  // other warning is suppressed: which reading of that byte is right is not
+  // decided here, and `isa.raw` still carries all 106 bytes.
+  if (isa.elements.length !== ISA_DECODED_PART_COUNT) {
+    warnings.push(isaExtraElementSeparator({ segmentIndex: 0, interchangeIndex: 0 }));
+  }
 
   // Pre-005010 detection - ISA-12 != "00501" (Tier-2 warning, never refused).
   const isa12 = el(isa.elements, 12);

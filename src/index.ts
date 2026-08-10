@@ -41,6 +41,7 @@ export {
   groupCountMismatch,
   hlParentLevelInvalid,
   hlParentMismatch,
+  isaExtraElementSeparator,
   missingGe,
   missingIea,
   missingRequiredLoop,

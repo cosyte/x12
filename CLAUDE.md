@@ -207,22 +207,27 @@ predicate moves BOTH ways - state the property, never the directions, and never 
   **🩺 A `?` BEFORE A GS/ST SEPARATOR IS ONE ELEMENT: A FIX IF ESCAPED, A REGRESSION IF LITERAL.
   ISA EXEMPT** - `agent-notes/x12-envelope-release-split.md`.
 
-### 🩺 `X12-837-SV1-OVERWRITE` (2026-08-08) · `documentation/agent-notes/x12-837-sv1-overwrite.md`
+### 🩺 `X12-ISA-ELEMENT-ARITY` (2026-08-10) · `agent-notes/x12-isa-element-arity.md`
 
-- **🩺 A LINE HOLDS ONE SERVICE SEGMENT'S SLOTS AND EVERY DECODER WRITES ALL OF ITS OWN**, so a 2nd
-  `SVx` in an OPEN Loop 2400 REPLACES the 1st: `8500` -> `12`, CPT `99213` -> `99999`, `warnings: []`
-  through `0.0.13`. **An ABSENT charge element on the repeat writes `undefined` over a STATED amount
-  and `X12_837_SERVICE_LINE_NOT_DECODED` does NOT fire: a segment DID decode.**
-- **🛑 LAST-WINS IS NOT NARROWED, ELEMENT FOR ELEMENT.** Same call as `#87`/`#71`: a stray `SVx` and a
-  conformant one are indistinguishable, and first-wins changes how PUBLISHED documents decode.
-- **`X12_837_SERVICE_SEGMENT_REPEATED` at the REPEAT, no `elementIndex`, once per repeat, SCOPED TO
-  THE LINE.** Fires on ANY kind, DECODED OR NOT: keying it on `serviceSegmentDecoded`, or latching
-  it, each reds its own control.
-- **🛑 A BLIND CONSUMER WAS THIS REPO'S OWN DOCS, NOTHING HAVING MOVED ONTO A NEW CODE:** the
-  post-a-line-amount gate named FOUR codes and `spec-notes-money` "the known instance", NONE firing
-  here. **SWEEP EVERY MONEY PAGE, NOT THE RECIPE ALONE; PIN IT.**
-- **The message ASSERTS NO TR3 USAGE and depends on NO variant resolving**, which is why
-  `X12-VARIANT-ICR-UNGROUNDED` could correct that table without touching this code.
+**🩺 Open it before you touch `decodeIsa`, the ISA split, or any read of an ISA `elements[n]`: 17 IS
+A FLOOR AND NEVER THE COUNT (`detectDelimiters` bounds the split from BELOW only), so an ISA element
+carrying the ELEMENT SEPARATOR displaces every element after it - the control number answers the
+VERSION and the usage indicator answers ACK-REQUESTED. 🛑 THE FILED LINE NAMED ISA-13 AND 14 OF 16
+REPRODUCE; the two that do not ARE the in-band repetition/component declarations, so the plant
+collides with them - A BOUNDARY OF THE PROBE, NEVER A PROPERTY OF THOSE ELEMENTS, AND TELL NO STORY
+ABOUT WHICH IS SPECIAL. 🛑 IT IS A REPORT, NOT A REPAIR: nothing is re-framed, NO existing warning is
+suppressed or narrowed, and `isa.raw` is the route back - the byte has TWO READINGS and no source
+settles which. 🛑 THIS DOES NOT CLOSE THE `types.ts` `@example` CELLS: `#116`'s gate already
+falsified attributing those to this check, and their mechanism is FIXED-WIDTH SPACE PADDING. THE
+EMIT SIDE IS UNGUARDED AND FILED - the ISA slots never reach the caller escaper.**
+
+### 🩺 `X12-837-SV1-OVERWRITE` (2026-08-08) · `agent-notes/x12-837-sv1-overwrite.md`
+
+**RELOCATED IN FULL 2026-08-10, VERBATIM, NOTHING DROPPED** - it paid for the trap above.
+**🩺 Open it before you touch a service-line slot or `X12_837_SERVICE_SEGMENT_REPEATED`: a 2nd `SVx`
+in an OPEN Loop 2400 REPLACES the 1st element for element, `warnings: []` through `0.0.13`, 🛑
+LAST-WINS IS NOT NARROWED, the code is SCOPED TO THE LINE and fires DECODED OR NOT, and A BLIND
+CONSUMER WAS THIS REPO'S OWN DOCS - SWEEP EVERY MONEY PAGE, NOT THE RECIPE ALONE.**
 
 ### 🩺 `X12-837-AMBIGUOUS-VARIANT` (2026-08-08) · `documentation/agent-notes/x12-837-ambiguous-variant.md`
 
@@ -277,17 +282,12 @@ YOU WILL SEE.**
 
 ### 🩺 `X12-PAY-TO-FUSION` (2026-08-07) · `documentation/agent-notes/x12-pay-to-fusion.md`
 
-- **🩺 EACH `NM1*87` OPENS ITS OWN ACCUMULATOR; OCCURRENCES ARE NEVER MERGED.** The LAST that STATES
-  an address takes the slot; one that states NONE does **not** blank one that did.
-- **🛑 AN EMPTIED SLOT IS NOT A NEUTRAL ABSENCE - THE EMIT SIDE READS IT** (Loop 2010AB is gated on
-  `payToAddress !== undefined`), so "states an address" IS **what `emitAddress` would write a segment
-  for**, ONE predicate shared both ways. **"A write happened" is a property of the SEGMENT STREAM and
-  was refuted.** Disclosed cost: a repeat stating only PART re-emits only that part, and restoring
-  the earlier occurrence's street lines IS the fusion.
-- **`X12_837_PAY_TO_ADDRESS_REPEATED` at the 2nd+ `NM1*87` in ONE Loop 2000A**, no `elementIndex`,
-  counter reset at that loop's `HL` (a latching one flags a conformant second billing provider).
-  **NEVER write "a second party's NAME" - measured false.** `PRE-EXISTING`: with a `CLM` open it
-  lands in `claim.providers` instead.
+**RELOCATED IN FULL 2026-08-10, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-ISA-ELEMENT-ARITY` trap at the top of this list.
+**🩺 Open it before you touch `payToAddress`, `attachContact` or `X12_837_PAY_TO_ADDRESS_REPEATED`:
+each `NM1*87` OPENS ITS OWN ACCUMULATOR and occurrences are NEVER MERGED, 🛑 AN EMPTIED SLOT IS NOT A
+NEUTRAL ABSENCE BECAUSE THE EMIT SIDE READS IT, the code counts within ONE Loop 2000A and a LATCHING
+counter flags a conformant second billing provider, and NEVER write "a second party's NAME".**
 
 ### 🩺 `X12-837-LOOP-RESIDUALS` (2026-08-05) · `documentation/agent-notes.md#x12-837-loop-residuals-2026-08-05`
 

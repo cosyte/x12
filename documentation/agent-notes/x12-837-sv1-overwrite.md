@@ -145,3 +145,23 @@ derive the number from `wc -c x12/CLAUDE.md` at the merged sha.**
   `get-837.ts`; an `NM1*87` with a `CLM` open landing in `claim.providers`; `attachContact`'s
   "structurally unreachable" `payToAddress` arm; a Loop 2010AB short a Required `N3`; SV3-06's
   ungrounded TR3 usage.
+
+## Relocated from `x12/CLAUDE.md`, 2026-08-10, VERBATIM, NOTHING DROPPED
+
+Moved here to pay for the `X12-ISA-ELEMENT-ARITY` trap under this repo's zero-headroom ratchet. The
+imperative stays in `CLAUDE.md`; the bullets are the text that was there, unchanged.
+
+- **🩺 A LINE HOLDS ONE SERVICE SEGMENT'S SLOTS AND EVERY DECODER WRITES ALL OF ITS OWN**, so a 2nd
+  `SVx` in an OPEN Loop 2400 REPLACES the 1st: `8500` -> `12`, CPT `99213` -> `99999`, `warnings: []`
+  through `0.0.13`. **An ABSENT charge element on the repeat writes `undefined` over a STATED amount
+  and `X12_837_SERVICE_LINE_NOT_DECODED` does NOT fire: a segment DID decode.**
+- **🛑 LAST-WINS IS NOT NARROWED, ELEMENT FOR ELEMENT.** Same call as `#87`/`#71`: a stray `SVx` and a
+  conformant one are indistinguishable, and first-wins changes how PUBLISHED documents decode.
+- **`X12_837_SERVICE_SEGMENT_REPEATED` at the REPEAT, no `elementIndex`, once per repeat, SCOPED TO
+  THE LINE.** Fires on ANY kind, DECODED OR NOT: keying it on `serviceSegmentDecoded`, or latching
+  it, each reds its own control.
+- **🛑 A BLIND CONSUMER WAS THIS REPO'S OWN DOCS, NOTHING HAVING MOVED ONTO A NEW CODE:** the
+  post-a-line-amount gate named FOUR codes and `spec-notes-money` "the known instance", NONE firing
+  here. **SWEEP EVERY MONEY PAGE, NOT THE RECIPE ALONE; PIN IT.**
+- **The message ASSERTS NO TR3 USAGE and depends on NO variant resolving**, which is why
+  `X12-VARIANT-ICR-UNGROUNDED` could correct that table without touching this code.
