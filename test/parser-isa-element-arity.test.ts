@@ -4,10 +4,15 @@
  * "exactly 17 entries by construction". It does not. `detectDelimiters`
  * verifies the separator at all 16 fixed 005010 byte positions, which makes 17
  * a FLOOR: an ISA element value carrying that byte splits again, so the element
- * comes back a prefix and everything after it is displaced. `isa.elements.length`
- * is the only measure here of how far, and more than one element can do it - the
- * two-element row below is pinned because the first draft of this slice published
- * "displaced by one" as a rule in nine carriers and a gate falsified it.
+ * comes back a prefix and everything after it is displaced.
+ *
+ * **🛑 How far is NOT derivable from `isa.elements`, and the two-element row
+ * below is pinned to forbid the arithmetic.** This slice published a quantifier
+ * twice - "displaced by one", then `isa.elements.length` - and a gate falsified
+ * both, the second inside the remedy for the first. More than one element can
+ * carry an extra separator, and one sitting between two of them is displaced
+ * less than one sitting after both. `isa.raw` plus the ISA's fixed widths is the
+ * only route back.
  *
  * **This file publishes the cells and states no rule over which element is
  * special.** The census below runs all 16 fixed elements and shows 14 of them
@@ -199,9 +204,14 @@ describe("X12_ISA_EXTRA_ELEMENT_SEPARATOR: the ISA split has an arity check", ()
     expect(sender.isa.elements[15]).toBe("0");
   });
 
-  it("displaces by TWO when two elements carry the separator, so no rule says `by one`", () => {
-    // The falsifier for the first draft's published rule. Two plants, ISA-06 and
-    // ISA-13, on one interchange.
+  it("displaces by an amount no arithmetic on `isa.elements` recovers", () => {
+    // The falsifier for BOTH quantifiers this slice tried to publish. Two
+    // plants, ISA-06 and ISA-13, on one interchange. Draft 1 said "displaced by
+    // one"; draft 2 said `isa.elements.length` measures how far. Both are false
+    // on this input, and the second is false in the more dangerous direction:
+    // `length - 17` is 2, but ISA-11 and ISA-12 have moved by ONE, so applying
+    // it recovers ISA-12 as `elements[14]` (a truncated control number read as
+    // the version) and ISA-13 as `elements[15]` (an empty reassociation key).
     const conformant = buildRawInterchange();
     const e6 = elementSpan(6).end;
     const e13 = elementSpan(13).end;
@@ -219,12 +229,17 @@ describe("X12_ISA_EXTRA_ELEMENT_SEPARATOR: the ISA split has an arity check", ()
       WARNING_CODES.X12_PRE_005010,
       WARNING_CODES.X12_CONTROL_NUMBER_MISMATCH,
     ]);
-    // ISA-15, the test/production usage indicator, has moved TWO places: its
-    // transmitted byte at the fixed offset is "P" and `elements[15]` is neither
-    // that nor ISA-14's value.
-    expect(ix.isa.raw[102]).toBe("P");
+    // The two cells that forbid any arithmetic, side by side. ISA-11 and ISA-12
+    // moved by ONE (`elements[12]` and `elements[13]` still answer them, exactly
+    // as they do on the single-plant ISA-06 row above), while ISA-14 and ISA-15
+    // moved by TWO. One interchange, two different shifts.
+    expect(ix.isa.elements[12]).toBe("^");
+    expect(ix.isa.elements[13]).toBe("00501");
     expect(ix.isa.elements[16]).toBe("0");
-    expect(ix.isa.elements[15]).toBe("");
+    expect(ix.isa.elements[17]).toBe("P");
+    // And the route back is unchanged: the transmitted ISA-15 is at its fixed
+    // offset regardless of how the split came out.
+    expect(ix.isa.raw[102]).toBe("P");
   });
 
   it("scopes the ordering claim: `serializeX12` never raises this code", () => {

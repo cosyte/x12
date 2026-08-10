@@ -10,8 +10,10 @@ narrowed, and nothing is re-framed.
 that this yields "exactly 17 entries by construction". The guard it cited verifies the separator at
 all 16 fixed 005010 positions, which bounds the split from BELOW - it can never come out short - and
 never bounded it from above. An ISA element value carrying that same byte splits again, so that
-element comes back a prefix and everything after it is displaced. `isa.elements.length` is the only
-measure of how far, and more than one element can do it: two such elements displace by two.
+element comes back a prefix and everything after it is displaced. How far is not derivable from
+`isa.elements`: more than one element can carry an extra separator, and one sitting between two of
+them is displaced less than one sitting after both. `isa.raw` plus the ISA's fixed widths is the only
+route back.
 
 Planting the element separator inside each of the 16 fixed elements of one conformant interchange,
 measured at `0.0.16`: ISA-01 through ISA-10 and ISA-12 split into 18 parts and warned

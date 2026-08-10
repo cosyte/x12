@@ -24,10 +24,11 @@ model.
   `detectDelimiters` verifies the element separator at all 16 fixed 005010 byte positions, so the
   ISA split can never come out SHORT. It was never bounded from ABOVE. An element value carrying
   that same byte splits again, so that element comes back a **prefix** and everything after it is
-  **displaced**. **`isa.elements.length` is the only measure of how far, and more than one element
-  can do it**: two such elements displace by two, and there is no bound on either. Measured on one
-  conformant interchange, planting the element separator inside each of the 16 fixed elements in
-  turn:
+  **displaced**. **🛑 How far is NOT derivable from `isa.elements`, and no arithmetic on it works.**
+  More than one element can carry an extra separator, and an element sitting between two of them is
+  displaced less than one sitting after both; `isa.raw` plus the ISA's fixed widths is the only route
+  back. Measured on one conformant interchange, planting the element separator inside each of the 16
+  fixed elements in turn:
 
   ```text
   planted in   split parts   warnings through 0.0.16

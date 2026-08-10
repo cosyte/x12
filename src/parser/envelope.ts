@@ -86,8 +86,9 @@ const ISA_DECODED_PART_COUNT = 17;
  * positions, which bounds the split from below - it can never come out SHORT.
  * It does not bound it from above: an ISA element value carrying the byte that
  * was declared in-band as the element separator splits again, so that element
- * comes back a prefix and everything after it is displaced. `parts.length` is
- * the only measure here of how far, and more than one element can do it.
+ * comes back a prefix and everything after it is displaced. **How far is not
+ * derivable from `parts`**: more than one element can do it, and an element
+ * sitting between two of them is displaced less than one sitting after both.
  * {@link decodeEnvelope} reports that as `X12_ISA_EXTRA_ELEMENT_SEPARATOR` and
  * re-frames nothing; `raw` still holds all 106 bytes, which is the route back
  * to the transmitted bytes.

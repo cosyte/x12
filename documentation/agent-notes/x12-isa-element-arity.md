@@ -17,9 +17,9 @@ reader**, so it is closed here before any such widening is considered.
 The cited guard (`detectDelimiters`) verifies the element separator at all 16 fixed 005010 byte
 positions. That bounds the split **from below** - it can never come out short - and it never bounded
 it from above. An ISA element **value** carrying that same byte splits again, so that element comes
-back a **prefix** and everything after it is **displaced**. **`parts.length` is the only measure of
-how far, and more than one element can do it** - see the pass-1 record below, where publishing
-*"displaced by one"* as a rule was the first major.
+back a **prefix** and everything after it is **displaced**. **🛑 HOW FAR IS NOT DERIVABLE FROM
+`parts`, AND NO ARITHMETIC ON IT WORKS** - see the gate record below, where publishing a quantifier
+was the pass-1 major AND, in a different form, the pass-2 major inside its own remedy.
 
 `parts.length < 17` is therefore unreachable while `detectDelimiters` is what it is, and the check
 shipped is `!== 17` rather than `> 17` so that it does not silently depend on that.
@@ -176,9 +176,11 @@ planted ONE separator, and the prose generalised past its own measurement** - `c
 (twice), `KNOWN-LIMITATIONS.md` and `CHANGELOG.md` (both in `package.json.files`; the changelog
 freezes), `.changeset/rare-forks-judge.md` (**freezes on release**), `docs-content/spec-notes-envelope.md`,
 `docs-content/troubleshooting.md`, and the test docblock. `isa.elements.length` is the honest carrier
-and is what replaced it. `git grep "displaced by one" f0295a2` is empty, so every carrier was this
-slice's own. **The two-element row is now a pinned cell**, so the falsifier is a test rather than a
-paragraph.
+and `git grep "displaced by one" f0295a2` is empty, so every carrier was this slice's own. **The
+two-element row became a pinned cell**, so the falsifier is a test rather than a paragraph.
+**🛑 But what replaced the clause was a SECOND quantifier, and pass 2 measured it false - see
+below. The remedy for a false universal is DELETION, never substitution, and this slice is the worked
+example of getting that wrong on the first try.**
 
 **Major 2, `INTRODUCED`: the ordering promise was a false universal.** Scoped, per the section above.
 
@@ -201,9 +203,54 @@ on `f0295a2`. Not stop-the-line: it warns, it does not silently emit a wrong ide
 **Not acted on:** the refuter also noted that neither `operations/roadmaps/x12.md` nor this slice
 carries a `Provenance:` field. That is an umbrella-side observation about a file outside this repo.
 
+## 🛑 Pass 2 `REFUTED`: the remedy substituted a SECOND false quantifier, and that is the lesson
+
+Pass 2 confirmed all four pass-1 remedies landed and that the relocation was byte-identical. It then
+found one `INTRODUCED` major, **inside the remedy**, in the same ten carriers:
+*"`isa.elements.length` is the only measure of how far"* / *"two such elements displace by two"*.
+
+**It is false, and the falsifier is this slice's OWN pinned input.** Plant the element separator in
+ISA-06 and ISA-13 of one conformant interchange:
+
+```
+parts.length 19        (= 17 + 2 extra separators)
+[12] "^"          ISA-11  -> moved by ONE
+[13] "00501"      ISA-12  -> moved by ONE
+[14] "00000000"   ISA-13 prefix
+[15] ""           ISA-13 remainder
+[16] "0"          ISA-14  -> moved by TWO
+[17] "P"          ISA-15  -> moved by TWO
+```
+
+**Displacement is POSITION-DEPENDENT.** `isa.elements.length` counts extra separators in total; it
+equals the shift only for elements sitting after the LAST plant. A consumer applying the published
+rule (`length - 17 = 2`) to this interchange recovers **ISA-12 as `elements[14]` = `"00000000"`, a
+truncated interchange control number read as the version**, and **ISA-13 as `elements[15]` = `""`, an
+empty reassociation key** - the exact mis-read this slice exists to flag, prescribed by the warning's
+own shipped message. The carriers also contradicted themselves two sentences later, where each said
+`isa.raw` plus the fixed widths is the route back.
+
+**The remedy is DELETION, and this time no quantifier replaced it.** Every carrier now says only that
+an element containing an extra separator comes back a prefix, that everything after it is displaced,
+that **how far is not derivable from `isa.elements`**, and that `isa.raw` plus the fixed widths is the
+only route back. The two-plant pin was renamed off the falsified rule and now asserts `elements[12]`,
+`elements[13]`, `elements[16]` and `elements[17]` **together** - two different shifts on one
+interchange, which is the cell that forbids any arithmetic.
+
+**🩺 THE REUSABLE RULE, AND IT COST TWO PASSES: A CORRECTED CLAIM IS A NEW CLAIM. WHEN A GATE
+FALSIFIES A UNIVERSAL, DELETE THE QUANTIFIER - DO NOT SUBSTITUTE A NARROWER ONE.** `conventions.md`
+§"Three rules the diagnostic-widening slices paid for" says exactly this, and the first remedy broke
+it while citing it. **Both of this slice's majors were prose; the guard at `envelope.ts` graded
+correct on every pass and neither refuter could break it.**
+
+**Pass 2's other two findings did not contribute to the verdict.** The surviving *"the interchange is
+not 005010-conformant either way"* was ranked `PRE-EXISTING` minor and defensible from the fixed-width
+layout this repo verifies itself, and is left as filed rather than swept a third time. The missing
+`Provenance:` field is umbrella-side and outside this repo.
+
 ## Evidence
 
-- **Full suite green at head:** 91 files, 2,310 tests (2,308 before the two pass-1 pins).
+- **Full suite green at head:** 91 files, 2,310 tests (2,308 at the first graded sha).
 - **Mutation control on the guard alone** (the `if` in `decodeEnvelope` disabled, everything else at
   head, restored afterwards **by file copy**, never `git checkout`): **6 of the 13 new tests red** at
 the graded sha,
