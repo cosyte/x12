@@ -211,11 +211,14 @@ predicate moves BOTH ways - state the property, never the directions, and never 
 
 **🩺 Open it before you touch `decodeIsa`, the ISA split, or any read of an ISA `elements[n]`: 17 IS
 A FLOOR AND NEVER THE COUNT (`detectDelimiters` bounds the split from BELOW only), so an ISA element
-carrying the ELEMENT SEPARATOR displaces every element after it - the control number answers the
-VERSION and the usage indicator answers ACK-REQUESTED. 🛑 THE FILED LINE NAMED ISA-13 AND 14 OF 16
-REPRODUCE; the two that do not ARE the in-band repetition/component declarations, so the plant
-collides with them - A BOUNDARY OF THE PROBE, NEVER A PROPERTY OF THOSE ELEMENTS, AND TELL NO STORY
-ABOUT WHICH IS SPECIAL. 🛑 IT IS A REPORT, NOT A REPAIR: nothing is re-framed, NO existing warning is
+carrying the ELEMENT SEPARATOR displaces what follows it - 🛑 NEVER "BY ONE", MORE THAN ONE ELEMENT
+CAN DO IT AND `isa.elements.length` IS THE ONLY MEASURE (a pass-1 major, in nine carriers). 🛑 THE
+FILED LINE NAMED ISA-13 AND 14 OF 16 REPRODUCE; the two that do not ARE the in-band
+repetition/component declarations, so the plant collides with them - A BOUNDARY OF THE PROBE, NEVER A
+PROPERTY OF THOSE ELEMENTS, AND TELL NO STORY ABOUT WHICH IS SPECIAL. 🛑 SCOPE THE ORDERING CLAIM TO
+`ix.warnings`: `serializeX12` RECONCILES ISA-13 OFF `elements[13]` AND NEVER RAISES THIS CODE, so its
+absence there is NOT evidence the header framed (pass-1 major, `PRE-EXISTING` behaviour, an
+INTRODUCED overclaim). 🛑 IT IS A REPORT, NOT A REPAIR: nothing is re-framed, NO existing warning is
 suppressed or narrowed, and `isa.raw` is the route back - the byte has TWO READINGS and no source
 settles which. 🛑 THIS DOES NOT CLOSE THE `types.ts` `@example` CELLS: `#116`'s gate already
 falsified attributing those to this check, and their mechanism is FIXED-WIDTH SPACE PADDING. THE
@@ -269,16 +272,13 @@ YOU WILL SEE.**
 
 ### 🩺 `X12-837-SV-UNDEFINED-DECIMAL` (2026-08-07) · `documentation/agent-notes/x12-837-sv-undefined-decimal.md`
 
-- **🩺 A slot reads `X12Decimal | undefined` EXACTLY where a reader could substitute `ZERO`; a STATED
-  zero still reads `0` and KEEPS ITS LEXICAL FORM. PUBLISH NO SLOT CENSUS.**
-  **`X12_835_BALANCE_NOT_EVALUABLE`: an undecoded TERM makes a §1.10.2 equation UNEVALUABLE, NEVER a
-  mismatch; an EMPTY adjustment list is NOT an absent term** - it sums to `ZERO`.
-- **🛑 A WIDENING THAT MOVES A CASE ONTO A NEW CODE BLINDS EVERY PREDICATE ON THE OLD ONE, AND THIS
-  PACKAGE'S OWN DOCS ARE SUCH A CONSUMER** - the "do NOT auto-post" recipe gated on
-  `X12_835_REMIT_BALANCE_MISMATCH` alone went base `true` / head `false`. **Sweep every recipe, the
-  troubleshooting table and `CHANGELOG.md`; PIN THE SWEEP.**
-- **🩺 `Build837ServiceLineSpec.units` is REQUIRED and the builder REFUSES rather than emitting `0`.
-  SV3-06's TR3 usage is NOT grounded - never claim it is.**
+**RELOCATED IN FULL 2026-08-10, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-ISA-ELEMENT-ARITY` trap at the top of this list.
+**🩺 Open it before you touch an `X12Decimal | undefined` slot, `X12_835_BALANCE_NOT_EVALUABLE` or
+`Build837ServiceLineSpec.units`: an undecoded TERM makes a §1.10.2 equation UNEVALUABLE and never a
+mismatch, an EMPTY adjustment list is NOT an absent term, PUBLISH NO SLOT CENSUS, 🛑 A WIDENING THAT
+MOVES A CASE ONTO A NEW CODE BLINDS EVERY PREDICATE ON THE OLD ONE AND THIS PACKAGE'S OWN DOCS ARE
+SUCH A CONSUMER - SWEEP EVERY RECIPE AND PIN IT, and SV3-06's TR3 usage is NOT grounded.**
 
 ### 🩺 `X12-PAY-TO-FUSION` (2026-08-07) · `documentation/agent-notes/x12-pay-to-fusion.md`
 

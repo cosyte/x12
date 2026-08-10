@@ -4,7 +4,10 @@
  * "exactly 17 entries by construction". It does not. `detectDelimiters`
  * verifies the separator at all 16 fixed 005010 byte positions, which makes 17
  * a FLOOR: an ISA element value carrying that byte splits again, so the element
- * comes back a prefix and every element after it is displaced by one.
+ * comes back a prefix and everything after it is displaced. `isa.elements.length`
+ * is the only measure here of how far, and more than one element can do it - the
+ * two-element row below is pinned because the first draft of this slice published
+ * "displaced by one" as a rule in nine carriers and a gate falsified it.
  *
  * **This file publishes the cells and states no rule over which element is
  * special.** The census below runs all 16 fixed elements and shows 14 of them
@@ -15,11 +18,17 @@
  *
  * **Nothing is re-framed and no existing warning is suppressed.** A byte that
  * is both an element's content under the ISA's fixed widths and the separator
- * declared in-band has two readings; 005010 makes the interchange
- * non-conformant either way and does not say which reading to take, so the
- * parser reports that the header did not frame and leaves `isa.elements`
+ * declared in-band has two readings; the interchange is not 005010-conformant
+ * either way and nothing anyone here has read settles which reading to take, so
+ * the parser reports that the header did not frame and leaves `isa.elements`
  * exactly as the split produced it. The displaced-value rows below are pinned
  * for that reason: they are what the parser still answers, not a fix.
+ *
+ * **The ordering claim is scoped to `parseX12`'s channel and pinned that way.**
+ * `serializeX12(ix, { specClean: true })` runs its own ISA-13 / IEA-02
+ * reconciliation off `isa.elements[13]` with no arity awareness and never raises
+ * this code, so its absence there is not evidence the header framed. That is
+ * pre-existing and is pinned here as a disclosure, not fixed.
  */
 
 import { describe, expect, it } from "vitest";
@@ -30,6 +39,7 @@ import {
   X12ParseError,
   buildInterchange,
   parseX12,
+  serializeX12,
 } from "../src/index.js";
 import { buildInterchange as buildRawInterchange, buildIsa } from "./_helpers/envelope.js";
 
@@ -89,9 +99,9 @@ describe("X12_ISA_EXTRA_ELEMENT_SEPARATOR: the ISA split has an arity check", ()
     }
 
     // Published as measured. The first code on every framing row is the new
-    // one: it is emitted before the ISA-derived checks that read `elements[12]`
-    // and `elements[13]` by index, because when it fires those two may be
-    // reading a displaced element rather than the one they name.
+    // one: `decodeEnvelope` raises it ahead of the ISA-derived checks that read
+    // `elements[12]` and `elements[13]` by index, because when it fires those
+    // two may be reading a displaced element rather than the one they name.
     expect(rows).toEqual([
       {
         element: 1,
@@ -180,13 +190,56 @@ describe("X12_ISA_EXTRA_ELEMENT_SEPARATOR: the ISA split has an arity check", ()
     expect(cn.isa.elements[13]).toBe("00000000");
     expect(cn.isa.elements[14]).toBe("");
 
-    // ISA-06, a sender id: everything from ISA-12 on is displaced by one, so
+    // ISA-06, a sender id: everything from ISA-12 on shifts by one place, so
     // `elements[12]` answers the repetition separator and X12_PRE_005010 fires
     // on an interchange that declares "00501" at ISA-12's own fixed offset.
     const sender = parseX12(withSeparatorInElement(6));
     expect(sender.isa.elements[12]).toBe("^");
     expect(sender.isa.elements[13]).toBe("00501");
     expect(sender.isa.elements[15]).toBe("0");
+  });
+
+  it("displaces by TWO when two elements carry the separator, so no rule says `by one`", () => {
+    // The falsifier for the first draft's published rule. Two plants, ISA-06 and
+    // ISA-13, on one interchange.
+    const conformant = buildRawInterchange();
+    const e6 = elementSpan(6).end;
+    const e13 = elementSpan(13).end;
+    const raw =
+      conformant.slice(0, e6) +
+      "*" +
+      conformant.slice(e6 + 1, e13) +
+      "*" +
+      conformant.slice(e13 + 1);
+    const ix = parseX12(raw);
+
+    expect(ix.isa.elements).toHaveLength(19);
+    expect(ix.warnings.map((w) => w.code)).toEqual([
+      WARNING_CODES.X12_ISA_EXTRA_ELEMENT_SEPARATOR,
+      WARNING_CODES.X12_PRE_005010,
+      WARNING_CODES.X12_CONTROL_NUMBER_MISMATCH,
+    ]);
+    // ISA-15, the test/production usage indicator, has moved TWO places: its
+    // transmitted byte at the fixed offset is "P" and `elements[15]` is neither
+    // that nor ISA-14's value.
+    expect(ix.isa.raw[102]).toBe("P");
+    expect(ix.isa.elements[16]).toBe("0");
+    expect(ix.isa.elements[15]).toBe("");
+  });
+
+  it("scopes the ordering claim: `serializeX12` never raises this code", () => {
+    // Pre-existing and disclosed, not fixed. `serializeX12`'s spec-clean
+    // reconciliation reads `isa.elements[13]`, which on a displaced ISA is some
+    // other element, so it reports a control-number mismatch on an interchange
+    // whose transmitted ISA-13 span equals IEA-02 byte for byte - and the arity
+    // warning never reaches that channel at all.
+    const ix = parseX12(withSeparatorInElement(6));
+    const { start, end } = elementSpan(13);
+    expect(ix.isa.raw.slice(start, end + 1)).toBe(ix.iea?.elements[2]);
+
+    const seen: string[] = [];
+    serializeX12(ix, { specClean: true, onWarning: (w) => seen.push(w.code) });
+    expect(seen).toEqual([WARNING_CODES.X12_CONTROL_NUMBER_MISMATCH]);
   });
 
   it("keeps all 106 ISA bytes verbatim on `isa.raw`, which is the route back", () => {

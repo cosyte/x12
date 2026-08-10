@@ -23,9 +23,11 @@ model.
 
   `detectDelimiters` verifies the element separator at all 16 fixed 005010 byte positions, so the
   ISA split can never come out SHORT. It was never bounded from ABOVE. An element value carrying
-  that same byte splits again, so that element comes back a **prefix** and every element after it is
-  **displaced by one**. Measured on one conformant interchange, planting the element separator inside
-  each of the 16 fixed elements in turn:
+  that same byte splits again, so that element comes back a **prefix** and everything after it is
+  **displaced**. **`isa.elements.length` is the only measure of how far, and more than one element
+  can do it**: two such elements displace by two, and there is no bound on either. Measured on one
+  conformant interchange, planting the element separator inside each of the 16 fixed elements in
+  turn:
 
   ```text
   planted in   split parts   warnings through 0.0.16
@@ -59,8 +61,14 @@ model.
   produced it.
 
   **When this warning is present, treat every other ISA-derived diagnostic on that interchange as
-  provisional.** It is emitted before them for that reason, which also means `{ strict: true }`
-  escalates on it rather than on the displaced-value warning that follows.
+  provisional.** `parseX12` raises it ahead of the ones it raises after it for that reason, which
+  also means `{ strict: true }` escalates on it rather than on the displaced-value warning that
+  follows. **🩺 Read that as a statement about `ix.warnings` and `onWarning`, and about nothing
+  else.** `serializeX12(ix, { specClean: true })` reconciles ISA-13 against IEA-02 off
+  `isa.elements[13]` with no arity awareness and **never raises this code at all**, so on that
+  channel a lone `X12_CONTROL_NUMBER_MISMATCH` can be a displaced read of a control number that in
+  fact matches byte for byte at its fixed span, and **the absence of this warning there is not
+  evidence the header framed**. Pre-existing, disclosed, not fixed here.
 
   **The emit side is unchanged and is NOT guarded by this.** The fixed-width ISA slots go through
   `pad` / `padControl` and never through the caller escaper, so `buildInterchange` still writes a

@@ -17,7 +17,9 @@ reader**, so it is closed here before any such widening is considered.
 The cited guard (`detectDelimiters`) verifies the element separator at all 16 fixed 005010 byte
 positions. That bounds the split **from below** - it can never come out short - and it never bounded
 it from above. An ISA element **value** carrying that same byte splits again, so that element comes
-back a **prefix** and every element after it is **displaced by one**.
+back a **prefix** and everything after it is **displaced**. **`parts.length` is the only measure of
+how far, and more than one element can do it** - see the pass-1 record below, where publishing
+*"displaced by one"* as a rule was the first major.
 
 `parts.length < 17` is therefore unreachable while `detectDelimiters` is what it is, and the check
 shipped is `!== 17` rather than `> 17` so that it does not silently depend on that.
@@ -96,12 +98,22 @@ would be a normalisation rule this package has refused to invent four times.
 **The route back is `isa.raw`**, unchanged: all 106 bytes, verbatim, and the ISA's fixed widths make
 the transmitted span of any element recoverable from it. Recovering it is the **caller's** decision.
 
-**Ordering is load-bearing.** The new warning is pushed **before** the ISA-12 and ISA-13 checks,
-because when it fires those two may be reading a displaced element rather than the one they name.
-`{ strict: true }` escalates the **first** warning, so this also means strict mode now throws
-`X12_ISA_EXTRA_ELEMENT_SEPARATOR` on such an interchange instead of the displaced-value warning that
-follows it. That is a behaviour change, on non-conformant input only, and it is disclosed rather
-than glossed.
+**Ordering is load-bearing, and its scope is part of the claim.** `decodeEnvelope` pushes the new
+warning **ahead of** the ISA-12 and ISA-13 checks, because when it fires those two may be reading a
+displaced element rather than the one they name. `{ strict: true }` escalates the **first** warning,
+so strict mode now throws `X12_ISA_EXTRA_ELEMENT_SEPARATOR` on such an interchange instead of the
+displaced-value warning that follows it. That is a behaviour change, on non-conformant input only,
+and it is disclosed rather than glossed.
+
+**🛑 That is a statement about `parseX12`'s `ix.warnings` and `onWarning`, and about NOTHING ELSE.**
+`serializeX12(ix, { specClean: true })` runs its own ISA-13 / IEA-02 reconciliation off
+`interchange.isa.elements[13]` with no arity awareness and **never raises this code at all**. On the
+ISA-06 plant it emits `["X12_CONTROL_NUMBER_MISMATCH"]` while the transmitted ISA-13 span
+(`isa.raw.slice(90, 99)`) equals IEA-02 **byte for byte** - exactly the "the warning named the wrong
+thing" defect this slice exists to flag, on the one channel where the flag cannot appear. The
+serializer's behaviour is `PRE-EXISTING` (`src/serialize/serialize.ts` is zero lines of diff) and is
+**filed, not fixed**; what was `INTRODUCED` was the universal quantifier over it, and the remedy was
+to scope the claim, never to grow the guard. Pinned in the test file.
 
 ## ⚖️ Read side, and what the build side does and does not get
 
@@ -138,12 +150,64 @@ grounding as `#96`: one package disagreeing with itself, never a spec clause.
 - **The grounding limit stays unclaimed.** No count of the errata set is published anywhere here, no
   source is cited for any normalisation rule, and **no source scan was proposed**.
 
+## 🛑 The gate: pass 1 `REFUTED`, two majors, and both were CLAIM defects with deletion remedies
+
+`conformance-refuter` pass 1 re-ran the 16-cell census independently and reproduced it cell for cell.
+**It could not break the guard.** It broke two claims wrapped around the guard, which is the ninth
+time running in this lineage that the parser graded correct and the prose did not.
+
+**Major 1, `INTRODUCED`: *"every element after it is displaced by one"* is FALSE, and this package's
+own emit path reaches the falsifier.** Two ISA elements can each carry an extra separator. Measured:
+
+```
+buildInterchange({ …, senderId: "AB*CD", interchangeControlNumber: "0000*0001" })
+  isa.elements.length === 19
+  isa.elements[16] === "0"        (ISA-14's acknowledgment-requested value)
+  isa.raw[102]      === "P"        (the transmitted ISA-15, the usage indicator)
+```
+
+A consumer applying the published rule reads the **test/production usage indicator** and the
+**reassociation key** wrong, with nothing on the channel to say so. **The census had only ever
+planted ONE separator, and the prose generalised past its own measurement** - `conventions.md`
+§"Three rules the diagnostic-widening slices paid for", rule 3, in the act.
+
+**The sweep was tree-wide and the clause was DELETED, not reworded, in nine carriers:**
+`src/parser/warnings.ts` (the registry message, which SHIPS in `dist`), `src/parser/envelope.ts`
+(twice), `KNOWN-LIMITATIONS.md` and `CHANGELOG.md` (both in `package.json.files`; the changelog
+freezes), `.changeset/rare-forks-judge.md` (**freezes on release**), `docs-content/spec-notes-envelope.md`,
+`docs-content/troubleshooting.md`, and the test docblock. `isa.elements.length` is the honest carrier
+and is what replaced it. `git grep "displaced by one" f0295a2` is empty, so every carrier was this
+slice's own. **The two-element row is now a pinned cell**, so the falsifier is a test rather than a
+paragraph.
+
+**Major 2, `INTRODUCED`: the ordering promise was a false universal.** Scoped, per the section above.
+
+**Minor, `INTRODUCED`: the `CLAUDE.md` trap summarised rows 1-12 as the general property** - *"the
+control number answers the VERSION and the usage indicator answers ACK-REQUESTED"*. This slice's
+**own pinned cells** falsify it: on the ISA-14 and ISA-15 rows `elements[13]` is the true control
+number and `elements[15]` is `""`. **A paragraph summarising a table, exactly the shape three of
+`#111`'s four passes found, and deleted rather than qualified.**
+
+**Minor, `INTRODUCED`: an unhedged spec assertion in the two carriers that freeze.** The agent note
+and the registry message hedged correctly; `CHANGELOG.md`, the changeset and the troubleshooting row
+had dropped it to *"005010 does not say which reading to take"* - a positive claim about a paid
+standard nobody here has read, against this item's grounding limit. **The spec attribution is deleted
+from all three**; they now say what the hedged carriers say. No source scan was proposed.
+
+**`PRE-EXISTING`, filed not absorbed (ADR 0016 rule 2):** `serializeX12(…, { specClean: true })`
+reconciles ISA-13 against IEA-02 off the split array with no arity awareness. Reproduces identically
+on `f0295a2`. Not stop-the-line: it warns, it does not silently emit a wrong identifier.
+
+**Not acted on:** the refuter also noted that neither `operations/roadmaps/x12.md` nor this slice
+carries a `Provenance:` field. That is an umbrella-side observation about a file outside this repo.
+
 ## Evidence
 
-- **Full suite green at head:** 91 files, 2,308 tests.
+- **Full suite green at head:** 91 files, 2,310 tests (2,308 before the two pass-1 pins).
 - **Mutation control on the guard alone** (the `if` in `decodeEnvelope` disabled, everything else at
-  head, restored afterwards **by file copy**, never `git checkout`): **6 of the 13 new tests red**,
-  plus the registry-size test, which reds for the code addition rather than for the guard. The 7 new
+  head, restored afterwards **by file copy**, never `git checkout`): **6 of the 13 new tests red** at
+the graded sha,
+  plus the registry-size test, which reds for the code addition rather than for the guard. The new
   tests that stay green under the mutation are the ones measuring base behaviour on purpose - the
   conformant control, the displaced-value pins, `isa.raw` preservation, the helper, and the two
   build-side rows that assert the emit side is **not** guarded.

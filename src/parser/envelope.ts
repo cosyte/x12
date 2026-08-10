@@ -86,7 +86,8 @@ const ISA_DECODED_PART_COUNT = 17;
  * positions, which bounds the split from below - it can never come out SHORT.
  * It does not bound it from above: an ISA element value carrying the byte that
  * was declared in-band as the element separator splits again, so that element
- * comes back a prefix and every element after it is displaced by one.
+ * comes back a prefix and everything after it is displaced. `parts.length` is
+ * the only measure here of how far, and more than one element can do it.
  * {@link decodeEnvelope} reports that as `X12_ISA_EXTRA_ELEMENT_SEPARATOR` and
  * re-frames nothing; `raw` still holds all 106 bytes, which is the route back
  * to the transmitted bytes.
@@ -330,11 +331,11 @@ export function decodeEnvelope(
   const isa = decodeIsa(raw, delimiters);
 
   // ISA arity - the header must split into "ISA" plus its 16 fixed-width
-  // elements. Reported FIRST, because when it fails every ISA element after
-  // the extra separator is displaced by one and the two checks below read
-  // `elements[12]` and `elements[13]` by index. Nothing is re-framed and no
-  // other warning is suppressed: which reading of that byte is right is not
-  // decided here, and `isa.raw` still carries all 106 bytes.
+  // elements. Reported ahead of everything raised below it, because when it
+  // fails the ISA elements after an extra separator are displaced and the two
+  // checks below read `elements[12]` and `elements[13]` by index. Nothing is
+  // re-framed and no other warning is suppressed: which reading of that byte is
+  // right is not decided here, and `isa.raw` still carries all 106 bytes.
   if (isa.elements.length !== ISA_DECODED_PART_COUNT) {
     warnings.push(isaExtraElementSeparator({ segmentIndex: 0, interchangeIndex: 0 }));
   }

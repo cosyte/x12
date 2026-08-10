@@ -169,3 +169,22 @@ half is green on both trees precisely so it can catch that later.
   a Required `N3`, and the `NM1*87` in a Loop 2000B with no claim open. ADR 0016 restriction 2: this
   slice is not obliged to fix what it merely fails to fix, and a type widening is exactly the kind of
   change that would have carried them in unnoticed.
+
+## Relocated from `x12/CLAUDE.md`, 2026-08-10, VERBATIM, NOTHING DROPPED
+
+Moved here to pay for the `X12-ISA-ELEMENT-ARITY` trap's pass-1 corrections under this repo's
+zero-headroom ratchet. The imperative stays in `CLAUDE.md`; the bullets are the text that was
+there, unchanged.
+
+
+- **🩺 A slot reads `X12Decimal | undefined` EXACTLY where a reader could substitute `ZERO`; a STATED
+  zero still reads `0` and KEEPS ITS LEXICAL FORM. PUBLISH NO SLOT CENSUS.**
+  **`X12_835_BALANCE_NOT_EVALUABLE`: an undecoded TERM makes a §1.10.2 equation UNEVALUABLE, NEVER a
+  mismatch; an EMPTY adjustment list is NOT an absent term** - it sums to `ZERO`.
+- **🛑 A WIDENING THAT MOVES A CASE ONTO A NEW CODE BLINDS EVERY PREDICATE ON THE OLD ONE, AND THIS
+  PACKAGE'S OWN DOCS ARE SUCH A CONSUMER** - the "do NOT auto-post" recipe gated on
+  `X12_835_REMIT_BALANCE_MISMATCH` alone went base `true` / head `false`. **Sweep every recipe, the
+  troubleshooting table and `CHANGELOG.md`; PIN THE SWEEP.**
+- **🩺 `Build837ServiceLineSpec.units` is REQUIRED and the builder REFUSES rather than emitting `0`.
+  SV3-06's TR3 usage is NOT grounded - never claim it is.**
+

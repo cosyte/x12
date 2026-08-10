@@ -277,7 +277,7 @@ const WARNING_MESSAGES = {
   X12_PRE_005010:
     'ISA-12 declares a version other than the HIPAA baseline "00501", so the input may diverge from 005010 semantics. The declared version is preserved verbatim on the model.',
   X12_ISA_EXTRA_ELEMENT_SEPARATOR:
-    "The ISA element area carries an element separator beyond the 16 sitting at their fixed 005010 byte positions, so the header does not split into `ISA` plus 16 elements. `isa.elements` is that split as it came out: the element containing the extra separator is a prefix and every element after it is displaced by one, so any other ISA-derived diagnostic on this interchange may be reporting a displaced value. All 106 bytes are preserved verbatim on `isa.raw`. Which reading is correct - the byte as data under the ISA's fixed widths, or as a separator - is NOT decided here, and nothing is re-framed.",
+    "The ISA element area carries at least one element separator beyond the 16 sitting at their fixed 005010 byte positions, so the header does not split into `ISA` plus 16 elements. `isa.elements` is that split as it came out: an element containing an extra separator comes back a prefix and everything after it is displaced, with `isa.elements.length` the only measure here of how far. Any other ISA-derived diagnostic on this interchange may therefore be reporting a displaced value. All 106 bytes are preserved verbatim on `isa.raw`. Which reading is correct - the byte as data under the ISA's fixed widths, or as a separator - is NOT decided here, and nothing is re-framed.",
   X12_GROUP_COUNT_MISMATCH:
     "IEA-01 does not equal the number of GS..GE groups actually present in the interchange. The declared count is preserved verbatim on the model and is NEVER silently corrected.",
   X12_TRANSACTION_COUNT_MISMATCH:
@@ -511,10 +511,16 @@ export function pre005010(position: X12Position): X12ParseWarning {
  * reports that the header did not frame and leaves `isa.elements` exactly as
  * the split produced it, with `isa.raw` carrying all 106 bytes verbatim.
  *
- * Emitted before every other envelope warning, because when it is present the
- * ISA-derived diagnostics that follow (`X12_PRE_005010` off `elements[12]`,
- * `X12_CONTROL_NUMBER_MISMATCH` off `elements[13]`) may be reading a displaced
- * element rather than the one they name.
+ * `decodeEnvelope` raises this ahead of every warning it raises after it,
+ * because when it is present the ISA-derived diagnostics that follow
+ * (`X12_PRE_005010` off `elements[12]`, `X12_CONTROL_NUMBER_MISMATCH` off
+ * `elements[13]`) may be reading a displaced element rather than the one they
+ * name. **That is a statement about `parseX12`'s `warnings` (and `onWarning`)
+ * and about nothing else.** `serializeX12(ix, { specClean: true })` runs its own
+ * reconciliation off `interchange.isa.elements[13]` with no arity awareness and
+ * never raises this code, so on that channel a lone
+ * `X12_CONTROL_NUMBER_MISMATCH` can be a displaced read - and its absence is not
+ * evidence the header framed. Filed, not fixed here.
  *
  * @example
  * ```ts

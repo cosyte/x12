@@ -66,14 +66,21 @@ it, so a partner who ships `|` elements and `\` components parses with no specia
 
 Detection verifies the element separator at all 16 fixed ISA positions, which makes 17 the **floor**
 on how many parts the header splits into, not the count. An ISA element value carrying that same byte
-splits again: that element comes back a prefix and every element after it is displaced by one, so the
-control number, the usage indicator and the version can each answer some other element's value.
+splits again: that element comes back a prefix and everything after it is displaced, so the control
+number, the usage indicator and the version can each answer some other element's value.
+`isa.elements.length` is the measure of how far, and more than one element can do it.
 `@cosyte/x12` reports this as `X12_ISA_EXTRA_ELEMENT_SEPARATOR` and **re-frames nothing** - the byte
 is both content under the ISA's fixed widths and the separator the segment declares in-band, the
 interchange is not 005010-conformant either way, and nothing settles which reading is right. All 106
 bytes stay on `isa.raw`, so the transmitted span of any element is recoverable if you decide it should
-be. The warning is emitted before every other ISA-derived warning, so when you see it, treat those as
-provisional.
+be.
+
+`parseX12` raises this ahead of the warnings it raises after it, so when you see it in `ix.warnings`,
+treat those as provisional. **That is a statement about `ix.warnings` and `onWarning` only.**
+`serializeX12(ix, { specClean: true })` reconciles ISA-13 against IEA-02 off `isa.elements[13]` with
+no arity awareness and never raises this code, so on that channel a lone
+`X12_CONTROL_NUMBER_MISMATCH` can be a displaced read, and the absence of this warning is not
+evidence the header framed.
 
 ### When a delimiter is `?`
 
