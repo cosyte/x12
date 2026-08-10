@@ -73,8 +73,7 @@ those are DELETED, never substituted.**
 | 13  | `test/transactions-ack-ta1-residuals.test.ts:18`     | TA1                               | DELETED                                               |
 
 Row 4 was a substitution until the gate caught it, and it is a ⏳ carrier, so it is now the deletion
-the rule requires: the clause naming the call went, and the composite read two clauses later carries
-the measurement.
+the rule requires.
 
 Rows 11, 12 and 13 were added by the gate, and rows 11 and 12 are the instructive ones. **Row 11 is
 the shape of row 9 in a different file** (a `getSegmentValue` column in a measurement table) and a
@@ -98,9 +97,7 @@ and no figure is quoted.** The durable facts, which do not go stale: the **recei
 IDENTIFIER, so it matches a local named `gs` or `ta1` whatever its type, and it MISSES one named for
 the case instead of the segment (`caret`, `colon`, `asDotPath`, `dotPath(...)`) or reached through a
 member expression (`ix.groups[0]?.gs as X12Segment`). **Pattern 1, the bare literal, is what reaches
-those.** In every test hit either pattern returns, the receiver is **already a wrapped `X12Segment`**
-(`gsOf()`, `withId()`, `dotPath()`, or an explicit `as X12Segment`), so the calls compile and are
-in-tree controls rather than carriers. **The asymmetry is the reusable part: a receiver filter alone
+those.** **The asymmetry is the reusable part: a receiver filter alone
 would not have found them.**
 Naming `getSegmentValue` with **no receiver at all** is likewise not this defect:
 `agent-notes/x12-ta1-residuals.md:60`, `agent-notes/x12-envelope-release-split.md:32`,
@@ -262,6 +259,45 @@ conclusion survives on grounds 1 and 2; the reasoning did not.
   `src/builder/caller-string.ts:493`; the seven `PRE-EXISTING` in the umbrella's `repos/x12.md`.
 - **The grounding limit stays unclaimed.** No count is published anywhere here and no source is cited
   for any normalisation rule. No source scan was proposed.
+
+## 🛑 The gate: FOUR passes, all four `REFUTED`, and this landed under ADR 0027
+
+`conformance-refuter` **REFUTED x4**. The cap is four (ADR 0016 as amended, founder 2026-08-09), so
+the fourth pass's prescribed cut-back is **UNGRADED**, and this slice merges under **ADR 0027**.
+**Disclosed here, in the commit message and in the PR body**, which is that ADR's condition 5.
+
+Conditions, established rather than asserted:
+
+1. **Four passes spent**, the cap. ADR 0027 is the fallback only because no pass remains; the
+   standing order is to spend the pass first, and all four were.
+2. **NO PASS EVER REFUTED THE CODE.** Every `INTRODUCED` finding across all four passes was a claim
+   defect in a prose carrier. There is no behavioural finding to disqualify the route, and there
+   could hardly be one: **no runtime line changed in this slice at all**, and `dist/index.mjs`,
+   `index.cjs` and `index.d.ts` are byte-identical to base.
+3. **The final remedy is DELETION-ONLY**, checked against the diff and not the summary, because this
+   is the condition `#107` failed. `git diff --word-diff` over the whole remedy adds exactly two
+   tokens, `DELETION.**` and `requires.`, both a comma or colon becoming a period to close a deleted
+   clause - the case pass 3 met and explicitly declined to grade. **No sentence, guard, branch, test
+   assertion or figure was added.** A first attempt at the same remedy substituted "SUCCESSIVE" for
+   a falsified count; that is a reword, it would have failed condition 3, and it was replaced by the
+   deletion.
+4. **Pass 4 prescribed exactly this remedy** ("three deletions and one word", naming each site) and
+   stated the slice is safe to land: _"NOT a blocker in the safety sense ... the item's own
+   deliverable is fully discharged."_ It re-derived the figures independently, re-verifying all 13
+   grid cells one carrier at a time against base and re-running every gate, which is what ADR 0027's
+   "precedent, not licence" clause requires of the final pass.
+
+**What each pass cost, because the pattern is the point.** Pass 1: four majors. Pass 2: one major,
+three minors. Pass 3: two majors, two minors. Pass 4: one major, two minors. **Nineteen findings,
+every one a claim defect, and the parser half was never refuted.** `conventions.md` §3 predicts this
+for this lineage and it held for a fifth slice running.
+
+**🩺 THE ONE THING WORTH CARRYING FORWARD: three of the four passes found their fresh major in the
+PARAGRAPH SUMMARISING A TABLE, never in the table.** The cells survived every pass unamended. What
+kept breaking was prose asserting a property OVER them: "every carrier", "all deletions", "no route
+reads an ISA element correctly", "in every test hit". **A summary of a measurement is a new and
+weaker claim, and in this repo it is the one that fails.** The fourth remedy's answer was to delete
+the summaries rather than write a fifth, which is the only move that has ever converged here.
 
 ## Discipline 3 - crew / knowledgebase
 

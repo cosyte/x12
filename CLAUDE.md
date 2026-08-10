@@ -127,8 +127,7 @@ FLOOR, FILED NOT CLOSED - A GREP ANCHORED ON A BACKTICK MISSES THEM, they sit ba
   THREE OF THE SEVEN; THIS MEASURED ALL SEVEN. THE GRID IS IN THE NOTE - COUNT ITS ROWS, DO NOT
   QUOTE A FIGURE: a draft published "9 in 6 files" against its own ten-row grid, AND the gate then
   added THREE MORE ROWS.**
-- **🛑 NOT EVERY REMEDY WAS A DELETION, AND TWO DRAFTS IN A ROW SAID OTHERWISE** - one called all
-  thirteen "CUT", the next called four SUBSTITUTIONS "deleted". **FOUR carriers FREEZE on release**
+- **🛑 NOT EVERY REMEDY WAS A DELETION.** **FOUR carriers FREEZE on release**
   (two pending changesets AND their `[Unreleased]` CHANGELOG twins - the whole file is
   `[Unreleased]`) and only those are deletion-only; one OWED the consumer a route and is the one
   REPLACEMENT. **CHECK THE `remedy` COLUMN AGAINST THE DIFF, NEVER THE SUMMARY WORD.**
