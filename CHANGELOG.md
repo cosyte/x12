@@ -9,6 +9,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- **The documentation carriers that told you to read an envelope element's logical value through
+  `getSegmentValue` are corrected** (`X12-ENVELOPE-VALUE-ROUTES`). **Documentation and tests only: no
+  runtime line changed and the emitted JS is byte-identical, so no behaviour moved.**
+
+  `getSegmentValue` takes an `X12Segment`, which requires `id`. `IsaSegment`, `IeaSegment`,
+  `GsSegment`, `GeSegment`, `Ta1Segment` and the inline ST/SE types on `X12TransactionSet` declare
+  only `raw` and `elements`, so passing any one of them is `TS2345`, "Property 'id' is missing".
+  **All seven are measured here.** The carriers include
+  `KNOWN-LIMITATIONS.md`'s _"Read through `getSegmentValue` if you want the logical value"_ for a
+  `gs`, which is the one that owed you a route and so is the one replaced rather than cut; two of the
+  others are pending release notes, and those are corrected by deleting the falsified clause and
+  nothing else.
+
+  **Two routes reach the decoded text, both were already published in this package, and neither is
+  universal.** `unescapeRelease` on the element string is a public export. Adding an `id` and taking
+  the dot-path is what `buildTA1`'s own JSDoc prescribes ("add one to read a TA1 through it") and
+  what this repo's tests do. They are not interchangeable:
+
+  ```text
+  element                     raw            unescapeRelease   add id + dot-path   transmitted
+  GS-04, a released `*`       "2026?*0601"   "2026*0601"       "2026*0601"         "2026*0601"
+  GS-07, a REAL repetition    "A^B"          "A^B"             "A"                 "A^B"
+  TA1-01, a released `^`      "0000?^0001"   "0000^0001"       "0000^0001"         "0000^0001"
+  ```
+
+  Every row `warnings: []`. A bare dot-path means repetition 0, which is why the GS-07 row differs.
+
+  **The public signature was NOT widened, and that was the decision rather than the cheap way out.**
+  `getSegmentValue`'s body never reads `id`, so widening its parameter to an `elements`-only
+  structural type is free, non-breaking and emits nothing. It was refused because the function
+  unescapes unconditionally while the ISA is positional, where a `?` is content and never an escape.
+  Widening admits `IsaSegment` and makes a silently wrong read of ISA-13, the reassociation key,
+  compile:
+
+  ```text
+  transmitted ISA-13   arity   elements[13]   decoded (both routes)   elements[16]
+  "000000??1"          17      "000000??1"    "000000?1"              ":"
+  "0000?*001"          18      "0000?"        "0000?"                 "P"
+  "00000001?"          17      "00000001?"    "00000001?"             ":"
+  ```
+
+  No route reads an ISA element correctly across those rows. On the middle one `decodeIsa` split on
+  the element separator, so `elements[13]` is a prefix and ISA-16 re-indexed onto ISA-15's value.
+  **So no route is prescribed for the ISA at all**, and the missing arity check on that split is
+  filed rather than fixed here. A capability that is right on six envelope types and silently wrong
+  on the seventh is not an ergonomic win, so the claim was cut instead and no code grew.
+
+  `test/parser-envelope-value-routes.test.ts` pins all of it. Seven `@ts-expect-error` assertions
+  cover the seven types, and `typecheck` runs over `test/`, so **they red if the signature is ever
+  widened**: widening is not forbidden, it is made loud, because the assertions have to be deleted
+  and that is where the ISA question gets answered. Under a mutation that widens the signature the
+  file reports seven unused directives, not one, which is what distinguishes it from a green vacuous
+  test.
+
+  Two earlier statements are deleted rather than reworded, because both are measured false. _"There
+  is no decoded read for an envelope element; `unescapeRelease` on the string is the only route"_:
+  there are two, and the second is prescribed inside this package. _"A raw-vs-`unescapeRelease` cell
+  on the ISA is a tautology that detects nothing"_: `unescapeRelease` does not know the ISA is
+  exempt, so on `"000000??1"` the cell differs.
+
+  Unchanged and filed: `parse-ta1.ts` and `KNOWN-LIMITATIONS.md` still mis-cite `X12Segment.elements`
+  for types that are not one. That statement is true where these were false, and it has a twin, so it
+  stays its own slice. `docs-content`'s dot-path example is scoped to body segments and was already
+  correct.
+
 - **Eleven JSDoc pointers that sent a consumer to an envelope `elements[n]` for a value are deleted**
   (`X12-ENVELOPE-VALUE-POINTERS`). **Documentation only: the diff is comment-only and the emitted JS
   is byte-identical, so no behaviour changed.**
@@ -39,8 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Two more pre-existing limits, unchanged and filed. **`getSegmentValue` cannot read an envelope
   segment**: it takes an `X12Segment`, which requires `id`, and `IsaSegment`, `IeaSegment`,
   `GsSegment`, `GeSegment`, `Ta1Segment` and the ST/SE types declare only `raw` and `elements`, so
-  passing one is a `TS2345`. `unescapeRelease` on the element string is the route.
-  `KNOWN-LIMITATIONS.md` still prescribes `getSegmentValue` on a `gs` element. And **the ISA element
+  passing one is a `TS2345`. And **the ISA element
   split has no arity check**: `decodeIsa` splits on the element separator, so an ISA-13 carrying a raw
   separator yields 18 elements where 17 are documented and silently re-indexes ISA-14/15/16.
 
@@ -129,7 +193,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 
   Every row `warnings: []`. TA1-01 is the reassociation key, so the left column is a key that
-  matches no ISA-13. The right column is the same element read through `getSegmentValue`, which
+  matches no ISA-13. The right column is the same element, which
   already unescaped; `parse999` does the same on its IK4-01 composite. The grounding is that
   disagreement and nothing else - no clause anyone here has read settles what a TA1 element may
   contain.
@@ -1449,8 +1513,7 @@ required control number and this builder never invents one, so nothing is emitte
   `"X|Y"` is what took GS-08's slot and `"X*Y"` was inert. **Only the ELEMENT SEPARATOR and the
   SEGMENT TERMINATOR ever shifted the segment's own framing, plus a `?` immediately before the
   element separator.** The **repetition** and **component** separators moved the dot-path reader
-  instead, and releasing them is a **gain** there: on the default set `getSegmentValue(gs, "07")`
-  answered `"X"` for `"X^Y"`, truncating the value to repetition 0, and the composite read `"07-1"`
+  instead, and releasing them is a **gain** there: the composite read `"07-1"`
   answered `"X"` for `"X:Y"`. **The measured cost is a mid-string `?`, and only on the surfaces
   documented as raw** - `gs.elements[4]` reads `"2026??0601"` where it read `"2026?0601"`, while the
   dot-path read of that value unescapes and is unchanged. No total is published: that is what was

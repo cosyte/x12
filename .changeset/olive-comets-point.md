@@ -39,6 +39,6 @@ bytes to the ISA-13 it acknowledges.
 Two more pre-existing limits, unchanged and filed. **`getSegmentValue` cannot read an envelope
 segment**: it takes an `X12Segment`, which requires `id`, and `IsaSegment`, `IeaSegment`, `GsSegment`,
 `GeSegment`, `Ta1Segment` and the ST/SE types declare only `raw` and `elements`, so passing one is a
-`TS2345`. `unescapeRelease` on the element string is the route. And **the ISA element split has no
+`TS2345`. And **the ISA element split has no
 arity check**: `decodeIsa` splits on the element separator, so an ISA-13 carrying a raw separator
 yields 18 elements where 17 are documented and silently re-indexes ISA-14/15/16.

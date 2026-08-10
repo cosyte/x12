@@ -15,7 +15,7 @@
  * reading the escaped bytes, so the round trip through this package's own
  * emit and read halves was NOT an identity on any value carrying a delimiter
  * or the release character - measured on six values, six not equal, every one
- * `warnings: []`. The same elements read through `getSegmentValue` answered
+ * `warnings: []`. The same elements answered
  * the caller's string on all six, because every dot-path read already
  * unescapes, and so does `parse999` on the IK4-01 composite in this same
  * directory. 🛑 A clause calling `parseTA1` "the only typed reader in the

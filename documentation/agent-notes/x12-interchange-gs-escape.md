@@ -22,7 +22,7 @@ groupTime "12*00"               GS-06 read "00",   GS-08 read "X"
 responsibleAgencyCode "X*Y"     GS-08 read "Y";    warnings: []
 groupTime "12~00"               the GS ENDED mid-element; the ST/SE pair became orphans
 groupDate "20260601?"           GS-04 merged with GS-05, GS-08 gone entirely
-responsibleAgencyCode "X^Y"     framing fine; getSegmentValue(gs, "07") read "X"
+responsibleAgencyCode "X^Y"     framing fine; the dot-path read of GS-07 read "X"
 responsibleAgencyCode "X:Y"     framing fine; the composite read "07-1" read "X"
 ```
 
@@ -75,7 +75,7 @@ of `"X|Y"` took GS-08's slot at base and `"X*Y"` was inert. The property, which 
 **only the ELEMENT SEPARATOR and the SEGMENT TERMINATOR ever shifted the segment's own element
 framing, plus a `?` immediately before the element separator.** The **repetition** and **component**
 separators moved the DOT-PATH reader instead, and releasing them is a **gain** there: on the default
-set `getSegmentValue(gs, "07")` answered `"X"` at base for `"X^Y"`, truncating to repetition 0, and
+set it answered `"X"` at base for `"X^Y"`, truncating to repetition 0, and
 the composite read `"07-1"` answered `"X"` for `"X:Y"`. **The measured pure cost is a MID-STRING `?`,
 on the surfaces documented as raw only** - `gs.elements[4]` reads `"2026??0601"` where it read
 `"2026?0601"`, while the dot-path read of that value unescapes and is unchanged. Recorded in that

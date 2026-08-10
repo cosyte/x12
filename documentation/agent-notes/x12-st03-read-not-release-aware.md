@@ -241,3 +241,34 @@ deleted and the entry was not raised.** Derive both numbers rather than trusting
 - `src/builder/caller-string.ts:493`'s qualified role-asymmetry line; the TA1-02 usage-vs-type
   refusal message; whitespace building at the five TA1 slots; and the seven `PRE-EXISTING` in the
   umbrella's `repos/x12.md`.
+
+---
+
+## Relocated here 2026-08-09 from `CLAUDE.md`, to pay for the `X12-ENVELOPE-VALUE-ROUTES` trap
+
+The inline trap block, **verbatim, nothing dropped**. The second relocation this slice needed: the
+budget hook refused the pass-1 correction at +30 bytes, and the answer was another relocation rather
+than a shorter claim.
+
+### 🩺 `X12-ST03-READ-NOT-RELEASE-AWARE` (2026-08-09) · `agent-notes/x12-st03-read-not-release-aware.md`
+
+- **🩺 EVERY TYPED READER THAT PUBLISHES `implementationConventionReference` PUBLISHES IT
+  POST-`?`-UNESCAPE, THROUGH ONE `decodeSt03`. FILED AS THREE READERS; MEASURED AS FOUR RAW READS
+  OF `tx.st.elements[3]` IN THREE FILES, REACHED BY FIVE PUBLIC READERS** (`walk277` serves
+  `get277Status` AND `get277CADisposition`; `walk278` serves BOTH 278 directions). **GROUNDED ON THIS
+  PACKAGE DISAGREEING WITH ITSELF, NEVER ON A TR3 CLAUSE** - every dot-path read already unescaped
+  and `parse999` already decoded AK2-03, the same field.
+- **🛑 THE THREE `ST-03` TESTS STILL KEY ON THE RAW TEXT, DELIBERATELY; MOVING ONE IS A DIFFERENT
+  SLICE:** `VARIANT_BY_ICR`, `walk277`'s `transactionType`, and `get277CADisposition`'s ADMISSION
+  GATE. Measured: with `componentSeparator: "X"` an ST-03 of `005010?X222A1` decodes to a guide
+  identifier, so keying on the decoded text makes **THE DECLARATION BEAT THE `SVx` FALLBACK**
+  (`X12-VARIANT-ICR-UNGROUNDED`'s property) and **STOPS A SERVICE LINE DECODING**. **THE MOVE IS
+  ONE-WAY: nothing that resolved or was admitted at base stops** - no identifier keyed on carries a
+  delimiter or `?`, so a raw text equal to one decodes to itself.
+- **⚖️ NO NORMALISATION AND NO NEW WARNING.** Nothing trimmed or case-folded; whitespace still
+  publishes untrimmed. **THE SINK IS A NO-OP**, so `X12_DANGLING_RELEASE_CHAR` is dropped as
+  `getSegmentValue`'s default, `parseTA1` and `parse999` drop it - `PRE-EXISTING` and OPEN, not
+  absorbed.
+- **🛑 PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH READER IS SPECIAL.** Each reader's own `""` /
+  absent mapping is UNCHANGED and pinned: `walk278` collapses `""` to `undefined`, the other two
+  publish `""`.

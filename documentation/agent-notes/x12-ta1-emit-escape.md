@@ -227,7 +227,7 @@ travels with the text.
   TOTAL IT.** "The one class that gets worse" (pass 1) and "the rest is released for no framing gain"
   (pass 2, **inverted** by measurement). What holds: only `*`, `~` and a `?` BEFORE the separator
   ever shifted the SEGMENT's framing; **`^` and `:` moved the DOT-PATH reader and releasing them is a
-  GAIN** (`getSegmentValue(ta1, "01")` answered `"0000"` at base for `"0000^0001"`, the key truncated
+  GAIN** (it answered `"0000"` at base for a TA1-01 of `"0000^0001"`, the key truncated
   to repetition 0); **the measured pure cost is a MID-STRING `?` on the RAW surfaces only**, since
   every dot-path read unescapes. A hand-rolled escape regresses on both.
   **🛑 A CLAUSE HERE READ "THE READ HALF DID NOT MOVE: `parseTA1` IS STILL PRE-`?`-UNESCAPE". IT IS

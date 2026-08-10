@@ -178,8 +178,11 @@ error TS2345: Argument of type 'GsSegment' is not assignable to parameter of typ
   Property 'id' is missing in type 'GsSegment' but required in type 'X12Segment'.
 ```
 
-Identical for `IsaSegment` and `Ta1Segment`. So there is no ergonomic decoded read for an envelope
-element; `unescapeRelease(gs.elements[6], d, sink, pos)` on the string is the only route.
+Identical for `IsaSegment` and `Ta1Segment`.
+**[FALSE CLAUSE DELETED 2026-08-09 by `X12-ENVELOPE-VALUE-ROUTES`: _"So there is no ergonomic decoded
+read for an envelope element; `unescapeRelease(gs.elements[6], d, sink, pos)` on the string is the
+only route."_ Two routes work, and the second - add an `id` and use the dot-path - is prescribed
+in-tree at `build-ta1.ts:68` and is what this repo's own tests do.]**
 
 Disclosed in-tree already at `build-ta1.ts:67`, `agent-notes/x12-ta1-emit-escape.md:91` and in
 `CHANGELOG.md`'s `0.0.15` entry (no line number: this slice's own `[Unreleased]` entry moves it, and
@@ -187,6 +190,10 @@ a citation a remedy makes stale is `#109` pass 3's failure mode), so it reproduc
 to "read through `getSegmentValue`" for the logical value of a `gs` element, which does not
 compile.** Left standing deliberately: correcting it means either widening a public signature or
 writing a new disclosure, and both are decisions of their own size.
+
+**CLOSED 2026-08-09 by `X12-ENVELOPE-VALUE-ROUTES`** (`agent-notes/x12-envelope-value-routes.md`),
+which took the second option and says why the first was refused. The two sentences above are the
+state at `8778cf7` and are kept as the record, not as current fact.
 
 ### Two more, surfaced by pass 2
 
@@ -318,3 +325,49 @@ submodule and did not touch the umbrella, so it is left to the coordinator.
 byte-identical, so there is nothing here a `crew` skill or a `knowledgebase` doc could be reading that
 has moved. The `.d.ts` prose changed only by deletion of false guidance. **`#109`'s two queued items
 under `CREW-KB-SURFACE-DEBT` still stand and are not discharged by this slice.**
+
+---
+
+## Relocated here 2026-08-09 from `CLAUDE.md`, to pay for the `X12-ENVELOPE-VALUE-ROUTES` trap
+
+The inline trap block, **verbatim except one clause `X12-ENVELOPE-VALUE-ROUTES` measured false,
+deleted inline and recorded below rather than carried over** (a revert re-publishes claims).
+
+### 🩺 `X12-ENVELOPE-VALUE-POINTERS` (2026-08-09) · `agent-notes/x12-envelope-value-pointers.md`
+
+- **🩺 NO DOC MAY POINT A CONSUMER AT AN ENVELOPE `elements[n]` FOR A VALUE.** Envelope `elements` are
+  RAW (pre-`?`-unescape), so a pointer promising "the values" or "both numbers" hands over FRAMED
+  BYTES. **FILED AS 2 POINTERS IN 1 FILE; CUT HERE: 11 POINTERS, 4 JSDoc BLOCKS, 2 FILES** (6 at the
+  control-number factory, 2 at the count factories, 3 in `serializeX12`'s module doc). One measured
+  cell: `gs.elements[6]` reads `"000?*99"` where the value is `"000*99"`. **THE CELLS ARE IN THE
+  NOTE; DO NOT RESTATE THEM HERE - a compressed row here named five pointers by one pointer's bytes
+  and was measured false for three of them.**
+- **🛑 THE REMEDY IS DELETION, NEVER A CORRECTED POINTER.** Nothing was added to make a pointer true;
+  the DIFF IS COMMENT-ONLY and the EMITTED JS IS BYTE-IDENTICAL base to head, the control that no
+  decision moved. **Re-read the whole sentence a clause lived in** - the parentheticals named one raw
+  index AND one decoded count, so half a cut leaves one naming one of two.
+- **🩺 `IsaSegment` / `IeaSegment` / `GsSegment` / `GeSegment` / `Ta1Segment` AND THE INLINE ST/SE
+  TYPES ARE NOT `X12Segment` - THEY CARRY NO `id`, SO `getSegmentValue` DOES NOT TYPECHECK ON ONE**
+  (measured `TS2345`, "Property 'id' is missing"). **`PRE-EXISTING`, DISCLOSED, OPEN, NOT
+  ABSORBED** - `KNOWN-LIMITATIONS.md:308` still prescribes `getSegmentValue` on a `gs`.
+  **[FALSE CLAUSE DELETED ON RELOCATION, 2026-08-09, `X12-ENVELOPE-VALUE-ROUTES`: _"So there is NO
+  decoded read for an envelope element; `unescapeRelease` on the string is the only route."_ There
+  are two routes and the second is prescribed in-tree at `build-ta1.ts:68`.]**
+- **🛑 THE SWEEP DID NOT BOUND THE CLASS; THE EIGHTH FLOOR IS FILED, NOT CLOSED.**
+  `src/parser/types.ts` carries the SAME pointer UNLABELLED in the `@example` of `IeaSegment` /
+  `GsSegment` / `GeSegment` / `Ta1Segment` and in four prose blocks, all shipping in
+  `dist/index.d.ts`. **`ta1.elements[1]` is the sharp one** - TA1-01 is the reassociation key, so a
+  consumer following it compares FRAMED BYTES to an ISA-13. `PRE-EXISTING` at `61b5981`, NOT
+  ABSORBED. **A GREP ANCHORED ON A BACKTICK MISSES THEM: they are bare inside `@example`.**
+- **🛑 THE ISA IS NOT A CONTROL FOR THIS CLASS, AND A DRAFT SAYING SO WAS FALSIFIED.** It IS exempt
+  from `?`-release (that much is true and stays).
+  **[FALSE CLAUSE DELETED ON RELOCATION, 2026-08-09, `X12-ENVELOPE-VALUE-ROUTES`: _"so a
+  raw-vs-`unescapeRelease` cell on it is a TAUTOLOGY that detects nothing."_ `unescapeRelease` does
+  not know the ISA is exempt: on an ISA-13 of `"000000??1"` raw reads `"000000??1"` and the
+  unescaped read `"000000?1"`. The cell differs.]** But `decodeIsa` does `isaHead.split(delimiters.element)` and its
+  _"exactly 17 by construction"_ DOES NOT HOLD: an ISA-13 of `0000?*001` yields **18**,
+  `elements[13]` is `"0000?"`, and ISA-14/15/16 RE-INDEX - so **`isa.elements[13]` raw is NOT always
+  the value.** `PRE-EXISTING`. **PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH POINTER IS SPECIAL: this
+  was the FOURTH such story falsified in this lineage.**
+- A pointer that LABELS its surface raw (`raw.elements[5]` "is the byte surface", `gs.elements[8]`
+  "the sender's bytes", `seg.elements[0]` "verbatim") is CORRECT and was left alone.

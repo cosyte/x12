@@ -111,60 +111,53 @@ falsified every one.**
 
 ### 🩺 `X12-ENVELOPE-VALUE-POINTERS` (2026-08-09) · `agent-notes/x12-envelope-value-pointers.md`
 
-- **🩺 NO DOC MAY POINT A CONSUMER AT AN ENVELOPE `elements[n]` FOR A VALUE.** Envelope `elements` are
-  RAW (pre-`?`-unescape), so a pointer promising "the values" or "both numbers" hands over FRAMED
-  BYTES. **FILED AS 2 POINTERS IN 1 FILE; CUT HERE: 11 POINTERS, 4 JSDoc BLOCKS, 2 FILES** (6 at the
-  control-number factory, 2 at the count factories, 3 in `serializeX12`'s module doc). One measured
-  cell: `gs.elements[6]` reads `"000?*99"` where the value is `"000*99"`. **THE CELLS ARE IN THE
-  NOTE; DO NOT RESTATE THEM HERE - a compressed row here named five pointers by one pointer's bytes
-  and was measured false for three of them.**
-- **🛑 THE REMEDY IS DELETION, NEVER A CORRECTED POINTER.** Nothing was added to make a pointer true;
-  the DIFF IS COMMENT-ONLY and the EMITTED JS IS BYTE-IDENTICAL base to head, the control that no
-  decision moved. **Re-read the whole sentence a clause lived in** - the parentheticals named one raw
-  index AND one decoded count, so half a cut leaves one naming one of two.
-- **🩺 `IsaSegment` / `IeaSegment` / `GsSegment` / `GeSegment` / `Ta1Segment` AND THE INLINE ST/SE
-  TYPES ARE NOT `X12Segment` - THEY CARRY NO `id`, SO `getSegmentValue` DOES NOT TYPECHECK ON ONE**
-  (measured `TS2345`, "Property 'id' is missing"). So there is NO decoded read for an envelope
-  element; `unescapeRelease` on the string is the only route. **`PRE-EXISTING`, DISCLOSED, OPEN, NOT
-  ABSORBED** - `KNOWN-LIMITATIONS.md:308` still prescribes `getSegmentValue` on a `gs`.
-- **🛑 THE SWEEP DID NOT BOUND THE CLASS; THE EIGHTH FLOOR IS FILED, NOT CLOSED.**
-  `src/parser/types.ts` carries the SAME pointer UNLABELLED in the `@example` of `IeaSegment` /
-  `GsSegment` / `GeSegment` / `Ta1Segment` and in four prose blocks, all shipping in
-  `dist/index.d.ts`. **`ta1.elements[1]` is the sharp one** - TA1-01 is the reassociation key, so a
-  consumer following it compares FRAMED BYTES to an ISA-13. `PRE-EXISTING` at `61b5981`, NOT
-  ABSORBED. **A GREP ANCHORED ON A BACKTICK MISSES THEM: they are bare inside `@example`.**
-- **🛑 THE ISA IS NOT A CONTROL FOR THIS CLASS, AND A DRAFT SAYING SO WAS FALSIFIED.** It IS exempt
-  from `?`-release (that much is true and stays), so **a raw-vs-`unescapeRelease` cell on it is a
-  TAUTOLOGY that detects nothing.** But `decodeIsa` does `isaHead.split(delimiters.element)` and its
-  _"exactly 17 by construction"_ DOES NOT HOLD: an ISA-13 of `0000?*001` yields **18**,
-  `elements[13]` is `"0000?"`, and ISA-14/15/16 RE-INDEX - so **`isa.elements[13]` raw is NOT always
-  the value.** `PRE-EXISTING`. **PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH POINTER IS SPECIAL: this
-  was the FOURTH such story falsified in this lineage.**
-- A pointer that LABELS its surface raw (`raw.elements[5]` "is the byte surface", `gs.elements[8]`
-  "the sender's bytes", `seg.elements[0]` "verbatim") is CORRECT and was left alone.
+**RELOCATED IN FULL 2026-08-09 to pay for the trap below, VERBATIM EXCEPT TWO CLAUSES THE TRAP BELOW
+MEASURED FALSE - deleted inline and ON THE RECORD, because a revert re-publishes claims.**
+**🩺 Open it before you point a consumer at any envelope `elements[n]`: those are RAW, so a pointer
+promising "the values" hands over FRAMED BYTES; filed as 2 pointers in 1 file, CUT 11 pointers / 4
+JSDoc blocks / 2 files; THE REMEDY IS DELETION, NEVER A CORRECTED POINTER; a pointer that LABELS its
+surface raw is CORRECT and was left alone; and 🛑 `types.ts`'s `@example` indices are the EIGHTH
+FLOOR, FILED NOT CLOSED - A GREP ANCHORED ON A BACKTICK MISSES THEM, they sit bare in the fences.**
+
+### 🩺 `X12-ENVELOPE-VALUE-ROUTES` (2026-08-09) · `agent-notes/x12-envelope-value-routes.md`
+
+- **🩺 NO DOC MAY NAME `getSegmentValue` AS THE READ OF AN ENVELOPE ELEMENT.** It takes an
+  `X12Segment`; **ALL SEVEN envelope-level types** (`Isa`/`Iea`/`Gs`/`Ge`/`Ta1` and the INLINE ST/SE
+  on `X12TransactionSet`) declare only `raw`+`elements`, so the call is `TS2345`. **`#110` MEASURED
+  THREE OF THE SEVEN; THIS MEASURED ALL SEVEN. THE GRID IS IN THE NOTE - COUNT ITS ROWS, DO NOT
+  QUOTE A FIGURE: a draft published "9 in 6 files" against its own ten-row grid, AND the gate then
+  added THREE MORE ROWS.**
+- **🛑 NOT EVERY REMEDY WAS A DELETION.** **FOUR carriers FREEZE on release**
+  (two pending changesets AND their `[Unreleased]` CHANGELOG twins - the whole file is
+  `[Unreleased]`) and only those are deletion-only; one OWED the consumer a route and is the one
+  REPLACEMENT. **CHECK THE `remedy` COLUMN AGAINST THE DIFF, NEVER THE SUMMARY WORD.**
+- **🛑 THE SIGNATURE WAS NOT WIDENED, AND THAT WAS THE DECISION.** The body never reads `id`, so
+  widening to `elements`-only is FREE, non-breaking and emits nothing - **and it would make a
+  SILENTLY WRONG ISA READ COMPILE.** A capability that is right on six types and wrong on the
+  seventh is not an ergonomic win. **THE CLAIM WAS CUT; NO CODE MOVED.**
+- **🛑 TWO `#110` CLAIMS ARE MEASURED FALSE HERE. (a) "`unescapeRelease` ... IS THE ONLY ROUTE" -
+  there are TWO, and the second is prescribed in-tree at `build-ta1.ts:68` ("add one") and is what
+  this repo's OWN TESTS do (`gsOf`, `withId`). (b) "a raw-vs-`unescapeRelease` cell on the ISA is a
+  TAUTOLOGY that detects nothing" - `unescapeRelease` does not know the ISA is exempt.**
+- **🛑 THE TWO ROUTES DISAGREE ON A REPETITION** (a bare dot-path answers repetition 0). **ON THE ISA,
+  READ THE FOUR CELLS IN THE NOTE AND STATE NO RULE OVER THEM IN EITHER DIRECTION** - two drafts
+  did, and the gate falsified both, the second with a plain ISA-06 / ISA-08 / ISA-16 and with the
+  note's own third row. **PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH MEMBER IS SPECIAL.**
+- **⚖️ `parse-ta1.ts:41` / `KNOWN-LIMITATIONS.md:306` MIS-CITE `X12Segment.elements`. RE-MEASURED AND
+  STILL NOT FOLDED IN** - their statement is TRUE and they have a twin, so folding half splits a
+  filed slice. **`#110`'s third ground (that no deletion remedy exists for them) IS WITHDRAWN: one
+  does.**
 
 ### 🩺 `X12-ST03-READ-NOT-RELEASE-AWARE` (2026-08-09) · `agent-notes/x12-st03-read-not-release-aware.md`
 
-- **🩺 EVERY TYPED READER THAT PUBLISHES `implementationConventionReference` PUBLISHES IT
-  POST-`?`-UNESCAPE, THROUGH ONE `decodeSt03`. FILED AS THREE READERS; MEASURED AS FOUR RAW READS
-  OF `tx.st.elements[3]` IN THREE FILES, REACHED BY FIVE PUBLIC READERS** (`walk277` serves
-  `get277Status` AND `get277CADisposition`; `walk278` serves BOTH 278 directions). **GROUNDED ON THIS
-  PACKAGE DISAGREEING WITH ITSELF, NEVER ON A TR3 CLAUSE** - every dot-path read already unescaped
-  and `parse999` already decoded AK2-03, the same field.
-- **🛑 THE THREE `ST-03` TESTS STILL KEY ON THE RAW TEXT, DELIBERATELY; MOVING ONE IS A DIFFERENT
-  SLICE:** `VARIANT_BY_ICR`, `walk277`'s `transactionType`, and `get277CADisposition`'s ADMISSION
-  GATE. Measured: with `componentSeparator: "X"` an ST-03 of `005010?X222A1` decodes to a guide
-  identifier, so keying on the decoded text makes **THE DECLARATION BEAT THE `SVx` FALLBACK**
-  (`X12-VARIANT-ICR-UNGROUNDED`'s property) and **STOPS A SERVICE LINE DECODING**. **THE MOVE IS
-  ONE-WAY: nothing that resolved or was admitted at base stops** - no identifier keyed on carries a
-  delimiter or `?`, so a raw text equal to one decodes to itself.
-- **⚖️ NO NORMALISATION AND NO NEW WARNING.** Nothing trimmed or case-folded; whitespace still
-  publishes untrimmed. **THE SINK IS A NO-OP**, so `X12_DANGLING_RELEASE_CHAR` is dropped as
-  `getSegmentValue`'s default, `parseTA1` and `parse999` drop it - `PRE-EXISTING` and OPEN, not
-  absorbed.
-- **🛑 PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH READER IS SPECIAL.** Each reader's own `""` /
-  absent mapping is UNCHANGED and pinned: `walk278` collapses `""` to `undefined`, the other two
-  publish `""`.
+**RELOCATED IN FULL 2026-08-09, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-ENVELOPE-VALUE-ROUTES` trap above, on that trap's SECOND relocation.
+**🩺 Open it before you touch `decodeSt03`, any typed reader's `implementationConventionReference` or
+an ST-03 key: every reader publishes it POST-`?`-unescape through ONE `decodeSt03`, filed as three
+readers and measured as FOUR raw reads in THREE files reached by FIVE public readers, GROUNDED ON
+THIS PACKAGE DISAGREEING WITH ITSELF and never on a TR3 clause; 🛑 THE THREE ST-03 TESTS STILL KEY ON
+THE RAW TEXT, DELIBERATELY, and moving one is a different slice; NO NORMALISATION AND NO NEW WARNING,
+THE SINK IS A NO-OP; and 🛑 PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH READER IS SPECIAL.**
 
 ### 🩺 `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-interchange-gs-escape.md`
 
