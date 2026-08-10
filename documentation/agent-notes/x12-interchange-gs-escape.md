@@ -192,3 +192,19 @@ Every closure pin sits against a negative control:
   exist to stop. Measured: 4 red.
 
 Warning-channel assertions are `toEqual` on the whole array, per the standing rule.
+
+## Relocated from `CLAUDE.md`, 2026-08-10, verbatim
+
+Moved here in full to pay for the new `X12-ENVELOPE-VALUE-ROUTES` trap on deletion remedies. Nothing
+is dropped and nothing is shortened; `CLAUDE.md` keeps only the imperative pointer.
+
+- **🩺 `buildInterchange` RELEASES GS-04 / GS-05 / GS-07 NOW** - it disagreed with itself. **GS-07
+  WAS THE SILENT ONE:** `"X*Y"` took GS-08's slot, `warnings: []`. **🛑 BYTES CHANGE, NO READER
+  MOVED - A DIFFERENT SCOPE FROM `#96`. STATE THE PROPERTY** (the model reports what THE CALLER
+  PASSED), **NEVER A DIRECTION, A TOTAL, OR A DELIMITER BY BYTE - NAME THE ROLE:** the caller
+  declares all four; REPETITION/COMPONENT were a dot-path GAIN, the cost a MID-STRING `?` on RAW.
+- **🛑 NEVER ESCAPE ELEMENT 0: A SEGMENT ID IS OURS, NOT CALLER CONTENT.** `esc` uses the CALLER's
+  set, so `componentSeparator: "S"` made `"GS"` read `G?S` and the group fell out as orphans.
+- **⚖️ TYPE-CHECK BEFORE ESCAPING** - bare `esc` names only the BUILDER, losing `"GS"-04`. **`esc`
+  AFTER `expandYY`; `null` HERE IS ABSENT, NOT REFUSED; NO CENSUS, AND THE SIBLING PRECEDENT IS NOT
+  UNIFORM - GS-07 IS A CALLER VALUE IN `build999` ALONE.**

@@ -37,8 +37,7 @@ model.
   ```
 
   Every row `warnings: []`. TA1-01 is the reassociation key, so the left column is a key that
-  matches no ISA-13. The right column is the same element, which
-  already unescaped, and `parse999` does the same on its IK4-01 composite. The grounding is that
+  matches no ISA-13. The right column is the same element. The grounding is that
   disagreement and nothing else - no clause anyone here has read settles what a TA1 element may
   contain.
 
@@ -106,10 +105,7 @@ model.
     variant publishes it with `variant: "P"` and raises `X12_837_AMBIGUOUS_VARIANT` - each time the
     code that fired says `ST-03` named no identifier this reader recognises while the model field
     holds one it does. **`X12_837_UNKNOWN_VARIANT`'s closing pointer at the model is therefore
-    deleted.** The 277 shape
-    publishes
-    `005010X214` while `transactionType` is `claim-status` and `get277CADisposition` returns
-    `undefined`. **Through `0.0.15` the published value WAS the keyed value, so the model could not
+    deleted.** **Through `0.0.15` the published value WAS the keyed value, so the model could not
     disagree with itself. Gate on `variant` / `transactionType`, never on the published reference.**
   - **🛑 It introduces no normalisation and no new warning.** Nothing is trimmed, case-folded or
     prefix-matched; a whitespace-only `ST-03` is still published untrimmed. A dangling `?` at the end
@@ -482,8 +478,7 @@ model.
     GS-07 of `"X|Y"` that took GS-08's slot and `"X*Y"` that was inert. **Only the element separator
     and the segment terminator ever shifted the segment's own framing, plus a `?` immediately before
     the element separator.** The **repetition** and **component** separators moved the dot-path
-    reader instead, and releasing them is a **gain** there: on the default set it answered `"X"` for
-    `"X^Y"`, truncating to repetition 0, and the
+    reader instead, and releasing them is a **gain** there: the
     composite read `"07-1"` answered `"X"` for `"X:Y"`. **The measured cost is a mid-string `?`,
     and only on the surfaces documented as raw** - `gs.elements[4]` reads `"2026??0601"` where it
     read `"2026?0601"`, while the dot-path read of that value unescapes and is unchanged. No total is

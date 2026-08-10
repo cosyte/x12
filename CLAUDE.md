@@ -143,6 +143,14 @@ FLOOR, FILED NOT CLOSED - A GREP ANCHORED ON A BACKTICK MISSES THEM, they sit ba
   READ THE FOUR CELLS IN THE NOTE AND STATE NO RULE OVER THEM IN EITHER DIRECTION** - two drafts
   did, and the gate falsified both, the second with a plain ISA-06 / ISA-08 / ISA-16 and with the
   note's own third row. **PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH MEMBER IS SPECIAL.**
+- **🛑 A DELETION REMEDY CAN STRAND THE SENTENCE'S SUBJECT, AND THE BROKEN CLAIM THEN SHIPS IN BOTH
+  TWINS.** Cutting "read through `getSegmentValue`" mid-sentence left _"the same element, which
+  already unescaped"_ - the OPPOSITE of what the entry reports - in `CHANGELOG.md` AND
+  `KNOWN-LIMITATIONS.md`.
+  **RE-READ EVERY SENTENCE YOU CUT, IN EVERY TWIN, AND CUT THE WHOLE CLAUSE WHEN THE REMAINDER
+  CANNOT STAND** - the remedy for this trap tripped it once before it landed.
+  `check:no-internal-refs` calls this DECAPITATION; **ELEVEN siblings run it and x12 does NOT**, and
+  **it would not have caught these** - it scans neither carrier. Porting it is its OWN slice.
 - **⚖️ `parse-ta1.ts:41` / `KNOWN-LIMITATIONS.md:306` MIS-CITE `X12Segment.elements`. RE-MEASURED AND
   STILL NOT FOLDED IN** - their statement is TRUE and they have a twin, so folding half splits a
   filed slice. **`#110`'s third ground (that no deletion remedy exists for them) IS WITHDRAWN: one
@@ -161,16 +169,12 @@ THE SINK IS A NO-OP; and 🛑 PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH READE
 
 ### 🩺 `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` (2026-08-08) · `agent-notes/x12-interchange-gs-escape.md`
 
-- **🩺 `buildInterchange` RELEASES GS-04 / GS-05 / GS-07 NOW** - it disagreed with itself. **GS-07
-  WAS THE SILENT ONE:** `"X*Y"` took GS-08's slot, `warnings: []`. **🛑 BYTES CHANGE, NO READER
-  MOVED - A DIFFERENT SCOPE FROM `#96`. STATE THE PROPERTY** (the model reports what THE CALLER
-  PASSED), **NEVER A DIRECTION, A TOTAL, OR A DELIMITER BY BYTE - NAME THE ROLE:** the caller
-  declares all four; REPETITION/COMPONENT were a dot-path GAIN, the cost a MID-STRING `?` on RAW.
-- **🛑 NEVER ESCAPE ELEMENT 0: A SEGMENT ID IS OURS, NOT CALLER CONTENT.** `esc` uses the CALLER's
-  set, so `componentSeparator: "S"` made `"GS"` read `G?S` and the group fell out as orphans.
-- **⚖️ TYPE-CHECK BEFORE ESCAPING** - bare `esc` names only the BUILDER, losing `"GS"-04`. **`esc`
-  AFTER `expandYY`; `null` HERE IS ABSENT, NOT REFUSED; NO CENSUS, AND THE SIBLING PRECEDENT IS NOT
-  UNIFORM - GS-07 IS A CALLER VALUE IN `build999` ALONE.**
+**RELOCATED IN FULL 2026-08-10, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-ENVELOPE-VALUE-ROUTES` trap above.
+**🩺 Open it before you touch `buildInterchange`, `esc` or any GS slot: GS-04 / GS-05 / GS-07 are
+RELEASED on emit and GS-07 WAS THE SILENT ONE (`"X*Y"` took GS-08's slot, `warnings: []`), 🛑 NEVER
+ESCAPE ELEMENT 0 BECAUSE A SEGMENT ID IS OURS AND NOT CALLER CONTENT, and TYPE-CHECK BEFORE
+ESCAPING.**
 
 ### 🩺 `X12-TA1-RESIDUALS` (2026-08-09) · `agent-notes/x12-ta1-residuals.md`
 
@@ -227,19 +231,12 @@ predicate moves BOTH ways - state the property, never the directions, and never 
 
 ### 🩺 `X12-837-AMBIGUOUS-VARIANT` (2026-08-08) · `documentation/agent-notes/x12-837-ambiguous-variant.md`
 
-- **🩺 THE `SVx` FALLBACK IS NOT NARROWED AND MUST NOT BE; THIS CLOSED ONLY THE SILENCE.**
-  `X12_837_AMBIGUOUS_VARIANT` at the `ST`, NO `elementIndex`, ONCE per transaction, ONLY where the
-  fallback DECIDED and the body names more than one variant. **A caller `type` or a resolving
-  `ST-03` means NO guess, so it is NOT raised however mixed the body is: a property of the
-  RESOLUTION, never of the document.**
-- **🩺 NEVER PICK A WINNER: a stray `SVx` and a conformant one are indistinguishable here**, and
-  first-wins takes the first, open Loop 2400 or not. Choosing would be inventing.
-- **🩺 ADDITIVITY HERE IS INVARIANCE, NEVER A LIST OF WHAT ELSE YOU WILL SEE.** The frozen message
-  said "a service segment with no line open still raises `X12_837_SERVICE_SEGMENT_WITHOUT_LX`"; a
-  refuter measured it FALSE - a stray `LX` suppresses it. Say only: whatever was raised is still
-  raised, same position. Pinned CHANNEL-WIDE with this filtered out. **Never with
-  `X12_837_UNKNOWN_VARIANT`.** **NO LONGER SOLE:** a foreign `SVx` inside an already-decoded Loop 2400
-  raises `X12_837_SERVICE_SEGMENT_REPEATED` at itself (trap above).
+**RELOCATED IN FULL 2026-08-10, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-ENVELOPE-VALUE-ROUTES` trap above.
+**🩺 Open it before you touch `X12_837_AMBIGUOUS_VARIANT` or the `SVx` fallback: the fallback is NOT
+narrowed and this closed ONLY the silence, 🛑 NEVER PICK A WINNER because a stray `SVx` and a
+conformant one are indistinguishable, and ADDITIVITY HERE IS INVARIANCE, NEVER A LIST OF WHAT ELSE
+YOU WILL SEE.**
 
 ### 🩺 `X12-AMT-ADX-ABSENT-AMOUNT` + `X12-STATED-AMOUNT-DISCARDED` (2026-08-07) · `documentation/agent-notes/x12-{amt-adx-absent-amount,stated-amount-discarded}.md`
 
