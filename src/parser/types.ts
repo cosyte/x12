@@ -148,16 +148,22 @@ export interface IsaSegment {
 }
 
 /**
- * The decoded IEA interchange trailer. `raw` is the exact segment string
- * (without the segment terminator) and `elements` is the IEA values,
- * 1-indexed (`elements[0]` = `"IEA"`, `elements[1]` = IEA-01 group count,
- * `elements[2]` = IEA-02 interchange control number - must match ISA-13).
+ * The decoded IEA interchange trailer. IEA-01 is the group count and IEA-02
+ * the interchange control number, which the envelope walker reconciles
+ * against ISA-13.
+ *
+ * `raw` is the exact segment string (without the segment terminator) and
+ * `elements` is 1-indexed (`elements[0]` = `"IEA"`, `elements[1]` = IEA-01,
+ * `elements[2]` = IEA-02). **Element values are stored RAW,
+ * pre-`?`-unescape**, so an element is the framed byte text of its slot and
+ * not necessarily the value the sender stated.
  *
  * @example
  * ```ts
  * import type { IeaSegment } from "@cosyte/x12";
  * declare const iea: IeaSegment;
- * iea.elements[2]; // IEA-02 - must equal ISA-13
+ * iea.raw;            // verbatim segment text
+ * iea.elements[2];    // raw text of IEA-02 (post-element-split, pre-?-unescape)
  * ```
  */
 export interface IeaSegment {
@@ -166,17 +172,22 @@ export interface IeaSegment {
 }
 
 /**
- * The decoded GS functional group header. `elements[0]` = `"GS"`,
- * `elements[1]` = GS-01 functional ID code (`HC` for claims, `HP` for
- * remittance, etc.), `elements[6]` = GS-06 group control number (must match
- * GE-02), `elements[8]` = GS-08 version (e.g. `005010X222A2`).
+ * The decoded GS functional group header. GS-01 is the functional ID code
+ * (`HC` for claims, `HP` for remittance, etc.), GS-06 the group control
+ * number, which reconciles against GE-02, and GS-08 the version /
+ * implementation convention reference (e.g. `005010X222A2`).
+ *
+ * `elements` is 1-indexed (`elements[0]` = `"GS"`, `elements[1]` = GS-01,
+ * ..., `elements[8]` = GS-08). **Element values are stored RAW,
+ * pre-`?`-unescape**, so an element is the framed byte text of its slot and
+ * not necessarily the value the sender stated.
  *
  * @example
  * ```ts
  * import type { GsSegment } from "@cosyte/x12";
  * declare const gs: GsSegment;
- * gs.elements[1]; // GS-01 - functional ID code
- * gs.elements[6]; // GS-06 - group control number
+ * gs.raw;            // verbatim segment text
+ * gs.elements[6];    // raw text of GS-06 (post-element-split, pre-?-unescape)
  * ```
  */
 export interface GsSegment {
@@ -185,16 +196,21 @@ export interface GsSegment {
 }
 
 /**
- * The decoded GE functional group trailer. `elements[0]` = `"GE"`,
- * `elements[1]` = GE-01 transaction count (must equal the number of ST/SE
- * pairs inside this group), `elements[2]` = GE-02 group control number
- * (must equal GS-06).
+ * The decoded GE functional group trailer. GE-01 is the transaction count,
+ * which reconciles against the number of ST/SE pairs in the group, and
+ * GE-02 the group control number, which reconciles against GS-06.
+ *
+ * `elements` is 1-indexed (`elements[0]` = `"GE"`, `elements[1]` = GE-01,
+ * `elements[2]` = GE-02). **Element values are stored RAW,
+ * pre-`?`-unescape**, so an element is the framed byte text of its slot and
+ * not necessarily the value the sender stated.
  *
  * @example
  * ```ts
  * import type { GeSegment } from "@cosyte/x12";
  * declare const ge: GeSegment;
- * ge.elements[2]; // GE-02 - must equal GS-06
+ * ge.raw;            // verbatim segment text
+ * ge.elements[2];    // raw text of GE-02 (post-element-split, pre-?-unescape)
  * ```
  */
 export interface GeSegment {
@@ -209,24 +225,31 @@ export interface GeSegment {
  * GS at all (a TA1-only interchange). One interchange may carry multiple
  * TA1 segments, each acknowledging a prior inbound interchange.
  *
- * `elements[0]` = `"TA1"`; `elements[1]` = TA1-01 (echoes the prior
- * interchange's ISA-13 control number); `elements[2]` = TA1-02 (interchange
- * date YYMMDD, echoes ISA-09); `elements[3]` = TA1-03 (interchange time
- * HHMM, echoes ISA-10); `elements[4]` = TA1-04 (Interchange Acknowledgment
- * Code, code list I13: `A` accepted, `E` accepted with errors, `R`
- * rejected); `elements[5]` = TA1-05 (Interchange Note Code, code list I18,
- * `000`–`028+`).
+ * TA1-01 is the interchange control number of the acknowledged interchange
+ * and the reassociation key. TA1-02 and TA1-03 are
+ * its interchange date (YYMMDD) and time (HHMM). TA1-04 is the Interchange
+ * Acknowledgment Code, code list I13 (`A` accepted, `E` accepted with
+ * errors, `R` rejected), and TA1-05 the Interchange Note Code, code list
+ * I18.
+ *
+ * `elements` is 1-indexed (`elements[0]` = `"TA1"`, `elements[1]` = TA1-01,
+ * ..., `elements[5]` = TA1-05). **Element values are stored RAW,
+ * pre-`?`-unescape**, so an element is the framed byte text of its slot and
+ * not necessarily the value the sender stated.
  *
  * The Phase 3 envelope walker captures TA1 segments here verbatim; the
- * typed-ack model is built on top by `parseTA1`. TA1 contains only
- * structural control / disposition codes - by spec it carries NO PHI.
+ * typed-ack model is built on top by `parseTA1`, whose five decoded fields
+ * are POST-`?`-unescape. `parseTA1` decodes the FIRST TA1 on an
+ * interchange, so on a multi-TA1 inbound it does not necessarily describe
+ * the segment you are holding. TA1 contains only structural control /
+ * disposition codes - by spec it carries NO PHI.
  *
  * @example
  * ```ts
  * import type { Ta1Segment } from "@cosyte/x12";
  * declare const ta1: Ta1Segment;
- * ta1.elements[1]; // TA1-01 - echoes inbound ISA-13
- * ta1.elements[4]; // TA1-04 - "A" | "E" | "R"
+ * ta1.raw;            // verbatim segment text
+ * ta1.elements[1];    // raw text of TA1-01 (post-element-split, pre-?-unescape)
  * ```
  */
 export interface Ta1Segment {
@@ -273,7 +296,6 @@ export interface X12TransactionSet {
  * ```ts
  * import type { X12FunctionalGroup } from "@cosyte/x12";
  * declare const group: X12FunctionalGroup;
- * group.gs.elements[1]; // GS-01 - functional ID code
  * group.transactions.length;
  * ```
  */

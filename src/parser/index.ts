@@ -47,7 +47,7 @@ import type { X12Interchange, X12ParseOptions } from "./types.js";
  * ix.delimiters.element;    // "*"
  * ix.delimiters.component;  // ":"
  * ix.delimiters.segment;    // "~"
- * ix.groups[0]?.gs.elements[1]; // "HC"
+ * ix.groups[0]?.gs.elements[1]; // raw text of GS-01 (pre-?-unescape)
  * for (const w of ix.warnings) {
  *   if (w.code === WARNING_CODES.X12_PRE_005010) {
  *     // sender on pre-005010 version family
