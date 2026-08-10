@@ -248,6 +248,27 @@ not 005010-conformant either way"* was ranked `PRE-EXISTING` minor and defensibl
 layout this repo verifies itself, and is left as filed rather than swept a third time. The missing
 `Provenance:` field is umbrella-side and outside this repo.
 
+## Pass 3 `NOT REFUTED`, and the one thing it left standing on purpose
+
+Pass 3 (scope: the pass-2 remedy diff only) re-derived the two-plant grid **from bytes**, independent
+of this repo's code, and reproduced it cell for cell; confirmed the quantifier is gone from all ten
+carriers and survives only where this note quotes it as falsified; and verified the AMT/ADX
+relocation byte-identical. **No `INTRODUCED` blocker or major. The guard graded correct on all three
+passes and no refuter could break it.** Two minors, both cleared: a parenthetical **count** in the
+`CLAUDE.md` trap (**deleted, not corrected** - a count corrected twice is deleted, and this slice's
+whole lesson is delete-never-substitute), and one over-long line in `docs-content/`, which
+`format:check` does not glob and so nothing caught.
+
+**🩺 What pass 3 declined to file, recorded here so a future slice does not have to rediscover it.**
+The replacement wording is itself a universal negative - *"how far is NOT derivable from
+`isa.elements`"* - and it is literally falsifiable: `isa.elements.join(delimiters.element)`
+reconstructs the 105-byte element area exactly, after which the fixed widths recover every
+transmitted span. Pass 3 did not file it because the direction is **fail-safe** (that route
+reproduces `isa.raw` and yields identical values, so no consumer reaches a wrong control number,
+version or usage indicator through it) and because re-litigating a prescribed remedy is the runaway
+the four-pass cap exists to stop. **If anyone reopens this prose, the honest form is "not derivable
+from `isa.elements.length`, nor from an index shift" - not a blanket "no arithmetic works".**
+
 ## Evidence
 
 - **Full suite green at head:** 91 files, 2,310 tests (2,308 at the first graded sha).

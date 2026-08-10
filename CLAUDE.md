@@ -213,8 +213,8 @@ predicate moves BOTH ways - state the property, never the directions, and never 
 A FLOOR AND NEVER THE COUNT (`detectDelimiters` bounds the split from BELOW only), so an ISA element
 carrying the ELEMENT SEPARATOR displaces what follows it - 🛑 NEVER QUANTIFY THE SHIFT. Not "by
 one", and NOT from `isa.elements.length` either: it is POSITION-DEPENDENT, and `isa.raw` plus the
-fixed widths is the only route back. Each quantifier was a MAJOR (passes 1 and 2, ten carriers each,
-the second INSIDE the first's remedy) - DELETE, never substitute. 🛑 THE
+fixed widths is the only route back. Each quantifier was a MAJOR (passes 1 and 2, the second INSIDE
+the first's remedy) - DELETE, never substitute. 🛑 THE
 FILED LINE NAMED ISA-13 AND 14 OF 16 REPRODUCE; the two that do not ARE the in-band
 repetition/component declarations, so the plant collides with them - A BOUNDARY OF THE PROBE, NEVER A
 PROPERTY OF THOSE ELEMENTS, AND TELL NO STORY ABOUT WHICH IS SPECIAL. 🛑 SCOPE THE ORDERING CLAIM TO

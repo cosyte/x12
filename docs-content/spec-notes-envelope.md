@@ -70,8 +70,9 @@ splits again: that element comes back a prefix and everything after it is displa
 number, the usage indicator and the version can each answer some other element's value. **How far is
 not derivable from `isa.elements`** - more than one element can carry an extra separator, and one
 sitting between two of them is displaced less than one sitting after both - so `isa.raw` plus the
-fixed widths is the only route back. `@cosyte/x12` reports this as `X12_ISA_EXTRA_ELEMENT_SEPARATOR` and **re-frames nothing** - the byte
-is both content under the ISA's fixed widths and the separator the segment declares in-band, the
+fixed widths is the only route back. `@cosyte/x12` reports this as
+`X12_ISA_EXTRA_ELEMENT_SEPARATOR` and **re-frames nothing** - the byte is both
+content under the ISA's fixed widths and the separator the segment declares in-band, the
 interchange is not 005010-conformant either way, and nothing settles which reading is right. All 106
 bytes stay on `isa.raw`, so the transmitted span of any element is recoverable if you decide it should
 be.
