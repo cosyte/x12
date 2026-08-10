@@ -315,3 +315,48 @@ relocated copy, each with its own on-the-record marker. **No trap deleted, no se
 ratchet not raised.** Derive the current figure; do not trust one written here.
 **`REPO_CLAUDE.x12` in the umbrella is owed a lowering to match.** This slice is scoped to the
 submodule and did not touch the umbrella, so that is left to the coordinator.
+
+## The `CLAUDE.md` entry, relocated in full
+
+**RELOCATED VERBATIM 2026-08-10, NOTHING DROPPED** - it paid for the
+`X12-ENVELOPE-VALUE-EXAMPLES` trap, the successor slice that closed this note's own
+"`src/parser/types.ts`'s `@example` indices, the eighth floor" residual. The inline entry in
+`x12/CLAUDE.md` was condensed to the short "open it before you touch" form ONLY after this copy was
+diffed byte-identical against it. **Every imperative below is LIVE and it is HERE, not there.**
+
+### 🩺 `X12-ENVELOPE-VALUE-ROUTES` (2026-08-09) · `agent-notes/x12-envelope-value-routes.md`
+
+- **🩺 NO DOC MAY NAME `getSegmentValue` AS THE READ OF AN ENVELOPE ELEMENT.** It takes an
+  `X12Segment`; **ALL SEVEN envelope-level types** (`Isa`/`Iea`/`Gs`/`Ge`/`Ta1` and the INLINE ST/SE
+  on `X12TransactionSet`) declare only `raw`+`elements`, so the call is `TS2345`. **`#110` MEASURED
+  THREE OF THE SEVEN; THIS MEASURED ALL SEVEN. THE GRID IS IN THE NOTE - COUNT ITS ROWS, DO NOT
+  QUOTE A FIGURE: a draft published "9 in 6 files" against its own ten-row grid, AND the gate then
+  added THREE MORE ROWS.**
+- **🛑 NOT EVERY REMEDY WAS A DELETION.** **FOUR carriers FREEZE on release**
+  (two pending changesets AND their `[Unreleased]` CHANGELOG twins - the whole file is
+  `[Unreleased]`) and only those are deletion-only; one OWED the consumer a route and is the one
+  REPLACEMENT. **CHECK THE `remedy` COLUMN AGAINST THE DIFF, NEVER THE SUMMARY WORD.**
+- **🛑 THE SIGNATURE WAS NOT WIDENED, AND THAT WAS THE DECISION.** The body never reads `id`, so
+  widening to `elements`-only is FREE, non-breaking and emits nothing - **and it would make a
+  SILENTLY WRONG ISA READ COMPILE.** A capability that is right on six types and wrong on the
+  seventh is not an ergonomic win. **THE CLAIM WAS CUT; NO CODE MOVED.**
+- **🛑 TWO `#110` CLAIMS ARE MEASURED FALSE HERE. (a) "`unescapeRelease` ... IS THE ONLY ROUTE" -
+  there are TWO, and the second is prescribed in-tree at `build-ta1.ts:68` ("add one") and is what
+  this repo's OWN TESTS do (`gsOf`, `withId`). (b) "a raw-vs-`unescapeRelease` cell on the ISA is a
+  TAUTOLOGY that detects nothing" - `unescapeRelease` does not know the ISA is exempt.**
+- **🛑 THE TWO ROUTES DISAGREE ON A REPETITION** (a bare dot-path answers repetition 0). **ON THE ISA,
+  READ THE FOUR CELLS IN THE NOTE AND STATE NO RULE OVER THEM IN EITHER DIRECTION** - two drafts
+  did, and the gate falsified both, the second with a plain ISA-06 / ISA-08 / ISA-16 and with the
+  note's own third row. **PUBLISH THE CELLS, NEVER A STORY ABOUT WHICH MEMBER IS SPECIAL.**
+- **🛑 A DELETION REMEDY CAN STRAND THE SENTENCE'S SUBJECT, AND THE BROKEN CLAIM THEN SHIPS IN BOTH
+  TWINS.** Cutting "read through `getSegmentValue`" mid-sentence left _"the same element, which
+  already unescaped"_ - the OPPOSITE of what the entry reports - in `CHANGELOG.md` AND
+  `KNOWN-LIMITATIONS.md`.
+  **RE-READ EVERY SENTENCE YOU CUT, IN EVERY TWIN, AND CUT THE WHOLE CLAUSE WHEN THE REMAINDER
+  CANNOT STAND** - the remedy for this trap tripped it once before it landed.
+  `check:no-internal-refs` calls this DECAPITATION; **ELEVEN siblings run it and x12 does NOT**, and
+  **it would not have caught these** - it scans neither carrier. Porting it is its OWN slice.
+- **⚖️ `parse-ta1.ts:41` / `KNOWN-LIMITATIONS.md:306` MIS-CITE `X12Segment.elements`. RE-MEASURED AND
+  STILL NOT FOLDED IN** - their statement is TRUE and they have a twin, so folding half splits a
+  filed slice. **`#110`'s third ground (that no deletion remedy exists for them) IS WITHDRAWN: one
+  does.**

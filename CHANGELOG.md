@@ -9,6 +9,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- **`IeaSegment`, `GsSegment`, `GeSegment`, `Ta1Segment` and `X12FunctionalGroup` no longer document
+  a raw envelope element as the value it holds** (`X12-ENVELOPE-VALUE-EXAMPLES`). **Documentation
+  only: the diff is comment-only, and `dist/index.mjs` and `dist/index.cjs` are byte-identical
+  before and after, so no behaviour moved.** The corrected text ships in `dist/index.d.ts`.
+
+  **Element values on those segment types are stored RAW, pre-`?`-unescape.** Their JSDoc named the
+  index and then named the value it holds - "IEA-02 interchange control number - must match ISA-13",
+  "GS-06 group control number", "TA1-01 (echoes the prior interchange's ISA-13 control number)" -
+  and repeated the promise inside an `@example` fence, which is the form a consumer copies. Measured
+  on one interchange where each documented non-ISA slot carries the sender-intended value `A*B`,
+  written on the wire in released form `A?*B`, **every one of those cells reads back `"A?*B"` and
+  not `"A*B"`.**
+
+  The same correction is applied to `parseX12`'s own `@example`, which handed out `// "HC"` at
+  `gs.elements[1]`.
+
+  On a `TA1` that `buildTA1` emitted and `parseX12` read back:
+
+  ```text
+  stated TA1-01   emitted TA1                         elements[1]    parseTA1()
+  "000000001"     TA1*000000001*260601*1200*A*000     "000000001"    "000000001"
+  "0000*0001"     TA1*0000?*0001*260601*1200*A*000    "0000?*0001"   "0000*0001"
+  "0000~0001"     TA1*0000?~0001*260601*1200*A*000    "0000?~0001"   "0000~0001"
+  "00000001?"     TA1*00000001??*260601*1200*A*000    "00000001??"   "00000001?"
+  ```
+
+  Every row `warnings: []`. TA1-01 is the reassociation key, so a consumer following the shipped
+  `@example` compared framed bytes against the ISA-13 it was acknowledging. `parseTA1` already read
+  the same bytes correctly, so the package disagreed with itself.
+
+  **Each block now carries the label `X12Segment` has always carried** - "Element values are stored
+  RAW, pre-`?`-unescape" - and the `@example` pointers keep their index and lose the promise. The
+  slot mapping (`elements[2]` = IEA-02) was true and is kept, and so are the element names, the
+  formats and the code-list citations, restated where they are true: as facts about the segment's
+  fields rather than about a raw element. No accessor, guard or test was added, and **no route is
+  named as the route.**
+
+  **The `IsaSegment` block is deliberately unchanged**, and no rule about the ISA is stated here in
+  either direction.
+
 - **The documentation carriers that told you to read an envelope element's logical value through
   `getSegmentValue` are corrected** (`X12-ENVELOPE-VALUE-ROUTES`). **Documentation and tests only: no
   runtime line changed and the emitted JS is byte-identical, so no behaviour moved.**
