@@ -61,6 +61,7 @@ import type { X12Position } from "./types.js";
 export const WARNING_CODES = {
   X12_CONTROL_NUMBER_MISMATCH: "X12_CONTROL_NUMBER_MISMATCH",
   X12_PRE_005010: "X12_PRE_005010",
+  X12_ISA_EXTRA_ELEMENT_SEPARATOR: "X12_ISA_EXTRA_ELEMENT_SEPARATOR",
   X12_GROUP_COUNT_MISMATCH: "X12_GROUP_COUNT_MISMATCH",
   X12_TRANSACTION_COUNT_MISMATCH: "X12_TRANSACTION_COUNT_MISMATCH",
   X12_SEGMENT_COUNT_MISMATCH: "X12_SEGMENT_COUNT_MISMATCH",
@@ -275,6 +276,8 @@ const WARNING_MESSAGES = {
     "Control number mismatch: ST-02 (header) and SE-02 (trailer) disagree. Both values are preserved verbatim on the model; neither is echoed here.",
   X12_PRE_005010:
     'ISA-12 declares a version other than the HIPAA baseline "00501", so the input may diverge from 005010 semantics. The declared version is preserved verbatim on the model.',
+  X12_ISA_EXTRA_ELEMENT_SEPARATOR:
+    "The ISA element area carries at least one element separator beyond the 16 sitting at their fixed 005010 byte positions, so the header does not split into `ISA` plus 16 elements. `isa.elements` is that split as it came out: an element containing an extra separator comes back a prefix and everything after it is displaced. How far is NOT derivable from `isa.elements`, so any other ISA-derived diagnostic on this interchange may be reporting a displaced value. All 106 bytes are preserved verbatim on `isa.raw`, which with the ISA's fixed widths is the route back. Which reading is correct - the byte as data under the ISA's fixed widths, or as a separator - is NOT decided here, and nothing is re-framed.",
   X12_GROUP_COUNT_MISMATCH:
     "IEA-01 does not equal the number of GS..GE groups actually present in the interchange. The declared count is preserved verbatim on the model and is NEVER silently corrected.",
   X12_TRANSACTION_COUNT_MISMATCH:
@@ -491,6 +494,44 @@ export function pre005010(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_PRE_005010,
     message: WARNING_MESSAGES.X12_PRE_005010,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_ISA_EXTRA_ELEMENT_SEPARATOR` warning. Emitted when the ISA
+ * element area (bytes 0..104) splits on the detected element separator into
+ * anything other than `["ISA", e1, …, e16]`.
+ *
+ * `detectDelimiters` has already verified that the separator sits at all 16
+ * fixed 005010 positions, so the split can only come out LONGER than 17: an
+ * ISA element value is itself carrying the byte that was declared in-band as
+ * the element separator. The interchange is not 005010-conformant either way,
+ * and the parser does not choose between the two readings of that byte - it
+ * reports that the header did not frame and leaves `isa.elements` exactly as
+ * the split produced it, with `isa.raw` carrying all 106 bytes verbatim.
+ *
+ * `decodeEnvelope` raises this ahead of every warning it raises after it,
+ * because when it is present the ISA-derived diagnostics that follow
+ * (`X12_PRE_005010` off `elements[12]`, `X12_CONTROL_NUMBER_MISMATCH` off
+ * `elements[13]`) may be reading a displaced element rather than the one they
+ * name. **That is a statement about `parseX12`'s `warnings` (and `onWarning`)
+ * and about nothing else.** `serializeX12(ix, { specClean: true })` runs its own
+ * reconciliation off `interchange.isa.elements[13]` with no arity awareness and
+ * never raises this code, so on that channel a lone
+ * `X12_CONTROL_NUMBER_MISMATCH` can be a displaced read - and its absence is not
+ * evidence the header framed. Filed, not fixed here.
+ *
+ * @example
+ * ```ts
+ * import { isaExtraElementSeparator } from "@cosyte/x12";
+ * const w = isaExtraElementSeparator({ segmentIndex: 0, interchangeIndex: 0 });
+ * ```
+ */
+export function isaExtraElementSeparator(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_ISA_EXTRA_ELEMENT_SEPARATOR,
+    message: WARNING_MESSAGES.X12_ISA_EXTRA_ELEMENT_SEPARATOR,
     position,
   };
 }

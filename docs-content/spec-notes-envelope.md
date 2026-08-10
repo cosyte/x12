@@ -62,6 +62,28 @@ detects all four from fixed byte positions in the ISA, so you never configure th
 `ix.delimiters` carries the detected set; every reader and the `getSegmentValue` dot-path resolver use
 it, so a partner who ships `|` elements and `\` components parses with no special handling.
 
+### When an ISA element carries the element separator
+
+Detection verifies the element separator at all 16 fixed ISA positions, which makes 17 the **floor**
+on how many parts the header splits into, not the count. An ISA element value carrying that same byte
+splits again: that element comes back a prefix and everything after it is displaced, so the control
+number, the usage indicator and the version can each answer some other element's value. **How far is
+not derivable from `isa.elements`** - more than one element can carry an extra separator, and one
+sitting between two of them is displaced less than one sitting after both - so `isa.raw` plus the
+fixed widths is the only route back. `@cosyte/x12` reports this as
+`X12_ISA_EXTRA_ELEMENT_SEPARATOR` and **re-frames nothing** - the byte is both
+content under the ISA's fixed widths and the separator the segment declares in-band, the
+interchange is not 005010-conformant either way, and nothing settles which reading is right. All 106
+bytes stay on `isa.raw`, so the transmitted span of any element is recoverable if you decide it should
+be.
+
+`parseX12` raises this ahead of the warnings it raises after it, so when you see it in `ix.warnings`,
+treat those as provisional. **That is a statement about `ix.warnings` and `onWarning` only.**
+`serializeX12(ix, { specClean: true })` reconciles ISA-13 against IEA-02 off `isa.elements[13]` with
+no arity awareness and never raises this code, so on that channel a lone
+`X12_CONTROL_NUMBER_MISMATCH` can be a displaced read, and the absence of this warning is not
+evidence the header framed.
+
 ### When a delimiter is `?`
 
 `?` is the conventional X12 release character, and this library treats it as one. It is also

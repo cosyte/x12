@@ -149,3 +149,39 @@ The five other `PRE-EXISTING` findings carried in `X12-837-RESIDUALS` (a stray `
 submission; an `NM1*87` with a `CLM` open landing in `claim.providers`; `attachContact`'s
 `/* v8 ignore */` arm; a Loop 2010AB short a Required `N3`; an `NM1*87` in Loop 2000B with no claim
 open), and **SV3-06's TR3 usage, which is still not grounded** - do not claim it is.
+
+## Relocated from `x12/CLAUDE.md`, 2026-08-10, VERBATIM, NOTHING DROPPED
+
+Moved here to pay for the `X12-ISA-ELEMENT-ARITY` trap's pass-2 correction under this repo's
+zero-headroom ratchet. The block covered BOTH this slug and `x12-stated-amount-discarded.md`, and
+it is kept whole here rather than split. The imperative stays in `CLAUDE.md`; the bullets are the
+text that was there, unchanged.
+
+
+- **🩺 AN `AMT`/`ADX` IS A RECORD, NOT A SLOT: no decoded amount (AMT-02, ADX-01) = NO ROW, qualifier
+  and reason code gone with it.** `X12_AMOUNT_ROW_DROPPED` at the SEGMENT, **NO `elementIndex`**; the
+  834's goes on the **MEMBER's** `warnings`. **The 835 and 837 attach an `AMT` to the open LINE
+  first, so the lost row is often LINE-level; never call that site "claim-level".**
+- **🩺 SAY ABSENT, NEVER "does not decode"** (the wider form cost a pass-2 minor): only ABSENT was
+  silent, UNPARSEABLE already warned. **Both raise it, NOTHING MOVED off `X12_UNPARSEABLE_DECIMAL`**,
+  and whether one sits at the same `segmentIndex` separates them.
+- **🩺 TWO AMOUNT-ROW CODES, DISJOINT, NEVER ONE SEGMENT.** The dropped one needs an amount element
+  that DECODED NO VALUE; `X12_STATED_AMOUNT_DISCARDED` needs one the sender POPULATED, discarded for
+  a reason that is NOT about the amount. Two routes, ONE message, NO discriminant: an 820 `RMR` with
+  BOTH identity elements empty, and an 837 `AMT` under an open `SVD`. SEGMENT, no `elementIndex`.
+  **SEPARATE BECAUSE REUSE WOULD FALSIFY A PUBLISHED SEPARATOR ON MONEY** (the dropped code's own
+  message says an unaccompanied instance means the sender stated NO amount). It closed an INVERSION:
+  under an open `SVD` the ABSENT amount warned and the STATED one did not, so the report sat exactly
+  where LESS was lost.
+- **🩺 NEVER CLAIM THE BYTES ARE DECODABLE - a pass-1 major.** The `RMR` guard is a
+  PRESENCE test, never a decode, so **NO `X12_UNPARSEABLE_DECIMAL` even on unreadable bytes** and it
+  fires on `1,234.56` too; deciding by decode would mint it where it never fired. Only the `AMT`
+  route guarantees a value.
+- **🩺 STATE THE BOUND AS A PROPERTY OF THE READ, NEVER OF CONTROL FLOW. "Nothing open means silent"
+  is FALSE** - the 835/837 decode BEFORE looking for somewhere to attach, so an absent amount with no
+  claim open DOES warn; the 834/820 return first and stay silent. **NO LOOP OPEN is a DIFFERENT loss
+  and STAYS SILENT** (834 `AMT` no `HD`, 820 `ADX` no remittance, 835/837 `AMT` before any claim), so
+  never widen to "a stated amount row is always reported"; a bare `RMR~` and one stating only RMR-03
+  are silent too. **The INVERSION SURVIVES at the 835/837 sites ONLY**
+  (`PRE-EXISTING`). **An empty filtered array asserts NOTHING.**
+

@@ -16,6 +16,70 @@ model.
 
 ## Data / decode boundaries
 
+- **🩺 An ISA element carrying the element separator makes the header split into more than
+  `ISA` + 16 elements. Through `0.0.16` no check saw that at all; it is now reported as
+  `X12_ISA_EXTRA_ELEMENT_SEPARATOR`** (`X12-ISA-ELEMENT-ARITY`). **Nothing is
+  re-framed: this is a report, not a repair, and no existing warning was suppressed or narrowed.**
+
+  `detectDelimiters` verifies the element separator at all 16 fixed 005010 byte positions, so the
+  ISA split can never come out SHORT. It was never bounded from ABOVE. An element value carrying
+  that same byte splits again, so that element comes back a **prefix** and everything after it is
+  **displaced**. **🛑 How far is NOT derivable from `isa.elements`, and no arithmetic on it works.**
+  More than one element can carry an extra separator, and an element sitting between two of them is
+  displaced less than one sitting after both; `isa.raw` plus the ISA's fixed widths is the only route
+  back. Measured on one conformant interchange, planting the element separator inside each of the 16
+  fixed elements in turn:
+
+  ```text
+  planted in   split parts   warnings through 0.0.16
+  ISA-01..10   18            X12_PRE_005010, X12_CONTROL_NUMBER_MISMATCH
+  ISA-11       -             X12_INVALID_DELIMITERS (Tier-3, thrown before any of this)
+  ISA-12       18            X12_PRE_005010, X12_CONTROL_NUMBER_MISMATCH
+  ISA-13       18            X12_CONTROL_NUMBER_MISMATCH
+  ISA-14       18            (none)
+  ISA-15       18            (none)
+  ISA-16       -             X12_INVALID_DELIMITERS (Tier-3, thrown before any of this)
+  ```
+
+  ISA-11 and ISA-16 **are** the in-band repetition and component separator declarations, so planting
+  the element separator there collides with them and the Tier-3 refusal reaches it first. That is a
+  boundary of the probe, not a claim that those two elements are special.
+
+  **What the displaced reads cost, on the rows that had a warning as much as on the rows that had
+  none.** On the `ISA-01..10` and `ISA-12` rows the interchange declares `00501` at ISA-12's own
+  fixed offset and `X12_PRE_005010` fires anyway, because `elements[12]` has become the repetition
+  separator; `elements[13]`, the interchange control number and the reassociation key, answers
+  `"00501"`; and `elements[15]`, the test/production usage indicator, answers `"0"` on a document
+  whose ISA-15 says `P`. On the `ISA-13` row the control number is a prefix. **The `ISA-14` and
+  `ISA-15` rows carried `warnings: []`** while the usage indicator read empty.
+
+  **The route back is `isa.raw`**, which still carries all 106 bytes verbatim, and the ISA's fixed
+  widths make the transmitted span of any element recoverable from it. Recovering it is **your**
+  decision, not this library's: a byte that is both an element's content under those fixed widths and
+  the separator the same segment declares in-band has two readings, the interchange is not
+  005010-conformant either way, and nothing anyone here has read says which reading to take. So the
+  parser reports that the header did not frame and leaves `isa.elements` exactly as the split
+  produced it.
+
+  **When this warning is present, treat every other ISA-derived diagnostic on that interchange as
+  provisional.** `parseX12` raises it ahead of the ones it raises after it for that reason, which
+  also means `{ strict: true }` escalates on it rather than on the displaced-value warning that
+  follows. **🩺 Read that as a statement about `ix.warnings` and `onWarning`, and about nothing
+  else.** `serializeX12(ix, { specClean: true })` reconciles ISA-13 against IEA-02 off
+  `isa.elements[13]` with no arity awareness and **never raises this code at all**, so on that
+  channel a lone `X12_CONTROL_NUMBER_MISMATCH` can be a displaced read of a control number that in
+  fact matches byte for byte at its fixed span, and **the absence of this warning there is not
+  evidence the header framed**. Pre-existing, disclosed, not fixed here.
+
+  **The emit side is unchanged and is NOT guarded by this.** The fixed-width ISA slots go through
+  `pad` / `padControl` and never through the caller escaper, so `buildInterchange` still writes a
+  caller value carrying the element separator straight onto the wire. What changed is that
+  `buildInterchange` returns `parseX12` of the bytes it just wrote, so the report now reaches that
+  path too: `interchangeControlNumber: "0000*0001"` used to come back with ISA-13 reading `"0000"`,
+  ISA-15 reading `"0"` instead of `"P"`, IEA-02 displaced the same way so the control-number
+  reconciliation **agreed with the misreading**, and `warnings: []`. Refusing such a value on emit is
+  a decision about the build side and is not taken here.
+
 - **🩺 `parseTA1`'s five decoded fields are POST-`?`-unescape as of this release, and an EMPTY
   TA1-02 / TA1-03 / TA1-04 / TA1-05 is REFUSED on emit. Both are behaviour changes**
   (`X12-TA1-RESIDUALS`). They are one slice because they are the two ends of the same disagreement:

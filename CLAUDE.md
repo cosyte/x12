@@ -207,22 +207,32 @@ predicate moves BOTH ways - state the property, never the directions, and never 
   **🩺 A `?` BEFORE A GS/ST SEPARATOR IS ONE ELEMENT: A FIX IF ESCAPED, A REGRESSION IF LITERAL.
   ISA EXEMPT** - `agent-notes/x12-envelope-release-split.md`.
 
-### 🩺 `X12-837-SV1-OVERWRITE` (2026-08-08) · `documentation/agent-notes/x12-837-sv1-overwrite.md`
+### 🩺 `X12-ISA-ELEMENT-ARITY` (2026-08-10) · `agent-notes/x12-isa-element-arity.md`
 
-- **🩺 A LINE HOLDS ONE SERVICE SEGMENT'S SLOTS AND EVERY DECODER WRITES ALL OF ITS OWN**, so a 2nd
-  `SVx` in an OPEN Loop 2400 REPLACES the 1st: `8500` -> `12`, CPT `99213` -> `99999`, `warnings: []`
-  through `0.0.13`. **An ABSENT charge element on the repeat writes `undefined` over a STATED amount
-  and `X12_837_SERVICE_LINE_NOT_DECODED` does NOT fire: a segment DID decode.**
-- **🛑 LAST-WINS IS NOT NARROWED, ELEMENT FOR ELEMENT.** Same call as `#87`/`#71`: a stray `SVx` and a
-  conformant one are indistinguishable, and first-wins changes how PUBLISHED documents decode.
-- **`X12_837_SERVICE_SEGMENT_REPEATED` at the REPEAT, no `elementIndex`, once per repeat, SCOPED TO
-  THE LINE.** Fires on ANY kind, DECODED OR NOT: keying it on `serviceSegmentDecoded`, or latching
-  it, each reds its own control.
-- **🛑 A BLIND CONSUMER WAS THIS REPO'S OWN DOCS, NOTHING HAVING MOVED ONTO A NEW CODE:** the
-  post-a-line-amount gate named FOUR codes and `spec-notes-money` "the known instance", NONE firing
-  here. **SWEEP EVERY MONEY PAGE, NOT THE RECIPE ALONE; PIN IT.**
-- **The message ASSERTS NO TR3 USAGE and depends on NO variant resolving**, which is why
-  `X12-VARIANT-ICR-UNGROUNDED` could correct that table without touching this code.
+**🩺 Open it before you touch `decodeIsa`, the ISA split, or any read of an ISA `elements[n]`: 17 IS
+A FLOOR AND NEVER THE COUNT (`detectDelimiters` bounds the split from BELOW only), so an ISA element
+carrying the ELEMENT SEPARATOR displaces what follows it - 🛑 NEVER QUANTIFY THE SHIFT. Not "by
+one", and NOT from `isa.elements.length` either: it is POSITION-DEPENDENT, and `isa.raw` plus the
+fixed widths is the only route back. Each quantifier was a MAJOR (passes 1 and 2, the second INSIDE
+the first's remedy) - DELETE, never substitute. 🛑 THE
+FILED LINE NAMED ISA-13 AND 14 OF 16 REPRODUCE; the two that do not ARE the in-band
+repetition/component declarations, so the plant collides with them - A BOUNDARY OF THE PROBE, NEVER A
+PROPERTY OF THOSE ELEMENTS, AND TELL NO STORY ABOUT WHICH IS SPECIAL. 🛑 SCOPE THE ORDERING CLAIM TO
+`ix.warnings`: `serializeX12` RECONCILES ISA-13 OFF `elements[13]` AND NEVER RAISES THIS CODE, so its
+absence there is NOT evidence the header framed (pass-1 major, `PRE-EXISTING` behaviour, an
+INTRODUCED overclaim). 🛑 IT IS A REPORT, NOT A REPAIR: nothing is re-framed, NO existing warning is
+suppressed or narrowed, and `isa.raw` is the route back - the byte has TWO READINGS and no source
+settles which. 🛑 THIS DOES NOT CLOSE THE `types.ts` `@example` CELLS: `#116`'s gate already
+falsified attributing those to this check, and their mechanism is FIXED-WIDTH SPACE PADDING. THE
+EMIT SIDE IS UNGUARDED AND FILED - the ISA slots never reach the caller escaper.**
+
+### 🩺 `X12-837-SV1-OVERWRITE` (2026-08-08) · `agent-notes/x12-837-sv1-overwrite.md`
+
+**RELOCATED IN FULL 2026-08-10, VERBATIM, NOTHING DROPPED** - it paid for the trap above.
+**🩺 Open it before you touch a service-line slot or `X12_837_SERVICE_SEGMENT_REPEATED`: a 2nd `SVx`
+in an OPEN Loop 2400 REPLACES the 1st element for element, `warnings: []` through `0.0.13`, 🛑
+LAST-WINS IS NOT NARROWED, the code is SCOPED TO THE LINE and fires DECODED OR NOT, and A BLIND
+CONSUMER WAS THIS REPO'S OWN DOCS - SWEEP EVERY MONEY PAGE, NOT THE RECIPE ALONE.**
 
 ### 🩺 `X12-837-AMBIGUOUS-VARIANT` (2026-08-08) · `documentation/agent-notes/x12-837-ambiguous-variant.md`
 
@@ -235,59 +245,33 @@ YOU WILL SEE.**
 
 ### 🩺 `X12-AMT-ADX-ABSENT-AMOUNT` + `X12-STATED-AMOUNT-DISCARDED` (2026-08-07) · `documentation/agent-notes/x12-{amt-adx-absent-amount,stated-amount-discarded}.md`
 
-- **🩺 AN `AMT`/`ADX` IS A RECORD, NOT A SLOT: no decoded amount (AMT-02, ADX-01) = NO ROW, qualifier
-  and reason code gone with it.** `X12_AMOUNT_ROW_DROPPED` at the SEGMENT, **NO `elementIndex`**; the
-  834's goes on the **MEMBER's** `warnings`. **The 835 and 837 attach an `AMT` to the open LINE
-  first, so the lost row is often LINE-level; never call that site "claim-level".**
-- **🩺 SAY ABSENT, NEVER "does not decode"** (the wider form cost a pass-2 minor): only ABSENT was
-  silent, UNPARSEABLE already warned. **Both raise it, NOTHING MOVED off `X12_UNPARSEABLE_DECIMAL`**,
-  and whether one sits at the same `segmentIndex` separates them.
-- **🩺 TWO AMOUNT-ROW CODES, DISJOINT, NEVER ONE SEGMENT.** The dropped one needs an amount element
-  that DECODED NO VALUE; `X12_STATED_AMOUNT_DISCARDED` needs one the sender POPULATED, discarded for
-  a reason that is NOT about the amount. Two routes, ONE message, NO discriminant: an 820 `RMR` with
-  BOTH identity elements empty, and an 837 `AMT` under an open `SVD`. SEGMENT, no `elementIndex`.
-  **SEPARATE BECAUSE REUSE WOULD FALSIFY A PUBLISHED SEPARATOR ON MONEY** (the dropped code's own
-  message says an unaccompanied instance means the sender stated NO amount). It closed an INVERSION:
-  under an open `SVD` the ABSENT amount warned and the STATED one did not, so the report sat exactly
-  where LESS was lost.
-- **🩺 NEVER CLAIM THE BYTES ARE DECODABLE - a pass-1 major.** The `RMR` guard is a
-  PRESENCE test, never a decode, so **NO `X12_UNPARSEABLE_DECIMAL` even on unreadable bytes** and it
-  fires on `1,234.56` too; deciding by decode would mint it where it never fired. Only the `AMT`
-  route guarantees a value.
-- **🩺 STATE THE BOUND AS A PROPERTY OF THE READ, NEVER OF CONTROL FLOW. "Nothing open means silent"
-  is FALSE** - the 835/837 decode BEFORE looking for somewhere to attach, so an absent amount with no
-  claim open DOES warn; the 834/820 return first and stay silent. **NO LOOP OPEN is a DIFFERENT loss
-  and STAYS SILENT** (834 `AMT` no `HD`, 820 `ADX` no remittance, 835/837 `AMT` before any claim), so
-  never widen to "a stated amount row is always reported"; a bare `RMR~` and one stating only RMR-03
-  are silent too. **The INVERSION SURVIVES at the 835/837 sites ONLY**
-  (`PRE-EXISTING`). **An empty filtered array asserts NOTHING.**
+**RELOCATED IN FULL 2026-08-10, VERBATIM, NOTHING DROPPED, THE PAIR KEPT WHOLE IN THE FIRST SLUG** -
+it paid for the `X12-ISA-ELEMENT-ARITY` trap at the top of this list.
+**🩺 Open it before you touch `AMT`/`ADX`/`RMR` handling, `X12_AMOUNT_ROW_DROPPED` or
+`X12_STATED_AMOUNT_DISCARDED`: an `AMT`/`ADX` is a RECORD AND NOT A SLOT so an absent amount drops
+the whole row, the TWO codes are DISJOINT and never one segment, 🛑 SAY ABSENT AND NEVER "does not
+decode", 🛑 NEVER CLAIM THE BYTES ARE DECODABLE (the `RMR` guard is a PRESENCE test), and 🛑 STATE
+THE BOUND AS A PROPERTY OF THE READ AND NEVER OF CONTROL FLOW - "nothing open means silent" is FALSE
+and NO LOOP OPEN is a DIFFERENT loss that stays silent.**
 
 ### 🩺 `X12-837-SV-UNDEFINED-DECIMAL` (2026-08-07) · `documentation/agent-notes/x12-837-sv-undefined-decimal.md`
 
-- **🩺 A slot reads `X12Decimal | undefined` EXACTLY where a reader could substitute `ZERO`; a STATED
-  zero still reads `0` and KEEPS ITS LEXICAL FORM. PUBLISH NO SLOT CENSUS.**
-  **`X12_835_BALANCE_NOT_EVALUABLE`: an undecoded TERM makes a §1.10.2 equation UNEVALUABLE, NEVER a
-  mismatch; an EMPTY adjustment list is NOT an absent term** - it sums to `ZERO`.
-- **🛑 A WIDENING THAT MOVES A CASE ONTO A NEW CODE BLINDS EVERY PREDICATE ON THE OLD ONE, AND THIS
-  PACKAGE'S OWN DOCS ARE SUCH A CONSUMER** - the "do NOT auto-post" recipe gated on
-  `X12_835_REMIT_BALANCE_MISMATCH` alone went base `true` / head `false`. **Sweep every recipe, the
-  troubleshooting table and `CHANGELOG.md`; PIN THE SWEEP.**
-- **🩺 `Build837ServiceLineSpec.units` is REQUIRED and the builder REFUSES rather than emitting `0`.
-  SV3-06's TR3 usage is NOT grounded - never claim it is.**
+**RELOCATED IN FULL 2026-08-10, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-ISA-ELEMENT-ARITY` trap at the top of this list.
+**🩺 Open it before you touch an `X12Decimal | undefined` slot, `X12_835_BALANCE_NOT_EVALUABLE` or
+`Build837ServiceLineSpec.units`: an undecoded TERM makes a §1.10.2 equation UNEVALUABLE and never a
+mismatch, an EMPTY adjustment list is NOT an absent term, PUBLISH NO SLOT CENSUS, 🛑 A WIDENING THAT
+MOVES A CASE ONTO A NEW CODE BLINDS EVERY PREDICATE ON THE OLD ONE AND THIS PACKAGE'S OWN DOCS ARE
+SUCH A CONSUMER - SWEEP EVERY RECIPE AND PIN IT, and SV3-06's TR3 usage is NOT grounded.**
 
 ### 🩺 `X12-PAY-TO-FUSION` (2026-08-07) · `documentation/agent-notes/x12-pay-to-fusion.md`
 
-- **🩺 EACH `NM1*87` OPENS ITS OWN ACCUMULATOR; OCCURRENCES ARE NEVER MERGED.** The LAST that STATES
-  an address takes the slot; one that states NONE does **not** blank one that did.
-- **🛑 AN EMPTIED SLOT IS NOT A NEUTRAL ABSENCE - THE EMIT SIDE READS IT** (Loop 2010AB is gated on
-  `payToAddress !== undefined`), so "states an address" IS **what `emitAddress` would write a segment
-  for**, ONE predicate shared both ways. **"A write happened" is a property of the SEGMENT STREAM and
-  was refuted.** Disclosed cost: a repeat stating only PART re-emits only that part, and restoring
-  the earlier occurrence's street lines IS the fusion.
-- **`X12_837_PAY_TO_ADDRESS_REPEATED` at the 2nd+ `NM1*87` in ONE Loop 2000A**, no `elementIndex`,
-  counter reset at that loop's `HL` (a latching one flags a conformant second billing provider).
-  **NEVER write "a second party's NAME" - measured false.** `PRE-EXISTING`: with a `CLM` open it
-  lands in `claim.providers` instead.
+**RELOCATED IN FULL 2026-08-10, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-ISA-ELEMENT-ARITY` trap at the top of this list.
+**🩺 Open it before you touch `payToAddress`, `attachContact` or `X12_837_PAY_TO_ADDRESS_REPEATED`:
+each `NM1*87` OPENS ITS OWN ACCUMULATOR and occurrences are NEVER MERGED, 🛑 AN EMPTIED SLOT IS NOT A
+NEUTRAL ABSENCE BECAUSE THE EMIT SIDE READS IT, the code counts within ONE Loop 2000A and a LATCHING
+counter flags a conformant second billing provider, and NEVER write "a second party's NAME".**
 
 ### 🩺 `X12-837-LOOP-RESIDUALS` (2026-08-05) · `documentation/agent-notes.md#x12-837-loop-residuals-2026-08-05`
 

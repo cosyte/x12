@@ -116,3 +116,22 @@ became false; what changed is that the third remedy shipped.
 - **DEFERRED, EXPLICITLY, AND NOT STARTED HERE: the `X12Decimal | undefined` breaking slice.** An
   absent required `SV1-02` still reads a confident `0`. It is its own unit and touching it inside
   this one is what the item forbids.
+
+## Relocated from `x12/CLAUDE.md`, 2026-08-10, VERBATIM, NOTHING DROPPED
+
+Moved here to pay for the `X12-ISA-ELEMENT-ARITY` trap under this repo's zero-headroom ratchet.
+The imperative stays in `CLAUDE.md`; the bullets are the text that was there, unchanged.
+
+
+- **🩺 EACH `NM1*87` OPENS ITS OWN ACCUMULATOR; OCCURRENCES ARE NEVER MERGED.** The LAST that STATES
+  an address takes the slot; one that states NONE does **not** blank one that did.
+- **🛑 AN EMPTIED SLOT IS NOT A NEUTRAL ABSENCE - THE EMIT SIDE READS IT** (Loop 2010AB is gated on
+  `payToAddress !== undefined`), so "states an address" IS **what `emitAddress` would write a segment
+  for**, ONE predicate shared both ways. **"A write happened" is a property of the SEGMENT STREAM and
+  was refuted.** Disclosed cost: a repeat stating only PART re-emits only that part, and restoring
+  the earlier occurrence's street lines IS the fusion.
+- **`X12_837_PAY_TO_ADDRESS_REPEATED` at the 2nd+ `NM1*87` in ONE Loop 2000A**, no `elementIndex`,
+  counter reset at that loop's `HL` (a latching one flags a conformant second billing provider).
+  **NEVER write "a second party's NAME" - measured false.** `PRE-EXISTING`: with a `CLM` open it
+  lands in `claim.providers` instead.
+
