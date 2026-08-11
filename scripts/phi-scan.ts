@@ -3,6 +3,17 @@
  * `@cosyte/x12` PHI scanner: the CI / pre-commit half of the PHI commit-gate.
  *
  * ===========================================================================
+ * 🛑 THIS FILE IS ON AN UNMERGED BRANCH AND IS NOT SHIPPED. It is the working
+ * evidence behind
+ * `documentation/agent-notes/phi-scan-adopt-derivation.md`, which derives this
+ * repo's parameters as DATA and specifies what the shared engine must
+ * parameterize before the adoption can land. Read that file first. The standing
+ * direction is that ALL process lives in `@cosyte/script-utils` and this file
+ * becomes declarative parameters, so the shape below will change once the engine
+ * takes a root record rather than a `string[]`.
+ * ===========================================================================
+ *
+ * ===========================================================================
  * WHAT IS IN THIS FILE, AND WHAT IS NOT.
  *
  * The MACHINERY is `@cosyte/script-utils/phi-scan`, a devDependency: argument
@@ -122,11 +133,7 @@
  * ===========================================================================
  */
 
-import {
-  runPhiScan,
-  type AllowList,
-  type DetectContext,
-} from "@cosyte/script-utils/phi-scan";
+import { runPhiScan, type AllowList, type DetectContext } from "@cosyte/script-utils/phi-scan";
 
 // ===========================================================================
 // ██  THE FIVE PER-REPO AXES  ███████████████████████████████████████████████
@@ -254,13 +261,13 @@ const SERVICE_DATE_CUTOFF_YEAR = 2024;
 type Raise = (segment: string, value: string, reason: string) => void;
 
 function looksLikeX12(text: string): boolean {
-  const t = text.replace(/^﻿/, "");
+  const t = text.replace(/^\uFEFF/, "");
   return t.startsWith("ISA") && t.length >= 106;
 }
 
 /** Split raw X12 into segments then elements, using ISA-declared delimiters. */
 function splitSegments(text: string): string[][] {
-  const t = text.replace(/^﻿/, "");
+  const t = text.replace(/^\uFEFF/, "");
   const elementSep = t.charAt(3); // ISA byte 3 is always the element separator
   const segmentTerm = t.charAt(105); // ISA is exactly 106 bytes; terminator at 105
   return t
