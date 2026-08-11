@@ -1262,7 +1262,9 @@ function buildTargetsForAll(): { targets: Target[]; index: Map<string, IndexEntr
   // a refusal.
   refuseUnscannable(
     [...listed.entries]
-      .filter(([p, e]) => isUnderScanRoot(p) && !ROOT_RELS.has(p) && !REGULAR_BLOB_MODES.has(e.mode))
+      .filter(
+        ([p, e]) => isUnderScanRoot(p) && !ROOT_RELS.has(p) && !REGULAR_BLOB_MODES.has(e.mode),
+      )
       .map(([p, e]) => ({ path: p, kind: gitModeKind(e.mode) })),
     "Git records no readable content at such a path, so scanning it would prove nothing about " +
       "what it stands for.",
@@ -1843,12 +1845,7 @@ const EMBEDDED_SEGMENT_RE = new RegExp(
  */
 const EMBEDDED_RUN_STOP = /["`~\\\n\r]/;
 
-function scanEmbeddedSegments(
-  locus: string,
-  content: string,
-  allow: AllowList,
-  hits: Hit[],
-): void {
+function scanEmbeddedSegments(locus: string, content: string, allow: AllowList, hits: Hit[]): void {
   const text = content.replace(/\$\{[^{}]*\}/g, "");
   for (const m of text.matchAll(EMBEDDED_SEGMENT_RE)) {
     const id = m[1];
