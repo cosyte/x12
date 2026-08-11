@@ -1144,8 +1144,8 @@ while IFS= read -r -d '' f; do
       # reported violations that were all real bookkeeping sitting in `//` comments
       # this surface deliberately does not cover. A gate that over-reports is not "safe":
       # it would have forced a sweep of the wrong text. NO COUNT IS PUBLISHED FOR THAT
-      # POPULATION ANYWHERE IN THIS FILE, and two earlier drafts published four figures
-      # between them that did not agree. See SCAN SURFACE.
+      # POPULATION ANYWHERE IN THIS FILE, and earlier drafts published figures for it that
+      # did not agree with each other. See SCAN SURFACE.
       # TESTING THE TERMINATOR AGAINST DOC TEXT IS CORRECT, NOT A SHORTCUT, and it was
       # challenged: a doc comment whose prose contains `*/` (a glob like `src/**/*.ts`, a
       # regex ending `*/`) would close the block early and drop the rest of it from the
