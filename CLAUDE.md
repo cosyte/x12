@@ -72,6 +72,18 @@ copying files.** Source of truth: the meta-repo's `documentation/conventions.md`
 history. Do not act on a line here without reading it. 🩺 = getting it wrong mis-states a clinical
 or financial value on the wire.**
 
+### 🩺 `X12-ISA-VALUE-POINTERS` (2026-08-11) · `agent-notes/x12-isa-value-pointers.md`
+
+**🩺 Open it before you write ANY pointer at an `isa.elements[n]`: `IsaSegment`'s block and
+`pre005010`'s JSDoc promised VALUES and handed back RAW BYTE TEXT in `dist/index.d.ts`, which SHIPS, and
+`#116` deliberately left the ISA half of its own filed line for this slice. 🛑 DO NOT COPY THE FOUR
+SIBLINGS' LABEL - `pre-?-unescape` is FALSE ON THE ISA, whose split is deliberately NOT release-aware
+(`?` is content). 🛑 NAME NO MECHANISM AND NO CLOSED SET OF THEM: fixed-width padding and arity
+displacement each falsify a cell alone, so neither is THE reason and a third is not ruled out. 🛑 THE
+1-INDEXED MAPPING IS SCOPED, NEVER DELETED, AND NEVER QUANTIFIED. 🛑 `WARNING_MESSAGES.X12_PRE_005010`
+CARRIES THE SAME OVERCLAIM AT RUN TIME AND IS UNTOUCHED AND FILED - a runtime message is a different
+carrier from a comment, and this diff is COMMENT-ONLY with `dist/index.mjs`/`.cjs` BYTE-IDENTICAL.**
+
 ### 🩺 `X12-ENVELOPE-VALUE-EXAMPLES` (2026-08-10) · `agent-notes/x12-envelope-value-examples.md`
 
 **🩺 Open it before you write ANY `@example` or prose pointer at an envelope `elements[n]`:
@@ -302,39 +314,14 @@ counter flags a conformant second billing provider, and NEVER write "a second pa
 - **🩺 ONE usage fixed; a line is NOT thereby conformant. PUBLISH NO CENSUS: `SVC-01`/`SVC-02` are
   `R` in X212 and STILL optional, `SVC-03` too, READ side silent. CUT BACK, NEVER GUARD MORE.**
 
-### 🩺 `X12-VARIANT-LOOKUP-PROTOTYPE` (2026-08-05) · `documentation/agent-notes.md#x12-variant-lookup-prototype-2026-08-05`
+### 🩺 `X12-VARIANT-LOOKUP-PROTOTYPE` (2026-08-05) · `agent-notes/x12-variant-lookup-prototype.md`
 
-- **🩺 A lookup keyed by DOCUMENT BYTES is built with `wireLookup` (`Object.create(null)`) where this
-  package declares the table, and read through `Object.hasOwn` where it does not.** A literal
-  inherits `Object.prototype`, so EVERY OWN PROPERTY of it resolved TRUTHY. **`Object.freeze` DOES
-  NOT HELP and is why this passed review** - it seals OWN properties only. **🩺 NAME THE SET, NEVER
-  THE MEMBERS:** a draft published EIGHT across six surfaces; the engine has TWELVE. **Cut back,
-  never grow a census.**
-- **🩺 What it destroyed, strictly more than `#67`: relocated narrative §8**, and four more sites
-  probe by probe in the agent-notes section. **🩺 `in` IS NOT THE SAFE FORM** - it walks the prototype chain. Reach for
-  `Object.hasOwn`.
-- **271 / 277 / 278 were NEVER exposed and their literal tables are LEFT ALONE:** `shared/hl.ts` has
-  always guarded with `hasOwnProperty`; the 837's LOCAL `validateHl` copy did not. **Do not "finish
-  the job" there.** **NO SOURCE SCAN SHIPS, DELIBERATELY** (the reason it cannot work here:
-  relocated narrative §9). The defence derives its keys from
-  `Object.getOwnPropertyNames(Object.prototype)` AT RUN TIME, UNFILTERED.
-- **`X12_837_SERVICE_LINE_DROPPED` is a NEW code, NOT `#67`'s renamed.** Two routes (no `CLM` open,
-  or the variant is not P/I/D), one message, no discriminant. The family is the trap below.
-- **🩺 STATE ITS THREE BOUNDS; DRAFTS PUBLISHED ALL THREE FALSE.** It does **NOT** travel with
-  `X12_837_UNKNOWN_VARIANT` (an out-of-enum caller `type` reaches route 2 without it - read
-  `submission.variant`); an **`SVx` with NO `LX` at all is a DIFFERENT code** (the trap below); and a
-  trailing `DTP`/`AMT`/`NTE`/`REF` is **ROUTE-DEPENDENT** (claim open: onto the claim; no claim: all
-  four discarded). **Never state that unqualified** - two drafts did, opposite ways.
-- **🩺 DO NOT RESTRUCTURE THE `LX` CASE; LET NO ROUTE OUT OF IT SKIP `activeEntity = undefined`**
-  (trap below). **State no count of how it differs from a base - two drafts did, both wrong.**
-- **🩺 EVERY WARNING-CHANNEL ASSERTION IS `toEqual` ON THE WHOLE ARRAY** - `#67`'s residual pinned a
-  value plus the absence of a DIFFERENT code and stayed green. Pair every lying document with an
-  honest control. **State the property, never an absolute about a matcher
-  NAME** - published twice, false both times, the second inside the fix for the first.
-- **Every guard has its own red negative control. Re-derive a red/green census by RUNNING head's
-  suite against a base tree, never by arithmetic** - a partitioned form was wrong four ways, and a
-  suite total quoted here goes stale the next slice. Derive it.
-- **🩺 The ABSENT `SV1-02` deferred here is CLOSED: `X12-837-SV-UNDEFINED-DECIMAL`, its own trap below.**
+**RELOCATED IN FULL 2026-08-11, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-ISA-VALUE-POINTERS` trap at the top of this list. **🩺 Open it before you touch any lookup keyed
+by DOCUMENT BYTES, `X12_837_SERVICE_LINE_DROPPED`, the `LX` case or a warning-channel assertion: a
+table literal inherits `Object.prototype` so EVERY OWN PROPERTY of it resolved TRUTHY,
+`Object.freeze` DOES NOT HELP, `in` IS NOT THE SAFE FORM, 🛑 NAME THE SET AND NEVER THE MEMBERS, and
+NO SOURCE SCAN SHIPS.**
 
 ### 🩺 `X12-837-SV-SILENT-ZERO` (2026-08-05) · `documentation/agent-notes.md#x12-837-sv-silent-zero-2026-08-05`
 

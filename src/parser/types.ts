@@ -128,18 +128,27 @@ export interface Delimiters {
 }
 
 /**
- * The decoded ISA interchange header. `raw` preserves the exact 106-byte
- * ISA + terminator string from input so round-trip serialization is
- * byte-exact regardless of any lenient normalization downstream. `elements`
- * is the 16 ISA values, 1-indexed (`elements[0]` is the literal `"ISA"`
- * name placeholder, `elements[1]` is ISA-01, ..., `elements[16]` is ISA-16).
+ * The decoded ISA interchange header. ISA-12 is the interchange control
+ * version number, `00501` being the HIPAA-mandated baseline, and ISA-13 the
+ * interchange control number, which the envelope walker reconciles against
+ * IEA-02.
+ *
+ * `raw` preserves the exact 106-byte ISA + terminator string from input so
+ * round-trip serialization is byte-exact regardless of any lenient
+ * normalization downstream. `elements` is what splitting that span on the
+ * element separator produced, `elements[0]` being the literal `"ISA"` name
+ * placeholder. **Element values are stored RAW**, so an entry is byte text
+ * and not necessarily the value the sender stated. The 1-indexed mapping onto
+ * ISA-01..ISA-16 holds where that split produced exactly 17 entries;
+ * `X12_ISA_EXTRA_ELEMENT_SEPARATOR` reports where it did not, and `raw`
+ * carries all 106 bytes either way.
  *
  * @example
  * ```ts
  * import type { IsaSegment } from "@cosyte/x12";
  * declare const isa: IsaSegment;
- * isa.elements[12]; // ISA-12 - version, expected "00501"
- * isa.elements[13]; // ISA-13 - interchange control number
+ * isa.raw;             // verbatim 106-byte header
+ * isa.elements[13];    // raw text at index 13 of the ISA split
  * ```
  */
 export interface IsaSegment {
