@@ -87,7 +87,10 @@ Every figure in this note was produced by `grep -oP` and by `rg` independently a
   published declarations. The proxy holds only because the dts build copies doc text verbatim, and a
   build that began transforming comments would decouple the two silently.
 - **`//` and plain `/* */` comments.** They do not reach `dist`. Identifiers are welcome there, by
-  the convention. 32 such lines are left in `src/` deliberately.
+  the convention, and what is left in `src/` on that basis is deliberate. **No count is published
+  for it:** a draft of this change carried two different figures in two carriers and a third
+  measurement matched neither, because "a `//` comment carrying bookkeeping" has more than one
+  defensible population. Delete a drifting number; never correct it.
 - **`CHANGELOG.md` and `.changeset/`.** Both ship or become shipped text, and both are excluded
   because the convention names them as where identifiers belong. That contradiction is
   ecosystem-wide and is not for one repo to settle.
@@ -100,6 +103,18 @@ Every figure in this note was produced by `grep -oP` and by `rg` independently a
   path is a rule change and needs its own negative self-tests.
 - **Prefixes not on the list.** A new programme prefix is invisible until someone adds it by hand.
   That is trap (1)'s stated price.
+- **Most of its own rule alternatives.** A positive self-test sample is disjunctive, so it proves one
+  spelling still matches, not all of them. Measured by deleting one alternative at a time and
+  re-running against a seeded live violation: for **nine of the twelve alternatives across rules 2 to
+  6** the gate printed OK with every self-test green. Rule 1 is the exception only because it was
+  paid for (see the C7 story below); the shape is **live and not closed** in the rest. Do not read
+  the self-tests as proving "each rule still matches what it bans".
+- **Source string literals.** The third pass extracts `/** */` blocks only. A `Phase 10` inside an
+  EXPORTED STRING reaches `dist/index.mjs` and `dist/index.cjs` rather than the declarations, and a
+  consumer reads it at run time. Measured: the `meta.note` field of five bundled code-list snapshots
+  carries exactly that, and `CodeListSnapshot.note` is an exported typed field. So the boundary this
+  gate draws is **not** "everything a consumer receives"; it is the markdown surface, the npm
+  metadata, and the doc comments.
 
 ## 4. The cells run, and what they proved
 
@@ -129,22 +144,37 @@ after it were asserting nothing. A negative sample does not have this failure mo
 asserts that *nothing* matches and every entry is therefore independently load-bearing.
 
 The remedy is `RULE1_MUST_MATCH_ALONE`: each spelling asserted on its own, one sample one token,
-against both the markdown rule array and the `src/` one. C7 and C8 now red by name. **This is the
-vacuous-positive-control shape, caught in this repo's own new gate rather than in someone else's.**
+against both the markdown rule array and the `src/` one. C7 and C8 now red by name.
+
+**RULE 1 IS NOT THE SPECIAL MEMBER; IT IS THE ONE THAT WAS PAID FOR, AND THE SET IS NOT CLOSED.** A
+reviewer then measured the same shape across the rest: deleting one alternative at a time and
+re-running against a seeded live violation, **nine of the twelve alternatives in rules 2 to 6** let
+the gate print OK with every self-test green. That is disclosed as residual (xv) in the script and in
+the blind-spot list above, and it is NOT closed here: a per-alternative positive sample per rule is
+its own change with its own review, and a port is the wrong place to land it.
 
 ## 5. Remediation, and the proof it moved no behaviour
 
 | carrier | before | after |
 |---|---|---|
-| public surface (14 files) | 22 identifier, 2 phase, 9 jargon | 0 |
+| public surface (14 files) | 23 identifier, 2 phase, 9 jargon (34) | 0 |
 | `src/` doc comments (108 files) | 212 hits: 124 phase, 76 identifier, 9 jargon, 2 path, 1 ADR | 0 |
-| `dist/index.d.ts` (built) | 13 identifier, 64 phase, 2 jargon, 1 path | 0 |
+| `dist/index.d.ts` (built) | 13 identifier, 64 phase, 2 jargon, 1 path | 0 on all six rules |
 | `dist/index.d.cts` | byte-identical to `.d.ts` | byte-identical to `.d.ts` |
 | `dist/index.mjs` | | **byte-identical base to head** |
 | `dist/index.cjs` | | **byte-identical base to head** |
 
 `cmp` in both directions, on builds of `a3e081d` and of head. The `src/` half of the diff is
 comment-only and moved no runtime byte.
+
+**"0" IN THAT TABLE IS A STATEMENT ABOUT THESE SIX RULES, NOT ABOUT THE FOUNDER'S RULE**, and the
+difference was measured rather than assumed. Six lines of phase framing survived the first sweep
+inside `dist/index.d.ts` while every rule read zero: four were the disclosed residual (vii) shape
+(`phase` followed by punctuation), and two were the PLURAL `Phases 4+` / `downstream phases`, which
+rule 2 cannot see at all because it requires `phase[ -]` followed by an alphanumeric. All six were
+translated afterwards, so the built declaration file now contains **no occurrence of the word at
+all**, both tools agreeing. **The plural form remains UNGATED**: closing it is a rule change and
+needs its own negative self-test, so it is disclosed rather than smuggled in.
 
 **52 of the 124 phase hits and 29 of the 76 identifier hits in `src/` were visible only to the
 reflowed pass.** A line-scan-only gate would have reported itself complete over 81 live violations.

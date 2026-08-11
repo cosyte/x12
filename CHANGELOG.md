@@ -48,17 +48,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Internal project bookkeeping removed from every surface a consumer reads.** Item identifiers,
-  "phase" build-order framing and "slice" as a unit of work were translated into what the software
-  does and what changed, in `KNOWN-LIMITATIONS.md`, `docs-content/cookbook.md`,
-  `docs-content/troubleshooting.md` and the doc comments of 55 source files. Nothing was deleted to
+- **Internal project bookkeeping removed from the markdown surface, the npm metadata and the
+  shipped doc comments.** Deliberately not "from every surface a consumer reads": source string
+  literals are outside this gate, and five bundled code-list snapshots still carry build-order
+  framing in an exported `note` field, which reaches `dist/index.mjs` and `dist/index.cjs` as a
+  runtime value. That is a different carrier with a different review path, it reproduces on the base,
+  and it is filed rather than folded in here. Item identifiers, "phase" build-order framing and
+  "slice" as a unit of work were translated into what the software does and what changed, in
+  `KNOWN-LIMITATIONS.md`, `docs-content/cookbook.md`, `docs-content/troubleshooting.md` and the doc
+  comments across `src/`. Nothing was deleted to
   satisfy the gate: a doc comment removed rather than reworded would be a regression, since JSDoc
   with `@example` on every public export is a guardrail neither lint nor coverage protects. Two
   pages sent the reader to the package's `CLAUDE.md`, which the tarball does not ship; they now
   point at `README.md` and the Cookbook. Measured on a local build of base commit `a3e081d`,
   `dist/index.d.ts` carried 13 lines of item identifiers, 64 of phase and wave framing, 2 of
   "slice" jargon and 1 meta-repo path, with `dist/index.d.cts` byte-identical to it; at head all
-  four counts are zero and the two twins remain byte-identical to each other.
+  four counts are zero and the two twins remain byte-identical to each other. Zero on the rules is
+  the weaker statement: six lines of phase framing survived the first sweep while every rule read
+  zero, four ending in punctuation and two using the PLURAL `Phases`, which rule 2 cannot see because
+  it requires `phase` followed by an alphanumeric. All six were then translated, so the built
+  declaration file now contains no occurrence of the word at all. The plural form remains ungated and
+  is disclosed as such.
 
 - **🩺 `X12_ISA_EXTRA_ELEMENT_SEPARATOR` - the ISA element split now has an arity check**
   (`X12-ISA-ELEMENT-ARITY`). Additions-only: no decoding moved, no existing warning was suppressed or

@@ -635,7 +635,7 @@ model.
     the entry at the top of this file, including the whitespace-only residual it leaves open.
   - **🩺 The READ half did not move IN THIS CHANGE, and a later release is the one that moved
     it** - see the entry at the top of this file. A control number of `"00000001?"` read back as
-    `"00000001?*260601"` before that change and as `"00000001??"` after it; the clause that stood
+    `"00000001?*260601"` before the EMIT half moved and as `"00000001??"` after it; the clause that stood
     here telling callers to apply `unescapeRelease` themselves is **deleted, not reworded**, because
     the library now does it.
   - **The release is scoped to the delimiter set the CALLER states.** `BuildTA1Options` gained

@@ -157,7 +157,7 @@ export interface X12Ack999Ik4 {
  * One IK4 element-level error wrapped with its (optional) IK3-paired CTX
  * context strings - surfaced verbatim because CTX uses a composite syntax
  * the X231A1 implementer typically writes as `ELEMENT*NM1*8*1`. The
- * library does not try to over-decompose the CTX value at this phase.
+ * library does not try to over-decompose the CTX value.
  */
 export interface X12Ack999ElementNote {
   readonly ik4: X12Ack999Ik4;

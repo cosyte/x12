@@ -3,12 +3,12 @@
  * decoder (ISA / GS / GE / IEA + delimiter detection), segment/element/
  * composite decode, the warning-code registry, and the public
  * `defineLoopSpec`. Per-transaction helpers
- * (`get835`, `get837Claims`, ...) arrive in Phases 4+.
+ * (`get835`, `get837Claims`, ...) sit on top of it.
  */
 
 /**
  * Library version string, synced with `package.json#version` at build
- * time by downstream phases. Exported now so consumers (and the
+ * time by the transaction readers. Exported now so consumers (and the
  * type-check pipeline) have at least one symbol to resolve through the
  * `exports` map.
  *

@@ -152,8 +152,14 @@
 #                          "positional NTE grouping" does not appear at all). The convention
 #                          names source comments as a place identifiers BELONG, so what only
 #                          a maintainer reads stays internal and what a CONSUMER receives is
-#                          swept. MEASURED ON THIS TREE: 32 lines of `//` bookkeeping are
-#                          left in `src/` on that basis, deliberately, not by omission.
+#                          swept. The `//` bookkeeping left in `src/` on that basis is
+#                          deliberate, not an omission. NO COUNT IS PUBLISHED FOR IT, and
+#                          that is this repo's rule rather than laziness: a draft of this
+#                          file carried two different figures for it in two places, and a
+#                          third measurement matched neither, because "a `//` comment
+#                          carrying bookkeeping" has more than one defensible population.
+#                          Delete a drifting number; never correct it. Derive it, with the
+#                          population you mean, at the moment you need it.
 #   * dist/                STILL NOT SCANNED, and this is the gate's stated ceiling rather
 #                          than a hole that has been closed. `dist/` is untracked build
 #                          output: neither this script nor CI can read it without building
@@ -284,6 +290,41 @@
 #         is broader than `dist/` strictly requires. Deliberate: which comments survive the
 #         dts rollup is a property of the BUILD, and a gate whose answer depends on tsup
 #         inlining decisions would change colour when the bundler is upgraded.
+#   (xv)  A POSITIVE SELF-TEST SAMPLE IS DISJUNCTIVE, SO MOST RULE ALTERNATIVES ARE ASSERTED
+#         BY NOTHING. `grep -q` stops at the first match, so one sample holding several
+#         banned spellings proves only that ONE of them still matches. A NEGATIVE sample
+#         does not have this shape: it asserts that nothing matches, so every entry in it is
+#         independently load-bearing.
+#
+#         MEASURED, NOT REASONED, and found by a reviewer against the version of this file
+#         that shipped it. Deleting a single alternative from a rule and re-running against
+#         a seeded live violation: for NINE of the twelve alternatives across rules 2 to 6
+#         (`wave \d+`, `documentation residual`, the `P\d+ safety|documentation` arm,
+#         `conventions\.md`, `ecosystem-map\.md`, `operations/plans/`, `BACKLOG\.md`, the
+#         `open-question` arm, and narrowing the ADR rule to the hyphen form) the gate
+#         printed OK over the violation with every self-test green.
+#
+#         RULE 1 IS THE EXCEPTION AND IT IS NOT SPECIAL, IT IS JUST THE ONE THAT WAS PAID
+#         FOR: RULE1_MUST_MATCH_ALONE asserts its spellings individually, because a control
+#         run restored the sibling `X12-` exclusion and this file reported OK, `CCDA-P7`
+#         having matched first. The same shape is LIVE in rules 2 to 6 and is NOT closed
+#         here. Closing it means a per-alternative positive sample per rule, which is its
+#         own change with its own review; it is not smuggled in on the back of a port.
+#         DO NOT READ THE SELF-TESTS AS PROVING "each rule still matches what it bans."
+#         They prove each rule still matches SOMETHING it bans, plus, for rule 1, five
+#         named spellings.
+#  (xvi)  SOURCE STRING LITERALS ARE NOT SCANNED, AND SOME OF THEM SHIP AS RUNTIME VALUES.
+#         The third pass extracts `/** */` blocks only. A `Phase 10` inside an EXPORTED
+#         STRING is invisible to it, reaches `dist/index.mjs` and `dist/index.cjs` rather
+#         than the declarations, and is read by a consumer at run time rather than on hover.
+#         MEASURED at the commit that added this file: the `meta.note` field of five bundled
+#         code-list snapshots carries exactly that, and `CodeListSnapshot.note` is an
+#         exported typed field. The boundary this gate draws is therefore NOT "everything a
+#         consumer receives"; it is the markdown surface, the npm metadata, and the doc
+#         comments. Say it that way. The remedy for those five strings is a change of its
+#         own: a runtime value has a different carrier and a different review path from a
+#         comment, which is the same call this repo made when it declined to fold a warning
+#         message into a comment-only correction.
 #
 # Run it locally with `pnpm check:no-internal-refs`.
 set -euo pipefail
@@ -504,8 +545,9 @@ RULE_COUNT=6
 # while "positional NTE grouping" from a `//` comment does not appear at all). The
 # convention names source comments as a place identifiers BELONG. So the line this draws
 # is exactly the founder's line: what a CONSUMER receives is public and is swept; what
-# only a maintainer reads stays internal. 61 lines of `//` and trailing-comment
-# bookkeeping are deliberately left in `src/` on that basis.
+# only a maintainer reads stays internal. The `//` and trailing-comment bookkeeping left
+# in `src/` on that basis is deliberate; see SCAN SURFACE above for why no count is
+# published for it.
 SRC_RULE_NAME[0]="${RULE_NAME[0]}"; SRC_RULE_PATTERN[0]="${RULE_PATTERN[0]}"
 SRC_RULE_NAME[1]="${RULE_NAME[1]}"; SRC_RULE_PATTERN[1]="${RULE_PATTERN[1]}"
 SRC_RULE_NAME[2]="${RULE_NAME[2]}"; SRC_RULE_PATTERN[2]="${RULE_PATTERN[2]}"
@@ -792,9 +834,10 @@ fi
 # claim of exhaustiveness: route (8) was found by a refuter against a copy whose own
 # comment implied it was already closed.
 #
-#   (1) THE SCANNER CANNOT SEE. Closed by the locale pin and the positive self-tests
-#       above, plus the negative self-tests, which are stronger than the em-dash gate's
-#       single sample: they also catch a rule widened into the trap (1) shape.
+#   (1) THE SCANNER CANNOT SEE. NARROWED, NOT CLOSED, and the difference is measured in
+#       residual (xv) below. The locale pin, the negative self-tests, and the per-spelling
+#       assertions for rule 1 are real; the per-rule POSITIVE samples are NOT, because a
+#       positive sample is disjunctive. Do not read this route as shut.
 #   (2) AN EMPTY FILE LIST. `xargs` without `-r` runs grep anyway, and grep with no file
 #       operand reads STDIN, finds nothing, and exits 0. Closed by `-r` AND by refusing an
 #       empty list outright, above and again after the loop.

@@ -26,7 +26,8 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 - [X12-277-SVC07-NOT-DECODED (2026-08-05)](#x12-277-svc07-not-decoded-2026-08-05)
 - [X12-VARIANT-LOOKUP-PROTOTYPE (2026-08-05)](#x12-variant-lookup-prototype-2026-08-05)
 - [X12-837-SV-SILENT-ZERO (2026-08-05)](#x12-837-sv-silent-zero-2026-08-05)
-- [X12-QUANTITY-SILENT-DEFAULTS (2026-08-05)](#x12-quantity-silent-defaults-2026-08-05)
+- [X12-QUANTITY-SILENT-DEFAULTS (2026-08-05)](#x12-quantity-silent-defaults-2026-08-05) -
+  imperatives relocated 2026-08-11 to [agent-notes/x12-quantity-silent-defaults.md](agent-notes/x12-quantity-silent-defaults.md)
 - [X12-SVC-ELEMENT-MAP-OFF-BY-ONE (2026-08-04)](#x12-svc-element-map-off-by-one-2026-08-04)
 - [X12-NO-INTERNAL-REFS-GATE (2026-08-11)](agent-notes/x12-no-internal-refs-gate.md) - the port,
   its counted divergence from the sibling copies, and the control that caught a vacuous positive

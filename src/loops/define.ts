@@ -6,7 +6,7 @@
  * this same public API consumers use for payer-specific loops, so a
  * regression in the public surface is impossible to hide.
  *
- * Validation is strictly structural at this phase:
+ * Validation is strictly structural:
  *
  * - `id` and `trigger` are non-empty strings.
  * - `trigger` segment id passes the same `[A-Z][A-Z0-9]{1,2}` shape used

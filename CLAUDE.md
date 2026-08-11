@@ -85,16 +85,20 @@ ZERO times, and the sibling line printed OK over SIX live violations on shipping
 `837P` / `005010X222A1` is this corpus's spelling and the gate now REDS on the hyphenated form.
 **🛑 A POSITIVE SELF-TEST SAMPLE IS DISJUNCTIVE AND THEREFORE VACUOUS BY DEFAULT** - `grep -q` stops
 at the first match, so the control that restored the sibling exclusion printed OK because `CCDA-P7`
-sat in the same sample. **Each `X12-` spelling is asserted ALONE; keep it that way.** A NEGATIVE
-sample is conjunctive and does not have this failure mode.
-**🛑 `KNOWN-LIMITATIONS.md` IS IN `files` AND IS SCANNED** - it held most of the first hits.
+sat in the same sample. Rule 1's spellings are now asserted ALONE; **keep it that way, and DO NOT
+READ THE SELF-TESTS AS PROVING "each rule still matches what it bans": NINE OF THE TWELVE
+ALTERNATIVES IN RULES 2 TO 6 ARE ASSERTED BY NOTHING, MEASURED, LIVE AND DISCLOSED, NOT CLOSED.**
+Rule 1 is not the special member, only the one that was paid for. A NEGATIVE sample is conjunctive
+and has no such failure mode. **🛑 `KNOWN-LIMITATIONS.md` IS IN `files` AND IS SCANNED.**
 **🛑 REMEDIATE BY TRANSLATION, NEVER BY DELETING A DOC COMMENT** (JSDoc with `@example` on every
 public export is a guardrail neither lint nor coverage protects), and repair the head when you strip
-an identifier off the front. **🛑 THE GATE READS `src/` DOC COMMENTS, NEVER `dist/`** - untracked
-build output; the proxy holds only because the dts build copies doc text verbatim. It catches
-identifiers, not English sentences about our process, so **the reviewer still owns half the rule.**
-**🛑 QUOTE NO COUNT THAT WAS TAKEN ON ANOTHER REPO'S TREE** - the hl7 copy's figures were DELETED
-rather than carried, and every number in this one is re-derivable here.
+an identifier off the front. **🛑 THE GATE READS `src/` DOC COMMENTS, NEVER `dist/`, AND NEVER A
+STRING LITERAL** - five code-list `meta.note` values ship build-order framing as an EXPORTED RUNTIME
+VALUE, `PRE-EXISTING` and FILED; a runtime value is a different carrier from a comment. **ZERO ON
+THE RULES IS NOT ZERO ON THE FOUNDER'S RULE:** six phase lines survived the first sweep with every
+rule green, two of them the PLURAL `Phases`, which rule 2 cannot see. It catches identifiers, not
+English about our process, so **the reviewer still owns half the rule.**
+**🛑 QUOTE NO COUNT TAKEN ON ANOTHER REPO'S TREE, AND DELETE A DRIFTING ONE RATHER THAN CORRECT IT.**
 
 ### 🩺 `X12-ISA-VALUE-POINTERS` (2026-08-11) · `agent-notes/x12-isa-value-pointers.md`
 
@@ -365,24 +369,20 @@ NO SOURCE SCAN SHIPS.**
   flag-set reds a control.
 - **🩺 `X12-837-SV-UNDEFINED-DECIMAL` CLOSED THE `0`** - its own trap above.
 
-### 🩺 `X12-QUANTITY-SILENT-DEFAULTS` (2026-08-05) · `documentation/agent-notes.md#x12-quantity-silent-defaults-2026-08-05`
+### 🩺 `X12-QUANTITY-SILENT-DEFAULTS` (2026-08-05) · `agent-notes/x12-quantity-silent-defaults.md`
 
-- **🩺 A PRESENT decimal that does not decode emits `X12_UNPARSEABLE_DECIMAL` at its
-  `position.elementIndex`, in all six readers; an ABSENT one emits nothing.** Both pinned.
-- **🩺 THIS slice closed only the SILENCE; `X12-837-SV-UNDEFINED-DECIMAL` closed the `0`.**
-- **🩺 NEVER INVERT IT INTO "an unwarned value is one the sender sent". A slot a reader never read
-  cannot warn**; three shipped docs carried the bare form. Guarantee: unwarned **at an element a
-  reader decoded**. The 837 instance of the other kind is the trap above.
-- **PUBLISH NO CENSUS OF THE FALLBACK OUTCOMES.** The
-  RULE holds: a property of the READ, not the USE.
-- **ONE message, NO discriminant** (where a `ZERO`/`NOT_DECODED` pair was wrong: relocated narrative
-  §8). **And assert nothing about what X12.6 type R permits;** nobody here has read it, so the
-  message says "could not decode".
-- **The 835 balance invariant is NOT a net: it names an equation, never an element, and exists in no
-  other reader.**
-- **The sink is an OPTIONAL 4th arg; the public helpers stay silent without one**, held by a source
-  scan counting TOP-LEVEL ARGS, never a `, sink)` regex. **A green suite proved nothing: no fixture
-  holds an unparseable decimal and a round trip CANNOT make one.**
+**RELOCATED IN FULL 2026-08-11, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-NO-INTERNAL-REFS-GATE` trap at the top of this list, on that trap's THIRD relocation.
+**🩺 Open it before you touch a decimal read, `X12_UNPARSEABLE_DECIMAL` or the optional warning
+sink: a PRESENT decimal that does not decode warns at its `position.elementIndex` in all six
+readers and an ABSENT one warns nothing, both pinned. 🩺 NEVER INVERT IT INTO "an unwarned value is
+one the sender sent" - a slot a reader never read CANNOT warn, and three shipped docs carried the
+bare form; the guarantee is unwarned AT AN ELEMENT A READER DECODED. PUBLISH NO CENSUS OF THE
+FALLBACK OUTCOMES, ONE message with NO discriminant, and assert nothing about what X12.6 type R
+permits. The 835 balance invariant is NOT a net (it names an equation, never an element). The sink
+is an OPTIONAL 4th arg and the public helpers stay silent without one, held by a source scan
+counting TOP-LEVEL ARGS and never a `, sink)` regex - A GREEN SUITE PROVED NOTHING, because no
+fixture holds an unparseable decimal and a round trip CANNOT make one.**
 
 ### 🩺 `X12-SVC-ELEMENT-MAP-OFF-BY-ONE` (2026-08-04) · `agent-notes/x12-svc-element-map-off-by-one.md`
 
