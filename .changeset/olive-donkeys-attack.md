@@ -23,6 +23,3 @@ ISA-13's semantics restated at segment level, and its `@example` keeps one index
 `.raw`, the shape the four sibling envelope types already carry. The label is deliberately not the
 siblings' label, whose "pre-`?`-unescape" clause is false on the ISA. The 1-indexed mapping onto
 ISA-01..ISA-16 is scoped to a 17-entry split rather than deleted, and no shift is quantified.
-
-`WARNING_MESSAGES.X12_PRE_005010` is untouched: it carries the same overclaim at run time, it
-reproduces on the base, and a runtime message is a different carrier from a comment.

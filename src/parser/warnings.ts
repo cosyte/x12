@@ -275,7 +275,7 @@ const WARNING_MESSAGES = {
   X12_CONTROL_NUMBER_MISMATCH_TRANSACTION:
     "Control number mismatch: ST-02 (header) and SE-02 (trailer) disagree. Both values are preserved verbatim on the model; neither is echoed here.",
   X12_PRE_005010:
-    'ISA-12 declares a version other than the HIPAA baseline "00501", so the input may diverge from 005010 semantics. The declared version is preserved verbatim on the model.',
+    'The twelfth element of the ISA split does not read "00501", the HIPAA baseline interchange control version number, so the input may diverge from 005010 semantics. Whether that element is ISA-12 is NOT established here: where `X12_ISA_EXTRA_ELEMENT_SEPARATOR` is also present on this interchange the header did not split into `ISA` plus 16 elements, so the element read may be a displaced one. All 106 ISA bytes are preserved verbatim on `isa.raw`, which with the ISA fixed widths is the route back. Nothing is echoed here.',
   X12_ISA_EXTRA_ELEMENT_SEPARATOR:
     "The ISA element area carries at least one element separator beyond the 16 sitting at their fixed 005010 byte positions, so the header does not split into `ISA` plus 16 elements. `isa.elements` is that split as it came out: an element containing an extra separator comes back a prefix and everything after it is displaced. How far is NOT derivable from `isa.elements`, so any other ISA-derived diagnostic on this interchange may be reporting a displaced value. All 106 bytes are preserved verbatim on `isa.raw`, which with the ISA's fixed widths is the route back. Which reading is correct - the byte as data under the ISA's fixed widths, or as a separator - is NOT decided here, and nothing is re-framed.",
   X12_GROUP_COUNT_MISMATCH:
@@ -476,12 +476,19 @@ export function controlNumberMismatch(
 }
 
 /**
- * Build an `X12_PRE_005010` warning. Emitted when ISA-12 declares any version
- * other than `00501`, the HIPAA-mandated baseline. The code name reads as a
+ * Build an `X12_PRE_005010` warning. Emitted when the twelfth element of the
+ * ISA split does not read `00501`, the HIPAA-mandated baseline interchange
+ * control version number. The code name reads as a
  * "pre-005010" test and the guard is an inequality, so a LATER family
  * (`00602`, `00700`) raises it too. The parser still
  * accepts the input (Postel's Law: lenient on parse) but flags the
  * mismatch so consumers know the input may diverge from 005010 semantics.
+ *
+ * The guard reads that element, so raising this code does NOT establish that
+ * the header split into `ISA` plus 16 elements and does not assert what ISA-12
+ * itself declares. Where `X12_ISA_EXTRA_ELEMENT_SEPARATOR` is also present the
+ * element read may be a displaced one; `isa.raw` carries all 106 bytes and with
+ * the ISA fixed widths is the route back.
  *
  * @example
  * ```ts
