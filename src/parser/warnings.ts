@@ -482,7 +482,6 @@ export function controlNumberMismatch(
  * (`00602`, `00700`) raises it too. The parser still
  * accepts the input (Postel's Law: lenient on parse) but flags the
  * mismatch so consumers know the input may diverge from 005010 semantics.
- * The declared version stays on `isa.elements[12]`.
  *
  * @example
  * ```ts

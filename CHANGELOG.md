@@ -71,6 +71,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- **`IsaSegment` and the `X12_PRE_005010` warning factory no longer document a raw ISA element as the
+  value it holds** (`X12-ISA-VALUE-POINTERS`). **Documentation only: the diff is comment-only, and
+  `dist/index.mjs` and `dist/index.cjs` are byte-identical before and after, so no behaviour moved.**
+  The corrected text ships in `dist/index.d.ts` and `dist/index.d.cts`.
+
+  `isa.elements` holds raw byte text. `IsaSegment` called it "the 16 ISA values" and its `@example`
+  handed out `isa.elements[12]; // ISA-12 - version, expected "00501"` and
+  `isa.elements[13]; // ISA-13 - interchange control number`, while `pre005010`'s JSDoc said "The
+  declared version stays on `isa.elements[12]`". Measured on 005010 interchanges, one per row, plus
+  two rows this library emitted and read back:
+
+  ```text
+  construction                         cell          stated / at that ISA offset  elements[n]  warnings
+  spec-clean                           elements[12]  "00501"                      "00501"      []
+  spec-clean                           elements[13]  "000000001"                  "000000001"  []
+  ISA-12 declares 00401                elements[12]  "00401"                      "00401"      X12_PRE_005010
+  ISA-06 carries `*`                   elements[12]  "00501"                      "^"          X12_ISA_EXTRA_ELEMENT_SEPARATOR, X12_PRE_005010, X12_CONTROL_NUMBER_MISMATCH
+  ISA-06 carries `*`                   elements[13]  "000000001"                  "00501"      X12_ISA_EXTRA_ELEMENT_SEPARATOR, X12_PRE_005010, X12_CONTROL_NUMBER_MISMATCH
+  ISA-13 carries `*`                   elements[12]  "00501"                      "00501"      X12_ISA_EXTRA_ELEMENT_SEPARATOR
+  ISA-13 carries `*`                   elements[13]  "0000*0001"                  "0000"       X12_ISA_EXTRA_ELEMENT_SEPARATOR
+  ISA-13 carries `?`                   elements[13]  "00000001?"                  "00000001?"  X12_CONTROL_NUMBER_MISMATCH
+  this library's own emit, stated " "  elements[13]  " "                          "00000000 "  []
+  this library's own emit, stated "1"  elements[13]  "1"                          "000000001"  []
+  ```
+
+  On the `ISA-06` rows the interchange declares `00501` at ISA-12's own fixed offset,
+  `X12_PRE_005010` fires anyway, and the sentence the consumer was holding sent them to an element
+  that answers `"^"`. On the `ISA-13 carries ?` row the `?` is content, because the ISA split is
+  deliberately not release-aware; its `X12_CONTROL_NUMBER_MISMATCH` is the fixture and not a finding.
+
+  **Two mechanisms falsify a cell on their own** - fixed-width padding, which needs no `?` and no
+  anomaly at all, and the arity displacement `X12_ISA_EXTRA_ELEMENT_SEPARATOR` reports - **so no
+  mechanism is named as the reason, the set of them is not published as closed, and nothing here says
+  which ISA element is special.**
+
+  The `pre005010` pointer is deleted outright, with nothing put back. `IsaSegment` gains the raw
+  label, keeps ISA-12's and ISA-13's semantics restated at segment level where they are true, and its
+  `@example` keeps one indexed pointer plus `.raw`, the same shape the four sibling envelope types
+  already carry. **The label is NOT the siblings' label**: theirs reads "pre-`?`-unescape", which is
+  false on the ISA. **The 1-indexed mapping onto ISA-01..ISA-16 is scoped to a 17-entry split rather
+  than deleted, and no shift is quantified.** No accessor, guard or test was added, and no route is
+  named as the route for reading an ISA element.
+
+  **`WARNING_MESSAGES.X12_PRE_005010` is untouched and is not corrected here.** It carries the same
+  overclaim at run time ("ISA-12 declares a version other than the HIPAA baseline `00501`"), which
+  the `ISA-06` row falsifies. It reproduces on the base, a runtime message is a different carrier
+  from a comment, and moving it is its own slice.
+
 - **`IeaSegment`, `GsSegment`, `GeSegment`, `Ta1Segment` and `X12FunctionalGroup` no longer document
   a raw envelope element as the value it holds** (`X12-ENVELOPE-VALUE-EXAMPLES`). **Documentation
   only: the diff is comment-only, and `dist/index.mjs` and `dist/index.cjs` are byte-identical
@@ -107,9 +155,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   formats and the code-list citations, restated where they are true: as facts about the segment's
   fields rather than about a raw element. No accessor, guard or test was added, and **no route is
   named as the route.**
-
-  **The `IsaSegment` block is deliberately unchanged**, and no rule about the ISA is stated here in
-  either direction.
 
 - **The documentation carriers that told you to read an envelope element's logical value through
   `getSegmentValue` are corrected** (`X12-ENVELOPE-VALUE-ROUTES`). **Documentation and tests only: no
