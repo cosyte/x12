@@ -431,22 +431,35 @@ non-string now, and "no working caller is broken" was too absolute.**
 list. **🩺 Open it before you touch `testTimeout`, a timing figure or `attw-gate`: it is NOT the
 liveness net people assume** - an infinite synchronous loop gives NO verdict and wedges the worker.
 
-### 🩺 The `phi-scan` gate · `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (2026-08-03), `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` + `PHI-SCAN-OBSERVED-NOTHING-IS-GLOBAL` (2026-08-06), `PHI-SCAN-WALK-ROOT-SCOPE` (2026-08-08) · one `agent-notes.md` section per id, the last `agent-notes/phi-scan-walk-root-scope.md`, + `#phi-commit-gate-armed-2026-06-28`
+### 🩺 The `phi-scan` gate · `PHI-SCAN-{SYMLINK-BLIND-ON-BOTH-ROUTES,RENAME-BLIND-AT-PRECOMMIT,OBSERVED-NOTHING-IS-GLOBAL,WALK-ROOT-SCOPE,UNION-AND-COMPLETENESS}` (2026-08-03 to 08-11) · one `agent-notes.md` section per id, the last two `agent-notes/phi-scan-{walk-root-scope,union-and-completeness}.md`, + `#phi-commit-gate-armed-2026-06-28`
 
+- **▶ 🩺 ALL MODE READS THE BYTES GIT CARRIES AS A UNION WITH THE WALK; EVERY MODE REFUSES (exit 2)
+  OVER A TARGET IT ENUMERATED AND NEVER READ.** 🛑 **RE-DERIVE THE STATE SPACE, NEVER CARRY THE
+  TEMPLATE'S THREE STATES** - here only the two copies DIFFERING, and an UNMERGED path whose clean
+  working-tree copy is PRESENT, read **exit 0 over PHI**; the other two already refused. **Dedupe BY
+  CONTENT** (`blob <len>\0`), **scan BOTH copies when they differ** (the EOL axis, UNEXERCISED here,
+  never inapplicable), **label the LOCUS `(as git carries it)`, NEVER the `path`**. 🛑 **THE READ
+  KEYS ON THE ABSENCE OF STAGE 0, THE REFUSAL ON ANY HIGHER STAGE, AND NO DIFFERENCE IS TAKEN** -
+  `update-index --index-info` LEAVES stage 0 while `diff --cached` says `U`; never port the axis from
+  `--staged`. 🛑 **THE `catch` ON `ls-files` IS LOAD-BEARING** - a non-repo FATALS at 128 and node's
+  exit 1 is this contract's HITS code; an EMPTY index REFUSES too, so a control MUST stage its
+  corpus. 🛑 **The index non-blob rule CLOSES NOTHING MEASURED HERE.** **The tier is a SET DIFFERENCE
+  NAMING PATHS, NEVER A SIZE**, and **`--allow-fixture` CANNOT REACH EXIT 0 IN ANY MODE**: recorded,
+  then refused.
 - **🩺 Both enumerating routes REFUSE a symlink (exit 2), naming every offender**; neither FOLLOWS an
-  ENTRY it enumerated. Say ENTRY, not "anything": **a walk ROOT that is itself a link IS followed** -
-  a superset - **🔴 and NOTHING under it is RECONCILED**, so an EMPTIED target reads **exit 0**.
-  PRE-EXISTING, OPEN; `PHI-SCAN-WALK-ROOT-SCOPE` MOVED IT UP A LEVEL, not closed. **The closure is
-  "within the declared roots", NOT a universal. A refusal NEVER reports the link target** - a
-  diagnostic ABOUT a leak is a PHI surface.
+  ENTRY it enumerated. Say ENTRY, not "anything": **a walk ROOT that is itself a link IS followed** (a
+  superset) **🔴 and NOTHING under it is RECONCILED**, so an EMPTIED target reads **exit 0** -
+  PRE-EXISTING, OPEN, closed by no successor. **The closure is "within the declared roots", NOT a
+  universal, and a refusal NEVER reports the link target** - a diagnostic ABOUT a leak is a PHI
+  surface.
 - **▶ 🩺 THE `--staged` ARGV IS THE GATE, EVERY FLAG LOAD-BEARING; NEVER SHORTEN IT. ONE RULE: DO NOT
   TRUST THE CALLER'S GIT CONFIG.** Five holes, all exit 0 over PHI, closed by
   `--no-renames --ignore-submodules=none --diff-filter=AMTUB`. **`U` is closed by the FILTER, not
   `--no-renames`; never conflate them. Never add `-M`, `-C` or `--find-copies-harder`** - each
-  re-empties it. **No test may run `git merge`**; stage the conflict with `update-index`.
-  **QUOTE THE CLASSIFICATION, NEVER THE LETTER: a broken pair is `B` WHATEVER LETTER IT PRINTS.
-  NEVER RECORD A SIMILARITY SCORE** - it drifts; **DELETE a drifting number, never correct it.**
-  **"Strict superset" REFUTED; EQUAL absent a rename/copy/gitlink/unmerged path.**
+  re-empties it. **No test may run `git merge`**; stage the conflict with `update-index`. **QUOTE THE
+  CLASSIFICATION, NEVER THE LETTER** (a broken pair is `B` whatever letter it prints), **RECORD NO
+  SIMILARITY SCORE, DELETE a drifting number rather than correct it.** **"Strict superset" REFUTED;
+  EQUAL absent a rename/copy/gitlink/unmerged path.**
 - **▶ 🩺 ALL MODE OWES AN ACCOUNT OF ITS ROOTS. TWO RULES, NEITHER IMPLIES THE OTHER, BECAUSE
   EXISTENCE IS NOT OBSERVATION:** a declared directory must BE one, and every tracked non-`.md` file
   under a walk root must have been ENUMERATED against `git ls-files`. Both exit 2. **A COUNT CANNOT
@@ -462,19 +475,16 @@ liveness net people assume** - an infinite synchronous loop gives NO verdict and
   header; a whole-file bypass needs `--allow-fixture` AND an entry in `phi-scan-overrides.md`.
   🛑 AN ENTRY IS GLOBAL AND ROUTE-BLIND** - it clears that literal on `--staged`, the
   COMMIT-BLOCKING route, too. **Fix a plausible name in the FIXTURE, never by declaring it.**
-- **▶ 🩺 `PHI-SCAN-WALK-ROOT-SCOPE` IS TWO SIDES, EACH "IN ADDITION TO", NEVER "INSTEAD OF".** Roots
-  `test` + `src`, `--staged` `test/**` + `src/**`, both widened **BY UNION**; **NO exemption on any
-  route** (`dicom#98`). Enumerating buys **only the `scanCommonShapes` floor - THREE detectors, not
-  the two a draft named** (`REF*SY`'s **UNDASHED** SSN is not segment-aware).
-  **DERIVE THE CENSUS FROM `git ls-files`; PUBLISH NO COUNT HERE.** **`looksLikeX12` asks whether the
-  file _IS_ an interchange**, so inline `.ts` fixtures holding segment text reached NO segment-aware
-  detector; `scanEmbeddedSegments` is the other side. **IT IS A TRIPWIRE, NOT A PARSER: NEVER PUBLISH
-  A CLOSED COUNT OF WHAT IT MISSES** - a draft said "four bounds", a refuter found two more in one
-  pass. **🩺 `'` MUST NOT BE A RUN STOP** - it TRUNCATED the run, losing a surname AND whatever
-  followed it - **but its absence has a PRICE, so never write that the shape predicates "handle" the
-  overrun.** **`\p{L}` buys MIXED-SCRIPT elements ONLY** - `nameTokens` still drops a token with no
-  ASCII letter, on BOTH routes. Its narrowings are **EMBEDDED-ONLY; `.edi` is unchanged.**
-  **A BUILDER SPEC OBJECT is segment text to nobody** - found by hand-reading, not by the gate.
+- **▶ 🩺 `PHI-SCAN-WALK-ROOT-SCOPE` IS TWO SIDES, EACH "IN ADDITION TO", NEVER "INSTEAD OF"** (roots
+  `test` + `src`, `--staged` `test/**` + `src/**`, both **BY UNION**, **NO exemption on any route**).
+  Enumerating buys **only the `scanCommonShapes` floor - THREE detectors, not the two a draft named**
+  (`REF*SY`'s **UNDASHED** SSN is not segment-aware), because **`looksLikeX12` asks whether the file
+  _IS_ an interchange**; `scanEmbeddedSegments` is the other side. **IT IS A TRIPWIRE, NOT A PARSER:
+  PUBLISH NO CLOSED COUNT OF WHAT IT MISSES** - a draft said "four bounds", a refuter found two more
+  in one pass. **🩺 `'` MUST NOT BE A RUN STOP** (it TRUNCATED the run, losing a surname AND whatever
+  followed) **but its absence has a PRICE: never write that the shape predicates "handle" the
+  overrun.** **`\p{L}` buys MIXED-SCRIPT elements ONLY**, the narrowings are **EMBEDDED-ONLY**, and
+  **a BUILDER SPEC OBJECT is segment text to nobody.** **DERIVE EVERY CENSUS; PUBLISH NO COUNT HERE.**
 - **▶ 🛑 THIS GATE'S OWN CONTROLS ARE ASSEMBLED WITH `seg(...)`, NEVER LITERAL SEGMENT TEXT; WRITE
   THE NEXT ONE THE SAME WAY.** Declaring them disarms the detector they prove; a literal-path
   exemption would have to reach `--staged` or the file could never be committed again. **STILL OPEN:
@@ -533,20 +543,11 @@ and splices it into whatever occupies that slot on emit.**
 
 **RELOCATED IN FULL 2026-08-08, VERBATIM, NOTHING DROPPED** - it paid for the
 `X12-TA1-EMIT-NOT-RELEASE-AWARE` trap above, under this file's own ratchet (relocate first, lower the
-entry as it lands, never raise). **Open that file before you change any surface a phase built; the
-imperatives are live and they are THERE, not here.** What is in it, so you know when you need it:
-v1 profiles are DESCRIPTIVE and a quirk with no Tier-2 fixture is FORBIDDEN; the profile API diverges
-from `hl7` deliberately; the 820 carries no balance equation and `build820` never refuses one;
-maintenance type is the 834's safety primitive and the 278 certification decision is response-only;
-TRN echo is VERBATIM and never fabricated; the HL spine is COMPUTED per builder, with the 278's EV/SS
-review level the ONE caller-supplied HL-03; the read side never silently re-numbers a broken HL
-pointer; composite-emitting builders emit the envelope INLINE; `splitSegments` is release-aware;
-control NUMBERS are identity and are never rewritten; every money / percent / quantity field is
-`X12Decimal`; the 835 is NEVER silently rebalanced and PLB carries the RAW EDI sign; an unknown code
-is preserved and warned, never normalized (NAME THE RULE, NEVER THE MEMBERS); acks are structurally
-PHI-free and never auto-send; `build999` / `buildTA1` refusals; per-builder refusal messages carry
-structural locators ONLY, stated PER BUILDER; NO caller guard echoes a caller's element value; the
-`?`-release escape is honored losslessly; and `KNOWN-LIMITATIONS.md` is the canonical read-side list.
+entry as it lands, never raise). **ITS INDEX OF CONTENTS WAS CUT 2026-08-11 TO PAY FOR THE `phi-scan`
+UNION AND COMPLETENESS TRAP BELOW: the note is unchanged and is the ONLY copy, so nothing was
+dropped, only moved, and the note opens with that list itself. 🛑 OPEN THAT FILE BEFORE YOU CHANGE
+ANY SURFACE A PHASE BUILT - every per-transaction and per-builder invariant this package ships is
+stated THERE, not here, and none of them is restated in this file.**
 
 ### `ASSETS-P8`: the `attw` gate lies · `agent-notes/assets-p8-attw-gate.md`
 

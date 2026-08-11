@@ -3,9 +3,11 @@
 **Relocated VERBATIM out of `CLAUDE.md` on 2026-08-08, nothing dropped**, to pay for the
 `X12-TA1-EMIT-NOT-RELEASE-AWARE` trap under the ratchet that file states: a new trap is paid for by
 relocating first, and the entry is LOWERED as the relocation lands, never raised. This is the
-standing discipline's own destination for narrative from a shipped phase. `CLAUDE.md` keeps the
-pointer and the list of what is in here; **every imperative below is live and none of it was
-softened.**
+standing discipline's own destination for narrative from a shipped phase. **`CLAUDE.md` kept the
+pointer AND a one-line index of what is in here until 2026-08-11, when that index was cut to pay for
+the `phi-scan` union and completeness trap under the same ratchet. `CLAUDE.md` now keeps the pointer
+alone, so THIS FILE IS THE ONLY COPY OF THE LIST and the bullets below are the list.** Every
+imperative below is live and none of it was softened.
 
 Full detail for EVERY bullet below is in the phase sections of `documentation/agent-notes.md`, `#phase-9-profiles-and-quirk-attribution` through `#phase-1-envelope-decoder`. Open the phase that shipped the surface before you change it.
 

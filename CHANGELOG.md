@@ -48,6 +48,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`pnpm phi-scan`'s sweep reads the bytes git carries as a union with the working-tree walk, and
+  every mode now refuses (exit 2) over a target it enumerated and never read.** Tooling only: no
+  runtime code changed, `dist/` is byte-identical, and no public surface moves.
+
+  **The union.** The walk answers "what is on disk under the scan roots", which is not the question
+  "what does this repository carry", and where the two disagree the walk was the only voice.
+  `git ls-files -s -z` is now read once for the whole index, and every in-scope tracked path whose
+  bytes the walk did not already read verbatim is scanned through `git cat-file blob <sha>`. Driven
+  on a throwaway repository laid out like this one, over a tracked file whose committed bytes are
+  hits: with the two copies DIFFERING (committed dirty, then scrubbed clean on disk) the sweep
+  printed `OK - no hits` at **exit 0**, and now exits 1 with the locus labelled
+  `(as git carries it)`; with the path UNMERGED and a clean working-tree copy present it printed
+  `OK - no hits` at **exit 0** over a marker living only in stage 3, and now refuses at exit 2. The
+  other two states the shared template names, a directory occupying a tracked path and a working
+  tree short of a tracked file, were **already** refused here at exit 2 by the index reconciliation
+  this package shipped in August, so they are unchanged. Deduplication is by CONTENT under git's own
+  `blob <len>\0` framing, so a clean checkout adds zero reads and never invokes `git cat-file`,
+  while a repo whose index carries LF and whose working tree carries CRLF scans both forms. The
+  fixed cost is one `git ls-files -s -z` and one `git rev-parse --show-object-format` per run.
+
+  **The completeness rule.** `--allow-fixture` was subtractive AND selected the mode, so four argv
+  shapes reported `OK - no hits` at exit 0 over a corpus carrying a live hit: a lone bypass selected
+  `paths` mode over exactly the file it then withdrew; a bypass beside a positional path was a
+  silent no-op that never admitted the named file at all; the same shape on `--staged`, the route a
+  commit is blocked on; and a run that withdrew a clean decoy said nothing about never having read
+  it. The mode is now chosen by positional paths alone, a bypass is unioned into the target list in
+  every argv, and the enumerated set is compared against the read set by DIFFERENCE, naming every
+  path, because a count counts the targets that DID get read. A bypass naming a path the run does
+  not enumerate refuses under its own sentence.
+
+  **What this costs, stated rather than left to be discovered.** `--allow-fixture` can no longer
+  reach exit 0 in any mode: the flag, `phi-scan-overrides.md` and the rejection gate are all kept,
+  so an attempt is recorded and then refused, and `scripts/phi-allow-list.txt` is the mechanism that
+  reaches a clean run. The hit footer no longer advertises the flag as a remedy, because a printed
+  remedy that leads to exit 2 is the same defect as one that leads to a false green. `all` mode also
+  refuses in a repository whose index is EMPTY, so `git init` plus a staged corpus comes before
+  `pnpm phi-scan` means anything; and `loadAllowList()` moved inside the handler in `main`, because
+  a missing allow-list used to escape as an uncaught throw onto node's own exit 1, which this
+  scanner's contract reserves for HITS FOUND.
+
 - **`WARNING_MESSAGES.X12_PRE_005010` stops asserting what ISA-12 declares.** The message a consumer
   reads off `w.message` said _"ISA-12 declares a version other than the HIPAA baseline `00501`, so
   the input may diverge from 005010 semantics. The declared version is preserved verbatim on the
