@@ -96,6 +96,7 @@
     "@changesets/cli": "2.31.0",
     "@cosyte/eslint-config": "^0.0.3",
     "@cosyte/prettier-config": "^0.0.2",
+    "@cosyte/script-utils": "^0.0.2",
     "@cosyte/test-utils": "^0.0.2",
     "@cosyte/tsconfig": "^0.0.2",
     "@cosyte/tsup-config": "^0.0.1",
@@ -111,6 +112,5 @@
     "typescript": "5.9.3",
     "vite": "7.3.6",
     "vitest": "4.1.4"
-  },
-  "dependencies": {}
+  }
 }
