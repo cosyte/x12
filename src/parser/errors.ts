@@ -1,6 +1,6 @@
 /**
  * Fatal error taxonomy for the `@cosyte/x12` parser pipeline. Four Tier-3
- * codes cover every unrecoverable structural failure in Phase 1; anything
+ * codes cover every unrecoverable structural failure; anything
  * less severe is a Tier-2 warning (see `./warnings.ts`). `X12ParseError` is
  * thrown directly; consumers narrow via the `code` discriminant. The set is
  * locked at 4 and is additions-only thereafter - adding a code is a
@@ -10,8 +10,8 @@
 import type { X12Position } from "./types.js";
 
 /**
- * Stable string codes for every Tier-3 fatal `parseX12` may throw. Phase 1
- * locks the registry at four codes: anything else MUST be a Tier-2 warning.
+ * Stable string codes for every Tier-3 fatal `parseX12` may throw. The
+ * registry is locked at four codes: anything else MUST be a Tier-2 warning.
  * Consumers narrow on `err.code` to react to specific structural failures.
  *
  * @example

@@ -1,8 +1,8 @@
 /**
- * Public entry point for the `@cosyte/x12` package. Phase 1 lands the
- * envelope decoder (ISA / GS / GE / IEA + delimiter detection); Phase 2+
- * adds segment/element/composite decode, the warning-code registry
- * expansion, and the public `defineLoopSpec`. Per-transaction helpers
+ * Public entry point for the `@cosyte/x12` package. It lands the envelope
+ * decoder (ISA / GS / GE / IEA + delimiter detection), segment/element/
+ * composite decode, the warning-code registry, and the public
+ * `defineLoopSpec`. Per-transaction helpers
  * (`get835`, `get837Claims`, ...) arrive in Phases 4+.
  */
 

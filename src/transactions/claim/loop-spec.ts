@@ -1,7 +1,7 @@
 /**
  * 837 TR3 loop specifications - authored through the **public**
- * {@link "../../loops/define.js".defineLoopSpec} API (the Phase 2
- * dogfooding gate: the built-in 837 loop hierarchy goes through the SAME
+ * {@link "../../loops/define.js".defineLoopSpec} API (the dogfooding
+ * gate: the built-in 837 loop hierarchy goes through the SAME
  * factory consumers use for payer-specific companion-guide loops).
  *
  * Three variants share most of the structure; differences are concentrated
@@ -38,10 +38,10 @@
  *    SE
  * ```
  *
- * Phase 5 surfaces the three loop specs as frozen artifacts (consumers can
+ * The three loop specs are surfaced as frozen artifacts (consumers can
  * read them and assert they match their companion-guide expectations); the
  * walker in `./get-837.ts` consults them to guide its state machine.
- * Phase 9's profile system overlays vendor-specific quirks on top.
+ * The profile system overlays vendor-specific quirks on top.
  */
 
 import { defineLoopSpec } from "../../loops/define.js";
@@ -276,7 +276,7 @@ export const CLAIM_837D_LOOP_2400: LoopSpec = defineLoopSpec({
 
 /**
  * Build a Loop 2300 spec with a variant-specific Loop 2400 child. The
- * body of 2300 is identical across P/I/D for the segments Phase 5
+ * body of 2300 is identical across P/I/D for the segments this reader
  * surfaces; service-line nesting differs.
  *
  * @internal

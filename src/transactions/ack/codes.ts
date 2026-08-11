@@ -222,7 +222,7 @@ export type Ta1AckCode = (typeof TA1_ACK_CODES)[keyof typeof TA1_ACK_CODES];
  * are defined by the standard; values past `028` exist in some standard
  * revisions and are accepted on parse (Postel's Law) but not enumerated
  * here - the parsed model carries the un-narrowed string on `noteCodeRaw`,
- * post-`?`-unescape as of `X12-TA1-RESIDUALS`. **A clause here said "verbatim"
+ * post-`?`-unescape as of a later release. **A clause here said "verbatim"
  * and is deleted rather than reworded**; `raw.elements[5]` is the byte surface.
  *
  * `000` is the canonical "no error" note paired with a `TA1-04 == 'A'`
@@ -304,7 +304,7 @@ export const TA1_NOTE_CODES = {
  * `028` (some revisions extend the list); `parseTA1` exposes the
  * un-narrowed string on `noteCodeRaw` in that case, so the value survives
  * even when the union cannot statically type it. **It is post-`?`-unescape
- * as of `X12-TA1-RESIDUALS`, and a clause here calling it VERBATIM is
+ * as of a later release, and a clause here calling it VERBATIM is
  * deleted rather than reworded** - `raw.elements[5]` is the byte surface.
  */
 export type Ta1NoteCode = (typeof TA1_NOTE_CODES)[keyof typeof TA1_NOTE_CODES];

@@ -86,7 +86,7 @@ function refuseSpec(message: string): never {
 
 /**
  * The lexical form of a caller-supplied `X12Decimal`, refusing anything that is
- * not one (`X12-DECIMAL-BYPASSES-THE-GUARD`). Exposed alongside {@link escDec}
+ * not one. Exposed alongside {@link escDec}
  * because this builder is the only one with slots that want the value
  * *unescaped*: SV1-04/SV2-05/SV3-06 read `units` once and each escape it
  * themselves, and HI's components go through `ctx.comp`, which maps `esc`.
@@ -98,8 +98,7 @@ function decStr(value: X12Decimal): string {
 
 /**
  * Escape a caller-supplied `X12Decimal` into an element, refusing a raw
- * `number` instead of emitting its JavaScript rendering
- * (`X12-DECIMAL-BYPASSES-THE-GUARD`). @internal
+ * `number` instead of emitting its JavaScript rendering. @internal
  */
 function escDec(value: X12Decimal, esc: (value: string) => string): string {
   return esc(decStr(value));

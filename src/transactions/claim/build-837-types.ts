@@ -216,7 +216,7 @@ export interface Build837ReferenceSpec {
  * Note: when used as a claim-level (2310x) or service-line (2420x) provider,
  * only the NM1 fields round-trip through `get837Claims`; an attached
  * `address` / `contacts` / `references` is emitted but the read side does
- * not re-surface it on the provider (a documented Phase 5 read limitation).
+ * not re-surface it on the provider (a documented read limitation).
  *
  * @example
  * ```ts

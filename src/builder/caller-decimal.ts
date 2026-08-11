@@ -3,8 +3,8 @@
  * and the decision it encodes: **a non-`X12Decimal` in an `X12Decimal` slot is
  * refused, never coerced.**
  *
- * This is `X12-DECIMAL-BYPASSES-THE-GUARD`, the residual
- * `src/builder/caller-string.ts` disclosed and deliberately did not fix.
+ * This closes the residual `src/builder/caller-string.ts` disclosed and
+ * deliberately did not fix.
  *
  * ## The defect
  *
@@ -76,7 +76,7 @@
  * element of a segment emitted **through a builder's `seg` / `joinSeg`
  * helper**, `escDec` included. `buildTA1` uses neither and is outside it; see
  * that module's own scope note. Its five elements ARE type-checked, through
- * `esc` rather than through the join (`X12-TA1-EMIT-NOT-RELEASE-AWARE`), so
+ * `esc` rather than through the join, so
  * what being outside this backstop costs it is the SLOT in the refusal
  * message, not the check.
  *
@@ -121,7 +121,7 @@ import { X12Decimal } from "../decimal.js";
  * **This one was the closest call in `REFUSAL-MESSAGE-PHI-ECHO`, and it went
  * the same way as its two siblings.** The argument for keeping the echo was
  * real: the overwhelmingly likely mistake here is a raw `number`, and
- * `X12-DECIMAL-BYPASSES-THE-GUARD` exists because a `number` renders as
+ * This guard exists because a `number` renders as
  * `"0.30000000000000004"` / `"1e+21"` / `"NaN"` on the wire, so showing the
  * value looked like the fastest diagnosis. It was kept anyway because:
  *

@@ -5,7 +5,7 @@
  * an 835 claim, a dropped decimal is the wrong dollar amount in someone's
  * cash post. `X12Decimal` preserves the inbound lexical form verbatim for
  * byte-exact round-trip and exposes exact `BigInt`-backed arithmetic for
- * balance invariants (Phase 4 acceptance: CLP-04 + CLP-05 + ΣCAS = CLP-03;
+ * balance invariants (CLP-04 + CLP-05 + ΣCAS = CLP-03;
  * ΣSVC paid + ΣCAS = CLP-04; Σclaim CLP-04 + PLB = BPR-02).
  *
  * Internal representation:

@@ -1,7 +1,7 @@
 /**
  * 271 TR3 `005010X279A1` loop specification - authored through the
  * **public** {@link "../../loops/define.js".defineLoopSpec} API. This is
- * the Phase 6 dogfooding gate: the built-in 271 loop hierarchy goes
+ * the dogfooding gate: the built-in 271 loop hierarchy goes
  * through the SAME factory consumers use for payer-specific companion-
  * guide loops, so a regression in `defineLoopSpec` cannot hide from the
  * built-in extractor.
@@ -26,7 +26,7 @@
  * ```
  *
  * @remarks
- * Phase 6 surfaces the loop spec as a frozen artifact (consumers can read
+ * The loop spec is surfaced as a frozen artifact (consumers can read
  * it and assert it matches their companion-guide expectations); the walker
  * in `./get-271.ts` consults the HL level codes to guide its state
  * machine. Loop 2110C and 2110D share the identical EB-anchored shape - a

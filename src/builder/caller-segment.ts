@@ -34,7 +34,7 @@
  * `buildTA1` does not use either helper: it emits `["TA1", ...five caller
  * values].join(sep)` directly, with no `pad`. At the time that meant nothing
  * checked it and a numeric or `undefined` TA1-01 was emitted silently;
- * `X12-TA1-EMIT-NOT-RELEASE-AWARE` closed that by routing the five elements
+ * A later release closed that by routing the five elements
  * through `esc`, which type-checks. **The qualifier stays exactly as written**
  * - `buildTA1` is still outside THIS module, and a guard reached from where a
  * function is CALLED is not the structural one. It is named below and pinned
@@ -47,7 +47,7 @@
  *   delimiter still passes here and is still emitted verbatim if the slot did
  *   not route through `esc`; `build999` with `groupControlNumber: "1*BOGUS"`
  *   shifting GS-07/GS-08 by one is a *different* defect, closed on the named
- *   slots by routing them through `esc` in this same slice, and this module
+ *   slots by routing them through `esc` in that same change, and this module
  *   would not have caught it. Type and delimiter safety are separate
  *   properties and only one of them is structural.
  * - **`buildTA1` is outside it**, per the paragraph above. TA1-01 is data

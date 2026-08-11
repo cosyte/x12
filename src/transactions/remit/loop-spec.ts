@@ -1,7 +1,7 @@
 /**
  * 835 TR3 `005010X221A1` loop specification - authored through the
  * **public** {@link "../../loops/define.js".defineLoopSpec} API. This is
- * the Phase 4 dogfooding gate: the built-in 835 loop hierarchy goes
+ * the dogfooding gate: the built-in 835 loop hierarchy goes
  * through the SAME factory consumers use for payer-specific companion-
  * guide loops. A regression in `defineLoopSpec` cannot hide from the
  * built-in extractors.
@@ -32,11 +32,11 @@
  * ```
  *
  * @remarks
- * Phase 4 surfaces the loop spec as a frozen artifact (consumers can read
+ * The loop spec is surfaced as a frozen artifact (consumers can read
  * it and assert it matches their companion-guide expectations); the
  * walker in `./get-835.ts` consults the spec to guide its state machine.
- * Phase 9's profile system overlays vendor-specific quirks on top of
- * this baseline.
+ * The profile system overlays vendor-specific quirks on top of this
+ * baseline.
  */
 
 import { defineLoopSpec } from "../../loops/define.js";
@@ -107,7 +107,7 @@ export const REMIT_835_LOOP_2100: LoopSpec = defineLoopSpec({
  *
  * Cited as Loop 2000 in TR3 X221A1; situational because some payers
  * (notably Medicare FFS) omit the LX header entirely and ship CLP loops
- * directly under the transaction set header. The Phase 4 walker handles
+ * directly under the transaction set header. The walker handles
  * both shapes - claims appear inside Loop 2000 if `LX` is present, at
  * top level otherwise.
  *

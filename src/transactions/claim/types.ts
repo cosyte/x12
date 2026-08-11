@@ -247,7 +247,7 @@ export interface X12ClaimDate {
  * inpatient only. CMS-mandated values: `Y` Yes, `N` No, `U` Insufficient
  * documentation, `W` Clinically undetermined, `1` Exempt from POA
  * reporting. Verbatim - the parser preserves the value, never validates
- * against the spec list (Phase 9 profile may layer enforcement).
+ * against the spec list (a profile may layer enforcement).
  *
  * @example
  * ```ts
@@ -365,9 +365,10 @@ export interface X12ClaimMember {
 /**
  * Decoded Loop 2320 - Other Subscriber Information. Captures the SBR-01
  * payer responsibility code and the associated other-subscriber / other-
- * payer NM1 entities; Phase 5 records the surface so a consumer knows
+ * payer NM1 entities; this reader records the surface so a consumer knows
  * COB exists. Detailed CAS / OI / MOA breakdown inside Loop 2320 is
- * deferred to Phase 9 (it tracks one payer's specific adjudication and
+ * deferred to the profile system (it tracks one payer's specific
+ * adjudication and
  * is rarely needed for outbound claim creation).
  *
  * @example

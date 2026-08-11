@@ -5,9 +5,9 @@
  *
  * ## The names say `BUILD_REFUSAL_*` and the scope is wider than that
  *
- * The two exported constants were introduced by `X12-BUILDER-BOUNDS`, which
- * bounded the `build*` sites only, and they are published under those names.
- * `X12-CALLER-VALUE-RESIDUALS` then routed `src/profiles/validate.ts` through
+ * The two exported constants were introduced by a change that bounded the
+ * `build*` sites only, and they are published under those names. A later one
+ * then routed `src/profiles/validate.ts` through
  * the same renderers, so `X12ProfileError` is bounded by the same numbers.
  * **The names were deliberately NOT changed**: one ceiling under one name
  * cannot drift, whereas a second name for the same number is exactly how two
@@ -62,7 +62,7 @@
  *   newline. A refusal message is therefore bounded but not guaranteed to be a
  *   single log line. Escaping was considered and left out: it would expand the
  *   rendered length by up to 6x per character for a hazard the caller creates
- *   in their own data, and this slice makes the claim it can support and no
+ *   in their own data, and this bound makes the claim it can support and no
  *   wider.
  *
  * @see `src/parser/errors.ts` for the parse-side `SNIPPET_MAX_INPUT` bound this
@@ -192,7 +192,7 @@ function coerce(value: unknown): string {
  *   which is the exact regression `renderCallerValue` was made to coerce away.
  *   An unrenderable value becomes `[unrenderable value]`.
  * - **It does not bound the ARGUMENT, only the rendering.** A 120,000-element
- *   array is still walked by `JSON.stringify` before this slices the result.
+ *   array is still walked by `JSON.stringify` before this truncates the result.
  *   The bound is on what reaches the message, not on the work done to build it.
  * - **It reports the length of the JSON TEXT**, not of the underlying value:
  *   `JSON.stringify` escapes, so a 63-character string with newlines in it is

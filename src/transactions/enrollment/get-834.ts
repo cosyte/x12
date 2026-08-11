@@ -17,7 +17,7 @@
  * `tx.segments` up front. The memory win is on the RESULT side - a consumer
  * processing a hundreds-of-MB 834 holds one decoded member at a time, not
  * the whole decoded roster. A true file→iterator streaming parser is a v2
- * item (see roadmap Phase 2 streaming invariant).
+ * item.
  *
  * Spec source: WPC TR3 `005010X220A1`.
  */

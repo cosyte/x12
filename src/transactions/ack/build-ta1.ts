@@ -6,7 +6,7 @@
  * safety invariant as `build999`.
  *
  * Returns the typed {@link Ta1Segment} (matching the envelope-level shape
- * the Phase 3 envelope walker surfaces on
+ * the envelope walker surfaces on
  * {@link "../../parser/types.js".X12Interchange.ta1Segments}). Callers that
  * want a complete on-the-wire byte stream concatenate `raw` + a segment
  * terminator, or wrap the segment inside their preferred envelope. The
@@ -29,7 +29,7 @@
  * sender never resubmits against.
  *
  * The grounding is inside the package, not in a spec clause, which is the
- * same tiebreak `X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE` recorded: one
+ * same tiebreak the envelope splitter fix recorded: one
  * function disagreed with itself. This module emitted bytes that this
  * package's own reader decoded into a different disposition than the one
  * the caller asked for, and every other builder already released the same
@@ -69,7 +69,7 @@
  *   through it.** No total is published: that is what was measured, not a
  *   closed account.
  *   **🩺 A CLAUSE NAMING `parseTA1`'s FIELDS AS A THIRD SUCH SURFACE STOOD
- *   HERE AND IS DELETED, NOT REWORDED.** `X12-TA1-RESIDUALS` made those
+ *   HERE AND IS DELETED, NOT REWORDED.** A later release made those
  *   fields post-unescape, so it is measured false; do not restate it.
  * - **A caller who was pre-releasing the value themselves** (the remedy
  *   `KNOWN-LIMITATIONS.md` named while this was open) is now escaping
@@ -81,14 +81,14 @@
  * **And an EMPTY control number USED to go out unrefused.** `escapeRelease`
  * early-returns on `""` and this module had no required-field guard, so
  * `interchangeControlNumber: ""` emitted `TA1**260601*1200*A*000` with no
- * error, through `0.0.15`. `X12-EMPTY-CONTROL-NUMBER-FABRICATED` closed it:
+ * error, through `0.0.15`. A later release closed it:
  * see {@link "../../builder/caller-control-number.js".requireControlNumber}.
- * `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED` then made the same guard
+ * A later one still then made the same guard
  * type-check, so TA1-01 draws a refusal naming TA1-01 rather than the escaper's
  * one naming only the builder - same class, same code, different words. The
  * guard is still byte-strict, so a whitespace-only TA1-01 still builds.
  *
- * **The other four slots were left open by that slice and `X12-TA1-RESIDUALS`
+ * **The other four slots were left open by that change and a later one
  * closes them.** TA1-01's guard was the only required-field guard this module
  * had, so `interchangeDate`, `interchangeTime`, `ackCode` and `noteCode` each
  * emitted an absent element on `""` with `warnings: []`. **TA1-05's cell has to
@@ -282,7 +282,7 @@ function refuseSpec(message: string): never {
  * `patientControlNumber === ""`, `build837` `claimId === ""`, `build834`
  * `maintenanceTypeCode === ""`, `build278` `requestCategoryCode === ""`,
  * `build277` `categoryCode === ""`, and TA1-01 itself since
- * `X12-EMPTY-CONTROL-NUMBER-FABRICATED`. **REFUSE and not warn, for the fourth
+ * the empty-control-number refusal. **REFUSE and not warn, for the fourth
  * of that module's reasons that applies unchanged here: a builder's `warnings`
  * array is the PARSE channel, so a warning would mint an emit-side caller
  * mistake onto the registry consumers grade INBOUND documents with.**

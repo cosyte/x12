@@ -108,7 +108,7 @@ export function isVisibleDelimiterChar(c: string): boolean {
  *   against an input that begins with `"ISA"` followed by structurally
  *   wrong bytes (e.g. a tab as element separator with `:` further in).
  *
- * Phase 1 is liberal in what it accepts AFTER the ISA - downstream
+ * The parser is liberal in what it accepts AFTER the ISA - downstream
  * envelope walking emits Tier-2 warnings rather than throwing. But the
  * ISA itself MUST be structurally readable; otherwise no later stage has
  * a delimiter set to work with.

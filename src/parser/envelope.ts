@@ -1,10 +1,10 @@
 /**
  * Envelope decoder for the `@cosyte/x12` parser pipeline. Consumes a raw
  * input string + the {@link Delimiters} detected by `./delimiters.ts` and
- * walks ISA → GS..GE+ → IEA, producing an {@link X12Interchange}. Phase 1
+ * walks ISA → GS..GE+ → IEA, producing an {@link X12Interchange}. This stage
  * keeps ST..SE transaction bodies **opaque** - `transactions[].segments`
- * carries raw segment strings (terminator stripped); Phase 2 adds segment
- * decode on top.
+ * carries raw segment strings (terminator stripped); `./segment.ts` adds
+ * segment decode on top.
  *
  * Postel's Law: every deviation past the ISA itself is a Tier-2 warning,
  * never a throw. Truncated input (missing IEA / GE / SE) is recovered as
@@ -247,7 +247,7 @@ function splitSegments(
  * so the two halves disagreed inside a single call. **That sentence used to
  * enumerate the slots (`GS-02 / GS-03 / GS-06 / GS-08` and `ST-01 / ST-02 /
  * ST-03`) and the enumeration went stale twice** - it never included GS-01, and
- * `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` then added GS-04 / GS-05 / GS-07,
+ * a later release then added GS-04 / GS-05 / GS-07,
  * which are exactly the slots it omitted. A property does not go stale; a
  * census does. The slots that are still NOT released are recorded in
  * `KNOWN-LIMITATIONS.md`, beside the reason, rather than here.

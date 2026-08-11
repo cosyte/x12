@@ -2,9 +2,9 @@
  * Public type surface for the `defineLoopSpec()` API. A {@link LoopSpec}
  * is a declarative description of a TR3 loop (e.g. `Loop 2300` in 837P /
  * `Loop 2110` in 835): which segments belong to it, in what order, with
- * what cardinality, and which child loops nest inside it. Phase 2 ships the
- * API and types only - built-in transaction loop specs for the 12 v1
- * transactions are authored through this same public API in Phases 3+
+ * what cardinality, and which child loops nest inside it. This module ships
+ * the API and types only - built-in transaction loop specs for the 12 v1
+ * transactions are authored through this same public API
  * (the dogfooding gate locked in `documentation/repos/x12.md`).
  *
  * Naming convention: `id` is a human-readable loop identifier (`"2300"` for
@@ -24,7 +24,7 @@
  * - `required` - the segment/loop MUST appear at least once.
  * - `situational` - the segment/loop MAY appear when its situational rule
  *   triggers; the parser does not enforce the rule itself but loop-walker
- *   warnings (Phase 3+) reference it.
+ *   warnings reference it.
  * - `optional` - the segment/loop MAY appear in any usage.
  *
  * @example
@@ -38,8 +38,8 @@ export type LoopUsage = "required" | "situational" | "optional";
 /**
  * Repetition count for a segment or child loop inside its parent. `">1"`
  * means many (TR3 typically writes `>1` to mean "no cap"). A finite max
- * surfaces as the numeric value. Phase 2 stores the value; Phase 3+'s
- * loop walker uses it for over-limit warnings.
+ * surfaces as the numeric value. This module stores the value; the loop
+ * walker uses it for over-limit warnings.
  *
  * @example
  * ```ts
@@ -53,7 +53,7 @@ export type LoopMax = number | ">1";
 /**
  * A segment slot inside a loop body. Carries the segment id, its TR3
  * usage + cardinality, and an optional position label (e.g. `"Loop 2300
- * #2"`) used by Phase 3+ loop-walker diagnostics. Stored verbatim by
+ * #2"`) used by loop-walker diagnostics. Stored verbatim by
  * `defineLoopSpec`; no validation beyond the structural shape so consumers
  * can author payer-specific segment specs without re-deriving each rule.
  *
@@ -72,7 +72,7 @@ export interface LoopSegmentSpec {
 }
 
 /**
- * A declarative loop description used by Phase 3+ transaction extractors
+ * A declarative loop description used by the transaction extractors
  * and consumer-authored payer profiles alike. Frozen by `defineLoopSpec`
  * so a `LoopSpec` is safe to share across calls.
  *

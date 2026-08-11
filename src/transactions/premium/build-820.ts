@@ -57,8 +57,7 @@ function refuseSpec(message: string): never {
 
 /**
  * Escape a caller-supplied `X12Decimal` into an element, refusing a raw
- * `number` instead of emitting its JavaScript rendering
- * (`X12-DECIMAL-BYPASSES-THE-GUARD`). @internal
+ * `number` instead of emitting its JavaScript rendering. @internal
  */
 function escDec(value: X12Decimal, esc: (value: string) => string): string {
   return esc(requireCallerDecimal(value, "build820", refuseSpec).toString());

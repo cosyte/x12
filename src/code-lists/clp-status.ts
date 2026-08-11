@@ -11,9 +11,9 @@
  *
  * **Initial bundled subset** covers the ~10 most common dispositions.
  * Codes outside the subset still parse (verbatim code preserved on the
- * model); a `X12_UNKNOWN_CLP_STATUS` warning would be a Phase 5+ addition
- * (not bundled at Phase 4 to keep the additions-only warning registry
- * surgical - Phase 4 only adds the codes it actually uses).
+ * model); a `X12_UNKNOWN_CLP_STATUS` warning would be a later addition
+ * (not bundled here, to keep the additions-only warning registry surgical -
+ * this table only carries the codes the readers actually use).
  */
 
 import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js";

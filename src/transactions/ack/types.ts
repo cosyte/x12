@@ -1,6 +1,6 @@
 /**
  * Typed-model surface for the X12 acknowledgment transactions surfaced
- * by Phase 3 - `005010X231A1` 999 (Implementation Acknowledgment) and the
+ * by this package - `005010X231A1` 999 (Implementation Acknowledgment) and the
  * envelope-level TA1 (Interchange Acknowledgment).
  *
  * Two kinds of types live here:
@@ -249,7 +249,7 @@ export interface X12Ack999 {
  *   ({@link Ta1NoteCode}); `noteCodeRaw` carries the un-narrowed string
  *   alongside so unknown extensions survive. **A clause here said that
  *   string is preserved VERBATIM and is deleted, not reworded:**
- *   `X12-TA1-RESIDUALS` made it post-unescape, and `raw.elements[5]` is
+ *   a later release made it post-unescape, and `raw.elements[5]` is
  *   the verbatim surface.
  * - `noteCodeRaw` - the un-narrowed TA1-05 string. Equal to `noteCode` when
  *   the value is a known I18 code; equal to the decoded inbound text when
@@ -258,7 +258,7 @@ export interface X12Ack999 {
  *   byte-exact round-trip.
  *
  * **The five decoded fields are POST-`?`-unescape; `raw` is the verbatim
- * byte surface and is not.** `X12-TA1-RESIDUALS` moved the decoded half:
+ * byte surface and is not.** A later release moved the decoded half:
  * before it, a released TA1-01 read back carrying its `?` and matched no
  * ISA-13, while every dot-path read of the same element already unescaped.
  * Read `raw.elements` when you want the bytes.

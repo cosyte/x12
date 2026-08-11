@@ -1,0 +1,77 @@
+name: Public-surface gate
+
+# Founder directive 2026-07-27: no internal project bookkeeping on any surface a consumer
+# reads. Item identifiers, phase and wave language, ADR numbers, meta-repo paths and
+# process commentary belong in the changeset, CHANGELOG.md, the commit, the PR and the
+# roadmap, never in README.md, KNOWN-LIMITATIONS.md, docs-content/, the npm description, or
+# the JSDoc that compiles into `dist/`. The rule is written out in the meta-repo's
+# `documentation/conventions.md`; `scripts/check-no-internal-refs.sh` is what enforces it.
+#
+# WHY A GATE AND NOT A NOTE. The founder, on the sweep that removed these across the
+# ecosystem: "it needs to not just be a memory note, but something that is addressed in the
+# workflow accordingly. This needs to not happen again." A sweep regresses the first time
+# someone writes an item identifier into a README; a job that reds does not. In this repo
+# that argument is not abstract: every accuracy finding in this package's recent review
+# history has been a claim defect in a prose carrier, and until this landed no test in the
+# suite could fail on one.
+#
+# WHY A SEPARATE WORKFLOW, and not a job in ci.yml. Same reasoning as the em-dash gate next
+# door, and the first half is the deciding one:
+#
+#   The reusable pipeline is not an option. x12's `ci` job calls
+#   cosyte/.github/.github/workflows/ci.yml@main, which runs a fixed ladder and no arbitrary
+#   repo script, so there is nowhere in it to hang this. Adding a step there would land the
+#   gate on every caller at once, and remediating each is its own deliberate piece of work.
+#   A shared pipeline is the wrong place to land a rule most of its callers cannot yet
+#   satisfy.
+#
+#   Within x12, keeping it out of ci.yml also keeps it cheap: this job is a checkout and a
+#   handful of greps over 14 public-surface files and 108 source files, while ci.yml drives
+#   the full Node 22 + 24 matrix plus the release dry run.
+#
+# WHAT THIS DOES NOT CHECK, deliberately: the PR title, the PR body, and commit messages.
+# The em-dash gate scans all three because the brand rule names commit messages explicitly.
+# THIS rule says the opposite: identifiers BELONG in the commit, the PR and the changeset,
+# so a PR-text half here would red on correct work. That is also why there is no `edited`
+# trigger: nothing here reads PR text, so retitling a PR cannot change the result.
+#
+# WHAT THIS GATE CANNOT DO, stated so a green run is not over-read. It reads `src/` doc
+# comments, which are the SOURCE of the published declarations, not `dist/` itself: `dist/`
+# is untracked build output and this script does not build. The proxy holds only because
+# the dts build copies doc text verbatim.
+#
+# NOT A REQUIRED CHECK YET. The org ruleset pins the required contexts for this repo and
+# `Public-surface gate / no-internal-refs` is not among them, so a PR carrying an internal
+# reference reds this check VISIBLY but is still mergeable. Making it required is an
+# org-level ruleset change, outside this repo. Until then the gate informs a human; it does
+# not stop one. Re-derive that rather than trusting this line.
+#
+# Run it locally with `pnpm check:no-internal-refs`.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  no-internal-refs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      # The script self-tests before it reports. It proves each rule still matches its own
+      # positive sample, that each `X12-` spelling this port diverged for still matches ON
+      # ITS OWN, and that every rule still lets through the 005010 segment-field references
+      # it was most likely to destroy (`ISA-06`, `ST-03`, `SVC-07`, `PWK-01`, `ICD-10-CM`).
+      # It refuses to print OK from a scan that did not read all of its input. No
+      # `|| true`, no `continue-on-error`: a check that cannot fail is documentation.
+      - name: Check the public surface and the shipped doc comments
+        run: bash scripts/check-no-internal-refs.sh

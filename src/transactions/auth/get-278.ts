@@ -14,7 +14,7 @@
  * {@link "../shared/hl.js".validateHl}; the `EV` / `SS` event + service
  * levels are intentionally tolerant (omitted from the expected-parent map).
  *
- * Phase 7 known limitations (documented in CHANGELOG):
+ * Known limitations (documented in CHANGELOG):
  * - **Detailed 2010E provider sub-loops** (rendering / attending / operating
  *   provider address + secondary IDs) are captured as bare NM1 entities on
  *   {@link X12ServiceReview.providers}, not split by role.

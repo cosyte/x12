@@ -1,8 +1,8 @@
 /**
  * Public `defineLoopSpec()` factory for the `@cosyte/x12` loop surface.
  * Returns a frozen {@link LoopSpec} after structural validation - no
- * runtime walker (Phase 3+ owns walking). The DOGFOODING gate: every
- * built-in transaction loop spec shipped in Phases 3+ is authored through
+ * runtime walker (the transaction extractors own walking). The DOGFOODING
+ * gate: every built-in transaction loop spec is authored through
  * this same public API consumers use for payer-specific loops, so a
  * regression in the public surface is impossible to hide.
  *

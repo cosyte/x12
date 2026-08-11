@@ -1,5 +1,5 @@
 /**
- * Public barrel for the `@cosyte/x12` profile subsystem (Phase 9). Assembles
+ * Public barrel for the `@cosyte/x12` profile subsystem. Assembles
  * the `profiles` namespace object and re-exports the public profile API:
  * `defineProfile`, `setDefaultProfile`, `getDefaultProfile`,
  * `partitionWarnings`, the `X12ProfileError` class, and the supporting types.

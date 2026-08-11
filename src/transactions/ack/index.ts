@@ -1,5 +1,5 @@
 /**
- * Barrel for the X12 acknowledgment transaction surface (Phase 3).
+ * Barrel for the X12 acknowledgment transaction surface.
  *
  * Two acks ship side-by-side:
  *

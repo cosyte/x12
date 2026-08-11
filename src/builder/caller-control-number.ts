@@ -95,7 +95,7 @@
  * ## Why the empty test alone was not enough, which is the TYPE half
  *
  * The first version of this guard tested `value === ""` and nothing else, and
- * `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED` is the hole that left. **A
+ * a later release closed the hole that left. **A
  * non-string is not `""`, so it walked past the guard and reached `padControl`,
  * where the fabrication this module exists to stop happened anyway.** Measured
  * on this tree at base commit `a226595`, through `buildInterchange`:

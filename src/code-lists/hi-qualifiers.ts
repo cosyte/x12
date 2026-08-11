@@ -23,8 +23,8 @@
  * unknown qualifiers map to `"unknown"` and the verbatim code is still
  * preserved on the parsed diagnosis / procedure.
  *
- * Snapshot date 2026-06-27. This is a curated read-only table - Phase 9
- * (vendor profiles) may LAYER additional qualifiers per payer, but the
+ * Snapshot date 2026-06-27. This is a curated read-only table - the profile
+ * system may LAYER additional qualifiers per payer, but the
  * BASE mapping ships as a frozen artifact so a single CMS change isn't a
  * silent semantic drift.
  */

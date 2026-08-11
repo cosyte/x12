@@ -17,7 +17,7 @@
  * verbatim value and emit `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` /
  * `X12_UNKNOWN_CLAIM_STATUS`.
  *
- * Phase 6 known limitations (documented in CHANGELOG):
+ * Known limitations (documented in CHANGELOG):
  * - **QTY / AMT** claim-summary segments (claim count / amount roll-ups in
  *   a 277CA Loop 2200) are preserved on `tx.segments` verbatim but not yet
  *   typed onto the model.
