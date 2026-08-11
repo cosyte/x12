@@ -297,22 +297,34 @@
 #         independently load-bearing.
 #
 #         MEASURED, NOT REASONED, and found by a reviewer against the version of this file
-#         that shipped it. Deleting a single alternative from a rule and re-running against
-#         a seeded live violation: for NINE of the twelve alternatives across rules 2 to 6
-#         (`wave \d+`, `documentation residual`, the `P\d+ safety|documentation` arm,
-#         `conventions\.md`, `ecosystem-map\.md`, `operations/plans/`, `BACKLOG\.md`, the
-#         `open-question` arm, and narrowing the ADR rule to the hyphen form) the gate
-#         printed OK over the violation with every self-test green.
+#         that shipped it, by deleting a single alternative from a rule and re-running
+#         against a seeded live violation. Confirmed silent-green that way: `wave \d+`,
+#         `documentation residual`, the `P\d+ safety|documentation` arm, `conventions\.md`,
+#         `ecosystem-map\.md`, `operations/plans/`, `BACKLOG\.md`, the `open-question` arm,
+#         and narrowing the ADR rule to the hyphen form. Each printed OK over a live
+#         violation with every self-test green.
 #
-#         RULE 1 IS THE EXCEPTION AND IT IS NOT SPECIAL, IT IS JUST THE ONE THAT WAS PAID
-#         FOR: RULE1_MUST_MATCH_ALONE asserts its spellings individually, because a control
+#         NO PROPORTION IS PUBLISHED FOR THIS, AND THAT IS DELIBERATE. A draft said "nine of
+#         twelve"; a reviewer re-derived it and got a different pair under every defensible
+#         way of counting an "alternative", because the rules nest and a narrowing counts as
+#         well as a deletion. The property is what matters and it does not drift: A POSITIVE
+#         SAMPLE PROVES ONE SPELLING, NOT ALL OF THEM, AND MOST OF THESE ALTERNATIVES ARE
+#         ASSERTED BY NOTHING. Delete a drifting number; never correct it.
+#
+#         RULE 1 IS ONLY PARTLY THE EXCEPTION, AND THE PRECISION MATTERS BECAUSE A DRAFT GOT
+#         IT WRONG. `RULE1_MUST_MATCH_ALONE` covers the FIVE NAMED `X12-`/`CCDA-` SPELLINGS
+#         of rule 1's FIRST arm, and nothing else. Rule 1's SECOND arm,
+#         `\bP\d+ (?:safety|documentation)\b`, is covered by no individual assertion and
+#         goes silent-green on deletion exactly like the rest, so it belongs in the list
+#         above and NOT in the exception. The per-spelling assertions exist because a control
 #         run restored the sibling `X12-` exclusion and this file reported OK, `CCDA-P7`
-#         having matched first. The same shape is LIVE in rules 2 to 6 and is NOT closed
-#         here. Closing it means a per-alternative positive sample per rule, which is its
-#         own change with its own review; it is not smuggled in on the back of a port.
+#         having matched first.
+#
+#         Closing the general case means a per-alternative positive sample per rule, which is
+#         its own change with its own review; it is not smuggled in on the back of a port.
 #         DO NOT READ THE SELF-TESTS AS PROVING "each rule still matches what it bans."
-#         They prove each rule still matches SOMETHING it bans, plus, for rule 1, five
-#         named spellings.
+#         They prove each rule still matches SOMETHING it bans, plus rule 1's five named
+#         spellings.
 #  (xvi)  SOURCE STRING LITERALS ARE NOT SCANNED, AND SOME OF THEM SHIP AS RUNTIME VALUES.
 #         The third pass extracts `/** */` blocks only. A `Phase 10` inside an EXPORTED
 #         STRING is invisible to it, reaches `dist/index.mjs` and `dist/index.cjs` rather
@@ -829,10 +841,12 @@ if [ ! -s "$FILELIST" ]; then
   exit 1
 fi
 
-# THE SILENT-GREEN ROUTES, all closed here and every one of them checked RED against a
-# seeded violation before this landed rather than inherited on faith. This list is NOT a
-# claim of exhaustiveness: route (8) was found by a refuter against a copy whose own
-# comment implied it was already closed.
+# THE SILENT-GREEN ROUTES. Routes (2) to (9) are closed here, and every one of them was
+# checked RED against a seeded violation before this landed rather than inherited on faith.
+# ROUTE (1) IS NARROWED AND NOT CLOSED, measured, and is the one exception to the sentence
+# this header used to make about all of them. This list is NOT a claim of exhaustiveness:
+# route (8) was found by a reviewer against a copy whose own comment implied it was already
+# closed, and route (1)'s limit was found by a reviewer against THIS file.
 #
 #   (1) THE SCANNER CANNOT SEE. NARROWED, NOT CLOSED, and the difference is measured in
 #       residual (xv) below. The locale pin, the negative self-tests, and the per-spelling
@@ -1127,9 +1141,11 @@ while IFS= read -r -d '' f; do
       # "/" (the leader pattern eats the asterisk of the terminator), the block never
       # closes, and every `//` comment and line of CODE after it is scanned as doc text.
       # That is not a hypothetical: it is what the first draft of this pass did, and it
-      # reported 60 violations that were all real bookkeeping sitting in `//` comments
+      # reported violations that were all real bookkeeping sitting in `//` comments
       # this surface deliberately does not cover. A gate that over-reports is not "safe":
-      # it would have forced a sweep of the wrong 61 lines.
+      # it would have forced a sweep of the wrong text. NO COUNT IS PUBLISHED FOR THAT
+      # POPULATION ANYWHERE IN THIS FILE, and two earlier drafts published four figures
+      # between them that did not agree. See SCAN SURFACE.
       # TESTING THE TERMINATOR AGAINST DOC TEXT IS CORRECT, NOT A SHORTCUT, and it was
       # challenged: a doc comment whose prose contains `*/` (a glob like `src/**/*.ts`, a
       # regex ending `*/`) would close the block early and drop the rest of it from the

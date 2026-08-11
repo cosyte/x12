@@ -7,8 +7,8 @@
  */
 
 /**
- * Library version string, synced with `package.json#version` at build
- * time by the transaction readers. Exported now so consumers (and the
+ * Library version string, synced with `package.json#version` by the
+ * release's version step. Exported now so consumers (and the
  * type-check pipeline) have at least one symbol to resolve through the
  * `exports` map.
  *

@@ -85,11 +85,12 @@ ZERO times, and the sibling line printed OK over SIX live violations on shipping
 `837P` / `005010X222A1` is this corpus's spelling and the gate now REDS on the hyphenated form.
 **🛑 A POSITIVE SELF-TEST SAMPLE IS DISJUNCTIVE AND THEREFORE VACUOUS BY DEFAULT** - `grep -q` stops
 at the first match, so the control that restored the sibling exclusion printed OK because `CCDA-P7`
-sat in the same sample. Rule 1's spellings are now asserted ALONE; **keep it that way, and DO NOT
-READ THE SELF-TESTS AS PROVING "each rule still matches what it bans": NINE OF THE TWELVE
-ALTERNATIVES IN RULES 2 TO 6 ARE ASSERTED BY NOTHING, MEASURED, LIVE AND DISCLOSED, NOT CLOSED.**
-Rule 1 is not the special member, only the one that was paid for. A NEGATIVE sample is conjunctive
-and has no such failure mode. **🛑 `KNOWN-LIMITATIONS.md` IS IN `files` AND IS SCANNED.**
+sat in the same sample. Rule 1's FIRST arm has five spellings asserted ALONE; **keep it that way, and
+DO NOT READ THE SELF-TESTS AS PROVING "each rule still matches what it bans": MOST ALTERNATIVES,
+INCLUDING RULE 1's SECOND ARM, ARE ASSERTED BY NOTHING - MEASURED, NAMED IN residual (xv), LIVE AND
+NOT CLOSED. PUBLISH NO PROPORTION FOR IT** - a draft did and a second reviewer could not reproduce
+it under any defensible way of counting an alternative. A NEGATIVE sample is conjunctive and has no
+such failure mode. **🛑 `KNOWN-LIMITATIONS.md` IS IN `files` AND IS SCANNED.**
 **🛑 REMEDIATE BY TRANSLATION, NEVER BY DELETING A DOC COMMENT** (JSDoc with `@example` on every
 public export is a guardrail neither lint nor coverage protects), and repair the head when you strip
 an identifier off the front. **🛑 THE GATE READS `src/` DOC COMMENTS, NEVER `dist/`, AND NEVER A

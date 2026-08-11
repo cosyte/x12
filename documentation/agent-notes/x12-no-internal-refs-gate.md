@@ -105,10 +105,16 @@ Every figure in this note was produced by `grep -oP` and by `rg` independently a
   That is trap (1)'s stated price.
 - **Most of its own rule alternatives.** A positive self-test sample is disjunctive, so it proves one
   spelling still matches, not all of them. Measured by deleting one alternative at a time and
-  re-running against a seeded live violation: for **nine of the twelve alternatives across rules 2 to
-  6** the gate printed OK with every self-test green. Rule 1 is the exception only because it was
-  paid for (see the C7 story below); the shape is **live and not closed** in the rest. Do not read
-  the self-tests as proving "each rule still matches what it bans".
+  re-running against a seeded live violation, these each printed OK with every self-test green:
+  `wave \d+`, `documentation residual`, the `P\d+ safety|documentation` arm, `conventions.md`,
+  `ecosystem-map.md`, `operations/plans/`, `BACKLOG.md`, the `open-question` arm, and narrowing the
+  ADR rule to its hyphen form. **No proportion is published**, deliberately: a draft said "nine of
+  twelve" and a reviewer re-derived a different pair under every defensible way of counting an
+  alternative, because the rules nest and a narrowing counts as well as a deletion. The property does
+  not drift and the ratio does. **Rule 1 is only PARTLY the exception:** its per-spelling assertions
+  cover the five named spellings of its FIRST arm and nothing else, so its second arm
+  (`P\d+ safety|documentation`) is in the list above rather than in the exception. Do not read the
+  self-tests as proving "each rule still matches what it bans".
 - **Source string literals.** The third pass extracts `/** */` blocks only. A `Phase 10` inside an
   EXPORTED STRING reaches `dist/index.mjs` and `dist/index.cjs` rather than the declarations, and a
   consumer reads it at run time. Measured: the `meta.note` field of five bundled code-list snapshots
@@ -146,12 +152,17 @@ asserts that *nothing* matches and every entry is therefore independently load-b
 The remedy is `RULE1_MUST_MATCH_ALONE`: each spelling asserted on its own, one sample one token,
 against both the markdown rule array and the `src/` one. C7 and C8 now red by name.
 
-**RULE 1 IS NOT THE SPECIAL MEMBER; IT IS THE ONE THAT WAS PAID FOR, AND THE SET IS NOT CLOSED.** A
-reviewer then measured the same shape across the rest: deleting one alternative at a time and
-re-running against a seeded live violation, **nine of the twelve alternatives in rules 2 to 6** let
-the gate print OK with every self-test green. That is disclosed as residual (xv) in the script and in
-the blind-spot list above, and it is NOT closed here: a per-alternative positive sample per rule is
-its own change with its own review, and a port is the wrong place to land it.
+**RULE 1 IS NOT THE SPECIAL MEMBER; IT IS THE ONE THAT WAS PARTLY PAID FOR, AND THE SET IS NOT
+CLOSED.** A reviewer then measured the same shape across the rest, deleting one alternative at a time
+and re-running against a seeded live violation, and named nine that let the gate print OK with every
+self-test green. **A second reviewer re-derived the PROPORTION and could not reproduce it**, getting
+a different pair under every defensible way of counting an alternative, so the proportion is deleted
+and the named members and the property are kept. The same reviewer found that one of those nine, the
+`P\d+ safety|documentation` arm, is rule 1's SECOND arm, which the per-spelling assertions do not
+cover: **rule 1 is covered for five named spellings of its first arm and for nothing else.** All of
+it is disclosed as residual (xv) in the script and in the blind-spot list above, and none of it is
+closed here: a per-alternative positive sample per rule is its own change with its own review, and a
+port is the wrong place to land it.
 
 ## 5. Remediation, and the proof it moved no behaviour
 
