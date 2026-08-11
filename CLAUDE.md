@@ -101,6 +101,18 @@ rule green, two of them the PLURAL `Phases`, which rule 2 cannot see. It catches
 English about our process, so **the reviewer still owns half the rule.**
 **🛑 QUOTE NO COUNT TAKEN ON ANOTHER REPO'S TREE, AND DELETE A DRIFTING ONE RATHER THAN CORRECT IT.**
 
+### 🩺 `X12-PRE-005010-RUNTIME-MESSAGE` (2026-08-11) · `agent-notes/x12-pre-005010-runtime-message.md`
+
+**🩺 Open it before you touch `WARNING_MESSAGES`, `pre005010` or the ISA-12 guard: the message
+asserted what ISA-12 DECLARES while the guard reads the TWELFTH ELEMENT OF THE SPLIT, and THREE
+constructions fire it with ISA-12 reading `00501` at its own fixed offset. 🛑 "THE DECLARED VERSION"
+CARRIES THE SAME PRESUPPOSITION AND MOVED WITH IT - not style. 🛑 A RUNTIME MESSAGE IS A DIFFERENT
+CARRIER: THE EMITTED JS CHANGES HERE, the inverse of the comment-only control, and it is the FIRST
+row in this lineage A TEST GATES - the base message REDS the file, so KEEP THE NEGATIVE CONTROL.
+🛑 NAME NO MECHANISM: the `ISA-13 carries *` row has an extra separator and stays SILENT. 🛑 THE
+GUARD STILL READS THE SPLIT, NOT THE FIXED OFFSET - PRE-EXISTING AND FILED; moving it changes WHICH
+interchanges raise the code. 🛑 ECHO NOTHING - a static registry lookup, and the census pins it.**
+
 ### 🩺 `X12-ISA-VALUE-POINTERS` (2026-08-11) · `agent-notes/x12-isa-value-pointers.md`
 
 **🩺 Open it before you write ANY pointer at an `isa.elements[n]`: `IsaSegment`'s block and
@@ -109,9 +121,8 @@ English about our process, so **the reviewer still owns half the rule.**
 SIBLINGS' LABEL - `pre-?-unescape` is FALSE ON THE ISA, whose split is deliberately NOT release-aware
 (`?` is content). 🛑 NAME NO MECHANISM AND NO CLOSED SET OF THEM: fixed-width padding and arity
 displacement each falsify a cell alone, so neither is THE reason and a third is not ruled out. 🛑 THE
-1-INDEXED MAPPING IS SCOPED, NEVER DELETED, AND NEVER QUANTIFIED. 🛑 `WARNING_MESSAGES.X12_PRE_005010`
-CARRIES THE SAME OVERCLAIM AT RUN TIME AND IS UNTOUCHED AND FILED - a runtime message is a different
-carrier from a comment, and this diff is COMMENT-ONLY with `dist/index.mjs`/`.cjs` BYTE-IDENTICAL.**
+1-INDEXED MAPPING IS SCOPED, NEVER DELETED, AND NEVER QUANTIFIED. That diff is COMMENT-ONLY with
+`dist/index.mjs`/`.cjs` BYTE-IDENTICAL; its run-time twin is the trap above.**
 
 ### 🩺 `X12-ENVELOPE-VALUE-EXAMPLES` (2026-08-10) · `agent-notes/x12-envelope-value-examples.md`
 
@@ -314,24 +325,18 @@ each `NM1*87` OPENS ITS OWN ACCUMULATOR and occurrences are NEVER MERGED, 🛑 A
 NEUTRAL ABSENCE BECAUSE THE EMIT SIDE READS IT, the code counts within ONE Loop 2000A and a LATCHING
 counter flags a conformant second billing provider, and NEVER write "a second party's NAME".**
 
-### 🩺 `X12-837-LOOP-RESIDUALS` (2026-08-05) · `documentation/agent-notes.md#x12-837-loop-residuals-2026-08-05`
+### 🩺 `X12-837-LOOP-RESIDUALS` (2026-08-05) · `agent-notes/x12-837-loop-residuals.md`
 
-- **🩺 THREE CODES, ONE FAMILY; THE ANCHOR SEPARATES THEM.** `NOT_DECODED` = line IS on the model,
-  seeded zeros; `DROPPED` = an `LX` put it on NO claim; **`SERVICE_SEGMENT_WITHOUT_LX` = an
-  `SVx` with NO LINE OPEN**. The first two anchor at the `LX`; the third **cannot**, so it takes
-  the segment. **Never one twice - one document CAN carry all three.**
-  **Its condition is "no line open", NEVER "the file has no `LX`"** - an earlier claim's `LX` is one.
-- **🩺 NEVER DECODE THE ORPHAN `SVx`** (reading one into a line never opened mis-READS money).
-  **But NEVER write it does not name the VARIANT - measured false:** the fallback scans the whole
-  body, orphans included, so a stray `SV2` re-types it. `PRE-EXISTING`, not narrowed.
-- **The suppression is SCOPED, not latched** - a flag beside each `serviceLineDropped`, cleared in
-  `flushServiceLine`. **A latching one silences every later orphan.**
-- **🩺 ANCHOR `X12_837_UNKNOWN_VARIANT` AT THE `ST` (`tx.segments[0]`), NEVER THE `BHT`; NO
-  `elementIndex` (an absent ST-03 has no element 3). ROUTE 1's DISCARD IS A TRADE: a stray `LX` in
-  an ENTITY loop LOSES its `N3`/`N4`/`REF`/`PER`, each WARNED AT ITSELF
-  (`X12_837_ENTITY_SEGMENT_DISCARDED_AFTER_LX`); NEVER WIDEN IT, other unattached routes stay
-  SILENT. NEVER write "nothing after an `LX` addresses the last party", and NEVER cite
-  `X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` - it WARNS and retains.**
+**RELOCATED IN FULL 2026-08-11, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-PRE-005010-RUNTIME-MESSAGE` trap at the top of this list.
+**🩺 Open it before you touch an `LX`, a service-line drop or `X12_837_UNKNOWN_VARIANT`: THREE codes
+in ONE family separated by their ANCHOR (`NOT_DECODED` / `DROPPED` at the `LX`, `SERVICE_SEGMENT_WITHOUT_LX`
+at the SEGMENT because it CANNOT anchor there, never one twice, one document CAN carry all three, and
+its condition is "no line open" and NEVER "the file has no `LX`"), 🩺 NEVER DECODE THE ORPHAN `SVx`
+BUT NEVER WRITE IT DOES NOT NAME THE VARIANT (measured false, `PRE-EXISTING`), the suppression is
+SCOPED and a LATCHING one silences every later orphan, and 🩺 ANCHOR `X12_837_UNKNOWN_VARIANT` AT THE
+`ST` WITH NO `elementIndex`; ROUTE 1s DISCARD IS A TRADE, NEVER WIDENED, and NEVER cite
+`X12-SEGMENT-OUTSIDE-TRANSACTION-DROPPED` - it WARNS and retains.**
 
 ### 🩺 `X12-277-SVC07-NOT-DECODED` (2026-08-05) · `documentation/agent-notes.md#x12-277-svc07-not-decoded-2026-08-05`
 
@@ -352,23 +357,17 @@ table literal inherits `Object.prototype` so EVERY OWN PROPERTY of it resolved T
 `Object.freeze` DOES NOT HELP, `in` IS NOT THE SAFE FORM, 🛑 NAME THE SET AND NEVER THE MEMBERS, and
 NO SOURCE SCAN SHIPS.**
 
-### 🩺 `X12-837-SV-SILENT-ZERO` (2026-08-05) · `documentation/agent-notes.md#x12-837-sv-silent-zero-2026-08-05`
+### 🩺 `X12-837-SV-SILENT-ZERO` (2026-08-05) · `agent-notes/x12-837-sv-silent-zero.md`
 
-- **🩺 An 837 Loop 2400 line closed with NO `SVx` decoded for the resolved variant warns
-  `X12_837_SERVICE_LINE_NOT_DECODED` at its `LX`.** BOTH causes: a foreign `SVx`, and none at all.
-- **🩺 THIS slice closed only the SILENCE.** `charge`/`units` read `undefined`, and this warning
-  still says WHY - `undefined` alone does NOT separate it from a decoded `SVx` whose charge element
-  was absent.
-- **🩺 NEVER decode the `SVx` that IS present, nor let it flip the line's variant.** The charge is
-  `SV1-02`/`SV2-03` and the units `SV1-04`/`SV2-05`/**`SV3-06`** (`SV3-05` is the prosthesis code -
-  three comments said units and were corrected), so that mis-READS money. `opts.type` is a caller
-  instruction, so **the warning attributes nothing**: a `type` can disagree with a clean document.
-- **Anchor the `LX`, never the `SVx`** (the no-`SVx` case has none); no `elementIndex`.
-- **🩺 THE RESIDUAL TEST DID NOT GO RED, AND THAT IS THE FINDING.** **Pin the WHOLE channel, BOTH
-  sides.**
-- **Only bytes make these; no round trip can.** 4 leak probes + 2 controls, both ways: deleting one
-  flag-set reds a control.
-- **🩺 `X12-837-SV-UNDEFINED-DECIMAL` CLOSED THE `0`** - its own trap above.
+**RELOCATED IN FULL 2026-08-11, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-PRE-005010-RUNTIME-MESSAGE` trap at the top of this list, on that trap's SECOND relocation.
+**🩺 Open it before you touch a Loop 2400 line, `X12_837_SERVICE_LINE_NOT_DECODED` or a charge/units
+slot: a line closed with NO `SVx` decoded for the RESOLVED variant warns at its `LX` (BOTH causes: a
+foreign `SVx`, and none at all), THIS CLOSED ONLY THE SILENCE, 🩺 NEVER decode the `SVx` that IS
+present nor let it flip the variant (units are `SV1-04`/`SV2-05`/**`SV3-06`**, `SV3-05` is the
+PROSTHESIS code and three comments said units), `opts.type` is a CALLER INSTRUCTION so the warning
+ATTRIBUTES NOTHING, anchor the `LX` and never the `SVx`, and 🩺 THE RESIDUAL TEST DID NOT GO RED AND
+THAT WAS THE FINDING - pin the WHOLE channel, BOTH sides, only BYTES make these.**
 
 ### 🩺 `X12-QUANTITY-SILENT-DEFAULTS` (2026-08-05) · `agent-notes/x12-quantity-silent-defaults.md`
 
