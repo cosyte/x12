@@ -1,5 +1,5 @@
 /**
- * Public entry point for the `@cosyte/x12` parser - composes the Phase 1
+ * Public entry point for the `@cosyte/x12` parser - composes the
  * delimiter-detection + envelope-decode stages and routes every Tier-2
  * warning through a single emission chokepoint. The four Tier-3 fatal codes
  * (`X12_EMPTY_INPUT`, `X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`,
@@ -32,11 +32,11 @@ import type { X12Interchange, X12ParseOptions } from "./types.js";
  * carries an empty `snippet`: the warning it wraps is registry-built and
  * fully located by `position`, so there is nothing to redact.
  *
- * Phase 1 decodes the envelope (ISA / GS / ST / SE / GE / IEA) and
- * detects the four delimiters from fixed ISA byte positions. Transaction-
- * set bodies inside each ST..SE are kept **opaque** at this phase -
- * `tx.segments` carries the raw segment strings (terminator stripped).
- * Phase 2 adds segment/element/composite/repetition decode on top.
+ * The envelope decode reads ISA / GS / ST / SE / GE / IEA and detects the
+ * four delimiters from fixed ISA byte positions. Transaction-set bodies
+ * inside each ST..SE are kept **opaque** there - `tx.segments` carries the
+ * raw segment strings (terminator stripped). Segment decode adds
+ * element/composite/repetition decode on top.
  *
  * @example
  * ```ts

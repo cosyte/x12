@@ -1,5 +1,5 @@
 /**
- * Error taxonomy for the `@cosyte/x12` profile subsystem (Phase 9).
+ * Error taxonomy for the `@cosyte/x12` profile subsystem.
  *
  * `X12ProfileError` is thrown by `defineProfile()` when a profile definition
  * is structurally invalid - a bad/missing name, an unknown option key, or a

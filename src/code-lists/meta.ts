@@ -6,7 +6,7 @@
  *
  * Snapshots are deliberately tiny in v0.0.x - pre-launch initial subsets
  * covering only the codes already exercised by the parser's Tier-1 + Tier-2
- * fixtures. The Phase 10 `pnpm refresh:code-lists` script will regenerate
+ * fixtures. The `pnpm refresh:code-lists` script will regenerate
  * the full WPC-published lists from canonical sources for the first real
  * release; until then `lookup(code)` returns `undefined` for codes outside
  * the subset and consumers receive the **verbatim** inbound code (the

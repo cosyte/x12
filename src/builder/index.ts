@@ -1,5 +1,5 @@
 /**
- * Barrel for the Phase 8 general-purpose interchange builder. Re-exports
+ * Barrel for the general-purpose interchange builder. Re-exports
  * {@link buildInterchange}, its spec types, and the {@link X12BuildError}
  * raised on a structurally impossible spec.
  */

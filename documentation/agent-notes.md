@@ -26,10 +26,15 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 - [X12-277-SVC07-NOT-DECODED (2026-08-05)](#x12-277-svc07-not-decoded-2026-08-05)
 - [X12-VARIANT-LOOKUP-PROTOTYPE (2026-08-05)](#x12-variant-lookup-prototype-2026-08-05)
 - [X12-837-SV-SILENT-ZERO (2026-08-05)](#x12-837-sv-silent-zero-2026-08-05)
-- [X12-QUANTITY-SILENT-DEFAULTS (2026-08-05)](#x12-quantity-silent-defaults-2026-08-05)
+- [X12-QUANTITY-SILENT-DEFAULTS (2026-08-05)](#x12-quantity-silent-defaults-2026-08-05) -
+  imperatives relocated 2026-08-11 to [agent-notes/x12-quantity-silent-defaults.md](agent-notes/x12-quantity-silent-defaults.md)
 - [X12-SVC-ELEMENT-MAP-OFF-BY-ONE (2026-08-04)](#x12-svc-element-map-off-by-one-2026-08-04)
-- [X12-DECIMAL-BYPASSES-THE-GUARD (2026-08-04)](#x12-decimal-bypasses-the-guard-2026-08-04)
-- [X12-NUMERIC-VALUE-EMITS-EMPTY (2026-08-03)](#x12-numeric-value-emits-empty-2026-08-03)
+- [X12-NO-INTERNAL-REFS-GATE (2026-08-11)](agent-notes/x12-no-internal-refs-gate.md) - the port,
+  its counted divergence from the sibling copies, and the control that caught a vacuous positive
+- [X12-DECIMAL-BYPASSES-THE-GUARD (2026-08-04)](#x12-decimal-bypasses-the-guard-2026-08-04) -
+  imperatives relocated 2026-08-11 to [agent-notes/x12-decimal-bypasses-the-guard.md](agent-notes/x12-decimal-bypasses-the-guard.md)
+- [X12-NUMERIC-VALUE-EMITS-EMPTY (2026-08-03)](#x12-numeric-value-emits-empty-2026-08-03) -
+  imperatives relocated 2026-08-11 to [agent-notes/x12-numeric-value-emits-empty.md](agent-notes/x12-numeric-value-emits-empty.md)
 - [PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX (2026-08-03)](#parser-testtimeout-asserts-an-idle-box-2026-08-03)
 - [PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES (2026-08-03)](#phi-scan-symlink-blind-on-both-routes-2026-08-03)
 - [X12-CALLER-VALUE-RESIDUALS (2026-08-02)](#x12-caller-value-residuals-2026-08-02)

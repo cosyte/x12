@@ -16,7 +16,7 @@
  * **Pre-launch initial subset.** This snapshot covers the ~30 most
  * commonly observed CARC codes - every value exercised by the Tier-1 /
  * Tier-2 fixtures plus the long-tail codes most cash-posting workflows
- * branch on. The Phase 10 `pnpm refresh:code-lists` script regenerates
+ * branch on. The `pnpm refresh:code-lists` script regenerates
  * the full WPC-published list from the canonical source for the first
  * real publish; until then a CARC absent from the snapshot still parses
  * fine (verbatim) - only its description is unavailable.

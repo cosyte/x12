@@ -18,7 +18,7 @@ model.
 
 - **🩺 An ISA element carrying the element separator makes the header split into more than
   `ISA` + 16 elements. Through `0.0.16` no check saw that at all; it is now reported as
-  `X12_ISA_EXTRA_ELEMENT_SEPARATOR`** (`X12-ISA-ELEMENT-ARITY`). **Nothing is
+  `X12_ISA_EXTRA_ELEMENT_SEPARATOR`.** **Nothing is
   re-framed: this is a report, not a repair, and no existing warning was suppressed or narrowed.**
 
   `detectDelimiters` verifies the element separator at all 16 fixed 005010 byte positions, so the
@@ -81,12 +81,12 @@ model.
   a decision about the build side and is not taken here.
 
 - **🩺 `parseTA1`'s five decoded fields are POST-`?`-unescape as of this release, and an EMPTY
-  TA1-02 / TA1-03 / TA1-04 / TA1-05 is REFUSED on emit. Both are behaviour changes**
-  (`X12-TA1-RESIDUALS`). They are one slice because they are the two ends of the same disagreement:
+  TA1-02 / TA1-03 / TA1-04 / TA1-05 is REFUSED on emit. Both are behaviour changes.**
+  They are one change because they are the two ends of the same disagreement:
   this package's emit half releases a TA1 element and its read half decoded the escape rather than
   the value.
 
-  **The read half.** `X12-TA1-EMIT-NOT-RELEASE-AWARE` made `buildTA1` release all five caller
+  **The read half.** An earlier release made `buildTA1` release all five caller
   elements, and `parseTA1` kept reading `elements` verbatim, so a round trip through this package's
   own halves was not an identity for any value carrying a delimiter or the release character.
   Measured at `0.0.15`, over `parseX12` + `parseTA1` of what `buildTA1` had just emitted:
@@ -133,12 +133,12 @@ model.
     first, so an `ackCode: "A"` with an empty note still reports `X12_TA1_ACCEPT_WITH_NOTE`; TA1-01
     still draws the control-number refusal; and every wrong-TYPED element still draws the escape
     helper's refusal, because all five escapes run before any emptiness test. **No spec that was
-    refused before this slice is refused differently by it.**
-  - **No census of other builders' required elements is published here.** This slice measured TA1.
+    refused before this change is refused differently by it.**
+  - **No census of other builders' required elements is published here.** This change measured TA1.
 
 - **🩺 `implementationConventionReference` is POST-`?`-unescape as of this release, in every typed
   reader that publishes it, and that is a behaviour change on documents whose `ST-03` carries a
-  release escape** (`X12-ST03-READ-NOT-RELEASE-AWARE`). `tx.st.elements` is the ST segment as framed:
+  release escape.** `tx.st.elements` is the ST segment as framed:
   post-element-split and PRE-unescape. Five public
   readers were handing one of those strings straight back on the model - `get837Claims`,
   `get277Status`, `get277CADisposition`, `get278Request` and `get278Response` - so a sender that
@@ -183,8 +183,8 @@ model.
     `unescapeRelease` to `submission.implementationConventionReference` yourself, drop that call.
 
 - **🩺 An EMPTY control number is REFUSED on emit as of this release, where it used to be
-  FABRICATED, and that is a behaviour change for any caller passing one**
-  (`X12-EMPTY-CONTROL-NUMBER-FABRICATED`). Every builder that assembles an ISA zero-pads its control
+  FABRICATED, and that is a behaviour change for any caller passing one.**
+  Every builder that assembles an ISA zero-pads its control
   number to the nine characters ASC X12 .5 fixes ISA-13 at. `padControl("1", 9)` answering
   `"000000001"` is the point of that; `padControl("", 9)` answering `"000000000"` was not, and
   nothing stood in front of it, so `interchangeControlNumber: ""` produced a frozen, well-formed
@@ -237,7 +237,7 @@ model.
     `X12_ACK_INVALID_SPEC` now. If you branch on a specific builder error code, that pairing moved.
 
 - **🩺 Which `ST-03` implementation-convention references resolve to an 837 variant CHANGED in this
-  release, and some already-published files therefore decode differently** (`X12-VARIANT-ICR-UNGROUNDED`).
+  release, and some already-published files therefore decode differently.**
   Through `0.0.13` `get837Claims` recognised exactly three references: `005010X222A2`, `005010X223A3`
   and `005010X224A2`. **That set contained none of the identifiers HIPAA adopts at 45 CFR 162.1102**
   (`005010X222`, `005010X223` + `005010X223A1`, `005010X224` + `005010X224A1`), **and it was missing
@@ -273,8 +273,8 @@ model.
   - **The set is not claimed exhaustive and no count of it is published**, here or in any warning
     message. Both variant messages named the three old keys literally and were wrong the moment the
     table was corrected, so neither enumerates the set any more.
-  - **🩺 CLOSED, in the slice after this one: the emit side takes a caller override**
-    (`X12-837-EMIT-IDENTIFIER-FIXED`). `build837P` / `build837I` / `build837D` still DEFAULT to
+  - **🩺 CLOSED, in the change after this one: the emit side takes a caller override.**
+    `build837P` / `build837I` / `build837D` still DEFAULT to
     `005010X222A2` / `005010X223A3` / `005010X224A2` in ST-03 and GS-08, and
     **`Build837EnvelopeSpec.implementationConventionReference` now states another** - one value,
     both elements. Two of the defaults are not what the companion guides above require, so a partner
@@ -301,8 +301,7 @@ model.
       ST-03.
 
 - **🩺 A `?` immediately before the element separator inside an envelope segment now frames as ONE
-  element, and that is a SYMMETRIC behaviour change on already-published decoding**
-  (`X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE`).
+  element, and that is a SYMMETRIC behaviour change on already-published decoding.**
   Through `0.0.14` the envelope segments' element splitter was a plain `String.prototype.split`, so a
   released element separator (`?*`) still ended the element and SHIFTED every element after it down a
   slot. It was a property of the whole envelope segment and never of one element, so the element a
@@ -357,7 +356,7 @@ model.
     `responsibleAgencyCode`) at this release. A `groupDate` of `"2026060?"` emitted
     `GS*HC*SENDER*RECEIVER*2026060?*1200*1*X*005010X222A1`, which its own return value read as nine
     elements with GS-08 intact through `0.0.14` and read as **eight** at `0.0.15`, GS-08 gone, plus
-    `X12_CONTROL_NUMBER_MISMATCH`. **Closed by `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE`** - that
+    `X12_CONTROL_NUMBER_MISMATCH`. **Closed by a later release** - that
     entry is at the top of this section and it is the one that describes the current tree.
 
   - **An envelope element ending in a literal `?` is a dangling release character and is NOT warned.**
@@ -393,8 +392,8 @@ model.
     at `0.0.14` it released GS-02 on emit and then answered GS-08 as `"X"` from its own return value.
 
 - **🩺 A BODY segment in an interchange whose ELEMENT SEPARATOR is `?` now frames its elements,
-  where it used to come back as ONE element with an id of `(non-spec)`**
-  (`X12-BODY-DEGENERATE-RELEASE-SEPARATOR`). `detectDelimiters` reads the element separator
+  where it used to come back as ONE element with an id of `(non-spec)`.**
+  `detectDelimiters` reads the element separator
   positionally out of ISA byte 4 and rejects only control characters, whitespace and a non-distinct
   set, so a sender may declare `?` there, and `buildInterchange` accepted `elementSeparator: "?"`
   from a caller when this was measured (it refuses now - see the emit-side entry below).
@@ -431,8 +430,8 @@ model.
     of them. Splitting those two roles literally would re-frame that as two empty components, so it
     would stop reading a value this library itself wrote. **That reason survives the emit-side
     refusal below - those documents exist**, which is why the read side did not move with it.
-  - **🟢 CLOSED, in the slice after this one, and WIDER than it was filed
-    (`X12-EMIT-DEGENERATE-RELEASE-DELIMITER`): every builder REFUSES a delimiter set in which any of
+  - **🟢 CLOSED, in the change after this one, and WIDER than it was filed:
+    every builder REFUSES a delimiter set in which any of
     the four roles is `?`.** The entry as filed named the element separator and one mechanism - a
     caller VALUE the escape cannot protect, because the protecting `?` is itself the separator. Two
     things were measured wrong about that:
@@ -497,7 +496,7 @@ model.
     terminator.** `findUnescapedTerminator` guards its own role only, so with `?` as the element
     separator a segment that ends in an EMPTY LAST ELEMENT puts a `?` immediately before the
     terminator and the scanner reads it as an escape: `PER?IC?NAME?TE?5551234?EX?~SE?3?0001~` frames
-    as ONE segment and raises `X12_MISSING_SE`. This slice does not touch framing. But **the READ of
+    as ONE segment and raises `X12_MISSING_SE`. This change does not touch framing. But **the READ of
     that merged blob did move, so do not take "framing is untouched" as "nothing about this residual
     moved"**: at `0.0.15` the merge produced one `(non-spec)` element no walker looked at, and here
     it frames, so `~SE` and the SE's own control number land in `PER`'s communication-number slots.
@@ -510,8 +509,8 @@ model.
     gives: it is fixed-width, which is what lets the delimiters be recovered from it at all.
 
 - **🩺 `buildInterchange` now RELEASES GS-04, GS-05 and GS-07, so the interchange it hands back
-  reports the values you passed, and the bytes it writes for such a value CHANGED**
-  (`X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE`). Through `0.0.15` it mapped its release escaper over
+  reports the values you passed, and the bytes it writes for such a value CHANGED.**
+  Through `0.0.15` it mapped its release escaper over
   GS-01, GS-02, GS-03, GS-06 and GS-08 and wrote `groupDate` (GS-04), `groupTime` (GS-05) and
   `responsibleAgencyCode` (GS-07) raw. It returns `parseX12` of the bytes it just wrote, so a value
   carrying an active delimiter in one of those three took a slot of its own and shifted every element
@@ -572,8 +571,8 @@ model.
     active delimiter is still not safe anywhere, because that is what a delimiter is.
 
 - **🩺 `buildTA1` now RELEASES its five caller-supplied elements, so an Accept acknowledgment this
-  library emits no longer reads back as a Reject, and the bytes it writes for such a value CHANGED**
-  (`X12-TA1-EMIT-NOT-RELEASE-AWARE`). Through `0.0.14` `buildTA1` joined the five values with the
+  library emits no longer reads back as a Reject, and the bytes it writes for such a value CHANGED.**
+  Through `0.0.14` `buildTA1` joined the five values with the
   element separator and escaped none of them, so a value carrying an active delimiter took a slot of
   its own and shifted every element after it down one. TA1-04 is the disposition and TA1-05 the note,
   and `parseTA1` narrows an out-of-enum TA1-04 to `R`. Measured with `parseX12` + `parseTA1` over
@@ -624,19 +623,19 @@ model.
     No total is published: that is what was measured, not a closed account. (`getSegmentValue`
     takes an `X12Segment` and `Ta1Segment` carries no `id`, so add one to read a TA1 through it.)
     **🩺 A clause naming `parseTA1`'s fields as a third such surface stood here and is DELETED, not
-    reworded** - `X12-TA1-RESIDUALS` made those fields post-unescape, so it is measured false.
+    reworded** - a later release made those fields post-unescape, so it is measured false.
   - **A caller who was hand-rolling the escape** (the remedy this file named while the defect was
     open) regresses on both kinds of surface: `"00000001??"` in, `TA1*00000001????*…` out, and
     `getSegmentValue` answering `"00000001??"` where it answered `"00000001?"`. The framing and the
     disposition stay correct, but **drop the hand-rolled escape.**
-  - **An EMPTY control number was not refused by this slice, and is refused by the NEXT one.**
+  - **An EMPTY control number was not refused by this change, and is refused by the NEXT one.**
     `escapeRelease` early-returns on `""` and `buildTA1` carried no required-field guard, so
     `interchangeControlNumber: ""` emitted `TA1**260601*1200*A*000` with `warnings: []`, here and at
-    every earlier release. `X12-EMPTY-CONTROL-NUMBER-FABRICATED` closed it across every builder; see
+    every earlier release. A later release closed it across every builder; see
     the entry at the top of this file, including the whitespace-only residual it leaves open.
-  - **🩺 The READ half did not move IN THIS SLICE, and `X12-TA1-RESIDUALS` is the one that moved
+  - **🩺 The READ half did not move IN THIS CHANGE, and a later release is the one that moved
     it** - see the entry at the top of this file. A control number of `"00000001?"` read back as
-    `"00000001?*260601"` before this slice and as `"00000001??"` after it; the clause that stood
+    `"00000001?*260601"` before the EMIT half moved and as `"00000001??"` after it; the clause that stood
     here telling callers to apply `unescapeRelease` themselves is **deleted, not reworded**, because
     the library now does it.
   - **The release is scoped to the delimiter set the CALLER states.** `BuildTA1Options` gained
@@ -657,12 +656,12 @@ model.
     `X12_TA1_ACCEPT_WITH_NOTE` and still runs first.
   - **What this does NOT close.** `buildTA1` still uses no segment joiner, so its refusal names the
     builder and never the slot; `buildInterchange` did not escape GS-04 / GS-05 / GS-07 at this
-    release, which `X12-INTERCHANGE-GS-EMIT-NOT-RELEASE-AWARE` then closed; and an unescaped active
+    release, which a later one then closed; and an unescaped active
     delimiter is still not safe anywhere, because that is what a delimiter is.
 
 - **🩺 BREAKING for `build277` callers: a 277 service line now REQUIRES `unitsOfService`, because
-  SVC-07 is a required element in `005010X212` and this library was not emitting it at all**
-  (`X12-277-SVC07-NOT-DECODED`). Through the release before this one `get277Status` read SVC-01
+  SVC-07 is a required element in `005010X212` and this library was not emitting it at all.**
+  Through the release before this one `get277Status` read SVC-01
   through SVC-04 and stopped, and `build277` emitted exactly those four, so **every X212 277 this
   library produced with a Loop 2220 service line was short a required element** and every 277 it read
   silently discarded the submitted units. Both sides are fixed: `X12ServiceLineStatus.unitsOfService`
@@ -696,7 +695,7 @@ model.
   string** - at base the same spec emitted a bare `SVC~`, because the SVC-07 slot did not exist. `SVC-03` (Line Item Payment
   Amount) is usage **R** in X212 and usage **N** in X214 and is optional in both builders. And the
   read side is unchanged and still lenient: an X212 277 arriving with no SVC-07 raises **no
-  warning**, because that would need a new Tier-2 registry code and the defect this slice closes is
+  warning**, because that would need a new Tier-2 registry code and the defect this change closes is
   on the emit side. All of it is pre-existing and reproduces at `e3cdf49`; widening the guard would
   have turned this into that audit, which is its own item.
 
@@ -1242,7 +1241,7 @@ Code"`, `SVC05 / 380 / "Units of Service Paid Count"`, `SVC06 / C003`,
 
   **`undefined` on either quantity still means "not decoded", not "absent".** The element may have
   been missing, or present and unparseable as a decimal; the two share one `undefined` on the model.
-  They no longer share a silence: as of `X12-QUANTITY-SILENT-DEFAULTS` the unparseable case raises
+  They no longer share a silence: as of an earlier release the unparseable case raises
   `X12_UNPARSEABLE_DECIMAL` at that `position.elementIndex` and the absent case raises nothing, so a
   warning at the element is what tells them apart. The verbatim element is still on `tx.segments`.
 
@@ -1252,7 +1251,7 @@ Code"`, `SVC05 / 380 / "Units of Service Paid Count"`, `SVC06 / C003`,
   no warning. Re-emitting from the model with this release produces conformant bytes.
 
   **The 277's SVC-07 is a different element in a different TR3 and is now decoded and emitted in its
-  own right** (`X12-277-SVC07-NOT-DECODED`, below). Do not read either field off the other.
+  own right** (see the 277 entry below). Do not read either field off the other.
 
 - **Bundled code-list snapshots are pre-launch initial subsets, not the full WPC-published lists.**
   CARC, RARC, Claim-Status-Category (CSCC), Claim-Status (CSC), service-type, CLP-status, and
@@ -1509,7 +1508,7 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   **Read the "through a builder's segment joiner" qualifier literally.** `buildTA1` does not use one,
   and is therefore **not covered by the segment guard**. Through `0.0.14` that meant nothing checked
   its five elements at all, and a numeric or `undefined` `interchangeControlNumber` was emitted
-  silently (`TA1**250101*1200*A*000`); `X12-TA1-EMIT-NOT-RELEASE-AWARE` closed that by routing them
+  silently (`TA1**250101*1200*A*000`); a later release closed that by routing them
   through the escape helper, which type-checks first and refuses with `AckBuildError` /
   `X12_ACK_INVALID_SPEC`. What being outside the segment guard still costs is the **slot** in the
   refusal message: it names `buildTA1`, never `TA1-01`.
@@ -1681,5 +1680,5 @@ the maintainers have not reviewed.
 
 ---
 
-For the phase-by-phase surface and the exact fields each helper decodes, see the package's
-[`CLAUDE.md`](./CLAUDE.md) status section and the [Cookbook](./docs-content/cookbook.md).
+For the per-transaction read and emit surface, and the exact fields each helper decodes, see
+[`README.md`](./README.md) and the Cookbook on the documentation site.

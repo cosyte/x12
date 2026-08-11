@@ -1,7 +1,7 @@
 /**
  * 278 TR3 `005010X217` (request) / `005010X216` (response) loop
  * specification - authored through the **public** {@link
- * "../../loops/define.js".defineLoopSpec} API (the Phase 7 dogfooding gate).
+ * "../../loops/define.js".defineLoopSpec} API (the dogfooding gate).
  * The built-in 278 HL hierarchy goes through the SAME factory consumers use
  * for payer-specific companion-guide loops.
  *
@@ -34,7 +34,7 @@
  * warnings. Detailed sub-loops (PWK attachments, the full 2010E provider
  * family, HSD service-delivery, SV1/SV2/SV3 line detail) are preserved
  * verbatim on `tx.segments` but not yet destructured onto the model - a
- * documented Phase 7 limitation.
+ * documented limitation.
  */
 
 import { defineLoopSpec } from "../../loops/define.js";

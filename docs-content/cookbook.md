@@ -488,7 +488,7 @@ readBack?.claims[0]?.serviceLines[0]?.charge?.toString(); // => "150.00"
 no refusal message echoes the value you passed: an **empty** reference (a trailing empty element is
 not emitted, so it would delete ST-03 and GS-08 rather than send them empty); one carrying an
 **active delimiter or the release character** (this library's own reader would now carry it - the
-envelope splitter honours the release escape as of `X12-ENVELOPE-SPLITTER-NOT-RELEASE-AWARE` - but a
+envelope splitter honours the release escape in current releases - but a
 trading partner's parser is not obliged to, and a guide identifier has no legitimate use for a
 delimiter, so the refusal is kept); and one this library's own reader resolves to a **different 837 variant**, such as
 `005010X223A2` handed to `build837P`, which would emit a file declaring one variant and carrying

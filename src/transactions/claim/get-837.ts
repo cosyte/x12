@@ -14,12 +14,12 @@
  * (Institutional), `005010X224A2` (Dental); X12 005010 base spec for
  * envelope + cross-cutting segments (NM1, N3, N4, REF, PER, DTP, AMT).
  *
- * Phase 5 known limitations (documented in CHANGELOG):
+ * Known limitations (documented in CHANGELOG):
  * - **Loop 2320/2330 (Other Subscriber / Other Payer)** captured at the
  *   surface level only: SBR-01 payer responsibility code and the
  *   adjacent NM1*IL / NM1*PR entities. Detailed CAS / OI / MOA
- *   breakdown inside Loop 2320 is deferred to Phase 9 (companion-guide
- *   tolerance).
+ *   breakdown inside Loop 2320 is deferred to the profile system
+ *   (companion-guide tolerance).
  * - **Loop 2410 (Drug Identification, 837P)** captures LIN qualifier +
  *   code and the optional CTP quantity + UCUM unit. REF inside 2410 is
  *   preserved on tx.segments verbatim but not typed onto the model.
@@ -29,8 +29,8 @@
  * - **CN1 contract information** preserved on tx.segments verbatim, not
  *   typed onto the model.
  * - **Companion-guide enforcement** (e.g. Availity's required REF*EA at
- *   the billing provider) deferred to Phase 9 (profile system).
- * - **Builder** (`build837P`/`I`/`D`) deferred to Phase 8.
+ *   the billing provider) deferred to the profile system.
+ * - **Builder** (`build837P`/`I`/`D`) shipped separately.
  *
  * None of these are silent - verbatim segments remain on
  * `tx.segments` so a consumer can drop down to raw element access for
@@ -107,7 +107,7 @@ import type {
  * Every key is an ASC X12N 837 Technical Report Type 3 identifier taken
  * from a source outside this repository. Checking one against this
  * library's own fixtures would only prove the two agree, which is how the
- * 835 SVC element map stayed wrong (`X12-SVC-ELEMENT-MAP-OFF-BY-ONE`), so
+ * 835 SVC element map stayed wrong, so
  * the sources are named here and recorded in
  * `documentation/agent-notes/x12-variant-icr-ungrounded.md`:
  *
@@ -216,7 +216,7 @@ export const HL_LEVEL_CODES = Object.freeze({
  * Loop 2310x / 2420x line-provider verbatim bucket. Frozen for type
  * safety + IntelliSense - consumers should rarely need these (they're a
  * walker-internal vocabulary), but they're exported for tests + the
- * Phase 8 builder API. @example NM1_QUALIFIERS.BILLING_PROVIDER → "85".
+ * builder API. @example NM1_QUALIFIERS.BILLING_PROVIDER → "85".
  */
 export const NM1_QUALIFIERS = Object.freeze({
   SUBMITTER: "41",
@@ -549,7 +549,7 @@ export function get837Claims(
    * The reader still decodes exactly as it did: the last matching segment
    * wins, unchanged. Narrowing it to first-wins would change how already
    * published documents decode, and which of the two the sender meant is not
-   * derivable - the same call `X12-837-AMBIGUOUS-VARIANT` made about the
+   * derivable - the same call the ambiguous-variant warning made about the
    * fallback on this same segment family. This closes only the silence.
    *
    * Called for EVERY service segment reaching an open line, matching or not,
@@ -1607,7 +1607,7 @@ const EMPTY_SUBSCRIBER_INFO: X12SubscriberInfo = Object.freeze({
 /**
  * The HL-resolved enclosing context the walker hands to {@link openClaim}
  * when a CLM segment opens a Loop 2300. Bundled so adding another piece
- * of context (e.g. Phase 9's profile reference) doesn't grow the
+ * of context (e.g. a profile reference) doesn't grow the
  * function signature. @internal
  */
 interface ClaimContext {

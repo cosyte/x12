@@ -18,7 +18,7 @@
  *
  * The pair `{ unescapeRelease, escapeRelease }` is bijective on inputs that
  * either contain no release-relevant characters OR are already a clean
- * round-trip - this gives the Phase 2 lossless round-trip property: for any
+ * round-trip - this gives the lossless round-trip property: for any
  * value `v` and delimiter set `d`, `unescapeRelease(escapeRelease(v, d), d)`
  * deep-equals `v`.
  */

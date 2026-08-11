@@ -5,7 +5,7 @@
  * `X12TransactionSet.st.elements` is the ST segment as framed: post-element-
  * split and PRE-`?`-unescape. A reader that hands one of those strings
  * straight to a consumer publishes the ESCAPE rather than the value the sender
- * stated - the defect `X12-TA1-RESIDUALS` corrected in `parseTA1`, on the
+ * stated - the defect a later release corrected in `parseTA1`, on the
  * ground that every dot-path read in this package already unescapes and so
  * does `parse999`, on `AK2-03`, which is the identically-named field in a
  * sibling reader in this same tree.

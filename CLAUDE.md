@@ -72,6 +72,35 @@ copying files.** Source of truth: the meta-repo's `documentation/conventions.md`
 history. Do not act on a line here without reading it. 🩺 = getting it wrong mis-states a clinical
 or financial value on the wire.**
 
+### `X12-NO-INTERNAL-REFS-GATE` (2026-08-11) · `agent-notes/x12-no-internal-refs-gate.md`
+
+**`pnpm check:no-internal-refs` now GATES the class every accuracy finding in this repo's review
+history has belonged to: a claim in a prose carrier, which no test could fail on.**
+**🛑 THE PORT WAS NOT A COPY AND YOU MUST NOT RE-TRANSCRIBE THE SIBLING FILE OVER IT.** Every sibling
+excludes `X12-\d{3}[A-Z]?|X12-\d{6}` as a standards designation. **HERE `X12` IS ALSO OUR OWN ITEM
+PREFIX AND THE TWO SPELLINGS OVERLAP** (`X12-837P` the guide, `X12-837-RESIDUALS` the item, sharing
+the head `X12-837`), **so that exclusion swallows our identifiers whole. COUNTED, TWO TOOLS
+AGREEING: all 141 tree-wide matches were INTERNAL IDS, the hyphenated standards spelling occurred
+ZERO times, and the sibling line printed OK over SIX live violations on shipping carriers.** Bare
+`837P` / `005010X222A1` is this corpus's spelling and the gate now REDS on the hyphenated form.
+**🛑 A POSITIVE SELF-TEST SAMPLE IS DISJUNCTIVE AND THEREFORE VACUOUS BY DEFAULT** - `grep -q` stops
+at the first match, so the control that restored the sibling exclusion printed OK because `CCDA-P7`
+sat in the same sample. Rule 1's FIRST arm has five spellings asserted ALONE; **keep it that way, and
+DO NOT READ THE SELF-TESTS AS PROVING "each rule still matches what it bans": MOST ALTERNATIVES,
+INCLUDING RULE 1's SECOND ARM, ARE ASSERTED BY NOTHING - MEASURED, NAMED IN residual (xv), LIVE AND
+NOT CLOSED. PUBLISH NO PROPORTION FOR IT** - a draft did and a second reviewer could not reproduce
+it under any defensible way of counting an alternative. A NEGATIVE sample is conjunctive and has no
+such failure mode. **🛑 `KNOWN-LIMITATIONS.md` IS IN `files` AND IS SCANNED.**
+**🛑 REMEDIATE BY TRANSLATION, NEVER BY DELETING A DOC COMMENT** (JSDoc with `@example` on every
+public export is a guardrail neither lint nor coverage protects), and repair the head when you strip
+an identifier off the front. **🛑 THE GATE READS `src/` DOC COMMENTS, NEVER `dist/`, AND NEVER A
+STRING LITERAL** - five code-list `meta.note` values ship build-order framing as an EXPORTED RUNTIME
+VALUE, `PRE-EXISTING` and FILED; a runtime value is a different carrier from a comment. **ZERO ON
+THE RULES IS NOT ZERO ON THE FOUNDER'S RULE:** six phase lines survived the first sweep with every
+rule green, two of them the PLURAL `Phases`, which rule 2 cannot see. It catches identifiers, not
+English about our process, so **the reviewer still owns half the rule.**
+**🛑 QUOTE NO COUNT TAKEN ON ANOTHER REPO'S TREE, AND DELETE A DRIFTING ONE RATHER THAN CORRECT IT.**
+
 ### 🩺 `X12-ISA-VALUE-POINTERS` (2026-08-11) · `agent-notes/x12-isa-value-pointers.md`
 
 **🩺 Open it before you write ANY pointer at an `isa.elements[n]`: `IsaSegment`'s block and
@@ -341,24 +370,20 @@ NO SOURCE SCAN SHIPS.**
   flag-set reds a control.
 - **🩺 `X12-837-SV-UNDEFINED-DECIMAL` CLOSED THE `0`** - its own trap above.
 
-### 🩺 `X12-QUANTITY-SILENT-DEFAULTS` (2026-08-05) · `documentation/agent-notes.md#x12-quantity-silent-defaults-2026-08-05`
+### 🩺 `X12-QUANTITY-SILENT-DEFAULTS` (2026-08-05) · `agent-notes/x12-quantity-silent-defaults.md`
 
-- **🩺 A PRESENT decimal that does not decode emits `X12_UNPARSEABLE_DECIMAL` at its
-  `position.elementIndex`, in all six readers; an ABSENT one emits nothing.** Both pinned.
-- **🩺 THIS slice closed only the SILENCE; `X12-837-SV-UNDEFINED-DECIMAL` closed the `0`.**
-- **🩺 NEVER INVERT IT INTO "an unwarned value is one the sender sent". A slot a reader never read
-  cannot warn**; three shipped docs carried the bare form. Guarantee: unwarned **at an element a
-  reader decoded**. The 837 instance of the other kind is the trap above.
-- **PUBLISH NO CENSUS OF THE FALLBACK OUTCOMES.** The
-  RULE holds: a property of the READ, not the USE.
-- **ONE message, NO discriminant** (where a `ZERO`/`NOT_DECODED` pair was wrong: relocated narrative
-  §8). **And assert nothing about what X12.6 type R permits;** nobody here has read it, so the
-  message says "could not decode".
-- **The 835 balance invariant is NOT a net: it names an equation, never an element, and exists in no
-  other reader.**
-- **The sink is an OPTIONAL 4th arg; the public helpers stay silent without one**, held by a source
-  scan counting TOP-LEVEL ARGS, never a `, sink)` regex. **A green suite proved nothing: no fixture
-  holds an unparseable decimal and a round trip CANNOT make one.**
+**RELOCATED IN FULL 2026-08-11, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-NO-INTERNAL-REFS-GATE` trap at the top of this list, on that trap's THIRD relocation.
+**🩺 Open it before you touch a decimal read, `X12_UNPARSEABLE_DECIMAL` or the optional warning
+sink: a PRESENT decimal that does not decode warns at its `position.elementIndex` in all six
+readers and an ABSENT one warns nothing, both pinned. 🩺 NEVER INVERT IT INTO "an unwarned value is
+one the sender sent" - a slot a reader never read CANNOT warn, and three shipped docs carried the
+bare form; the guarantee is unwarned AT AN ELEMENT A READER DECODED. PUBLISH NO CENSUS OF THE
+FALLBACK OUTCOMES, ONE message with NO discriminant, and assert nothing about what X12.6 type R
+permits. The 835 balance invariant is NOT a net (it names an equation, never an element). The sink
+is an OPTIONAL 4th arg and the public helpers stay silent without one, held by a source scan
+counting TOP-LEVEL ARGS and never a `, sink)` regex - A GREEN SUITE PROVED NOTHING, because no
+fixture holds an unparseable decimal and a round trip CANNOT make one.**
 
 ### 🩺 `X12-SVC-ELEMENT-MAP-OFF-BY-ONE` (2026-08-04) · `agent-notes/x12-svc-element-map-off-by-one.md`
 
@@ -367,65 +392,39 @@ list. **🩺 Open it before you touch the 835 `SVC` map, `paidUnitsOfService` or
 `originalUnitsOfService`: a round trip cannot test an element map and only bytes can, and checking a
 spec claim against this repo's own implementation is NOT a check.**
 
-### 🩺 `X12-DECIMAL-BYPASSES-THE-GUARD` (2026-08-04) · `documentation/agent-notes.md#x12-decimal-bypasses-the-guard-2026-08-04`
+### 🩺 `X12-DECIMAL-BYPASSES-THE-GUARD` (2026-08-04) · `agent-notes/x12-decimal-bypasses-the-guard.md`
 
-- **Every `X12Decimal` slot emits through the builder's `escDec` over `requireCallerDecimal`.** How a raw
-  `number` in such a slot used to bypass that guard, and what went out on the wire: relocated
-  narrative §8.
-- **🩺 Refuse, never round:** guessing the scale of money is what `X12Decimal` exists to prevent
-  (relocated narrative §8).
-- **Do not flatten this with `#60`.** `#60` existed because a required identifier VANISHED. Nothing
-  vanishes here and nothing is mis-_read_; the exposure is float noise on the wire.
-- **Type safety is structural; DELIMITER safety is per-slot. Never write the unqualified form.**
-  `requireCallerSegment` type-checks every element of every segment emitted **through a builder's
-  `seg`/`joinSeg` helper**. A `string` carrying an active delimiter in a slot that skipped `esc` is
-  still emitted verbatim.
-- **The raw slots routed through `esc`: delimiter-safe and type-checked, value-constrained only where
-  a trap below says so. ONLY these were routed** (the enumeration: relocated narrative §7). **The
-  residual delimiter injection is NOT stop-the-line** - it fails at the receiver and mints no wrong
-  clinical value. Do not escalate it as if it did.
-- **`buildTA1` uses NEITHER `seg` NOR `joinSeg`; it DOES use `esc` now** (trap above), and no `pad`.
-  TA1-01 is data element I12, the reassociation key. **This was the FOURTH iteration of the
-  completeness claim; do not write the unqualified form again.**
-- **The fixed-width ISA line is joined directly and is outside BOTH guards.** Both throws terminate and
-  neither is silent (which throws what: relocated narrative §8).
-- **`build835`'s balance-equation amounts refuse UNTYPED, and every other `X12Decimal` field refuses
-  TYPED.** `enforceBalance(spec)` runs BEFORE the escaper is built, so `requireCallerDecimal` is
-  unreachable on anything it reads.
-- **🩺 STATE THE RULE, AND NAME SPEC FIELDS - NEVER ELEMENT NUMBERS.** A slot refuses untyped exactly
-  when the balance guard reads it as a term of one of the three §1.10.2 invariants (line, claim,
-  top-of-remit) in `src/transactions/remit/balance.ts`. **The terms are ENUMERATED in relocated narrative §8, because a count
-  without its list cannot self-correct; read them there and never re-derive them.** Two successive
-  remedies published a closed list and an element-number list and both were measured wrong. Both arms are pinned on one fixture, so moving a slot between them reds the gate.
-- **Assert the MESSAGE, not the class, in every builder-refusal test** - including the disclosure
-  pins. `expect(run).toThrow(Remit835BuildError)` passes on an unrelated refusal; four of six new
-  cases were vacuous that way.
-- **Never bound a loop with `i < parts.length` over a caller array-like; iterate with `for...of`,
-  which throws** (the forged shape and what it reported: relocated narrative §9). **The scanner is
-  not comment-stripped for that rule**, so writing the bad shape in a comment reds it too.
-- **The pinned `esc` counts, and why "X12 code source 715" was wrong, are MEASUREMENTS and not
-  rules** - agent-notes section; read them there before quoting either.
+**RELOCATED IN FULL 2026-08-11, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-NO-INTERNAL-REFS-GATE` trap below.
+**🩺 Open it before you touch `escDec`, `requireCallerDecimal`, `requireCallerSegment`,
+`enforceBalance` or any `X12Decimal` slot: every such slot emits through `escDec` over
+`requireCallerDecimal`, and 🩺 REFUSE, NEVER ROUND - guessing the scale of money is what
+`X12Decimal` exists to prevent. TYPE safety is STRUCTURAL and DELIMITER safety is PER-SLOT: never
+write the unqualified form, and never re-publish the completeness claim (its FOURTH iteration was
+still wrong). `build835`'s balance-equation amounts refuse UNTYPED and every other `X12Decimal`
+field refuses TYPED. 🩺 STATE THE RULE AND NAME SPEC FIELDS, NEVER ELEMENT NUMBERS - two remedies
+published a closed list and an element-number list and both were measured wrong. `buildTA1` uses
+NEITHER `seg` NOR `joinSeg`, the fixed-width ISA line is outside BOTH guards, ASSERT THE MESSAGE and
+never the class (four of six cases were vacuous that way), never bound a loop with
+`i < parts.length` over a caller array-like, and the pinned `esc` counts are MEASUREMENTS, not
+rules.**
 
-### 🩺 `X12-NUMERIC-VALUE-EMITS-EMPTY` (2026-08-03) · `documentation/agent-notes.md#x12-numeric-value-emits-empty-2026-08-03`
+### 🩺 `X12-NUMERIC-VALUE-EMITS-EMPTY` (2026-08-03) · `agent-notes/x12-numeric-value-emits-empty.md`
 
-- **🩺 EVERY builder that declares an `esc` takes it from `makeCallerEscaper`
-  (`src/builder/caller-string.ts`), which type-checks first and refuses with the calling module's own
-  typed, code-tagged error. NO COUNT HERE - the gate holds it, and "nine" outlived the ninth.**
-  What `escapeRelease` read, and the `CLP-01` reassociation key it vanished: relocated narrative §8.
-- **🩺 Refuse, never coerce, and that is the whole item.** Coercion mints a _different_ identifier: a
-  payload carrying `"0012345"` as a number already lost its leading zeros, and reassociating to the
-  wrong claim is worse than failing to reassociate. **The builder's own required-field guard is
-  defeated by a number** (the instance: relocated narrative §7). Check the type, not the sentinel.
-- **The `#51` asymmetry is deliberate, not an inconsistency.** `renderCallerValue` **coerces**;
-  `esc` **refuses**. _Survive anything_ vs _invent nothing_.
-- **🩺 NEVER PUBLISH AN EXHAUSTIVE CENSUS OF WHAT BYPASSES THE CHOKEPOINT.** Three drafts did; a
-  refuter measured all three false, each time by finding one more. **Cut the claim back, do not grow
-  the census. Finding one more is expected and is not a new finding. No total is published.**
-- **A gate that asserts a same-line REGEX pins against drift and says nothing about the property.**
-  `build-837` alone has three off-line `.toString()` reads the regex misses.
-- **Public surface:** exported `escapeRelease` now **throws `TypeError`** on a non-string instead of
-  returning `""`; nothing in the library can reach it, because the builders refuse first. **"No
-  working caller is broken" was too absolute:** a boxed `new String(...)` built at base, refused now.
+**RELOCATED IN FULL 2026-08-11, VERBATIM, NOTHING DROPPED** - it paid for the
+`X12-NO-INTERNAL-REFS-GATE` trap at the top of this list, on that trap's SECOND relocation.
+**🩺 Open it before you touch `makeCallerEscaper`, `escapeRelease`, `renderCallerValue` or any
+builder's `esc`: every builder that declares an `esc` takes it from `makeCallerEscaper`, which
+type-checks first and refuses with the calling module's own typed, code-tagged error - NO COUNT
+HERE, the gate holds it and "nine" outlived the ninth. 🩺 REFUSE, NEVER COERCE, and that is the
+whole item: coercion mints a DIFFERENT identifier and reassociating to the wrong claim is worse than
+failing to reassociate, so check the TYPE and never the sentinel. The `renderCallerValue` COERCES /
+`esc` REFUSES asymmetry is DELIBERATE (survive anything vs invent nothing). 🛑 NEVER PUBLISH AN
+EXHAUSTIVE CENSUS OF WHAT BYPASSES THE CHOKEPOINT - three drafts did and a refuter measured all
+three false by finding one more each time; CUT THE CLAIM BACK, DO NOT GROW THE CENSUS, and finding
+one more is expected rather than a new finding. A gate asserting a same-line REGEX pins against
+drift and says nothing about the property. Exported `escapeRelease` THROWS `TypeError` on a
+non-string now, and "no working caller is broken" was too absolute.**
 
 ### `PARSER-TESTTIMEOUT-ASSERTS-AN-IDLE-BOX` (2026-08-03) · `agent-notes/parser-testtimeout-asserts-an-idle-box.md`
 

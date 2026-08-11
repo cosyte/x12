@@ -1,7 +1,7 @@
 /**
  * 277 / 277CA loop specification - authored through the **public**
- * {@link "../../loops/define.js".defineLoopSpec} API (the Phase 6
- * dogfooding gate). The 277 Claim Status Response (`005010X212`) and the
+ * {@link "../../loops/define.js".defineLoopSpec} API (the dogfooding
+ * gate). The 277 Claim Status Response (`005010X212`) and the
  * 277CA Claim Acknowledgment (`005010X214`) share the same HL spine
  * (`20` Information Source → `21` Information Receiver → `19` Service
  * Provider → `22` Subscriber → `23` Dependent) and the same STC-anchored

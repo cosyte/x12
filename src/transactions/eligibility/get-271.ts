@@ -14,7 +14,7 @@
  * captured verbatim onto its enclosing subscriber / dependent so a
  * provider can re-associate the response with the 270 request it sent.
  *
- * Phase 6 known limitations (documented in CHANGELOG):
+ * Known limitations (documented in CHANGELOG):
  * - **AAA request-validation segments** (rejection reasons at the source /
  *   receiver / subscriber level) are preserved on `tx.segments` verbatim
  *   but not yet typed onto the model.

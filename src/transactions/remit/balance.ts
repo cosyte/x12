@@ -30,8 +30,7 @@
  *    (reduces BPR-02), negative PLB = credit to provider (increases
  *    BPR-02). So subtraction is what makes the equation balance.
  *
- * > Phase 4 implementation note: the cosyte roadmap (`operations/roadmaps/x12.md`
- * > §4) sketched these invariants slightly differently - that sketch was a
+ * > Implementation note: an early internal sketch of these invariants was a
  * > simplification. The implementation here matches the **X12 005010X221A1
  * > TR3 §1.10.2 spec text** directly; the roadmap is updated in the same
  * > slice with a forward-pointer to this module so the contract stays

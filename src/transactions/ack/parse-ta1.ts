@@ -6,7 +6,7 @@
  * TA1 is NOT a transaction set: per the ASC X12 standard it lives at the
  * envelope level, between ISA and the first GS (or alone inside an
  * ISA..IEA with no GS at all - the "TA1-only interchange" pattern). The
- * Phase 3 envelope walker captures every envelope-level TA1 verbatim onto
+ * envelope walker captures every envelope-level TA1 verbatim onto
  * {@link X12Interchange.ta1Segments}; this function decodes the first
  * one. Multiple TA1 acks for prior interchanges may co-exist on a single
  * inbound - pass `index` to read the Nth, or scan `ta1Segments` directly.

@@ -9,6 +9,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`pnpm check:no-internal-refs` - a gate on internal project bookkeeping reaching a consumer**
+  (`X12-NO-INTERNAL-REFS-GATE`), with `.github/workflows/no-internal-refs.yml` running it on every
+  push and PR. Documentation and tooling only: the `src/` half of the diff is comment-only and
+  `dist/index.mjs` / `dist/index.cjs` are byte-identical base to head.
+
+  It scans `README.md`, `TRADEMARKS.md`, `LICENSE`, `KNOWN-LIMITATIONS.md`, `docs-content/`, the npm
+  `description` and `keywords`, and the `/** */` doc comments under `src/` (which tsup compiles into
+  `dist/index.d.ts` and `dist/index.d.cts`), against six rules: item identifiers, phase and wave
+  language, ADR references, "slice" as our word for a unit of work, meta-repo paths, and bracketed
+  traceability markers. Every rule runs line by line and again over paragraph-joined text, because
+  this repo hard-wraps and a multi-token violation that straddles a wrap is invisible to a line
+  scan: on the sweep this shipped with, 52 of 124 phase-rule hits and 29 of 76 identifier hits in
+  `src/` were visible only to the reflowed pass. `CHANGELOG.md`, `.changeset/`, `CLAUDE.md`,
+  `documentation/`, `scripts/`, `test/` and `//` comments are deliberately out of scope: the
+  convention names those as where the identifiers belong.
+
+  **It is derived from the sibling parsers' copy, not transcribed from it.** Every sibling excludes
+  `X12-\d{3}[A-Z]?` and `X12-\d{6}` as standards designations to protect. In this repo `X12` is also
+  our own project prefix. Counted here with two independent tools that agreed exactly, that pattern
+  matches 141 times across tracked files and **every one of the 141 is an internal identifier**, in
+  eight spellings, with no standards designation among them; the hyphenated standards spelling it
+  exists to protect occurs zero times, because this corpus writes transaction sets and guides bare
+  (`837P`, `005010X222A1`). Carrying the sibling line verbatim reported OK over six live violations
+  on shipping carriers. Both the item spellings and the hyphenated forms are now asserted
+  individually in the self-test, each on its own, after a control run showed a shared positive
+  sample was satisfied by its first entry and covered none of the rest.
+
+  `KNOWN-LIMITATIONS.md` is scanned and is the entry no sibling copy has: this package ships it in
+  `files`, and it held most of what the gate first found.
+
+  **What it cannot do**, stated so a green run is not over-read: it reads the `src/` doc comments
+  that are the SOURCE of the published declarations, never `dist/` itself, which is untracked build
+  output this script does not build. It catches identifiers and named patterns, not ordinary English
+  sentences about how the software came to exist, so the reviewer still owns half the rule. It reads
+  file contents and never file names. It is not yet a required check on this repo, so it reds
+  visibly without blocking a merge.
+
+### Changed
+
+- **Internal project bookkeeping removed from the markdown surface, the npm metadata and the
+  shipped doc comments.** Deliberately not "from every surface a consumer reads": source string
+  literals are outside this gate, and five bundled code-list snapshots still carry build-order
+  framing in an exported `note` field, which reaches `dist/index.mjs` and `dist/index.cjs` as a
+  runtime value. That is a different carrier with a different review path, it reproduces on the base,
+  and it is filed rather than folded in here. Item identifiers, "phase" build-order framing and
+  "slice" as a unit of work were translated into what the software does and what changed, in
+  `KNOWN-LIMITATIONS.md`, `docs-content/cookbook.md`, `docs-content/troubleshooting.md` and the doc
+  comments across `src/`. Nothing was deleted to
+  satisfy the gate: a doc comment removed rather than reworded would be a regression, since JSDoc
+  with `@example` on every public export is a guardrail neither lint nor coverage protects. Two
+  pages sent the reader to the package's `CLAUDE.md`, which the tarball does not ship; they now
+  point at `README.md` and the Cookbook. Measured on a local build of base commit `a3e081d`,
+  `dist/index.d.ts` carried 13 lines of item identifiers, 64 of phase and wave framing, 2 of
+  "slice" jargon and 1 meta-repo path, with `dist/index.d.cts` byte-identical to it; at head all
+  four counts are zero and the two twins remain byte-identical to each other. Zero on the rules is
+  the weaker statement: six lines of phase framing survived the first sweep while every rule read
+  zero, four ending in punctuation and two using the PLURAL `Phases`, which rule 2 cannot see because
+  it requires `phase` followed by an alphanumeric. All six were then translated, so the built
+  declaration file now contains no occurrence of the word at all. The plural form remains ungated and
+  is disclosed as such.
+
 - **🩺 `X12_ISA_EXTRA_ELEMENT_SEPARATOR` - the ISA element split now has an arity check**
   (`X12-ISA-ELEMENT-ARITY`). Additions-only: no decoding moved, no existing warning was suppressed or
   narrowed, and nothing is re-framed.

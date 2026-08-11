@@ -1,14 +1,14 @@
 /**
- * Public entry point for the `@cosyte/x12` package. Phase 1 lands the
- * envelope decoder (ISA / GS / GE / IEA + delimiter detection); Phase 2+
- * adds segment/element/composite decode, the warning-code registry
- * expansion, and the public `defineLoopSpec`. Per-transaction helpers
- * (`get835`, `get837Claims`, ...) arrive in Phases 4+.
+ * Public entry point for the `@cosyte/x12` package. It lands the envelope
+ * decoder (ISA / GS / GE / IEA + delimiter detection), segment/element/
+ * composite decode, the warning-code registry, and the public
+ * `defineLoopSpec`. Per-transaction helpers
+ * (`get835`, `get837Claims`, ...) sit on top of it.
  */
 
 /**
- * Library version string, synced with `package.json#version` at build
- * time by downstream phases. Exported now so consumers (and the
+ * Library version string, synced with `package.json#version` by the
+ * release's version step. Exported now so consumers (and the
  * type-check pipeline) have at least one symbol to resolve through the
  * `exports` map.
  *

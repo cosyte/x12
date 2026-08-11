@@ -74,8 +74,8 @@
  *    `AN`, `ID` or `Nn` element. Coercion would emit every one of them without
  *    a warning. **And this was not hypothetical in this package: the `esc`
  *    slots that read `.toString()` off an `X12Decimal` emitted exactly those
- *    three strings for a raw `number`, disclosed and unfixed by this slice and
- *    closed by `X12-DECIMAL-BYPASSES-THE-GUARD`** - see "What this does NOT
+ *    three strings for a raw `number`, disclosed and unfixed here and closed
+ *    in `./caller-decimal.ts`** - see "What this does NOT
  *    cover". `X12Decimal` is the sanctioned route for numeric content, so a
  *    bare `number` in an element slot is never the right thing to have been
  *    handed.
@@ -94,7 +94,7 @@
  *
  * ## The `#51` asymmetry is deliberate, not an inconsistency
  *
- * `X12-BUILDER-BOUNDS` (`#51`) made {@link
+ * An earlier release made {@link
  * "./caller-value.js".renderCallerValue} **coerce** for exactly this caller
  * mistake, and this module **refuses** it. Same package, same wrong type,
  * opposite answer - because the two functions have opposite obligations:
@@ -117,7 +117,8 @@
  * "the single route a caller-supplied element value takes into an emitted
  * segment", then "SEVEN string-typed positions". Each round found more (GS-04,
  * GS-05, GS-07 and `build837`'s LX-01 among them). Growing the count a third
- * time is the runaway ADR 0016 exists to stop, so the claim was cut back to the
+ * time is the runaway this project's review cap exists to stop, so the claim was
+ * cut back to the
  * form that cannot be falsified by finding one more:
  *
  * > **This module guards values routed through a builder's `esc` helper.**
@@ -125,7 +126,7 @@
  * That is still exactly what this module does, and `esc` is still optional on
  * any given slot. What changed is what sits underneath it.
  *
- * ### `X12-DECIMAL-BYPASSES-THE-GUARD` replaced the disclosure with a property
+ * ### A later release replaced the disclosure with a property
  *
  * The three shapes this section used to disclose as live, `PRE-EXISTING` and
  * deliberately unfixed are now closed, and two of them by structure rather than
@@ -179,7 +180,7 @@
  *   refusal with the **misleading** text "exceeds the 9-char spec limit". Those
  *   two terminate, which is better than emitting silently, and neither is
  *   improved here. **`buildTA1` had no `esc` at all and no segment joiner
- *   either, and `X12-TA1-EMIT-NOT-RELEASE-AWARE` gave it the escaper** - it
+ *   either, and a later release gave it the escaper** - it
  *   still emits its five caller-supplied elements with a direct `.join()`, so
  *   the joiner half of that sentence stands and the type check now comes from
  *   here instead. What made it worth closing was not the type hole: an
@@ -194,7 +195,7 @@
  * - **The refusal names the BUILDER, not the element position.** `esc` is unary
  *   and invoked several hundred times across the ten modules that declare one.
  *   **The count is DELETED from this prose rather than corrected, and that is
- *   the rule** (`documentation/conventions.md`): this line published "406 times
+ *   the rule**: this line published "406 times
  *   on 377 lines" while the gate asserted a different pair, so it had already
  *   drifted, and a count duplicated beside the gate that asserts it drifts
  *   again. `test/builder-string-type.test.ts` holds both figures. Threading a
@@ -259,7 +260,7 @@ import { escapeRelease, RELEASE_CHAR } from "../parser/release.js";
  * {@link "./caller-segment.js".requireCallerSegment} names the slot and is the
  * better diagnostic wherever it is the guard that fires; threading a locator
  * through every unary `esc` invocation is the trade that module doc rejects,
- * and this slice did not reopen it.
+ * and this change did not reopen it.
  * @internal
  */
 export function describeCallerValue(value: unknown): string {
@@ -489,7 +490,7 @@ function requireEscapableDelimiters(
  *     TA1||000000001||260601||1200||A||000, and inside an ISA - which can
  *     declare only "|" - that Accept reads back with TA1-01 EMPTY and
  *     ackCode "R", parse warnings 0. 🩺 An Accept emitting as a Reject is
- *     X12-TA1-EMIT-NOT-RELEASE-AWARE's safety class reached by the LENGTH
+ *     the TA1 release defect's safety class reached by the LENGTH
  *     mechanism, at a role no parsing builder was ever silent at.
  *   Every other builder ends in `parseX12`, which caught most mis-shaped sets
  *   by accident; `buildTA1` returns a segment and never parses.
@@ -525,18 +526,18 @@ function requireEscapableDelimiters(
  * wire. `parseX12` tolerates a run of CR/LF between segments, so the model
  * recorded `segment: "~"` and `serializeX12` re-emitted without line breaks.
  * The caller never got what they declared; the library silently substituted
- * something else. Refusing is the same call `X12-EMIT-DEGENERATE-RELEASE-DELIMITER`
+ * something else. Refusing is the same call the degenerate-delimiter refusal
  * made about specs that built at `0.0.15` - what this library happens to read
  * back was never the bar.
  *
  * ## Why REFUSE, and why after the release-character check
  *
- * Refuse rather than warn, following `X12-EMPTY-CONTROL-NUMBER-FABRICATED` and
- * `X12-EMIT-DEGENERATE-RELEASE-DELIMITER`: a warning would have to travel the
+ * Refuse rather than warn, following the empty-control-number and degenerate-
+ * delimiter refusals: a warning would have to travel the
  * READ registry a builder returns, which `#83` was refuted for. No code is
  * minted; each builder refuses with its own.
  *
- * It runs AFTER {@link requireEscapableDelimiters} so that nothing that slice
+ * It runs AFTER {@link requireEscapableDelimiters} so that nothing that check
  * pinned moves. A set with `?` in two roles is both degenerate AND
  * non-distinct; running the release-character check first keeps the message
  * that names the sharper defect. It runs BEFORE
@@ -621,7 +622,7 @@ function requireWellShapedDelimiters(
  * above is applied at one site and `test/builder-string-type.test.ts` can prove
  * it by scanning for the shape. **That gate holds the count; this line does
  * not, deliberately** - the figure was published here as "nine" and stayed
- * nine when `X12-TA1-EMIT-NOT-RELEASE-AWARE` made it ten.
+ * nine when a later release made it ten.
  *
  * **The delimiter checks are why that gate is worth more than a hand-list.**
  * There are TWO, and both run ONCE, eagerly, when the builder resolves its
@@ -638,14 +639,14 @@ function requireWellShapedDelimiters(
  * keeps precedence** (`build835`'s balance equations, `build837`'s spine,
  * `build999`'s AK9 counts, `buildTA1`'s `enforceAcceptIsClean`) and a defect a
  * builder would have detected LATER now reports this refusal instead. That is
- * the same trade `X12-EMPTY-CONTROL-NUMBER-FABRICATED` recorded one slice
+ * the same trade the empty-control-number refusal recorded one change
  * earlier, and it moves a MESSAGE rather than a code: no builder mints a code
  * here, each refuses with its own.
  *
  * **NEVER COUNT WHAT MOVED. A draft published "one report" and it was measured
  * false** - `requireControlNumber` runs after the escaper in EVERY builder that
- * has one, so both mechanisms `X12-EMPTY-CONTROL-NUMBER-FABRICATED` and
- * `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED` shipped are preempted at every
+ * has one, so both mechanisms the control-number guards shipped are
+ * preempted at every
  * one of their slots when the set is also degenerate. Say which guards keep
  * precedence and that everything later yields, which is a property of the
  * ordering; a total of the sites is a census and drifts with the next builder.

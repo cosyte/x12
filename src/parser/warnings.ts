@@ -5,10 +5,10 @@
  * warning it emits so messages, payload shape, and positional context stay
  * consistent across stages.
  *
- * The Phase 1 set is intentionally small (8 codes) - every additional code
+ * The envelope set is intentionally small (8 codes) - every additional code
  * is a public-surface addition that needs a snapshot bump
- * (see `test/warning-codes.snapshot.test.ts`). Phase 2+ extends, never
- * renames.
+ * (see `test/warning-codes.snapshot.test.ts`). Later stages extend, never
+ * rename.
  *
  * ## A warning message is built from this registry, never from the document
  *
@@ -580,8 +580,7 @@ export function transactionCountMismatch(position: X12Position): X12ParseWarning
  * segments in the transaction set it closes (ST through SE inclusive).
  * Corrected counts are emitted only on `serializeX12(ix, { specClean: true,
  * recomputeCounts: true })`. The parser does not emit this code (it leaves
- * SE-01 reconciliation to the emit half); it is a Phase-8 serializer
- * diagnostic.
+ * SE-01 reconciliation to the emit half); it is a serializer diagnostic.
  *
  * @example
  * ```ts
@@ -941,7 +940,7 @@ export function missingRequiredLoop(position: X12Position, loop: X12RequiredLoop
  * `submission.implementationConventionReference` is decoded of any `?` release
  * escape, so on a document that escapes a delimiter inside `ST-03` the two
  * differ and the model field can hold an identifier this code just said was
- * not recognised (`X12-ST03-READ-NOT-RELEASE-AWARE`). A pointer stood here and
+ * not recognised. A pointer stood here and
  * in the message text and is DELETED, not reworded.
  *
  * `get837Claims` anchors this at the **ST**, which is `tx.segments[0]` and

@@ -1,5 +1,5 @@
 /**
- * Barrel for the Phase 8 spec-clean serializer surface. Re-exports
+ * Barrel for the spec-clean serializer surface. Re-exports
  * {@link serializeX12} (the emit half of the parser) and its options.
  */
 

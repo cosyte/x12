@@ -8,7 +8,7 @@
  * counts), so the caller never hand-counts a segment total or a group total.
  *
  * The domain-specific builders (`build835`, `build837P`, …) sit ON TOP of
- * this primitive in a later phase: each maps its typed domain model down to
+ * this primitive: each maps its typed domain model down to
  * {@link TransactionSetSpec} segment arrays and delegates the envelope to
  * `buildInterchange`. This file is the shared floor they all stand on.
  */

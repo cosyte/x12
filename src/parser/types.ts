@@ -96,13 +96,13 @@ export interface X12ParseOptions {
 
 /**
  * The four X12 delimiter classes discovered from fixed byte positions inside
- * the ISA envelope. Phase 1 detects all four from the ISA itself - they are
+ * the ISA envelope. The parser detects all four from the ISA itself - they are
  * NEVER assumed (in particular, `component` is rarely `:` outside Medicare).
  *
  * - `element` - ISA byte 4 (1-indexed); separates the 16 ISA elements.
  * - `repetition` - ISA-11 (byte 83, 1-indexed); separates repetitions inside
  *   an element. Carries the legacy Control Standards Identifier
- *   (typically `U`) for pre-005010 inputs; Phase 1 surfaces it verbatim.
+ *   (typically `U`) for pre-005010 inputs; the parser surfaces it verbatim.
  * - `component` - ISA-16 (byte 105, 1-indexed); separates sub-elements of a
  *   composite. Real-world senders use `:`, `\\`, `^`, `|`, and more.
  * - `segment` - the byte immediately after ISA-16 (byte 106, 1-indexed);
@@ -246,7 +246,7 @@ export interface GeSegment {
  * pre-`?`-unescape**, so an element is the framed byte text of its slot and
  * not necessarily the value the sender stated.
  *
- * The Phase 3 envelope walker captures TA1 segments here verbatim; the
+ * The envelope walker captures TA1 segments here verbatim; the
  * typed-ack model is built on top by `parseTA1`, whose five decoded fields
  * are POST-`?`-unescape. `parseTA1` decodes the FIRST TA1 on an
  * interchange, so on a multi-TA1 inbound it does not necessarily describe
@@ -267,7 +267,7 @@ export interface Ta1Segment {
 }
 
 /**
- * A single ST..SE transaction set inside a functional group. Phase 2
+ * A single ST..SE transaction set inside a functional group. The parser
  * decodes every body segment via {@link "./segment.js".decodeSegment} so
  * `segments` carries typed {@link X12Segment} entries (ST through SE,
  * inclusive). `rawSegments` mirrors the same list as the verbatim raw
@@ -278,7 +278,7 @@ export interface Ta1Segment {
  * time so envelope invariants can be checked (ST-02 ↔ SE-02 control-number
  * reconciliation, SE-01 segment count). **Read "decoded" as element-SPLIT and
  * nothing more: the strings are PRE-`?`-unescape**, and a reader that publishes
- * one to a consumer unescapes it first (`X12-ST03-READ-NOT-RELEASE-AWARE`).
+ * one to a consumer unescapes it first.
  *
  * @example
  * ```ts
@@ -299,7 +299,7 @@ export interface X12TransactionSet {
 /**
  * A single GS..GE functional group inside an interchange. `transactions`
  * is the ordered list of ST..SE transaction sets inside it (opaque bodies
- * at Phase 1 - see {@link X12TransactionSet}).
+ * at envelope decode - see {@link X12TransactionSet}).
  *
  * @example
  * ```ts

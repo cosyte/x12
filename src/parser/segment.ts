@@ -1,5 +1,5 @@
 /**
- * Segment-level decode for the `@cosyte/x12` parser pipeline. Phase 2's
+ * Segment-level decode for the `@cosyte/x12` parser pipeline. The
  * syntactic core: take a raw segment string (terminator already stripped by
  * the envelope walker) and decode it into an immutable {@link X12Segment}
  * carrying its segment id, raw text, and an element array. Element values
@@ -20,8 +20,8 @@
  * - `"03[2]-1"` → component 1 of repetition 2 of element 3.
  *
  * The parser deliberately does NOT support cross-segment paths at this
- * phase - `Segment.get` operates inside a single segment. Cross-loop
- * traversal arrives with `defineLoopSpec` in Phase 3+ (which authors the
+ * level - `Segment.get` operates inside a single segment. Cross-loop
+ * traversal arrives with `defineLoopSpec` (which authors the
  * built-in transaction loops through the same public API as consumers -
  * the dogfooding gate).
  */

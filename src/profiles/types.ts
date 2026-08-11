@@ -1,5 +1,5 @@
 /**
- * Type definitions for the `@cosyte/x12` profile subsystem (Phase 9).
+ * Type definitions for the `@cosyte/x12` profile subsystem.
  *
  * A profile captures **trading-partner / companion-guide deviations** as
  * typed, documented, fixture-grounded data - never silent leniency. It

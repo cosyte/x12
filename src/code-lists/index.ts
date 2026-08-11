@@ -4,7 +4,7 @@
  * `codes` map) and pairs with a typed `lookup*` helper.
  *
  * Pre-launch v0.0.x policy: snapshots ship as **initial subsets** sized
- * to the parser's Tier-1 + Tier-2 fixtures. The Phase 10 `pnpm
+ * to the parser's Tier-1 + Tier-2 fixtures. The `pnpm
  * refresh:code-lists` script will regen the full WPC-published lists for
  * the first real publish.
  */

@@ -11,8 +11,8 @@
  *
  * ## Every caller value in a refusal here is bounded
  *
- * `X12-BUILDER-BOUNDS` closed this hole on the `build*` side and filed it open
- * here; `X12-CALLER-VALUE-RESIDUALS` closed it. Measured on this tree before the
+ * An earlier release closed this hole on the `build*` side and filed it open
+ * here; a later one closed it. Measured on this tree before the
  * fix, the worst `X12ProfileError.message` was **360,181 characters**, at the
  * `fixture` refusal, which names THREE caller values (the profile name, the
  * quirk id, and the `JSON.stringify`d fixture path); the `effect` and
@@ -60,7 +60,7 @@ const KNOWN_EFFECTS: readonly string[] = ["relaxes", "adds", "requires"];
  * bytes.
  *
  * **This pattern carries NO length bound, and the comment here claimed "2-64
- * chars" until `X12-CALLER-VALUE-RESIDUALS` measured it.** A one-character id
+ * chars" until a later release measured it.** A one-character id
  * is accepted and so is a 120,000-character one; a 120,000-digit id was in fact
  * the path to the largest `X12ProfileError` message on the tree. The grammar was
  * deliberately left alone - tightening it would reject profiles that define
