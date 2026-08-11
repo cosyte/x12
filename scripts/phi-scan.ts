@@ -617,6 +617,16 @@ function isUnderScanRoot(relPath: string): boolean {
 }
 
 /**
+ * The walk roots' own repo-relative paths. AN INDEX ENTRY AT EXACTLY ONE OF
+ * THESE IS THE ROOT, NOT A FILE UNDER IT, and every index-side rule exempts it
+ * for the reason `reconcileObserved` sets out at length: the walk enumerates
+ * `<root>/<name>` and never `<root>`, so such an entry can never be something
+ * the walk observed, and a root that is a TRACKED symbolic link to a directory
+ * is a documented SUPERSET scan rather than a blind one.
+ */
+const ROOT_RELS: ReadonlySet<string> = new Set(WALK_ROOTS.map((r) => r.rel));
+
+/**
  * AXIS 2, THE READ HALF OF SCOPE FOR THE TWO SWEEPING ROUTES (the walk, and the
  * index union it is a union with). Markdown is documentation, not fixture data,
  * and may legitimately describe a violator value.
@@ -834,10 +844,9 @@ function gitTrackedUnderRoots(): string[] {
  * path set and selects `paths` mode), so an excused path is not a case here.
  */
 function reconcileObserved(observed: Set<string>, ignored: Set<string>): void {
-  const rootRels = new Set(WALK_ROOTS.map((r) => r.rel));
   const unopened = gitTrackedUnderRoots().filter(
     (p) =>
-      !observed.has(p) && !ignored.has(p) && !rootRels.has(p) && !p.toLowerCase().endsWith(".md"),
+      !observed.has(p) && !ignored.has(p) && !ROOT_RELS.has(p) && !p.toLowerCase().endsWith(".md"),
   );
   if (unopened.length === 0) return;
   const lines = unopened.map((p) => `  - ${p}`).join("\n");
@@ -1024,10 +1033,19 @@ function gitIndexEntries(): { entries: Map<string, IndexEntry>; unmerged: string
     if (stage === "0") entries.set(path, { mode, oid });
     else higherStages.add(path);
   }
-  // A path is unmerged when it has a record and none of them is stage 0. The
-  // set difference is TAKEN rather than the two being assumed disjoint:
-  // relying on that without saying so is how an assumption becomes a short list.
-  const unmerged = [...higherStages].filter((p) => !entries.has(p));
+  // 🛑 THE TWO HALVES ARE NOT COMPLEMENTS, AND ASSUMING THEY ARE IS HOW THIS
+  // REFUSAL GOES SILENT. The READ keys on the ABSENCE of stage 0, because only
+  // a stage-0 record supplies one set of bytes. The REFUSAL keys on the
+  // PRESENCE of ANY higher stage, and NO set difference is taken against
+  // `entries`, because a path can carry BOTH. Measured on git 2.39.5:
+  // `git update-index --index-info` adding stages 2 and 3 LEAVES STAGE 0 IN
+  // PLACE, so `git ls-files -s` returns all three records while
+  // `git diff --cached --raw` already reports that path as status `U`. Taking
+  // the difference would hand such a path's stage-0 blob to the union and call
+  // it the bytes git carries, over an index git itself will not let anyone
+  // commit. A conflict git wrote itself has no stage 0 and is caught either
+  // way; this shape is only caught by the wider half.
+  const unmerged = [...higherStages];
   if (entries.size === 0 && unmerged.length === 0) return null;
   return { entries, unmerged };
 }
@@ -1104,6 +1122,7 @@ function blobOid(algorithm: string, bytes: Buffer): string | null {
 function unionCandidatePaths(index: Map<string, IndexEntry>): string[] {
   return [...index]
     .filter(([p, e]) => REGULAR_BLOB_MODES.has(e.mode) && isUnderScanRoot(p) && isWalkReadable(p))
+    .filter(([p]) => !ROOT_RELS.has(p))
     .map(([p]) => p);
 }
 
@@ -1207,23 +1226,43 @@ function buildTargetsForAll(): { targets: Target[]; index: Map<string, IndexEntr
   // thing about `git show :<path>`; this one cannot, because it reads by object
   // id and there is no stage-0 entry to take an id from.
   refuseUnscannable(
-    listed.unmerged.filter(isUnderScanRoot).map((p) => ({ path: p, kind: "no stage-0 blob" })),
+    listed.unmerged
+      .filter((p) => isUnderScanRoot(p) && !ROOT_RELS.has(p))
+      .map((p) => ({ path: p, kind: "no stage-0 blob" })),
     "An unmerged path has no single merged blob, so there is no one set of bytes git carries " +
       "here for the sweep to read, only the conflicting sides and, where there is one, their base.",
     "Resolve the conflict and stage the result, then re-run.",
     { one: "in-scope index path is unmerged", many: "in-scope index paths are unmerged" },
   );
 
-  // The index's own non-blob entries, refused BEFORE anything is read so a
-  // developer is not made to wait out a whole sweep for it. Same rule and the
-  // same closed-set token as the `--staged` route: git carries a link's TARGET
-  // PATH rather than any content, and a gitlink carries another repository's
-  // commit id and no bytes at this path at all. Scoped to `isUnderScanRoot`,
-  // which is AXIS 2's business: a submodule outside the walk roots is none of
-  // this scan's.
+  // The index's own non-blob entries. Same rule and the same closed-set token
+  // as the `--staged` route: git carries a link's TARGET PATH rather than any
+  // content, and a gitlink carries another repository's commit id and no bytes
+  // at this path at all. Scoped to `isUnderScanRoot`, which is AXIS 2's
+  // business: a submodule outside the walk roots is none of this scan's.
+  //
+  // 🛑 IT IS A FAIL-CLOSED BACKSTOP AND IT CLOSES NO MEASURED HOLE IN THIS
+  // REPOSITORY. STATE THAT RATHER THAN INHERITING THE SIBLING'S CLAIM. Every
+  // cell it could own is already owned by an EARLIER and MORE SPECIFIC refusal
+  // here, measured on a throwaway repo laid out like this one: a tracked
+  // SYMBOLIC LINK under a root is refused by `refuseUnscannable` on the walk's
+  // own entries, and a tracked GITLINK is refused by `reconcileObserved`,
+  // whether its working tree is checked out or not (both exit 2, and both do so
+  // at base as well as at head). It is kept because it costs one filter and
+  // because those two refusals are the things that would have to stop firing
+  // for it to matter, not because it was seen to fire.
+  //
+  // A WALK ROOT'S OWN INDEX ENTRY IS EXEMPT, EXACTLY AS IN `reconcileObserved`,
+  // AND OMITTING THAT EXEMPTION COSTS A DOCUMENTED SCAN. Where a walk root is
+  // itself a TRACKED symbolic link to a directory, `git ls-files` returns the
+  // root's own path at mode 120000 while `existsSync` and `readdirSync` both
+  // follow it, so the walk enumerates the target's files under their `<root>/*`
+  // names and HITS over a PHI-bearing target (exit 1). Without the exemption
+  // this refusal fires on that same tree and trades a working superset scan for
+  // a refusal.
   refuseUnscannable(
     [...listed.entries]
-      .filter(([p, e]) => isUnderScanRoot(p) && !REGULAR_BLOB_MODES.has(e.mode))
+      .filter(([p, e]) => isUnderScanRoot(p) && !ROOT_RELS.has(p) && !REGULAR_BLOB_MODES.has(e.mode))
       .map(([p, e]) => ({ path: p, kind: gitModeKind(e.mode) })),
     "Git records no readable content at such a path, so scanning it would prove nothing about " +
       "what it stands for.",

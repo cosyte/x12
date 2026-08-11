@@ -344,13 +344,19 @@ describe("phi-scan: --allow-fixture override gate", () => {
     expect(r.stderr).toMatch(/phi-scan-overrides\.md/);
   });
 
-  it("honors --allow-fixture WITH an override-log entry (exit 0)", () => {
+  it("a LOGGED bypass is recorded and then REFUSED, never honored to exit 0", () => {
+    // WHAT THIS CASE ASSERTS CHANGED SIGN, AND THE OLD ASSERTION WAS THE
+    // DEFECT. It used to require exit 0 from a logged bypass. A bypass
+    // WITHDRAWS a file from the read set, and a scan that never opened a file
+    // has no clean verdict to give about it, so the only true answer left is
+    // that the scan is incomplete. The flag, the override log and the rejection
+    // gate above are all kept, so an attempt is RECORDED and then REFUSED
+    // rather than silently honored.
     const p = write("violator2.edi", interchange(OVERRIDE_VIOLATOR));
     const rel = relative(REPO_ROOT, p).split(sep).join("/");
 
     // The fixture is a genuine violator: scanned on its own (no override) it
-    // must trip. This proves the override - not an empty target set - is what
-    // flips the next run to clean.
+    // must trip. Without this the refusal below could be true of anything.
     expect(runScanner([p]).code).toBe(1);
 
     const original = readFileSync(OVERRIDES_PATH, "utf8");
@@ -359,11 +365,153 @@ describe("phi-scan: --allow-fixture override gate", () => {
         OVERRIDES_PATH,
         `\n### ${rel}\n\n- **Reason:** unit test\n- **Approved by:** vitest\n`,
       );
-      const r = runScanner(["--allow-fixture", p]);
-      expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+      const r = runScanner([p, "--allow-fixture", p]);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("were enumerated and never read");
+      expect(r.stderr).toContain(rel);
+      expect(r.stdout).not.toMatch(/OK - no hits/);
     } finally {
       writeFileSync(OVERRIDES_PATH, original);
     }
+  });
+
+  it("the hit footer no longer advertises the flag, because following it lands on exit 2", () => {
+    // A printed remedy that cannot reach the state it promises is the same
+    // defect as one that reaches a false green, with the sign flipped.
+    const p = write("violator3.edi", interchange(OVERRIDE_VIOLATOR));
+    const r = runScanner([p]);
+    expect(r.code).toBe(1);
+    expect(r.stderr).toContain("scripts/phi-allow-list.txt");
+    expect(r.stderr).toContain("recorded and then REFUSED");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE COMPLETENESS RULE: a target enumerated and never read REFUSES (exit 2).
+// ---------------------------------------------------------------------------
+
+describe("phi-scan: a target this run enumerated and never read REFUSES", () => {
+  /**
+   * A throwaway repo carrying a violator, a clean decoy, and an override log
+   * that admits BOTH. It is the shape `cosyte/config`'s drift probe drives, so
+   * the cases below are the same property that probe measures from outside.
+   */
+  function makeBypassRepo(): { root: string; violator: string; decoy: string } {
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "violator.edi"), SYNTHETIC_PHI);
+    writeFileSync(
+      join(root, "test", "fixtures", "decoy.edi"),
+      interchange("NM1*IL*1*TEST*PATIENT****MI*MEMBER001~"),
+    );
+    writeFileSync(
+      join(root, "phi-scan-overrides.md"),
+      "# PHI scan overrides\n\n## Entries\n\n" +
+        "### test/fixtures/decoy.edi\n\n- **Reason:** unit test\n\n" +
+        "### test/fixtures/violator.edi\n\n- **Reason:** unit test\n",
+    );
+    git(root, ["add", "-A"]);
+    commit(root, "base");
+    return { root, violator: "test/fixtures/violator.edi", decoy: "test/fixtures/decoy.edi" };
+  }
+
+  it("premise: the decoy is scannable and CLEAN on its own, so withdrawing it is the only change", () => {
+    const { root, violator, decoy } = makeBypassRepo();
+    expect(runIn(root, [decoy]).code, "decoy alone").toBe(0);
+    expect(runIn(root, [violator]).code, "violator alone").toBe(1);
+  });
+
+  it("names the withdrawn target and refuses (exit 2) even while a hit is reported", () => {
+    // THE HIT IS NOT SWALLOWED. A run that is both incomplete AND carrying hits
+    // prints both; the code is 2, because the incompleteness is the larger
+    // claim and the hits are already on stderr where a human reads them.
+    const { root, violator, decoy } = makeBypassRepo();
+    const r = runIn(root, [violator, decoy, "--allow-fixture", decoy]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("HIT:");
+    expect(r.stderr).toContain("were enumerated and never read");
+    expect(r.stderr).toContain(decoy);
+    expect(r.stdout).not.toMatch(/OK - no hits/);
+  });
+
+  it("refuses the shape whose ONLY violator is withdrawn, which used to report clean", () => {
+    // Measured on this scanner before the rule landed: `OK - no hits`, exit 0.
+    const { root, violator } = makeBypassRepo();
+    const r = runIn(root, [violator, "--allow-fixture", violator]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("were enumerated and never read");
+    expect(r.stdout).not.toMatch(/OK - no hits/);
+  });
+
+  it("a lone bypass no longer SELECTS the mode, so it cannot scan exactly what it withdraws", () => {
+    // The old seed read `paths.length > 0 ? paths : [...allowFixtures]`, so a
+    // bare `--allow-fixture X` selected `paths` mode over exactly `X`, withdrew
+    // it, and reported a clean whole run having opened nothing. It now leaves
+    // the run in `all` mode, where the sweep enumerates the tracked corpus and
+    // the withdrawal is a withdrawal of something real.
+    const { root, violator } = makeBypassRepo();
+    const r = runIn(root, ["--allow-fixture", violator]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("were enumerated and never read");
+    expect(r.stderr).toContain(violator);
+  });
+
+  it("a bypass that was a SILENT NO-OP beside a positional is now admitted, then refused", () => {
+    const { root, violator, decoy } = makeBypassRepo();
+    const r = runIn(root, [decoy, "--allow-fixture", violator]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("were enumerated and never read");
+    expect(r.stderr).toContain(violator);
+  });
+
+  it("refuses on the COMMIT-BLOCKING route too, where the bypass names nothing staged", () => {
+    // `--staged` enumerates the staged delta, so a bypass naming a path with no
+    // staged record subtracts nothing at all. That is the OTHER tier, and it
+    // fires before any target is read, so no hit exists for it to swallow.
+    const { root, violator } = makeBypassRepo();
+    const r = runIn(root, ["--staged", "--allow-fixture", violator]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("this run does not enumerate");
+    expect(r.stderr).toContain(violator);
+    expect(r.stdout).not.toMatch(/OK - no hits/);
+  });
+
+  it("and withdraws a genuinely STAGED target on that route, which is the other tier", () => {
+    const { root, violator } = makeBypassRepo();
+    writeFileSync(join(root, "test", "fixtures", "violator.edi"), SYNTHETIC_PHI + "\n");
+    git(root, ["add", violator]);
+    const r = runIn(root, ["--staged", "--allow-fixture", violator]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("were enumerated and never read");
+    expect(r.stderr).toContain(violator);
+  });
+
+  it("dedupes by repo-relative path, so `X --allow-fixture ./X` names one target", () => {
+    const { root, decoy } = makeBypassRepo();
+    const r = runIn(root, [decoy, "--allow-fixture", `./${decoy}`]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr.match(/test\/fixtures\/decoy\.edi/g)).toHaveLength(1);
+    expect(r.stderr).toContain("1 target(s) were enumerated");
+  });
+
+  it("does not fire on the read filters: a `.md` file the walk skips was never enumerated", () => {
+    // ENUMERATION IS THIS RUN'S OWN DECLARATION OF WHAT IT WILL READ. A path a
+    // read filter dropped upstream never became a target, so the rule is silent
+    // on it rather than refusing over the whole corpus.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "NOTES.md"), `an SSN like ${DASHED_SSN}\n`);
+    git(root, ["add", "-A"]);
+    commit(root, "base");
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK - no hits/);
+  });
+
+  it("a clean sweep still reaches exit 0: the rule is not a blanket refusal", () => {
+    const root = makeRepo();
+    commit(root, "base");
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK - no hits/);
   });
 });
 
@@ -428,6 +576,16 @@ const repos: string[] = [];
  * A throwaway git repo laid out the way the scanner expects: an allow-list under
  * `scripts/`, both walk roots (`test/fixtures` and `src`), and one ordinary file
  * in each so the walk has something legitimate to find.
+ *
+ * 🛑 THE BASELINE IS STAGED, AND THAT IS A PREMISE RATHER THAN TIDINESS. All
+ * mode now reads the bytes git carries as a union with the walk, and it REFUSES
+ * (exit 2) over an index git names EMPTY, because an empty index makes every
+ * tracked path untracked, which is the one state in which the union silently
+ * stops existing. `git init` alone leaves exactly that index, so nine cases in
+ * this file used to sweep a tree whose reconciliation was vacuous by
+ * construction. Staging costs nothing (a caller that wants a COMMITTED corpus
+ * still commits, and `git add` needs no identity) and it makes every case here
+ * a case about a repository the scanner will actually talk about.
  */
 function makeRepo(): string {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "x12-phi-scan-repo-")));
@@ -445,6 +603,7 @@ function makeRepo(): string {
     interchange("NM1*IL*1*TEST*PATIENT****MI*MEMBER001~"),
   );
   git(root, ["init", "-q", "."]);
+  git(root, ["add", "-A"]);
   return root;
 }
 
@@ -902,8 +1061,11 @@ describe("phi-scan: --staged is not blinded by diff.ignoreSubmodules", () => {
     commit(nested, "n");
     git(root, ["add", "test/fixtures/nested"]);
 
-    // The premise: the config really does erase the record from raw git.
-    expect(gitOut(root, ["diff", "--cached", "--raw"]).trim()).toBe("");
+    // The premise: the config really does erase THAT record from raw git. It is
+    // asserted over the gitlink's own path rather than over an empty output,
+    // because `makeRepo` now stages its baseline corpus (see the note there) so
+    // the staged delta is legitimately non-empty.
+    expect(gitOut(root, ["diff", "--cached", "--raw"])).not.toContain("test/fixtures/nested");
     expect(gitOut(root, ["diff", "--cached", "--raw", "--ignore-submodules=none"])).toContain(
       "test/fixtures/nested",
     );
@@ -2023,5 +2185,210 @@ describe("phi-scan: a DECLARED directory is a wider list than the walk roots", (
     const files = r.stderr.split("\n").filter((l) => l.startsWith("[phi-scan] HIT:"));
     expect(files.length, `stderr: ${r.stderr}`).toBe(1);
     expect(r.stderr).toMatch(/across 1 file/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE UNION: `all` mode reads the bytes git carries as well as the working tree.
+// ---------------------------------------------------------------------------
+
+describe("phi-scan: all mode reads the bytes git carries, as a union with the walk", () => {
+  /** A clean interchange of the same shape as the violator, for substitution. */
+  const CLEAN_INTERCHANGE = interchange("NM1*IL*1*TEST*PATIENT****MI*MEMBER001~");
+
+  it("finds a payload that lives ONLY in the index, and labels the locus (exit 1)", () => {
+    // 🔴 THE MEASURED FALSE CLEAN THIS CLOSES. The walk answers "what is on disk
+    // under the scan roots", which is not the question "what does this
+    // repository carry". Committed dirty, then scrubbed clean on disk, the
+    // sweep read the disk copy and printed `OK - no hits` at EXIT 0 over bytes
+    // a commit genuinely carries.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "violator.edi"), SYNTHETIC_PHI);
+    git(root, ["add", "-A"]);
+    commit(root, "base");
+
+    // Non-vacuity, both directions: while the payload is on disk it is a hit,
+    // and the file that replaces it is clean when it is the only copy.
+    expect(runIn(root, []).code, "premise: the payload is detectable").toBe(1);
+
+    writeFileSync(join(root, "test", "fixtures", "violator.edi"), CLEAN_INTERCHANGE);
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("RIVERA");
+    // THE LABEL IS ON THE REPORTED LOCUS. A hit naming the bare path sends a
+    // developer to open a file that is clean.
+    expect(r.stderr).toContain("test/fixtures/violator.edi (as git carries it)");
+    expect(r.stdout).not.toMatch(/OK - no hits/);
+  });
+
+  it("reads the STAGED blob too, not only a committed one", () => {
+    // Staged, then scrubbed in the working tree with nothing committed: the
+    // index is what a commit would carry, and `git ls-files -s` names it.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "violator.edi"), SYNTHETIC_PHI);
+    git(root, ["add", "-A"]);
+    writeFileSync(join(root, "test", "fixtures", "violator.edi"), CLEAN_INTERCHANGE);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("test/fixtures/violator.edi (as git carries it)");
+  });
+
+  it("scans BOTH copies where they differ, which is what makes the EOL axis correct", () => {
+    // The dedupe is BY CONTENT, so two differing copies are two reads rather
+    // than one standing in for the other. Asserted with a DIFFERENT payload in
+    // each copy, because that is the only way to see both reads happen: an EOL
+    // rewrite alone changes the bytes without changing what is detectable.
+    const root = makeRepo();
+    writeFileSync(
+      join(root, "test", "fixtures", "violator.edi"),
+      interchange(seg("NM1", "IL", "1", "RIVERA", "JUANITA")),
+    );
+    git(root, ["add", "-A"]);
+    commit(root, "base");
+    writeFileSync(
+      join(root, "test", "fixtures", "violator.edi"),
+      interchange(seg("NM1", "IL", "1", "OKONKWO", "ADAEZE")),
+    );
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr, "the working-tree copy").toContain("OKONKWO");
+    expect(r.stderr, "the copy git carries").toContain("RIVERA");
+    expect(r.stderr).toContain("test/fixtures/violator.edi (as git carries it)");
+  });
+
+  it("adds ZERO reads on a clean checkout: identical bytes are read once, not twice", () => {
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "violator.edi"), SYNTHETIC_PHI);
+    git(root, ["add", "-A"]);
+    commit(root, "base");
+
+    const r = runIn(root, []);
+    expect(r.code).toBe(1);
+    // One HIT group, not two. A path whose walked bytes hash to the index
+    // entry's own object id is skipped by the union.
+    const groups = r.stderr.split("\n").filter((l) => l.startsWith("[phi-scan] HIT:"));
+    expect(groups.length, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).not.toContain("as git carries it");
+    expect(r.stderr).toMatch(/across 1 file/);
+  });
+
+  it("refuses an in-scope path with NO stage-0 blob, which used to read clean (exit 2)", () => {
+    // 🔴 THE SECOND MEASURED FALSE CLEAN. An unmerged path is recorded at
+    // stages 1/2/3 with ORDINARY BLOB MODES, so the mode rule cannot see it,
+    // and the working tree carries whatever the merge left behind. With a CLEAN
+    // file on disk the sweep printed `OK - no hits` at EXIT 0 over a marker
+    // living only in stage 3. THE RULE IS THE ABSENCE OF STAGE 0, never the
+    // first record per path: taking the first would scan stage 1, THE MERGE
+    // BASE, and label it as the bytes git carries.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "conflict.edi"), CLEAN_INTERCHANGE);
+    git(root, ["add", "-A"]);
+    commit(root, "base");
+    stageUnmerged(root, "test/fixtures/conflict.edi", CLEAN_INTERCHANGE, SYNTHETIC_PHI);
+    // The working-tree copy is CLEAN and PRESENT, which is what separates this
+    // from the reconciliation's own case: the walk opens it and finds nothing.
+    writeFileSync(join(root, "test", "fixtures", "conflict.edi"), CLEAN_INTERCHANGE);
+
+    const staged = gitOut(root, ["ls-files", "--", "test/fixtures/conflict.edi"])
+      .split("\n")
+      .filter((l) => l.length > 0);
+    expect(staged.length, "premise: unmerged, so once per stage").toBeGreaterThan(1);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("unmerged");
+    expect(r.stderr).toContain("test/fixtures/conflict.edi");
+    // Named ONCE, not once per stage: the higher stages are collected as a set.
+    expect(r.stderr.match(/test\/fixtures\/conflict\.edi/g)).toHaveLength(1);
+    expect(r.stdout).not.toMatch(/OK - no hits/);
+    expectNoPhi(r.stderr);
+  });
+
+  it("refuses when git names the index EMPTY, because an empty answer is no answer", () => {
+    // An empty index would make every tracked path untracked, which is the one
+    // state in which the union silently stops existing. `git init` alone leaves
+    // exactly that index.
+    const root = realpathSync(mkdtempSync(join(tmpdir(), "x12-phi-scan-emptyidx-")));
+    repos.push(root);
+    mkdirSync(join(root, "scripts"));
+    mkdirSync(join(root, "src"));
+    mkdirSync(join(root, "test", "fixtures"), { recursive: true });
+    copyFileSync(
+      join(REPO_ROOT, "scripts", "phi-allow-list.txt"),
+      join(root, "scripts", "phi-allow-list.txt"),
+    );
+    writeFileSync(join(root, "src", "ordinary.ts"), "export const answer = 42;\n");
+    git(root, ["init", "-q", "."]);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("could not name this repository's index, or named it empty");
+    expect(r.stdout).not.toMatch(/OK - no hits/);
+  });
+
+  it("the walk still reaches an UNTRACKED file, which git cannot name at all", () => {
+    // The union is IN ADDITION TO the walk and never instead of it. Widening
+    // makes the sweep narrower, not worse.
+    const root = makeRepo();
+    commit(root, "base");
+    writeFileSync(join(root, "test", "fixtures", "untracked.edi"), SYNTHETIC_PHI);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("test/fixtures/untracked.edi");
+    expect(r.stderr).not.toContain("as git carries it");
+  });
+
+  it("a tracked path OUTSIDE the walk roots is not pulled in: the union does not re-scope", () => {
+    // AXIS 2 is a scope decision and the union is not the place to make it. The
+    // union widens which BYTES are read at an in-scope path, never which PATHS
+    // are in scope, so this is a boundary and not a hole opened here.
+    const root = makeRepo();
+    writeFileSync(join(root, "outside.edi"), SYNTHETIC_PHI);
+    git(root, ["add", "-A"]);
+    commit(root, "base");
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK - no hits/);
+  });
+
+  it("the `.md` read filter is ONE boundary, shared by the walk and the union", () => {
+    // Giving the union a wider filter of its own would make all-mode's verdict
+    // depend on which copy of a file it happened to reach.
+    const root = makeRepo();
+    writeFileSync(join(root, "test", "fixtures", "NOTES.md"), SYNTHETIC_PHI);
+    git(root, ["add", "-A"]);
+    commit(root, "base");
+    writeFileSync(join(root, "test", "fixtures", "NOTES.md"), "clean\n");
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK - no hits/);
+  });
+
+  it("a walk root that is a TRACKED link to a directory is still the documented superset scan", () => {
+    // The index carries the ROOT'S OWN path at mode 120000. Without the
+    // root-path exemption the index rule would refuse over exactly the tree the
+    // walk scans as a superset, trading a working scan for a refusal.
+    const root = makeRepo();
+    mkdirSync(join(root, "elsewhere", "fixtures"), { recursive: true });
+    writeFileSync(join(root, "elsewhere", "violator.edi"), SYNTHETIC_PHI);
+    rmSync(join(root, "test"), { recursive: true });
+    symlinkSync("elsewhere", join(root, "test"));
+    git(root, ["add", "-A"]);
+    commit(root, "base");
+
+    expect(
+      gitOut(root, ["ls-files", "-s", "--", "test"]).trim().startsWith("120000"),
+      "premise: the index carries the root itself, at the link mode",
+    ).toBe(true);
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("RIVERA");
+    expect(r.stderr).not.toContain("not a regular blob");
   });
 });
