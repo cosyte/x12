@@ -83,13 +83,16 @@ REQUIRED_DIRECTORIES = WALK_ROOTS + [ { abs: <repo>/test/fixtures, rel: "test/fi
   roots had to stay disjoint or a nested root enumerated every file twice and reported every hit
   twice.
 
-**As data, that is one path set with a role per entry** (see §4 for the type):
+🩺 **THE `{ abs, rel }` PAIR IS NOT A PARAMETER AND MUST NOT BECOME ONE.** Both halves are process
+(`abs` feeds `statSync`/`readdirSync`, `rel` feeds the `git ls-files` pathspec and the refusal text),
+and `abs` is literally `join(REPO_ROOT, rel)` for all three entries. §4(a) has the derivation and the
+correction. **What is genuinely declarative is the repo-relative name plus a ROLE:**
 
 ```
 scanRoots = [
-  { rel: "test" },
-  { rel: "src" },
-  { rel: "test/fixtures", walk: false, require: true, shape: "directory" },
+  "test",
+  "src",
+  { rel: "test/fixtures", walk: false, require: true },
 ]
 ```
 
@@ -102,10 +105,42 @@ sweep or nobody could commit an edit to it again. 🛑 A CLASS predicate is forb
 **The read half is the shared Markdown exemption**, i.e. the engine's default: `exemptMarkdown =
 true`.
 
-**The boundary of this axis, stated because it is a scope decision and not a closure:** derived on
-this tree with two tools agreeing, **90 of 354 tracked paths are outside `test/` and `src/` and are
-read by NEITHER sweeping route.** Widening the sweep to the whole repository is a change that must be
-argued and measured on its own; this slice did not make it and does not propose it.
+**The boundary of this axis, stated because it is a scope decision and not a closure.** Derive it,
+never quote it, and the derivation is `git ls-files -z` split on NUL:
+
+```
+git ls-files -z | python3 -c "import sys; ps=[p for p in sys.stdin.buffer.read().split(b'\0') if p]; \
+  out=[p for p in ps if not (p.startswith(b'test/') or p.startswith(b'src/'))]; \
+  print(len(ps), len(out), sum(1 for p in out if p.lower().endswith(b'.md')))"
+```
+
+At this commit: **355 tracked, 91 outside `test/` and `src/`, of which 59 are `.md`** (exempt on the
+walk even under a widened root) **and 32 are not.**
+
+🩺 **THAT FIGURE MOVED WHILE THIS FILE WAS BEING WRITTEN, AND THE MOVE IS THE LESSON.** A first
+reading of `355/91` was `354/90`, taken before this document was committed: **this file is itself a
+tracked `.md` outside the roots, so it incremented both.** Two tools agreed on the wrong-by-then
+figure, and what caught it was the split not summing (59 + 32 against a recorded 90). **Two agreeing
+tools do not make a number current. Re-derive it.**
+
+**Would widening to `scanRoots: ["."]` be right for x12? MEASURED, AND NO.** Two siblings widened to
+`["."]` and recommend it; `cli` measured that it breaks that repo. **It breaks x12 too, for a
+different reason than `cli`'s, so neither recommendation was copied.** Driven on the real x12 tree
+with the head scanner and `SCAN_ROOTS` set to `["."]`:
+
+```
+[phi-scan] HIT: package.json
+  segment=(email) value="hello@cosyte.com" (email with non-test domain)
+[phi-scan] 1 hit(s) across 1 file(s).                                    exit 1
+```
+
+`package.json`'s author address is a real address of a real organisation. The only remedies are to
+declare `EMAILDOMAIN cosyte.com`, which clears our own domain on EVERY route including the
+commit-blocking one and so weakens the email floor for actual fixtures, or to exclude
+`package.json` by literal path, which buys a file the scan then has no verdict about. **Neither is
+free, so narrow roots are load-bearing here and the widening is not proposed.** Bound the claim: this
+says nothing about the other 31 non-`.md` paths outside the roots, which this run read and raised
+nothing on; it is one run over one tree, not a clearance for them.
 
 ### AXIS 3: `--staged` scope
 
@@ -126,10 +161,11 @@ Two properties, both load-bearing:
 ### AXIS 4: gitlinks
 
 `regularBlobModes` is the engine's default of git's two regular-blob modes. **Re-derived on this
-tree** rather than assumed: `git ls-files -s` returns `100644` (352 records) and `100755` (2
-records) and nothing else, agreeing across `cut -c1-6` and `awk '{print $1}'`, totalling the 354
-tracked paths. **No gitlink and no tracked symbolic link exist here today. That is the state the rule
-exists FOR, not a reason to drop it.**
+tree** rather than assumed: `git ls-files -s` returns `100644` (353 records) and `100755` (2
+records) and nothing else, agreeing across `cut -c1-6` and `awk '{print $1}'`, and summing to the 355
+tracked paths above. **No gitlink and no tracked symbolic link exist here today. That is the state
+the rule exists FOR, not a reason to drop it**, and see §4(b), where the one measured regression of
+this adoption is precisely a gitlink refusal.
 
 ### AXIS 5: EOL normalization
 
@@ -180,60 +216,75 @@ verdicts are non-zero and neither is a false clean**, and the two are not the sa
 
 ## 4. What the engine must parameterize
 
-### (a) `scanRoots` must take a ROOT RECORD, not a `string[]`
+### (a) `scanRoots` needs ONE addition, and it is NOT the `{ abs, rel }` pair
 
-**The engine's current parameter is `readonly string[]`, and its own docblock argues for deriving a
-root's kind from the filesystem rather than declaring it.** That argument is sound for `dicom`'s
-`{ rel, shape }` and it does not reach `x12`, because **x12's second list is not a kind declaration,
-it is a ROLE declaration**: `test/fixtures` must be a directory and must NOT be walked. No spelling
-of `string[]` expresses "require this, do not walk it".
+🩺 **A DRAFT OF THIS SECTION WAS WRONG AND IS CUT BACK RATHER THAN REWORDED.** It proposed a root
+record carrying BOTH `abs` and `rel`, and a rule that the engine check the two for agreement. **The
+`cli` worker measured that the pair was never a parameter at all, and the same decomposition
+reproduces here exactly.** Every use of each half in `origin/main`, derived by search rather than by
+reading:
 
-Minimal parameter:
+| half   | every use in `origin/main`                                                       | what it is                     |
+| ------ | -------------------------------------------------------------------------------- | ------------------------------ |
+| `.abs` | `rootProblem(r.abs)` (a `statSync`), `walk(root.abs, ...)` (feeds `readdirSync`) | **process**                    |
+| `.rel` | the `git ls-files` pathspec, the refusal text, the root-exemption set            | **process, plus a diagnostic** |
+
+And `abs` carries no information `rel` does not: all three entries are literally
+`join(REPO_ROOT, <rel>)` (`TEST_ROOT`, `SRC_ROOT`, `join(TEST_ROOT, "fixtures")`). **So x12's
+`{ abs, rel }` is a PROCESS pair, not a declaration. The declarative form is the repo-relative names
+alone, `scanRoots: readonly string[]` already accepts them, and no adapter is needed or wanted.**
+This also RETIRES the "flattener" classification the item predicted for x12: there is nothing to
+flatten, because there was never a second parameter.
+
+**What survives, and it is one thing:** x12's SECOND list is a ROLE declaration that no `string[]`
+expresses. `test/fixtures` must EXIST AND BE A DIRECTORY and must NOT be walked. This repo's
+`CLAUDE.md` records the measurement behind it: _"`REQUIRED_DIRECTORIES` IS NOT `WALK_ROOTS`; NEVER
+FOLD IT BACK IN ... folding them cost a grid cell."_
+
+Minimal addition, and deliberately the smallest one that expresses it:
 
 ```ts
 type ScanRootSpec =
-  | string                       // "test"  -- the plain rel spelling (cli, astm, transform, deid, fhir)
+  | string                   // "test" -- unchanged, and what every repo should write
   | {
-      rel?: string;              // repo-relative; derived from `abs` when absent
-      abs?: string;              // absolute;     derived from `rel` + repoRoot when absent
-      shape?: "directory" | "file";  // ASSERTED kind. default: derived from the filesystem
-      walk?: boolean;            // enumerate under it.        default true
-      require?: boolean;         // must EXIST and match shape. default FALSE
+      rel: string;           // repo-relative. THE ONLY path spelling. There is no `abs`.
+      walk?: boolean;        // enumerate under it.         default true
+      require?: boolean;     // must EXIST and be a directory. default FALSE
     };
 
 scanRoots: readonly ScanRootSpec[];   // still REQUIRED, still no default
 ```
 
-Every one of the spellings this campaign has met is then an instance of one declared type, with no
-adapter in any repo:
+x12 then declares, as data:
 
-| repo                                       | spelling            | as `ScanRootSpec`                        |
-| ------------------------------------------ | ------------------- | ---------------------------------------- |
-| `cli`, `astm`, `transform`, `deid`, `fhir` | plain `rel` string  | unchanged                                |
-| `x12`                                      | `{ abs, rel }[]`    | unchanged, `abs` and `rel` both accepted |
-| `dicom`                                    | `{ rel, shape }[]`  | unchanged                                |
-| `x12`'s second list                        | a require-only path | `{ rel, walk: false, require: true }`    |
+```
+scanRoots = ["test", "src", { rel: "test/fixtures", walk: false, require: true }]
+```
 
-**Requirements on the implementation, each grounded:**
+**Two requirements, each grounded:**
 
-1. **`abs` and `rel` given together must be CHECKED for agreement, never trusted.** They are two
-   spellings of one path and a repo that edits one and not the other has a root that walks one tree
-   and scopes another. Refuse on disagreement; that is a `TypeError` at configuration time, not a
-   scan result.
-2. **`walk: false` must still put the path IN SCOPE for the index-keyed rules**, or it is not a root
+1. **`walk: false` must still put the path IN SCOPE for the index-keyed rules**, or it is not a root
    at all. `require` and scope are different questions from enumeration.
-3. **A nested walked root must not double-report.** `test/fixtures` inside `test` is exactly this
-   shape, and it is the reason x12 keeps two lists. **The engine's BFS already carries a shared
-   `visited` set seeded with every root directory, so a nested root is skipped on descent** and the
-   disjointness constraint x12 works around no longer exists. Say so in the parameter's docblock, or
-   the next repo will keep two lists for a reason that has gone away.
-4. **`require: true` must refuse (the caller's `refuse` code) when the path is absent or is not
-   `shape`.** Today a missing root is SKIPPED IN SILENCE, which is the state x12's
+2. **`require: true` must refuse with the caller's `refuse` code when the path is absent or is not a
+   directory.** Today a missing root is SKIPPED IN SILENCE, which is the state
    `REQUIRED_DIRECTORIES` was built against. **Be exact about how much x12 still needs it:** the
    union already covers the state it was built FOR (an emptied or deleted `test/fixtures` whose
    corpus is tracked is exit 1 at head, not a clean run), so what `require` buys x12 today is the
    narrower case of a declared directory that is missing AND has nothing tracked under it. It is a
    weak need, it is x12's only use of the role, and it is offered as data rather than argued for.
+
+**And the disjointness constraint that forced two lists is GONE, MEASURED HERE rather than read off
+the engine's source.** A draft of this section asserted it from the `visited` set; x12's own
+`CLAUDE.md` says folding the lists cost a grid cell, so it was driven instead. Same repo, same
+committed violator under `test/fixtures`, two configurations of the head scanner:
+
+| `scanRoots`                                     | exit | reported                    |
+| ----------------------------------------------- | ---- | --------------------------- |
+| `["test", "src"]` (as declared)                 | 1    | `2 hit(s) across 1 file(s)` |
+| `["test", "test/fixtures", "src"]` (**nested**) | 1    | `2 hit(s) across 1 file(s)` |
+
+**No double-report.** Say that in the parameter's docblock, or the next repo will keep two lists for
+a reason that has gone away.
 
 ### (b) `--ignore-submodules=none` must be pinned in the engine's `--staged` argv
 
@@ -368,9 +419,17 @@ file's own controls are assembled rather than literal. Those pass today.
 ## 7. Status
 
 - The adoption on this branch **works** and the whole grid above was driven on it. The engine's
-  current surface takes x12 today with **one adapter-free flattening** of the `{ abs, rel }` pairs to
-  the plain spelling, which the second amendment forbids, and **one measured regression** (the
-  gitlink, §4b).
+  current surface takes x12's WALK roots today with no adapter at all, because the `{ abs, rel }`
+  pair was never a parameter (§4a). What it does NOT take is the second list's ROLE
+  (`walk: false, require: true`), and it carries **one measured regression** (the gitlink, §4b) plus
+  **three detector kinds it cannot express** (§4c).
 - **BLOCKED on the engine.** Not merged, no PR, no changeset, no `CHANGELOG.md` entry.
+- **MEASUREMENT PROVENANCE.** Every figure in this file was re-run from repo-namespaced scripts
+  under `scratchpad/x12-only/` (`x12-grid.mjs`, `x12-probe.mjs`, `x12-gitlink.mjs`,
+  `x12-nested.mjs`, `x12-base-scanner.ts`) after a fleet warning that the shared scratchpad was
+  clobbering generically-named files between workers. The first pass used generic names
+  (`drive.mjs`, `probe.mjs`); **every result reproduced identically on the namespaced re-run**, and
+  the scripts were provenance-checked for x12-specific content (this repo's ISA, its `REF*SY`
+  payload, `/workspace/x12`) before being trusted.
 - **`X12-837-RESIDUALS` was not touched.** Nothing in this slice opens or closes any of X-R3 to
   X-R22.
