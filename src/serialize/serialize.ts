@@ -52,16 +52,18 @@
  *   produce no warning at all, so the warning stream is not a reliable signal
  *   that a round trip will be byte-exact - only case 4 warns.
  *
- *   What IS measured, across the 56 committed fixtures: all 56 emits are fixed
- *   points (serializing again is a byte-level no-op), all 56 re-parse to an
- *   identical model with an identical warning stream, the 14 fixtures carrying
- *   no line breaks return byte-identical, and the 42 that are pretty-printed
- *   differ from their source by line breaks and nothing else. Two caveats on
+ *   What IS measured, across every committed fixture: each emit is a fixed
+ *   point (serializing again is a byte-level no-op), each re-parses to an
+ *   identical model with an identical warning stream, the fixtures carrying
+ *   no line breaks return byte-identical, and the pretty-printed ones
+ *   differ from their source by line breaks and nothing else. No corpus size
+ *   is quoted here, because it moves with every fixture added and the suite
+ *   re-derives the sweep from the tree. Two caveats on
  *   that corpus: it contains no instance of cases 2 to 6 and no orphan at all,
- *   and 13 of the 14 byte-identical fixtures are `golden/*.edi`, which are
- *   serializer output by construction, so `envelope/no-trailing-crlf.edi` is
- *   the only independent witness. `test/serialize.test.ts` covers the corpus
- *   sweep, the orphan round trip, and cases 1 to 6 separately.
+ *   and all but one of the byte-identical fixtures are `golden/*.edi`, which
+ *   are serializer output by construction, so `envelope/no-trailing-crlf.edi`
+ *   is the only independent witness. `test/serialize.test.ts` covers the
+ *   corpus sweep, the orphan round trip, and cases 1 to 6 separately.
  *
  * - **Spec-clean (`{ specClean: true }`).** Same byte-faithful structure, but
  *   the serializer ALSO reconciles the envelope counts and control numbers.

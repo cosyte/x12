@@ -94,7 +94,7 @@ export const WARNING_CODES = {
   X12_AMOUNT_ROW_DROPPED: "X12_AMOUNT_ROW_DROPPED",
   X12_STATED_AMOUNT_DISCARDED: "X12_STATED_AMOUNT_DISCARDED",
   X12_270_NON_CONVENTIONAL_DELIMITER: "X12_270_NON_CONVENTIONAL_DELIMITER",
-  X12_270_INTER_SEGMENT_WHITESPACE: "X12_270_INTER_SEGMENT_WHITESPACE",
+  X12_270_INTER_SEGMENT_LINE_BREAK: "X12_270_INTER_SEGMENT_LINE_BREAK",
   X12_270_DUPLICATE_HIERARCHY_ID: "X12_270_DUPLICATE_HIERARCHY_ID",
   X12_270_HIERARCHY_CYCLE: "X12_270_HIERARCHY_CYCLE",
   X12_270_LEVEL_DETACHED: "X12_270_LEVEL_DETACHED",
@@ -389,8 +389,8 @@ const WARNING_MESSAGES = {
     "Amount row dropped from the typed model: the AMT or ADX at `position.segmentIndex` carried no decodable amount (AMT-02, ADX-01), so NO row was built for it and the rest of the segment went with it - its qualifier or adjustment reason code, and any reference qualifier and id. Nothing is fabricated to stand in: a row is not built around a zero this library did not read, which is why the loss is reported rather than papered over. Two routes reach it and this code does not say which: the amount element was ABSENT, or it was present and held bytes that do not decode as a decimal. On this segment only the second route also raises `X12_UNPARSEABLE_DECIMAL`, carrying the failing element in its own `position.elementIndex`, so whether one is present at this `position.segmentIndex` is what separates them - and that code is unchanged by this one, which is raised alongside it rather than in place of it. Read the bound literally: this reports a row whose AMOUNT was read and decoded no value, and it is NOT a general report that an amount segment reached no model. A segment a reader discards before reading its amount is not on this channel, and neither is one whose amount decoded and then found no claim, service line, coverage or remittance open to attach the row to. An 820 RMR is not on it either, for its own reason: that row is dropped on open-item IDENTITY, RMR-01 and RMR-02 both empty, before the amount is read at all, so an RMR that states an open item and no amount keeps its row with amountPaid undefined while one that states an amount and no open item is dropped whole. That second case is a separate loss, and so is an 837 AMT that decoded while a Loop 2430 adjudication was open; `X12_STATED_AMOUNT_DISCARDED` reports both, and this code reports neither. The two can never name the same segment, because this one requires an amount element that decoded no value and that one requires the opposite. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such amount.",
   X12_270_NON_CONVENTIONAL_DELIMITER:
     "This interchange declares at least one delimiter other than the conventional one, and the 270 reader TOLERATED it: the declared set is what the shared interchange parse framed the document with, this reader took that set rather than assuming one, and NOTHING about the typed inquiry model changes because of it. So two 270s differing only in their declared delimiters decode to equal models. Nothing is echoed here, not the byte and not which role declared it: `isa.raw` carries all 106 bytes verbatim and, with the ISA fixed widths, is the route back. Read the bound literally. It is raised ONCE per 270 transaction set, whatever number of the four roles deviate, and it is raised on the 270 path ONLY: it reports what this reader tolerated on this transaction set and asserts nothing about how any other transaction set reads, nor that the declared set is unusual for the sender's trading partner.",
-  X12_270_INTER_SEGMENT_WHITESPACE:
-    "Whitespace or a line break sits between segments of this interchange, and the 270 reader TOLERATED it: the shared interchange parse consumes such a run before the next segment opens, so it is part of no element and of no value the typed inquiry model exposes, and two 270s differing only in inter-segment whitespace decode to equal models. What was consumed is recorded nowhere on the model, so `serializeX12` does not reproduce it and the emit is not byte-identical to a pretty-printed source; that is long-standing behaviour, unchanged here, and recorded in KNOWN-LIMITATIONS.md. Read the bound literally. It is raised ONCE per 270 transaction set however many runs the document carries, it is anchored at the ISA because the framing is a property of the document rather than of one segment, and it is raised on the 270 path ONLY.",
+  X12_270_INTER_SEGMENT_LINE_BREAK:
+    "A run of CR or LF bytes sits between segments of this interchange, and the 270 reader TOLERATED it: the shared interchange parse consumes such a run before the next segment opens, so it is part of no element and of no value the typed inquiry model exposes, and two 270s differing only in inter-segment line breaks decode to equal models. What was consumed is recorded nowhere on the model, so `serializeX12` does not reproduce it and the emit is not byte-identical to a pretty-printed source; that is long-standing behaviour, unchanged here, and recorded in KNOWN-LIMITATIONS.md. Read the bound literally, and read it as CR and LF and NOTHING ELSE. Whitespace that is not CR or LF, a space or a tab between segments, is not consumed by the shared interchange parse at all: it becomes part of the next segment's identifier, the functional group never frames, and no 270 is found to report anything about. That is the shared parse's long-standing behaviour, it is unchanged here, and it is recorded in KNOWN-LIMITATIONS.md rather than widened by this reader. This code is raised ONCE per 270 transaction set however many runs the document carries, it is anchored at the ISA because the framing is a property of the document rather than of one segment, and it is raised on the 270 path ONLY.",
   X12_270_DUPLICATE_HIERARCHY_ID:
     "Two hierarchical levels in this 270 were transmitted with the same HL-01. The one at `position.segmentIndex` is not the first to carry that identifier, and this reader NEVER re-numbers a hierarchy: both levels keep their declared HL-01 verbatim on the model. What the duplication decides is attachment, and the rule is fixed so that the same bytes always decode to the same model: a child naming that identifier in its HL-02 attaches to the FIRST level carrying it in transmitted order, and never to a later one. A later level carrying the identifier is therefore reachable in the hierarchy only if some other pointer reaches it, and where none does it is reported separately as detached. Which of them the sender meant is NOT decided here and is not derivable from the TR3: this reader cannot tell a re-used identifier from a mis-keyed one. The verbatim segments are preserved on the transaction set.",
   X12_270_HIERARCHY_CYCLE:
@@ -1507,11 +1507,18 @@ export function nonConventionalDelimiter(position: X12Position): X12ParseWarning
 }
 
 /**
- * Build an `X12_270_INTER_SEGMENT_WHITESPACE` warning. Raised by the 270
- * reader, once per 270 transaction set, where the document carries a run of
- * whitespace or line breaks between segments. Same scoping as
+ * Build an `X12_270_INTER_SEGMENT_LINE_BREAK` warning. Raised by the 270
+ * reader, once per 270 transaction set, where the document carries a run of CR
+ * or LF bytes between segments. Same scoping as
  * {@link nonConventionalDelimiter} and for the same reason: the shared parse
  * consumes such a run and is not changed here.
+ *
+ * **CR and LF and nothing else, which is why the name says line break rather
+ * than whitespace.** A space or a tab between segments is not consumed by the
+ * shared parse: it is taken as the head of the next segment's identifier, so
+ * the functional group never frames and there is no 270 to report on. Widening
+ * that is a change to the shared parse, which this reader deliberately does not
+ * make; the gap is recorded in `KNOWN-LIMITATIONS.md`.
  *
  * The run is observable in the BYTES and not on the model, so only the entry
  * point that receives the bytes can raise it. `position` is the ISA, because
@@ -1519,14 +1526,14 @@ export function nonConventionalDelimiter(position: X12Position): X12ParseWarning
  *
  * @example
  * ```ts
- * import { interSegmentWhitespace } from "@cosyte/x12";
- * const w = interSegmentWhitespace({ segmentIndex: 0, interchangeIndex: 0 });
+ * import { interSegmentLineBreak } from "@cosyte/x12";
+ * const w = interSegmentLineBreak({ segmentIndex: 0, interchangeIndex: 0 });
  * ```
  */
-export function interSegmentWhitespace(position: X12Position): X12ParseWarning {
+export function interSegmentLineBreak(position: X12Position): X12ParseWarning {
   return {
-    code: WARNING_CODES.X12_270_INTER_SEGMENT_WHITESPACE,
-    message: WARNING_MESSAGES.X12_270_INTER_SEGMENT_WHITESPACE,
+    code: WARNING_CODES.X12_270_INTER_SEGMENT_LINE_BREAK,
+    message: WARNING_MESSAGES.X12_270_INTER_SEGMENT_LINE_BREAK,
     position,
   };
 }

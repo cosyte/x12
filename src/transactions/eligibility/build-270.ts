@@ -55,10 +55,10 @@ import type {
 } from "./build-270-types.js";
 
 /**
- * Refuse with this module's typed error, for {@link requireCallerArray}. A
- * forged array-like where the HL spine expects a list makes the hierarchy
- * structurally impossible, so it reuses `X12_270_BUILD_INVALID_HIERARCHY`
- * rather than minting a code. @internal
+ * Refuse with this module's typed error, for {@link requireCallerArray} on a
+ * SPINE list. A forged array-like where the HL spine expects a list makes the
+ * hierarchy structurally impossible, so it reuses
+ * `X12_270_BUILD_INVALID_HIERARCHY` rather than minting a code. @internal
  */
 function refuseHierarchy(message: string): never {
   throw new Eligibility270BuildError(
@@ -70,13 +70,30 @@ function refuseHierarchy(message: string): never {
 /**
  * Refuse with this module's typed error, for {@link makeCallerEscaper} and for
  * every non-hierarchy precondition. A non-string element value is not a
- * hierarchy defect, so it takes `X12_270_BUILD_INVALID_SPEC`. @internal
+ * hierarchy defect, so it takes `X12_270_BUILD_INVALID_SPEC`, and so does a
+ * forged array-like in a LEAF list (traces, references, dates, address lines,
+ * service types, diagnosis pointers, procedure modifiers): none of those
+ * decides where a level hangs. @internal
  */
 function refuseSpec(message: string): never {
   throw new Eligibility270BuildError(
     ELIGIBILITY_270_BUILD_ERROR_CODES.X12_270_BUILD_INVALID_SPEC,
     message,
   );
+}
+
+/**
+ * Read a caller-supplied LEAF list through the package's array chokepoint.
+ *
+ * Every list this module iterates goes through {@link requireCallerArray}, at
+ * the point it is read and not in a separate pass, so a forged array-like draws
+ * the typed, code-tagged {@link Eligibility270BuildError} a consumer can branch
+ * on rather than the untyped `TypeError` a bare `for…of` throws. `at` is a
+ * library-owned structural locator (`source[0].receiver[0].subscriber[0]`),
+ * never caller text and never a document value. @internal
+ */
+function leafList<T>(value: readonly T[] | null | undefined, at: string): readonly T[] {
+  return requireCallerArray(value, `build270: ${at}`, refuseSpec);
 }
 
 /** GS-08 / ST-03 version and release emitted for every 270 - the WPC TR3. @internal */
@@ -102,12 +119,20 @@ const HL_LEVEL = { SOURCE: "20", RECEIVER: "21", SUBSCRIBER: "22", DEPENDENT: "2
  *
  * Refused via {@link "./build-270-errors.js".Eligibility270BuildError}:
  * - No information sources, a source with no receivers, a receiver with no
- *   subscribers, or a list slot handed something that is not a list, gives
- *   `X12_270_BUILD_INVALID_HIERARCHY`.
+ *   subscribers, or a SPINE list slot (`informationSources`, `receivers`,
+ *   `subscribers`, `dependents`, `inquiries`, `serviceTypeCodes`) handed
+ *   something that is not a list, gives `X12_270_BUILD_INVALID_HIERARCHY`.
  * - A subscriber or dependent with no name loop, a subscriber with neither an
  *   inquiry nor a dependent, a dependent with no inquiry, an inquiry that asks
- *   nothing, an empty or over-long control number, or a non-string element
- *   value, gives `X12_270_BUILD_INVALID_SPEC`.
+ *   nothing, an empty or over-long control number, a non-string element value,
+ *   or a LEAF list slot (`traces`, `references`, `dates`, `address.lines`,
+ *   `diagnosisCodePointers`, `procedure.modifiers`) handed something that is
+ *   not a list, gives `X12_270_BUILD_INVALID_SPEC`.
+ *
+ * EVERY list slot on the spec is read through the package's array chokepoint,
+ * so a forged array-like draws one of those two typed refusals wherever it
+ * stands. That is deliberately stricter than the sibling builders, whose leaf
+ * lists throw an untyped `TypeError` a consumer cannot branch on.
  *
  * Every refusal message names structural indices and counts. None of them
  * names a member identifier, a member name, a patient name, a trace value or a
@@ -262,8 +287,13 @@ export function build270(spec: Build270Spec): X12Interchange {
 
   const body: string[] = [bht];
   const hlCounter: HlCounter = { next: 1 };
-  for (const source of spec.informationSources) {
-    emitSource(source, body, ctx, hlCounter);
+  const sources = requireCallerArray(
+    spec.informationSources,
+    "build270: spec.informationSources",
+    refuseHierarchy,
+  );
+  for (const [s, source] of sources.entries()) {
+    emitSource(source, body, ctx, hlCounter, `source[${String(s)}]`);
   }
 
   // ---- SE / GE / IEA ----------------------------------------------------
@@ -452,14 +482,22 @@ function emitSource(
   body: string[],
   ctx: EmitContext,
   counter: HlCounter,
+  locator: string,
 ): void {
   const hlId = String(counter.next);
   counter.next += 1;
   body.push(ctx.seg(["HL", hlId, "", HL_LEVEL.SOURCE, "1"]));
-  emitName(source.name, body, ctx);
-  for (const ref of source.references ?? []) body.push(emitRef(ref, ctx));
-  for (const receiver of source.receivers) {
-    emitReceiver(receiver, hlId, body, ctx, counter);
+  emitName(source.name, body, ctx, locator);
+  for (const ref of leafList(source.references, `${locator}.references`)) {
+    body.push(emitRef(ref, ctx));
+  }
+  const receivers = requireCallerArray(
+    source.receivers,
+    `build270: ${locator}.receivers`,
+    refuseHierarchy,
+  );
+  for (const [r, receiver] of receivers.entries()) {
+    emitReceiver(receiver, hlId, body, ctx, counter, `${locator}.receiver[${String(r)}]`);
   }
 }
 
@@ -470,14 +508,22 @@ function emitReceiver(
   body: string[],
   ctx: EmitContext,
   counter: HlCounter,
+  locator: string,
 ): void {
   const hlId = String(counter.next);
   counter.next += 1;
   body.push(ctx.seg(["HL", hlId, parentHlId, HL_LEVEL.RECEIVER, "1"]));
-  emitName(receiver.name, body, ctx);
-  for (const ref of receiver.references ?? []) body.push(emitRef(ref, ctx));
-  for (const subscriber of receiver.subscribers) {
-    emitSubscriber(subscriber, hlId, body, ctx, counter);
+  emitName(receiver.name, body, ctx, locator);
+  for (const ref of leafList(receiver.references, `${locator}.references`)) {
+    body.push(emitRef(ref, ctx));
+  }
+  const subscribers = requireCallerArray(
+    receiver.subscribers,
+    `build270: ${locator}.subscribers`,
+    refuseHierarchy,
+  );
+  for (const [u, subscriber] of subscribers.entries()) {
+    emitSubscriber(subscriber, hlId, body, ctx, counter, `${locator}.subscriber[${String(u)}]`);
   }
 }
 
@@ -488,21 +534,37 @@ function emitSubscriber(
   body: string[],
   ctx: EmitContext,
   counter: HlCounter,
+  locator: string,
 ): void {
   const hlId = String(counter.next);
   counter.next += 1;
-  const dependents = subscriber.dependents ?? [];
+  const dependents = requireCallerArray(
+    subscriber.dependents,
+    `build270: ${locator}.dependents`,
+    refuseHierarchy,
+  );
   const hasChild = dependents.length > 0 ? "1" : "0";
   body.push(ctx.seg(["HL", hlId, parentHlId, HL_LEVEL.SUBSCRIBER, hasChild]));
 
-  for (const trace of subscriber.traces ?? []) emitTrace(trace, body, ctx);
-  emitName(subscriber.name, body, ctx);
-  for (const ref of subscriber.references ?? []) body.push(emitRef(ref, ctx));
-  for (const date of subscriber.dates ?? []) emitDate(date, body, ctx);
-  for (const inquiry of subscriber.inquiries ?? []) emitInquiry(inquiry, body, ctx);
+  for (const trace of leafList(subscriber.traces, `${locator}.traces`)) {
+    emitTrace(trace, body, ctx);
+  }
+  emitName(subscriber.name, body, ctx, locator);
+  for (const ref of leafList(subscriber.references, `${locator}.references`)) {
+    body.push(emitRef(ref, ctx));
+  }
+  for (const date of leafList(subscriber.dates, `${locator}.dates`)) emitDate(date, body, ctx);
+  const inquiries = requireCallerArray(
+    subscriber.inquiries,
+    `build270: ${locator}.inquiries`,
+    refuseHierarchy,
+  );
+  for (const [q, inquiry] of inquiries.entries()) {
+    emitInquiry(inquiry, body, ctx, `${locator}.inquiry[${String(q)}]`);
+  }
 
-  for (const dependent of dependents) {
-    emitDependent(dependent, hlId, body, ctx, counter);
+  for (const [d, dependent] of dependents.entries()) {
+    emitDependent(dependent, hlId, body, ctx, counter, `${locator}.dependent[${String(d)}]`);
   }
 }
 
@@ -513,20 +575,32 @@ function emitDependent(
   body: string[],
   ctx: EmitContext,
   counter: HlCounter,
+  locator: string,
 ): void {
   const hlId = String(counter.next);
   counter.next += 1;
   body.push(ctx.seg(["HL", hlId, parentHlId, HL_LEVEL.DEPENDENT, "0"]));
 
-  for (const trace of dependent.traces ?? []) emitTrace(trace, body, ctx);
-  emitName(dependent.name, body, ctx);
-  for (const ref of dependent.references ?? []) body.push(emitRef(ref, ctx));
-  for (const date of dependent.dates ?? []) emitDate(date, body, ctx);
-  for (const inquiry of dependent.inquiries) emitInquiry(inquiry, body, ctx);
+  for (const trace of leafList(dependent.traces, `${locator}.traces`)) {
+    emitTrace(trace, body, ctx);
+  }
+  emitName(dependent.name, body, ctx, locator);
+  for (const ref of leafList(dependent.references, `${locator}.references`)) {
+    body.push(emitRef(ref, ctx));
+  }
+  for (const date of leafList(dependent.dates, `${locator}.dates`)) emitDate(date, body, ctx);
+  const inquiries = requireCallerArray(
+    dependent.inquiries,
+    `build270: ${locator}.inquiries`,
+    refuseHierarchy,
+  );
+  for (const [q, inquiry] of inquiries.entries()) {
+    emitInquiry(inquiry, body, ctx, `${locator}.inquiry[${String(q)}]`);
+  }
 }
 
 /** Emit an NM1 name loop, plus the N3 / N4 address and DMG demographics. @internal */
-function emitName(name: Build270NameSpec, body: string[], ctx: EmitContext): void {
+function emitName(name: Build270NameSpec, body: string[], ctx: EmitContext, locator: string): void {
   body.push(
     ctx.seg([
       "NM1",
@@ -541,7 +615,7 @@ function emitName(name: Build270NameSpec, body: string[], ctx: EmitContext): voi
       ctx.esc(name.idCode ?? ""),
     ]),
   );
-  if (name.address !== undefined) emitAddress(name.address, body, ctx);
+  if (name.address !== undefined) emitAddress(name.address, body, ctx, locator);
   if (name.dateOfBirth !== undefined || name.genderCode !== undefined) {
     body.push(
       ctx.seg(["DMG", "D8", ctx.esc(name.dateOfBirth ?? ""), ctx.esc(name.genderCode ?? "")]),
@@ -550,9 +624,15 @@ function emitName(name: Build270NameSpec, body: string[], ctx: EmitContext): voi
 }
 
 /** Emit N3 + N4 for an address block. @internal */
-function emitAddress(address: Build270AddressSpec, body: string[], ctx: EmitContext): void {
-  if (address.lines.length > 0) {
-    body.push(ctx.seg(["N3", ...address.lines.map(ctx.esc)]));
+function emitAddress(
+  address: Build270AddressSpec,
+  body: string[],
+  ctx: EmitContext,
+  locator: string,
+): void {
+  const lines = leafList(address.lines, `${locator}.name.address.lines`);
+  if (lines.length > 0) {
+    body.push(ctx.seg(["N3", ...lines.map(ctx.esc)]));
   }
   if (
     address.city !== undefined ||
@@ -579,8 +659,17 @@ function emitAddress(address: Build270AddressSpec, body: string[], ctx: EmitCont
  * formed, so a separator this library writes is never itself escaped.
  * @internal
  */
-function emitInquiry(inquiry: Build270InquirySpec, body: string[], ctx: EmitContext): void {
-  const serviceTypeElement = (inquiry.serviceTypeCodes ?? [])
+function emitInquiry(
+  inquiry: Build270InquirySpec,
+  body: string[],
+  ctx: EmitContext,
+  locator: string,
+): void {
+  const serviceTypeElement = requireCallerArray(
+    inquiry.serviceTypeCodes,
+    `build270: ${locator}.serviceTypeCodes`,
+    refuseHierarchy,
+  )
     .map((s) => ctx.esc(s.code))
     .join(ctx.repetitionSeparator);
   const procedure = inquiry.procedure;
@@ -590,12 +679,12 @@ function emitInquiry(inquiry: Build270InquirySpec, body: string[], ctx: EmitCont
       : trimComponents([
           ctx.esc(procedure.qualifier),
           ctx.esc(procedure.code ?? ""),
-          ...(procedure.modifiers ?? []).map(ctx.esc),
+          ...leafList(procedure.modifiers, `${locator}.procedure.modifiers`).map(ctx.esc),
           ctx.esc(procedure.description ?? ""),
         ]).join(ctx.componentSeparator);
-  const pointerElement = trimComponents((inquiry.diagnosisCodePointers ?? []).map(ctx.esc)).join(
-    ctx.componentSeparator,
-  );
+  const pointerElement = trimComponents(
+    leafList(inquiry.diagnosisCodePointers, `${locator}.diagnosisCodePointers`).map(ctx.esc),
+  ).join(ctx.componentSeparator);
 
   body.push(
     ctx.seg([
@@ -608,8 +697,10 @@ function emitInquiry(inquiry: Build270InquirySpec, body: string[], ctx: EmitCont
     ]),
   );
 
-  for (const ref of inquiry.references ?? []) body.push(emitRef(ref, ctx));
-  for (const date of inquiry.dates ?? []) emitDate(date, body, ctx);
+  for (const ref of leafList(inquiry.references, `${locator}.references`)) {
+    body.push(emitRef(ref, ctx));
+  }
+  for (const date of leafList(inquiry.dates, `${locator}.dates`)) emitDate(date, body, ctx);
 }
 
 /**

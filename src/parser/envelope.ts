@@ -136,9 +136,10 @@ function decodeIsa(raw: string, delimiters: Delimiters): IsaSegment {
  * round-trip byte-identically. Line breaks are not the only such thing (see
  * the `../serialize/serialize.ts` module header for the full list), but they
  * are the one this function is responsible for, and the only one that is
- * purely cosmetic: across the 56 committed fixtures the emit differs from a
+ * purely cosmetic: across every committed fixture the emit differs from a
  * pretty-printed source by line breaks and nothing else, and re-parses to an
- * identical model with an identical warning stream. See
+ * identical model with an identical warning stream. No corpus size is quoted
+ * here, because it moves with every fixture added. See
  * `docs-content/spec-notes-envelope.md` for the consumer-facing statement.
  *
  * @internal

@@ -39,11 +39,19 @@ token floor and are not name tokens to it. Every service and transaction date is
 
 ## Framing, which is load-bearing for two of these
 
-Every fixture is written as ONE line, so that the only file carrying whitespace
-between segments is the one whose whole purpose is to carry it. That is
-deliberate rather than a style choice: `X12_270_INTER_SEGMENT_WHITESPACE`
+Every fixture is written as ONE line, so that the only file carrying a line
+break between segments is the one whose whole purpose is to carry it. That is
+deliberate rather than a style choice: `X12_270_INTER_SEGMENT_LINE_BREAK`
 reports exactly this deviation, so a pretty-printed corpus would have made every
 fixture a quirky one and left the spec-clean baseline with no member.
+
+**No fixture carries a space or a tab between segments, and none can.** The
+shared interchange parse absorbs a run of CR or LF and nothing else, so a space
+there is read as the head of the next segment's identifier: the group never
+frames and the file would decode no 270 at all. That is the shared parse's
+behaviour and this work does not change it, so the corpus has no member for that
+shape and the boundary is asserted directly in
+`test/transactions-eligibility-270-tolerance.test.ts` instead.
 
 Both tolerance codes are raised **once per 270 transaction set**, not once per
 occurrence. That granularity is chosen here and held across BOTH deviation
@@ -60,7 +68,7 @@ delimiter set is declared and where the framing rules come from.
 | `270-minimal.edi` | spec-clean minimal: three levels, one EQ, nothing optional | no warning |
 | `270-dependent.edi` | a dependent under a subscriber, each with its own trace and its own EQ; the dependent's date is an `RD8` range | no warning |
 | `270-quirk-delimiters.edi` | the canonical, re-delimited: element `\|`, repetition `!`, component `>`, terminator `\` | `X12_270_NON_CONVENTIONAL_DELIMITER` |
-| `270-quirk-linebreaks.edi` | the canonical, with a line break after every segment terminator | `X12_270_INTER_SEGMENT_WHITESPACE` |
+| `270-quirk-linebreaks.edi` | the canonical, with a line break after every segment terminator | `X12_270_INTER_SEGMENT_LINE_BREAK` |
 | `270-missing-hierarchy.edi` | a transaction set carrying a BHT and no HL at all | `X12_MISSING_REQUIRED_LOOP` |
 | `270-dangling-parent.edi` | a subscriber whose HL-02 names a level the document does not carry | `X12_HL_PARENT_MISMATCH`, `X12_270_LEVEL_DETACHED` |
 | `270-no-inquiry.edi` | a subscriber level carrying no EQ | `X12_MISSING_REQUIRED_LOOP` |

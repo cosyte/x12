@@ -43,7 +43,7 @@ export {
   hierarchyCycle,
   hlParentLevelInvalid,
   hlParentMismatch,
-  interSegmentWhitespace,
+  interSegmentLineBreak,
   isaExtraElementSeparator,
   levelDetached,
   missingGe,

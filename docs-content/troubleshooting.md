@@ -160,12 +160,16 @@ matches the name you passed. Log `err.message`, not the whole error object.
 `readonly T[]`, but a JSON-driven caller can pass anything. As of `0.0.6` every indexed loop in every
 builder takes its bound from a checked array, so `{ length: "9".repeat(120000) }` draws that builder's
 own typed refusal - before this the length coerced to `Infinity` and the builder **looped forever
-instead of refusing** (measured across nineteen entry-point probes: 16 hung at base, 17 refuse
-cleanly now). A list you send as `null` is still treated as absent, exactly as before. The places a builder reads a
+instead of refusing** (measured over the entry-point probes the suite shipped at that base: most hung,
+and each of them refuses cleanly now). No probe count is quoted here; the suite re-derives it. A list
+you send as `null` is still treated as absent, exactly as before. The places a builder reads a
 caller array with `for…of` are not covered:
-`buildInterchange`'s `spec.groups`, `build999`'s `functionalGroup.transactionResponses` and every
-optional leaf array such as `claim.dates` throw `TypeError: … is not iterable`, which terminates but
+`buildInterchange`'s `spec.groups`, `build999`'s `functionalGroup.transactionResponses` and the
+optional leaf arrays such as `claim.dates` throw `TypeError: … is not iterable`, which terminates but
 carries **no `code`**. Validate the shape at your own boundary if the spec comes from JSON.
+`build270` is the exception: every list slot on its spec, spine and leaf alike, goes through the
+checked-array chokepoint, so a forged array-like anywhere in a 270 spec draws the typed
+`Eligibility270BuildError`.
 
 **A separate, long-standing hazard on the same JSON-caller path, FIXED in `0.0.9`: passing a builder a
 number where the types say string used to emit an EMPTY element, with no warning and no refusal.** On
@@ -324,10 +328,11 @@ third party.
   so reordered, though nothing is lost), and a segment whose first element is empty outside a
   transaction (skipped entirely, with no warning at all). The last five fire on inputs with no line
   breaks, so a compact file is not guaranteed to round-trip either, and five of the six are silent, so a clean
-  warnings list is not evidence of byte-exactness. Measured across the 56 committed fixtures: every emit is a fixed point
-  and re-parses to an identical model with an identical warning stream, the 14 with no line breaks
-  return byte-identical (13 of those are `golden/*.edi`, serializer output by construction), and the
-  other 42 differ by line breaks and nothing else. See
+  warnings list is not evidence of byte-exactness. Measured across every committed fixture: each emit is a fixed point
+  and re-parses to an identical model with an identical warning stream, the fixtures with no line
+  breaks return byte-identical (all but one of those are `golden/*.edi`, serializer output by
+  construction), and the rest differ by line breaks and nothing else. No corpus size is quoted: it
+  moves with every fixture added, and the suite re-derives the sweep from the tree. See
   [Line endings between segments](./spec-notes-envelope).
 - **A segment outside a transaction is retained and re-emitted, but never decoded.** The envelope
   walker binds body segments to an open ST..SE transaction. Anything else raises

@@ -511,55 +511,202 @@ describe("build270 - a forged array-like refuses instead of hanging", () => {
    * comparison, which is what turns a bounded loop into an unbounded one. Every
    * list slot the builder walks is read through `requireCallerArray` first, so
    * each of these refuses with a typed, code-tagged error instead.
+   *
+   * **The sweep is over EVERY list slot the spec types declare, not over the
+   * spine alone.** An earlier draft guarded the three slots that shape the HL
+   * hierarchy and left the leaf lists to throw an untyped `TypeError`, which
+   * terminates but carries no `code` for a JSON-driven caller to branch on.
+   * That is the sibling builders' behaviour, disclosed repo-wide in
+   * `KNOWN-LIMITATIONS.md`; it is not what this builder's own contract says,
+   * so this builder is deliberately stricter than its siblings and the sweep
+   * below is what holds it there. The last test is the exhaustiveness half: it
+   * reads the spec types and fails if a list slot is declared that no case
+   * plants a forged value in.
    */
   const FORGED = asJsCaller<never>({ length: "9".repeat(120_000) });
 
-  const CASES: readonly (readonly [string, () => unknown])[] = [
-    [
-      "spec.informationSources",
-      () => build270(asJsCaller({ ...CANONICAL_SPEC, informationSources: FORGED })),
-    ],
-    [
-      "informationSources[0].receivers",
-      () =>
-        build270(
-          asJsCaller({
-            ...CANONICAL_SPEC,
-            informationSources: [
-              { name: { entityIdentifierCode: "PR", entityTypeQualifier: "2" }, receivers: FORGED },
-            ],
-          }),
-        ),
-    ],
-    [
-      "receivers[0].subscribers",
-      () =>
-        build270(
-          asJsCaller({
-            ...CANONICAL_SPEC,
-            informationSources: [
+  /**
+   * A spec that POPULATES every list slot, so a path can be planted in each.
+   * Synthetic throughout, and the same shapes the rest of this file uses.
+   */
+  const EVERY_LIST_SPEC: Build270Spec = {
+    envelope: ENVELOPE,
+    header: { referenceId: "REQ-0001" },
+    informationSources: [
+      {
+        name: {
+          entityIdentifierCode: "PR",
+          entityTypeQualifier: "2",
+          lastNameOrOrganizationName: "MEDPAY INSURANCE",
+          address: { lines: ["1 PAYER PLZ"], city: "COLUMBUS", state: "OH" },
+        },
+        references: [{ qualifier: "6P", value: "GROUP0001" }],
+        receivers: [
+          {
+            name: {
+              entityIdentifierCode: "1P",
+              entityTypeQualifier: "2",
+              lastNameOrOrganizationName: "ANYTOWN CLINIC",
+              address: { lines: ["2 CLINIC WAY"], city: "COLUMBUS", state: "OH" },
+            },
+            references: [{ qualifier: "EO", value: "SUBMIT0001" }],
+            subscribers: [
               {
-                name: { entityIdentifierCode: "PR", entityTypeQualifier: "2" },
-                receivers: [
+                traces: [{ traceTypeCode: "1", referenceId: "ELIG20260601001" }],
+                name: {
+                  entityIdentifierCode: "IL",
+                  entityTypeQualifier: "1",
+                  lastNameOrOrganizationName: "DOE",
+                  firstName: "JANE",
+                  idQualifier: "MI",
+                  idCode: "MBR0001",
+                  address: { lines: ["100 MAIN ST"], city: "COLUMBUS", state: "OH" },
+                },
+                references: [{ qualifier: "18", value: "PLAN0001" }],
+                dates: [{ qualifier: "291", formatQualifier: "D8", value: "20260601" }],
+                inquiries: [
                   {
-                    name: { entityIdentifierCode: "1P", entityTypeQualifier: "2" },
-                    subscribers: FORGED,
+                    serviceTypeCodes: [{ code: "30" }],
+                    procedure: { qualifier: "HC", code: "99213", modifiers: ["25"] },
+                    diagnosisCodePointers: ["1"],
+                    references: [{ qualifier: "9F", value: "AUTH0001" }],
+                    dates: [{ qualifier: "472", formatQualifier: "D8", value: "20260601" }],
+                  },
+                ],
+                dependents: [
+                  {
+                    traces: [{ traceTypeCode: "1", referenceId: "ELIG20260601004" }],
+                    name: {
+                      entityIdentifierCode: "03",
+                      entityTypeQualifier: "1",
+                      lastNameOrOrganizationName: "DOE",
+                      firstName: "BABY",
+                      address: { lines: ["100 MAIN ST"], city: "COLUMBUS", state: "OH" },
+                    },
+                    references: [{ qualifier: "18", value: "PLAN0002" }],
+                    dates: [{ qualifier: "291", formatQualifier: "D8", value: "20260601" }],
+                    inquiries: [
+                      {
+                        serviceTypeCodes: [{ code: "35" }],
+                        procedure: { qualifier: "HC", code: "99213", modifiers: ["25"] },
+                        diagnosisCodePointers: ["1"],
+                        references: [{ qualifier: "9F", value: "AUTH0002" }],
+                        dates: [{ qualifier: "472", formatQualifier: "D8", value: "20260601" }],
+                      },
+                    ],
                   },
                 ],
               },
             ],
-          }),
-        ),
+          },
+        ],
+      },
     ],
+  };
+
+  /**
+   * Plant the forged array-like at one dot path of a deep clone. Refusing a
+   * path the spec above does not populate is the point: a case naming a slot
+   * that is not there would otherwise pass vacuously.
+   */
+  function plantForged(path: string): Build270Spec {
+    const root = structuredClone(EVERY_LIST_SPEC) as unknown as Record<string, unknown>;
+    const keys = path.split(".");
+    const last = keys[keys.length - 1] ?? "";
+    let node: Record<string, unknown> = root;
+    for (const key of keys.slice(0, -1)) {
+      const next = node[key];
+      if (next === null || typeof next !== "object") {
+        throw new Error(`the sweep spec has no ${path}: it stops at ${key}`);
+      }
+      node = next as Record<string, unknown>;
+    }
+    if (node[last] === undefined) throw new Error(`the sweep spec has no ${path}`);
+    node[last] = FORGED;
+    return root as unknown as Build270Spec;
+  }
+
+  const SUBSCRIBER = "informationSources.0.receivers.0.subscribers.0";
+  const DEPENDENT = `${SUBSCRIBER}.dependents.0`;
+
+  /** Lists that decide where a level hangs: a forged one is a hierarchy defect. */
+  const SPINE_SLOTS: readonly string[] = [
+    "informationSources",
+    "informationSources.0.receivers",
+    "informationSources.0.receivers.0.subscribers",
+    `${SUBSCRIBER}.inquiries`,
+    `${SUBSCRIBER}.inquiries.0.serviceTypeCodes`,
+    `${SUBSCRIBER}.dependents`,
+    `${DEPENDENT}.inquiries`,
+    `${DEPENDENT}.inquiries.0.serviceTypeCodes`,
   ];
 
-  it.each(CASES)("refuses %s", (_label, run) => {
-    const err = refusalOf(run);
+  /** Every other list: a forged one is a spec defect, not a hierarchy one. */
+  const LEAF_SLOTS: readonly string[] = [
+    "informationSources.0.references",
+    "informationSources.0.name.address.lines",
+    "informationSources.0.receivers.0.references",
+    "informationSources.0.receivers.0.name.address.lines",
+    `${SUBSCRIBER}.traces`,
+    `${SUBSCRIBER}.references`,
+    `${SUBSCRIBER}.dates`,
+    `${SUBSCRIBER}.name.address.lines`,
+    `${SUBSCRIBER}.inquiries.0.diagnosisCodePointers`,
+    `${SUBSCRIBER}.inquiries.0.procedure.modifiers`,
+    `${SUBSCRIBER}.inquiries.0.references`,
+    `${SUBSCRIBER}.inquiries.0.dates`,
+    `${DEPENDENT}.traces`,
+    `${DEPENDENT}.references`,
+    `${DEPENDENT}.dates`,
+    `${DEPENDENT}.name.address.lines`,
+    `${DEPENDENT}.inquiries.0.diagnosisCodePointers`,
+    `${DEPENDENT}.inquiries.0.procedure.modifiers`,
+    `${DEPENDENT}.inquiries.0.references`,
+    `${DEPENDENT}.inquiries.0.dates`,
+  ];
+
+  it("builds cleanly before anything is forged, so no case passes vacuously", () => {
+    expect(build270(EVERY_LIST_SPEC).warnings).toEqual([]);
+  });
+
+  it.each(SPINE_SLOTS)("refuses a forged %s with the hierarchy code", (path) => {
+    const err = refusalOf(() => build270(plantForged(path)));
     expect(err.code).toBe(ELIGIBILITY_270_BUILD_ERROR_CODES.X12_270_BUILD_INVALID_HIERARCHY);
     expect(err.message).toContain("must be an array");
     expect(err.message).toContain("(120000 characters)");
     expect(err.message).not.toContain("9".repeat(120_000));
     expect(err.message.length).toBeLessThan(400);
+  });
+
+  it.each(LEAF_SLOTS)("refuses a forged %s with the spec code", (path) => {
+    const err = refusalOf(() => build270(plantForged(path)));
+    expect(err.code).toBe(ELIGIBILITY_270_BUILD_ERROR_CODES.X12_270_BUILD_INVALID_SPEC);
+    expect(err.message).toContain("must be an array");
+    expect(err.message).toContain("(120000 characters)");
+    expect(err.message).not.toContain("9".repeat(120_000));
+    expect(err.message.length).toBeLessThan(400);
+  });
+
+  it("covers every list slot the spec types declare", () => {
+    // The exhaustiveness half, in the shape `builder-array-bounds.test.ts`
+    // uses: read the declarations rather than trust the table. A list added to
+    // `build-270-types.ts` that no case above plants a forged value in reds
+    // here, by name, without anyone remembering to extend the table.
+    const types = readFileSync(
+      join(__dirname, "..", "src", "transactions", "eligibility", "build-270-types.ts"),
+      "utf8",
+    ).replace(/\/\*[\s\S]*?\*\//gu, "");
+    const declared = new Set(
+      [...types.matchAll(/readonly ([A-Za-z0-9_]+)\??: readonly [A-Za-z0-9_]+\[\]/gu)].map(
+        (m) => m[1] ?? "",
+      ),
+    );
+    const swept = new Set(
+      [...SPINE_SLOTS, ...LEAF_SLOTS].map((p) => p.slice(p.lastIndexOf(".") + 1)),
+    );
+    expect(declared.size).toBeGreaterThan(0);
+    expect([...declared].filter((name) => !swept.has(name))).toEqual([]);
+    expect([...swept].filter((name) => !declared.has(name))).toEqual([]);
   });
 });
 

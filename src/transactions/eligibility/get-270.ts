@@ -22,16 +22,27 @@
  * The delimiters and the segment framing are the shared interchange parse's,
  * taken as given. This module adds no delimiter tolerance, narrows none, and
  * emits no warning from shared code: the two tolerances it REPORTS
- * (`X12_270_NON_CONVENTIONAL_DELIMITER`, `X12_270_INTER_SEGMENT_WHITESPACE`)
+ * (`X12_270_NON_CONVENTIONAL_DELIMITER`, `X12_270_INTER_SEGMENT_LINE_BREAK`)
  * are raised here, on the 270 path, precisely so that no fixture of any other
  * transaction set gains a warning it did not have. Both are raised once per
  * 270 transaction set and anchored at the ISA, because each is a property of
  * the document rather than of one segment.
  *
- * A run of whitespace between segments is consumed by the shared parse and
+ * A run of CR or LF between segments is consumed by the shared parse and
  * recorded nowhere on the model, so only {@link parse270Inquiries}, which
  * holds the bytes, can report it. {@link get270Inquiry} reports the delimiter
  * half, which it can see on the delimiter set it is handed.
+ *
+ * **The framing tolerance this reader reports is CR and LF and nothing else,
+ * because that is what the shared parse consumes.** A space or a tab between
+ * segments is not consumed: it becomes the head of the next segment's
+ * identifier, so the GS never frames, the interchange reports the loss on its
+ * own channel (`X12_UNEXPECTED_SEGMENT` per segment, and `X12_MISSING_IEA`),
+ * and no 270 is found - {@link parse270Inquiries} therefore answers the empty
+ * list. Widening that would be a change to the framing tolerance of the parse
+ * every transaction set shares, which this work deliberately does not make.
+ * The gap is recorded in `KNOWN-LIMITATIONS.md` and pinned by a test rather
+ * than papered over.
  *
  * ## How a level finds its parent
  *
@@ -78,7 +89,7 @@ import {
   REQUIRED_LOOPS,
   duplicateHierarchyId,
   hierarchyCycle,
-  interSegmentWhitespace,
+  interSegmentLineBreak,
   levelDetached,
   missingRequiredLoop,
   nonConventionalDelimiter,
@@ -170,10 +181,13 @@ export function get270Inquiry(
  * Two 270s are never merged into one model and the first is never returned in
  * place of the rest.
  *
- * This is also the entry point that reports inter-segment whitespace
- * (`X12_270_INTER_SEGMENT_WHITESPACE`): the shared parse consumes such a run
- * before the next segment opens, so it is visible in the bytes and nowhere on
- * the model, and {@link get270Inquiry} is handed the model.
+ * This is also the entry point that reports an inter-segment line break
+ * (`X12_270_INTER_SEGMENT_LINE_BREAK`): the shared parse consumes a run of CR
+ * or LF before the next segment opens, so it is visible in the bytes and
+ * nowhere on the model, and {@link get270Inquiry} is handed the model. A space
+ * or a tab between segments is a different case: the shared parse does not
+ * consume it, the group never frames, and this function answers the empty list
+ * with the loss reported on the interchange's own warning channel.
  *
  * A structural fatal from the shared parse (an input truncated before its ISA
  * is readable, say) is raised by that parse and passes through here
@@ -204,8 +218,8 @@ export function parse270Inquiries(
  * interchange rather than once per transaction set. @internal
  */
 function collectInquiries(interchange: X12Interchange, text: string): readonly X12Inquiry[] {
-  const framing: X12ParseWarning[] = hasInterSegmentWhitespace(text, interchange.delimiters)
-    ? [interSegmentWhitespace(ISA_POSITION)]
+  const framing: X12ParseWarning[] = hasInterSegmentLineBreak(text, interchange.delimiters)
+    ? [interSegmentLineBreak(ISA_POSITION)]
     : [];
   const out: X12Inquiry[] = [];
   for (const group of interchange.groups) {
@@ -230,9 +244,13 @@ const ISA_POSITION: X12Position = Object.freeze({ segmentIndex: 0, interchangeIn
  * bytes after the LAST terminator are not a candidate at all, because no
  * segment follows them.
  *
+ * CR and LF are the whole test, deliberately, because they are the whole of
+ * what the shared parse absorbs. Testing a wider whitespace class here would
+ * report a tolerance the parse does not have.
+ *
  * @internal
  */
-function hasInterSegmentWhitespace(text: string, delimiters: Delimiters): boolean {
+function hasInterSegmentLineBreak(text: string, delimiters: Delimiters): boolean {
   const term = delimiters.segment;
   const body = text.slice(ISA_MIN_LENGTH);
   const pieces =
@@ -442,6 +460,7 @@ function attachLevels(
 
   const roots: LevelAccumulator[] = [];
   const acyclic = new Set<string>();
+  const cyclic = new Set<string>();
   for (const level of levels) {
     validateHl(level.hl, hlIndex, EXPECTED_PARENT_LEVEL, level.position, warnings);
 
@@ -453,7 +472,7 @@ function attachLevels(
       continue;
     }
 
-    if (chainReturnsToItself(level, index, levels.length, acyclic)) {
+    if (chainReturnsToItself(level, index, levels.length, acyclic, cyclic)) {
       warnings.push(hierarchyCycle(level.position));
       warnings.push(levelDetached(level.position));
       continue;
@@ -481,9 +500,21 @@ function attachLevels(
  * on one chain, and it takes at most one step per hierarchy segment in the
  * transaction set, so it terminates on any input whatever the pointers say.
  * A chain that runs out of steps has revisited a level by the pigeonhole
- * principle and is reported as a cycle. Levels proved to reach a root are
- * remembered in `acyclic`, so the common well-formed document costs one step
- * per level in total.
+ * principle and is reported as a cycle.
+ *
+ * **BOTH answers are memoised, and the second one is what bounds the cost of a
+ * hostile document.** Every level has at most one declared parent, so a chain
+ * that reaches a level already known to sit on a cycle sits on one too, exactly
+ * as a chain that reaches a level already known to reach a root reaches one.
+ * Remembering only the second (`acyclic`) left the all-cycle document paying a
+ * full walk per level, which is quadratic in the number of HL segments, so a
+ * few hundred kilobytes of hostile input cost seconds of parse on a PHI-bearing
+ * path. With `cyclic` remembered as well, each level is settled in amortised
+ * constant time and the whole attachment pass is linear in the hierarchy.
+ *
+ * The ANSWER is identical either way, and that is the point: this changes what
+ * the walk costs and never what it decides, so the same bytes still decode to
+ * the same model and raise the same warnings at the same positions.
  *
  * A pointer naming a level that is NOT present ends the chain and is not a
  * cycle: that is a dangling pointer, which `validateHl` reports on its own
@@ -494,21 +525,30 @@ function chainReturnsToItself(
   index: ReadonlyMap<string, LevelAccumulator>,
   hierarchyCount: number,
   acyclic: Set<string>,
+  cyclic: Set<string>,
 ): boolean {
   const seen = new Set<string>([level.hl.hlId]);
   let current = level;
+  let onCycle = false;
   for (let step = 0; step < hierarchyCount; step += 1) {
     const parentId = current.hl.parentHlId;
     if (parentId === undefined) break;
     if (acyclic.has(parentId)) break;
+    if (cyclic.has(parentId)) {
+      onCycle = true;
+      break;
+    }
     const parent = index.get(parentId);
     if (parent === undefined) break;
-    if (seen.has(parent.hl.hlId)) return true;
+    if (seen.has(parent.hl.hlId)) {
+      onCycle = true;
+      break;
+    }
     seen.add(parent.hl.hlId);
     current = parent;
   }
-  for (const id of seen) acyclic.add(id);
-  return false;
+  for (const id of seen) (onCycle ? cyclic : acyclic).add(id);
+  return onCycle;
 }
 
 // ---------------------------------------------------------------------------

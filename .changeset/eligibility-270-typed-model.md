@@ -48,9 +48,13 @@ where a list belongs. Refusal messages name structural indices and counts, never
 a member identifier, a member name, a patient name, a trace or a diagnosis code.
 
 **Five warning codes are added and nothing is renamed, removed or renumbered.**
-`X12_270_NON_CONVENTIONAL_DELIMITER` and `X12_270_INTER_SEGMENT_WHITESPACE`
+`X12_270_NON_CONVENTIONAL_DELIMITER` and `X12_270_INTER_SEGMENT_LINE_BREAK`
 report the two tolerances the 270 path accepts without changing a value, once
-per transaction set each, anchored at the ISA.
+per transaction set each, anchored at the ISA. The framing one is CR and LF and
+nothing else, because that is the whole of what the shared parse absorbs: a
+space or a tab between segments is not absorbed, the functional group does not
+frame, and no typed reader sees a transaction set. That is unchanged
+shared-parse behaviour, and `KNOWN-LIMITATIONS.md` now states it.
 `X12_270_DUPLICATE_HIERARCHY_ID`, `X12_270_HIERARCHY_CYCLE` and
 `X12_270_LEVEL_DETACHED` report the hierarchy hazards above. All five are raised
 on the 270 path only, so no fixture of any other transaction set gains a warning

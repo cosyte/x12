@@ -300,6 +300,51 @@ describe("get270Inquiry - hierarchy hazards", () => {
     // HL, NM1, HL, TRN, NM1, EQ, HL.
     expect(duplicate?.position.segmentIndex).toBe(10);
   });
+
+  it("settles a hierarchy that is ALL cycle without re-walking it per level", () => {
+    // The hostile shape the bounded walk has to survive: every HL points at
+    // the next and the last points back at the first, so no chain reaches a
+    // root and none of them ends. The walk memoises the CYCLIC answer as well
+    // as the acyclic one, which is what keeps the attachment pass linear in
+    // the number of HL segments rather than quadratic - a few hundred
+    // kilobytes of this used to cost seconds on a PHI-bearing parse path.
+    //
+    // This asserts the ANSWERS, not a duration: a timing assertion measures
+    // the box, and this repo has a trap on record for reading `testTimeout` as
+    // a liveness net. What the memo must not do is change a verdict, so every
+    // level is required to be reported and every level to be off the tree.
+    const levels = 400;
+    const hls: string[] = [];
+    for (let i = 1; i <= levels; i += 1) {
+      const parent = i === levels ? 1 : i + 1;
+      hls.push(`HL*${String(i)}*${String(parent)}*22*0~`);
+      hls.push(`NM1*IL*1*DOE*JANE*A***MI*MBR000${String((i % 9) + 1)}~`);
+      hls.push("EQ*30~");
+    }
+    const raw =
+      fixture("270-canonical.edi").slice(0, fixture("270-canonical.edi").indexOf("HL*1")) +
+      hls.join("") +
+      "SE*0*0001~GE*1*1~IEA*1*000000001~";
+
+    const ix = parseX12(raw);
+    const tx = ix.groups[0]?.transactions[0];
+    const inquiry = tx === undefined ? undefined : get270Inquiry(ix.delimiters, tx);
+    expect(inquiry).toBeDefined();
+    const model = inquiry as X12Inquiry;
+
+    // No level reaches a root, so none of them is on the returned tree, and
+    // every one is reported twice: the cycle, and the detachment it causes.
+    expect(model.informationSources).toEqual([]);
+    expect(model.hierarchies).toHaveLength(levels);
+    const cycles = model.warnings.filter((w) => w.code === WARNING_CODES.X12_270_HIERARCHY_CYCLE);
+    const detached = model.warnings.filter((w) => w.code === WARNING_CODES.X12_270_LEVEL_DETACHED);
+    expect(cycles).toHaveLength(levels);
+    expect(detached).toHaveLength(levels);
+    // Deterministic: the same bytes decode to the same model every time.
+    expect(JSON.stringify(get270Inquiry(ix.delimiters, tx as X12TransactionSet))).toBe(
+      JSON.stringify(model),
+    );
+  });
 });
 
 describe("parse270Inquiries - multiplicity and emptiness", () => {
