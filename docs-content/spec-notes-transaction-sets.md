@@ -14,10 +14,11 @@ HIPAA **005010** healthcare sets and nothing else. Every set in the map below sh
 function reads it, which builds it, and the one field each one preserves *verbatim* because getting
 it wrong causes harm.
 
-> **The 270 and 276 inquiries are not in the map, and that is not an omission.** There is no
-> `get270` / `get276` reader and no `build270` / `build276` builder. Both parse into segments,
-> composites, and dot-paths like any other X12 input, but neither decodes into a typed model on
-> either side. Only their responses (271, 277) do.
+> **The 276 inquiry is not in the map, and that is not an omission.** There is no `get276` reader
+> and no `build276` builder. It parses into segments, composites, and dot-paths like any other X12
+> input, but it decodes into a typed model on neither side. Only its response, the 277, does. The
+> 270 eligibility inquiry is a different case and IS in the map: it has a reader and a builder of
+> its own.
 
 > **Depth tracks the code.** Every function named below is a shipped export. Where a set has a
 > read-side limitation (e.g. 837 claim-/line-level provider addresses), it is called out in
@@ -27,6 +28,7 @@ it wrong causes harm.
 
 | Set | What it is | Read | Build | Preserved verbatim |
 |---|---|---|---|---|
+| **270** | Eligibility inquiry | `get270Inquiry` / `parse270Inquiries` | `build270` | the declared HL parent pointers, never re-numbered and never re-parented |
 | **271** | Eligibility response | `get271Eligibility` | `build271` | the 270's `TRN-02` trace, echoed onto the 271 (reassociation) |
 | **277** | Claim status response | `get277Status` | `build277` | the 276's trace; the STC category/status/entity triple |
 | **277CA** | Claim acknowledgment | `get277CADisposition` | `build277CA` | per-claim accept/reject disposition + your submitted trace |

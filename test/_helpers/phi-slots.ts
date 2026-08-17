@@ -82,6 +82,7 @@ import type { DiagnosticSlot } from "@cosyte/test-utils";
 
 import {
   WARNING_CODES,
+  get270Inquiry,
   get271Eligibility,
   get277CADisposition,
   get277Status,
@@ -153,6 +154,7 @@ const G_835 = golden("835");
 const G_837P = golden("837p");
 const G_277 = golden("277");
 const G_277CA = golden("277ca");
+const G_270 = golden("270");
 const G_271 = golden("271");
 const G_278_REQ = golden("278-request");
 const G_820 = golden("820");
@@ -228,6 +230,9 @@ function runHelpers(
           break;
         case "837":
           push(get837Claims(ix.delimiters, tx)?.warnings);
+          break;
+        case "270":
+          push(get270Inquiry(ix.delimiters, tx)?.warnings);
           break;
         case "271":
           push(get271Eligibility(ix.delimiters, tx)?.warnings);
@@ -875,6 +880,52 @@ export const PHI_SLOTS: readonly DiagnosticSlot<string>[] = [
     name: "STC-01-1 claim status category code on a 277CA",
     plant: (m) => swap(G_277CA, "~STC*A1:19:PR*", `~STC*${m}:19:PR*`),
     expectCode: WARNING_CODES.X12_UNKNOWN_CLAIM_STATUS_CATEGORY,
+  },
+
+  // ---- 270 eligibility inquiry --------------------------------------------
+  // The first three are OWN slots on codes this work added: the marker rides
+  // in the element the branch reads, so a leak would be an interpolation of
+  // that marker. The rest are co-located, riding an envelope deviation, which
+  // is the only kind a spec-clean 270 raises.
+  {
+    name: "HL-02 parent pointer that resolves to no level, on a 270",
+    // own: the marker IS the unresolvable pointer, so both the mismatch code
+    // and the detached-level code are built while it is in the reader's hands.
+    plant: (m) => swap(G_270, "~HL*3*2*22*0~", `~HL*3*${m}*22*0~`),
+    expectCode: WARNING_CODES.X12_270_LEVEL_DETACHED,
+  },
+  {
+    name: "HL-01 hierarchical id duplicated on a 270",
+    // own: planting the receiver's own id onto the subscriber makes the
+    // subscriber a duplicate, which is what the code reports.
+    plant: (m) => swap(G_270, "~HL*2*1*21*1~", `~HL*${m}*1*21*1~HL*${m}*1*21*1~`),
+    expectCode: WARNING_CODES.X12_270_DUPLICATE_HIERARCHY_ID,
+  },
+  {
+    name: "NM1-09 member id on a 270 whose subscriber level cannot attach",
+    // co-located: the member id drives no diagnostic of its own, and the
+    // dangling pointer beside it makes sure a diagnostic IS built while the
+    // marker is on the model.
+    plant: (m) =>
+      swap(swap(G_270, "~HL*3*2*22*0~", "~HL*3*9*22*0~"), "***MI*MBR0001~", `***MI*${m}~`),
+    expectCode: WARNING_CODES.X12_270_LEVEL_DETACHED,
+  },
+  {
+    name: "TRN-02 trace number on a 270",
+    plant: (m) => withGroupCountMismatch(swap(G_270, "~TRN*1*ELIG20260601001*", `~TRN*1*${m}*`)),
+    expectCode: WARNING_CODES.X12_GROUP_COUNT_MISMATCH,
+  },
+  {
+    name: "EQ-02-2 requested procedure code on a 270",
+    plant: (m) =>
+      withGroupCountMismatch(swap(G_270, "~EQ*30^35*HC:99213:25*", `~EQ*30^35*HC:${m}:25*`)),
+    expectCode: WARNING_CODES.X12_GROUP_COUNT_MISMATCH,
+  },
+  {
+    name: "BHT-03 submitter transaction identifier on a 270",
+    plant: (m) =>
+      withGroupCountMismatch(swap(G_270, "~BHT*0022*13*REQ-0001*", `~BHT*0022*13*${m}*`)),
+    expectCode: WARNING_CODES.X12_GROUP_COUNT_MISMATCH,
   },
 
   // ---- 271 eligibility ----------------------------------------------------

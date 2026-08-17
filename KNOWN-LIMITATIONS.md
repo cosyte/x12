@@ -1664,10 +1664,27 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   repo, but it stays on the `0.0.x`-until-first-alpha ladder. `npm view @cosyte/x12 version` is the
   only source of truth for the current version, so this page does not restate one. Treat the API as
   pre-alpha and pin the exact version until the first alpha.
-- **No typed model for the 270 and 276 inquiries.** Every other v1 transaction has both a
-  per-transaction reader and a domain builder. The 270 eligibility inquiry and the 276 claim-status
-  inquiry have neither: they parse into segments, composites, and dot-paths like any other X12 input,
-  and the responses (271, 277) decode fully, but the inquiry directions have no typed surface yet.
+- **No typed model for the 276 inquiry.** Every other v1 transaction has both a per-transaction
+  reader and a domain builder. The 276 claim-status inquiry has neither: it parses into segments,
+  composites, and dot-paths like any other X12 input, and its response, the 277, decodes fully, but
+  the inquiry direction has no typed surface yet. The 270 eligibility inquiry no longer belongs on
+  this line: it has a typed model on the read side (`get270Inquiry`, `parse270Inquiries`) and on the
+  emit side (`build270`).
+- **A 270 hierarchical level whose declared parent does not resolve is left off the returned tree.**
+  The 270 reader attaches a level by its own HL-02 and by nothing else, so a pointer naming a level
+  that is not present, a pointer naming a level of the wrong kind, and a parent chain that returns to
+  itself each leave that level, and everything transmitted beneath it, absent from the model. The
+  loss is reported (`X12_270_LEVEL_DETACHED`, beside the code for the pointer defect itself), the
+  declared pointer stays verbatim on `hierarchies`, and the segments stay verbatim on the transaction
+  set. Nothing is re-parented onto whichever level happened to be open, because that would be this
+  library inventing the one structure a 270 exists to state.
+- **A 270's tolerated deviations are reported once per transaction set, not once per occurrence.**
+  A declared non-conventional delimiter raises `X12_270_NON_CONVENTIONAL_DELIMITER` once however many
+  of the four roles deviate, and whitespace between segments raises
+  `X12_270_INTER_SEGMENT_WHITESPACE` once however many runs the document carries. Both anchor at the
+  ISA. The framing run is also consumed by the shared parse and recorded nowhere on the model, so
+  only `parse270Inquiries`, which receives the bytes, can report it: `get270Inquiry` is handed the
+  model and reports the delimiter half alone.
 
 ## Code-list `--fetch` regeneration
 

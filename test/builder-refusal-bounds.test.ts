@@ -258,13 +258,23 @@ describe("refusal messages: the source gate", () => {
     // where routing the five caller elements through `makeCallerEscaper` needs
     // a `refuse` callback of this module's own, and
     // `src/profiles/validate.ts` with 12. The
-    // module count is unchanged at 11 because `build-277.ts`, `build-278.ts`
-    // and `build-ta1.ts` already raised elsewhere. Pinned so a module that
-    // stops being scanned (a rename, a moved directory) is a failure rather
-    // than a silently smaller sweep.
+    // module count was unchanged at 11 through that run because `build-277.ts`,
+    // `build-278.ts` and `build-ta1.ts` already raised elsewhere.
+    //
+    // TWELVE modules and 104 sites now: `build-270.ts` is the twelfth module
+    // and brings TEN sites of its own. Two are the one-line `refuseHierarchy` /
+    // `refuseSpec` throwers the shared caller guards call back into, and the
+    // other eight are that builder refusing what it cannot emit spec-clean: no
+    // information source, a source with no receiver, a receiver with no
+    // subscriber, a level with no name loop, a subscriber that asks nothing and
+    // carries no dependent that does, a dependent with no inquiry, an inquiry
+    // carrying neither a service type nor a procedure, and an over-long
+    // interchange control number. Pinned so a module that stops being scanned
+    // (a rename, a moved directory) is a failure rather than a silently smaller
+    // sweep.
     const raising = new Set(sites.map((s) => s.file));
-    expect(raising.size).toBe(11);
-    expect(sites.length).toBe(94);
+    expect(raising.size).toBe(12);
+    expect(sites.length).toBe(104);
     expect(modules.some((m) => m.endsWith(join("profiles", "validate.ts")))).toBe(true);
   });
 
@@ -279,7 +289,7 @@ describe("refusal messages: the source gate", () => {
     expect(findings).toEqual([]);
   });
 
-  it("counts the builder's twenty-four caller-value slots", () => {
+  it("counts the builder's twenty-five caller-value slots", () => {
     // The item named SIXTEEN, and sixteen is the count of caller-supplied
     // STRING slots: nine over-long control numbers (one per emitting module)
     // plus seven with no length gate at all (`build999`'s ST-02 trace twice,
@@ -306,16 +316,23 @@ describe("refusal messages: the source gate", () => {
     // than at a `throw` site the scan can see - a limit this gate has always
     // recorded and which `test/builder-refusal-phi.test.ts` is the answer to.
     //
+    // ONE more arrived with the 270 domain builder, and it is the ONLY caller
+    // value that builder renders anywhere: the over-long interchange control
+    // number, which every emitting module in this package refuses the same way.
+    // The other nine `build-270.ts` refusals name structural indices and
+    // counts and render nothing, which is why the site count moved by ten and
+    // this census by one.
+    //
     // Count SITES and HOLES separately: they are not the same number, and
-    // conflating them is how this census went wrong the first time. 24 sites
-    // carry a caller value and hold 29 holes between them, because the AK9
+    // conflating them is how this census went wrong the first time. 25 sites
+    // carry a caller value and hold 30 holes between them, because the AK9
     // non-negative refusal names all three counts in one message and three
     // more name two each.
     const builderSites = sites.filter((s) => !s.file.includes(`${sep}profiles${sep}`));
     const boundedSites = builderSites.filter((s) => s.holes.some(isBounded));
     const boundedHoles = builderSites.flatMap((s) => s.holes).filter(isBounded);
-    expect(boundedSites.length).toBe(24);
-    expect(boundedHoles.length).toBe(29);
+    expect(boundedSites.length).toBe(25);
+    expect(boundedHoles.length).toBe(30);
   });
 
   it("counts the profile subsystem's twelve refusal sites and twenty-three holes", () => {

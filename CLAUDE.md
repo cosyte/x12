@@ -24,16 +24,20 @@ raised to meet it.
 Pre-alpha `0.0.x`, **published** to npm from a public repo. **Never quote a version here:**
 `npm view @cosyte/x12 version` is the only source of truth.
 
-- **Read scope is decoded for** 271, 277 / 277CA, 278, 820, 834, 835, 837P/I/D, 999, TA1.
+- **Read scope is decoded for** 270, 271, 277 / 277CA, 278, 820, 834, 835, 837P/I/D, 999, TA1.
 - **Emit scope is complete for every transaction that has a reader**: general (`serializeX12` +
   `buildInterchange`) plus a per-TR3 domain builder for each, and the pure-function `build999` /
   `buildTA1`, each layering the safety-critical per-TR3 invariants (balance, certification,
   maintenance-type fidelity, count reconciliation) on the general builder.
-- **🩺 The 270 and 276 inquiry directions have NO typed model on either side** - no `get270` /
-  `get276`, no `build270` / `build276`, no 270 or 276 dispatch anywhere in `src/`. They parse into
-  segments and dot-paths like any other input. **Never describe the
-  v1 read or emit scope as "270/271" or "276/277" complete** - that claim was on the README and the
-  docs site until `ASSETS-P8` corrected it.
+- **🩺 The 276 inquiry direction has NO typed model on either side** - no `get276`, no `build276`,
+  no 276 dispatch anywhere in `src/`. It parses into segments and dot-paths like any other input.
+  **Never describe the v1 read or emit scope as "276/277" complete, and NEVER write the paired
+  "270/271" label for it either** - the 270 half shipped and the 276 half did not, and one label for
+  both is how the README and the docs site were wrong until `ASSETS-P8`. **270 read AND emit shipped
+  together** (`get270Inquiry` / `parse270Inquiries` / `build270`), because emit scope is complete
+  wherever read scope is. 🩺 The 270 reader attaches a level by its OWN HL-02 and by nothing else:
+  a pointer that does not resolve leaves that level and its whole subtree OFF the tree, warned, never
+  re-parented onto whichever level was open.
   Why: `documentation/agent-notes.md#published-scope-the-270-and-276-gap`
 - **Warning registry: additions-only, and NEVER quote its size here** - the count on this line was
   stale twice. Derive it: the codes are exported as `ALL_WARNING_MESSAGES`, and the four Tier-3

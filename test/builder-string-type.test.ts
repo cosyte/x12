@@ -270,8 +270,12 @@ describe("builder element escaping: the source gate", () => {
     // emitted read back as a Reject. Pinned so a module that stops being
     // scanned (a rename, a moved directory) is a failure rather than a silently
     // smaller sweep.
-    expect(declarations).toHaveLength(10);
-    expect(new Set(declarations.map((d) => d.file)).size).toBe(10);
+    //
+    // ELEVEN now: the 270 domain builder declares one like every other builder
+    // that emits a variable-width element, so the sweep grew with the surface
+    // rather than around it.
+    expect(declarations).toHaveLength(11);
+    expect(new Set(declarations.map((d) => d.file)).size).toBe(11);
     expect(modules.some((m) => m.endsWith(join("transactions", "ack", "build-ta1.ts")))).toBe(true);
     expect(
       declarations.some((d) => d.file.endsWith(join("transactions", "ack", "build-ta1.ts"))),
@@ -279,6 +283,12 @@ describe("builder element escaping: the source gate", () => {
   });
 
   it("pins the invocation count, because the first draft published a line count", () => {
+    // 451 invocations, counted comment-stripped on this tree with `ctx.esc(...)`
+    // included. The 270 domain builder added the difference from 408, across
+    // its envelope, its BHT, its four loop emitters and its EQ composites; the
+    // figure below moved in the same commit as the code, which is what pinning
+    // it is for. The rest of this note is the history of the number.
+    //
     // 408 invocations on 379 lines, counted comment-stripped on this tree with
     // `ctx.esc(...)` included. `X12-TA1-EMIT-NOT-RELEASE-AWARE` added five of
     // each, one per TA1 element, which is why both moved by the same amount.
@@ -306,8 +316,8 @@ describe("builder element escaping: the source gate", () => {
           .filter((l) => /\besc\(/u.test(l)).length,
       0,
     );
-    expect(invocations).toBe(408);
-    expect(lines).toBe(379);
+    expect(invocations).toBe(451);
+    expect(lines).toBe(419);
     expect(invocations).toBeGreaterThan(lines);
   });
 

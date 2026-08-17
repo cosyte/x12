@@ -3447,18 +3447,24 @@ opts?)` reconstructs an `X12Interchange` back to bytes from the
 
 - Pre-alpha `0.0.x`, **published** to npm from a public repo. Never quote a
   version here: `npm view @cosyte/x12 version` is the only source of truth.
-  The **read** scope is decoded for 271, 277/277CA, 278, 820, 834, 835,
-  837P/I/D, 999, and TA1. **The 270 and 276 inquiry directions have NO typed
-  model on either side**: no `get270` / `get276` reader, no `build270` /
-  `build276` builder, and no 270 or 276 dispatch anywhere in `src/`. They
-  parse into segments and dot-paths like any other X12 input and nothing
-  decodes them further, so do not describe the v1 read or emit scope as
-  "270/271" or "276/277" complete: that claim was on the README and the
-  docs site until ASSETS-P8 corrected it. The general **emit** surface
+  The **read** scope is decoded for 270, 271, 277/277CA, 278, 820, 834, 835,
+  837P/I/D, 999, and TA1. **The 276 inquiry direction has NO typed model on
+  either side**: no `get276` reader, no `build276` builder, and no 276
+  dispatch anywhere in `src/`. It parses into segments and dot-paths like any
+  other X12 input and nothing decodes it further, so do not describe the v1
+  read or emit scope as "276/277" complete: that claim was on the README and
+  the docs site until ASSETS-P8 corrected it.
+  **The 270 half of this gap is CLOSED and the label is still forbidden.**
+  `get270Inquiry` / `parse270Inquiries` and `build270` shipped together,
+  because this package holds emit scope complete wherever read scope is, so a
+  reader without its builder was never a landable state. Write "270" and
+  "276" separately: one paired label for both is exactly how the two halves
+  came to be described as one shipped thing when neither was. The general
+  **emit** surface
   (`serializeX12` + `buildInterchange`)
   shipped in Phase 8, and (with Phase 8f) the **domain emit**
   scope is complete for every transaction that has a reader: a per-TR3 domain builder
-  (`build835` / `build837P/I/D` / `build271` / `build277` / `277CA` /
+  (`build835` / `build837P/I/D` / `build270` / `build271` / `build277` / `277CA` /
   `build278Request` / `build278Response` / `build820` / `build834`, plus
   the pure-function `build999` / `buildTA1` acknowledgments) layering the
   safety-critical per-TR3 invariants (balance, certification,

@@ -93,6 +93,11 @@ export const WARNING_CODES = {
   X12_835_BALANCE_NOT_EVALUABLE: "X12_835_BALANCE_NOT_EVALUABLE",
   X12_AMOUNT_ROW_DROPPED: "X12_AMOUNT_ROW_DROPPED",
   X12_STATED_AMOUNT_DISCARDED: "X12_STATED_AMOUNT_DISCARDED",
+  X12_270_NON_CONVENTIONAL_DELIMITER: "X12_270_NON_CONVENTIONAL_DELIMITER",
+  X12_270_INTER_SEGMENT_WHITESPACE: "X12_270_INTER_SEGMENT_WHITESPACE",
+  X12_270_DUPLICATE_HIERARCHY_ID: "X12_270_DUPLICATE_HIERARCHY_ID",
+  X12_270_HIERARCHY_CYCLE: "X12_270_HIERARCHY_CYCLE",
+  X12_270_LEVEL_DETACHED: "X12_270_LEVEL_DETACHED",
 } as const;
 
 /**
@@ -239,6 +244,25 @@ export const REQUIRED_LOOPS = {
   SUBSCRIBER_NAME_2010BA: "2010BA",
   /** Loop 2010BB, Payer Name. */
   PAYER_NAME_2010BB: "2010BB",
+  /**
+   * 270 Loop 2000A, Information Source HL. Reported when a 270 transaction
+   * set carries no hierarchical level segment at all, so there is no
+   * inquiry hierarchy to build.
+   */
+  INQUIRY_HIERARCHY_2000A: "270-2000A",
+  /**
+   * 270 Loop 2100, the name loop of whichever hierarchical level the
+   * warning's `position` names (2100A / 2100B / 2100C / 2100D). One
+   * discriminant covers all four, because the position already says which
+   * level is short of its NM1 and the library does not need a fifth string
+   * to repeat it.
+   */
+  INQUIRY_NAME_2100: "270-2100",
+  /**
+   * 270 Loop 2110, the eligibility or benefit inquiry (`EQ`) under a
+   * subscriber or dependent level, as the warning's `position` names.
+   */
+  INQUIRY_ELIGIBILITY_2110: "270-2110",
 } as const;
 
 /**
@@ -331,6 +355,12 @@ const WARNING_MESSAGES = {
     'Missing required loop "2010BA" (Subscriber Name): no Subscriber Name follows the Subscriber HL.',
   X12_MISSING_REQUIRED_LOOP_2010BB:
     'Missing required loop "2010BB" (Payer Name): no Payer Name follows the Subscriber HL.',
+  X12_MISSING_REQUIRED_LOOP_270_2000A:
+    'Missing required loop "2000A" (Information Source HL) on a 270: the transaction set carries no HL segment at all, so this reader built no inquiry hierarchy for it and the returned model carries no levels. Nothing is fabricated to stand in and no level is synthesized. The verbatim segments are preserved on the transaction set; read them there before concluding the sender asked nothing.',
+  X12_MISSING_REQUIRED_LOOP_270_2100:
+    'Missing required loop "2100" (the name loop of the hierarchical level at `position.segmentIndex`) on a 270: no NM1 follows that HL before the next one, so the level carries no name, no identifier and no demographics on the typed model. Which level it is is read off the model at that position, never from this message. Nothing is fabricated to stand in: an absent name is left absent rather than defaulted. The verbatim segments are preserved on the transaction set.',
+  X12_MISSING_REQUIRED_LOOP_270_2110:
+    'Missing required loop "2110" (Eligibility or Benefit Inquiry) on a 270: the subscriber or dependent level at `position.segmentIndex` carries no EQ, so this reader recorded no requested service type for it and the level\'s inquiry list is empty. Read that literally, as a property of the READ: an empty inquiry list on a level this code names is a level the document left short of an EQ, and nothing is invented to fill it. The verbatim segments are preserved on the transaction set; read them there before concluding the sender requested nothing.',
   X12_837_UNKNOWN_VARIANT:
     "837 variant could not be resolved: ST-03's implementation convention reference is absent, empty, or not an 837 Technical Report Type 3 identifier this reader recognises, and no SVx service-line segment was present to fall back on. The set of references it recognises covers the professional, institutional and dental 837 guides HIPAA adopts at 45 CFR 162.1102 together with their published errata; it is NOT claimed to be exhaustive, and this message deliberately does not enumerate it, because a list here goes stale the moment a guide is added. A reference outside that set is not asserted to be invalid - all this code reports is that this reader could not turn it into a variant and had nothing to fall back on.",
   X12_837_AMBIGUOUS_VARIANT:
@@ -357,6 +387,16 @@ const WARNING_MESSAGES = {
     "837 pay-to address named more than once in one Loop 2000A: the NM1*87 at `position.segmentIndex` is not the first in this Loop 2000A, and the TR3s allow Loop 2010AB at most once there. The model has ONE pay-to address slot, so it cannot carry both, and this code is the only thing that tells you the document named more than one. The reader NEVER merges them: an N3 or N4 after this segment can no longer add a street line to, or fill a blank in, the address an earlier NM1*87 named, which is what this library did through 0.0.12 - it returned a fused address no sender sent, silently. What the slot carries instead is the LAST occurrence that stated an address of its own; an occurrence that states none - one carrying no N3 or N4 at all, or only a valueless N3 or N4 whose elements are empty - does NOT replace one that did, so nothing an earlier occurrence stated is blanked either. Where no occurrence states an address, the slot holds what the FIRST N3 or N4 to arrive under any of them produced, which may be an address with no elements at all, and which is not necessarily the first occurrence's: an occurrence that carries no N3 or N4 writes nothing, so a later one's valueless N3 is the first write and takes a slot still empty. Read that as the corner it is, and never restate it as the first OCCURRENCE winning. Which occurrence the sender meant is NOT decided here and is not derivable from the TR3s, and the losing occurrence's address is NOT on the model in any form. Read the bound literally: this reports repetition within one Loop 2000A, which is where the pay-to route lives, and an NM1*87 arriving while a CLM is open never reaches that route. The verbatim segments are preserved on the transaction set; read them there before acting on where a payment is to be sent.",
   X12_AMOUNT_ROW_DROPPED:
     "Amount row dropped from the typed model: the AMT or ADX at `position.segmentIndex` carried no decodable amount (AMT-02, ADX-01), so NO row was built for it and the rest of the segment went with it - its qualifier or adjustment reason code, and any reference qualifier and id. Nothing is fabricated to stand in: a row is not built around a zero this library did not read, which is why the loss is reported rather than papered over. Two routes reach it and this code does not say which: the amount element was ABSENT, or it was present and held bytes that do not decode as a decimal. On this segment only the second route also raises `X12_UNPARSEABLE_DECIMAL`, carrying the failing element in its own `position.elementIndex`, so whether one is present at this `position.segmentIndex` is what separates them - and that code is unchanged by this one, which is raised alongside it rather than in place of it. Read the bound literally: this reports a row whose AMOUNT was read and decoded no value, and it is NOT a general report that an amount segment reached no model. A segment a reader discards before reading its amount is not on this channel, and neither is one whose amount decoded and then found no claim, service line, coverage or remittance open to attach the row to. An 820 RMR is not on it either, for its own reason: that row is dropped on open-item IDENTITY, RMR-01 and RMR-02 both empty, before the amount is read at all, so an RMR that states an open item and no amount keeps its row with amountPaid undefined while one that states an amount and no open item is dropped whole. That second case is a separate loss, and so is an 837 AMT that decoded while a Loop 2430 adjudication was open; `X12_STATED_AMOUNT_DISCARDED` reports both, and this code reports neither. The two can never name the same segment, because this one requires an amount element that decoded no value and that one requires the opposite. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such amount.",
+  X12_270_NON_CONVENTIONAL_DELIMITER:
+    "This interchange declares at least one delimiter other than the conventional one, and the 270 reader TOLERATED it: the declared set is what the shared interchange parse framed the document with, this reader took that set rather than assuming one, and NOTHING about the typed inquiry model changes because of it. So two 270s differing only in their declared delimiters decode to equal models. Nothing is echoed here, not the byte and not which role declared it: `isa.raw` carries all 106 bytes verbatim and, with the ISA fixed widths, is the route back. Read the bound literally. It is raised ONCE per 270 transaction set, whatever number of the four roles deviate, and it is raised on the 270 path ONLY: it reports what this reader tolerated on this transaction set and asserts nothing about how any other transaction set reads, nor that the declared set is unusual for the sender's trading partner.",
+  X12_270_INTER_SEGMENT_WHITESPACE:
+    "Whitespace or a line break sits between segments of this interchange, and the 270 reader TOLERATED it: the shared interchange parse consumes such a run before the next segment opens, so it is part of no element and of no value the typed inquiry model exposes, and two 270s differing only in inter-segment whitespace decode to equal models. What was consumed is recorded nowhere on the model, so `serializeX12` does not reproduce it and the emit is not byte-identical to a pretty-printed source; that is long-standing behaviour, unchanged here, and recorded in KNOWN-LIMITATIONS.md. Read the bound literally. It is raised ONCE per 270 transaction set however many runs the document carries, it is anchored at the ISA because the framing is a property of the document rather than of one segment, and it is raised on the 270 path ONLY.",
+  X12_270_DUPLICATE_HIERARCHY_ID:
+    "Two hierarchical levels in this 270 were transmitted with the same HL-01. The one at `position.segmentIndex` is not the first to carry that identifier, and this reader NEVER re-numbers a hierarchy: both levels keep their declared HL-01 verbatim on the model. What the duplication decides is attachment, and the rule is fixed so that the same bytes always decode to the same model: a child naming that identifier in its HL-02 attaches to the FIRST level carrying it in transmitted order, and never to a later one. A later level carrying the identifier is therefore reachable in the hierarchy only if some other pointer reaches it, and where none does it is reported separately as detached. Which of them the sender meant is NOT decided here and is not derivable from the TR3: this reader cannot tell a re-used identifier from a mis-keyed one. The verbatim segments are preserved on the transaction set.",
+  X12_270_HIERARCHY_CYCLE:
+    "The chain of HL-02 parent pointers starting at the hierarchical level at `position.segmentIndex` returns to a level already on that chain, so the document describes a hierarchy that is not a tree. The walk is bounded by the number of HL segments in the transaction set and visits no level twice on one chain, so it terminates rather than following the cycle: this code is what it reports instead. The level is NOT attached to a parent, and this reader neither re-numbers the hierarchy nor picks a link to break, because either would be inventing a structure the sender did not send. Every declared pointer stays verbatim on the model and the level's own HL is still on `hierarchies`. Read it as disjoint from a dangling pointer, which is `X12_HL_PARENT_MISMATCH`: that one reports a pointer naming a level that is not present, and this one requires that every pointer on the chain names a level that IS.",
+  X12_270_LEVEL_DETACHED:
+    "The hierarchical level at `position.segmentIndex` is not attached to the inquiry hierarchy this reader returns, because its declared HL-02 did not resolve to a level of the parent kind the TR3 gives it. Everything that level carried, its name, identifiers, demographics, traces, dates and eligibility inquiries, is therefore absent from the returned tree, and so is everything transmitted beneath it. NOTHING is fabricated to stand in: no parent is synthesized, no level is re-parented onto whichever one happened to be open, and no pointer is re-numbered. This code names THAT loss and nothing else; the separate defect in the pointer is reported by its own code at the same position, one of `X12_HL_PARENT_MISMATCH`, `X12_HL_PARENT_LEVEL_INVALID` or `X12_270_HIERARCHY_CYCLE`, so a level reported here always carries one of those beside it. The level's HL is still on `hierarchies` verbatim and its segments are still on the transaction set; read them there before concluding the sender sent no such level.",
   X12_STATED_AMOUNT_DISCARDED:
     "Stated amount discarded: the RMR or AMT at `position.segmentIndex` populated its amount element and this reader built NO row for it, for a reason that is not a failure to decode that amount. What the sender wrote reaches no part of the typed model, so an empty list of open items or amounts is not evidence the sender stated none. Read that as the only claim made here: this code does NOT assert the amount is decodable, and on the RMR route below it is raised without the bytes ever being DECODED, so they may be unreadable, blank-but-present, or a lone component separator. Two routes reach it and this code does not say which. First, an 820 RMR whose RMR-01 and RMR-02 are BOTH empty while a remittance loop is open: the open item is refused on identity before RMR-04 or RMR-05 is read at all, so a stated payment amount, a stated amount due and the payment action code beside them go together. Second, an 837 AMT arriving while a Loop 2430 line adjudication is open: AMT-02 decoded, and the v1 adjudication model carries no amount row to put it on, so the row is skipped. Compare `X12_AMOUNT_ROW_DROPPED`, which reports the other situation on the same segments: there the amount element decoded no value, so there was no row to build at all. The two can never name the same segment. Read the bound literally, as a property of the READ: this reports a segment whose amount element the sender populated, arriving while the loop that would carry its row was open. It does NOT report an AMT or ADX that reaches a reader with no such loop open, which stays silent and is recorded in KNOWN-LIMITATIONS.md. And on the RMR route it says nothing about whether that amount WOULD have decoded, because the row is refused before the decode is attempted, so no `X12_UNPARSEABLE_DECIMAL` accompanies it even where the bytes are unreadable. Nothing is fabricated to stand in. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such amount.",
 } as const;
@@ -419,6 +459,9 @@ const REQUIRED_LOOP_MESSAGES: Readonly<Record<X12RequiredLoop, string>> = {
   [REQUIRED_LOOPS.SUBSCRIBER_2000B]: WARNING_MESSAGES.X12_MISSING_REQUIRED_LOOP_2000B,
   [REQUIRED_LOOPS.SUBSCRIBER_NAME_2010BA]: WARNING_MESSAGES.X12_MISSING_REQUIRED_LOOP_2010BA,
   [REQUIRED_LOOPS.PAYER_NAME_2010BB]: WARNING_MESSAGES.X12_MISSING_REQUIRED_LOOP_2010BB,
+  [REQUIRED_LOOPS.INQUIRY_HIERARCHY_2000A]: WARNING_MESSAGES.X12_MISSING_REQUIRED_LOOP_270_2000A,
+  [REQUIRED_LOOPS.INQUIRY_NAME_2100]: WARNING_MESSAGES.X12_MISSING_REQUIRED_LOOP_270_2100,
+  [REQUIRED_LOOPS.INQUIRY_ELIGIBILITY_2110]: WARNING_MESSAGES.X12_MISSING_REQUIRED_LOOP_270_2110,
 };
 
 /**
@@ -1429,6 +1472,130 @@ export function statedAmountDiscarded(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_STATED_AMOUNT_DISCARDED,
     message: WARNING_MESSAGES.X12_STATED_AMOUNT_DISCARDED,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_270_NON_CONVENTIONAL_DELIMITER` warning. Raised by the 270
+ * reader, once per 270 transaction set, where the delimiter set the shared
+ * interchange parse detected out of the ISA is not the conventional one.
+ *
+ * **The 270 path raises it and shared code does not**, which is deliberate
+ * rather than incidental. Both halves of the tolerance this code reports live
+ * in the ENVELOPE, so the obvious place to detect them is the shared parse,
+ * and raising it there would give every pre-existing non-270 fixture that
+ * declares a non-conventional separator a warning it did not have. This reader
+ * TAKES the detected set from that parse and reports its own tolerance of it
+ * instead; nothing about delimiter handling in shared code moves.
+ *
+ * `position` is the ISA, which is where the set is declared. No byte is
+ * echoed and no role is named: `isa.raw` carries all 106 bytes.
+ *
+ * @example
+ * ```ts
+ * import { nonConventionalDelimiter } from "@cosyte/x12";
+ * const w = nonConventionalDelimiter({ segmentIndex: 0, interchangeIndex: 0 });
+ * ```
+ */
+export function nonConventionalDelimiter(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_270_NON_CONVENTIONAL_DELIMITER,
+    message: WARNING_MESSAGES.X12_270_NON_CONVENTIONAL_DELIMITER,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_270_INTER_SEGMENT_WHITESPACE` warning. Raised by the 270
+ * reader, once per 270 transaction set, where the document carries a run of
+ * whitespace or line breaks between segments. Same scoping as
+ * {@link nonConventionalDelimiter} and for the same reason: the shared parse
+ * consumes such a run and is not changed here.
+ *
+ * The run is observable in the BYTES and not on the model, so only the entry
+ * point that receives the bytes can raise it. `position` is the ISA, because
+ * the framing is a property of the document rather than of one segment.
+ *
+ * @example
+ * ```ts
+ * import { interSegmentWhitespace } from "@cosyte/x12";
+ * const w = interSegmentWhitespace({ segmentIndex: 0, interchangeIndex: 0 });
+ * ```
+ */
+export function interSegmentWhitespace(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_270_INTER_SEGMENT_WHITESPACE,
+    message: WARNING_MESSAGES.X12_270_INTER_SEGMENT_WHITESPACE,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_270_DUPLICATE_HIERARCHY_ID` warning. Raised at the second and
+ * each subsequent HL in a 270 transaction set to carry an HL-01 an earlier one
+ * already carried. `position` names the repeat, never the first occurrence.
+ *
+ * Attachment is what the duplication decides, and the rule is fixed so the
+ * decode is deterministic: a child naming that identifier attaches to the
+ * FIRST level carrying it in transmitted order.
+ *
+ * @example
+ * ```ts
+ * import { duplicateHierarchyId } from "@cosyte/x12";
+ * const w = duplicateHierarchyId({ segmentIndex: 7, transactionIndex: 0 });
+ * ```
+ */
+export function duplicateHierarchyId(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_270_DUPLICATE_HIERARCHY_ID,
+    message: WARNING_MESSAGES.X12_270_DUPLICATE_HIERARCHY_ID,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_270_HIERARCHY_CYCLE` warning. Raised where the chain of
+ * HL-02 parent pointers from the level at `position` returns to a level
+ * already on that chain. Disjoint from {@link hlParentMismatch} by
+ * construction: this one requires every pointer on the chain to name a level
+ * that IS present, and that one reports a pointer that names none.
+ *
+ * @example
+ * ```ts
+ * import { hierarchyCycle } from "@cosyte/x12";
+ * const w = hierarchyCycle({ segmentIndex: 5, transactionIndex: 0 });
+ * ```
+ */
+export function hierarchyCycle(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_270_HIERARCHY_CYCLE,
+    message: WARNING_MESSAGES.X12_270_HIERARCHY_CYCLE,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_270_LEVEL_DETACHED` warning. Raised where a 270 hierarchical
+ * level's declared parent pointer did not resolve to a level of the parent
+ * kind the TR3 gives it, so the level and everything transmitted beneath it
+ * is absent from the returned tree.
+ *
+ * It reports the LOSS. The defect in the pointer itself is reported by its own
+ * code at the same position, so a level named here always carries one of
+ * {@link hlParentMismatch}, {@link hlParentLevelInvalid} or
+ * {@link hierarchyCycle} beside it.
+ *
+ * @example
+ * ```ts
+ * import { levelDetached } from "@cosyte/x12";
+ * const w = levelDetached({ segmentIndex: 5, transactionIndex: 0 });
+ * ```
+ */
+export function levelDetached(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_270_LEVEL_DETACHED,
+    message: WARNING_MESSAGES.X12_270_LEVEL_DETACHED,
     position,
   };
 }
