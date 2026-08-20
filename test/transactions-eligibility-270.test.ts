@@ -243,6 +243,70 @@ describe("get270Inquiry - structurally incomplete documents", () => {
     expect(inquiry?.informationSources[0]?.receivers[0]?.subscribers[0]?.name).toBeUndefined();
   });
 
+  /**
+   * A DTP is a RECORD and not a slot, so a DTP short of one of the two elements
+   * a row is built from loses the whole row: the qualifier that says what the
+   * date is for, the format qualifier that says single date or range, and the
+   * value. That loss is REPORTED, for the reason the sibling amount codes were
+   * added: without a warning beside it, an empty `dates` list reads the same
+   * whether the sender stated no date or stated one this reader dropped.
+   *
+   * The canonical fixture carries `DTP*291*D8*20260601` on its subscriber, so
+   * each case below is that one segment cut back, and the fixture's own
+   * warning stream is empty, which keeps every case non-vacuous.
+   */
+  const DTP_ROWS: readonly (readonly [string, string])[] = [
+    ["short of its value (DTP-03)", "~DTP*291*D8~"],
+    ["short of its qualifier (DTP-01)", "~DTP**D8*20260601~"],
+    ["short of both", "~DTP~"],
+  ];
+
+  it.each(DTP_ROWS)("reports a DTP %s and builds no row from it", (_label, dtp) => {
+    const raw = fixture("270-canonical.edi").replace("~DTP*291*D8*20260601~", dtp);
+    const inquiry = parse270Inquiries(raw)[0];
+    expect(codes(inquiry as X12Inquiry)).toEqual([WARNING_CODES.X12_270_DATE_ROW_DROPPED]);
+    expect(inquiry?.informationSources[0]?.receivers[0]?.subscribers[0]?.dates).toEqual([]);
+    // Anchored at the DTP itself, and its message is a registry lookup with
+    // nothing from the document in it. Segment indices are 1-based within the
+    // transaction set (the ST is 0), so the canonical fixture's DTP is the
+    // twelfth: BHT, HL, NM1, HL, NM1, HL, TRN, NM1, N3, N4, DMG, DTP.
+    const warning = inquiry?.warnings[0];
+    expect(warning?.position.segmentIndex).toBe(12);
+    expect(ALL_WARNING_MESSAGES.has(warning?.message ?? "")).toBe(true);
+    for (const secret of ["MBR0001", "DOE", "JANE", "20260601", "ELIG2026"]) {
+      expect(warning?.message).not.toContain(secret);
+    }
+  });
+
+  it("keeps a dropped date row distinguishable from a date nobody sent", () => {
+    // The whole point of the code. Both documents answer with an empty `dates`
+    // list, so the model alone cannot separate them; the warning stream does.
+    const canonical = fixture("270-canonical.edi");
+    const dropped = parse270Inquiries(
+      canonical.replace("~DTP*291*D8*20260601~", "~DTP*291*D8~"),
+    )[0];
+    const absent = parse270Inquiries(canonical.replace("~DTP*291*D8*20260601~", "~"))[0];
+    const dates = (m: X12Inquiry | undefined): unknown =>
+      m?.informationSources[0]?.receivers[0]?.subscribers[0]?.dates;
+
+    expect(dates(dropped)).toEqual([]);
+    expect(dates(absent)).toEqual([]);
+    expect(codes(dropped as X12Inquiry)).toEqual([WARNING_CODES.X12_270_DATE_ROW_DROPPED]);
+    expect(codes(absent as X12Inquiry)).toEqual([]);
+  });
+
+  it("nothing is fabricated to stand in for the row it dropped", () => {
+    // The other half of the guarantee: reporting the loss must not become
+    // inventing a partial row out of the element that IS present.
+    const raw = fixture("270-canonical.edi").replace("~DTP*291*D8*20260601~", "~DTP*291*D8~");
+    const inquiry = parse270Inquiries(raw)[0];
+    const subscriber = inquiry?.informationSources[0]?.receivers[0]?.subscribers[0];
+    expect(subscriber?.dates).toEqual([]);
+    // Everything else the level carries is untouched by the drop.
+    expect(subscriber?.name?.idCode).toBe("MBR0001");
+    expect(subscriber?.inquiries).toHaveLength(1);
+  });
+
   it("never throws on any of the incomplete fixtures", () => {
     for (const name of [
       "270-missing-hierarchy.edi",

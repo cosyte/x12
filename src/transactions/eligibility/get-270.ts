@@ -63,6 +63,17 @@
  * segment stays verbatim on the transaction set, so a consumer that wants the
  * detached region can still read it.
  *
+ * ## A row this reader could not build is reported, not dropped in silence
+ *
+ * A DTP is a record and not a slot: short of its qualifier (DTP-01) or its
+ * value (DTP-03) there is no date row to build, and the format qualifier that
+ * says single date or range goes with it. That loss raises
+ * `X12_270_DATE_ROW_DROPPED` at the segment, so an empty `dates` list can be
+ * told apart from a date this reader dropped. It reports the row it could not
+ * build and nothing wider: a DTP that decoded and then found no level or
+ * inquiry open to sit on is a different loss, it stays silent, and it is
+ * recorded in `KNOWN-LIMITATIONS.md`.
+ *
  * Spec source: WPC TR3 `005010X279A1` - Health Care Eligibility Benefit
  * Inquiry and Response (270/271).
  */
@@ -87,6 +98,7 @@ import type {
 } from "../../parser/types.js";
 import {
   REQUIRED_LOOPS,
+  dateRowDropped,
   duplicateHierarchyId,
   hierarchyCycle,
   interSegmentLineBreak,
@@ -363,7 +375,16 @@ function decodeInquiry(
       }
       case "DTP": {
         const date = decodeDtp(seg, delimiters);
-        if (date === undefined) break;
+        if (date === undefined) {
+          // A DTP is a RECORD and not a slot: short of its qualifier or its
+          // value there is no row to build, and the format qualifier that says
+          // single date or range goes with it. Reported rather than dropped in
+          // silence, because an empty `dates` list otherwise reads the same
+          // whether the sender stated no date or stated one this reader could
+          // build no row from.
+          warnings.push(dateRowDropped(position));
+          break;
+        }
         if (currentInquiry !== undefined) currentInquiry.dates.push(date);
         else current?.dates.push(date);
         break;

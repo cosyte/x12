@@ -37,6 +37,7 @@ export {
   balanceNotEvaluable,
   controlNumberMismatch,
   danglingReleaseChar,
+  dateRowDropped,
   duplicateHierarchyId,
   entitySegmentDiscardedAfterLx,
   groupCountMismatch,

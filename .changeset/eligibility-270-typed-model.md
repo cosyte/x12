@@ -41,13 +41,17 @@ HL spine, computing every HL-01, HL-02 and HL-04 from the nested spec, so a
 structurally inconsistent hierarchy is unrepresentable and SE-01 is correct by
 construction. It refuses, with the typed `Eligibility270BuildError`, anything it
 cannot make spec-clean: no information source, a source with no receiver, a
-receiver with no subscriber, a level with no name loop, a level that asks
-nothing, an inquiry carrying neither a service type nor a procedure, an empty or
-over-long control number, a non-string element value, and a forged array-like
-where a list belongs. Refusal messages name structural indices and counts, never
-a member identifier, a member name, a patient name, a trace or a diagnosis code.
+receiver with no subscriber, a level with no name loop at ANY of the four
+levels, a level that asks nothing, an inquiry carrying neither a service type
+nor a procedure, an empty or over-long control number, a non-string element
+value, a forged array-like where a list belongs, and a real list left with an
+empty slot in it. The last is the shape a JSON payload with a dropped record
+carries, and it is refused wherever it stands rather than dereferenced for an
+untyped `TypeError` a consumer cannot branch on. Refusal messages name
+structural indices and counts, never a member identifier, a member name, a
+patient name, a trace or a diagnosis code.
 
-**Five warning codes are added and nothing is renamed, removed or renumbered.**
+**Warning codes are added, and nothing is renamed, removed or renumbered.**
 `X12_270_NON_CONVENTIONAL_DELIMITER` and `X12_270_INTER_SEGMENT_LINE_BREAK`
 report the two tolerances the 270 path accepts without changing a value, once
 per transaction set each, anchored at the ISA. The framing one is CR and LF and
@@ -56,11 +60,15 @@ space or a tab between segments is not absorbed, the functional group does not
 frame, and no typed reader sees a transaction set. That is unchanged
 shared-parse behaviour, and `KNOWN-LIMITATIONS.md` now states it.
 `X12_270_DUPLICATE_HIERARCHY_ID`, `X12_270_HIERARCHY_CYCLE` and
-`X12_270_LEVEL_DETACHED` report the hierarchy hazards above. All five are raised
-on the 270 path only, so no fixture of any other transaction set gains a warning
-it did not have, and `X12_MISSING_REQUIRED_LOOP` carries the 270's structural
-regions through three new library-owned discriminants rather than three more
-codes.
+`X12_270_LEVEL_DETACHED` report the hierarchy hazards above.
+`X12_270_DATE_ROW_DROPPED` reports a DTP that reached the reader short of the
+qualifier (DTP-01) or the value (DTP-03) a date row is built from: a DTP is a
+record and not a slot, so the whole row goes, the format qualifier with it, and
+the loss is reported rather than left to look like a date the sender never
+stated. Every one of them is raised on the 270 path only, so no fixture of any
+other transaction set gains a warning it did not have, and
+`X12_MISSING_REQUIRED_LOOP` carries the 270's structural regions through new
+library-owned discriminants rather than more codes.
 
 Nothing in the shared interchange parse changed. The 270 path takes the declared
 delimiters and the segment framing from the parse this package already performs

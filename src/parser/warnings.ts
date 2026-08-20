@@ -98,6 +98,7 @@ export const WARNING_CODES = {
   X12_270_DUPLICATE_HIERARCHY_ID: "X12_270_DUPLICATE_HIERARCHY_ID",
   X12_270_HIERARCHY_CYCLE: "X12_270_HIERARCHY_CYCLE",
   X12_270_LEVEL_DETACHED: "X12_270_LEVEL_DETACHED",
+  X12_270_DATE_ROW_DROPPED: "X12_270_DATE_ROW_DROPPED",
 } as const;
 
 /**
@@ -397,6 +398,8 @@ const WARNING_MESSAGES = {
     "The chain of HL-02 parent pointers starting at the hierarchical level at `position.segmentIndex` returns to a level already on that chain, so the document describes a hierarchy that is not a tree. The walk is bounded by the number of HL segments in the transaction set and visits no level twice on one chain, so it terminates rather than following the cycle: this code is what it reports instead. The level is NOT attached to a parent, and this reader neither re-numbers the hierarchy nor picks a link to break, because either would be inventing a structure the sender did not send. Every declared pointer stays verbatim on the model and the level's own HL is still on `hierarchies`. Read it as disjoint from a dangling pointer, which is `X12_HL_PARENT_MISMATCH`: that one reports a pointer naming a level that is not present, and this one requires that every pointer on the chain names a level that IS.",
   X12_270_LEVEL_DETACHED:
     "The hierarchical level at `position.segmentIndex` is not attached to the inquiry hierarchy this reader returns, because its declared HL-02 did not resolve to a level of the parent kind the TR3 gives it. Everything that level carried, its name, identifiers, demographics, traces, dates and eligibility inquiries, is therefore absent from the returned tree, and so is everything transmitted beneath it. NOTHING is fabricated to stand in: no parent is synthesized, no level is re-parented onto whichever one happened to be open, and no pointer is re-numbered. This code names THAT loss and nothing else; the separate defect in the pointer is reported by its own code at the same position, one of `X12_HL_PARENT_MISMATCH`, `X12_HL_PARENT_LEVEL_INVALID` or `X12_270_HIERARCHY_CYCLE`, so a level reported here always carries one of those beside it. The level's HL is still on `hierarchies` verbatim and its segments are still on the transaction set; read them there before concluding the sender sent no such level.",
+  X12_270_DATE_ROW_DROPPED:
+    "270 date row dropped from the typed model: the DTP at `position.segmentIndex` reached this reader short of one of the two elements a date row is built from, so NO row was built for it and the rest of the segment went with it. Both the qualifier that says what the date is for (DTP-01) and the date value itself (DTP-03) are required to build one. The format qualifier (DTP-02), which says whether the value is a single date or a range, is carried ON the row and is not what decides this. Two routes reach it and this code does not say which: DTP-01 was absent, or DTP-03 was. Nothing is fabricated to stand in: no date is defaulted, no qualifier is inferred from the loop the segment sits in, and no half a row is built from the element that IS present. An empty `dates` list on a level or an inquiry is therefore not by itself evidence the sender stated no date, which is exactly the ambiguity this code exists to remove. Read the bound literally, as a property of the READ: this reports a DTP whose row this reader tried to build and could not. It does NOT report a DTP that decoded and then reached no level or inquiry to sit on, which is a different loss, stays silent, and is recorded in KNOWN-LIMITATIONS.md. It is raised on the 270 path ONLY, once per such segment. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such date.",
   X12_STATED_AMOUNT_DISCARDED:
     "Stated amount discarded: the RMR or AMT at `position.segmentIndex` populated its amount element and this reader built NO row for it, for a reason that is not a failure to decode that amount. What the sender wrote reaches no part of the typed model, so an empty list of open items or amounts is not evidence the sender stated none. Read that as the only claim made here: this code does NOT assert the amount is decodable, and on the RMR route below it is raised without the bytes ever being DECODED, so they may be unreadable, blank-but-present, or a lone component separator. Two routes reach it and this code does not say which. First, an 820 RMR whose RMR-01 and RMR-02 are BOTH empty while a remittance loop is open: the open item is refused on identity before RMR-04 or RMR-05 is read at all, so a stated payment amount, a stated amount due and the payment action code beside them go together. Second, an 837 AMT arriving while a Loop 2430 line adjudication is open: AMT-02 decoded, and the v1 adjudication model carries no amount row to put it on, so the row is skipped. Compare `X12_AMOUNT_ROW_DROPPED`, which reports the other situation on the same segments: there the amount element decoded no value, so there was no row to build at all. The two can never name the same segment. Read the bound literally, as a property of the READ: this reports a segment whose amount element the sender populated, arriving while the loop that would carry its row was open. It does NOT report an AMT or ADX that reaches a reader with no such loop open, which stays silent and is recorded in KNOWN-LIMITATIONS.md. And on the RMR route it says nothing about whether that amount WOULD have decoded, because the row is refused before the decode is attempted, so no `X12_UNPARSEABLE_DECIMAL` accompanies it even where the bytes are unreadable. Nothing is fabricated to stand in. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such amount.",
 } as const;
@@ -1603,6 +1606,31 @@ export function levelDetached(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_270_LEVEL_DETACHED,
     message: WARNING_MESSAGES.X12_270_LEVEL_DETACHED,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_270_DATE_ROW_DROPPED` warning. Raised where a 270's DTP reached
+ * the reader short of its qualifier (DTP-01) or its value (DTP-03), so no date
+ * row was built and the whole segment, the format qualifier included, is absent
+ * from the typed model.
+ *
+ * A DTP is a RECORD and not a slot, which is why the loss is the row rather
+ * than one element, and why it is reported at all: without this code an empty
+ * `dates` list reads the same whether the sender stated no date or stated one
+ * this reader could not build a row from.
+ *
+ * @example
+ * ```ts
+ * import { dateRowDropped } from "@cosyte/x12";
+ * const w = dateRowDropped({ segmentIndex: 9, transactionIndex: 0 });
+ * ```
+ */
+export function dateRowDropped(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_270_DATE_ROW_DROPPED,
+    message: WARNING_MESSAGES.X12_270_DATE_ROW_DROPPED,
     position,
   };
 }

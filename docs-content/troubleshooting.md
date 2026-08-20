@@ -169,7 +169,10 @@ optional leaf arrays such as `claim.dates` throw `TypeError: … is not iterable
 carries **no `code`**. Validate the shape at your own boundary if the spec comes from JSON.
 `build270` is the exception: every list slot on its spec, spine and leaf alike, goes through the
 checked-array chokepoint, so a forged array-like anywhere in a 270 spec draws the typed
-`Eligibility270BuildError`.
+`Eligibility270BuildError`. The same slots are checked for HOLES there, because an array with
+`undefined` or `null` in a slot IS an array and clears the chokepoint: that is what a JSON payload
+with a dropped record looks like, and on the other builders it still reaches whatever dereferences
+it. On a 270 it refuses, naming the slot.
 
 **A separate, long-standing hazard on the same JSON-caller path, FIXED in `0.0.9`: passing a builder a
 number where the types say string used to emit an EMPTY element, with no warning and no refusal.** On
@@ -383,6 +386,12 @@ third party.
   level, and everything beneath it, absent from the model. The loss is reported
   (`X12_270_LEVEL_DETACHED`) beside the code for the pointer defect, and the declared pointer and the
   segments both stay verbatim.
+- **A 270 DTP short of its qualifier (DTP-01) or its value (DTP-03) loses the whole date row, and
+  says so.** A DTP is a record and not a slot, so there is no half a row to keep and the format
+  qualifier that says single date or range goes with the rest. The loss is reported
+  (`X12_270_DATE_ROW_DROPPED`) at that segment, which is what lets you tell an empty `dates` list
+  apart from a date the sender stated. The report is bounded to a row the reader tried to build: a
+  segment arriving before the first HL opens a level reaches no part of the model and stays silent.
 
 For the per-transaction read and emit surface, and the exact fields each helper decodes, see the
 [Cookbook](./cookbook).

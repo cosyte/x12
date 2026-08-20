@@ -1606,7 +1606,13 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   `inquiries`, `serviceTypeCodes`) and the leaves (`traces`, `references`, `dates`, `address.lines`,
   `diagnosisCodePointers`, `procedure.modifiers`) alike - is read through the same checked-array
   chokepoint, so a forged array-like anywhere in a 270 spec draws a typed, code-tagged
-  `Eligibility270BuildError` rather than an untyped `TypeError`. The other builders are unchanged.
+  `Eligibility270BuildError` rather than an untyped `TypeError`. **The same slots are checked for
+  HOLES at the same point**, because a real array with `undefined` or `null` sitting in a slot is a
+  list and clears the chokepoint: that is the shape a JSON payload with a dropped record carries, and
+  unguarded it reached an emitter and threw the untyped `TypeError` this whole section is about. A
+  hole refuses wherever it stands, naming the slot and nothing out of the inquiry. A name loop sent
+  as `null` is refused the same way, at every level. The other builders are unchanged: on those, a
+  hole in a list still reaches whatever dereferences it.
 
   **One qualification worth stating precisely: on the acknowledgment path the value is not always
   strictly your own.** TR3 005010X231A1 requires AK2-02 to be a verbatim copy of the acknowledged
@@ -1688,6 +1694,16 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   declared pointer stays verbatim on `hierarchies`, and the segments stay verbatim on the transaction
   set. Nothing is re-parented onto whichever level happened to be open, because that would be this
   library inventing the one structure a 270 exists to state.
+- **A 270 DTP short of what a date row is built from loses the whole row, and says so.** A DTP is a
+  record and not a slot: without both the qualifier that says what the date is for (DTP-01) and the
+  value itself (DTP-03) there is no row to build, and the format qualifier that says single date or
+  range goes with it. The reader builds none, fabricates nothing to stand in, and reports the loss
+  (`X12_270_DATE_ROW_DROPPED`) at that segment, so an empty `dates` list can be told apart from a
+  date the sender stated and this reader could build no row from. **The report is bounded to the row
+  the reader tried to build.** A segment that would have attached to a level or an inquiry but
+  arrives before the first HL opens one reaches no part of the model and stays SILENT, the date row
+  included, so an empty list is evidence about a level this reader did return and about nothing else.
+  The segments stay verbatim on the transaction set either way.
 - **A 270's tolerated deviations are reported once per transaction set, not once per occurrence.**
   A declared non-conventional delimiter raises `X12_270_NON_CONVENTIONAL_DELIMITER` once however many
   of the four roles deviate, and a line break between segments raises

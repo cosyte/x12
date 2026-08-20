@@ -8,9 +8,10 @@
  *   BHT whose purpose code says request.
  * - Refusals, which are the whole of "spec-clean by construction": no
  *   information source, a source with no receiver, a receiver with no
- *   subscriber, a level with no name loop, a level that asks nothing, an
- *   inquiry that asks nothing, an empty or over-long control number, a
- *   non-string element value, and a forged array-like.
+ *   subscriber, a level with no name loop at any of the four levels, a level
+ *   that asks nothing, an inquiry that asks nothing, an empty or over-long
+ *   control number, a non-string element value, a forged array-like, and a real
+ *   list left with an empty slot in it.
  * - PHI discipline: a refusal message names structural indices and counts and
  *   never a member id, a member name, a patient name, a trace or a diagnosis
  *   code, and it stays inside the package's exported rendered-value ceiling.
@@ -66,6 +67,35 @@ const ENVELOPE = {
   interchangeControlNumber: "000000001",
   groupControlNumber: "1",
   transactionSetControlNumber: "0001",
+} as const;
+
+/**
+ * The three well-formed pieces the level guards are driven against, so a case
+ * that removes ONE name loop leaves every other level intact and the refusal it
+ * draws can only be the one it removed. Synthetic throughout.
+ */
+const NM1_SOURCE = {
+  entityIdentifierCode: "PR",
+  entityTypeQualifier: "2",
+  lastNameOrOrganizationName: "MEDPAY INSURANCE",
+} as const;
+
+const NM1_RECEIVER = {
+  entityIdentifierCode: "1P",
+  entityTypeQualifier: "2",
+  lastNameOrOrganizationName: "ANYTOWN CLINIC",
+} as const;
+
+const OK_SUBSCRIBER = {
+  name: {
+    entityIdentifierCode: "IL",
+    entityTypeQualifier: "1",
+    lastNameOrOrganizationName: "DOE",
+    firstName: "JANE",
+    idQualifier: "MI",
+    idCode: "MBR0001",
+  },
+  inquiries: [{ serviceTypeCodes: [{ code: "30" }] }],
 } as const;
 
 const CANONICAL_SPEC: Build270Spec = {
@@ -405,6 +435,123 @@ describe("build270 - refuses what it cannot emit spec-clean", () => {
     expect(err.message).toContain("has no name loop");
   });
 
+  /**
+   * The guard is on EVERY level, which is what the TR3 asks for: Loop 2100A and
+   * Loop 2100B carry an NM1 exactly as Loop 2100C and Loop 2100D do. It held at
+   * the subscriber and the dependent and not at the source or the receiver,
+   * where the same defect reached `emitName` and threw an untyped `TypeError`
+   * carrying no `code`. Each level is driven separately rather than through one
+   * table, so a level that stops being guarded fails by its own name.
+   */
+  const LEVELS: readonly (readonly [string, string, unknown])[] = [
+    [
+      "information source (Loop 2100A)",
+      "source[0]",
+      { receivers: [{ name: NM1_RECEIVER, subscribers: [OK_SUBSCRIBER] }] },
+    ],
+    [
+      "information receiver (Loop 2100B)",
+      "source[0].receiver[0]",
+      { name: NM1_SOURCE, receivers: [{ subscribers: [OK_SUBSCRIBER] }] },
+    ],
+  ];
+
+  it.each(LEVELS)("refuses an %s with no name loop", (_label, locator, source) => {
+    const err = refusalOf(() =>
+      build270(asJsCaller({ ...CANONICAL_SPEC, informationSources: [source] })),
+    );
+    expect(err.code).toBe(ELIGIBILITY_270_BUILD_ERROR_CODES.X12_270_BUILD_INVALID_SPEC);
+    expect(err.message).toContain("has no name loop");
+    expect(err.message).toContain(locator);
+  });
+
+  /** The same defect spelled `null`, at all four levels. */
+  const NULL_NAME_LEVELS: readonly (readonly [string, unknown])[] = [
+    [
+      "source[0]",
+      { name: null, receivers: [{ name: NM1_RECEIVER, subscribers: [OK_SUBSCRIBER] }] },
+    ],
+    [
+      "source[0].receiver[0]",
+      { name: NM1_SOURCE, receivers: [{ name: null, subscribers: [OK_SUBSCRIBER] }] },
+    ],
+    [
+      "source[0].receiver[0].subscriber[0]",
+      {
+        name: NM1_SOURCE,
+        receivers: [{ name: NM1_RECEIVER, subscribers: [{ ...OK_SUBSCRIBER, name: null }] }],
+      },
+    ],
+    [
+      "source[0].receiver[0].subscriber[0].dependent[0]",
+      {
+        name: NM1_SOURCE,
+        receivers: [
+          {
+            name: NM1_RECEIVER,
+            subscribers: [
+              {
+                ...OK_SUBSCRIBER,
+                dependents: [{ name: null, inquiries: OK_SUBSCRIBER.inquiries }],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  ];
+
+  it.each(NULL_NAME_LEVELS)(
+    "refuses a name loop that came through as null: %s",
+    (locator, source) => {
+      // `typeof null` is `"object"`, so a guard that tests only `undefined`
+      // passes `null` straight through to the NM1 emitter. That is the shape a
+      // `JSON.parse`d payload carries for an omitted object, from the caller
+      // class these guards exist for.
+      const err = refusalOf(() =>
+        build270(asJsCaller({ ...CANONICAL_SPEC, informationSources: [source] })),
+      );
+      expect(err.code).toBe(ELIGIBILITY_270_BUILD_ERROR_CODES.X12_270_BUILD_INVALID_SPEC);
+      expect(err.message).toContain(`the level at ${locator} has no name loop`);
+    },
+  );
+
+  it("takes an OPTIONAL nested object sent as null as absent, not as a defect", () => {
+    // The other side of the same question, and the convention the array
+    // chokepoint already holds: `null` is how a JSON payload spells an omitted
+    // object, and an omitted optional is not a defect. What it must NOT do is
+    // read as PRESENT and dereference into an untyped `TypeError`, which is
+    // what an address and a procedure sent that way used to do.
+    const ix = build270(
+      asJsCaller({
+        ...CANONICAL_SPEC,
+        informationSources: [
+          {
+            name: { ...NM1_SOURCE, address: null },
+            receivers: [
+              {
+                name: NM1_RECEIVER,
+                subscribers: [
+                  {
+                    ...OK_SUBSCRIBER,
+                    inquiries: [{ serviceTypeCodes: [{ code: "30" }], procedure: null }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(ix.warnings).toEqual([]);
+    const raw = serializeX12(ix);
+    // Absent means absent: no address segments, and an EQ with no procedure
+    // composite rather than an empty one.
+    expect(raw).not.toContain("N3*");
+    expect(raw).not.toContain("N4*");
+    expect(raw).toContain("EQ*30~");
+  });
+
   it("refuses a subscriber that asks nothing and carries no dependent that does", () => {
     const err = refusalOf(() =>
       build270(
@@ -505,23 +652,35 @@ describe("build270 - control numbers and element types", () => {
   });
 });
 
-describe("build270 - a forged array-like refuses instead of hanging", () => {
+describe("build270 - a forged array-like, or a hole in a real one, refuses", () => {
   /**
-   * `{ length: "9".repeat(120_000) }` coerces to `Infinity` in a `<`
-   * comparison, which is what turns a bounded loop into an unbounded one. Every
-   * list slot the builder walks is read through `requireCallerArray` first, so
-   * each of these refuses with a typed, code-tagged error instead.
+   * Two defects from the same caller, swept over the same slots.
    *
-   * **The sweep is over EVERY list slot the spec types declare, not over the
+   * **A forged array-like** - `{ length: "9".repeat(120_000) }` - coerces to
+   * `Infinity` in a `<` comparison, which is what turns a bounded loop into an
+   * unbounded one. Every list slot the builder walks is read through
+   * `requireCallerArray` first, so each of these refuses with a typed,
+   * code-tagged error instead.
+   *
+   * **A hole in a real list** clears that chokepoint, because the value IS an
+   * array: `JSON.parse` of a payload with a dropped record, or a `map` that
+   * returned nothing for one row, hands over a genuine array with `undefined`
+   * sitting in a slot. Unguarded it reaches an emitter, which dereferences it
+   * and throws an untyped `TypeError` whose `code` is `undefined` - the exact
+   * value a consumer cannot branch on, and the one this builder's guard lineage
+   * exists to eliminate. The builder therefore checks every list for holes at
+   * the same point it checks that the list is a list.
+   *
+   * **Both sweeps are over EVERY list slot the spec types declare, not over the
    * spine alone.** An earlier draft guarded the three slots that shape the HL
    * hierarchy and left the leaf lists to throw an untyped `TypeError`, which
    * terminates but carries no `code` for a JSON-driven caller to branch on.
    * That is the sibling builders' behaviour, disclosed repo-wide in
    * `KNOWN-LIMITATIONS.md`; it is not what this builder's own contract says,
-   * so this builder is deliberately stricter than its siblings and the sweep
-   * below is what holds it there. The last test is the exhaustiveness half: it
-   * reads the spec types and fails if a list slot is declared that no case
-   * plants a forged value in.
+   * so this builder is deliberately stricter than its siblings and the sweeps
+   * below are what hold it there. The last test is the exhaustiveness half: it
+   * reads the spec types and fails BY NAME if a list slot is declared that
+   * neither sweep plants a value in.
    */
   const FORGED = asJsCaller<never>({ length: "9".repeat(120_000) });
 
@@ -605,11 +764,11 @@ describe("build270 - a forged array-like refuses instead of hanging", () => {
   };
 
   /**
-   * Plant the forged array-like at one dot path of a deep clone. Refusing a
-   * path the spec above does not populate is the point: a case naming a slot
-   * that is not there would otherwise pass vacuously.
+   * Plant a value at one dot path of a deep clone. Refusing a path the spec
+   * above does not populate is the point: a case naming a slot that is not
+   * there would otherwise pass vacuously.
    */
-  function plantForged(path: string): Build270Spec {
+  function plantAt(path: string, value: unknown): Build270Spec {
     const root = structuredClone(EVERY_LIST_SPEC) as unknown as Record<string, unknown>;
     const keys = path.split(".");
     const last = keys[keys.length - 1] ?? "";
@@ -622,8 +781,18 @@ describe("build270 - a forged array-like refuses instead of hanging", () => {
       node = next as Record<string, unknown>;
     }
     if (node[last] === undefined) throw new Error(`the sweep spec has no ${path}`);
-    node[last] = FORGED;
+    node[last] = value;
     return root as unknown as Build270Spec;
+  }
+
+  /** The list at `path` replaced by one that is not a list at all. */
+  function plantForged(path: string): Build270Spec {
+    return plantAt(path, FORGED);
+  }
+
+  /** The list at `path` replaced by a REAL array whose only slot is empty. */
+  function plantHole(path: string): Build270Spec {
+    return plantAt(path, [undefined]);
   }
 
   const SUBSCRIBER = "informationSources.0.receivers.0.subscribers.0";
@@ -687,11 +856,49 @@ describe("build270 - a forged array-like refuses instead of hanging", () => {
     expect(err.message.length).toBeLessThan(400);
   });
 
+  it.each(SPINE_SLOTS)("refuses a hole in %s with the hierarchy code", (path) => {
+    const err = refusalOf(() => build270(plantHole(path)));
+    expect(err.code).toBe(ELIGIBILITY_270_BUILD_ERROR_CODES.X12_270_BUILD_INVALID_HIERARCHY);
+    expect(err.message).toContain("is an empty list slot");
+    expect(err.message.length).toBeLessThan(400);
+  });
+
+  it.each(LEAF_SLOTS)("refuses a hole in %s with the spec code", (path) => {
+    const err = refusalOf(() => build270(plantHole(path)));
+    expect(err.code).toBe(ELIGIBILITY_270_BUILD_ERROR_CODES.X12_270_BUILD_INVALID_SPEC);
+    expect(err.message).toContain("is an empty list slot");
+    expect(err.message.length).toBeLessThan(400);
+  });
+
+  it("names the slot that is empty, and nothing out of the inquiry", () => {
+    // The locator is the whole value of the message: a consumer who catches
+    // this has to find the hole in a payload they did not hand-write. It is
+    // assembled by this library from indices it computed, so it names a path
+    // and never a member id, a member name, a trace or a diagnosis code.
+    const err = refusalOf(() =>
+      build270(plantHole("informationSources.0.receivers.0.subscribers.0.traces")),
+    );
+    expect(err.message).toContain("source[0].receiver[0].subscriber[0].traces[0]");
+    for (const secret of ["MBR0001", "DOE", "JANE", "ELIG20260601001", "99213", "ANYTOWN CLINIC"]) {
+      expect(err.message).not.toContain(secret);
+    }
+  });
+
+  it("says which of the two empty values it received", () => {
+    // `null` is what a JSON payload carries far more often than `undefined`,
+    // and `typeof null` is `"object"`, so a guard testing only `undefined`
+    // lets it through to the same crash. Both are holes and both are named.
+    const undef = refusalOf(() => build270(plantAt("informationSources", [undefined])));
+    const nul = refusalOf(() => build270(plantAt("informationSources", [null])));
+    expect(undef.message).toContain("Received undefined");
+    expect(nul.message).toContain("Received null");
+  });
+
   it("covers every list slot the spec types declare", () => {
     // The exhaustiveness half, in the shape `builder-array-bounds.test.ts`
     // uses: read the declarations rather than trust the table. A list added to
-    // `build-270-types.ts` that no case above plants a forged value in reds
-    // here, by name, without anyone remembering to extend the table.
+    // `build-270-types.ts` that no case above plants a forged value or a hole
+    // in reds here, by name, without anyone remembering to extend the table.
     const types = readFileSync(
       join(__dirname, "..", "src", "transactions", "eligibility", "build-270-types.ts"),
       "utf8",
@@ -766,6 +973,50 @@ describe("build270 - refusal messages are PHI-free and bounded", () => {
                   {
                     name: { entityIdentifierCode: "1P", entityTypeQualifier: "2" },
                     subscribers: [{ inquiries: [{ serviceTypeCodes: [{ code: "30" }] }] }],
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
+    ],
+    [
+      "information source with no name",
+      () =>
+        build270(
+          asJsCaller({
+            ...CANONICAL_SPEC,
+            informationSources: [
+              { receivers: [{ name: NM1_RECEIVER, subscribers: [OK_SUBSCRIBER] }] },
+            ],
+          }),
+        ),
+    ],
+    [
+      "a hole where a subscriber belongs",
+      () =>
+        build270(
+          asJsCaller({
+            ...CANONICAL_SPEC,
+            informationSources: [
+              { name: NM1_SOURCE, receivers: [{ name: NM1_RECEIVER, subscribers: [undefined] }] },
+            ],
+          }),
+        ),
+    ],
+    [
+      "a hole where a trace belongs",
+      () =>
+        build270(
+          asJsCaller({
+            ...CANONICAL_SPEC,
+            informationSources: [
+              {
+                name: NM1_SOURCE,
+                receivers: [
+                  {
+                    name: NM1_RECEIVER,
+                    subscribers: [{ ...OK_SUBSCRIBER, traces: [undefined] }],
                   },
                 ],
               },

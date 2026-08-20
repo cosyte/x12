@@ -14,11 +14,12 @@
  * correct by construction.
  *
  * **Spec-clean by construction is the whole contract, so the builder refuses
- * anything it cannot make spec-clean.** A subscriber or dependent with no name
- * loop, a level whose only inquiry asks nothing at all, a receiver with no
- * subscriber: each is a document a payer would have to repair, so it is
- * refused rather than emitted. That is also why the emit side and the read
- * side disagree deliberately. {@link "./get-270.js".get270Inquiry} is lenient
+ * anything it cannot make spec-clean.** A level with no name loop, at any of
+ * the four levels, a level whose only inquiry asks nothing at all, a receiver
+ * with no subscriber, an empty slot in a list a caller handed over: each is a
+ * document a payer would have to repair, so it is refused rather than emitted.
+ * That is also why the emit side and the read side disagree deliberately.
+ * {@link "./get-270.js".get270Inquiry} is lenient
  * and returns a model with the incomplete region ABSENT and a warning beside
  * it; handing such a model back to this builder refuses, because the region it
  * is missing is one this builder would have to invent to emit. A caller that
@@ -83,17 +84,80 @@ function refuseSpec(message: string): never {
 }
 
 /**
+ * Refuse a HOLE in a caller-supplied list: a slot standing empty where the
+ * list's own element type says a value stands.
+ *
+ * {@link requireCallerArray} answers "is this a list at all". This answers "is
+ * every slot in it filled", and they are different defects from the same caller
+ * class. A `JSON.parse`d payload with a dropped record, or a `map` that
+ * returned nothing for one row, produces a REAL array with a hole in it, so the
+ * chokepoint passes it through. Left unguarded the hole reaches an emitter,
+ * which dereferences it and throws an untyped `TypeError` carrying no `code` a
+ * consumer can branch on. `null` and `undefined` are both holes here: an
+ * absent LIST is absent (the chokepoint answers it with the empty array), but a
+ * list that exists and has a gap in it is a spec its author did not mean to
+ * send, and this builder invents nothing to fill one.
+ *
+ * `at` is a library-owned structural locator, never caller text and never a
+ * document value. Returning the narrowed value rather than asserting keeps the
+ * refusal on the same expression as the read. @internal
+ */
+function requireSlot<T>(
+  value: T | null | undefined,
+  at: string,
+  refuse: (message: string) => never,
+): T {
+  if (value === undefined || value === null) {
+    return refuse(
+      `build270: ${at} is an empty list slot. Received ${value === null ? "null" : "undefined"}, and this builder invents nothing to fill a hole in a list.`,
+    );
+  }
+  return value;
+}
+
+/**
+ * Read an OPTIONAL nested object, treating `null` as absent.
+ *
+ * The same convention {@link requireCallerArray} holds for an absent list, and
+ * for the same caller: `JSON.parse` renders an omitted object as `null` far
+ * more often than as `undefined`, and every string field on these specs already
+ * collapses both with `??`. Without it an `address: null` or a
+ * `procedure: null` read as PRESENT, and the emitter dereferenced it for an
+ * untyped `TypeError`. A missing optional is not a defect, so this normalises
+ * rather than refuses. @internal
+ */
+function absentIfNull<T>(value: T | null | undefined): T | undefined {
+  return value ?? undefined;
+}
+
+/** Refuse a hole at any index of a list already known to BE a list. @internal */
+function requireDenseList<T>(
+  items: readonly T[],
+  at: string,
+  refuse: (message: string) => never,
+): void {
+  for (const [i, item] of items.entries()) {
+    requireSlot(item, `${at}[${String(i)}]`, refuse);
+  }
+}
+
+/**
  * Read a caller-supplied LEAF list through the package's array chokepoint.
  *
  * Every list this module iterates goes through {@link requireCallerArray}, at
  * the point it is read and not in a separate pass, so a forged array-like draws
  * the typed, code-tagged {@link Eligibility270BuildError} a consumer can branch
- * on rather than the untyped `TypeError` a bare `for…of` throws. `at` is a
- * library-owned structural locator (`source[0].receiver[0].subscriber[0]`),
- * never caller text and never a document value. @internal
+ * on rather than the untyped `TypeError` a bare `for…of` throws. Every list is
+ * checked for holes at the same point, for the reason {@link requireSlot}
+ * gives: a real array with an empty slot clears the chokepoint and crashes the
+ * emitter instead. `at` is a library-owned structural locator
+ * (`source[0].receiver[0].subscriber[0]`), never caller text and never a
+ * document value. @internal
  */
 function leafList<T>(value: readonly T[] | null | undefined, at: string): readonly T[] {
-  return requireCallerArray(value, `build270: ${at}`, refuseSpec);
+  const items = requireCallerArray(value, `build270: ${at}`, refuseSpec);
+  requireDenseList(items, at, refuseSpec);
+  return items;
 }
 
 /** GS-08 / ST-03 version and release emitted for every 270 - the WPC TR3. @internal */
@@ -121,18 +185,21 @@ const HL_LEVEL = { SOURCE: "20", RECEIVER: "21", SUBSCRIBER: "22", DEPENDENT: "2
  * - No information sources, a source with no receivers, a receiver with no
  *   subscribers, or a SPINE list slot (`informationSources`, `receivers`,
  *   `subscribers`, `dependents`, `inquiries`, `serviceTypeCodes`) handed
- *   something that is not a list, gives `X12_270_BUILD_INVALID_HIERARCHY`.
- * - A subscriber or dependent with no name loop, a subscriber with neither an
- *   inquiry nor a dependent, a dependent with no inquiry, an inquiry that asks
- *   nothing, an empty or over-long control number, a non-string element value,
- *   or a LEAF list slot (`traces`, `references`, `dates`, `address.lines`,
- *   `diagnosisCodePointers`, `procedure.modifiers`) handed something that is
- *   not a list, gives `X12_270_BUILD_INVALID_SPEC`.
+ *   something that is not a list or left with an empty slot in it, gives
+ *   `X12_270_BUILD_INVALID_HIERARCHY`.
+ * - A level with no name loop, at ANY of the four levels, a subscriber with
+ *   neither an inquiry nor a dependent, a dependent with no inquiry, an inquiry
+ *   that asks nothing, an empty or over-long control number, a non-string
+ *   element value, or a LEAF list slot (`traces`, `references`, `dates`,
+ *   `address.lines`, `diagnosisCodePointers`, `procedure.modifiers`) handed
+ *   something that is not a list or left with an empty slot in it, gives
+ *   `X12_270_BUILD_INVALID_SPEC`.
  *
- * EVERY list slot on the spec is read through the package's array chokepoint,
- * so a forged array-like draws one of those two typed refusals wherever it
- * stands. That is deliberately stricter than the sibling builders, whose leaf
- * lists throw an untyped `TypeError` a consumer cannot branch on.
+ * EVERY list slot on the spec is read through the package's array chokepoint
+ * and checked for holes at the same point, so a forged array-like, and equally
+ * a real list with a gap in it, draws one of those two typed refusals wherever
+ * it stands. That is deliberately stricter than the sibling builders, whose
+ * leaf lists throw an untyped `TypeError` a consumer cannot branch on.
  *
  * Every refusal message names structural indices and counts. None of them
  * names a member identifier, a member name, a patient name, a trace value or a
@@ -337,8 +404,12 @@ function enforceStructuralSpec(spec: Build270Spec): void {
     );
   }
   for (let s = 0; s < sources.length; s += 1) {
-    const source = sources[s];
-    if (source === undefined) continue;
+    const source = requireSlot(
+      sources[s],
+      `spec.informationSources[${String(s)}]`,
+      refuseHierarchy,
+    );
+    requireName(source.name, `source[${String(s)}]`);
     const receivers = requireCallerArray(
       source.receivers,
       `build270: spec.informationSources[${String(s)}].receivers`,
@@ -351,8 +422,12 @@ function enforceStructuralSpec(spec: Build270Spec): void {
       );
     }
     for (let r = 0; r < receivers.length; r += 1) {
-      const receiver = receivers[r];
-      if (receiver === undefined) continue;
+      const receiver = requireSlot(
+        receivers[r],
+        `spec.informationSources[${String(s)}].receivers[${String(r)}]`,
+        refuseHierarchy,
+      );
+      requireName(receiver.name, `source[${String(s)}].receiver[${String(r)}]`);
       const subscribers = requireCallerArray(
         receiver.subscribers,
         `build270: spec.informationSources[${String(s)}].receivers[${String(r)}].subscribers`,
@@ -365,8 +440,11 @@ function enforceStructuralSpec(spec: Build270Spec): void {
         );
       }
       for (let u = 0; u < subscribers.length; u += 1) {
-        const subscriber = subscribers[u];
-        if (subscriber === undefined) continue;
+        const subscriber = requireSlot(
+          subscribers[u],
+          `spec.informationSources[${String(s)}].receivers[${String(r)}].subscribers[${String(u)}]`,
+          refuseHierarchy,
+        );
         enforceSubscriber(
           subscriber,
           `source[${String(s)}].receiver[${String(r)}].subscriber[${String(u)}]`,
@@ -402,8 +480,11 @@ function enforceSubscriber(subscriber: Build270SubscriberSpec, locator: string):
     enforceInquiry(inquiries[q], `${locator}.inquiry[${String(q)}]`);
   }
   for (let d = 0; d < dependents.length; d += 1) {
-    const dependent = dependents[d];
-    if (dependent === undefined) continue;
+    const dependent = requireSlot(
+      dependents[d],
+      `${locator}.dependent[${String(d)}]`,
+      refuseHierarchy,
+    );
     enforceDependent(dependent, `${locator}.dependent[${String(d)}]`);
   }
 }
@@ -428,11 +509,18 @@ function enforceDependent(dependent: Build270DependentSpec, locator: string): vo
 }
 
 /**
- * Refuse a name loop that is absent or carries neither of the two elements the
- * TR3 makes required on every NM1. @internal
+ * Refuse a name loop that is absent or is not an object at all.
+ *
+ * Called for EVERY level of the hierarchy, which is what the message says and
+ * what the TR3 requires: an information source and an information receiver each
+ * carry a Loop 2100 NM1 exactly as a subscriber and a dependent do. `null` is
+ * refused beside `undefined` because `typeof null` is `"object"`, so a
+ * `JSON.parse`d level whose name came through as `null` used to clear this
+ * guard and crash the NM1 emitter with an untyped `TypeError` instead.
+ * @internal
  */
-function requireName(name: Build270NameSpec | undefined, locator: string): void {
-  if (name === undefined || typeof name !== "object") {
+function requireName(name: Build270NameSpec | null | undefined, locator: string): void {
+  if (name === undefined || name === null || typeof name !== "object") {
     throw new Eligibility270BuildError(
       ELIGIBILITY_270_BUILD_ERROR_CODES.X12_270_BUILD_INVALID_SPEC,
       `build270: the level at ${locator} has no name loop (NM1), which every level of a 270 requires.`,
@@ -446,14 +534,15 @@ function requireName(name: Build270NameSpec | undefined, locator: string): void 
  * that no payer can answer, and defaulting a service type would be this
  * library asking something the caller did not. @internal
  */
-function enforceInquiry(inquiry: Build270InquirySpec | undefined, locator: string): void {
-  if (inquiry === undefined) return;
+function enforceInquiry(raw: Build270InquirySpec | undefined, locator: string): void {
+  const inquiry = requireSlot(raw, locator, refuseHierarchy);
   const serviceTypeCodes = requireCallerArray(
     inquiry.serviceTypeCodes,
     `build270: ${locator}.serviceTypeCodes`,
     refuseHierarchy,
   );
-  if (serviceTypeCodes.length === 0 && inquiry.procedure === undefined) {
+  requireDenseList(serviceTypeCodes, `${locator}.serviceTypeCodes`, refuseHierarchy);
+  if (serviceTypeCodes.length === 0 && absentIfNull(inquiry.procedure) === undefined) {
     throw new Eligibility270BuildError(
       ELIGIBILITY_270_BUILD_ERROR_CODES.X12_270_BUILD_INVALID_SPEC,
       `build270: the inquiry at ${locator} asks nothing: it carries neither a service type code (EQ-01) nor a procedure (EQ-02).`,
@@ -615,7 +704,8 @@ function emitName(name: Build270NameSpec, body: string[], ctx: EmitContext, loca
       ctx.esc(name.idCode ?? ""),
     ]),
   );
-  if (name.address !== undefined) emitAddress(name.address, body, ctx, locator);
+  const address = absentIfNull(name.address);
+  if (address !== undefined) emitAddress(address, body, ctx, locator);
   if (name.dateOfBirth !== undefined || name.genderCode !== undefined) {
     body.push(
       ctx.seg(["DMG", "D8", ctx.esc(name.dateOfBirth ?? ""), ctx.esc(name.genderCode ?? "")]),
@@ -672,7 +762,7 @@ function emitInquiry(
   )
     .map((s) => ctx.esc(s.code))
     .join(ctx.repetitionSeparator);
-  const procedure = inquiry.procedure;
+  const procedure = absentIfNull(inquiry.procedure);
   const procedureElement =
     procedure === undefined
       ? ""
