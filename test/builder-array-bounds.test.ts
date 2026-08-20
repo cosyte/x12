@@ -20,12 +20,16 @@
  * typed, code-tagged error the caller can branch on, while a hang takes the
  * worker with it and never reaches a `catch`.
  *
- * **Measured at base commit `55ebc66`, not assumed:** driving the nineteen
- * probes this file ships (the seventeen `FORGED_ARRAY_CASES` plus the two
+ * **Measured at base commit `55ebc66`, not assumed:** driving the probes this
+ * file shipped at that base (the `FORGED_ARRAY_CASES` plus the two
  * `RESIDUAL_CASES`), each in its own child process under a 20-second wall-clock
  * timeout because a hang cannot be observed in-process, **16 hung with no
- * refusal** and **3 threw an untyped `TypeError`**. At head the same nineteen
- * give **17 typed, code-tagged refusals** and **2 untyped `TypeError`s**.
+ * refusal** and **3 threw an untyped `TypeError`**. At head every one of those
+ * gives a typed, code-tagged refusal except the two `RESIDUAL_CASES`, which
+ * still give untyped `TypeError`s. **No live probe count is quoted, here or in
+ * `KNOWN-LIMITATIONS.md`:** the table below grows with every builder added, so
+ * a number in prose describes a tree that has already moved. The two figures
+ * above are frozen to that base commit and are historical.
  *
  * **The first draft of this file said "14 of 16", and adversarial review was
  * right to reject it.** No shipped table yields sixteen probes; the figure came
@@ -50,15 +54,21 @@
  *
  * ## Three limits, written down rather than claimed away
  *
- * 1. **`for…of` is NOT covered, and does not hang.** A forged `{ length }` is
- *    not iterable, so `for…of` throws `TypeError: … is not iterable`
- *    immediately. That is not the typed, code-tagged refusal this library
- *    promises - `err.code` is `undefined` - but it terminates, so it is a
- *    different defect from the one this gate closes. Measured identical at base
- *    and head for `buildInterchange` (`spec.groups`), `build999`
- *    (`functionalGroup.transactionResponses`), and every optional leaf array
- *    (`claim.dates`, `line.references`, …). Pinned below so it cannot quietly
- *    become a hang, and disclosed in `KNOWN-LIMITATIONS.md` rather than fixed.
+ * 1. **`for…of` is NOT covered by the SCAN, and does not hang.** A forged
+ *    `{ length }` is not iterable, so `for…of` throws
+ *    `TypeError: … is not iterable` immediately. That is not the typed,
+ *    code-tagged refusal this library promises - `err.code` is `undefined` -
+ *    but it terminates, so it is a different defect from the one this gate
+ *    closes. Measured identical at base and head for `buildInterchange`
+ *    (`spec.groups`), `build999` (`functionalGroup.transactionResponses`), and
+ *    the optional leaf arrays (`claim.dates`, `line.references`, …). Pinned
+ *    below so it cannot quietly become a hang, and disclosed in
+ *    `KNOWN-LIMITATIONS.md` rather than fixed. **`build270` is the one builder
+ *    that does not sit in this residual:** it passes every list it reads, leaf
+ *    lists included, through `requireCallerArray` before the `for…of`, so the
+ *    forged value is refused rather than iterated. That sweep lives with the
+ *    builder, in `test/transactions-eligibility-270-build.test.ts`, because it
+ *    is a property of that builder's contract and not of this scan.
  * 2. **The scan is syntactic.** It keys on `for (let x = 0; x < …` and
  *    `while (… < …)` shapes. A bound computed in a helper, or reached through a
  *    reassigned `let`, would not be seen. A strong tripwire for the shape this
@@ -104,6 +114,7 @@ import { describe, expect, it } from "vitest";
 import { requireCallerArray } from "../src/builder/caller-array.js";
 import { BUILD_REFUSAL_VALUE_MAX_RENDERED } from "../src/index.js";
 import {
+  build270,
   build271,
   build277,
   build277CA,
@@ -119,6 +130,7 @@ import {
   buildInterchange,
   Claim837BuildError,
   ClaimStatus277BuildError,
+  Eligibility270BuildError,
   Eligibility271BuildError,
   Enrollment834BuildError,
   Premium820BuildError,
@@ -224,12 +236,15 @@ describe("builder loop bounds: the source gate", () => {
   const bounds = modules.flatMap(loopBounds);
 
   it("finds every indexed loop bound in the builder modules", () => {
-    // Re-derived on this tree: THIRTY-TWO indexed loops across SEVEN modules
-    // take their bound from a list, and all thirty-two read a caller-supplied
-    // `.length` at base commit `55ebc66`. Pinned so a module that stops being
+    // Re-derived on this tree: THIRTY-EIGHT indexed loops across EIGHT modules
+    // take their bound from a list. Thirty-two of them, across seven modules,
+    // read a caller-supplied `.length` at base commit `55ebc66`; the other SIX,
+    // in the eighth module, arrived with the 270 domain builder, which walks
+    // its sources, receivers, subscribers, dependents and inquiries the same
+    // way and through the same chokepoint. Pinned so a module that stops being
     // scanned is a failure rather than a silently smaller sweep.
-    expect(bounds.length).toBe(32);
-    expect(new Set(bounds.map((b) => b.file)).size).toBe(7);
+    expect(bounds.length).toBe(38);
+    expect(new Set(bounds.map((b) => b.file)).size).toBe(8);
   });
 
   it("takes every one of them from a requireCallerArray binding", () => {
@@ -503,6 +518,23 @@ const FORGED_ARRAY_CASES: readonly (readonly [string, () => unknown, new () => E
         }),
       ),
     Claim837BuildError as unknown as new () => Error,
+  ],
+  [
+    "build270 spec.informationSources",
+    () => build270(asJsCaller({ envelope: ENVELOPE, header: {}, informationSources: FORGED })),
+    Eligibility270BuildError as unknown as new () => Error,
+  ],
+  [
+    "build270 informationSources[0].receivers",
+    () =>
+      build270(
+        asJsCaller({
+          envelope: ENVELOPE,
+          header: {},
+          informationSources: [{ name: {}, receivers: FORGED }],
+        }),
+      ),
+    Eligibility270BuildError as unknown as new () => Error,
   ],
   [
     "build271 spec.informationSources",

@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { FATAL_CODES, WARNING_CODES } from "../src/index.js";
+import { FATAL_CODES, REQUIRED_LOOPS, WARNING_CODES } from "../src/index.js";
 
 function sortedWarningCodes(): string[] {
   return Object.values(WARNING_CODES).sort((a, b) => a.localeCompare(b));
@@ -29,6 +29,12 @@ describe("public API: WARNING_CODES surface is stable", () => {
   it("the sorted set of Tier-2 warning codes matches the locked snapshot", () => {
     expect(sortedWarningCodes()).toMatchInlineSnapshot(`
       [
+        "X12_270_DATE_ROW_DROPPED",
+        "X12_270_DUPLICATE_HIERARCHY_ID",
+        "X12_270_HIERARCHY_CYCLE",
+        "X12_270_INTER_SEGMENT_LINE_BREAK",
+        "X12_270_LEVEL_DETACHED",
+        "X12_270_NON_CONVENTIONAL_DELIMITER",
         "X12_834_UNKNOWN_MAINTENANCE_TYPE",
         "X12_835_BALANCE_NOT_EVALUABLE",
         "X12_835_REMIT_BALANCE_MISMATCH",
@@ -71,8 +77,34 @@ describe("public API: WARNING_CODES surface is stable", () => {
     for (const [k, v] of Object.entries(WARNING_CODES)) expect(k).toBe(v);
   });
 
-  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS) -> 27 (X12-DISCARD-AFTER-STRAY-LX) -> 28 (X12-PAY-TO-FUSION) -> 29 (X12-837-SV-UNDEFINED-DECIMAL) -> 30 (X12-AMT-ADX-ABSENT-AMOUNT) -> 31 (X12-STATED-AMOUNT-DISCARDED) -> 32 (X12-837-AMBIGUOUS-VARIANT) -> 33 (X12-837-SV1-OVERWRITE) -> 34 (X12-ISA-ELEMENT-ARITY)", () => {
-    expect(Object.keys(WARNING_CODES)).toHaveLength(34);
+  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS) -> 27 (X12-DISCARD-AFTER-STRAY-LX) -> 28 (X12-PAY-TO-FUSION) -> 29 (X12-837-SV-UNDEFINED-DECIMAL) -> 30 (X12-AMT-ADX-ABSENT-AMOUNT) -> 31 (X12-STATED-AMOUNT-DISCARDED) -> 32 (X12-837-AMBIGUOUS-VARIANT) -> 33 (X12-837-SV1-OVERWRITE) -> 34 (X12-ISA-ELEMENT-ARITY) -> 40 (the 270 typed model)", () => {
+    // SIX added by the 270 typed read path, and nothing renamed, removed or
+    // renumbered: the two tolerances that path reports (a declared
+    // non-conventional delimiter, whitespace between segments), the two
+    // hierarchy hazards it detects (a duplicated HL-01, a parent chain that
+    // returns to itself), the loss it reports when a level's declared parent
+    // does not resolve, and the loss it reports when a DTP reaches it short of
+    // the elements a date row is built from. Every one is raised on the 270
+    // path alone, which is what keeps a fixture of any other transaction set on
+    // the warning stream it had before.
+    expect(Object.keys(WARNING_CODES)).toHaveLength(40);
+  });
+
+  it("keeps the four REQUIRED_LOOPS the 837 owns and adds the 270's three", () => {
+    // `X12_MISSING_REQUIRED_LOOP` is one code over a library-owned
+    // discriminant, so the 270's structural regions are reported through the
+    // EXISTING code rather than three more. The discriminant values are
+    // prefixed, because the 837's Loop 2000A and the 270's are different loops
+    // that share a number and a message may not say the wrong one.
+    expect(Object.values(REQUIRED_LOOPS).sort((a, b) => a.localeCompare(b))).toEqual([
+      "2000A",
+      "2000B",
+      "2010BA",
+      "2010BB",
+      "270-2000A",
+      "270-2100",
+      "270-2110",
+    ]);
   });
 });
 

@@ -1,18 +1,72 @@
 /**
- * Barrel for the 271 Health Care Eligibility Benefit Response surface -
- * TR3 `005010X279A1`. The public entry point is {@link get271Eligibility};
- * types surface the typed result shape; the loop specs are exported so
- * consumers can introspect or extend the HL hierarchy.
+ * Barrel for the eligibility pair of TR3 `005010X279A1`: the 270 Health Care
+ * Eligibility Benefit INQUIRY and the 271 RESPONSE. Both directions have a
+ * per-transaction reader and a matching domain builder, and both are exported
+ * here. Types surface the typed result shapes; the loop specs are exported so
+ * consumers can introspect or extend either HL hierarchy.
  *
  * @example
  * ```ts
- * import { parseX12, get271Eligibility } from "@cosyte/x12";
+ * import { parseX12, get270Inquiry, get271Eligibility } from "@cosyte/x12";
  * const ix = parseX12(raw);
- * const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "271");
- * const elig = tx === undefined ? undefined : get271Eligibility(ix.delimiters, tx);
- * elig?.subscribers[0]?.traces[0]?.referenceId; // echoed 270 trace
+ * for (const tx of ix.groups[0]?.transactions ?? []) {
+ *   const inquiry = get270Inquiry(ix.delimiters, tx);   // undefined unless a 270
+ *   const response = get271Eligibility(ix.delimiters, tx); // undefined unless a 271
+ *   inquiry?.informationSources[0]?.receivers[0]?.subscribers[0]?.inquiries.length;
+ *   response?.subscribers[0]?.traces[0]?.referenceId; // the 270 trace, echoed
+ * }
  * ```
  */
+
+export { get270Inquiry, parse270Inquiries } from "./get-270.js";
+export { build270 } from "./build-270.js";
+export {
+  ELIGIBILITY_270_BUILD_ERROR_CODES,
+  Eligibility270BuildError,
+  type Eligibility270BuildErrorCode,
+} from "./build-270-errors.js";
+export type {
+  Build270AddressSpec,
+  Build270DateSpec,
+  Build270DependentSpec,
+  Build270EnvelopeSpec,
+  Build270HeaderSpec,
+  Build270InformationReceiverSpec,
+  Build270InformationSourceSpec,
+  Build270InquirySpec,
+  Build270NameSpec,
+  Build270ProcedureSpec,
+  Build270ReferenceSpec,
+  Build270ServiceTypeSpec,
+  Build270Spec,
+  Build270SubscriberSpec,
+  Build270TraceSpec,
+} from "./build-270-types.js";
+export {
+  INQUIRY_270_LOOP_2000A,
+  INQUIRY_270_LOOP_2000B,
+  INQUIRY_270_LOOP_2000C,
+  INQUIRY_270_LOOP_2000D,
+  INQUIRY_270_LOOP_2100C,
+  INQUIRY_270_LOOP_2100D,
+  INQUIRY_270_LOOP_2110,
+} from "./loop-spec-270.js";
+export type {
+  X12Inquiry,
+  X12InquiryAddress,
+  X12InquiryDate,
+  X12InquiryDependent,
+  X12InquiryHeader,
+  X12InquiryName,
+  X12InquiryProcedure,
+  X12InquiryReceiver,
+  X12InquiryReference,
+  X12InquiryRequest,
+  X12InquiryServiceType,
+  X12InquirySource,
+  X12InquirySubscriber,
+  X12InquiryTrace,
+} from "./inquiry-types.js";
 
 export { get271Eligibility } from "./get-271.js";
 export { build271 } from "./build-271.js";

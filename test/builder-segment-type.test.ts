@@ -145,8 +145,10 @@ describe("builder segment joining: the source gate", () => {
   const modules = joiningModules();
 
   it("finds a joiner in every module that declares one, and NAMES the one that does not", () => {
-    // NINE modules declare a joiner: the eight domain builders plus
-    // `buildInterchange`. `build-ta1.ts` does NOT, and is therefore NOT covered.
+    // TEN modules declare a joiner: the nine domain builders plus
+    // `buildInterchange`. It was NINE until the 270 domain builder landed,
+    // which declares one like every other domain builder does.
+    // `build-ta1.ts` does NOT, and is therefore NOT covered.
     //
     // **A draft of this comment gave the reason as "a TA1 is one fixed-width
     // line with no variable elements", and a refuter measured that false.** All
@@ -161,7 +163,7 @@ describe("builder segment joining: the source gate", () => {
     // refusal message: a wrong-typed TA1-01 names the builder, not `TA1-01`.
     // Widening the joiner into it is still its own slice.
     const joining = modules.filter(declaresJoiner);
-    expect(joining).toHaveLength(9);
+    expect(joining).toHaveLength(10);
     const ta1 = join("transactions", "ack", "build-ta1.ts");
     expect(modules.some((m) => m.endsWith(ta1))).toBe(true);
     expect(joining.some((m) => m.endsWith(ta1))).toBe(false);

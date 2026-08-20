@@ -13,9 +13,9 @@ the API shape, profile system, and lenient-parser philosophy are deliberately mi
 
 > **Status:** published on npm and public, still pre-alpha on the `0.0.x`-until-first-alpha
 > ladder. `npm view @cosyte/x12 version` is the source of truth for the current version; this page
-> does not restate it. The **shipped** surface is the HIPAA 005010 read side for 271, 277/277CA, 278,
-> 820, 834, 835, 837P/I/D, 999, and TA1 (the 270 and 276 inquiry directions parse as generic segments
-> and have no typed model yet), the emit
+> does not restate it. The **shipped** surface is the HIPAA 005010 read side for 270, 271, 277/277CA,
+> 278, 820, 834, 835, 837P/I/D, 999, and TA1 (the 276 claim status inquiry parses as generic segments
+> and has no typed model yet), the emit
 > side (`serializeX12` + `buildInterchange` and a domain builder for each of those sets),
 > and the descriptive trading-partner profile system. This documentation is gated to that surface:
 > where the parser does not yet do a thing, this site says so rather than promising it. Non-healthcare
@@ -27,6 +27,7 @@ the API shape, profile system, and lenient-parser philosophy are deliberately mi
 The HIPAA **005010** healthcare transaction sets. Every set listed below ships both a lenient reader
 and a spec-clean domain builder:
 
+- **270**: eligibility inquiry
 - **271**: eligibility response
 - **277**: claim status response (incl. **277CA** claim acknowledgment)
 - **278**: services review (request and response)
@@ -36,9 +37,11 @@ and a spec-clean domain builder:
 - **837P / 837I / 837D**: professional, institutional, and dental claims
 - **999 / TA1**: implementation and interchange acknowledgments
 
-The **270** eligibility inquiry and the **276** claim status inquiry are deliberately absent from that
-list. They parse into segments, composites, and dot-paths like any other X12 input, but neither has a
-typed reader or a domain builder yet: only their responses (271, 277) decode into a model.
+The **276** claim status inquiry is deliberately absent from that list. It parses into segments,
+composites, and dot-paths like any other X12 input, but it has no typed reader and no domain builder
+yet: only its response, the 277, decodes into a model. The 270 eligibility inquiry used to sit beside
+it and no longer does: it has a reader (`get270Inquiry` / `parse270Inquiries`) and a builder
+(`build270`) of its own.
 
 See [The 80/20 transaction sets](./spec-notes-transaction-sets) for the exact reader/builder pair each
 one ships and the safety-critical field each preserves verbatim.

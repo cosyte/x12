@@ -154,9 +154,9 @@ codes are preserved verbatim and raise `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` /
 
 **The problem:** you're the payer side and need to emit an eligibility **response**, then prove the
 reassociation contract holds: the 271 echoes the requesting 270's TRN-02 **verbatim** so the provider
-can match your answer to their question. There is no `build270`, and no `get270` either: the 270
-inquiry has no typed surface on either side, so the round-trip you can demonstrate today is
-`build271` → `get271Eligibility`.
+can match your answer to their question. The inquiry side has its own pair, `build270` and
+`get270Inquiry`, so both ends of the exchange are typed; this recipe stays on the response half and
+demonstrates `build271` → `get271Eligibility`.
 
 `build271(spec)` computes the HL spine for you (source → receiver → subscriber → dependent) and
 **refuses** a structurally impossible hierarchy via `Eligibility271BuildError`. It returns a frozen

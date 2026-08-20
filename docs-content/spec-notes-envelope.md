@@ -203,14 +203,15 @@ Cases 2 to 6 all break the round trip on inputs containing no line breaks at all
 six (1, 2, 3, 5, 6) produce no warning**, so a clean `ix.warnings` does not tell you a round trip
 will be byte-exact; only case 4 warns.
 
-What is **measured**, across the 56 fixtures committed to this repository: every emit is a fixed point
-and re-parses to an identical model with an identical warning stream; the 14 fixtures carrying no line
-breaks return byte-identical; and the 42 pretty-printed ones differ from their source by **line breaks
-and nothing else** (no element value lost, altered, reordered, or re-escaped). Two caveats bound how
-far that sweep can be pushed: the corpus contains **no instance of cases 2 to 6** and no orphan at
-all, and **13 of the 14 byte-identical fixtures are `golden/*.edi`**, which are serializer output by
-construction, so `envelope/no-trailing-crlf.edi` is the only independent witness. That is why the six
-cases are enumerated here rather than left to the sweep.
+What is **measured**, across every fixture committed to this repository: each emit is a fixed point
+and re-parses to an identical model with an identical warning stream; the fixtures carrying no line
+breaks return byte-identical; and the pretty-printed ones differ from their source by **line breaks
+and nothing else** (no element value lost, altered, reordered, or re-escaped). No corpus size is
+quoted: it moves with every fixture added, and the suite re-derives the sweep from the tree on every
+run. Two caveats bound how far that sweep can be pushed: the corpus contains **no instance of cases 2
+to 6** and no orphan at all, and **all but one of the byte-identical fixtures are `golden/*.edi`**,
+which are serializer output by construction, so `envelope/no-trailing-crlf.edi` is the only
+independent witness. That is why the six cases are enumerated here rather than left to the sweep.
 
 So for a file whose only irregularity is pretty-printing, the round trip is safe to build on for data
 and not for a byte-level diff, and diffing your emit against `serializeX12(parseX12(source))` is the

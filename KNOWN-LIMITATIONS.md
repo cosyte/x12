@@ -1328,14 +1328,15 @@ Code"`, `SVC05 / 380 / "Units of Service Paid Count"`, `SVC06 / C003`,
   context and anchor), `ta1Segments`, `trailingBytes` and the warning multiset are unchanged by the
   round trip, and every emit is a fixed point.
 
-  What is **measured** across the 56 committed fixtures: every emit is a fixed point (serializing it
+  What is **measured** across every committed fixture: each emit is a fixed point (serializing it
   again is a byte-level no-op) and re-parses to an identical model with an identical warning stream;
-  the 14 fixtures with no line breaks return byte-identical; and the other 42 differ from their source
+  the fixtures with no line breaks return byte-identical; and the rest differ from their source
   by **line breaks and nothing else**, with no element value lost, altered, reordered, or re-escaped.
-  Two caveats on that corpus, both of which limit how far the sweep can be pushed: it contains **no
-  instance of cases 2 to 6** (zero fixtures produce an `orphanSegments` entry, which is why the
-  orphan sweep above is constructed rather than drawn from it), and **13 of the 14
-  byte-identical fixtures are `golden/*.edi`**, which
+  No corpus size is quoted: it moves with every fixture added, and `test/serialize.test.ts`
+  re-derives the sweep from the tree on every run. Two caveats on that corpus, both of which limit
+  how far the sweep can be pushed: it contains **no instance of cases 2 to 6** (zero fixtures produce
+  an `orphanSegments` entry, which is why the orphan sweep above is constructed rather than drawn
+  from it), and **all but one of the byte-identical fixtures are `golden/*.edi`**, which
   are serializer output by construction, leaving `envelope/no-trailing-crlf.edi` as the only
   independent witness. Preserving the original framing byte-for-byte would need the model to carry
   per-segment framing and TA1 position it does not have today; that is a tracked model change, not a
@@ -1578,12 +1579,14 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
 
 - **A forged non-array in a builder spec refuses; in a few places it throws an untyped `TypeError`.**
   The types say `readonly T[]`, but a JavaScript or JSON caller can hand a builder something else. As
-  of `0.0.6` every indexed loop in every builder takes its bound from a checked array (32 loops across
-  7 modules), so an object like `{ length: "9".repeat(120000) }` draws that builder's own typed
+  of `0.0.6` every indexed loop in every builder takes its bound from a checked array, so an object
+  like `{ length: "9".repeat(120000) }` draws that builder's own typed
   refusal - previously the length coerced to `Infinity` and the builder **looped forever instead of
-  refusing**. Measured across the nineteen probes the suite ships: at base **16 hung** and 3 threw an
-  untyped `TypeError`; at head **17 refuse with a typed, coded error** and 2 still throw the untyped
-  `TypeError`.
+  refusing**. No loop or probe count is quoted here: both move with every builder added, and
+  `test/builder-array-bounds.test.ts` re-derives them from the source on every run. Measured over the
+  probes that suite shipped at the `0.0.6` base: most **hung** with no refusal and the rest threw an
+  untyped `TypeError`. Each of those probes now refuses with a typed, coded error, except the
+  `for…of` reads below, which still throw the untyped `TypeError`.
 
   **`null` is treated as absent, not forged**, exactly as the `?? []` this replaced did, so an
   optional list you send as `null` still builds. On a required list `null` draws that builder's own
@@ -1593,10 +1596,23 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
 
   Not covered, and disclosed rather than fixed: the places a builder reads a caller array with
   `for…of` - `buildInterchange`'s `spec.groups`, `build999`'s `functionalGroup.transactionResponses`,
-  and every optional leaf array such as `claim.dates` or `member.references`. Those throw
+  and the optional leaf arrays such as `claim.dates` or `member.references`. Those throw
   `TypeError: … is not iterable` immediately. They terminate, so they are not the hang, but they carry
   **no `code`**, so `err.code` is `undefined` and you cannot branch on it. Validate your spec shape at
   your own boundary if it comes from JSON.
+
+  **`build270` is the exception, and it is deliberately stricter than its siblings.** EVERY list slot
+  on `Build270Spec` - the spine (`informationSources`, `receivers`, `subscribers`, `dependents`,
+  `inquiries`, `serviceTypeCodes`) and the leaves (`traces`, `references`, `dates`, `address.lines`,
+  `diagnosisCodePointers`, `procedure.modifiers`) alike - is read through the same checked-array
+  chokepoint, so a forged array-like anywhere in a 270 spec draws a typed, code-tagged
+  `Eligibility270BuildError` rather than an untyped `TypeError`. **The same slots are checked for
+  HOLES at the same point**, because a real array with `undefined` or `null` sitting in a slot is a
+  list and clears the chokepoint: that is the shape a JSON payload with a dropped record carries, and
+  unguarded it reached an emitter and threw the untyped `TypeError` this whole section is about. A
+  hole refuses wherever it stands, naming the slot and nothing out of the inquiry. A name loop sent
+  as `null` is refused the same way, at every level. The other builders are unchanged: on those, a
+  hole in a list still reaches whatever dereferences it.
 
   **One qualification worth stating precisely: on the acknowledgment path the value is not always
   strictly your own.** TR3 005010X231A1 requires AK2-02 to be a verbatim copy of the acknowledged
@@ -1664,10 +1680,48 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   repo, but it stays on the `0.0.x`-until-first-alpha ladder. `npm view @cosyte/x12 version` is the
   only source of truth for the current version, so this page does not restate one. Treat the API as
   pre-alpha and pin the exact version until the first alpha.
-- **No typed model for the 270 and 276 inquiries.** Every other v1 transaction has both a
-  per-transaction reader and a domain builder. The 270 eligibility inquiry and the 276 claim-status
-  inquiry have neither: they parse into segments, composites, and dot-paths like any other X12 input,
-  and the responses (271, 277) decode fully, but the inquiry directions have no typed surface yet.
+- **No typed model for the 276 inquiry.** Every other v1 transaction has both a per-transaction
+  reader and a domain builder. The 276 claim-status inquiry has neither: it parses into segments,
+  composites, and dot-paths like any other X12 input, and its response, the 277, decodes fully, but
+  the inquiry direction has no typed surface yet. The 270 eligibility inquiry no longer belongs on
+  this line: it has a typed model on the read side (`get270Inquiry`, `parse270Inquiries`) and on the
+  emit side (`build270`).
+- **A 270 hierarchical level whose declared parent does not resolve is left off the returned tree.**
+  The 270 reader attaches a level by its own HL-02 and by nothing else, so a pointer naming a level
+  that is not present, a pointer naming a level of the wrong kind, and a parent chain that returns to
+  itself each leave that level, and everything transmitted beneath it, absent from the model. The
+  loss is reported (`X12_270_LEVEL_DETACHED`, beside the code for the pointer defect itself), the
+  declared pointer stays verbatim on `hierarchies`, and the segments stay verbatim on the transaction
+  set. Nothing is re-parented onto whichever level happened to be open, because that would be this
+  library inventing the one structure a 270 exists to state.
+- **A 270 DTP short of what a date row is built from loses the whole row, and says so.** A DTP is a
+  record and not a slot: without both the qualifier that says what the date is for (DTP-01) and the
+  value itself (DTP-03) there is no row to build, and the format qualifier that says single date or
+  range goes with it. The reader builds none, fabricates nothing to stand in, and reports the loss
+  (`X12_270_DATE_ROW_DROPPED`) at that segment, so an empty `dates` list can be told apart from a
+  date the sender stated and this reader could build no row from. **The report is bounded to the row
+  the reader tried to build.** A segment that would have attached to a level or an inquiry but
+  arrives before the first HL opens one reaches no part of the model and stays SILENT, the date row
+  included, so an empty list is evidence about a level this reader did return and about nothing else.
+  The segments stay verbatim on the transaction set either way.
+- **A 270's tolerated deviations are reported once per transaction set, not once per occurrence.**
+  A declared non-conventional delimiter raises `X12_270_NON_CONVENTIONAL_DELIMITER` once however many
+  of the four roles deviate, and a line break between segments raises
+  `X12_270_INTER_SEGMENT_LINE_BREAK` once however many runs the document carries. Both anchor at the
+  ISA. The framing run is also consumed by the shared parse and recorded nowhere on the model, so
+  only `parse270Inquiries`, which receives the bytes, can report it: `get270Inquiry` is handed the
+  model and reports the delimiter half alone.
+- **Between segments, only CR and LF are absorbed. A space or a tab there costs you the whole
+  interchange, on every transaction set.** The shared parse consumes a run of CR / LF before the next
+  segment opens; any other whitespace becomes the head of the next segment's identifier, so `GS` is
+  read as a non-spec segment id, no functional group frames, every segment after the ISA lands on
+  `ix.orphanSegments` with an `X12_UNEXPECTED_SEGMENT` warning, and the interchange also reports
+  `X12_MISSING_IEA`. Nothing is silent at the interchange level, but the typed readers see no
+  transaction set at all: `parse270Inquiries` answers the EMPTY list, which is the same value it uses
+  for an interchange that genuinely carries no 270, so **do not read an empty result as evidence the
+  sender sent no inquiry without checking `ix.warnings` first.** This is long-standing shared-parse
+  behaviour and the 270 work deliberately did not widen it: framing tolerance is shared by every
+  transaction set, and moving it is a change to all of them rather than to one reader.
 
 ## Code-list `--fetch` regeneration
 

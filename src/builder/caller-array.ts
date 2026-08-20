@@ -45,11 +45,19 @@
  * Measured on this tree, at base and unchanged at head: `buildInterchange`
  * (`spec.groups`) and `build999` (`functionalGroup.transactionResponses`) have
  * no indexed loop over their top-level arrays at all and throw that untyped
- * `TypeError`, as does every optional leaf array (`claim.dates`,
- * `line.references`, …) in every domain builder.
+ * `TypeError`, as do the optional leaf arrays (`claim.dates`,
+ * `line.references`, …) of the domain builders.
  * **`test/builder-array-bounds.test.ts` pins that behaviour so it cannot
  * quietly become a hang**, and it is disclosed in `KNOWN-LIMITATIONS.md`
  * rather than fixed here.
+ *
+ * **`build270` is the exception and it is deliberate.** It routes every list
+ * slot on its spec through this chokepoint at the point the list is read, leaf
+ * lists included, so a forged array-like anywhere in a 270 spec draws its typed
+ * error rather than the untyped `TypeError`. Read the sentence above as a
+ * statement about the builders that predate it, not as a rule this module
+ * enforces: the chokepoint is available to every leaf list, and the reason the
+ * others do not use it is history, not design.
  *
  * @see `test/builder-array-bounds.test.ts` - the source gate that requires
  * every indexed loop in a builder module to take its bound from a real array.
