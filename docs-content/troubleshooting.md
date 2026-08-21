@@ -216,7 +216,7 @@ names the builder rather than `TA1-01`, but its five elements do go through the 
 numeric or `undefined` `interchangeControlNumber` now refuses instead of emitting
 `TA1**250101*1200*A*000`, and an active delimiter is released instead of shifting the disposition
 element. An **empty** element refuses too, at all five slots; a whitespace-only one does not, and
-that residual is in [KNOWN-LIMITATIONS.md](../KNOWN-LIMITATIONS.md). What it cannot verify is the
+that residual is in [KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md). What it cannot verify is the
 envelope you will embed the segment in. The separators default
 to the cosyte archetype, so state them on `BuildTA1Options` if yours differ, or a value carrying a
 byte that is a delimiter here and not there comes back with a stray `?`.
