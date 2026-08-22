@@ -1,0 +1,396 @@
+{
+  "fixtures/eligibility/271-aaa-before-hierarchy.edi#0": [
+    {
+      "code": "X12_271_AAA_LOOP_UNIDENTIFIED",
+      "message": "271 AAA request validation could not be attributed to a hierarchical level at all: no level of a kind this surface names encloses the segment, either because none had opened when it arrived or because the enclosing level's HL-03 is none of them. The level part of the condition's key is left ABSENT rather than guessed, and so is the hierarchical identifier where the enclosing level states none. The occurrence index counts within the AAA segments of this document whose level is likewise unknown, in document order, so two such segments are indexed 0 and 1 and never both 0. The AAA is NOT dropped and nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 2,
+        "transactionIndex": 0
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation under no identified hierarchical level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 2,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation under no identified hierarchical level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 2,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    },
+    {
+      "code": "X12_271_AAA_LOOP_UNIDENTIFIED",
+      "message": "271 AAA request validation could not be attributed to a hierarchical level at all: no level of a kind this surface names encloses the segment, either because none had opened when it arrived or because the enclosing level's HL-03 is none of them. The level part of the condition's key is left ABSENT rather than guessed, and so is the hierarchical identifier where the enclosing level states none. The occurrence index counts within the AAA segments of this document whose level is likewise unknown, in document order, so two such segments are indexed 0 and 1 and never both 0. The AAA is NOT dropped and nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 3,
+        "transactionIndex": 0
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation under no identified hierarchical level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 3,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation under no identified hierarchical level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 3,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    }
+  ],
+  "fixtures/eligibility/271-aaa-dependent.edi#0": [
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the dependent level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 10,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the dependent level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 10,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    }
+  ],
+  "fixtures/eligibility/271-aaa-information-receiver.edi#0": [
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the information receiver level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 6,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the information receiver level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 6,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    }
+  ],
+  "fixtures/eligibility/271-aaa-information-source.edi#0": [
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the information source level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 4,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the information source level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 4,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    }
+  ],
+  "fixtures/eligibility/271-aaa-malformed.edi#0": [
+    {
+      "code": "X12_271_AAA_REJECT_REASON_ABSENT",
+      "message": "271 AAA request validation at the subscriber level states no reject reason code: AAA-03 is absent, or present and empty. The typed AAA condition carries that code as ABSENT rather than as a value, no placeholder is substituted, and the segment is NOT dropped - everything else the reader read off it is on the condition under its own key. Nothing the sender sent is echoed here; `position` says which segment and which element to read. Compare `X12_271_AAA_UNKNOWN_CODE`, which reports a code that IS stated and resolves to no description.",
+      "position": {
+        "segmentIndex": 8,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 8,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 9,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 10,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_SEGMENT_MALFORMED",
+      "message": "271 AAA request validation at the subscriber level is malformed at `position.elementIndex`: an element is present PAST the highest element position this reader has a source for, or the follow-up action code element is present and empty. What the reader did read is surfaced on the typed condition and the rest of the document is read to completion; reading a 271 never becomes fatal over AAA content. NO MEANING IS ASSIGNED to an element past the sourced positions - this reports that a position is occupied and says nothing whatever about what occupies it, because the layout beyond the follow-up action code is not established here and guessing it is the failure this code exists to avoid. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 10,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 11,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 11,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    },
+    {
+      "code": "X12_271_AAA_SEGMENT_MALFORMED",
+      "message": "271 AAA request validation at the subscriber level is malformed at `position.elementIndex`: an element is present PAST the highest element position this reader has a source for, or the follow-up action code element is present and empty. What the reader did read is surfaced on the typed condition and the rest of the document is read to completion; reading a 271 never becomes fatal over AAA content. NO MEANING IS ASSIGNED to an element past the sourced positions - this reports that a position is occupied and says nothing whatever about what occupies it, because the layout beyond the follow-up action code is not established here and guessing it is the failure this code exists to avoid. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 11,
+        "transactionIndex": 0,
+        "elementIndex": 5
+      }
+    }
+  ],
+  "fixtures/eligibility/271-aaa-no-hierarchy-id.edi#0": [
+    {
+      "code": "X12_271_AAA_LOOP_UNIDENTIFIED",
+      "message": "271 AAA request validation at the subscriber level could not be attributed to an IDENTIFIED hierarchical loop: the enclosing level states no HL-01. The hierarchical identifier part of the condition's key is left ABSENT rather than synthesised, every other part of the key is still carried, and the AAA is NOT dropped. The occurrence index part of the key is always determinable and is never absent, so the condition still names exactly one loop occurrence in document order. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 8,
+        "transactionIndex": 0
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 8,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 8,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    }
+  ],
+  "fixtures/eligibility/271-aaa-only-loop.edi#0": [
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 7,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 7,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    }
+  ],
+  "fixtures/eligibility/271-aaa-repeated.edi#0": [
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 8,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 8,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 9,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 9,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    }
+  ],
+  "fixtures/eligibility/271-aaa-subscriber.edi#0": [
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 8,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 8,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    }
+  ],
+  "fixtures/eligibility/271-aaa-two-dependents.edi#0": [
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the dependent level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 10,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the dependent level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 10,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the dependent level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 15,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the dependent level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 15,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    }
+  ],
+  "fixtures/eligibility/271-aaa-two-subscribers.edi#0": [
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 8,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 8,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 11,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 11,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    }
+  ],
+  "fixtures/eligibility/271-aaa-with-benefits.edi#0": [
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 10,
+        "transactionIndex": 0,
+        "elementIndex": 3
+      }
+    },
+    {
+      "code": "X12_271_AAA_UNKNOWN_CODE",
+      "message": "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+      "position": {
+        "segmentIndex": 10,
+        "transactionIndex": 0,
+        "elementIndex": 4
+      }
+    }
+  ],
+  "fixtures/eligibility/271-canonical.edi#0": [],
+  "fixtures/eligibility/271-dependent.edi#0": [],
+  "fixtures/eligibility/271-no-benefits-no-aaa.edi#0": [],
+  "fixtures/golden/271.edi#0": []
+}
