@@ -1,0 +1,299 @@
+{
+  "fixtures/eligibility/271-canonical.edi#0": {
+    "hierarchies": [
+      {
+        "hlId": "1",
+        "parentHlId": null,
+        "levelCode": "20",
+        "hasChild": "1"
+      },
+      {
+        "hlId": "2",
+        "parentHlId": "1",
+        "levelCode": "21",
+        "hasChild": "1"
+      },
+      {
+        "hlId": "3",
+        "parentHlId": "2",
+        "levelCode": "22",
+        "hasChild": "0"
+      }
+    ],
+    "subscribers": [
+      {
+        "hierarchyId": "3",
+        "memberIdCode": "MBR0001",
+        "benefits": [
+          {
+            "eligibilityCode": "1",
+            "coverageLevelCode": "IND",
+            "serviceTypeCodes": [
+              {
+                "code": "30",
+                "description": "Health Benefit Plan Coverage"
+              },
+              {
+                "code": "35",
+                "description": "Dental Care"
+              }
+            ],
+            "insuranceTypeCode": null,
+            "planCoverageDescription": "GOLD PPO",
+            "timePeriodQualifier": null,
+            "monetaryAmount": null,
+            "percent": null,
+            "quantityQualifier": null,
+            "quantity": null,
+            "authorizationRequired": null,
+            "inPlanNetwork": null,
+            "references": [],
+            "dates": [],
+            "messages": [],
+            "relatedEntities": []
+          },
+          {
+            "eligibilityCode": "B",
+            "coverageLevelCode": "IND",
+            "serviceTypeCodes": [
+              {
+                "code": "30",
+                "description": "Health Benefit Plan Coverage"
+              }
+            ],
+            "insuranceTypeCode": null,
+            "planCoverageDescription": "GOLD PPO",
+            "timePeriodQualifier": "27",
+            "monetaryAmount": "25",
+            "percent": null,
+            "quantityQualifier": null,
+            "quantity": null,
+            "authorizationRequired": null,
+            "inPlanNetwork": null,
+            "references": [],
+            "dates": [],
+            "messages": [],
+            "relatedEntities": []
+          },
+          {
+            "eligibilityCode": "C",
+            "coverageLevelCode": "IND",
+            "serviceTypeCodes": [
+              {
+                "code": "30",
+                "description": "Health Benefit Plan Coverage"
+              }
+            ],
+            "insuranceTypeCode": null,
+            "planCoverageDescription": "GOLD PPO",
+            "timePeriodQualifier": "29",
+            "monetaryAmount": "1000",
+            "percent": null,
+            "quantityQualifier": null,
+            "quantity": null,
+            "authorizationRequired": null,
+            "inPlanNetwork": null,
+            "references": [],
+            "dates": [],
+            "messages": [],
+            "relatedEntities": []
+          }
+        ],
+        "dependents": []
+      }
+    ]
+  },
+  "fixtures/eligibility/271-dependent.edi#0": {
+    "hierarchies": [
+      {
+        "hlId": "1",
+        "parentHlId": null,
+        "levelCode": "20",
+        "hasChild": "1"
+      },
+      {
+        "hlId": "2",
+        "parentHlId": "1",
+        "levelCode": "21",
+        "hasChild": "1"
+      },
+      {
+        "hlId": "3",
+        "parentHlId": "2",
+        "levelCode": "22",
+        "hasChild": "1"
+      },
+      {
+        "hlId": "4",
+        "parentHlId": "3",
+        "levelCode": "23",
+        "hasChild": "0"
+      }
+    ],
+    "subscribers": [
+      {
+        "hierarchyId": "3",
+        "memberIdCode": "MBR0002",
+        "benefits": [],
+        "dependents": [
+          {
+            "hierarchyId": "4",
+            "memberIdCode": null,
+            "benefits": [
+              {
+                "eligibilityCode": "1",
+                "coverageLevelCode": "CHD",
+                "serviceTypeCodes": [
+                  {
+                    "code": "35",
+                    "description": "Dental Care"
+                  }
+                ],
+                "insuranceTypeCode": null,
+                "planCoverageDescription": "PEDIATRIC DENTAL",
+                "timePeriodQualifier": null,
+                "monetaryAmount": null,
+                "percent": null,
+                "quantityQualifier": null,
+                "quantity": null,
+                "authorizationRequired": null,
+                "inPlanNetwork": null,
+                "references": [],
+                "dates": [],
+                "messages": [],
+                "relatedEntities": []
+              },
+              {
+                "eligibilityCode": "B",
+                "coverageLevelCode": "CHD",
+                "serviceTypeCodes": [
+                  {
+                    "code": "35",
+                    "description": "Dental Care"
+                  }
+                ],
+                "insuranceTypeCode": null,
+                "planCoverageDescription": "PEDIATRIC DENTAL",
+                "timePeriodQualifier": "27",
+                "monetaryAmount": "15",
+                "percent": null,
+                "quantityQualifier": null,
+                "quantity": null,
+                "authorizationRequired": null,
+                "inPlanNetwork": null,
+                "references": [],
+                "dates": [],
+                "messages": [],
+                "relatedEntities": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "fixtures/golden/271.edi#0": {
+    "hierarchies": [
+      {
+        "hlId": "1",
+        "parentHlId": null,
+        "levelCode": "20",
+        "hasChild": "1"
+      },
+      {
+        "hlId": "2",
+        "parentHlId": "1",
+        "levelCode": "21",
+        "hasChild": "1"
+      },
+      {
+        "hlId": "3",
+        "parentHlId": "2",
+        "levelCode": "22",
+        "hasChild": "0"
+      }
+    ],
+    "subscribers": [
+      {
+        "hierarchyId": "3",
+        "memberIdCode": "MBR0001",
+        "benefits": [
+          {
+            "eligibilityCode": "1",
+            "coverageLevelCode": "IND",
+            "serviceTypeCodes": [
+              {
+                "code": "30",
+                "description": "Health Benefit Plan Coverage"
+              },
+              {
+                "code": "35",
+                "description": "Dental Care"
+              }
+            ],
+            "insuranceTypeCode": null,
+            "planCoverageDescription": "GOLD PPO",
+            "timePeriodQualifier": null,
+            "monetaryAmount": null,
+            "percent": null,
+            "quantityQualifier": null,
+            "quantity": null,
+            "authorizationRequired": null,
+            "inPlanNetwork": null,
+            "references": [],
+            "dates": [],
+            "messages": [],
+            "relatedEntities": []
+          },
+          {
+            "eligibilityCode": "B",
+            "coverageLevelCode": "IND",
+            "serviceTypeCodes": [
+              {
+                "code": "30",
+                "description": "Health Benefit Plan Coverage"
+              }
+            ],
+            "insuranceTypeCode": null,
+            "planCoverageDescription": "GOLD PPO",
+            "timePeriodQualifier": "27",
+            "monetaryAmount": "25",
+            "percent": null,
+            "quantityQualifier": null,
+            "quantity": null,
+            "authorizationRequired": null,
+            "inPlanNetwork": null,
+            "references": [],
+            "dates": [],
+            "messages": [],
+            "relatedEntities": []
+          },
+          {
+            "eligibilityCode": "C",
+            "coverageLevelCode": "IND",
+            "serviceTypeCodes": [
+              {
+                "code": "30",
+                "description": "Health Benefit Plan Coverage"
+              }
+            ],
+            "insuranceTypeCode": null,
+            "planCoverageDescription": "GOLD PPO",
+            "timePeriodQualifier": "29",
+            "monetaryAmount": "1000",
+            "percent": null,
+            "quantityQualifier": null,
+            "quantity": null,
+            "authorizationRequired": null,
+            "inPlanNetwork": null,
+            "references": [],
+            "dates": [],
+            "messages": [],
+            "relatedEntities": []
+          }
+        ],
+        "dependents": []
+      }
+    ]
+  }
+}

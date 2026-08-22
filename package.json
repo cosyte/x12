@@ -74,6 +74,7 @@
     "check:no-emdash": "bash scripts/check-no-emdash.sh",
     "check:no-internal-refs": "bash scripts/check-no-internal-refs.sh",
     "refresh:code-lists": "tsx scripts/refresh-code-lists.ts",
+    "capture:271-goldens": "tsx scripts/capture-271-goldens.ts",
     "verify:exports": "node scripts/verify-exports.mjs && node scripts/verify-exports.cjs",
     "pack:docs": "bash scripts/build-docs-artifacts.sh",
     "attw": "node scripts/attw.mjs",
