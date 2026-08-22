@@ -87,10 +87,16 @@ export interface CodeListSnapshot {
  * fail-safe - the verbatim inbound code is preserved by the helper that
  * called us; only the description is unavailable).
  *
+ * The parameter is the `codes` half of a snapshot rather than the whole
+ * {@link CodeListSnapshot}, because the guard below reads nothing else and a
+ * snapshot carrying EXTRA provenance in its `meta` must reach this same
+ * hardened factory rather than growing a second copy of the `Object.hasOwn`
+ * check. A `CodeListSnapshot` satisfies it unchanged.
+ *
  * @internal - exported only for the per-snapshot modules.
  */
 export function makeLookup(
-  snapshot: CodeListSnapshot,
+  snapshot: Pick<CodeListSnapshot, "codes">,
 ): (code: string) => CodeListEntry | undefined {
   return (code: string): CodeListEntry | undefined => {
     // `Object.hasOwn` first, ALWAYS. `snapshot.codes` is a plain object

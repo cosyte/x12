@@ -9,6 +9,16 @@
  * the first real publish.
  */
 
+export {
+  AAA_FOLLOW_UP_ACTION_CODES,
+  AAA_REJECT_REASON_CODES,
+  aaaProvenanceIsComplete,
+  bundleAaaCodes,
+  lookupAaaFollowUpAction,
+  lookupAaaRejectReason,
+  type AaaCodeListMeta,
+  type AaaCodeListSnapshot,
+} from "./aaa.js";
 export { CARC, lookupCarc } from "./carc.js";
 export { CLAIM_STATUS_CATEGORY_CODES, lookupClaimStatusCategory } from "./claim-status-category.js";
 export { CLAIM_STATUS_CODES, lookupClaimStatus } from "./claim-status.js";

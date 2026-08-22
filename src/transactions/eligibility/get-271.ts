@@ -14,10 +14,16 @@
  * captured verbatim onto its enclosing subscriber / dependent so a
  * provider can re-associate the response with the 270 request it sent.
  *
+ * **AAA request-validation segments are typed onto the model**, at all four
+ * levels, on `result.aaaConditions`. That collection is ALWAYS present and is
+ * empty for a document carrying no AAA, so "the payer rejected this inquiry"
+ * and "this member has no benefits" are different readings rather than the
+ * same empty benefit list. Only the reject reason code and the follow-up
+ * action code are read out of the segment, because only those two positions
+ * have a recorded source; an element past them warns and is never assigned a
+ * meaning. The segments stay on `tx.segments` verbatim exactly as before.
+ *
  * Known limitations (documented in CHANGELOG):
- * - **AAA request-validation segments** (rejection reasons at the source /
- *   receiver / subscriber level) are preserved on `tx.segments` verbatim
- *   but not yet typed onto the model.
  * - **HSD health-service-delivery** detail inside Loop 2110 is not
  *   destructured (the EB benefit line carries the headline fields).
  * - **III injury/illness** + **LS/LE loop markers** are preserved verbatim,
@@ -28,6 +34,7 @@
  */
 
 import type { X12Decimal } from "../../decimal.js";
+import { lookupAaaFollowUpAction, lookupAaaRejectReason } from "../../code-lists/aaa.js";
 import { lookupServiceType } from "../../code-lists/service-type.js";
 import {
   elementDecimal,
@@ -37,10 +44,23 @@ import {
   type X12DecimalWarningSink,
   type X12Segment,
 } from "../../parser/segment.js";
+import { wireLookup } from "../../parser/lookup.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
-import type { X12ParseWarning } from "../../parser/warnings.js";
+import {
+  AAA_LEVEL_CONTEXTS,
+  aaaLoopUnidentified,
+  aaaRejectReasonAbsent,
+  aaaSegmentMalformed,
+  aaaUnknownCode,
+  type X12AaaLevelContext,
+  type X12ParseWarning,
+} from "../../parser/warnings.js";
 import { decodeHl, HL_LEVEL_CODES, validateHl, type X12Hl } from "../shared/hl.js";
+import { AAA_CONDITION_LEVELS } from "./types.js";
 import type {
+  X12AaaCode,
+  X12AaaCondition,
+  X12AaaConditionLevel,
   X12Eligibility,
   X12EligibilityBenefit,
   X12EligibilityDate,
@@ -65,6 +85,57 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Obje
   [HL_LEVEL_CODES.SUBSCRIBER]: HL_LEVEL_CODES.INFORMATION_RECEIVER,
   [HL_LEVEL_CODES.DEPENDENT]: HL_LEVEL_CODES.SUBSCRIBER,
 });
+
+/**
+ * HL-03 level code to the AAA level name this surface reports. A level code
+ * outside this map resolves to `undefined`, which is read as "this reader
+ * cannot name the level" and NEVER as a default level.
+ *
+ * Built through {@link "../../parser/lookup.js".wireLookup} because THE KEY IS
+ * DOCUMENT BYTES: HL-03 reaches this table verbatim off the wire. As a plain
+ * object literal it inherited `Object.prototype`, so an HL-03 naming an own
+ * property of that prototype resolved THROUGH THE CHAIN instead of to
+ * `undefined`, and `Object.freeze` did not help. Measured before this table was
+ * re-declared: the surfaced `key.level` held a function or `Object.prototype`
+ * where the type admits four names or `undefined`; the per-level message tables
+ * were then indexed by that value, missed, and the reader shipped a warning
+ * with `message: undefined` rather than a frozen-registry literal; and
+ * `decodeAaa`'s `key.level === undefined` guard did not fire, so the
+ * `X12_271_AAA_LOOP_UNIDENTIFIED` warning an ordinary unknown level DOES raise
+ * was silently suppressed. Both poisoned fields then vanished under
+ * `JSON.stringify`, so a caller over a wire received a rejection with no level
+ * and a diagnostic with no text.
+ *
+ * The remedy is applied AT THE TABLE rather than at the read site, which is the
+ * form the note on `wireLookup` argues for: a read-site guard protects only the
+ * read sites that exist today. @internal
+ */
+const AAA_LEVEL_BY_HL_CODE: Readonly<Record<string, X12AaaConditionLevel | undefined>> = wireLookup(
+  {
+    [HL_LEVEL_CODES.INFORMATION_SOURCE]: AAA_CONDITION_LEVELS.INFORMATION_SOURCE,
+    [HL_LEVEL_CODES.INFORMATION_RECEIVER]: AAA_CONDITION_LEVELS.INFORMATION_RECEIVER,
+    [HL_LEVEL_CODES.SUBSCRIBER]: AAA_CONDITION_LEVELS.SUBSCRIBER,
+    [HL_LEVEL_CODES.DEPENDENT]: AAA_CONDITION_LEVELS.DEPENDENT,
+  },
+);
+
+/**
+ * The HIGHEST AAA element position this reader has a source for. The recorded
+ * source establishes AAA-03 as the Reject Reason Code and AAA-04 as the
+ * Follow-up Action Code, and establishes nothing about position 5 or beyond,
+ * so an element there is reported as occupied and is never read.
+ *
+ * This is deliberately NOT the segment's maximum element count: that number is
+ * a separate structural fact, no source here establishes it, and nothing in
+ * this reader needs it. @internal
+ */
+const AAA_HIGHEST_SOURCED_ELEMENT = 4;
+
+/** AAA-03, the Reject Reason Code position, per the recorded source. @internal */
+const AAA_REJECT_REASON_ELEMENT = 3;
+
+/** AAA-04, the Follow-up Action Code position, per the recorded source. @internal */
+const AAA_FOLLOW_UP_ACTION_ELEMENT = 4;
 
 /**
  * Extract a typed {@link X12Eligibility} from a 271 transaction set. Pure
@@ -109,6 +180,19 @@ export function get271Eligibility(
   // Which HL level the walker is currently inside (drives NM1 routing).
   let context: "source" | "receiver" | "subscriber" | "dependent" | "other" = "other";
 
+  // AAA attribution state. `aaaLevel` is the level of the innermost enclosing
+  // HL, `undefined` before the first HL and under a level code this surface
+  // does not name. `aaaOccurrenceIndex` is that loop's DOCUMENT-WIDE index
+  // among occurrences of its own level, assigned when the HL opens and never
+  // restarted per enclosing loop. `unleveledAaaCount` is the separate counter
+  // for AAA segments whose level is unknown, so two of them are 0 and 1.
+  const aaaConditions: X12AaaCondition[] = [];
+  const levelOccurrences: Map<X12AaaConditionLevel, number> = new Map();
+  let aaaLevel: X12AaaConditionLevel | undefined;
+  let aaaHierarchyId: string | undefined;
+  let aaaOccurrenceIndex = 0;
+  let unleveledAaaCount = 0;
+
   /** Close the in-flight EB line onto the active member (dependent first). */
   const flushBenefit = (): void => {
     if (currentBenefit === undefined) return;
@@ -149,6 +233,17 @@ export function get271Eligibility(
         hierarchies.push(hl);
         validateHl(hl, hlIndex, EXPECTED_PARENT_LEVEL, position, warnings);
         hlIndex.set(hl.hlId, hl);
+        // Open this loop for AAA attribution. The occurrence index is taken
+        // HERE, at the HL, so it counts loops rather than AAA segments: two
+        // AAA segments under one loop share it, which is what makes them
+        // distinguishable by document order alone (AC-8) rather than by key.
+        aaaLevel = AAA_LEVEL_BY_HL_CODE[hl.levelCode];
+        aaaHierarchyId = hl.hlId === "" ? undefined : hl.hlId;
+        if (aaaLevel !== undefined) {
+          const seen = levelOccurrences.get(aaaLevel) ?? 0;
+          levelOccurrences.set(aaaLevel, seen + 1);
+          aaaOccurrenceIndex = seen;
+        }
         currentBenefit = undefined;
         if (hl.levelCode === HL_LEVEL_CODES.INFORMATION_SOURCE) {
           flushSubscriber();
@@ -257,10 +352,26 @@ export function get271Eligibility(
         if (text !== undefined) currentBenefit.messages.push(text);
         break;
       }
+      case "AAA": {
+        // The AAA is attributed to the loop that is open at it, and never to
+        // the loop's CONTENT: a level whose loop carries nothing else still
+        // owns its AAA, and surfacing it here creates no subscriber, no
+        // dependent and no hierarchy entry.
+        const index = aaaLevel === undefined ? unleveledAaaCount : aaaOccurrenceIndex;
+        if (aaaLevel === undefined) unleveledAaaCount += 1;
+        aaaConditions.push(
+          decodeAaa(seg, delimiters, position, warnings, {
+            level: aaaLevel,
+            hierarchyId: aaaHierarchyId,
+            occurrenceIndex: index,
+          }),
+        );
+        break;
+      }
       default: {
-        // AAA / HSD / III / LS / LE / PER and any other optional segment is
+        // HSD / III / LS / LE / PER and any other optional segment is
         // preserved on tx.segments verbatim; the v1 surface does not
-        // enumerate every segment (additive in later phases).
+        // enumerate every segment (additive later).
         break;
       }
     }
@@ -271,7 +382,88 @@ export function get271Eligibility(
   return Object.freeze({
     subscribers: Object.freeze(subscribers.slice()),
     hierarchies: Object.freeze(hierarchies.slice()),
+    // ALWAYS present, empty where the document carried no AAA. An absent
+    // field could not be told from a reader that does not surface AAA.
+    aaaConditions: Object.freeze(aaaConditions.slice()),
     warnings: Object.freeze(warnings.slice()),
+  });
+}
+
+/**
+ * Decode one AAA request-validation segment into an {@link X12AaaCondition},
+ * pushing every diagnostic it raises onto `warnings`.
+ *
+ * ONLY the two positions with a recorded source are read. Everything else the
+ * segment carries stays on `tx.segments` and is assigned no meaning here: an
+ * element past the highest sourced position is reported as occupied and never
+ * decoded, because a confident wrong reject reason code is the failure this
+ * whole surface exists to prevent.
+ *
+ * @internal
+ */
+function decodeAaa(
+  seg: X12Segment,
+  delimiters: Delimiters,
+  position: X12Position,
+  warnings: X12ParseWarning[],
+  key: {
+    readonly level: X12AaaConditionLevel | undefined;
+    readonly hierarchyId: string | undefined;
+    readonly occurrenceIndex: number;
+  },
+): X12AaaCondition {
+  const level: X12AaaLevelContext = key.level ?? AAA_LEVEL_CONTEXTS.UNATTACHED;
+  const at = (elementIndex: number): X12Position => ({ ...position, elementIndex });
+
+  // An unidentifiable loop is reported and never papered over: no level is
+  // guessed and no hierarchical identifier is synthesized.
+  if (key.level === undefined || key.hierarchyId === undefined) {
+    warnings.push(aaaLoopUnidentified(position, level));
+  }
+
+  const rejectRaw = elementOptional(seg, AAA_REJECT_REASON_ELEMENT, delimiters);
+  let rejectReasonCode: X12AaaCode | undefined;
+  if (rejectRaw === undefined) {
+    warnings.push(aaaRejectReasonAbsent(at(AAA_REJECT_REASON_ELEMENT), level));
+  } else {
+    const description = lookupAaaRejectReason(rejectRaw)?.description;
+    if (description === undefined) {
+      warnings.push(aaaUnknownCode(at(AAA_REJECT_REASON_ELEMENT), level));
+    }
+    rejectReasonCode = Object.freeze({ code: rejectRaw, description });
+  }
+
+  const followRaw = elementOptional(seg, AAA_FOLLOW_UP_ACTION_ELEMENT, delimiters);
+  let followUpActionCode: X12AaaCode | undefined;
+  if (followRaw === undefined) {
+    // Absent is surfaced as absent with no stand-in. PRESENT AND EMPTY is a
+    // different thing and is the malformation half of the report below.
+    if (seg.elements[AAA_FOLLOW_UP_ACTION_ELEMENT] !== undefined) {
+      warnings.push(aaaSegmentMalformed(at(AAA_FOLLOW_UP_ACTION_ELEMENT), level));
+    }
+  } else {
+    const description = lookupAaaFollowUpAction(followRaw)?.description;
+    if (description === undefined) {
+      warnings.push(aaaUnknownCode(at(AAA_FOLLOW_UP_ACTION_ELEMENT), level));
+    }
+    followUpActionCode = Object.freeze({ code: followRaw, description });
+  }
+
+  // An element past the highest sourced position. Raised once per segment and
+  // anchored at the FIRST such position, which is where a reader looks.
+  if (seg.elements.length > AAA_HIGHEST_SOURCED_ELEMENT + 1) {
+    warnings.push(aaaSegmentMalformed(at(AAA_HIGHEST_SOURCED_ELEMENT + 1), level));
+  }
+
+  return Object.freeze({
+    key: Object.freeze({
+      level: key.level,
+      hierarchyId: key.hierarchyId,
+      occurrenceIndex: key.occurrenceIndex,
+    }),
+    rejectReasonCode,
+    followUpActionCode,
+    position,
   });
 }
 

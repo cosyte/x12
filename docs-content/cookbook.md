@@ -236,6 +236,66 @@ elig?.subscribers[0]?.benefits[0]?.eligibilityCode; // "1"
 
 The same pattern (`build277` / `build277CA` echoing the 276's trace) covers claim-status responses.
 
+### 🩺 Telling a rejected inquiry from a member with no benefits
+
+**The problem:** an empty benefit list has two completely different meanings. Either the payer
+answered and this member has no benefits of the kind you asked about, or the payer never processed
+your inquiry at all and said why, in an `AAA` request-validation segment. Reporting the second as the
+first tells a patient they have no coverage when nobody ever checked.
+
+`elig.aaaConditions` is the difference. It is **always present** and it is **empty** for a response
+that carries no `AAA`, so a present-and-empty collection is a stated zero rather than a reader that
+does not look. Each entry names the level the payer rejected at, the loop occurrence it belongs to,
+and the payer's own reject reason and follow-up action codes, echoed **verbatim**.
+
+The bundled description snapshots for those two code lists ship **empty**: their maintaining
+organisation requires permission for the use of its work products and none has been obtained, so this
+package ships the code and no description rather than a description nobody recorded terms for. The
+code is never lost, and every unrecognised one raises `X12_271_AAA_UNKNOWN_CODE` beside it.
+
+```ts runnable
+import { parseX12, get271Eligibility } from "@cosyte/x12";
+
+const raw271 = [
+  "ISA*00*          *00*          *ZZ*MEDPAY         *ZZ*ANYTOWNCLINIC  *260601*1200*^*00501*000000001*0*P*:~",
+  "GS*HB*MEDPAY*ANYTOWNCLINIC*20260601*1200*1*X*005010X279A1~",
+  "ST*271*0001*005010X279A1~",
+  "BHT*0022*11*TXN-REF-001*20260601*1200~",
+  "HL*1**20*1~",
+  "NM1*PR*2*MEDPAY INSURANCE*****PI*PAYER01~",
+  "HL*2*1*21*1~",
+  "NM1*1P*2*ANYTOWN CLINIC*****XX*1234567890~",
+  "HL*3*2*22*0~",
+  "NM1*IL*1*DOE*JANE****MI*MBR0001~",
+  "AAA*N**72*C~",
+  "SE*10*0001~",
+  "GE*1*1~",
+  "IEA*1*000000001~",
+].join("\n");
+
+const ix271 = parseX12(raw271);
+const tx271 = ix271.groups[0]?.transactions.find((t) => t.st.elements[1] === "271");
+const response = tx271 ? get271Eligibility(ix271.delimiters, tx271) : undefined;
+
+// No benefits came back. Do NOT read that as "no coverage" without this check:
+response?.subscribers[0]?.benefits.length; // => 0
+response?.aaaConditions.length; // => 1
+
+// The payer rejected, and here is where and why. Codes are verbatim.
+response?.aaaConditions[0]?.key.level; // => "subscriber"
+response?.aaaConditions[0]?.key.hierarchyId; // => "3"
+response?.aaaConditions[0]?.key.occurrenceIndex; // => 0
+response?.aaaConditions[0]?.rejectReasonCode?.code; // => "72"
+response?.aaaConditions[0]?.followUpActionCode?.code; // => "C"
+
+// The bundled snapshot is empty, so the description is absent rather than guessed.
+response?.aaaConditions[0]?.rejectReasonCode?.description; // => undefined
+```
+
+A response with no `AAA` gives you `aaaConditions.length === 0`, and THAT is the empty benefit list
+you can report as "no benefits of that kind". The `AAA` segments stay on `tx.segments` verbatim as
+they always did; nothing moved off it to build this.
+
 ---
 
 ## 4. Parse an 837 claim: variant, hierarchy, diagnoses

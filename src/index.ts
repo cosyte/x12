@@ -26,12 +26,17 @@ export { detectDelimiters, DELIMITER_POSITIONS, ISA_MIN_LENGTH } from "./parser/
 export { FATAL_CODES, X12ParseError } from "./parser/errors.js";
 export type { X12FatalCode } from "./parser/errors.js";
 export {
+  AAA_LEVEL_CONTEXTS,
   ALL_WARNING_MESSAGES,
   BALANCE_INVARIANTS,
   CONTROL_NUMBER_PAIRS,
   REQUIRED_LOOPS,
   UNEXPECTED_SEGMENT_CONTEXTS,
   WARNING_CODES,
+  aaaLoopUnidentified,
+  aaaRejectReasonAbsent,
+  aaaSegmentMalformed,
+  aaaUnknownCode,
   ambiguous837Variant,
   amountRowDropped,
   balanceNotEvaluable,
@@ -74,6 +79,7 @@ export {
   unparseableDecimal,
 } from "./parser/warnings.js";
 export type {
+  X12AaaLevelContext,
   X12BalanceInvariant,
   X12ControlNumberPair,
   X12ParseWarning,
@@ -130,6 +136,8 @@ export type { LoopMax, LoopSegmentSpec, LoopSpec, LoopUsage } from "./loops/type
 // Phase 4 - money + bundled code-list snapshots used by 835.
 export { X12Decimal } from "./decimal.js";
 export {
+  AAA_FOLLOW_UP_ACTION_CODES,
+  AAA_REJECT_REASON_CODES,
   CARC,
   CLAIM_ADJUSTMENT_GROUP_CODES,
   CLAIM_STATUS_CATEGORY_CODES,
@@ -139,9 +147,13 @@ export {
   RARC,
   HI_QUALIFIERS,
   SERVICE_TYPE_CODES,
+  aaaProvenanceIsComplete,
+  bundleAaaCodes,
   isClaimAdjustmentGroupCode,
   isDiagnosisQualifier,
   isProcedureQualifier,
+  lookupAaaFollowUpAction,
+  lookupAaaRejectReason,
   lookupCarc,
   lookupClaimStatus,
   lookupClaimStatusCategory,
@@ -150,6 +162,8 @@ export {
   lookupRarc,
   lookupServiceType,
   resolveHiQualifier,
+  type AaaCodeListMeta,
+  type AaaCodeListSnapshot,
   type ClaimAdjustmentGroupCode,
   type CodeListEntry,
   type CodeListMeta,
@@ -334,6 +348,7 @@ export {
 
 // Phase 6 - 271 Health Care Eligibility Benefit Response surface (TR3 005010X279A1).
 export {
+  AAA_CONDITION_LEVELS,
   ELIGIBILITY_271_BUILD_ERROR_CODES,
   ELIGIBILITY_271_LOOP_2000A,
   ELIGIBILITY_271_LOOP_2000B,
@@ -360,6 +375,10 @@ export {
   type Build271SubscriberSpec,
   type Build271TraceSpec,
   type Eligibility271BuildErrorCode,
+  type X12AaaCode,
+  type X12AaaCondition,
+  type X12AaaConditionKey,
+  type X12AaaConditionLevel,
   type X12Eligibility,
   type X12EligibilityAddress,
   type X12EligibilityBenefit,

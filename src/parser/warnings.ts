@@ -41,6 +41,7 @@
  * either. See `KNOWN-LIMITATIONS.md`.
  */
 
+import { wireLookup } from "./lookup.js";
 import type { X12Position } from "./types.js";
 
 /**
@@ -99,6 +100,10 @@ export const WARNING_CODES = {
   X12_270_HIERARCHY_CYCLE: "X12_270_HIERARCHY_CYCLE",
   X12_270_LEVEL_DETACHED: "X12_270_LEVEL_DETACHED",
   X12_270_DATE_ROW_DROPPED: "X12_270_DATE_ROW_DROPPED",
+  X12_271_AAA_REJECT_REASON_ABSENT: "X12_271_AAA_REJECT_REASON_ABSENT",
+  X12_271_AAA_UNKNOWN_CODE: "X12_271_AAA_UNKNOWN_CODE",
+  X12_271_AAA_SEGMENT_MALFORMED: "X12_271_AAA_SEGMENT_MALFORMED",
+  X12_271_AAA_LOOP_UNIDENTIFIED: "X12_271_AAA_LOOP_UNIDENTIFIED",
 } as const;
 
 /**
@@ -278,6 +283,48 @@ export const REQUIRED_LOOPS = {
 export type X12RequiredLoop = (typeof REQUIRED_LOOPS)[keyof typeof REQUIRED_LOOPS];
 
 /**
+ * Which hierarchical level a 271 AAA request-validation segment was read
+ * under. A closed, library-owned discriminant: the four level names are the
+ * reader's own vocabulary, NOT bytes taken out of the document, so a
+ * diagnostic can say where the payer rejected without echoing anything the
+ * sender sent.
+ *
+ * `UNATTACHED` covers the AAA whose level this reader could not determine:
+ * one transmitted before any hierarchical level opened, and one under a level
+ * whose HL-03 is none of the four this surface names. It says the level is
+ * unknown; it never guesses one.
+ *
+ * @example
+ * ```ts
+ * import { aaaRejectReasonAbsent, AAA_LEVEL_CONTEXTS } from "@cosyte/x12";
+ * const w = aaaRejectReasonAbsent({ segmentIndex: 7 }, AAA_LEVEL_CONTEXTS.SUBSCRIBER);
+ * ```
+ */
+export const AAA_LEVEL_CONTEXTS = {
+  /** Loop 2000A, the information source (payer). */
+  INFORMATION_SOURCE: "information-source",
+  /** Loop 2000B, the information receiver (provider). */
+  INFORMATION_RECEIVER: "information-receiver",
+  /** Loop 2000C, the subscriber. */
+  SUBSCRIBER: "subscriber",
+  /** Loop 2000D, the dependent. */
+  DEPENDENT: "dependent",
+  /** No hierarchical level of a named kind encloses the segment. */
+  UNATTACHED: "unattached",
+} as const;
+
+/**
+ * String-literal union over {@link AAA_LEVEL_CONTEXTS}.
+ *
+ * @example
+ * ```ts
+ * import type { X12AaaLevelContext } from "@cosyte/x12";
+ * const level: X12AaaLevelContext = "dependent";
+ * ```
+ */
+export type X12AaaLevelContext = (typeof AAA_LEVEL_CONTEXTS)[keyof typeof AAA_LEVEL_CONTEXTS];
+
+/**
  * The frozen message registry. Every string a warning can carry is here,
  * and nothing here is assembled from parser input: these are literals, so
  * `message` is a lookup rather than an interpolation.
@@ -400,6 +447,46 @@ const WARNING_MESSAGES = {
     "The hierarchical level at `position.segmentIndex` is not attached to the inquiry hierarchy this reader returns, because its declared HL-02 did not resolve to a level of the parent kind the TR3 gives it. Everything that level carried, its name, identifiers, demographics, traces, dates and eligibility inquiries, is therefore absent from the returned tree, and so is everything transmitted beneath it. NOTHING is fabricated to stand in: no parent is synthesized, no level is re-parented onto whichever one happened to be open, and no pointer is re-numbered. This code names THAT loss and nothing else; the separate defect in the pointer is reported by its own code at the same position, one of `X12_HL_PARENT_MISMATCH`, `X12_HL_PARENT_LEVEL_INVALID` or `X12_270_HIERARCHY_CYCLE`, so a level reported here always carries one of those beside it. The level's HL is still on `hierarchies` verbatim and its segments are still on the transaction set; read them there before concluding the sender sent no such level.",
   X12_270_DATE_ROW_DROPPED:
     "270 date row dropped from the typed model: the DTP at `position.segmentIndex` reached this reader short of one of the two elements a date row is built from, so NO row was built for it and the rest of the segment went with it. Both the qualifier that says what the date is for (DTP-01) and the date value itself (DTP-03) are required to build one. The format qualifier (DTP-02), which says whether the value is a single date or a range, is carried ON the row and is not what decides this. Two routes reach it and this code does not say which: DTP-01 was absent, or DTP-03 was. Nothing is fabricated to stand in: no date is defaulted, no qualifier is inferred from the loop the segment sits in, and no half a row is built from the element that IS present. An empty `dates` list on a level or an inquiry is therefore not by itself evidence the sender stated no date, which is exactly the ambiguity this code exists to remove. Read the bound literally, as a property of the READ: this reports a DTP whose row this reader tried to build and could not. It does NOT report a DTP that decoded and then reached no level or inquiry to sit on, which is a different loss, stays silent, and is recorded in KNOWN-LIMITATIONS.md. It is raised on the 270 path ONLY, once per such segment. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such date.",
+  X12_271_AAA_REJECT_REASON_ABSENT_INFORMATION_SOURCE:
+    "271 AAA request validation at the information source level states no reject reason code: AAA-03 is absent, or present and empty. The typed AAA condition carries that code as ABSENT rather than as a value, no placeholder is substituted, and the segment is NOT dropped - everything else the reader read off it is on the condition under its own key. Nothing the sender sent is echoed here; `position` says which segment and which element to read. Compare `X12_271_AAA_UNKNOWN_CODE`, which reports a code that IS stated and resolves to no description.",
+  X12_271_AAA_REJECT_REASON_ABSENT_INFORMATION_RECEIVER:
+    "271 AAA request validation at the information receiver level states no reject reason code: AAA-03 is absent, or present and empty. The typed AAA condition carries that code as ABSENT rather than as a value, no placeholder is substituted, and the segment is NOT dropped - everything else the reader read off it is on the condition under its own key. Nothing the sender sent is echoed here; `position` says which segment and which element to read. Compare `X12_271_AAA_UNKNOWN_CODE`, which reports a code that IS stated and resolves to no description.",
+  X12_271_AAA_REJECT_REASON_ABSENT_SUBSCRIBER:
+    "271 AAA request validation at the subscriber level states no reject reason code: AAA-03 is absent, or present and empty. The typed AAA condition carries that code as ABSENT rather than as a value, no placeholder is substituted, and the segment is NOT dropped - everything else the reader read off it is on the condition under its own key. Nothing the sender sent is echoed here; `position` says which segment and which element to read. Compare `X12_271_AAA_UNKNOWN_CODE`, which reports a code that IS stated and resolves to no description.",
+  X12_271_AAA_REJECT_REASON_ABSENT_DEPENDENT:
+    "271 AAA request validation at the dependent level states no reject reason code: AAA-03 is absent, or present and empty. The typed AAA condition carries that code as ABSENT rather than as a value, no placeholder is substituted, and the segment is NOT dropped - everything else the reader read off it is on the condition under its own key. Nothing the sender sent is echoed here; `position` says which segment and which element to read. Compare `X12_271_AAA_UNKNOWN_CODE`, which reports a code that IS stated and resolves to no description.",
+  X12_271_AAA_REJECT_REASON_ABSENT_UNATTACHED:
+    "271 AAA request validation under no identified hierarchical level states no reject reason code: AAA-03 is absent, or present and empty. The typed AAA condition carries that code as ABSENT rather than as a value, no placeholder is substituted, and the segment is NOT dropped - everything else the reader read off it is on the condition under its own key. Nothing the sender sent is echoed here; `position` says which segment and which element to read. Compare `X12_271_AAA_UNKNOWN_CODE`, which reports a code that IS stated and resolves to no description.",
+  X12_271_AAA_UNKNOWN_CODE_INFORMATION_SOURCE:
+    "271 AAA request validation at the information source level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+  X12_271_AAA_UNKNOWN_CODE_INFORMATION_RECEIVER:
+    "271 AAA request validation at the information receiver level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+  X12_271_AAA_UNKNOWN_CODE_SUBSCRIBER:
+    "271 AAA request validation at the subscriber level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+  X12_271_AAA_UNKNOWN_CODE_DEPENDENT:
+    "271 AAA request validation at the dependent level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+  X12_271_AAA_UNKNOWN_CODE_UNATTACHED:
+    "271 AAA request validation under no identified hierarchical level states a code outside the bundled snapshot: the reject reason code or the follow-up action code at `position.elementIndex` resolved to no description, so the VERBATIM inbound code is preserved on the typed condition and only its description is absent. The bundled AAA snapshots ship EMPTY, so every stated AAA code is reported here; that is the intended consequence of shipping no descriptions rather than descriptions whose redistribution terms nobody recorded. One warning is raised per unrecognised code occurrence, so a segment stating both codes raises two. Nothing the sender sent is echoed here.",
+  X12_271_AAA_SEGMENT_MALFORMED_INFORMATION_SOURCE:
+    "271 AAA request validation at the information source level is malformed at `position.elementIndex`: an element is present PAST the highest element position this reader has a source for, or the follow-up action code element is present and empty. What the reader did read is surfaced on the typed condition and the rest of the document is read to completion; reading a 271 never becomes fatal over AAA content. NO MEANING IS ASSIGNED to an element past the sourced positions - this reports that a position is occupied and says nothing whatever about what occupies it, because the layout beyond the follow-up action code is not established here and guessing it is the failure this code exists to avoid. Nothing the sender sent is echoed here.",
+  X12_271_AAA_SEGMENT_MALFORMED_INFORMATION_RECEIVER:
+    "271 AAA request validation at the information receiver level is malformed at `position.elementIndex`: an element is present PAST the highest element position this reader has a source for, or the follow-up action code element is present and empty. What the reader did read is surfaced on the typed condition and the rest of the document is read to completion; reading a 271 never becomes fatal over AAA content. NO MEANING IS ASSIGNED to an element past the sourced positions - this reports that a position is occupied and says nothing whatever about what occupies it, because the layout beyond the follow-up action code is not established here and guessing it is the failure this code exists to avoid. Nothing the sender sent is echoed here.",
+  X12_271_AAA_SEGMENT_MALFORMED_SUBSCRIBER:
+    "271 AAA request validation at the subscriber level is malformed at `position.elementIndex`: an element is present PAST the highest element position this reader has a source for, or the follow-up action code element is present and empty. What the reader did read is surfaced on the typed condition and the rest of the document is read to completion; reading a 271 never becomes fatal over AAA content. NO MEANING IS ASSIGNED to an element past the sourced positions - this reports that a position is occupied and says nothing whatever about what occupies it, because the layout beyond the follow-up action code is not established here and guessing it is the failure this code exists to avoid. Nothing the sender sent is echoed here.",
+  X12_271_AAA_SEGMENT_MALFORMED_DEPENDENT:
+    "271 AAA request validation at the dependent level is malformed at `position.elementIndex`: an element is present PAST the highest element position this reader has a source for, or the follow-up action code element is present and empty. What the reader did read is surfaced on the typed condition and the rest of the document is read to completion; reading a 271 never becomes fatal over AAA content. NO MEANING IS ASSIGNED to an element past the sourced positions - this reports that a position is occupied and says nothing whatever about what occupies it, because the layout beyond the follow-up action code is not established here and guessing it is the failure this code exists to avoid. Nothing the sender sent is echoed here.",
+  X12_271_AAA_SEGMENT_MALFORMED_UNATTACHED:
+    "271 AAA request validation under no identified hierarchical level is malformed at `position.elementIndex`: an element is present PAST the highest element position this reader has a source for, or the follow-up action code element is present and empty. What the reader did read is surfaced on the typed condition and the rest of the document is read to completion; reading a 271 never becomes fatal over AAA content. NO MEANING IS ASSIGNED to an element past the sourced positions - this reports that a position is occupied and says nothing whatever about what occupies it, because the layout beyond the follow-up action code is not established here and guessing it is the failure this code exists to avoid. Nothing the sender sent is echoed here.",
+  X12_271_AAA_LOOP_UNIDENTIFIED_INFORMATION_SOURCE:
+    "271 AAA request validation at the information source level could not be attributed to an IDENTIFIED hierarchical loop: the enclosing level states no HL-01. The hierarchical identifier part of the condition's key is left ABSENT rather than synthesised, every other part of the key is still carried, and the AAA is NOT dropped. The occurrence index part of the key is always determinable and is never absent, so the condition still names exactly one loop occurrence in document order. Nothing the sender sent is echoed here.",
+  X12_271_AAA_LOOP_UNIDENTIFIED_INFORMATION_RECEIVER:
+    "271 AAA request validation at the information receiver level could not be attributed to an IDENTIFIED hierarchical loop: the enclosing level states no HL-01. The hierarchical identifier part of the condition's key is left ABSENT rather than synthesised, every other part of the key is still carried, and the AAA is NOT dropped. The occurrence index part of the key is always determinable and is never absent, so the condition still names exactly one loop occurrence in document order. Nothing the sender sent is echoed here.",
+  X12_271_AAA_LOOP_UNIDENTIFIED_SUBSCRIBER:
+    "271 AAA request validation at the subscriber level could not be attributed to an IDENTIFIED hierarchical loop: the enclosing level states no HL-01. The hierarchical identifier part of the condition's key is left ABSENT rather than synthesised, every other part of the key is still carried, and the AAA is NOT dropped. The occurrence index part of the key is always determinable and is never absent, so the condition still names exactly one loop occurrence in document order. Nothing the sender sent is echoed here.",
+  X12_271_AAA_LOOP_UNIDENTIFIED_DEPENDENT:
+    "271 AAA request validation at the dependent level could not be attributed to an IDENTIFIED hierarchical loop: the enclosing level states no HL-01. The hierarchical identifier part of the condition's key is left ABSENT rather than synthesised, every other part of the key is still carried, and the AAA is NOT dropped. The occurrence index part of the key is always determinable and is never absent, so the condition still names exactly one loop occurrence in document order. Nothing the sender sent is echoed here.",
+  X12_271_AAA_LOOP_UNIDENTIFIED_UNATTACHED:
+    "271 AAA request validation could not be attributed to a hierarchical level at all: no level of a kind this surface names encloses the segment, either because none had opened when it arrived or because the enclosing level's HL-03 is none of them. The level part of the condition's key is left ABSENT rather than guessed, and so is the hierarchical identifier where the enclosing level states none. The occurrence index counts within the AAA segments of this document whose level is likewise unknown, in document order, so two such segments are indexed 0 and 1 and never both 0. The AAA is NOT dropped and nothing the sender sent is echoed here.",
   X12_STATED_AMOUNT_DISCARDED:
     "Stated amount discarded: the RMR or AMT at `position.segmentIndex` populated its amount element and this reader built NO row for it, for a reason that is not a failure to decode that amount. What the sender wrote reaches no part of the typed model, so an empty list of open items or amounts is not evidence the sender stated none. Read that as the only claim made here: this code does NOT assert the amount is decodable, and on the RMR route below it is raised without the bytes ever being DECODED, so they may be unreadable, blank-but-present, or a lone component separator. Two routes reach it and this code does not say which. First, an 820 RMR whose RMR-01 and RMR-02 are BOTH empty while a remittance loop is open: the open item is refused on identity before RMR-04 or RMR-05 is read at all, so a stated payment amount, a stated amount due and the payment action code beside them go together. Second, an 837 AMT arriving while a Loop 2430 line adjudication is open: AMT-02 decoded, and the v1 adjudication model carries no amount row to put it on, so the row is skipped. Compare `X12_AMOUNT_ROW_DROPPED`, which reports the other situation on the same segments: there the amount element decoded no value, so there was no row to build at all. The two can never name the same segment. Read the bound literally, as a property of the READ: this reports a segment whose amount element the sender populated, arriving while the loop that would carry its row was open. It does NOT report an AMT or ADX that reaches a reader with no such loop open, which stays silent and is recorded in KNOWN-LIMITATIONS.md. And on the RMR route it says nothing about whether that amount WOULD have decoded, because the row is refused before the decode is attempted, so no `X12_UNPARSEABLE_DECIMAL` accompanies it even where the bytes are unreadable. Nothing is fabricated to stand in. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such amount.",
 } as const;
@@ -420,6 +507,68 @@ const WARNING_MESSAGES = {
 export const ALL_WARNING_MESSAGES: ReadonlySet<string> = new Set<string>(
   Object.values(WARNING_MESSAGES),
 );
+
+/**
+ * The four per-level message tables below are keyed by
+ * {@link X12AaaLevelContext}, a LIBRARY-OWNED discriminant, and never by a
+ * value read out of a document. They are built through
+ * {@link "./lookup.js".wireLookup} anyway, as depth rather than as the
+ * guarantee: the guarantee is that the caller narrows a document's HL-03 to
+ * this closed union first, through a table that is itself null-prototype.
+ *
+ * What the null prototype buys HERE is the failure mode if that ever stops
+ * holding. Indexed as a plain object literal, a key naming an own property of
+ * `Object.prototype` answers a FUNCTION, which is truthy, survives every
+ * `!== undefined` guard, satisfies no registry membership check and then
+ * vanishes under `JSON.stringify`. Indexed here it answers `undefined`, which
+ * every assertion in this package already reds on. `satisfies` keeps the
+ * exhaustiveness check the declared `Record` used to carry, so a level added
+ * to the discriminant without a message for it still fails to compile.
+ *
+ * @internal
+ */
+const AAA_REJECT_REASON_ABSENT_MESSAGES: Readonly<Record<X12AaaLevelContext, string>> = wireLookup({
+  [AAA_LEVEL_CONTEXTS.INFORMATION_SOURCE]:
+    WARNING_MESSAGES.X12_271_AAA_REJECT_REASON_ABSENT_INFORMATION_SOURCE,
+  [AAA_LEVEL_CONTEXTS.INFORMATION_RECEIVER]:
+    WARNING_MESSAGES.X12_271_AAA_REJECT_REASON_ABSENT_INFORMATION_RECEIVER,
+  [AAA_LEVEL_CONTEXTS.SUBSCRIBER]: WARNING_MESSAGES.X12_271_AAA_REJECT_REASON_ABSENT_SUBSCRIBER,
+  [AAA_LEVEL_CONTEXTS.DEPENDENT]: WARNING_MESSAGES.X12_271_AAA_REJECT_REASON_ABSENT_DEPENDENT,
+  [AAA_LEVEL_CONTEXTS.UNATTACHED]: WARNING_MESSAGES.X12_271_AAA_REJECT_REASON_ABSENT_UNATTACHED,
+} satisfies Record<X12AaaLevelContext, string>);
+
+/** Same construction and the same reason as the table above. @internal */
+const AAA_UNKNOWN_CODE_MESSAGES: Readonly<Record<X12AaaLevelContext, string>> = wireLookup({
+  [AAA_LEVEL_CONTEXTS.INFORMATION_SOURCE]:
+    WARNING_MESSAGES.X12_271_AAA_UNKNOWN_CODE_INFORMATION_SOURCE,
+  [AAA_LEVEL_CONTEXTS.INFORMATION_RECEIVER]:
+    WARNING_MESSAGES.X12_271_AAA_UNKNOWN_CODE_INFORMATION_RECEIVER,
+  [AAA_LEVEL_CONTEXTS.SUBSCRIBER]: WARNING_MESSAGES.X12_271_AAA_UNKNOWN_CODE_SUBSCRIBER,
+  [AAA_LEVEL_CONTEXTS.DEPENDENT]: WARNING_MESSAGES.X12_271_AAA_UNKNOWN_CODE_DEPENDENT,
+  [AAA_LEVEL_CONTEXTS.UNATTACHED]: WARNING_MESSAGES.X12_271_AAA_UNKNOWN_CODE_UNATTACHED,
+} satisfies Record<X12AaaLevelContext, string>);
+
+/** Same construction and the same reason as the table above. @internal */
+const AAA_SEGMENT_MALFORMED_MESSAGES: Readonly<Record<X12AaaLevelContext, string>> = wireLookup({
+  [AAA_LEVEL_CONTEXTS.INFORMATION_SOURCE]:
+    WARNING_MESSAGES.X12_271_AAA_SEGMENT_MALFORMED_INFORMATION_SOURCE,
+  [AAA_LEVEL_CONTEXTS.INFORMATION_RECEIVER]:
+    WARNING_MESSAGES.X12_271_AAA_SEGMENT_MALFORMED_INFORMATION_RECEIVER,
+  [AAA_LEVEL_CONTEXTS.SUBSCRIBER]: WARNING_MESSAGES.X12_271_AAA_SEGMENT_MALFORMED_SUBSCRIBER,
+  [AAA_LEVEL_CONTEXTS.DEPENDENT]: WARNING_MESSAGES.X12_271_AAA_SEGMENT_MALFORMED_DEPENDENT,
+  [AAA_LEVEL_CONTEXTS.UNATTACHED]: WARNING_MESSAGES.X12_271_AAA_SEGMENT_MALFORMED_UNATTACHED,
+} satisfies Record<X12AaaLevelContext, string>);
+
+/** Same construction and the same reason as the table above. @internal */
+const AAA_LOOP_UNIDENTIFIED_MESSAGES: Readonly<Record<X12AaaLevelContext, string>> = wireLookup({
+  [AAA_LEVEL_CONTEXTS.INFORMATION_SOURCE]:
+    WARNING_MESSAGES.X12_271_AAA_LOOP_UNIDENTIFIED_INFORMATION_SOURCE,
+  [AAA_LEVEL_CONTEXTS.INFORMATION_RECEIVER]:
+    WARNING_MESSAGES.X12_271_AAA_LOOP_UNIDENTIFIED_INFORMATION_RECEIVER,
+  [AAA_LEVEL_CONTEXTS.SUBSCRIBER]: WARNING_MESSAGES.X12_271_AAA_LOOP_UNIDENTIFIED_SUBSCRIBER,
+  [AAA_LEVEL_CONTEXTS.DEPENDENT]: WARNING_MESSAGES.X12_271_AAA_LOOP_UNIDENTIFIED_DEPENDENT,
+  [AAA_LEVEL_CONTEXTS.UNATTACHED]: WARNING_MESSAGES.X12_271_AAA_LOOP_UNIDENTIFIED_UNATTACHED,
+} satisfies Record<X12AaaLevelContext, string>);
 
 /** @internal */
 const UNEXPECTED_SEGMENT_MESSAGES: Readonly<Record<X12UnexpectedSegmentContext, string>> = {
@@ -1631,6 +1780,119 @@ export function dateRowDropped(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_270_DATE_ROW_DROPPED,
     message: WARNING_MESSAGES.X12_270_DATE_ROW_DROPPED,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_271_AAA_REJECT_REASON_ABSENT` warning. Raised where a 271 AAA
+ * request-validation segment states no reject reason code, either because the
+ * element is absent or because it is present and empty.
+ *
+ * The AAA is still surfaced on the typed result with that code ABSENT: this
+ * reports a code the payer did not state, never a code this reader replaced.
+ * Its counterpart is {@link aaaUnknownCode}, and the two are deliberately
+ * different codes so a consumer can tell "no reason given" from "a reason
+ * given that this package cannot describe".
+ *
+ * @example
+ * ```ts
+ * import { aaaRejectReasonAbsent, AAA_LEVEL_CONTEXTS } from "@cosyte/x12";
+ * const w = aaaRejectReasonAbsent(
+ *   { segmentIndex: 7, transactionIndex: 0, elementIndex: 3 },
+ *   AAA_LEVEL_CONTEXTS.SUBSCRIBER,
+ * );
+ * ```
+ */
+export function aaaRejectReasonAbsent(
+  position: X12Position,
+  level: X12AaaLevelContext,
+): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_271_AAA_REJECT_REASON_ABSENT,
+    message: AAA_REJECT_REASON_ABSENT_MESSAGES[level],
+    position,
+  };
+}
+
+/**
+ * Build an `X12_271_AAA_UNKNOWN_CODE` warning. Raised once per stated AAA code
+ * occurrence that resolves to no description in the bundled snapshot, whether
+ * it is the reject reason code or the follow-up action code.
+ *
+ * The bundled AAA snapshots ship empty, so today every stated AAA code raises
+ * this. That is the intended consequence of shipping no descriptions rather
+ * than descriptions whose redistribution terms nobody recorded.
+ *
+ * @example
+ * ```ts
+ * import { aaaUnknownCode, AAA_LEVEL_CONTEXTS } from "@cosyte/x12";
+ * const w = aaaUnknownCode(
+ *   { segmentIndex: 7, transactionIndex: 0, elementIndex: 3 },
+ *   AAA_LEVEL_CONTEXTS.DEPENDENT,
+ * );
+ * ```
+ */
+export function aaaUnknownCode(position: X12Position, level: X12AaaLevelContext): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_271_AAA_UNKNOWN_CODE,
+    message: AAA_UNKNOWN_CODE_MESSAGES[level],
+    position,
+  };
+}
+
+/**
+ * Build an `X12_271_AAA_SEGMENT_MALFORMED` warning. Raised where an AAA
+ * element sits PAST the highest element position this reader has a source
+ * for, or where the follow-up action code element is present and empty.
+ *
+ * It reports that a position is occupied and asserts NOTHING about what
+ * occupies it. Reading a meaning into an element whose layout is not
+ * established is the failure this code exists to avoid, so the reader warns
+ * about the position and moves on.
+ *
+ * @example
+ * ```ts
+ * import { aaaSegmentMalformed, AAA_LEVEL_CONTEXTS } from "@cosyte/x12";
+ * const w = aaaSegmentMalformed(
+ *   { segmentIndex: 7, transactionIndex: 0, elementIndex: 5 },
+ *   AAA_LEVEL_CONTEXTS.INFORMATION_SOURCE,
+ * );
+ * ```
+ */
+export function aaaSegmentMalformed(
+  position: X12Position,
+  level: X12AaaLevelContext,
+): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_271_AAA_SEGMENT_MALFORMED,
+    message: AAA_SEGMENT_MALFORMED_MESSAGES[level],
+    position,
+  };
+}
+
+/**
+ * Build an `X12_271_AAA_LOOP_UNIDENTIFIED` warning. Raised where an AAA cannot
+ * be attributed to an identified hierarchical loop: the enclosing level states
+ * no HL-01, or no level of a kind this surface names encloses the segment.
+ *
+ * The AAA is never dropped for it, and no identifier and no level is
+ * synthesised. Every part of the key that could be determined is still
+ * carried, and the occurrence index is always one of them.
+ *
+ * @example
+ * ```ts
+ * import { aaaLoopUnidentified, AAA_LEVEL_CONTEXTS } from "@cosyte/x12";
+ * const w = aaaLoopUnidentified({ segmentIndex: 4 }, AAA_LEVEL_CONTEXTS.UNATTACHED);
+ * ```
+ */
+export function aaaLoopUnidentified(
+  position: X12Position,
+  level: X12AaaLevelContext,
+): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_271_AAA_LOOP_UNIDENTIFIED,
+    message: AAA_LOOP_UNIDENTIFIED_MESSAGES[level],
     position,
   };
 }
