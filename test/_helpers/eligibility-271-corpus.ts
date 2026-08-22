@@ -57,6 +57,8 @@ export const GOLDEN_ROOT = join(FIXTURE_ROOT, "goldens");
 export interface Corpus271Document {
   /** Stable id: the fixture path relative to `test/`, then `#<index>`. */
   readonly id: string;
+  /** The fixture file's verbatim text, trailing whitespace trimmed. */
+  readonly raw: string;
   /** The transaction set as the shared parse framed it. */
   readonly tx: X12TransactionSet;
   /** The decoded eligibility result for that transaction set. */
@@ -97,7 +99,7 @@ export function corpus271(): readonly Corpus271Document[] {
         if (elig === undefined) {
           throw new Error(`corpus271: get271Eligibility returned undefined for ${id}#${index}`);
         }
-        docs.push({ id: `${id}#${index}`, tx, elig });
+        docs.push({ id: `${id}#${index}`, raw, tx, elig });
         index += 1;
       }
     }

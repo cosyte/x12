@@ -100,7 +100,12 @@ export {
   ELIGIBILITY_271_LOOP_2100D,
   ELIGIBILITY_271_LOOP_2110,
 } from "./loop-spec.js";
+export { AAA_CONDITION_LEVELS } from "./types.js";
 export type {
+  X12AaaCode,
+  X12AaaCondition,
+  X12AaaConditionKey,
+  X12AaaConditionLevel,
   X12Eligibility,
   X12EligibilityAddress,
   X12EligibilityBenefit,

@@ -35,6 +35,10 @@ describe("public API: WARNING_CODES surface is stable", () => {
         "X12_270_INTER_SEGMENT_LINE_BREAK",
         "X12_270_LEVEL_DETACHED",
         "X12_270_NON_CONVENTIONAL_DELIMITER",
+        "X12_271_AAA_LOOP_UNIDENTIFIED",
+        "X12_271_AAA_REJECT_REASON_ABSENT",
+        "X12_271_AAA_SEGMENT_MALFORMED",
+        "X12_271_AAA_UNKNOWN_CODE",
         "X12_834_UNKNOWN_MAINTENANCE_TYPE",
         "X12_835_BALANCE_NOT_EVALUABLE",
         "X12_835_REMIT_BALANCE_MISMATCH",
@@ -77,7 +81,7 @@ describe("public API: WARNING_CODES surface is stable", () => {
     for (const [k, v] of Object.entries(WARNING_CODES)) expect(k).toBe(v);
   });
 
-  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS) -> 27 (X12-DISCARD-AFTER-STRAY-LX) -> 28 (X12-PAY-TO-FUSION) -> 29 (X12-837-SV-UNDEFINED-DECIMAL) -> 30 (X12-AMT-ADX-ABSENT-AMOUNT) -> 31 (X12-STATED-AMOUNT-DISCARDED) -> 32 (X12-837-AMBIGUOUS-VARIANT) -> 33 (X12-837-SV1-OVERWRITE) -> 34 (X12-ISA-ELEMENT-ARITY) -> 40 (the 270 typed model)", () => {
+  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS) -> 27 (X12-DISCARD-AFTER-STRAY-LX) -> 28 (X12-PAY-TO-FUSION) -> 29 (X12-837-SV-UNDEFINED-DECIMAL) -> 30 (X12-AMT-ADX-ABSENT-AMOUNT) -> 31 (X12-STATED-AMOUNT-DISCARDED) -> 32 (X12-837-AMBIGUOUS-VARIANT) -> 33 (X12-837-SV1-OVERWRITE) -> 34 (X12-ISA-ELEMENT-ARITY) -> 40 (the 270 typed model) -> 44 (the 271 AAA request-validation surface)", () => {
     // SIX added by the 270 typed read path, and nothing renamed, removed or
     // renumbered: the two tolerances that path reports (a declared
     // non-conventional delimiter, whitespace between segments), the two
@@ -87,7 +91,15 @@ describe("public API: WARNING_CODES surface is stable", () => {
     // the elements a date row is built from. Every one is raised on the 270
     // path alone, which is what keeps a fixture of any other transaction set on
     // the warning stream it had before.
-    expect(Object.keys(WARNING_CODES)).toHaveLength(40);
+    //
+    // FOUR more added by the 271 AAA request-validation surface, again raised
+    // on that path alone: a reject reason code the payer did not state, an AAA
+    // code outside the bundled snapshot, a malformed AAA element, and an AAA
+    // this reader could not attribute to an identified hierarchical loop.
+    // ABSENT and UNKNOWN are deliberately two codes and not one: "no reason
+    // given" and "a reason given that this package cannot describe" are
+    // different answers and a consumer has to be able to tell them apart.
+    expect(Object.keys(WARNING_CODES)).toHaveLength(44);
   });
 
   it("keeps the four REQUIRED_LOOPS the 837 owns and adds the 270's three", () => {

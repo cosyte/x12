@@ -18,6 +18,8 @@
  */
 
 import type { X12Decimal } from "../../decimal.js";
+import type { X12Position } from "../../parser/types.js";
+import { AAA_LEVEL_CONTEXTS, type X12AaaLevelContext } from "../../parser/warnings.js";
 import type { X12ParseWarning } from "../../parser/warnings.js";
 import type { X12Hl } from "../shared/hl.js";
 
@@ -45,7 +47,141 @@ import type { X12Hl } from "../shared/hl.js";
 export interface X12Eligibility {
   readonly subscribers: readonly X12EligibilitySubscriber[];
   readonly hierarchies: readonly X12Hl[];
+  /**
+   * Every AAA request-validation segment the document carried, in document
+   * order. **ALWAYS PRESENT, and empty where the document carried none.** A
+   * present, empty collection is a stated zero; an absent field could not be
+   * told from a reader that does not surface AAA at all, which is the exact
+   * ambiguity this collection exists to remove. A payer that rejected the
+   * inquiry and a payer that found no benefits are different answers, and
+   * before this collection existed they read identically through this surface.
+   */
+  readonly aaaConditions: readonly X12AaaCondition[];
   readonly warnings: readonly X12ParseWarning[];
+}
+
+/**
+ * The four hierarchical levels a 271 AAA request-validation segment can be
+ * surfaced against. Derived from the library-owned warning discriminant so the
+ * model and the diagnostics can never drift apart on what a level is called;
+ * the discriminant's fifth member covers an AAA whose level is unknown, and on
+ * the model that case is `undefined` rather than a fifth name.
+ *
+ * @example
+ * ```ts
+ * import { AAA_CONDITION_LEVELS } from "@cosyte/x12";
+ * AAA_CONDITION_LEVELS.SUBSCRIBER; // "subscriber"
+ * ```
+ */
+export const AAA_CONDITION_LEVELS = Object.freeze({
+  INFORMATION_SOURCE: AAA_LEVEL_CONTEXTS.INFORMATION_SOURCE,
+  INFORMATION_RECEIVER: AAA_LEVEL_CONTEXTS.INFORMATION_RECEIVER,
+  SUBSCRIBER: AAA_LEVEL_CONTEXTS.SUBSCRIBER,
+  DEPENDENT: AAA_LEVEL_CONTEXTS.DEPENDENT,
+});
+
+/**
+ * String-literal union over {@link AAA_CONDITION_LEVELS}: the warning
+ * discriminant minus its unknown-level member.
+ *
+ * @example
+ * ```ts
+ * import type { X12AaaConditionLevel } from "@cosyte/x12";
+ * const level: X12AaaConditionLevel = "dependent";
+ * ```
+ */
+export type X12AaaConditionLevel = Exclude<
+  X12AaaLevelContext,
+  typeof AAA_LEVEL_CONTEXTS.UNATTACHED
+>;
+
+/**
+ * One AAA code as it reached the reader: the VERBATIM inbound value, plus the
+ * bundled description where one resolves. `description` is `undefined` for a
+ * code outside the bundled snapshot, and the snapshots ship empty, so today it
+ * is `undefined` for every code. The code itself is never normalised, never
+ * defaulted and never dropped.
+ *
+ * @example
+ * ```ts
+ * import type { X12AaaCode } from "@cosyte/x12";
+ * declare const c: X12AaaCode;
+ * c.code;        // "42", exactly the bytes the payer sent
+ * c.description; // undefined (the bundled snapshot is empty)
+ * ```
+ */
+export interface X12AaaCode {
+  readonly code: string;
+  readonly description: string | undefined;
+}
+
+/**
+ * Which loop occurrence an AAA was transmitted under. Three parts, and a
+ * consumer reads all three:
+ *
+ * - `level` - the hierarchical level, or `undefined` where no level of a named
+ *   kind encloses the segment. Never guessed.
+ * - `hierarchyId` - the identifier the DOCUMENT assigns that loop (HL-01), as
+ *   {@link X12Eligibility.hierarchies} reports it, or `undefined` where the
+ *   loop states none. Never synthesised.
+ * - `occurrenceIndex` - the zero-based index of that loop occurrence among the
+ *   occurrences of the SAME level, counted DOCUMENT-WIDE in document order and
+ *   never restarted per enclosing loop. The third dependent loop in a document
+ *   is index 2 whether it is the first dependent of the second subscriber or
+ *   the third dependent of the first. Where `level` is `undefined` the index
+ *   counts within the AAA segments whose level is likewise unknown. It is
+ *   always determinable and is never absent.
+ *
+ * A per-parent index is deliberately NOT what this is: it is not unique
+ * document-wide, so it could not stand in for `hierarchyId` where a loop
+ * states none.
+ *
+ * @example
+ * ```ts
+ * import type { X12AaaConditionKey } from "@cosyte/x12";
+ * declare const k: X12AaaConditionKey;
+ * k.level;           // "dependent"
+ * k.hierarchyId;     // "4" (the HL-01 the document assigned)
+ * k.occurrenceIndex; // 1 (the second dependent loop in the document)
+ * ```
+ */
+export interface X12AaaConditionKey {
+  readonly level: X12AaaConditionLevel | undefined;
+  readonly hierarchyId: string | undefined;
+  readonly occurrenceIndex: number;
+}
+
+/**
+ * One AAA request-validation segment, surfaced on the typed 271 result.
+ *
+ * **This is the distinction between "the payer rejected the inquiry" and "the
+ * member has no benefits".** Both used to read as an empty benefit collection;
+ * only the first produces an entry here. The reject reason and follow-up
+ * action codes are the payer's own, echoed verbatim, with a description only
+ * where the bundled snapshot has one.
+ *
+ * Only the two code positions are read, because only those two have a recorded
+ * source. Nothing else in the segment is assigned a meaning, and an element
+ * past them raises `X12_271_AAA_SEGMENT_MALFORMED` rather than being read.
+ *
+ * @example
+ * ```ts
+ * import type { X12AaaCondition } from "@cosyte/x12";
+ * declare const c: X12AaaCondition;
+ * c.key.level;                 // "subscriber"
+ * c.rejectReasonCode?.code;    // "42", verbatim
+ * c.followUpActionCode?.code;  // "C", verbatim
+ * c.position.segmentIndex;     // where in the transaction set to read it
+ * ```
+ */
+export interface X12AaaCondition {
+  readonly key: X12AaaConditionKey;
+  /** AAA-03, verbatim, or `undefined` where the payer stated none. */
+  readonly rejectReasonCode: X12AaaCode | undefined;
+  /** AAA-04, verbatim, or `undefined` where the payer stated none. */
+  readonly followUpActionCode: X12AaaCode | undefined;
+  /** Where the segment sits, for a consumer reading `tx.segments` beside it. */
+  readonly position: X12Position;
 }
 
 /**
