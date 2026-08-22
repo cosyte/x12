@@ -17,6 +17,16 @@
  * Technical Report Type 3, which was not purchased, so the mapping is recorded
  * as single-source rather than as verified.
  *
+ * THE QUOTES BELOW ARE RE-DERIVABLE FROM PINNED BYTES, not from a live fetch.
+ * The retrieved document was committed beside the implementation record that
+ * cites it, as `sources/www.stedi.com-edi-x12-005010-segment-AAA`, 92094 bytes,
+ * sha256 `0eb534233fd3099059fe765ada88ddef738e803d2812ca7b9a19c91afed13ba2`.
+ * The digest is repeated in the bundled snapshot's own `meta.source` so a
+ * package-side reader has it too; the path is named HERE and not there because
+ * it points into this project's internal record, which no consumer of the
+ * published package can open. The bytes themselves are third-party content and
+ * are deliberately not vendored into this repository.
+ *
  * - Reject Reason Code, from that document's element table for AAA:
  *   `"data_element_number":"901","requirement":"O","sequence":"03",` ...
  *   `"data_element_name":"Reject Reason Code"`
@@ -34,6 +44,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  ALL_WARNING_MESSAGES,
   WARNING_CODES,
   get271Eligibility,
   parseX12,
@@ -425,5 +436,105 @@ describe("AC-22: one warning per unrecognised code occurrence", () => {
     const aaaWarnings = elig.warnings.filter((w) => aaaCodes.has(w.code));
     expect(aaaWarnings.length).toBeGreaterThan(0);
     for (const w of aaaWarnings) expect(w.position.segmentIndex).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * 🩺 `X12-VARIANT-LOOKUP-PROTOTYPE`, on the level table this surface reads.
+ *
+ * HL-03 reaches `AAA_LEVEL_BY_HL_CODE` verbatim off the wire. While that table
+ * was a plain object literal it inherited `Object.prototype`, so an HL-03
+ * naming an own property of that prototype resolved THROUGH THE CHAIN: the
+ * surfaced `key.level` held a function, the per-level message tables missed and
+ * the reader shipped `message: undefined`, and the
+ * `X12_271_AAA_LOOP_UNIDENTIFIED` warning an ordinary unknown level DOES raise
+ * was suppressed because the guard tests `=== undefined`. `Object.freeze` does
+ * not help, and `in` is not the safe form. Every assertion below reds on that
+ * tree and passes on this one.
+ *
+ * The probe set is DERIVED from the running engine and never enumerated: which
+ * properties `Object.prototype` owns is engine- and version-dependent, and the
+ * property under test is "a level code the table does not declare leaves the
+ * level absent", not "these five codes do".
+ */
+describe("AC-1 / AC-7a / AC-16: an HL-03 naming a prototype member is an ordinary unknown level", () => {
+  const PROTOTYPE_LEVEL_CODES: readonly string[] = Object.getOwnPropertyNames(Object.prototype);
+
+  /** A 271 whose single hierarchical loop declares `hl03`, carrying one AAA. */
+  function decodeWithHl03(hl03: string): X12Eligibility {
+    const raw = [
+      "ISA*00*          *00*          *ZZ*MEDPAY         *ZZ*ANYTOWNCLINIC  *260601*1200*^*00501*000000001*0*P*:~",
+      "GS*HB*MEDPAY*ANYTOWNCLINIC*20260601*1200*1*X*005010X279A1~",
+      "ST*271*0001*005010X279A1~",
+      "BHT*0022*11*ECHO-270-TRACE-131*20260601*1200~",
+      `HL*1**${hl03}*1~`,
+      "AAA*N**72*C~",
+      "SE*5*0001~",
+      "GE*1*1~",
+      "IEA*1*000000001~",
+    ].join("\n");
+    const ix = parseX12(raw);
+    const tx = ix.groups[0]?.transactions[0];
+    if (tx === undefined) throw new Error("probe document carries no 271 transaction set");
+    const elig = get271Eligibility(ix.delimiters, tx);
+    if (elig === undefined) throw new Error("get271Eligibility returned undefined");
+    return elig;
+  }
+
+  /** The two collections a caller reads, after a JSON round trip. */
+  function overTheWire(hl03: string): unknown {
+    const elig = decodeWithHl03(hl03);
+    return JSON.parse(
+      JSON.stringify({ aaaConditions: elig.aaaConditions, warnings: elig.warnings }),
+    ) as unknown;
+  }
+
+  it("the probe set really does reach the trap, and frames as EDI", () => {
+    // Non-vacuity: an empty or delimiter-carrying probe set would make every
+    // assertion below pass without exercising anything.
+    expect(PROTOTYPE_LEVEL_CODES.length).toBeGreaterThan(0);
+    expect(PROTOTYPE_LEVEL_CODES).toContain("constructor");
+    for (const code of PROTOTYPE_LEVEL_CODES) expect(code).not.toMatch(/[*~:^\n]/u);
+  });
+
+  it("CONTROL a conformant HL-03 names its level and an ordinary unknown one does not", () => {
+    expect(decodeWithHl03("22").aaaConditions[0]?.key.level).toBe("subscriber");
+    const ordinary = decodeWithHl03("99");
+    expect(ordinary.aaaConditions[0]?.key.level).toBeUndefined();
+    expect(
+      ordinary.warnings.filter((w) => w.code === WARNING_CODES.X12_271_AAA_LOOP_UNIDENTIFIED),
+    ).toHaveLength(1);
+  });
+
+  it.each(PROTOTYPE_LEVEL_CODES)(
+    "HL-03 %s surfaces the AAA, leaves the level absent, and warns from the registry",
+    (hl03) => {
+      const elig = decodeWithHl03(hl03);
+      // AC-1 / AC-7: the level part is one of the four names or absent, never
+      // a function and never `Object.prototype`.
+      expect(elig.aaaConditions).toHaveLength(1);
+      expect(elig.aaaConditions[0]?.key.level).toBeUndefined();
+      // AC-7a: the AAA is not dropped and the unidentified-loop warning fires
+      // exactly as it does for an ordinary unknown level code.
+      expect(
+        elig.warnings.filter((w) => w.code === WARNING_CODES.X12_271_AAA_LOOP_UNIDENTIFIED),
+      ).toHaveLength(1);
+      // AC-16: every diagnostic is a literal in the frozen registry.
+      expect(elig.warnings.length).toBeGreaterThan(0);
+      for (const w of elig.warnings) {
+        expect(typeof w.message).toBe("string");
+        expect(ALL_WARNING_MESSAGES.has(w.message)).toBe(true);
+      }
+    },
+  );
+
+  it("over the wire, every prototype-named HL-03 reads as an ordinary unknown one", () => {
+    // What a consumer downstream receives, which is where the poisoned fields
+    // used to disappear: both `key.level` and `message` were dropped by
+    // `JSON.stringify`, so a rejection arrived with no level and no text.
+    const ordinary = overTheWire("99");
+    for (const hl03 of PROTOTYPE_LEVEL_CODES) {
+      expect(overTheWire(hl03)).toEqual(ordinary);
+    }
   });
 });

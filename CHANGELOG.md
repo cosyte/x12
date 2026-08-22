@@ -3533,10 +3533,14 @@ EV/SS`), and HL-04 has-child flag from the nested input tree, so an
     result types. Six synthetic fixtures + unit tests + byte-flip fuzz
     (never-throw outside the 4 Tier-3 fatals) across every Phase 6
     fixture.
-  - **Known limitations (deferred):** AAA request-validation segments,
-    HSD detail, and III / LS / LE markers in the 271, plus QTY / AMT
-    claim-summary roll-ups in a 277CA Loop 2200, are preserved on
-    `tx.segments` verbatim but not yet typed onto the model.
+  - **Known limitations recorded for this release:** AAA
+    request-validation segments, HSD detail, and III / LS / LE markers in
+    the 271, plus QTY / AMT claim-summary roll-ups in a 277CA Loop 2200,
+    are preserved on `tx.segments` verbatim, and this release carried
+    none of them onto the typed model. The 271 AAA half of that list is
+    CLOSED by a later release, which surfaces every AAA
+    request-validation segment on `X12Eligibility.aaaConditions` with its
+    level and both codes; the rest of the list stands.
 - **Phase 5: 837 Healthcare Claim, TR3s `005010X222A2` (Professional),
   `005010X223A3` (Institutional), `005010X224A2` (Dental).** The
   claim-creation surface: the volume side of HIPAA EDI traffic.

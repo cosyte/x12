@@ -12,10 +12,9 @@ that trusted the model reported "no coverage" where the payer had actually said
 "I could not process your inquiry, and here is why".
 
 This supersedes the deferral a previous release recorded for the 271, which
-listed AAA request-validation segments among the segments preserved verbatim
-but not typed. AAA on the 270 inquiry direction is unchanged and still
-untyped, and `HSD` detail and the `III` / `LS` / `LE` markers stay as they
-were.
+listed AAA request-validation segments among those it carried on `tx.segments`
+alone. AAA on the 270 inquiry direction is unchanged and still untyped, and
+`HSD` detail and the `III` / `LS` / `LE` markers stay as they were.
 
 **Always present, never absent.** `X12Eligibility.aaaConditions` is on every
 271 result this library returns and is EMPTY for a document carrying no `AAA`.
@@ -45,7 +44,8 @@ caller counting subscribers sees the same count as before this release.
 **Only two element positions are read, and both have a recorded source.** The
 reject reason code and the follow-up action code are taken from positions
 established by a third-party EDI reference reproducing the 005010 AAA layout,
-recorded with its URL and retrieval date in the implementation record. It is
+recorded with its URL, its retrieval date and the sha256 of the bytes read, so
+the citation names one document rather than whatever that page says next. It is
 NOT the paid ASC X12 Technical Report Type 3, which was not purchased, so the
 mapping is single-source rather than verified. Nothing beyond those two is
 assigned a meaning: an element past them raises
@@ -74,6 +74,14 @@ describe" stay distinguishable. An absent follow-up action code is left absent
 with no empty-string stand-in. Every diagnostic is a literal in the frozen
 `ALL_WARNING_MESSAGES` registry carrying the level and the position and nothing
 the sender sent; no factory added here takes a document element.
+
+**A level code is document bytes, and the table that reads it has no
+prototype.** HL-03 reaches the level lookup verbatim off the wire, so that
+lookup is built with a null prototype: an HL-03 naming a member of
+`Object.prototype` leaves the level ABSENT and raises
+`X12_271_AAA_LOOP_UNIDENTIFIED`, exactly as any other level code this reader
+cannot name does, rather than resolving through the prototype chain to a value
+that is not a level at all.
 
 Warning registry 40 to 44, additions-only. `tx.segments` is untouched: every
 `AAA` is still preserved verbatim, with the same element values, element order

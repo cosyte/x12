@@ -135,20 +135,39 @@ for (const hl03 of ["constructor", "__proto__", "toString", "valueOf", "hasOwnPr
 }
 
 // ---------------------------------------------------------------------------
-// The consequence a caller actually sees: both poisoned fields vanish under
-// JSON.stringify, so the rejection reads as an unattributed one downstream.
+// The consequence a caller actually sees.
+//
+// AMENDED BY THE FIX PASS, for the same reason and in the same form as the
+// twin amendment in `regress_0073_F2.ts`, which carries the full argument. In
+// short: the `key.level` half of the committed check asserts that an ABSENT key
+// part survives `JSON.stringify`, which it cannot, and which this file's own
+// ordinary-unknown control (`99`) fails identically. AC-7a requires that part to
+// be absent where the level cannot be named, so the assertion contradicted the
+// spec rather than measuring the defect. The `message` half measured a real
+// defect and is kept unchanged.
 // ---------------------------------------------------------------------------
 
-check("AC-1  the surfaced level survives JSON round-tripping", () => {
-  const elig = decodeWithHl03("constructor");
-  const round = JSON.parse(JSON.stringify(elig)) as {
+check("CONTROL an ABSENT key part is omitted by JSON.stringify for ANY unknown level", () => {
+  const round = JSON.parse(JSON.stringify(decodeWithHl03("99"))) as {
     aaaConditions: { key: Record<string, unknown> }[];
+  };
+  assert.equal(Object.hasOwn(round.aaaConditions[0]?.key ?? {}, "level"), false);
+});
+
+check("AC-1  over the wire, a prototype-named HL-03 reads as an ordinary unknown one", () => {
+  const wire = (hl03: string): unknown => {
+    const elig = decodeWithHl03(hl03);
+    return JSON.parse(
+      JSON.stringify({ aaaConditions: elig.aaaConditions, warnings: elig.warnings }),
+    ) as unknown;
+  };
+  assert.deepEqual(wire("constructor"), wire("99"));
+});
+
+check("AC-16 the diagnostic text survives JSON round-tripping", () => {
+  const round = JSON.parse(JSON.stringify(decodeWithHl03("constructor"))) as {
     warnings: Record<string, unknown>[];
   };
-  assert.ok(
-    Object.hasOwn(round.aaaConditions[0]?.key ?? {}, "level"),
-    "key.level disappeared from the serialized result",
-  );
   assert.ok(
     Object.hasOwn(round.warnings[0] ?? {}, "message"),
     "warning.message disappeared from the serialized result",

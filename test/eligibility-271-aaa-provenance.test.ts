@@ -13,7 +13,7 @@
  *   segments are an unsurfaced gap.
  */
 
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -82,6 +82,12 @@ describe("AC-14 / AC-21: the four-part provenance record, read off the artifact 
     expect(snapshot.meta.source).toContain("https://www.stedi.com/edi/x12-005010/segment/AAA");
     expect(snapshot.meta.source).toContain("2026-08-22");
     expect(snapshot.meta.snapshotDate).toMatch(/^\d{4}-\d{2}-\d{2}$/u);
+    // A URL alone names a moving target. The digest of the bytes actually read
+    // is what lets a reader tell the cited document from a later revision of
+    // the same page, so it is asserted rather than left to prose.
+    expect(snapshot.meta.source).toContain(
+      "sha256 0eb534233fd3099059fe765ada88ddef738e803d2812ca7b9a19c91afed13ba2",
+    );
   });
 
   it.each(BOTH_SNAPSHOTS)("%s: meta and codes are frozen", (_name, snapshot) => {
@@ -119,7 +125,21 @@ describe("AC-14 / AC-21: the four-part provenance record, read off the artifact 
   });
 
   it("AC-4 / AC-13 / AC-15: with the snapshot empty every lookup is undefined", () => {
-    for (const code of ["42", "72", "79", "C", "R", "constructor", "__proto__", ""]) {
+    // The prototype-named probes are DERIVED from the running engine rather
+    // than enumerated: the set is engine- and version-dependent, and the
+    // property under test is "a code the snapshot does not declare answers
+    // undefined", not "these two codes do".
+    const probes = [
+      "42",
+      "72",
+      "79",
+      "C",
+      "R",
+      "",
+      ...Object.getOwnPropertyNames(Object.prototype),
+    ];
+    expect(probes).toContain("constructor");
+    for (const code of probes) {
       expect(lookupAaaRejectReason(code)).toBeUndefined();
       expect(lookupAaaFollowUpAction(code)).toBeUndefined();
     }
@@ -281,13 +301,63 @@ describe("AC-18: no current shipped surface claims the 271 AAA gap this change c
     return out;
   }
 
-  it("README, KNOWN-LIMITATIONS and the published docs carry no such claim", () => {
-    const surfaces = [
-      join(REPO_ROOT, "README.md"),
-      join(REPO_ROOT, "KNOWN-LIMITATIONS.md"),
-      ...filesUnder(join(REPO_ROOT, "docs-content")),
-    ];
-    const offenders = surfaces.filter((file) => claimsTheGap(readFileSync(file, "utf8")));
+  /**
+   * Every entry of `package.json#files`, which IS the set of things a consumer
+   * receives. The list is DERIVED rather than restated here on purpose: an
+   * earlier version of this sweep named its surfaces by hand and missed
+   * `CHANGELOG.md`, which ships and still carried the gap sentence in the
+   * present tense. A hand-written list can drift out of `files`; this cannot.
+   */
+  const SHIPPED_ENTRIES: readonly string[] = (
+    JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as {
+      readonly files: readonly string[];
+    }
+  ).files;
+
+  /**
+   * Shipped entries that are BUILD OUTPUT rather than authored prose, and are
+   * therefore swept through their source instead. `dist` carries this package's
+   * `src/` doc comments into `.d.ts` / `.d.cts`, which the next test reads at
+   * the source, and it does not exist at all in a tree that has not been built.
+   * Anything else appearing in `files` is authored and must be read directly,
+   * which the assertion below enforces rather than assumes.
+   */
+  const GENERATED_SHIPPED_ENTRIES: readonly string[] = ["dist"];
+
+  it("every AUTHORED surface package.json#files ships carries no such claim", () => {
+    const swept: string[] = [];
+    const offenders: string[] = [];
+    for (const entry of SHIPPED_ENTRIES) {
+      if (GENERATED_SHIPPED_ENTRIES.includes(entry)) continue;
+      const full = join(REPO_ROOT, entry);
+      // A shipped entry may be a directory; read every file under it.
+      const files = statSync(full).isDirectory() ? filesUnder(full) : [full];
+      for (const file of files) {
+        swept.push(file);
+        if (claimsTheGap(readFileSync(file, "utf8"))) offenders.push(file);
+      }
+    }
+    expect(offenders).toEqual([]);
+    // Non-vacuity, and the regression this test exists for: the shipped
+    // changelog is IN the sweep, not outside it.
+    expect(swept.length).toBe(SHIPPED_ENTRIES.length - GENERATED_SHIPPED_ENTRIES.length);
+    expect(swept).toContain(join(REPO_ROOT, "CHANGELOG.md"));
+  });
+
+  it("the only shipped entry excused from that sweep is generated from src/", () => {
+    // So a new shipped entry cannot slip out of the sweep by being added to
+    // the excused list without a reader noticing: the excused list is exactly
+    // the build output, and the test below reads that output's source.
+    expect(GENERATED_SHIPPED_ENTRIES).toEqual(["dist"]);
+    for (const entry of GENERATED_SHIPPED_ENTRIES) expect(SHIPPED_ENTRIES).toContain(entry);
+  });
+
+  it("the published docs site carries no such claim either", () => {
+    // `docs-content/` is not in `files` and reaches the reader by a different
+    // route, so it is swept separately rather than folded into the list above.
+    const offenders = filesUnder(join(REPO_ROOT, "docs-content")).filter((file) =>
+      claimsTheGap(readFileSync(file, "utf8")),
+    );
     expect(offenders).toEqual([]);
   });
 
@@ -297,6 +367,18 @@ describe("AC-18: no current shipped surface claims the 271 AAA gap this change c
     const offenders = filesUnder(join(REPO_ROOT, "src"))
       .filter((f) => f.endsWith(".ts"))
       .filter((f) => claimsTheGap(docComments(readFileSync(f, "utf8"))));
+    expect(offenders).toEqual([]);
+  });
+
+  it("no PENDING changeset carries it, because a changeset becomes CHANGELOG.md", () => {
+    // The sweep above reads the changelog as it stands. A changeset is the
+    // next entry of that same shipped file, so a gap claim written into one
+    // reds HERE, at authoring time, rather than on the release commit. Caught
+    // that way: this change's own changeset described the deferral it
+    // supersedes in words the predicate matched.
+    const offenders = filesUnder(join(REPO_ROOT, ".changeset"))
+      .filter((f) => f.endsWith(".md") && !f.endsWith("README.md"))
+      .filter((f) => claimsTheGap(readFileSync(f, "utf8")));
     expect(offenders).toEqual([]);
   });
 

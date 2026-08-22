@@ -177,21 +177,70 @@ for (const hl03 of PROTOTYPE_HL03) {
 }
 
 // ---------------------------------------------------------------------------
-// What a caller downstream actually receives: both poisoned fields are dropped
-// by JSON serialization, so the rejection arrives with no level and no
-// diagnostic text at all.
+// What a caller downstream actually receives.
+//
+// AMENDED BY THE FIX PASS, AND THE AMENDMENT IS ON THE RECORD RATHER THAN
+// SILENT. As committed, this check read:
+//
+//   check("AC-1/AC-16 the level and the message survive JSON round-tripping", () => {
+//     const elig = decodeWithHl03("constructor");
+//     const round = JSON.parse(JSON.stringify(elig)) as { ... };
+//     assert.ok(Object.hasOwn(round.aaaConditions[0]?.key ?? {}, "level"), ...);
+//     assert.ok(Object.hasOwn(round.warnings[0] ?? {}, "message"), ...);
+//   });
+//
+// The `message` half is kept below verbatim: it measured a real defect and the
+// fix restores it. The `key.level` half asserts a property THE SPEC FORBIDS,
+// which is why it is replaced rather than satisfied. AC-7a requires part (a) of
+// the key to be left ABSENT where this reader cannot name the level, and an
+// absent part is `undefined`, which `JSON.stringify` omits BY DEFINITION. So
+// the assertion cannot be met for any unnameable level, and the artifact's OWN
+// ordinary-unknown control fails it identically: measured on this tree, HL-03
+// `99` serializes its key as ["hierarchyId","occurrenceIndex"] exactly as
+// `constructor` now does. The control below pins that, so this file records why
+// the original form was not discriminating instead of just dropping it.
+//
+// The replacement is STRICTLY STRONGER than what the original could have
+// proven: a prototype-named HL-03 must be indistinguishable, over the wire,
+// from an ordinary unknown one, in the AAA conditions AND in the warnings. That
+// is false in every way this artifact measures before the fix (poisoned level,
+// `message: undefined`, suppressed `X12_271_AAA_LOOP_UNIDENTIFIED`) and true
+// after it.
 // ---------------------------------------------------------------------------
 
-check("AC-1/AC-16 the level and the message survive JSON round-tripping", () => {
-  const elig = decodeWithHl03("constructor");
-  const round = JSON.parse(JSON.stringify(elig)) as {
+/** The two collections a caller reads, after a JSON round trip. */
+function overTheWire(hl03: string): unknown {
+  const elig = decodeWithHl03(hl03);
+  return JSON.parse(
+    JSON.stringify({ aaaConditions: elig.aaaConditions, warnings: elig.warnings }),
+  ) as unknown;
+}
+
+check("CONTROL an ABSENT key part is omitted by JSON.stringify for ANY unknown level", () => {
+  // Why the original `hasOwn(key, "level")` assertion was replaced: it fails
+  // for the ordinary unknown level code this file already treats as correct.
+  const round = JSON.parse(JSON.stringify(decodeWithHl03("99"))) as {
     aaaConditions: { key: Record<string, unknown> }[];
+  };
+  assert.equal(
+    Object.hasOwn(round.aaaConditions[0]?.key ?? {}, "level"),
+    false,
+    "an absent level unexpectedly survived serialization, so the amendment's premise is wrong",
+  );
+});
+
+check("AC-1/AC-16 over the wire, a prototype-named HL-03 reads as an ordinary unknown one", () => {
+  const ordinary = overTheWire("99");
+  for (const hl03 of PROTOTYPE_HL03) {
+    assert.deepEqual(overTheWire(hl03), ordinary, `HL-03 '${hl03}' reads differently downstream`);
+  }
+});
+
+check("AC-16 the diagnostic text survives JSON round-tripping", () => {
+  // The half of the original check that measured a real defect, unchanged.
+  const round = JSON.parse(JSON.stringify(decodeWithHl03("constructor"))) as {
     warnings: Record<string, unknown>[];
   };
-  assert.ok(
-    Object.hasOwn(round.aaaConditions[0]?.key ?? {}, "level"),
-    "key.level disappeared from the serialized result",
-  );
   assert.ok(
     Object.hasOwn(round.warnings[0] ?? {}, "message"),
     "warning.message disappeared from the serialized result",

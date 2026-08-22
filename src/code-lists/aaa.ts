@@ -151,10 +151,15 @@ const X12_REDISTRIBUTION_TERMS =
  * element number and publishes no code values, so it establishes the POSITION
  * and supplies no descriptions.
  *
+ * The sha256 of the exact bytes read is carried with the URL so a reader can
+ * tell whether the page they fetch is the page this snapshot was keyed on: a
+ * URL alone names a moving target. The digest is of the retrieved document
+ * itself; the document is third-party content and is not redistributed here.
+ *
  * @internal
  */
 const LAYOUT_REFERENCE =
-  "Element layout reproduced by an EDI reference at https://www.stedi.com/edi/x12-005010/segment/AAA (retrieved 2026-08-22). It names the element and its data element number and publishes no code values, so NO description source was obtained.";
+  "Element layout reproduced by an EDI reference at https://www.stedi.com/edi/x12-005010/segment/AAA (retrieved 2026-08-22, 92094 bytes, sha256 0eb534233fd3099059fe765ada88ddef738e803d2812ca7b9a19c91afed13ba2). It names the element and its data element number and publishes no code values, so NO description source was obtained.";
 
 /**
  * Bundled **AAA-03 Reject Reason Code** snapshot (X12 data element 901), for

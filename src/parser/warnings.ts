@@ -41,6 +41,7 @@
  * either. See `KNOWN-LIMITATIONS.md`.
  */
 
+import { wireLookup } from "./lookup.js";
 import type { X12Position } from "./types.js";
 
 /**
@@ -507,8 +508,26 @@ export const ALL_WARNING_MESSAGES: ReadonlySet<string> = new Set<string>(
   Object.values(WARNING_MESSAGES),
 );
 
-/** @internal */
-const AAA_REJECT_REASON_ABSENT_MESSAGES: Readonly<Record<X12AaaLevelContext, string>> = {
+/**
+ * The four per-level message tables below are keyed by
+ * {@link X12AaaLevelContext}, a LIBRARY-OWNED discriminant, and never by a
+ * value read out of a document. They are built through
+ * {@link "./lookup.js".wireLookup} anyway, as depth rather than as the
+ * guarantee: the guarantee is that the caller narrows a document's HL-03 to
+ * this closed union first, through a table that is itself null-prototype.
+ *
+ * What the null prototype buys HERE is the failure mode if that ever stops
+ * holding. Indexed as a plain object literal, a key naming an own property of
+ * `Object.prototype` answers a FUNCTION, which is truthy, survives every
+ * `!== undefined` guard, satisfies no registry membership check and then
+ * vanishes under `JSON.stringify`. Indexed here it answers `undefined`, which
+ * every assertion in this package already reds on. `satisfies` keeps the
+ * exhaustiveness check the declared `Record` used to carry, so a level added
+ * to the discriminant without a message for it still fails to compile.
+ *
+ * @internal
+ */
+const AAA_REJECT_REASON_ABSENT_MESSAGES: Readonly<Record<X12AaaLevelContext, string>> = wireLookup({
   [AAA_LEVEL_CONTEXTS.INFORMATION_SOURCE]:
     WARNING_MESSAGES.X12_271_AAA_REJECT_REASON_ABSENT_INFORMATION_SOURCE,
   [AAA_LEVEL_CONTEXTS.INFORMATION_RECEIVER]:
@@ -516,10 +535,10 @@ const AAA_REJECT_REASON_ABSENT_MESSAGES: Readonly<Record<X12AaaLevelContext, str
   [AAA_LEVEL_CONTEXTS.SUBSCRIBER]: WARNING_MESSAGES.X12_271_AAA_REJECT_REASON_ABSENT_SUBSCRIBER,
   [AAA_LEVEL_CONTEXTS.DEPENDENT]: WARNING_MESSAGES.X12_271_AAA_REJECT_REASON_ABSENT_DEPENDENT,
   [AAA_LEVEL_CONTEXTS.UNATTACHED]: WARNING_MESSAGES.X12_271_AAA_REJECT_REASON_ABSENT_UNATTACHED,
-};
+} satisfies Record<X12AaaLevelContext, string>);
 
-/** @internal */
-const AAA_UNKNOWN_CODE_MESSAGES: Readonly<Record<X12AaaLevelContext, string>> = {
+/** Same construction and the same reason as the table above. @internal */
+const AAA_UNKNOWN_CODE_MESSAGES: Readonly<Record<X12AaaLevelContext, string>> = wireLookup({
   [AAA_LEVEL_CONTEXTS.INFORMATION_SOURCE]:
     WARNING_MESSAGES.X12_271_AAA_UNKNOWN_CODE_INFORMATION_SOURCE,
   [AAA_LEVEL_CONTEXTS.INFORMATION_RECEIVER]:
@@ -527,10 +546,10 @@ const AAA_UNKNOWN_CODE_MESSAGES: Readonly<Record<X12AaaLevelContext, string>> = 
   [AAA_LEVEL_CONTEXTS.SUBSCRIBER]: WARNING_MESSAGES.X12_271_AAA_UNKNOWN_CODE_SUBSCRIBER,
   [AAA_LEVEL_CONTEXTS.DEPENDENT]: WARNING_MESSAGES.X12_271_AAA_UNKNOWN_CODE_DEPENDENT,
   [AAA_LEVEL_CONTEXTS.UNATTACHED]: WARNING_MESSAGES.X12_271_AAA_UNKNOWN_CODE_UNATTACHED,
-};
+} satisfies Record<X12AaaLevelContext, string>);
 
-/** @internal */
-const AAA_SEGMENT_MALFORMED_MESSAGES: Readonly<Record<X12AaaLevelContext, string>> = {
+/** Same construction and the same reason as the table above. @internal */
+const AAA_SEGMENT_MALFORMED_MESSAGES: Readonly<Record<X12AaaLevelContext, string>> = wireLookup({
   [AAA_LEVEL_CONTEXTS.INFORMATION_SOURCE]:
     WARNING_MESSAGES.X12_271_AAA_SEGMENT_MALFORMED_INFORMATION_SOURCE,
   [AAA_LEVEL_CONTEXTS.INFORMATION_RECEIVER]:
@@ -538,10 +557,10 @@ const AAA_SEGMENT_MALFORMED_MESSAGES: Readonly<Record<X12AaaLevelContext, string
   [AAA_LEVEL_CONTEXTS.SUBSCRIBER]: WARNING_MESSAGES.X12_271_AAA_SEGMENT_MALFORMED_SUBSCRIBER,
   [AAA_LEVEL_CONTEXTS.DEPENDENT]: WARNING_MESSAGES.X12_271_AAA_SEGMENT_MALFORMED_DEPENDENT,
   [AAA_LEVEL_CONTEXTS.UNATTACHED]: WARNING_MESSAGES.X12_271_AAA_SEGMENT_MALFORMED_UNATTACHED,
-};
+} satisfies Record<X12AaaLevelContext, string>);
 
-/** @internal */
-const AAA_LOOP_UNIDENTIFIED_MESSAGES: Readonly<Record<X12AaaLevelContext, string>> = {
+/** Same construction and the same reason as the table above. @internal */
+const AAA_LOOP_UNIDENTIFIED_MESSAGES: Readonly<Record<X12AaaLevelContext, string>> = wireLookup({
   [AAA_LEVEL_CONTEXTS.INFORMATION_SOURCE]:
     WARNING_MESSAGES.X12_271_AAA_LOOP_UNIDENTIFIED_INFORMATION_SOURCE,
   [AAA_LEVEL_CONTEXTS.INFORMATION_RECEIVER]:
@@ -549,7 +568,7 @@ const AAA_LOOP_UNIDENTIFIED_MESSAGES: Readonly<Record<X12AaaLevelContext, string
   [AAA_LEVEL_CONTEXTS.SUBSCRIBER]: WARNING_MESSAGES.X12_271_AAA_LOOP_UNIDENTIFIED_SUBSCRIBER,
   [AAA_LEVEL_CONTEXTS.DEPENDENT]: WARNING_MESSAGES.X12_271_AAA_LOOP_UNIDENTIFIED_DEPENDENT,
   [AAA_LEVEL_CONTEXTS.UNATTACHED]: WARNING_MESSAGES.X12_271_AAA_LOOP_UNIDENTIFIED_UNATTACHED,
-};
+} satisfies Record<X12AaaLevelContext, string>);
 
 /** @internal */
 const UNEXPECTED_SEGMENT_MESSAGES: Readonly<Record<X12UnexpectedSegmentContext, string>> = {

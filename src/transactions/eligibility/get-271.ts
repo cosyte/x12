@@ -44,6 +44,7 @@ import {
   type X12DecimalWarningSink,
   type X12Segment,
 } from "../../parser/segment.js";
+import { wireLookup } from "../../parser/lookup.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
 import {
   AAA_LEVEL_CONTEXTS,
@@ -88,15 +89,35 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Obje
 /**
  * HL-03 level code to the AAA level name this surface reports. A level code
  * outside this map resolves to `undefined`, which is read as "this reader
- * cannot name the level" and NEVER as a default level. @internal
+ * cannot name the level" and NEVER as a default level.
+ *
+ * Built through {@link "../../parser/lookup.js".wireLookup} because THE KEY IS
+ * DOCUMENT BYTES: HL-03 reaches this table verbatim off the wire. As a plain
+ * object literal it inherited `Object.prototype`, so an HL-03 naming an own
+ * property of that prototype resolved THROUGH THE CHAIN instead of to
+ * `undefined`, and `Object.freeze` did not help. Measured before this table was
+ * re-declared: the surfaced `key.level` held a function or `Object.prototype`
+ * where the type admits four names or `undefined`; the per-level message tables
+ * were then indexed by that value, missed, and the reader shipped a warning
+ * with `message: undefined` rather than a frozen-registry literal; and
+ * `decodeAaa`'s `key.level === undefined` guard did not fire, so the
+ * `X12_271_AAA_LOOP_UNIDENTIFIED` warning an ordinary unknown level DOES raise
+ * was silently suppressed. Both poisoned fields then vanished under
+ * `JSON.stringify`, so a caller over a wire received a rejection with no level
+ * and a diagnostic with no text.
+ *
+ * The remedy is applied AT THE TABLE rather than at the read site, which is the
+ * form the note on `wireLookup` argues for: a read-site guard protects only the
+ * read sites that exist today. @internal
  */
-const AAA_LEVEL_BY_HL_CODE: Readonly<Record<string, X12AaaConditionLevel | undefined>> =
-  Object.freeze({
+const AAA_LEVEL_BY_HL_CODE: Readonly<Record<string, X12AaaConditionLevel | undefined>> = wireLookup(
+  {
     [HL_LEVEL_CODES.INFORMATION_SOURCE]: AAA_CONDITION_LEVELS.INFORMATION_SOURCE,
     [HL_LEVEL_CODES.INFORMATION_RECEIVER]: AAA_CONDITION_LEVELS.INFORMATION_RECEIVER,
     [HL_LEVEL_CODES.SUBSCRIBER]: AAA_CONDITION_LEVELS.SUBSCRIBER,
     [HL_LEVEL_CODES.DEPENDENT]: AAA_CONDITION_LEVELS.DEPENDENT,
-  });
+  },
+);
 
 /**
  * The HIGHEST AAA element position this reader has a source for. The recorded
