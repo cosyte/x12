@@ -20,6 +20,13 @@
  */
 export const VERSION: string = "0.0.18";
 
+// The package's conformance declaration: which implementation guide each
+// reader and builder implements, which identifiers 45 CFR 162.920 names for
+// that transaction, and which directions are actually implemented. Static
+// data; it changes no parse and no emit behaviour.
+export { X12_TR3_CONFORMANCE } from "./conformance/index.js";
+export type { X12Tr3Adoption, X12Tr3Conformance, X12Tr3Direction } from "./conformance/index.js";
+
 // Phase 1 - envelope parser surface.
 export { parseX12 } from "./parser/index.js";
 export { detectDelimiters, DELIMITER_POSITIONS, ISA_MIN_LENGTH } from "./parser/delimiters.js";
@@ -514,8 +521,10 @@ export {
   type X12HealthCoverage,
 } from "./transactions/enrollment/index.js";
 
-// Phase 7 - 278 Health Care Services Review surface (request TR3 005010X217 /
-// response TR3 005010X216).
+// Phase 7 - 278 Health Care Services Review surface (TR3 005010X217, which
+// covers both the request and the response direction). The identifier
+// `build278Response` writes into ST-03 is not that one and is unchanged; the
+// 278 response row of `X12_TR3_CONFORMANCE` records the divergence.
 export {
   AUTH_278_BUILD_ERROR_CODES,
   AUTH_278_LOOP_2000A,
