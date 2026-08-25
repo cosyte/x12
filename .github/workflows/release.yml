@@ -15,6 +15,7 @@ jobs:
     # `contents/id-token/pull-requests: write` is an escalation and GitHub rejects the whole workflow
     # at startup (1s, no jobs, no logs). That is what every Release run did from June until this.
     permissions:
+      actions: read # the shared workflow reads this caller's environment protection with it
       contents: write # create tags / the GitHub release
       id-token: write # npm provenance
       pull-requests: write # open the "Version Packages" PR
