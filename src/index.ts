@@ -638,7 +638,10 @@ export {
   X12ProfileError,
 } from "./profiles/index.js";
 export type {
+  X12ClassifiedQuirk,
   X12Profile,
+  X12ProfileConformance,
+  X12ProfileConformancePartition,
   X12ProfileDescription,
   X12ProfileEffect,
   X12ProfileQuirk,

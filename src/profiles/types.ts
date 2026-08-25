@@ -49,6 +49,50 @@ import type { X12WarningCode } from "../parser/warnings.js";
 export type X12ProfileEffect = "relaxes" | "adds" | "requires";
 
 /**
+ * Whether the deviation a quirk describes is one a trading partner may
+ * LAWFULLY require. The axis is 45 CFR 162.915, which forbids a covered
+ * entity from entering a trading partner agreement that would change the
+ * definition, data condition or use of a data element or segment in a
+ * standard, add data elements or segments to the maximum defined data set,
+ * use any code or data element marked "not used" in (or absent from) the
+ * standard's implementation specification, or change the meaning or intent
+ * of that implementation specification.
+ *
+ * The three states, and what each one does and does not claim:
+ *
+ * - `permitted` - a recorded judgement that none of 162.915(a) to (d) is
+ *   engaged, so a partner may lawfully require the deviation. It is a
+ *   statement about the RULE, never a promise that your partner's guide is
+ *   correct in any other respect.
+ * - `not-permitted` - a recorded judgement that the deviation is one 162.915
+ *   forbids a partner from requiring. The profile still describes it, because
+ *   describing what a partner SENDS is exactly what a profile is for; the
+ *   classification says the partner is deviating from the adopted standard
+ *   rather than that the standard supports the requirement.
+ * - `undetermined` - NO judgement was recorded, or the recorded value was not
+ *   one of the two above. This is the fail-safe default, and it is the value
+ *   you get for any quirk that says nothing. Read it as "this library makes no
+ *   claim", never as "permitted".
+ *
+ * **Every one of these is a recorded human judgement, not a check this library
+ * performed.** In particular, whether an element is marked "not used" in an
+ * adopted implementation specification is not machine-checkable here: 45 CFR
+ * 162.920(a) states a fee is charged for those specifications, and none is
+ * bundled with this package. A classification that rests on such a marking
+ * rests on someone having read the guide and written the answer down. Treat it
+ * as documentation, and confirm it against your own copy of the guide before
+ * you rely on it. `KNOWN-LIMITATIONS.md` carries the same caveat for consumers
+ * who never open this type.
+ *
+ * @example
+ * ```ts
+ * import type { X12ProfileConformance } from "@cosyte/x12";
+ * const c: X12ProfileConformance = "undetermined";
+ * ```
+ */
+export type X12ProfileConformance = "permitted" | "not-permitted" | "undetermined";
+
+/**
  * A single trading-partner deviation captured by a profile. Every quirk is
  * fixture-grounded: `fixture` points at a real Tier-2 corpus file that
  * demonstrates the deviation, and `sourceCategory` records where the quirk
@@ -91,6 +135,56 @@ export interface X12ProfileQuirk {
    * no warning" outcome is itself the documented behavior.
    */
   readonly expectedWarnings?: readonly X12WarningCode[];
+  /**
+   * OPTIONAL recorded judgement of whether a trading partner may lawfully
+   * require this deviation under 45 CFR 162.915. Omit it and the quirk
+   * renders as {@link X12ProfileConformance} `"undetermined"` - the fail-safe
+   * default - so a profile written before this field existed keeps defining
+   * and describing exactly as it did, and never gains a claim nobody made.
+   */
+  readonly conformance?: X12ProfileConformance;
+}
+
+/**
+ * A quirk as {@link X12Profile.describe} RENDERS it: the authored quirk plus
+ * the conformance state it resolved to. `conformance` is required here and
+ * optional on {@link X12ProfileQuirk}, which is the whole difference - an
+ * unrecorded judgement is rendered as `"undetermined"` rather than left
+ * absent, so a reader never has to distinguish "no field" from "no claim".
+ *
+ * @example
+ * ```ts
+ * import { profiles } from "@cosyte/x12";
+ * const d = profiles.bcbsCommon.describe();
+ * d.relaxes[0]?.conformance; // "permitted" | "not-permitted" | "undetermined"
+ * ```
+ */
+export interface X12ClassifiedQuirk extends X12ProfileQuirk {
+  readonly conformance: X12ProfileConformance;
+}
+
+/**
+ * The rendered quirks of a profile, grouped by their conformance state. Every
+ * quirk appears in exactly one of the three, and the three together are the
+ * profile's whole quirk set, so a consumer can ask "does this profile record
+ * anything a partner may not lawfully require?" without walking the effect
+ * buckets. A profile with no quirks makes no conformance claim of any kind:
+ * all three are empty.
+ *
+ * @example
+ * ```ts
+ * import { profiles } from "@cosyte/x12";
+ * const { notPermitted } = profiles.availity.describe().conformance;
+ * notPermitted.map((q) => q.id); // quirks 45 CFR 162.915 forbids requiring
+ * ```
+ */
+export interface X12ProfileConformancePartition {
+  /** Quirks recorded as ones a partner MAY lawfully require. */
+  readonly permitted: readonly X12ClassifiedQuirk[];
+  /** Quirks recorded as partner deviations 162.915 forbids requiring. */
+  readonly notPermitted: readonly X12ClassifiedQuirk[];
+  /** Quirks with no recorded judgement. NOT a claim in either direction. */
+  readonly undetermined: readonly X12ClassifiedQuirk[];
 }
 
 /**
@@ -99,11 +193,18 @@ export interface X12ProfileQuirk {
  * formatted string, unlike hl7) so downstream tooling - docs generators,
  * the `pathways` engine - can consume it programmatically.
  *
+ * Each bucketed quirk carries the conformance state it resolved to, so a
+ * consumer reading a described deviation also reads whether a partner could
+ * lawfully have required it. `requires` is a record of what a partner MANDATES
+ * and never a claim that the standard supports the mandate: that question is
+ * answered by `conformance` alone, and its default answer is "undetermined".
+ *
  * @example
  * ```ts
  * import { profiles } from "@cosyte/x12";
  * const d = profiles.availity.describe();
  * d.adds.map((q) => q.id);          // ["payer-loop-ref-2u", "service-line-ref-f8"]
+ * d.adds.map((q) => q.conformance); // ["undetermined", "undetermined"]
  * d.expectedWarnings;               // readonly X12WarningCode[]
  * ```
  */
@@ -111,11 +212,17 @@ export interface X12ProfileDescription {
   readonly name: string;
   readonly description?: string;
   readonly lineage: readonly string[];
-  readonly relaxes: readonly X12ProfileQuirk[];
-  readonly adds: readonly X12ProfileQuirk[];
-  readonly requires: readonly X12ProfileQuirk[];
+  readonly relaxes: readonly X12ClassifiedQuirk[];
+  readonly adds: readonly X12ClassifiedQuirk[];
+  readonly requires: readonly X12ClassifiedQuirk[];
   /** Sorted, de-duplicated union of every quirk's `expectedWarnings`. */
   readonly expectedWarnings: readonly X12WarningCode[];
+  /**
+   * The same quirks, grouped by conformance state instead of by effect. See
+   * {@link X12ProfileConformancePartition}; the states themselves are
+   * documented on {@link X12ProfileConformance}.
+   */
+  readonly conformance: X12ProfileConformancePartition;
 }
 
 /**
