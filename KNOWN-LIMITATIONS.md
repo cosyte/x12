@@ -1765,6 +1765,33 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   behaviour and the 270 work deliberately did not widen it: framing tolerance is shared by every
   transaction set, and moving it is a change to all of them rather than to one reader.
 
+## Code-list validity dates
+
+- **🩺 A published Stop date is read as the FIRST day the code is no longer valid, and the
+  maintainer does not say whether that is right.** `x12.org` renders a code's dates as
+  `Start: 01/01/1995 | Last Modified: 11/01/2017 | Stop: 05/01/2018` and states nowhere whether the
+  Stop date is the LAST day the code was valid or the FIRST day it was not. The two readings differ
+  by exactly one day, on exactly the boundary a document produced that day sits on.
+
+  This package reads it as the first day the code is NOT valid, so the valid interval is half-open:
+  a document date on or after the Stop date reports `not-valid`, and the day before it reports
+  `valid`. The ground is the shape of the source and not a statement by the maintainer: the
+  published dates are first-of-month publication-cycle dates, so the Stop date reads as the
+  publication on which the code left the list rather than the last day it was on it. **That is a
+  judgement, not a fact, and a consumer whose contract turns on the boundary day itself should
+  confirm it with the maintainer rather than with this package.** `CARC.dates` and `RARC.dates`
+  carry the published values unchanged, so a consumer who reads the boundary the other way has
+  everything needed to compute it.
+
+  Two further bounds on the same data, neither of them a defect:
+  - **A code with no published start date is `indeterminate`, never `valid` and never `not-valid`.**
+    Validity is an interval and there is no interval without a start. No bundled code is in this
+    state at the capture the dates were transcribed from; the answer exists because the fail-safe
+    has to hold if one ever is.
+  - **The dates describe the bundled subset and nothing wider.** A code outside it answers
+    `indeterminate` with the inbound value echoed verbatim, which is a statement about what this
+    package bundles rather than about what the maintainer publishes.
+
 ## Code-list `--fetch` regeneration
 
 `pnpm refresh:code-lists` (default) validates the bundled snapshots and prints a freshness audit,

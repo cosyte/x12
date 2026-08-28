@@ -17,7 +17,16 @@
  * the standard release cadence (rare). Snapshots are refreshed on a
  * release cadence, not at runtime - a stale description never produces a
  * wrong code, only a missing description.
+ *
+ * Per-code validity is a SEPARATE question from freshness, and the snapshots
+ * that carry the maintainer's per-code dates answer it through
+ * {@link makeValidityCheck}: 45 CFR 162.1011 scopes a code set's validity to
+ * the dates its maintaining organisation publishes, so "the code is in this
+ * snapshot" was never the same statement as "the code was valid on the day
+ * that document was produced".
  */
+
+import { parseDocumentDate } from "./document-date.js";
 
 /**
  * Metadata header attached to every bundled code-list snapshot. Surfaces
@@ -42,6 +51,33 @@ export interface CodeListMeta {
 }
 
 /**
+ * The dates a code-list maintainer publishes for ONE code, as ISO-8601
+ * calendar days in `YYYY-MM-DD` form. `start` is the first day the code was
+ * valid, `stop` the FIRST day it is no longer valid (the interval is
+ * half-open, and `KNOWN-LIMITATIONS.md` records why this package reads the
+ * published Stop date that way), and `lastModified` the day its description
+ * last changed.
+ *
+ * Each is absent when the maintainer publishes no such date for that code. An
+ * absent `start` is the one that matters: validity on a supplied day cannot be
+ * decided without it, and the answer is `indeterminate` rather than either
+ * verdict.
+ *
+ * @example
+ * ```ts
+ * import { CARC } from "@cosyte/x12";
+ * CARC.dates["1"]?.start;  // "1995-01-01"
+ * CARC.dates["15"]?.stop;  // "2018-05-01" (deactivated code)
+ * CARC.dates["1"]?.stop;   // undefined (still current)
+ * ```
+ */
+export interface CodeListEntryDates {
+  readonly start?: string;
+  readonly lastModified?: string;
+  readonly stop?: string;
+}
+
+/**
  * One entry returned from a code-list `lookup(code)`. The inbound code
  * value is echoed verbatim (so a caller that branches on `entry.code` is
  * comparing exactly the bytes that came in, never a normalized form);
@@ -49,17 +85,25 @@ export interface CodeListMeta {
  * Future fields (`isObsolete`, `replacedBy`) are tracked by the roadmap;
  * v0.0.x snapshots ship code + description only.
  *
+ * `dates` is present only on the snapshots that carry per-code dates (CARC and
+ * RARC today) and only for a code that HAS one there, so an entry from a
+ * snapshot without them keeps exactly the two properties it has always had.
+ * Reading a description has never meant the code was valid on any particular
+ * day; {@link CodeValidityResult} is where that question is answered.
+ *
  * @example
  * ```ts
  * import { lookupCarc } from "@cosyte/x12";
  * const entry = lookupCarc("45");
- * entry?.code;        // "45"
- * entry?.description; // "Charge exceeds fee schedule/maximum allowable..."
+ * entry?.code;          // "45"
+ * entry?.description;   // "Charge exceeds fee schedule/maximum allowable..."
+ * entry?.dates?.start;  // "1995-01-01"
  * ```
  */
 export interface CodeListEntry {
   readonly code: string;
   readonly description: string;
+  readonly dates?: CodeListEntryDates;
 }
 
 /**
@@ -82,6 +126,64 @@ export interface CodeListSnapshot {
 }
 
 /**
+ * Provenance for a snapshot that ALSO carries per-code validity dates. The two
+ * new fields are deliberately separate from `publishedDate` and
+ * `snapshotDate`: those describe the DESCRIPTIONS this package bundled, and a
+ * consumer has to be able to tell how fresh the validity data is without
+ * inferring it from how fresh the descriptions are. The two are captured from
+ * different pages on different days and neither implies the other.
+ *
+ * @example
+ * ```ts
+ * import { CARC } from "@cosyte/x12";
+ * CARC.meta.snapshotDate;      // when the descriptions were captured
+ * CARC.meta.datesCapturedAt;   // when the per-code validity dates were captured
+ * CARC.meta.datesSource;       // the maintainer page they were read from
+ * ```
+ */
+export interface DatedCodeListMeta extends CodeListMeta {
+  /** The day the per-code dates below were read off the maintainer page. */
+  readonly datesCapturedAt: string;
+  /** The maintainer page URL those dates were read from. */
+  readonly datesSource: string;
+}
+
+/**
+ * A bundled snapshot that carries the maintainer's per-code validity dates
+ * beside the descriptions. `dates` is keyed by the same code strings as
+ * `codes`, and a code may be present in `codes` while absent from `dates`:
+ * that means no date was published for it, never that it has none.
+ *
+ * @example
+ * ```ts
+ * import { RARC } from "@cosyte/x12";
+ * RARC.codes["N4"];          // the bundled description
+ * RARC.dates["N4"]?.start;   // "2000-01-01"
+ * ```
+ */
+export interface DatedCodeListSnapshot extends CodeListSnapshot {
+  readonly meta: DatedCodeListMeta;
+  readonly dates: Readonly<Record<string, CodeListEntryDates>>;
+}
+
+/**
+ * Deep-freeze a per-code date table: the outer map AND every record in it.
+ * `Object.freeze` is shallow, so freezing only the map would leave every
+ * published date writable on a shipped artifact.
+ *
+ * @internal - exported only for the per-snapshot modules.
+ */
+export function freezeCodeDates(
+  dates: Readonly<Record<string, CodeListEntryDates>>,
+): Readonly<Record<string, CodeListEntryDates>> {
+  const frozen: Record<string, CodeListEntryDates> = {};
+  for (const [code, value] of Object.entries(dates)) {
+    frozen[code] = Object.freeze({ ...value });
+  }
+  return Object.freeze(frozen);
+}
+
+/**
  * Construct a `lookup` helper for a {@link CodeListSnapshot}. Returns
  * `undefined` for codes outside the bundled subset (which is the
  * fail-safe - the verbatim inbound code is preserved by the helper that
@@ -93,10 +195,15 @@ export interface CodeListSnapshot {
  * hardened factory rather than growing a second copy of the `Object.hasOwn`
  * check. A `CodeListSnapshot` satisfies it unchanged.
  *
+ * A {@link DatedCodeListSnapshot} satisfies it too, and its `dates` ride the
+ * SAME guard: a snapshot without them returns exactly the two-property entry it
+ * always did, and a code the date table does not carry gets no `dates`
+ * property rather than one holding `undefined`.
+ *
  * @internal - exported only for the per-snapshot modules.
  */
 export function makeLookup(
-  snapshot: Pick<CodeListSnapshot, "codes">,
+  snapshot: Pick<CodeListSnapshot, "codes"> & Partial<Pick<DatedCodeListSnapshot, "dates">>,
 ): (code: string) => CodeListEntry | undefined {
   return (code: string): CodeListEntry | undefined => {
     // `Object.hasOwn` first, ALWAYS. `snapshot.codes` is a plain object
@@ -116,6 +223,172 @@ export function makeLookup(
     if (!Object.hasOwn(snapshot.codes, code)) return undefined;
     const description = snapshot.codes[code];
     if (description === undefined) return undefined;
-    return Object.freeze({ code, description });
+    const dates = readOwnDates(snapshot.dates, code);
+    if (dates === undefined) return Object.freeze({ code, description });
+    return Object.freeze({ code, description, dates });
+  };
+}
+
+/**
+ * Read one code's published dates off a date table through the SAME
+ * `Object.hasOwn` guard the description read uses. A date table is a plain
+ * object literal for the same reason `codes` is, so a bare `dates[code]`
+ * answers `Object.prototype` for `__proto__` and a function for `constructor`,
+ * and a `CodeListEntryDates` typed by the compiler would then be neither.
+ *
+ * @internal
+ */
+function readOwnDates(
+  dates: Readonly<Record<string, CodeListEntryDates>> | undefined,
+  code: string,
+): CodeListEntryDates | undefined {
+  if (dates === undefined) return undefined;
+  if (!Object.hasOwn(dates, code)) return undefined;
+  return dates[code];
+}
+
+/**
+ * The three answers to "was this code valid on that day". `not-valid` and
+ * `indeterminate` are deliberately different answers: the first is a claim
+ * this package can support from a published date, the second says the shipped
+ * data cannot decide. A code is never reported `valid` for want of evidence.
+ *
+ * @example
+ * ```ts
+ * import { CODE_VALIDITY, checkCarcValidity } from "@cosyte/x12";
+ * checkCarcValidity("15", "2026-06-27").validity === CODE_VALIDITY.NOT_VALID; // true
+ * ```
+ */
+export const CODE_VALIDITY = {
+  VALID: "valid",
+  NOT_VALID: "not-valid",
+  INDETERMINATE: "indeterminate",
+} as const;
+
+/**
+ * String-literal union over {@link CODE_VALIDITY}. Used as
+ * {@link CodeValidityResult}.`validity`.
+ */
+export type CodeValidity = (typeof CODE_VALIDITY)[keyof typeof CODE_VALIDITY];
+
+/**
+ * Why a validity answer came back `indeterminate`. Locked here so a consumer
+ * can branch on the reason exhaustively; additions-only thereafter.
+ *
+ * - `code-not-in-bundled-subset` - the code is not one this package bundles, so
+ *   nothing is known about it. The inbound code is still echoed verbatim.
+ * - `no-published-start-date` - the code IS bundled but the maintainer publishes
+ *   no start date for it, so no interval exists to test the day against.
+ *
+ * @example
+ * ```ts
+ * import { CODE_VALIDITY_REASONS, checkCarcValidity } from "@cosyte/x12";
+ * checkCarcValidity("9999", "2026-06-27").reason;
+ * // CODE_VALIDITY_REASONS.CODE_NOT_IN_BUNDLED_SUBSET
+ * ```
+ */
+export const CODE_VALIDITY_REASONS = {
+  CODE_NOT_IN_BUNDLED_SUBSET: "code-not-in-bundled-subset",
+  NO_PUBLISHED_START_DATE: "no-published-start-date",
+} as const;
+
+/**
+ * String-literal union over {@link CODE_VALIDITY_REASONS}. Used as
+ * {@link CodeValidityResult}.`reason`.
+ */
+export type CodeValidityReason = (typeof CODE_VALIDITY_REASONS)[keyof typeof CODE_VALIDITY_REASONS];
+
+/**
+ * The answer to "was this code valid on the day this document was produced".
+ *
+ * `code` is the inbound value byte for byte, exactly as the lookup helpers echo
+ * it, so a code outside the bundled subset is never lost on the way through.
+ * `description` is `undefined` for such a code: an absent code gets no
+ * description and no validity claim, only its own bytes back.
+ *
+ * @example
+ * ```ts
+ * import { checkRarcValidity } from "@cosyte/x12";
+ * const answer = checkRarcValidity("N4", "20260627");
+ * answer.code;         // "N4"
+ * answer.documentDate; // "2026-06-27" (normalised from the wire form)
+ * answer.validity;     // "valid"
+ * answer.reason;       // undefined
+ * ```
+ */
+export interface CodeValidityResult {
+  /** The inbound code, byte for byte as it was supplied. */
+  readonly code: string;
+  /** The bundled description, or `undefined` outside the bundled subset. */
+  readonly description: string | undefined;
+  /** The supplied document date, normalised to `YYYY-MM-DD`. */
+  readonly documentDate: string;
+  /** `valid`, `not-valid` or `indeterminate`. */
+  readonly validity: CodeValidity;
+  /** Why the answer is `indeterminate`; `undefined` for the other two. */
+  readonly reason: CodeValidityReason | undefined;
+  /** The maintainer's dates for this code, where the snapshot has them. */
+  readonly dates: CodeListEntryDates | undefined;
+}
+
+/**
+ * Construct the date-aware validity query for a {@link DatedCodeListSnapshot}.
+ *
+ * It reads membership through {@link makeLookup}'s guard rather than a second
+ * copy of it, so a prototype key is an absent code on this path exactly as it
+ * is on the lookup path. The rules, with `D` the supplied day, `S` the code's
+ * start and `T` its stop:
+ *
+ * - `valid` when `S` is known, `D >= S`, and either no `T` is known or `D < T`.
+ * - `not-valid` when `S` is known and `D < S`, or `T` is known and `D >= T`.
+ * - `indeterminate` when the code is outside the bundled subset, or is inside
+ *   it with no `S` published.
+ *
+ * Comparison is lexicographic over `YYYY-MM-DD`, which IS calendar order for
+ * that form, so no `Date` is constructed and no timezone is ever guessed.
+ *
+ * @internal - exported only for the per-snapshot modules.
+ */
+export function makeValidityCheck(
+  snapshot: Pick<DatedCodeListSnapshot, "codes" | "dates">,
+): (code: string, documentDate: string) => CodeValidityResult {
+  const lookup = makeLookup(snapshot);
+  return (code: string, documentDate: string): CodeValidityResult => {
+    // The date is checked FIRST, so a malformed one is refused whatever the
+    // code is. A caller who cannot state the day cannot get an answer about it.
+    const day = parseDocumentDate(documentDate);
+    const entry = lookup(code);
+    if (entry === undefined) {
+      return Object.freeze({
+        code,
+        description: undefined,
+        documentDate: day,
+        validity: CODE_VALIDITY.INDETERMINATE,
+        reason: CODE_VALIDITY_REASONS.CODE_NOT_IN_BUNDLED_SUBSET,
+        dates: undefined,
+      });
+    }
+    const dates = entry.dates;
+    const start = dates?.start;
+    if (start === undefined) {
+      return Object.freeze({
+        code: entry.code,
+        description: entry.description,
+        documentDate: day,
+        validity: CODE_VALIDITY.INDETERMINATE,
+        reason: CODE_VALIDITY_REASONS.NO_PUBLISHED_START_DATE,
+        dates,
+      });
+    }
+    const stop = dates?.stop;
+    const inInterval = day >= start && (stop === undefined || day < stop);
+    return Object.freeze({
+      code: entry.code,
+      description: entry.description,
+      documentDate: day,
+      validity: inInterval ? CODE_VALIDITY.VALID : CODE_VALIDITY.NOT_VALID,
+      reason: undefined,
+      dates,
+    });
   };
 }
