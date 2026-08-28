@@ -1,3 +1,17 @@
+# The "Dependabot Updates" run in this repository's Actions tab is GitHub's own
+# hosted, dynamic workflow. It is driven by THIS file, and no file under
+# .github/workflows/ defines it, so looking for it there is a dead end.
+#
+# When "Dependabot Updates" fails, diagnose it from this file and from that run's
+# own logs, never from a workflow file. Its cause can also lie entirely outside
+# this repository (org-level Dependabot settings, registry credentials, or the
+# hosted updater itself), in which case there is nothing here to change.
+#
+# GitHub also starts one "Dependabot Updates" run per update job, so one push
+# produces several. A security-alert job can fail (for example when no
+# non-vulnerable version of a transitive dependency is resolvable) while the
+# scheduled jobs configured below succeed, so read the individual run before
+# concluding that anything below is wrong.
 version: 2
 updates:
   # npm dev-dependencies (the parsers ship zero runtime deps)
