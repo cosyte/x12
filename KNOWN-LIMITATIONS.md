@@ -1259,9 +1259,11 @@ Code"`, `SVC05 / 380 / "Units of Service Paid Count"`, `SVC06 / C003`,
   the long-tail codes most workflows branch on. An inbound code **outside** a snapshot still parses:
   the verbatim code is preserved on the model and an `X12_UNKNOWN_*` warning is raised. Only the
   human-readable **description** is absent (`undefined`). A stale or partial snapshot therefore yields
-  a missing description, **never a wrong code**. Run `pnpm refresh:code-lists` to audit snapshot
-  freshness; regenerating the full lists (`--fetch`) is a redistribution-terms-gated release step (see
-  below), not a runtime fetch.
+  a missing description, **never a wrong code**. Every snapshot states which it is: `meta.completeness`
+  is `"cited-subset"` on all seven today, so a lookup miss means this package does not carry the code
+  and never that the publisher did not issue it. Run `pnpm refresh:code-lists` to audit snapshot
+  freshness; regenerating the full lists (`--fetch`) is a release step gated per list on that list's
+  own recorded redistribution terms (see below), not a runtime fetch.
 
 - **`serialize(parse(s)) === s` is NOT guaranteed.** `serializeX12` rebuilds the interchange from the
   model, so every segment the parser recorded comes back verbatim (element padding, composites, and
@@ -1812,10 +1814,78 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
 
 `pnpm refresh:code-lists` (default) validates the bundled snapshots and prints a freshness audit,
 offline and CI-safe. The `--fetch` mode that would **regenerate** the full lists from their canonical
-WPC / X12 sources is deliberately **not** run in automation: redistributing the full WPC code
-descriptions requires a redistribution-terms review that has not cleared, and it needs outbound
-network. The tool prints the canonical source manifest and exits rather than fabricating descriptions
-the maintainers have not reviewed.
+sources is deliberately **not** run in automation: regeneration needs outbound network and is a human
+release step, and the tool fetches nothing and fabricates no description a maintainer has not
+published.
+
+**Whether a bundled list's descriptions may be redistributed is answered PER LIST, and the lists do
+not agree.** Each bundled snapshot carries its own maintaining organisation and its own
+redistribution record on `meta`, so a consumer deciding whether a description is theirs to display,
+cache or re-publish reads that list's answer rather than a single sentence covering all seven:
+
+| Bundled list                          | External code list | Maintained by | Redistribution        | Approach for permission |
+| ------------------------------------- | ------------------ | ------------- | --------------------- | ----------------------- |
+| CARC (Claim Adjustment Reason Codes)  | 139                | ASC X12       | licence required      | ASC X12 (see below)     |
+| RARC (Remittance Advice Remark Codes) | 411                | CMS           | permitted, no licence | none needed             |
+| CSCC (Claim Status Category Codes)    | 507                | ASC X12       | licence required      | ASC X12 (see below)     |
+| CSC (Claim Status Codes)              | 508                | ASC X12       | licence required      | ASC X12 (see below)     |
+| Service type (EB-03)                  | 958                | ASC X12       | licence required      | ASC X12 (see below)     |
+| CLP-02 claim status                   | none               | ASC X12       | **not established**   | ASC X12 (see below)     |
+| INS-03 maintenance type               | none               | ASC X12       | **not established**   | ASC X12 (see below)     |
+
+The **External code list** column is the list's id on the X12 External Code Lists index. It is the
+column that decides the one beside it: a list with a row there is answered from that row, and only a
+list with no row can be one the carried sources never name. `none` means exactly that the index
+publishes no row for the list, not that the list is unimportant.
+
+**The approach, for every row that needs one:** ASC X12, which publishes that it is the only
+organisation authorised to grant permission for the use of X12 products. Permission to reproduce X12
+intellectual property is requested through the licensing programme X12 publishes at
+<https://x12.org/products/licensing-program>, by email to the intellectual-property address given
+there, naming the requester and their organisation and describing both the artifact and its intended
+distribution. Subscriptions to X12-maintained code lists are bought through the Code List Update
+Subscription page linked from <https://x12.org/codes>.
+
+The evidence behind each row is quoted on the list itself, at `meta.redistribution.terms`. In short:
+the X12 External Code Lists index records CARC as external code list 139, the two claim-status lists
+as 507 and 508, and the service type codes as 958, all maintained by an X12 code maintenance
+committee group, under the statement that all X12 work products are copyrighted and that
+subscriptions to X12-maintained code lists are purchased. X12's own intellectual-property policy,
+reproduced in HL7's CARIN Consumer Directed Payer Data Exchange code system stubs, adds that all X12
+products are subject to it and that X12 is the only organisation authorised to grant permission for
+their use. The same index records RARC as external code list 411 maintained by CMS, and HL7's CARIN
+terminology licensure page puts CARC among the code systems that require a purchased licence and RARC
+among those requiring none.
+
+**Being cited from a TR3 is not evidence of a missing publisher.** Three bundled lists point their
+`meta.source` at a purchased Technical Report Type 3: the service type codes, the CLP-02 dispositions
+and the INS-03 maintenance types. Only the last two are absent from the External Code Lists index;
+the service type codes have a row there, so they are answered from it. Where a bundled subset was
+read is a different question from what the publisher publishes, and only the second decides the
+terms.
+
+**"Not established" is a recorded answer here, not a gap waiting to be tidied.** The last two lists,
+the CLP-02 dispositions and the INS-03 maintenance types, are printed inside a purchased ASC X12
+Technical Report Type 3 and have no row on the External Code Lists index at all, and no source
+obtained for this package names them or states whether their descriptions may be redistributed. They
+are therefore treated as **not redistributable** wherever a permission decision is made, exactly as a
+licence-restricted list is: an unsettled question is never read as a permission.
+
+Consequences you can rely on:
+
+- **A list whose descriptions may not be redistributed stays exactly the cited part it already
+  ships.** Nothing is enlarged, refetched or relicensed by recording the terms, and the record names
+  the licensor who could change that.
+- **`--fetch` answers each list on its own terms.** It reports each bundled list's regeneration
+  permission independently, refuses only the lists whose own record forbids it, prints the licensor
+  to approach beside each refusal, and never refuses a list because a different list is restricted.
+  It exits `2` while any list is refused and `0` when none is.
+- **Snapshot validation refuses an unlabelled list.** A bundled list carrying no maintaining
+  organisation, or no redistribution record, fails `pnpm refresh:code-lists` with a message naming
+  that list, so it cannot reach a release unlabelled.
+- **`codeListRedistributionIsPermitted(meta)` is the single decision point**, and it is exported.
+  Only a recorded permission answers `true`; a licence requirement, an unsettled status and a missing
+  record all answer `false`.
 
 ---
 

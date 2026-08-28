@@ -9,20 +9,29 @@
  *   (default)  VALIDATE + FRESHNESS AUDIT - offline, deterministic, CI-safe.
  *              Loads every bundled `CodeListSnapshot` and asserts it is
  *              well-formed (meta present + ISO dates, non-empty unique codes,
- *              non-empty descriptions), then prints a freshness table (each
- *              list's snapshot date, the WPC/CMS/X12 publication date it
- *              reflects, its update cadence, and its bundled-code count). A
- *              malformed snapshot exits non-zero - this is a lint gate for the
- *              hand-maintained snapshots, and is exercised by
- *              `test/scripts/refresh-code-lists.test.ts` on every `pnpm test`.
+ *              non-empty descriptions) AND that it carries a maintaining
+ *              organisation and a redistribution record naming a licensor
+ *              wherever the descriptions are not free to redistribute. Then it
+ *              prints a freshness table (each list's snapshot date, the
+ *              publication date it reflects, its update cadence, its
+ *              bundled-code count, its maintainer and its redistribution
+ *              status). A malformed or unlabelled snapshot exits non-zero -
+ *              this is a lint gate for the hand-maintained snapshots, and is
+ *              exercised by `test/scripts/refresh-code-lists.test.ts` on every
+ *              `pnpm test`.
  *
  *   --fetch    REGENERATE from canonical sources. **Not run in autopilot / CI.**
- *              Pulling the full WPC-published CARC/RARC/CSCC/CSC lists and
- *              redistributing their descriptions is gated on a
- *              redistribution-terms review (roadmap Phase 10 "O3") that has not
- *              cleared, and requires outbound network. This mode prints the
- *              per-list canonical source manifest a release engineer needs and
- *              exits 2 - it deliberately does NOT fabricate descriptions the
+ *              Reports each list's regeneration permission INDEPENDENTLY, off
+ *              that list's own recorded terms. A list whose descriptions the
+ *              record says are free to redistribute is reported as permitted;
+ *              a list whose descriptions are licence-restricted, or whose
+ *              status the sources never settled, is refused BY NAME with the
+ *              licensor to approach printed beside it. One list's restriction
+ *              never refuses another list, and an unsettled status is never
+ *              read as a permission. Regeneration itself needs outbound
+ *              network and is a human release step: this tool prints the
+ *              per-list permission report and the canonical source manifest
+ *              and fetches nothing, so it never fabricates descriptions the
  *              maintainers have not reviewed. See `KNOWN-LIMITATIONS.md`.
  *
  * Pure Node, zero runtime deps - mirrors `scripts/phi-scan.ts`. The library
@@ -31,8 +40,9 @@
  * snapshot still parses verbatim (only its human-readable description is
  * missing) - a stale snapshot never yields a wrong code.
  *
- * Exit codes: 0 (snapshots valid), 1 (a snapshot failed validation), 2
- * (--fetch requested, which is not available here).
+ * Exit codes: 0 (snapshots valid, or --fetch with every list permitted), 1 (a
+ * snapshot failed validation), 2 (--fetch requested and at least one list may
+ * not be regenerated here).
  */
 
 import {
@@ -43,11 +53,12 @@ import {
   CLAIM_STATUS_CODES,
   MAINTENANCE_TYPE_CODES,
   SERVICE_TYPE_CODES,
+  codeListRedistributionIsPermitted,
 } from "../src/code-lists/index.js";
 import type { CodeListSnapshot } from "../src/code-lists/index.js";
 
 /** A bundled snapshot plus the release metadata `refresh` needs to audit it. */
-interface RefreshTarget {
+export interface RefreshTarget {
   readonly snapshot: CodeListSnapshot;
   /** Human update cadence of the upstream source (for the freshness report). */
   readonly cadence: string;
@@ -61,7 +72,7 @@ interface RefreshTarget {
  * unions / a spec-fixed registry - not WPC-refreshable snapshots - so they are
  * out of this tool's scope by design.)
  */
-const TARGETS: readonly RefreshTarget[] = [
+export const TARGETS: readonly RefreshTarget[] = [
   {
     snapshot: CARC,
     cadence: "WPC - monthly",
@@ -111,12 +122,15 @@ function isIsoDate(s: string): boolean {
 
 /**
  * Validate every bundled snapshot. Returns the list of human-readable defects
- * (empty === all valid). Exported so the test suite asserts snapshot integrity
- * on every `pnpm test`, not only when a release engineer runs the CLI.
+ * (empty === all valid), each naming the offending list first so a failure
+ * points at one list rather than at the set. Exported so the test suite asserts
+ * snapshot integrity on every `pnpm test`, not only when a release engineer
+ * runs the CLI; `targets` is a parameter so a test can drive a deliberately
+ * degraded list through the same code path the release runs.
  */
-export function validateCodeLists(): string[] {
+export function validateCodeLists(targets: readonly RefreshTarget[] = TARGETS): string[] {
   const errors: string[] = [];
-  for (const { snapshot } of TARGETS) {
+  for (const { snapshot } of targets) {
     const { meta, codes } = snapshot;
     const id = meta.id || "(missing id)";
     if (!meta.id) errors.push(`${id}: meta.id is empty`);
@@ -126,6 +140,33 @@ export function validateCodeLists(): string[] {
     }
     if (!isIsoDate(meta.snapshotDate)) {
       errors.push(`${id}: meta.snapshotDate "${meta.snapshotDate}" is not a YYYY-MM-DD date`);
+    }
+
+    // An unlabelled list must not reach a release. A consumer decides whether a
+    // description is theirs to display, cache or re-publish off these two
+    // fields, and a list carrying neither answers that question with silence,
+    // which reads as a permission. "Not established" is a recorded status and
+    // passes here; NO record does not.
+    if (meta.maintainingOrganization === undefined || meta.maintainingOrganization.length === 0) {
+      errors.push(`${id}: meta.maintainingOrganization is not recorded`);
+    }
+    const redistribution = meta.redistribution;
+    if (redistribution === undefined) {
+      errors.push(`${id}: meta.redistribution is not recorded (no redistribution status)`);
+    } else {
+      if (redistribution.terms.trim().length === 0) {
+        errors.push(`${id}: meta.redistribution.terms is empty`);
+      }
+      // A list that is not free to redistribute owes the reader the party who
+      // could change that. Without it the refusal is a dead end.
+      if (!codeListRedistributionIsPermitted(meta)) {
+        const approach = redistribution.approach;
+        if (approach === undefined || approach.trim().length === 0) {
+          errors.push(
+            `${id}: redistribution status "${redistribution.status}" names no licensor to approach`,
+          );
+        }
+      }
     }
 
     const entries = Object.entries(codes);
@@ -151,6 +192,42 @@ export function validateCodeLists(): string[] {
   return errors;
 }
 
+/** One list's answer to "may this list be regenerated and redistributed?". */
+export interface RegenerationPermission {
+  readonly id: string;
+  readonly maintainingOrganization: string;
+  /** The recorded status, or `"unrecorded"` where the list carries no record. */
+  readonly status: string;
+  /** True ONLY on a recorded permission. Every other answer is `false`. */
+  readonly permitted: boolean;
+  /** The licensor to approach, present on every refusal. */
+  readonly approach: string | undefined;
+  readonly canonicalSource: string;
+}
+
+/**
+ * Answer the regeneration question ONCE PER LIST, off that list's own record.
+ * No list's answer depends on any other list's: this maps over the targets and
+ * consults nothing shared, which is what stops one restricted list refusing the
+ * whole set. Exported so the report and the test read the same answers.
+ */
+export function regenerationPermissions(
+  targets: readonly RefreshTarget[] = TARGETS,
+): readonly RegenerationPermission[] {
+  return targets.map(({ snapshot, canonicalSource }) => {
+    const { meta } = snapshot;
+    const redistribution = meta.redistribution;
+    return Object.freeze({
+      id: meta.id,
+      maintainingOrganization: meta.maintainingOrganization ?? "(not recorded)",
+      status: redistribution?.status ?? "unrecorded",
+      permitted: codeListRedistributionIsPermitted(meta),
+      approach: redistribution?.approach,
+      canonicalSource,
+    });
+  });
+}
+
 /** Render the freshness audit table (stdout side of the default mode). */
 function printFreshnessReport(): void {
   process.stdout.write("\nBundled X12 code-list snapshots - freshness audit\n");
@@ -165,32 +242,68 @@ function printFreshnessReport(): void {
       `  ${meta.id.padEnd(24)} snapshot ${meta.snapshotDate}  reflects ${meta.publishedDate}\n`,
     );
     process.stdout.write(`  ${" ".repeat(24)} ${String(count).padStart(4)} codes · ${cadence}\n`);
-    process.stdout.write(`  ${" ".repeat(24)} source: ${meta.source}\n\n`);
+    process.stdout.write(`  ${" ".repeat(24)} source: ${meta.source}\n`);
+    process.stdout.write(
+      `  ${" ".repeat(24)} maintained by ${meta.maintainingOrganization ?? "(not recorded)"}` +
+        ` · redistribution ${meta.redistribution?.status ?? "unrecorded"}` +
+        ` · ${meta.completeness}\n\n`,
+    );
   }
 }
 
-/** Print the release-engineer manifest for the redistribution-gated `--fetch`. */
-function printFetchManifest(): void {
-  process.stderr.write(
-    "\n--fetch (regenerate from canonical sources) is not available in this environment.\n" +
-      "Regenerating the full WPC-published lists + redistributing their descriptions is gated\n" +
-      "on a redistribution-terms review (roadmap Phase 10 O3) and requires outbound network.\n" +
-      "This tool will not fabricate descriptions the maintainers have not reviewed.\n\n" +
-      "Canonical sources for a manual release-time refresh:\n\n",
-  );
-  for (const { snapshot, canonicalSource } of TARGETS) {
-    process.stderr.write(`  ${snapshot.meta.id.padEnd(24)} ${canonicalSource}\n`);
+/**
+ * Render the per-list regeneration permission report. One block per list,
+ * built from that list's own answer, so a reader can see which lists this
+ * release engineer may regenerate and which they may not, and why, without
+ * reading a shared sentence that is true of neither.
+ */
+export function renderFetchReport(
+  permissions: readonly RegenerationPermission[] = regenerationPermissions(),
+): string {
+  const refused = permissions.filter((p) => !p.permitted);
+  const lines: string[] = [
+    "",
+    "--fetch (regenerate from canonical sources): per-list permission report.",
+    "",
+    "Each list is answered from ITS OWN recorded redistribution terms. A list is",
+    "refused only on its own restriction, never on another list's, and a status the",
+    "sources never settled is refused rather than assumed to be a permission.",
+    "This tool fetches nothing and fabricates nothing: regeneration needs outbound",
+    "network and is a human release step.",
+    "",
+  ];
+  for (const p of permissions) {
+    lines.push(`  ${p.id}`);
+    lines.push(`    maintained by       ${p.maintainingOrganization}`);
+    lines.push(`    redistribution      ${p.status}`);
+    lines.push(
+      `    regeneration        ${p.permitted ? "PERMITTED" : "REFUSED"}${
+        p.permitted ? "" : ` (${p.status})`
+      }`,
+    );
+    if (!p.permitted) {
+      lines.push(`    approach            ${p.approach ?? "(no licensor recorded)"}`);
+    }
+    lines.push(`    canonical source    ${p.canonicalSource}`);
+    lines.push("");
   }
-  process.stderr.write(
-    "\nSee KNOWN-LIMITATIONS.md and RELEASING (docs-content) for the refresh runbook.\n",
+  lines.push(
+    refused.length === 0
+      ? `Every one of the ${String(permissions.length)} bundled lists may be regenerated on its recorded terms.`
+      : `${String(refused.length)} of ${String(permissions.length)} bundled lists may not be regenerated here: ` +
+          `${refused.map((p) => p.id).join(", ")}.`,
   );
+  lines.push("See KNOWN-LIMITATIONS.md and RELEASING (docs-content) for the refresh runbook.");
+  lines.push("");
+  return lines.join("\n");
 }
 
 function main(): void {
   const args = process.argv.slice(2);
   if (args.includes("--fetch")) {
-    printFetchManifest();
-    process.exit(2);
+    const permissions = regenerationPermissions();
+    process.stderr.write(renderFetchReport(permissions));
+    process.exit(permissions.every((p) => p.permitted) ? 0 : 2);
   }
 
   const errors = validateCodeLists();

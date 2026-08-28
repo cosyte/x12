@@ -31,7 +31,7 @@ export {
   type ClaimAdjustmentGroupCode,
 } from "./cagc.js";
 export { RARC, checkRarcValidity, lookupRarc } from "./rarc.js";
-export { CODE_VALIDITY, CODE_VALIDITY_REASONS } from "./meta.js";
+export { CODE_VALIDITY, CODE_VALIDITY_REASONS, codeListRedistributionIsPermitted } from "./meta.js";
 export type {
   CodeListEntry,
   CodeListEntryDates,
@@ -43,6 +43,11 @@ export type {
   DatedCodeListMeta,
   DatedCodeListSnapshot,
 } from "./meta.js";
+export type {
+  CodeListCompleteness,
+  CodeListRedistribution,
+  CodeListRedistributionStatus,
+} from "./redistribution.js";
 export { X12_CODE_LIST_ERROR_CODES, X12CodeListError } from "./errors.js";
 export type { X12CodeListErrorCode } from "./errors.js";
 export {

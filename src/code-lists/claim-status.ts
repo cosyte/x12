@@ -19,6 +19,7 @@
  */
 
 import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js";
+import { CLAIM_STATUS_REDISTRIBUTION } from "./redistribution.js";
 
 /**
  * Bundled Claim Status Code (CSC) snapshot. Used by the 277 and 277CA
@@ -30,6 +31,7 @@ import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js
  * import { CLAIM_STATUS_CODES } from "@cosyte/x12";
  * CLAIM_STATUS_CODES.codes["20"]; // "Accepted for processing."
  * CLAIM_STATUS_CODES.codes["21"]; // "Missing or invalid information."
+ * CLAIM_STATUS_CODES.meta.redistribution?.status; // "licence-required"
  * ```
  */
 export const CLAIM_STATUS_CODES: CodeListSnapshot = Object.freeze({
@@ -41,6 +43,9 @@ export const CLAIM_STATUS_CODES: CodeListSnapshot = Object.freeze({
     publishedDate: "2023-11-01",
     snapshotDate: "2026-06-27",
     note: "Common subset; WPC-maintained list (~800 codes) refreshed on the Phase 10 release cadence, never at runtime.",
+    maintainingOrganization: "ASC X12",
+    redistribution: CLAIM_STATUS_REDISTRIBUTION,
+    completeness: "cited-subset",
   }),
   codes: Object.freeze({
     "1": "For more detailed information, see remittance advice.",

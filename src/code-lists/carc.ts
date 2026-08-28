@@ -45,6 +45,7 @@ import {
   type CodeValidityResult,
   type DatedCodeListSnapshot,
 } from "./meta.js";
+import { CARC_REDISTRIBUTION } from "./redistribution.js";
 
 /**
  * Bundled CARC snapshot. `meta.publishedDate` is the WPC publication
@@ -55,14 +56,22 @@ import {
  * the ergonomic `{ code, description }` shape consumed by the 835
  * helper.
  *
+ * `meta.maintainingOrganization` and `meta.redistribution` carry the answer a
+ * consumer needs before displaying, caching or re-publishing a description:
+ * this list is X12's and its descriptions require a purchased licence, so the
+ * bundled snapshot stays exactly the cited part it has always been and the
+ * record names the licensor to approach.
+ *
  * @example
  * ```ts
  * import { CARC } from "@cosyte/x12";
- * CARC.meta.snapshotDate;          // "2026-06-27"
- * CARC.meta.datesCapturedAt;       // "2026-08-28"
- * CARC.codes["45"];                // "Charge exceeds fee schedule..."
- * CARC.dates["45"]?.start;         // "1995-01-01"
- * Object.keys(CARC.codes).length;  // count of bundled codes
+ * CARC.meta.snapshotDate;              // "2026-06-27"
+ * CARC.meta.datesCapturedAt;           // "2026-08-28"
+ * CARC.codes["45"];                    // "Charge exceeds fee schedule..."
+ * CARC.dates["45"]?.start;             // "1995-01-01"
+ * Object.keys(CARC.codes).length;      // count of bundled codes
+ * CARC.meta.maintainingOrganization;   // "ASC X12"
+ * CARC.meta.redistribution?.status;    // "licence-required"
  * ```
  */
 export const CARC: DatedCodeListSnapshot = Object.freeze({
@@ -75,6 +84,9 @@ export const CARC: DatedCodeListSnapshot = Object.freeze({
     datesSource: "https://x12.org/codes/claim-adjustment-reason-codes",
     datesCapturedAt: "2026-08-28",
     note: "Pre-launch initial subset (~30 most commonly observed codes). Phase 10 ships a full-regen script.",
+    maintainingOrganization: "ASC X12",
+    redistribution: CARC_REDISTRIBUTION,
+    completeness: "cited-subset",
   }),
   codes: Object.freeze({
     "1": "Deductible Amount",

@@ -36,6 +36,7 @@ import {
   type CodeValidityResult,
   type DatedCodeListSnapshot,
 } from "./meta.js";
+import { RARC_REDISTRIBUTION } from "./redistribution.js";
 
 /**
  * Bundled RARC snapshot. Companion to {@link "./carc.js".CARC}; same
@@ -44,12 +45,20 @@ import {
  * validity dates were (`meta.datesCapturedAt`). Use {@link lookupRarc} for the
  * ergonomic lookup.
  *
+ * **The redistribution answer differs from CARC's, and that is the point of
+ * recording it per list.** This list is maintained by CMS rather than by X12
+ * and needs no licence, so its descriptions are free to redistribute where
+ * CARC's are not. The snapshot is still only the cited part of the published
+ * list, which `meta.completeness` says.
+ *
  * @example
  * ```ts
  * import { RARC } from "@cosyte/x12";
- * RARC.codes["N4"];        // "Missing/incomplete/invalid prior insurance carrier(s) EOB."
- * RARC.codes["MA01"];      // (or undefined if outside this subset)
- * RARC.dates["N4"]?.start; // "2000-01-01"
+ * RARC.codes["N4"];                    // "Missing/incomplete/invalid prior insurance carrier(s) EOB."
+ * RARC.codes["MA01"];                  // (or undefined if outside this subset)
+ * RARC.dates["N4"]?.start;             // "2000-01-01"
+ * RARC.meta.maintainingOrganization;   // "CMS"
+ * RARC.meta.redistribution?.status;    // "permitted"
  * ```
  */
 export const RARC: DatedCodeListSnapshot = Object.freeze({
@@ -62,6 +71,9 @@ export const RARC: DatedCodeListSnapshot = Object.freeze({
     datesSource: "https://x12.org/codes/remittance-advice-remark-codes",
     datesCapturedAt: "2026-08-28",
     note: "Pre-launch initial subset (~15 most commonly observed codes). Phase 10 ships a full-regen script.",
+    maintainingOrganization: "CMS",
+    redistribution: RARC_REDISTRIBUTION,
+    completeness: "cited-subset",
   }),
   codes: Object.freeze({
     M1: "X-ray not taken within the past 12 months or near enough to the start of treatment.",
