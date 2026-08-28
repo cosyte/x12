@@ -24,7 +24,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { get835, parseX12, profiles } from "../src/index.js";
-import type { X12Profile } from "../src/index.js";
+import type { X12Profile, X12ProfileConformance } from "../src/index.js";
 
 const FIXTURE_ROOT = join(__dirname, "fixtures");
 
@@ -98,6 +98,78 @@ describe("built-in profiles - hard rule: every quirk is fixture-grounded", () =>
     for (const key of Object.keys(DEMONSTRATORS)) {
       expect(shipped.has(key), `demonstrator '${key}' has no matching shipped quirk`).toBe(true);
     }
+  });
+});
+
+/**
+ * THE RECORDED CONFORMANCE JUDGEMENTS, keyed the same way the demonstrators
+ * are. Each says whether a trading partner may lawfully require the deviation
+ * under 45 CFR 162.915, and each is a RECORDED HUMAN JUDGEMENT rather than
+ * something this library checked: whether an element is marked "not used" in
+ * an adopted implementation guide is not machine-checkable here, because 45 CFR
+ * 162.920(a) states a fee is charged for the implementation specifications and
+ * none is bundled with this package.
+ *
+ * The reasoning behind each sits beside the quirk in `src/profiles/`. In short:
+ *
+ * - `bcbsCommon/backslash-component-separator` is PERMITTED. ISA-16 is the
+ *   element whose job is to declare the component separator and the sender
+ *   declares it in band, so none of 162.915(a) to (d) is engaged.
+ * - both `availity` quirks are UNDETERMINED. Whether a partner may lawfully
+ *   require an extra REF turns on whether that segment sits inside the adopted
+ *   remittance guide's maximum defined data set (162.915(b), (c)), and no
+ *   readable copy of that guide was available. Describing that Availity SENDS
+ *   the segment is a different claim and is unaffected.
+ *
+ * Asserted BOTH ways, like the demonstrator registry: a shipped quirk with no
+ * entry here fails, and an entry here for a quirk nobody ships fails. So a new
+ * built-in cannot ship an unclassified quirk, and a classification cannot
+ * outlive the quirk it was recorded for.
+ */
+const RECORDED_CONFORMANCE: Record<string, X12ProfileConformance> = {
+  "bcbsCommon/backslash-component-separator": "permitted",
+  "availity/payer-loop-ref-2u": "undetermined",
+  "availity/service-line-ref-f8": "undetermined",
+};
+
+describe("built-in profiles - the recorded conformance judgements", () => {
+  for (const profile of ALL_BUILTINS) {
+    const described = profile.describe();
+    const rendered = [...described.relaxes, ...described.adds, ...described.requires];
+
+    for (const q of profile.quirks) {
+      const key = `${profile.name}/${q.id}`;
+
+      it(`${key} reports the recorded classification and no other`, () => {
+        const expected = RECORDED_CONFORMANCE[key];
+        expect(expected, `no recorded conformance judgement for ${key}`).toBeTypeOf("string");
+        expect(rendered.find((r) => r.id === q.id)?.conformance).toBe(expected);
+      });
+    }
+  }
+
+  it("records no judgement for a quirk that no built-in ships", () => {
+    const shipped = new Set(ALL_BUILTINS.flatMap((p) => p.quirks.map((q) => `${p.name}/${q.id}`)));
+    for (const key of Object.keys(RECORDED_CONFORMANCE)) {
+      expect(shipped.has(key), `recorded judgement '${key}' has no matching shipped quirk`).toBe(
+        true,
+      );
+    }
+  });
+
+  it("claims nothing is lawfully requirable that the table does not say is", () => {
+    // The dangerous direction, stated as a property of the SHIPPED set rather
+    // than quirk by quirk: exactly the entries recorded `permitted` may appear
+    // in the permitted group, so a quirk that silently acquired the claim reds
+    // here even if someone also edited its own assertion above.
+    const expectedPermitted = Object.entries(RECORDED_CONFORMANCE)
+      .filter(([, state]) => state === "permitted")
+      .map(([key]) => key)
+      .sort();
+    const actualPermitted = ALL_BUILTINS.flatMap((p) =>
+      p.describe().conformance.permitted.map((q) => `${p.name}/${q.id}`),
+    ).sort();
+    expect(actualPermitted).toEqual(expectedPermitted);
   });
 });
 

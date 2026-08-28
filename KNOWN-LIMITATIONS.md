@@ -1660,6 +1660,48 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   mismatch and preserve the inbound values verbatim. The library will not "fix" a payer artifact for
   you. Gate your own posting/adjudication on the warning.
 
+## Trading-partner profiles: what a conformance classification is, and is not
+
+- **A profile never changes what this library emits.** A profile describes what a trading partner
+  SENDS. It attaches attribution to a parse and partitions that parse's warnings into expected and
+  unexpected, and that is the whole of its behaviour. It cannot loosen, tighten or otherwise touch
+  the emit side: `serializeX12`, `buildInterchange` and every `build*` domain builder produce
+  byte-identical output with any profile active and with none, and refuse the same specs with the
+  same error type, code and message. There is no opt-in flag that would change this, and
+  `test/profiles-emit-independence.test.ts` fails the build if the property is ever broken. The
+  reason it is a locked invariant rather than a convention: a profile that widened the emit would
+  put a non-conformant document on the wire, and 45 CFR 162.915 forbids the trading partner from
+  having asked for that in the first place.
+
+- **Each quirk's conformance classification is a RECORDED HUMAN JUDGEMENT, not a check this
+  library performed.** `describe()` states, per quirk, whether the deviation is one a trading partner
+  may lawfully require. Read that as documentation someone wrote down, and confirm it against your
+  own copy of the relevant implementation guide before you rely on it. In particular, **a
+  classification that turns on an element being marked "not used" in an adopted TR3 rests on someone
+  having read that TR3.** This package bundles none: 45 CFR 162.920(a) states a fee is charged for
+  the implementation specifications, so "is this element marked not used?" is not a question the
+  library can answer at run time, and it does not pretend to. Nothing in the classification is
+  derived from your document, from the quirk's `effect`, or from any code list shipped here.
+
+- **The axis is 45 CFR 162.915, and it has three states, not two.** `permitted` and `not-permitted`
+  are measured against that rule, which forbids a covered entity from entering a trading partner
+  agreement that would change the definition, data condition or use of a data element or segment in
+  a standard, add data elements or segments to the maximum defined data set, use any code or data
+  element marked "not used" in (or absent from) the standard's implementation specification, or
+  change the meaning or intent of that implementation specification. The third state,
+  `undetermined`, means **no judgement was recorded**, and it is the fail-safe default: a quirk that
+  says nothing about conformance renders as `undetermined`, never as `permitted`. Read
+  `undetermined` as "this package makes no claim", which is not the same as "harmless". Two of the
+  three quirks shipped by the built-in profiles are `undetermined` today for exactly the fee reason
+  above.
+
+- **A `requires` quirk is a record of what a partner MANDATES, never a claim that the standard
+  supports the mandate.** Those are two different statements and the buckets do not conflate them:
+  membership of `requires` confers nothing on the conformance axis, and a partner mandating an
+  element the adopted guide marks "not used" classifies as a deviation from the standard. If you
+  need to know whether your partner may lawfully require something, read `conformance`, not the
+  effect bucket.
+
 ## Conformance testing not yet wired
 
 - **No external-oracle differential corpus yet.** A best-effort differential harness against CMS

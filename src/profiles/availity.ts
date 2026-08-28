@@ -35,6 +35,15 @@ export const availity = defineProfile({
         "Payer Loop 1000A carries an additional REF*2U payer-identification segment alongside the N1*PR.",
       fixture: "remit/835-availity-quirk.edi",
       sourceCategory: "Availity 835 ERA companion guide - payer-loop REF*2U routing identifier",
+      // Recorded judgement, read against 45 CFR 162.915(b) and (c). Whether a
+      // partner may lawfully REQUIRE a REF*2U in Loop 1000A turns on whether
+      // that segment sits inside the adopted remittance guide's maximum
+      // defined data set. No readable copy of that guide was available when
+      // this was recorded (45 CFR 162.920(a) states a fee is charged for the
+      // implementation specifications), so the question is open and this must
+      // NOT be reported as permitted. Describing that Availity SENDS it is a
+      // different claim, is unaffected, and stays true.
+      conformance: "undetermined",
     },
     {
       id: "service-line-ref-f8",
@@ -43,6 +52,10 @@ export const availity = defineProfile({
         "Service line (Loop 2110) carries a REF*F8 original-reference identifier for clearinghouse trace-back.",
       fixture: "remit/835-availity-quirk.edi",
       sourceCategory: "Availity 835 ERA companion guide - service-line REF*F8 original reference",
+      // Recorded judgement, same axis as the quirk above for REF*F8 at Loop
+      // 2110, and open for the same reason: no readable copy of the adopted
+      // guide.
+      conformance: "undetermined",
     },
   ],
 });
