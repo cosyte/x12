@@ -135,6 +135,16 @@ const ELIGIBILITY_ERRATA_NOTE =
   "Which reading a regulator would enforce is not settled here.";
 
 /**
+ * The 276 and the 277 are two halves of ONE implementation guide, so they carry
+ * the same words. @internal
+ */
+const CLAIM_STATUS_PAIR_NOTE =
+  "45 CFR 162.920 names 005010X212 for the 276 and 277 pair, together with its errata " +
+  "005010X212E1. This package implements both halves of that pair: the 276 claim status " +
+  "request has a typed model in both directions and so does the 277 response, so each half " +
+  "carries a row of its own here.";
+
+/**
  * Which implementation guide this package implements for each transaction it
  * reads or builds, and what 45 CFR 162.920 names for that transaction.
  *
@@ -179,6 +189,16 @@ export const X12_TR3_CONFORMANCE: readonly X12Tr3Conformance[] = Object.freeze([
     note: ELIGIBILITY_ERRATA_NOTE,
   }),
   tr3Row({
+    transaction: "276",
+    variant: null,
+    title: "Health Care Claim Status Request",
+    tr3: "005010X212",
+    directions: READ_AND_BUILD,
+    adoption: "incorporated-by-reference",
+    cfrAdopted: ["005010X212", "005010X212E1"],
+    note: CLAIM_STATUS_PAIR_NOTE,
+  }),
+  tr3Row({
     transaction: "277",
     variant: null,
     title: "Health Care Claim Status Response",
@@ -186,10 +206,7 @@ export const X12_TR3_CONFORMANCE: readonly X12Tr3Conformance[] = Object.freeze([
     directions: READ_AND_BUILD,
     adoption: "incorporated-by-reference",
     cfrAdopted: ["005010X212", "005010X212E1"],
-    note:
-      "45 CFR 162.920 names 005010X212 for the 276 and 277 pair, together with its errata " +
-      "005010X212E1. This package implements the 277 half of that pair alone: it has no typed " +
-      "model for the 276 claim status request in either direction, so no 276 row appears here.",
+    note: CLAIM_STATUS_PAIR_NOTE,
   }),
   tr3Row({
     transaction: "277",

@@ -172,6 +172,14 @@ export function validateOptionKeys(opts: X12ProfileSpec): void {
  * registry. Run both pre-merge (self quirks, so errors name the offending
  * profile) and post-merge (the composed set).
  *
+ * **`conformance` is deliberately NOT refused here.** It is the one optional
+ * quirk field whose out-of-enum value is safe to absorb: `describe()` resolves
+ * anything that is not exactly `"permitted"` or `"not-permitted"` to
+ * `"undetermined"`, so a bad value costs the caller their claim and can never
+ * manufacture the dangerous one. Refusing it would add a refusal site to a
+ * bounded-message census that is measured and published, for a case the type
+ * system already rejects and the render path already fails safe on.
+ *
  * @internal
  */
 export function validateQuirks(quirks: readonly X12ProfileQuirk[], profileName: string): void {

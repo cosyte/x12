@@ -24,21 +24,20 @@ raised to meet it.
 Pre-alpha `0.0.x`, **published** to npm from a public repo. **Never quote a version here:**
 `npm view @cosyte/x12 version` is the only source of truth.
 
-- **Read scope is decoded for** 270, 271, 277 / 277CA, 278, 820, 834, 835, 837P/I/D, 999, TA1.
+- **Read scope is decoded for** 270, 271, 276, 277 / 277CA, 278, 820, 834, 835, 837P/I/D, 999, TA1.
 - **Emit scope is complete for every transaction that has a reader**: general (`serializeX12` +
   `buildInterchange`) plus a per-TR3 domain builder for each, and the pure-function `build999` /
   `buildTA1`, each layering the safety-critical per-TR3 invariants (balance, certification,
   maintenance-type fidelity, count reconciliation) on the general builder.
-- **🩺 The 276 inquiry direction has NO typed model on either side** - no `get276`, no `build276`,
-  no 276 dispatch anywhere in `src/`. It parses into segments and dot-paths like any other input.
-  **Never describe the v1 read or emit scope as "276/277" complete, and NEVER write the paired
-  "270/271" label for it either** - the 270 half shipped and the 276 half did not, and one label for
-  both is how the README and the docs site were wrong until `ASSETS-P8`. **270 read AND emit shipped
-  together** (`get270Inquiry` / `parse270Inquiries` / `build270`), because emit scope is complete
-  wherever read scope is. 🩺 The 270 reader attaches a level by its OWN HL-02 and by nothing else:
-  a pointer that does not resolve leaves that level and its whole subtree OFF the tree, warned, never
-  re-parented onto whichever level was open.
-  Why: `documentation/agent-notes.md#published-scope-the-270-and-276-gap`
+- **🩺 BOTH inquiry directions now ship, read AND emit** (`get276StatusInquiry` /
+  `parse276StatusInquiries` / `build276` beside the 270 trio). **Never re-add a "no typed model for
+  the 276" claim and never write one paired label over two halves** - that is how the README and the
+  docs site were wrong until `ASSETS-P8`. Derive the scope from `X12_TR3_CONFORMANCE`, never from
+  prose. 🩺 The 270 and 276 readers each attach a level by its OWN HL-02 and by nothing else: a
+  pointer that does not resolve leaves that level and its whole subtree OFF the tree, warned, never
+  re-parented onto whichever level was open. Their warning codes and build-error classes are
+  SIBLINGS, never one widened set.
+  Why: `documentation/agent-notes.md#published-scope-the-270-and-276-inquiry-directions`
 - **Warning registry: additions-only, and NEVER quote its size here** - the count on this line was
   stale twice. Derive it: the codes are exported as `ALL_WARNING_MESSAGES`, and the four Tier-3
   fatals are enumerated under Engineering Guardrails below.
@@ -50,7 +49,7 @@ Pre-alpha `0.0.x`, **published** to npm from a public repo. **Never quote a vers
 
 HIPAA sets at **005010** (errata hooks); list at `documentation/agent-notes.md#v1-scope-snapshot`.
 Non-healthcare (850/856/810/204), EDIFACT, AS2/SFTP and pre-005010 are out. **It is the v1 SCOPE
-declaration, NOT a list of what SHIPPED** - see Status: the 270 and 276 have no typed model.
+declaration, NOT a list of what SHIPPED** - `X12_TR3_CONFORMANCE` is the derived answer to that.
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 

@@ -99,6 +99,44 @@ describe("defineProfile - basic assembly", () => {
     expect(d.relaxes).toEqual([]);
     expect(d.expectedWarnings).toEqual([]);
   });
+
+  /**
+   * BACKWARD COMPATIBILITY. The conformance classification added an OPTIONAL
+   * quirk field, and a profile a consumer wrote before it existed must keep
+   * defining and describing exactly as it did. The quirk literal below is
+   * spelled out in full rather than built through the `quirk()` helper, on
+   * purpose: it is the whole set of fields `defineProfile` accepted before the
+   * classification landed, and nothing more, so a required field added to the
+   * quirk shape later would stop this compiling. That is the point of writing
+   * it out.
+   */
+  it("still defines and describes a profile written with only the older quirk fields", () => {
+    const p = defineProfile({
+      name: "written-before-conformance",
+      description: "A consumer's own profile, authored against the older quirk shape",
+      quirks: [
+        {
+          id: "payer-loop-ref-2u",
+          effect: "adds",
+          summary: "Payer Loop 1000A carries a REF*2U.",
+          fixture: "remit/835-availity-quirk.edi",
+          sourceCategory: "consumer companion guide",
+          expectedWarnings: [WARNING_CODES.X12_TRAILING_GARBAGE],
+        },
+      ],
+    });
+    expect(p.name).toBe("written-before-conformance");
+    expect(p.quirks).toHaveLength(1);
+    // The authored quirk is untouched: no field was invented on it.
+    expect("conformance" in (p.quirks[0] ?? {})).toBe(false);
+
+    const d = p.describe();
+    expect(d.adds.map((q) => q.id)).toEqual(["payer-loop-ref-2u"]);
+    expect(d.expectedWarnings).toEqual([WARNING_CODES.X12_TRAILING_GARBAGE]);
+    // Rendered, it carries the fail-safe default rather than nothing.
+    expect(d.adds[0]?.conformance).toBe("undetermined");
+    expect(d.conformance.permitted).toEqual([]);
+  });
 });
 
 describe("defineProfile - validation", () => {

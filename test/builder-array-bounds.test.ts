@@ -236,15 +236,18 @@ describe("builder loop bounds: the source gate", () => {
   const bounds = modules.flatMap(loopBounds);
 
   it("finds every indexed loop bound in the builder modules", () => {
-    // Re-derived on this tree: THIRTY-EIGHT indexed loops across EIGHT modules
-    // take their bound from a list. Thirty-two of them, across seven modules,
-    // read a caller-supplied `.length` at base commit `55ebc66`; the other SIX,
-    // in the eighth module, arrived with the 270 domain builder, which walks
-    // its sources, receivers, subscribers, dependents and inquiries the same
-    // way and through the same chokepoint. Pinned so a module that stops being
-    // scanned is a failure rather than a silently smaller sweep.
-    expect(bounds.length).toBe(38);
-    expect(new Set(bounds.map((b) => b.file)).size).toBe(8);
+    // Re-derived on this tree: FORTY-SIX indexed loops across NINE modules take
+    // their bound from a list. Thirty-two of them, across seven modules, read a
+    // caller-supplied `.length` at base commit `55ebc66`; SIX more, in the
+    // eighth module, arrived with the 270 domain builder, which walks its
+    // sources, receivers, subscribers, dependents and inquiries the same way and
+    // through the same chokepoint; and the last EIGHT arrived with the 276 one,
+    // in the ninth module, which walks a spine one level deeper (sources,
+    // receivers, service providers, subscribers, dependents) plus its claims and
+    // service lines. Pinned so a module that stops being scanned is a failure
+    // rather than a silently smaller sweep.
+    expect(bounds.length).toBe(46);
+    expect(new Set(bounds.map((b) => b.file)).size).toBe(9);
   });
 
   it("takes every one of them from a requireCallerArray binding", () => {

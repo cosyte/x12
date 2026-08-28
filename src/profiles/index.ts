@@ -23,7 +23,10 @@ export { partitionWarnings } from "./apply.js";
 export type { X12WarningPartition } from "./apply.js";
 export { X12ProfileError } from "./errors.js";
 export type {
+  X12ClassifiedQuirk,
   X12Profile,
+  X12ProfileConformance,
+  X12ProfileConformancePartition,
   X12ProfileDescription,
   X12ProfileEffect,
   X12ProfileQuirk,

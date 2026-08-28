@@ -1662,6 +1662,48 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   mismatch and preserve the inbound values verbatim. The library will not "fix" a payer artifact for
   you. Gate your own posting/adjudication on the warning.
 
+## Trading-partner profiles: what a conformance classification is, and is not
+
+- **A profile never changes what this library emits.** A profile describes what a trading partner
+  SENDS. It attaches attribution to a parse and partitions that parse's warnings into expected and
+  unexpected, and that is the whole of its behaviour. It cannot loosen, tighten or otherwise touch
+  the emit side: `serializeX12`, `buildInterchange` and every `build*` domain builder produce
+  byte-identical output with any profile active and with none, and refuse the same specs with the
+  same error type, code and message. There is no opt-in flag that would change this, and
+  `test/profiles-emit-independence.test.ts` fails the build if the property is ever broken. The
+  reason it is a locked invariant rather than a convention: a profile that widened the emit would
+  put a non-conformant document on the wire, and 45 CFR 162.915 forbids the trading partner from
+  having asked for that in the first place.
+
+- **Each quirk's conformance classification is a RECORDED HUMAN JUDGEMENT, not a check this
+  library performed.** `describe()` states, per quirk, whether the deviation is one a trading partner
+  may lawfully require. Read that as documentation someone wrote down, and confirm it against your
+  own copy of the relevant implementation guide before you rely on it. In particular, **a
+  classification that turns on an element being marked "not used" in an adopted TR3 rests on someone
+  having read that TR3.** This package bundles none: 45 CFR 162.920(a) states a fee is charged for
+  the implementation specifications, so "is this element marked not used?" is not a question the
+  library can answer at run time, and it does not pretend to. Nothing in the classification is
+  derived from your document, from the quirk's `effect`, or from any code list shipped here.
+
+- **The axis is 45 CFR 162.915, and it has three states, not two.** `permitted` and `not-permitted`
+  are measured against that rule, which forbids a covered entity from entering a trading partner
+  agreement that would change the definition, data condition or use of a data element or segment in
+  a standard, add data elements or segments to the maximum defined data set, use any code or data
+  element marked "not used" in (or absent from) the standard's implementation specification, or
+  change the meaning or intent of that implementation specification. The third state,
+  `undetermined`, means **no judgement was recorded**, and it is the fail-safe default: a quirk that
+  says nothing about conformance renders as `undetermined`, never as `permitted`. Read
+  `undetermined` as "this package makes no claim", which is not the same as "harmless". Two of the
+  three quirks shipped by the built-in profiles are `undetermined` today for exactly the fee reason
+  above.
+
+- **A `requires` quirk is a record of what a partner MANDATES, never a claim that the standard
+  supports the mandate.** Those are two different statements and the buckets do not conflate them:
+  membership of `requires` confers nothing on the conformance axis, and a partner mandating an
+  element the adopted guide marks "not used" classifies as a deviation from the standard. If you
+  need to know whether your partner may lawfully require something, read `conformance`, not the
+  effect bucket.
+
 ## Conformance testing not yet wired
 
 - **No external-oracle differential corpus yet.** A best-effort differential harness against CMS
@@ -1682,12 +1724,28 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   repo, but it stays on the `0.0.x`-until-first-alpha ladder. `npm view @cosyte/x12 version` is the
   only source of truth for the current version, so this page does not restate one. Treat the API as
   pre-alpha and pin the exact version until the first alpha.
-- **No typed model for the 276 inquiry.** Every other v1 transaction has both a per-transaction
-  reader and a domain builder. The 276 claim-status inquiry has neither: it parses into segments,
-  composites, and dot-paths like any other X12 input, and its response, the 277, decodes fully, but
-  the inquiry direction has no typed surface yet. The 270 eligibility inquiry no longer belongs on
-  this line: it has a typed model on the read side (`get270Inquiry`, `parse270Inquiries`) and on the
-  emit side (`build270`).
+- **A 276 hierarchical level whose declared parent does not resolve is left off the returned tree.**
+  The 276 reader attaches a level by its own HL-02 and by nothing else, so a pointer naming a level
+  that is not present, a pointer naming a level of the wrong kind, and a parent chain that returns
+  to itself each leave that level, and everything transmitted beneath it, absent from the model. The
+  loss is reported (`X12_276_LEVEL_DETACHED`, beside the code for the pointer defect itself), the
+  declared pointer stays verbatim on `hierarchies`, and the segments stay verbatim on the
+  transaction set. Nothing is re-parented onto whichever level happened to be open, because that
+  would be this library inventing the one structure a 276 exists to state: which provider is asking
+  about which patient's claim.
+- **A 276 REF, DTP or AMT short of what its row is built from loses the whole row, and says so.**
+  Each is a record and not a slot. Without both REF-01 and REF-02 there is no reference row; without
+  both DTP-01 and DTP-03 there is no date row, and the format qualifier that says single date or
+  range goes with it; without a decodable AMT-02 there is no amount row. The reader builds none,
+  fabricates nothing to stand in, and reports the loss (`X12_276_REFERENCE_ROW_DROPPED`,
+  `X12_276_DATE_ROW_DROPPED`, `X12_AMOUNT_ROW_DROPPED`) at that segment. **The report is bounded to
+  the row the reader tried to build.** A segment that decoded and then found no claim or service
+  line open to sit on is a different loss, it stays silent, and it is not on any of those channels.
+- **The 276 reader surfaces four of the SVC elements and no postal address.** SVC-01, SVC-02, SVC-04
+  and SVC-07 reach the typed service line; SVC-03, SVC-05 and SVC-06 are left unread, because this
+  is the request direction and a submitter states what it billed rather than what was paid. An N3 or
+  N4 a sender transmits under a 276 name loop reaches no typed field either, as it reaches none on
+  the 277 beside it. All of them stay verbatim on `tx.segments`; read them there.
 - **A 270 hierarchical level whose declared parent does not resolve is left off the returned tree.**
   The 270 reader attaches a level by its own HL-02 and by nothing else, so a pointer naming a level
   that is not present, a pointer naming a level of the wrong kind, and a parent chain that returns to
@@ -1724,6 +1782,33 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   sender sent no inquiry without checking `ix.warnings` first.** This is long-standing shared-parse
   behaviour and the 270 work deliberately did not widen it: framing tolerance is shared by every
   transaction set, and moving it is a change to all of them rather than to one reader.
+
+## Code-list validity dates
+
+- **🩺 A published Stop date is read as the FIRST day the code is no longer valid, and the
+  maintainer does not say whether that is right.** `x12.org` renders a code's dates as
+  `Start: 01/01/1995 | Last Modified: 11/01/2017 | Stop: 05/01/2018` and states nowhere whether the
+  Stop date is the LAST day the code was valid or the FIRST day it was not. The two readings differ
+  by exactly one day, on exactly the boundary a document produced that day sits on.
+
+  This package reads it as the first day the code is NOT valid, so the valid interval is half-open:
+  a document date on or after the Stop date reports `not-valid`, and the day before it reports
+  `valid`. The ground is the shape of the source and not a statement by the maintainer: the
+  published dates are first-of-month publication-cycle dates, so the Stop date reads as the
+  publication on which the code left the list rather than the last day it was on it. **That is a
+  judgement, not a fact, and a consumer whose contract turns on the boundary day itself should
+  confirm it with the maintainer rather than with this package.** `CARC.dates` and `RARC.dates`
+  carry the published values unchanged, so a consumer who reads the boundary the other way has
+  everything needed to compute it.
+
+  Two further bounds on the same data, neither of them a defect:
+  - **A code with no published start date is `indeterminate`, never `valid` and never `not-valid`.**
+    Validity is an interval and there is no interval without a start. No bundled code is in this
+    state at the capture the dates were transcribed from; the answer exists because the fail-safe
+    has to hold if one ever is.
+  - **The dates describe the bundled subset and nothing wider.** A code outside it answers
+    `indeterminate` with the inbound value echoed verbatim, which is a statement about what this
+    package bundles rather than about what the maintainer publishes.
 
 ## Code-list `--fetch` regeneration
 

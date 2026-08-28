@@ -39,6 +39,11 @@ describe("public API: WARNING_CODES surface is stable", () => {
         "X12_271_AAA_REJECT_REASON_ABSENT",
         "X12_271_AAA_SEGMENT_MALFORMED",
         "X12_271_AAA_UNKNOWN_CODE",
+        "X12_276_DATE_ROW_DROPPED",
+        "X12_276_DUPLICATE_HIERARCHY_ID",
+        "X12_276_HIERARCHY_CYCLE",
+        "X12_276_LEVEL_DETACHED",
+        "X12_276_REFERENCE_ROW_DROPPED",
         "X12_834_UNKNOWN_MAINTENANCE_TYPE",
         "X12_835_BALANCE_NOT_EVALUABLE",
         "X12_835_REMIT_BALANCE_MISMATCH",
@@ -81,7 +86,7 @@ describe("public API: WARNING_CODES surface is stable", () => {
     for (const [k, v] of Object.entries(WARNING_CODES)) expect(k).toBe(v);
   });
 
-  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS) -> 27 (X12-DISCARD-AFTER-STRAY-LX) -> 28 (X12-PAY-TO-FUSION) -> 29 (X12-837-SV-UNDEFINED-DECIMAL) -> 30 (X12-AMT-ADX-ABSENT-AMOUNT) -> 31 (X12-STATED-AMOUNT-DISCARDED) -> 32 (X12-837-AMBIGUOUS-VARIANT) -> 33 (X12-837-SV1-OVERWRITE) -> 34 (X12-ISA-ELEMENT-ARITY) -> 40 (the 270 typed model) -> 44 (the 271 AAA request-validation surface)", () => {
+  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS) -> 27 (X12-DISCARD-AFTER-STRAY-LX) -> 28 (X12-PAY-TO-FUSION) -> 29 (X12-837-SV-UNDEFINED-DECIMAL) -> 30 (X12-AMT-ADX-ABSENT-AMOUNT) -> 31 (X12-STATED-AMOUNT-DISCARDED) -> 32 (X12-837-AMBIGUOUS-VARIANT) -> 33 (X12-837-SV1-OVERWRITE) -> 34 (X12-ISA-ELEMENT-ARITY) -> 40 (the 270 typed model) -> 44 (the 271 AAA request-validation surface) -> 49 (the 276 typed model)", () => {
     // SIX added by the 270 typed read path, and nothing renamed, removed or
     // renumbered: the two tolerances that path reports (a declared
     // non-conventional delimiter, whitespace between segments), the two
@@ -99,7 +104,18 @@ describe("public API: WARNING_CODES surface is stable", () => {
     // ABSENT and UNKNOWN are deliberately two codes and not one: "no reason
     // given" and "a reason given that this package cannot describe" are
     // different answers and a consumer has to be able to tell them apart.
-    expect(Object.keys(WARNING_CODES)).toHaveLength(44);
+    //
+    // FIVE more added by the 276 typed read path: the two hierarchy hazards it
+    // detects (a duplicated HL-01, a parent chain that returns to itself), the
+    // loss it reports when a level's declared parent does not resolve, and the
+    // two row losses it reports when a DTP or a REF reaches it short of the
+    // elements that row is built from. They are SIBLINGS of the 270's codes and
+    // not a widening of them: a consumer narrowing on `X12_270_LEVEL_DETACHED`
+    // must not start seeing claim-status requests on a predicate written for
+    // eligibility inquiries. The 276's AMT loss takes the EXISTING
+    // `X12_AMOUNT_ROW_DROPPED`, which already names that loss for every AMT
+    // this library reads, so it adds no sixth.
+    expect(Object.keys(WARNING_CODES)).toHaveLength(49);
   });
 
   it("keeps the four REQUIRED_LOOPS the 837 owns and adds the 270's three", () => {

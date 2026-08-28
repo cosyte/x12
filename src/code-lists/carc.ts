@@ -20,15 +20,39 @@
  * the full WPC-published list from the canonical source for the first
  * real publish; until then a CARC absent from the snapshot still parses
  * fine (verbatim) - only its description is unavailable.
+ *
+ * **Per-code dates.** Every bundled code carries the Start, and where the
+ * maintainer publishes them the Last Modified and Stop dates, that
+ * `x12.org/codes/claim-adjustment-reason-codes` states for it. They were
+ * transcribed from a capture of that page taken on 2026-08-28 (226207 bytes,
+ * sha256 359dd89a75deda92416b0ed78f2ed2f0c90c4d40c4a84a73fe4b15a406df2e66),
+ * converting the page's `MM/DD/YYYY` rendering to ISO `YYYY-MM-DD`. No code was
+ * added or removed and no description changed with them:
+ * {@link checkCarcValidity} is the whole of what they buy.
+ *
+ * **Code 15 is deactivated and reports as such.** The maintainer stopped it on
+ * 05/01/2018 and this subset has been shipping it as though it were current
+ * ever since, so it now answers `not-valid` for any present-day document date.
+ * That is the intended new truth rather than a data defect, and it is exactly
+ * the case the date-aware query exists for.
  */
 
-import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js";
+import {
+  freezeCodeDates,
+  makeLookup,
+  makeValidityCheck,
+  type CodeListEntry,
+  type CodeValidityResult,
+  type DatedCodeListSnapshot,
+} from "./meta.js";
 import { CARC_REDISTRIBUTION } from "./redistribution.js";
 
 /**
  * Bundled CARC snapshot. `meta.publishedDate` is the WPC publication
  * date this subset reflects; `meta.snapshotDate` is when cosyte captured
- * it. The `codes` map is frozen - use the {@link lookupCarc} helper for
+ * it, and `meta.datesCapturedAt` / `meta.datesSource` say separately when the
+ * per-code validity dates were read and from which maintainer page. The
+ * `codes` and `dates` maps are frozen - use the {@link lookupCarc} helper for
  * the ergonomic `{ code, description }` shape consumed by the 835
  * helper.
  *
@@ -42,19 +66,23 @@ import { CARC_REDISTRIBUTION } from "./redistribution.js";
  * ```ts
  * import { CARC } from "@cosyte/x12";
  * CARC.meta.snapshotDate;              // "2026-06-27"
+ * CARC.meta.datesCapturedAt;           // "2026-08-28"
  * CARC.codes["45"];                    // "Charge exceeds fee schedule..."
+ * CARC.dates["45"]?.start;             // "1995-01-01"
  * Object.keys(CARC.codes).length;      // count of bundled codes
  * CARC.meta.maintainingOrganization;   // "ASC X12"
  * CARC.meta.redistribution?.status;    // "licence-required"
  * ```
  */
-export const CARC: CodeListSnapshot = Object.freeze({
+export const CARC: DatedCodeListSnapshot = Object.freeze({
   meta: Object.freeze({
     id: "CARC",
     description: "Claim Adjustment Reason Codes",
     source: "WPC (Washington Publishing Company) - x12.org/codes/claim-adjustment-reason-codes",
     publishedDate: "2026-03-01",
     snapshotDate: "2026-06-27",
+    datesSource: "https://x12.org/codes/claim-adjustment-reason-codes",
+    datesCapturedAt: "2026-08-28",
     note: "Pre-launch initial subset (~30 most commonly observed codes). Phase 10 ships a full-regen script.",
     maintainingOrganization: "ASC X12",
     redistribution: CARC_REDISTRIBUTION,
@@ -91,6 +119,37 @@ export const CARC: CodeListSnapshot = Object.freeze({
     "197": "Precertification/authorization/notification/pre-treatment absent.",
     "204": "This service/equipment/drug is not covered under the patient's current benefit plan.",
   }),
+  dates: freezeCodeDates({
+    "1": { start: "1995-01-01" },
+    "2": { start: "1995-01-01" },
+    "3": { start: "1995-01-01" },
+    "4": { start: "1995-01-01", lastModified: "2020-03-01" },
+    "5": { start: "1995-01-01", lastModified: "2018-03-01" },
+    "6": { start: "1995-01-01", lastModified: "2017-07-01" },
+    "7": { start: "1995-01-01", lastModified: "2017-07-01" },
+    "8": { start: "1995-01-01", lastModified: "2017-07-01" },
+    "9": { start: "1995-01-01", lastModified: "2017-07-01" },
+    "10": { start: "1995-01-01", lastModified: "2017-07-01" },
+    "11": { start: "1995-01-01", lastModified: "2017-07-01" },
+    "15": { start: "1995-01-01", lastModified: "2017-11-01", stop: "2018-05-01" },
+    "16": { start: "1995-01-01", lastModified: "2018-03-01" },
+    "18": { start: "1995-01-01", lastModified: "2013-06-02" },
+    "22": { start: "1995-01-01", lastModified: "2007-09-30" },
+    "23": { start: "1995-01-01", lastModified: "2012-09-30" },
+    "24": { start: "1995-01-01", lastModified: "2007-09-30" },
+    "26": { start: "1995-01-01" },
+    "27": { start: "1995-01-01" },
+    "29": { start: "1995-01-01" },
+    "31": { start: "1995-01-01", lastModified: "2007-09-30" },
+    "45": { start: "1995-01-01", lastModified: "2017-07-01" },
+    "50": { start: "1995-01-01", lastModified: "2017-07-01" },
+    "96": { start: "1995-01-01", lastModified: "2017-07-01" },
+    "97": { start: "1995-01-01", lastModified: "2017-07-01" },
+    "109": { start: "1995-01-01", lastModified: "2012-01-29" },
+    "119": { start: "1995-01-01", lastModified: "2004-02-29" },
+    "197": { start: "2006-10-31", lastModified: "2018-05-01" },
+    "204": { start: "2007-02-28" },
+  }),
 });
 
 /**
@@ -107,3 +166,32 @@ export const CARC: CodeListSnapshot = Object.freeze({
  * ```
  */
 export const lookupCarc: (code: string) => CodeListEntry | undefined = makeLookup(CARC);
+
+/**
+ * Report whether a CARC code was valid on the day a document was produced,
+ * rather than only whether this package bundles it.
+ *
+ * Three answers, never two. `valid` and `not-valid` are both claims backed by a
+ * date the maintainer published; `indeterminate` says the shipped data cannot
+ * decide, and carries the reason - the code is outside the bundled subset, or
+ * it is inside it with no published start date. A code is NEVER reported valid
+ * for want of evidence, which is the whole asymmetry here: a retired code read
+ * as current is a payer credited with an adjustment reason it was not entitled
+ * to use.
+ *
+ * `documentDate` is a calendar day in `YYYY-MM-DD` or `CCYYMMDD` form. Anything
+ * else, a JavaScript `Date` included, is refused with an
+ * {@link "./errors.js".X12CodeListError} and yields no answer at all.
+ *
+ * @example
+ * ```ts
+ * import { checkCarcValidity } from "@cosyte/x12";
+ * checkCarcValidity("1", "2026-06-27").validity;    // "valid"
+ * checkCarcValidity("15", "2018-04-30").validity;   // "valid"
+ * checkCarcValidity("15", "2018-05-01").validity;   // "not-valid" (stopped that day)
+ * checkCarcValidity("9999", "20260627").validity;   // "indeterminate"
+ * checkCarcValidity("9999", "20260627").code;       // "9999" (echoed verbatim)
+ * ```
+ */
+export const checkCarcValidity: (code: string, documentDate: string) => CodeValidityResult =
+  makeValidityCheck(CARC);
