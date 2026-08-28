@@ -3,6 +3,29 @@ name: Release
 # Thin caller of the shared release pipeline: Changesets -> npm publish (provenance auto-enables when
 # this repo is public) -> docs artifacts -> GitHub release -> repository_dispatch to cosyte/docs.
 # Requires the NPM_TOKEN and DOCS_REPO_DISPATCH_TOKEN secrets (passed via `secrets: inherit`).
+#
+# ▶ A RUN OF THIS WORKFLOW SITTING AT `waiting` IS NOT A FAILURE. IT IS THE GATE WORKING, AND THE
+#   ONLY THING THAT MOVES IT IS A HUMAN.
+#
+#   The shared pipeline puts its single publishing job in THIS repository's `release` environment,
+#   and that environment carries a required-reviewer rule plus a deployment branch policy limited to
+#   the default branch. So every push to `main` starts a `Release` run, GitHub parks it as a PENDING
+#   DEPLOYMENT the moment it reaches that job, and it stays `waiting`, indefinitely and with no
+#   conclusion, until a required reviewer APPROVES the pending deployment on the run's page. That
+#   approval is what publishes to npm. Nothing else does, and nothing here is broken while it waits.
+#
+#   Read the states apart before filing anything:
+#     - `waiting`, conclusion null . the human gate, above. Nothing to fix. Approve it, or leave it.
+#     - `startup_failure` .......... GitHub refused the workflow before any job ran, so there are no
+#                                    logs at all. The cause is in this file or in the workflow it
+#                                    calls, and the usual one is the `permissions:` block below
+#                                    being short a scope the callee declares. `pnpm test` reds on
+#                                    that now: see `scripts/check-release-caller-permissions.ts`.
+#     - `failure` .................. an actual job failed and has logs. Read them.
+#
+#   DO NOT "FIX" A `waiting` RUN BY REMOVING THE GATE. Deleting the required reviewer, or adding an
+#   `environment:` key to the job below to point it somewhere unprotected, would publish @cosyte/x12
+#   to npm with nobody in the loop. That is the one change here that no re-run undoes.
 
 on:
   push:
