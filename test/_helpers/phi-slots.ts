@@ -84,6 +84,7 @@ import {
   WARNING_CODES,
   get270Inquiry,
   get271Eligibility,
+  get276StatusInquiry,
   get277CADisposition,
   get277Status,
   get278Request,
@@ -152,6 +153,7 @@ const ISA = {
 
 const G_835 = golden("835");
 const G_837P = golden("837p");
+const G_276 = golden("276");
 const G_277 = golden("277");
 const G_277CA = golden("277ca");
 const G_270 = golden("270");
@@ -236,6 +238,9 @@ function runHelpers(
           break;
         case "271":
           push(get271Eligibility(ix.delimiters, tx)?.warnings);
+          break;
+        case "276":
+          push(get276StatusInquiry(ix.delimiters, tx)?.warnings);
           break;
         case "277":
           push(get277Status(ix.delimiters, tx)?.warnings);
@@ -880,6 +885,55 @@ export const PHI_SLOTS: readonly DiagnosticSlot<string>[] = [
     name: "STC-01-1 claim status category code on a 277CA",
     plant: (m) => swap(G_277CA, "~STC*A1:19:PR*", `~STC*${m}:19:PR*`),
     expectCode: WARNING_CODES.X12_UNKNOWN_CLAIM_STATUS_CATEGORY,
+  },
+
+  // ---- 276 claim status request -------------------------------------------
+  // The first two are OWN slots on codes this work added: the marker rides in
+  // the element the branch reads, so a leak would be an interpolation of that
+  // marker. The rest are co-located, riding an envelope deviation, which is the
+  // only kind a spec-clean 276 raises.
+  {
+    name: "HL-02 parent pointer that resolves to no level, on a 276",
+    // own: the marker IS the unresolvable pointer, so both the mismatch code
+    // and the detached-level code are built while it is in the reader's hands.
+    plant: (m) => swap(G_276, "~HL*4*3*22*1~", `~HL*4*${m}*22*1~`),
+    expectCode: WARNING_CODES.X12_276_LEVEL_DETACHED,
+  },
+  {
+    name: "HL-01 hierarchical id duplicated on a 276",
+    // own: planting one id onto two receivers makes the second a duplicate,
+    // which is what the code reports.
+    plant: (m) => swap(G_276, "~HL*2*1*21*1~", `~HL*${m}*1*21*1~HL*${m}*1*21*1~`),
+    expectCode: WARNING_CODES.X12_276_DUPLICATE_HIERARCHY_ID,
+  },
+  {
+    name: "NM1-09 member id on a 276",
+    // co-located: the member id drives no diagnostic of its own, and the
+    // envelope deviation beside it makes sure a diagnostic IS built while the
+    // marker is on the model.
+    plant: (m) => withGroupCountMismatch(swap(G_276, "***MI*MBR0001~", `***MI*${m}~`)),
+    expectCode: WARNING_CODES.X12_GROUP_COUNT_MISMATCH,
+  },
+  {
+    name: "TRN-02 claim submitter trace number on a 276",
+    plant: (m) => withGroupCountMismatch(swap(G_276, "~TRN*1*STATUS20260601001*", `~TRN*1*${m}*`)),
+    expectCode: WARNING_CODES.X12_GROUP_COUNT_MISMATCH,
+  },
+  {
+    name: "REF-02 payer claim control number on a 276",
+    plant: (m) => withGroupCountMismatch(swap(G_276, "~REF*1K*PCN0001~", `~REF*1K*${m}~`)),
+    expectCode: WARNING_CODES.X12_GROUP_COUNT_MISMATCH,
+  },
+  {
+    name: "SVC-01-2 procedure code asked about on a 276",
+    plant: (m) => withGroupCountMismatch(swap(G_276, "~SVC*HC:99213:25*", `~SVC*HC:${m}:25*`)),
+    expectCode: WARNING_CODES.X12_GROUP_COUNT_MISMATCH,
+  },
+  {
+    name: "BHT-03 submitter transaction identifier on a 276",
+    plant: (m) =>
+      withGroupCountMismatch(swap(G_276, "~BHT*0010*13*STATUS-0001*", `~BHT*0010*13*${m}*`)),
+    expectCode: WARNING_CODES.X12_GROUP_COUNT_MISMATCH,
   },
 
   // ---- 270 eligibility inquiry --------------------------------------------

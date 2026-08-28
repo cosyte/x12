@@ -1722,12 +1722,28 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   repo, but it stays on the `0.0.x`-until-first-alpha ladder. `npm view @cosyte/x12 version` is the
   only source of truth for the current version, so this page does not restate one. Treat the API as
   pre-alpha and pin the exact version until the first alpha.
-- **No typed model for the 276 inquiry.** Every other v1 transaction has both a per-transaction
-  reader and a domain builder. The 276 claim-status inquiry has neither: it parses into segments,
-  composites, and dot-paths like any other X12 input, and its response, the 277, decodes fully, but
-  the inquiry direction has no typed surface yet. The 270 eligibility inquiry no longer belongs on
-  this line: it has a typed model on the read side (`get270Inquiry`, `parse270Inquiries`) and on the
-  emit side (`build270`).
+- **A 276 hierarchical level whose declared parent does not resolve is left off the returned tree.**
+  The 276 reader attaches a level by its own HL-02 and by nothing else, so a pointer naming a level
+  that is not present, a pointer naming a level of the wrong kind, and a parent chain that returns
+  to itself each leave that level, and everything transmitted beneath it, absent from the model. The
+  loss is reported (`X12_276_LEVEL_DETACHED`, beside the code for the pointer defect itself), the
+  declared pointer stays verbatim on `hierarchies`, and the segments stay verbatim on the
+  transaction set. Nothing is re-parented onto whichever level happened to be open, because that
+  would be this library inventing the one structure a 276 exists to state: which provider is asking
+  about which patient's claim.
+- **A 276 REF, DTP or AMT short of what its row is built from loses the whole row, and says so.**
+  Each is a record and not a slot. Without both REF-01 and REF-02 there is no reference row; without
+  both DTP-01 and DTP-03 there is no date row, and the format qualifier that says single date or
+  range goes with it; without a decodable AMT-02 there is no amount row. The reader builds none,
+  fabricates nothing to stand in, and reports the loss (`X12_276_REFERENCE_ROW_DROPPED`,
+  `X12_276_DATE_ROW_DROPPED`, `X12_AMOUNT_ROW_DROPPED`) at that segment. **The report is bounded to
+  the row the reader tried to build.** A segment that decoded and then found no claim or service
+  line open to sit on is a different loss, it stays silent, and it is not on any of those channels.
+- **The 276 reader surfaces four of the SVC elements and no postal address.** SVC-01, SVC-02, SVC-04
+  and SVC-07 reach the typed service line; SVC-03, SVC-05 and SVC-06 are left unread, because this
+  is the request direction and a submitter states what it billed rather than what was paid. An N3 or
+  N4 a sender transmits under a 276 name loop reaches no typed field either, as it reaches none on
+  the 277 beside it. All of them stay verbatim on `tx.segments`; read them there.
 - **A 270 hierarchical level whose declared parent does not resolve is left off the returned tree.**
   The 270 reader attaches a level by its own HL-02 and by nothing else, so a pointer naming a level
   that is not present, a pointer naming a level of the wrong kind, and a parent chain that returns to

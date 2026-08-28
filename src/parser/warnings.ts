@@ -100,6 +100,11 @@ export const WARNING_CODES = {
   X12_270_HIERARCHY_CYCLE: "X12_270_HIERARCHY_CYCLE",
   X12_270_LEVEL_DETACHED: "X12_270_LEVEL_DETACHED",
   X12_270_DATE_ROW_DROPPED: "X12_270_DATE_ROW_DROPPED",
+  X12_276_DUPLICATE_HIERARCHY_ID: "X12_276_DUPLICATE_HIERARCHY_ID",
+  X12_276_HIERARCHY_CYCLE: "X12_276_HIERARCHY_CYCLE",
+  X12_276_LEVEL_DETACHED: "X12_276_LEVEL_DETACHED",
+  X12_276_DATE_ROW_DROPPED: "X12_276_DATE_ROW_DROPPED",
+  X12_276_REFERENCE_ROW_DROPPED: "X12_276_REFERENCE_ROW_DROPPED",
   X12_271_AAA_REJECT_REASON_ABSENT: "X12_271_AAA_REJECT_REASON_ABSENT",
   X12_271_AAA_UNKNOWN_CODE: "X12_271_AAA_UNKNOWN_CODE",
   X12_271_AAA_SEGMENT_MALFORMED: "X12_271_AAA_SEGMENT_MALFORMED",
@@ -447,6 +452,16 @@ const WARNING_MESSAGES = {
     "The hierarchical level at `position.segmentIndex` is not attached to the inquiry hierarchy this reader returns, because its declared HL-02 did not resolve to a level of the parent kind the TR3 gives it. Everything that level carried, its name, identifiers, demographics, traces, dates and eligibility inquiries, is therefore absent from the returned tree, and so is everything transmitted beneath it. NOTHING is fabricated to stand in: no parent is synthesized, no level is re-parented onto whichever one happened to be open, and no pointer is re-numbered. This code names THAT loss and nothing else; the separate defect in the pointer is reported by its own code at the same position, one of `X12_HL_PARENT_MISMATCH`, `X12_HL_PARENT_LEVEL_INVALID` or `X12_270_HIERARCHY_CYCLE`, so a level reported here always carries one of those beside it. The level's HL is still on `hierarchies` verbatim and its segments are still on the transaction set; read them there before concluding the sender sent no such level.",
   X12_270_DATE_ROW_DROPPED:
     "270 date row dropped from the typed model: the DTP at `position.segmentIndex` reached this reader short of one of the two elements a date row is built from, so NO row was built for it and the rest of the segment went with it. Both the qualifier that says what the date is for (DTP-01) and the date value itself (DTP-03) are required to build one. The format qualifier (DTP-02), which says whether the value is a single date or a range, is carried ON the row and is not what decides this. Two routes reach it and this code does not say which: DTP-01 was absent, or DTP-03 was. Nothing is fabricated to stand in: no date is defaulted, no qualifier is inferred from the loop the segment sits in, and no half a row is built from the element that IS present. An empty `dates` list on a level or an inquiry is therefore not by itself evidence the sender stated no date, which is exactly the ambiguity this code exists to remove. Read the bound literally, as a property of the READ: this reports a DTP whose row this reader tried to build and could not. It does NOT report a DTP that decoded and then reached no level or inquiry to sit on, which is a different loss, stays silent, and is recorded in KNOWN-LIMITATIONS.md. It is raised on the 270 path ONLY, once per such segment. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such date.",
+  X12_276_DUPLICATE_HIERARCHY_ID:
+    "Two hierarchical levels in this 276 were transmitted with the same HL-01. The one at `position.segmentIndex` is not the first to carry that identifier, and this reader NEVER re-numbers a hierarchy: both levels keep their declared HL-01 verbatim on the model. What the duplication decides is attachment, and the rule is fixed so that the same bytes always decode to the same model: a child naming that identifier in its HL-02 attaches to the FIRST level carrying it in transmitted order, and never to a later one. A later level carrying the identifier is therefore reachable in the hierarchy only if some other pointer reaches it, and where none does it is reported separately as detached. Which of them the sender meant is NOT decided here and is not derivable from the TR3: this reader cannot tell a re-used identifier from a mis-keyed one. The verbatim segments are preserved on the transaction set.",
+  X12_276_HIERARCHY_CYCLE:
+    "The chain of HL-02 parent pointers starting at the hierarchical level at `position.segmentIndex` returns to a level already on that chain, so the document describes a hierarchy that is not a tree. The walk is bounded by the number of HL segments in the transaction set and visits no level twice on one chain, so it terminates rather than following the cycle: this code is what it reports instead. The level is NOT attached to a parent, and this reader neither re-numbers the hierarchy nor picks a link to break, because either would be inventing a structure the sender did not send. Every declared pointer stays verbatim on the model and the level's own HL is still on `hierarchies`. Read it as disjoint from a dangling pointer, which is `X12_HL_PARENT_MISMATCH`: that one reports a pointer naming a level that is not present, and this one requires that every pointer on the chain names a level that IS.",
+  X12_276_LEVEL_DETACHED:
+    "The hierarchical level at `position.segmentIndex` is not attached to the claim-status-request hierarchy this reader returns, because its declared HL-02 did not resolve to a level of the parent kind the TR3 gives it. Everything that level carried, its name, identifiers, demographics and the claims asked about under it, is therefore absent from the returned tree, and so is everything transmitted beneath it. NOTHING is fabricated to stand in: no parent is synthesized, no level is re-parented onto whichever one happened to be open, and no pointer is re-numbered. This code names THAT loss and nothing else; the separate defect in the pointer is reported by its own code at the same position, one of `X12_HL_PARENT_MISMATCH`, `X12_HL_PARENT_LEVEL_INVALID` or `X12_276_HIERARCHY_CYCLE`, so a level reported here always carries one of those beside it. The level's HL is still on `hierarchies` verbatim and its segments are still on the transaction set; read them there before concluding the sender sent no such level.",
+  X12_276_DATE_ROW_DROPPED:
+    "276 date row dropped from the typed model: the DTP at `position.segmentIndex` reached this reader short of one of the two elements a date row is built from, so NO row was built for it and the rest of the segment went with it. Both the qualifier that says what the date is for (DTP-01) and the date value itself (DTP-03) are required to build one. The format qualifier (DTP-02), which says whether the value is a single date or a range, is carried ON the row and is not what decides this. Two routes reach it and this code does not say which: DTP-01 was absent, or DTP-03 was. Nothing is fabricated to stand in: no date is defaulted, no qualifier is inferred from the loop the segment sits in, and no half a row is built from the element that IS present. An empty `dates` list on a claim or a service line is therefore not by itself evidence the sender stated no date, which is exactly the ambiguity this code exists to remove. Read the bound literally, as a property of the READ: this reports a DTP whose row this reader tried to build and could not. It does NOT report a DTP that decoded and then reached no claim or service line to sit on, which is a different loss, stays silent, and is recorded in KNOWN-LIMITATIONS.md. It is raised on the 276 path ONLY, once per such segment. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such date.",
+  X12_276_REFERENCE_ROW_DROPPED:
+    "276 reference row dropped from the typed model: the REF at `position.segmentIndex` reached this reader short of one of the two elements a reference row is built from, so NO row was built for it and the rest of the segment went with it. Both the qualifier that says what the identifier is (REF-01) and the identifier itself (REF-02) are required to build one, and the description (REF-03) is carried ON the row rather than deciding this. Two routes reach it and this code does not say which: REF-01 was absent, or REF-02 was. Nothing is fabricated to stand in: no qualifier is inferred from the loop the segment sits in, no empty string is substituted for the value, and no half a row is built from the element that IS present. An empty `references` list on a claim or a service line is therefore not by itself evidence the sender stated no identifier. Read the bound literally, as a property of the READ: this reports a REF whose row this reader tried to build and could not. It does NOT report a REF that decoded and then reached no claim or service line to sit on, which is a different loss, stays silent, and is recorded in KNOWN-LIMITATIONS.md. It is raised on the 276 path ONLY, once per such segment. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such identifier.",
   X12_271_AAA_REJECT_REASON_ABSENT_INFORMATION_SOURCE:
     "271 AAA request validation at the information source level states no reject reason code: AAA-03 is absent, or present and empty. The typed AAA condition carries that code as ABSENT rather than as a value, no placeholder is substituted, and the segment is NOT dropped - everything else the reader read off it is on the condition under its own key. Nothing the sender sent is echoed here; `position` says which segment and which element to read. Compare `X12_271_AAA_UNKNOWN_CODE`, which reports a code that IS stated and resolves to no description.",
   X12_271_AAA_REJECT_REASON_ABSENT_INFORMATION_RECEIVER:
@@ -1780,6 +1795,128 @@ export function dateRowDropped(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_270_DATE_ROW_DROPPED,
     message: WARNING_MESSAGES.X12_270_DATE_ROW_DROPPED,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_276_DUPLICATE_HIERARCHY_ID` warning. The 276's sibling of
+ * {@link duplicateHierarchyId}, raised at the second and each subsequent HL in
+ * a 276 transaction set to carry an HL-01 an earlier one already carried.
+ *
+ * A sibling rather than a widening of the 270's code, and for the reason the
+ * builder error classes are siblings too: a consumer narrowing on
+ * `X12_270_DUPLICATE_HIERARCHY_ID` would start seeing claim-status requests on
+ * a predicate they wrote for eligibility inquiries, which is a silent change to
+ * a published surface. One code per direction, additions only.
+ *
+ * @example
+ * ```ts
+ * import { statusInquiryDuplicateHierarchyId } from "@cosyte/x12";
+ * const w = statusInquiryDuplicateHierarchyId({ segmentIndex: 7, transactionIndex: 0 });
+ * ```
+ */
+export function statusInquiryDuplicateHierarchyId(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_276_DUPLICATE_HIERARCHY_ID,
+    message: WARNING_MESSAGES.X12_276_DUPLICATE_HIERARCHY_ID,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_276_HIERARCHY_CYCLE` warning. The 276's sibling of
+ * {@link hierarchyCycle}, raised where the chain of HL-02 parent pointers from
+ * the level at `position` returns to a level already on that chain. Disjoint
+ * from {@link hlParentMismatch} by construction: this one requires every
+ * pointer on the chain to name a level that IS present, and that one reports a
+ * pointer that names none.
+ *
+ * @example
+ * ```ts
+ * import { statusInquiryHierarchyCycle } from "@cosyte/x12";
+ * const w = statusInquiryHierarchyCycle({ segmentIndex: 5, transactionIndex: 0 });
+ * ```
+ */
+export function statusInquiryHierarchyCycle(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_276_HIERARCHY_CYCLE,
+    message: WARNING_MESSAGES.X12_276_HIERARCHY_CYCLE,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_276_LEVEL_DETACHED` warning. The 276's sibling of
+ * {@link levelDetached}, raised where a 276 hierarchical level's declared
+ * parent pointer did not resolve to a level of the parent kind the TR3 gives
+ * it, so the level and everything transmitted beneath it is absent from the
+ * returned tree.
+ *
+ * It reports the LOSS. The defect in the pointer itself is reported by its own
+ * code at the same position, so a level named here always carries one of
+ * {@link hlParentMismatch}, {@link hlParentLevelInvalid} or
+ * {@link statusInquiryHierarchyCycle} beside it.
+ *
+ * @example
+ * ```ts
+ * import { statusInquiryLevelDetached } from "@cosyte/x12";
+ * const w = statusInquiryLevelDetached({ segmentIndex: 5, transactionIndex: 0 });
+ * ```
+ */
+export function statusInquiryLevelDetached(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_276_LEVEL_DETACHED,
+    message: WARNING_MESSAGES.X12_276_LEVEL_DETACHED,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_276_DATE_ROW_DROPPED` warning. The 276's sibling of
+ * {@link dateRowDropped}, raised where a 276's DTP reached the reader short of
+ * its qualifier (DTP-01) or its value (DTP-03), so no date row was built and
+ * the whole segment, the format qualifier included, is absent from the typed
+ * model.
+ *
+ * A DTP is a RECORD and not a slot, which is why the loss is the row rather
+ * than one element, and why it is reported at all.
+ *
+ * @example
+ * ```ts
+ * import { statusInquiryDateRowDropped } from "@cosyte/x12";
+ * const w = statusInquiryDateRowDropped({ segmentIndex: 9, transactionIndex: 0 });
+ * ```
+ */
+export function statusInquiryDateRowDropped(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_276_DATE_ROW_DROPPED,
+    message: WARNING_MESSAGES.X12_276_DATE_ROW_DROPPED,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_276_REFERENCE_ROW_DROPPED` warning. Raised where a 276's REF
+ * reached the reader short of its qualifier (REF-01) or its identifier
+ * (REF-02), so no reference row was built and the whole segment, the
+ * description included, is absent from the typed model.
+ *
+ * A REF is a RECORD and not a slot for the same reason a DTP is: a qualifier
+ * with no identifier states nothing that can be looked up, and an identifier
+ * with no qualifier states nothing about WHAT was identified. Building half a
+ * row from either would put a value on the model the sender did not state.
+ *
+ * @example
+ * ```ts
+ * import { statusInquiryReferenceRowDropped } from "@cosyte/x12";
+ * const w = statusInquiryReferenceRowDropped({ segmentIndex: 9, transactionIndex: 0 });
+ * ```
+ */
+export function statusInquiryReferenceRowDropped(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_276_REFERENCE_ROW_DROPPED,
+    message: WARNING_MESSAGES.X12_276_REFERENCE_ROW_DROPPED,
     position,
   };
 }

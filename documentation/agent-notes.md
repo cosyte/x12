@@ -58,7 +58,7 @@ claim to learn, and several of them name a remedy that was tried and refuted.
 - [Phase 1: envelope decoder](#phase-1-envelope-decoder)
 - [Phase E: shared engineering standard](#phase-e-shared-engineering-standard)
 - [PHI commit-gate armed (2026-06-28)](#phi-commit-gate-armed-2026-06-28)
-- [Published scope: the 270 and 276 gap](#published-scope-the-270-and-276-gap)
+- [Published scope: the 270 and 276 inquiry directions](#published-scope-the-270-and-276-inquiry-directions)
 - [ASSETS-P8: the attw wrapper](#assets-p8-the-attw-wrapper)
 
 ## CLAUDE-MD-AUDIT (2026-08-04)
@@ -3443,28 +3443,49 @@ opts?)` reconstructs an `X12Interchange` back to bytes from the
 --staged`) and in CI (`run-phi-scan: true`); the `verify.sh` summary
   now shows `phi-scan ✓`.
 
-## Published scope: the 270 and 276 gap
+## Published scope: the 270 and 276 inquiry directions
 
 - Pre-alpha `0.0.x`, **published** to npm from a public repo. Never quote a
   version here: `npm view @cosyte/x12 version` is the only source of truth.
-  The **read** scope is decoded for 270, 271, 277/277CA, 278, 820, 834, 835,
-  837P/I/D, 999, and TA1. **The 276 inquiry direction has NO typed model on
-  either side**: no `get276` reader, no `build276` builder, and no 276
-  dispatch anywhere in `src/`. It parses into segments and dot-paths like any
-  other X12 input and nothing decodes it further, so do not describe the v1
-  read or emit scope as "276/277" complete: that claim was on the README and
-  the docs site until ASSETS-P8 corrected it.
-  **The 270 half of this gap is CLOSED and the label is still forbidden.**
-  `get270Inquiry` / `parse270Inquiries` and `build270` shipped together,
+  The **read** scope is decoded for 270, 271, 276, 277/277CA, 278, 820, 834,
+  835, 837P/I/D, 999, and TA1.
+  **BOTH inquiry directions are CLOSED now, and the label rule outlives them.**
+  `get270Inquiry` / `parse270Inquiries` / `build270` closed the eligibility
+  half, and `get276StatusInquiry` / `parse276StatusInquiries` / `build276`
+  closed the claim-status half; each pair shipped read and emit together,
   because this package holds emit scope complete wherever read scope is, so a
-  reader without its builder was never a landable state. Write "270" and
-  "276" separately: one paired label for both is exactly how the two halves
-  came to be described as one shipped thing when neither was. The general
+  reader without its builder was never a landable state.
+  **Still write "270" and "276" separately, and never restate a scope line
+  from memory.** One paired label over two halves is exactly how these two came
+  to be described as one shipped thing when neither was, and the README and the
+  docs site carried that wrong until ASSETS-P8 corrected it. The 276 half then
+  stayed missing for a whole phase after the 270 shipped, with four carriers
+  (`KNOWN-LIMITATIONS.md`, `CLAUDE.md`, the README, the docs site) saying so in
+  four slightly different ways, which is the cost of describing a scope in prose
+  rather than deriving it. `X12_TR3_CONFORMANCE` is the derived answer and
+  `test/tr3-conformance.test.ts` reds when a reader or a builder exists without
+  a row.
+  **The two directions carry SIBLING warning codes and SIBLING build-error
+  classes, never one widened set.** `X12_276_LEVEL_DETACHED` is not
+  `X12_270_LEVEL_DETACHED` and `ClaimStatus276BuildError` is not
+  `Eligibility270BuildError`: a consumer narrowing on the eligibility name must
+  not start seeing claim-status requests on a predicate written for eligibility
+  inquiries, and renaming a published error is a breaking change. The one code
+  the 276 REUSES is `X12_AMOUNT_ROW_DROPPED`, because that code already names
+  exactly that loss for every AMT this library reads and its message scopes
+  itself to the row rather than to a transaction.
+  **The 276 spine is the 277's and it is one level deeper than the 270's**:
+  `20` source, `21` receiver, `19` service provider, `22` subscriber, `23`
+  dependent. So "a receiver with no subscriber" is TWO links in this family and
+  one in the eligibility family, and the builder refuses both of them.
+  **No external oracle exists for the 276 request**, so nothing here claims
+  differential conformance: the evidence is the round trip, the committed
+  golden, the property suite and the 277's own declarations. The general
   **emit** surface
   (`serializeX12` + `buildInterchange`)
   shipped in Phase 8, and (with Phase 8f) the **domain emit**
   scope is complete for every transaction that has a reader: a per-TR3 domain builder
-  (`build835` / `build837P/I/D` / `build270` / `build271` / `build277` / `277CA` /
+  (`build835` / `build837P/I/D` / `build270` / `build271` / `build276` / `build277` / `277CA` /
   `build278Request` / `build278Response` / `build820` / `build834`, plus
   the pure-function `build999` / `buildTA1` acknowledgments) layering the
   safety-critical per-TR3 invariants (balance, certification,

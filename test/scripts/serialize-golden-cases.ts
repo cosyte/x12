@@ -23,6 +23,7 @@ export const SERIALIZE_GOLDEN_CASES: readonly SerializeGoldenCase[] = [
   { name: "837d", fixture: "claim/837d-canonical.edi" },
   { name: "270", fixture: "eligibility/270-canonical.edi" },
   { name: "271", fixture: "eligibility/271-canonical.edi" },
+  { name: "276", fixture: "status/276-canonical.edi" },
   { name: "277", fixture: "status/277-canonical.edi" },
   { name: "277ca", fixture: "status/277ca-canonical.edi" },
   { name: "278-request", fixture: "auth/278-request.edi" },

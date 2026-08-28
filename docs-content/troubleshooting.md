@@ -374,12 +374,20 @@ third party.
   repo, but it stays on the `0.0.x`-until-first-alpha ladder. `npm view @cosyte/x12 version` is the
   only source of truth for the current version, so this page does not restate one. Treat the API as
   pre-alpha and pin the exact version until the first alpha.
-- **No typed model for the 276 inquiry.** Every other v1 transaction has both a per-transaction
-  reader and a domain builder. The 276 claim-status inquiry has neither: it parses into segments,
-  composites, and dot-paths like any other X12 input, and its response, the 277, decodes fully, but
-  the inquiry direction has no typed surface yet. The 270 eligibility inquiry no longer belongs on
-  this line: it has a typed model on the read side (`get270Inquiry`, `parse270Inquiries`) and on the
-  emit side (`build270`).
+- **A 276 hierarchical level whose declared parent does not resolve is left off the returned tree.**
+  The 276 reader attaches a level by its own HL-02 and by nothing else, so a dangling pointer, a
+  pointer naming a level of the wrong kind, and a parent chain that returns to itself each leave that
+  level, and everything beneath it, absent from the model. The loss is reported
+  (`X12_276_LEVEL_DETACHED`) beside the code for the pointer defect, and the declared pointer and the
+  segments both stay verbatim.
+- **A 276 REF, DTP or AMT short of what its row is built from loses the whole row, and says so.**
+  Each is a record and not a slot: `X12_276_REFERENCE_ROW_DROPPED` for a REF without both REF-01 and
+  REF-02, `X12_276_DATE_ROW_DROPPED` for a DTP without both DTP-01 and DTP-03, and the existing
+  `X12_AMOUNT_ROW_DROPPED` for an AMT whose amount did not decode. Nothing stands in for the row.
+- **The 276 reader surfaces four SVC elements and no postal address.** SVC-01, SVC-02, SVC-04 and
+  SVC-07 reach the typed service line; SVC-03, SVC-05 and SVC-06 do not, because this is the request
+  direction and a submitter states what it billed rather than what was paid. An N3 or N4 under a 276
+  name loop reaches no typed field either. All of them stay verbatim on `tx.segments`.
 - **A 270 hierarchical level whose declared parent does not resolve is left off the returned tree.**
   The 270 reader attaches a level by its own HL-02 and by nothing else, so a dangling pointer, a
   pointer naming a level of the wrong kind, and a parent chain that returns to itself each leave that
