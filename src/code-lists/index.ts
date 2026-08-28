@@ -19,7 +19,7 @@ export {
   type AaaCodeListMeta,
   type AaaCodeListSnapshot,
 } from "./aaa.js";
-export { CARC, lookupCarc } from "./carc.js";
+export { CARC, checkCarcValidity, lookupCarc } from "./carc.js";
 export { CLAIM_STATUS_CATEGORY_CODES, lookupClaimStatusCategory } from "./claim-status-category.js";
 export { CLAIM_STATUS_CODES, lookupClaimStatus } from "./claim-status.js";
 export { CLP_STATUS, lookupClpStatus } from "./clp-status.js";
@@ -30,8 +30,21 @@ export {
   isClaimAdjustmentGroupCode,
   type ClaimAdjustmentGroupCode,
 } from "./cagc.js";
-export { RARC, lookupRarc } from "./rarc.js";
-export type { CodeListEntry, CodeListMeta, CodeListSnapshot } from "./meta.js";
+export { RARC, checkRarcValidity, lookupRarc } from "./rarc.js";
+export { CODE_VALIDITY, CODE_VALIDITY_REASONS } from "./meta.js";
+export type {
+  CodeListEntry,
+  CodeListEntryDates,
+  CodeListMeta,
+  CodeListSnapshot,
+  CodeValidity,
+  CodeValidityReason,
+  CodeValidityResult,
+  DatedCodeListMeta,
+  DatedCodeListSnapshot,
+} from "./meta.js";
+export { X12_CODE_LIST_ERROR_CODES, X12CodeListError } from "./errors.js";
+export type { X12CodeListErrorCode } from "./errors.js";
 export {
   HI_QUALIFIERS,
   isDiagnosisQualifier,
