@@ -272,9 +272,20 @@ describe("refusal messages: the source gate", () => {
     // interchange control number. Pinned so a module that stops being scanned
     // (a rename, a moved directory) is a failure rather than a silently smaller
     // sweep.
+    //
+    // THIRTEEN modules and 117 sites now: `build-276.ts` is the thirteenth
+    // module and brings THIRTEEN sites of its own. Two are the one-line
+    // `refuseHierarchy` / `refuseSpec` throwers the shared caller guards call
+    // back into, and the other eleven are that builder refusing what it cannot
+    // emit spec-clean: no information source, a source with no receiver, a
+    // receiver with no service provider, a provider with no subscriber, a level
+    // with no name loop, a subscriber that asks about no claim and carries no
+    // dependent that does, a dependent with no claim, a claim carrying nothing
+    // a payer could find it by, a claim with no trace, a service line
+    // identifying no service, and an over-long interchange control number.
     const raising = new Set(sites.map((s) => s.file));
-    expect(raising.size).toBe(12);
-    expect(sites.length).toBe(104);
+    expect(raising.size).toBe(13);
+    expect(sites.length).toBe(117);
     expect(modules.some((m) => m.endsWith(join("profiles", "validate.ts")))).toBe(true);
   });
 
@@ -323,16 +334,22 @@ describe("refusal messages: the source gate", () => {
     // counts and render nothing, which is why the site count moved by ten and
     // this census by one.
     //
+    // ONE more arrived with the 276 domain builder, and like the 270's it is
+    // the ONLY caller value that builder renders anywhere: the over-long
+    // interchange control number. Its other ten refusals name structural
+    // indices and counts and render nothing, which is why the site count moved
+    // by thirteen and this census by one.
+    //
     // Count SITES and HOLES separately: they are not the same number, and
-    // conflating them is how this census went wrong the first time. 25 sites
-    // carry a caller value and hold 30 holes between them, because the AK9
+    // conflating them is how this census went wrong the first time. 26 sites
+    // carry a caller value and hold 31 holes between them, because the AK9
     // non-negative refusal names all three counts in one message and three
     // more name two each.
     const builderSites = sites.filter((s) => !s.file.includes(`${sep}profiles${sep}`));
     const boundedSites = builderSites.filter((s) => s.holes.some(isBounded));
     const boundedHoles = builderSites.flatMap((s) => s.holes).filter(isBounded);
-    expect(boundedSites.length).toBe(25);
-    expect(boundedHoles.length).toBe(30);
+    expect(boundedSites.length).toBe(26);
+    expect(boundedHoles.length).toBe(31);
   });
 
   it("counts the profile subsystem's twelve refusal sites and twenty-three holes", () => {

@@ -14,11 +14,10 @@ HIPAA **005010** healthcare sets and nothing else. Every set in the map below sh
 function reads it, which builds it, and the one field each one preserves *verbatim* because getting
 it wrong causes harm.
 
-> **The 276 inquiry is not in the map, and that is not an omission.** There is no `get276` reader
-> and no `build276` builder. It parses into segments, composites, and dot-paths like any other X12
-> input, but it decodes into a typed model on neither side. Only its response, the 277, does. The
-> 270 eligibility inquiry is a different case and IS in the map: it has a reader and a builder of
-> its own.
+> **Both inquiry directions are in the map now.** The 270 eligibility inquiry and the 276 claim
+> status request each have a reader and a builder of their own; this note used to say the 276 had
+> neither. Keep the two written separately: the 276 and the 277 are two halves of ONE implementation
+> guide (`005010X212`) and one paired label over two halves is how this page was wrong once already.
 
 > **Depth tracks the code.** Every function named below is a shipped export. Where a set has a
 > read-side limitation (e.g. 837 claim-/line-level provider addresses), it is called out in
@@ -30,6 +29,7 @@ it wrong causes harm.
 |---|---|---|---|---|
 | **270** | Eligibility inquiry | `get270Inquiry` / `parse270Inquiries` | `build270` | the declared HL parent pointers, never re-numbered and never re-parented |
 | **271** | Eligibility response | `get271Eligibility` | `build271` | the 270's `TRN-02` trace, echoed onto the 271 (reassociation) |
+| **276** | Claim status request | `get276StatusInquiry` / `parse276StatusInquiries` | `build276` | the declared HL parent pointers, never re-numbered and never re-parented; the `TRN-02` trace the 277 must echo |
 | **277** | Claim status response | `get277Status` | `build277` | the 276's trace; the STC category/status/entity triple |
 | **277CA** | Claim acknowledgment | `get277CADisposition` | `build277CA` | per-claim accept/reject disposition + your submitted trace |
 | **278** | Services review request / response | `get278Request` / `get278Response` | `build278Request` / `build278Response` | the `HCR-01` certification action (response), never inferred |

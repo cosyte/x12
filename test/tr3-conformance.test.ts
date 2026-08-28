@@ -46,6 +46,7 @@ import * as x12 from "../src/index.js";
 import type {
   Build270Spec,
   Build271Spec,
+  Build276Spec,
   Build277Spec,
   Build278Spec,
   Build820Spec,
@@ -98,6 +99,7 @@ const CFR_162_920_IDENTIFIERS: ReadonlySet<string> = new Set([
 const EXPECTED_ROWS: readonly (readonly [string, string | null, string | null])[] = [
   ["270", null, "005010X279A1"],
   ["271", null, "005010X279A1"],
+  ["276", null, "005010X212"],
   ["277", null, "005010X212"],
   ["277", "277CA", "005010X214"],
   ["278", "request", "005010X217"],
@@ -534,6 +536,61 @@ const SPEC_277: Build277Spec = {
   ],
 };
 
+const SPEC_276: Build276Spec = {
+  envelope: ENVELOPE,
+  informationSources: [
+    {
+      name: {
+        entityIdentifierCode: "PR",
+        entityTypeQualifier: "2",
+        lastNameOrOrganizationName: "MEDPAY INSURANCE",
+        idQualifier: "PI",
+        idCode: "00123",
+      },
+      receivers: [
+        {
+          name: {
+            entityIdentifierCode: "41",
+            entityTypeQualifier: "2",
+            lastNameOrOrganizationName: "CLEARINGHOUSE",
+            idQualifier: "46",
+            idCode: "CH001",
+          },
+          providers: [
+            {
+              name: {
+                entityIdentifierCode: "1P",
+                entityTypeQualifier: "2",
+                lastNameOrOrganizationName: "ANYTOWN CLINIC",
+                idQualifier: "XX",
+                idCode: "1234567890",
+              },
+              subscribers: [
+                {
+                  name: {
+                    entityIdentifierCode: "IL",
+                    entityTypeQualifier: "1",
+                    lastNameOrOrganizationName: "DOE",
+                    firstName: "JANE",
+                    idQualifier: "MI",
+                    idCode: "MBR0001",
+                  },
+                  claims: [
+                    {
+                      trace: { traceTypeCode: "1", referenceId: "STATUS20260627001" },
+                      references: [{ qualifier: "1K", value: "PCN0001" }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
 const SPEC_278: Build278Spec = {
   envelope: ENVELOPE,
   header: {
@@ -703,6 +760,7 @@ function st03(ix: X12Interchange): string {
 const EMITTED_ST03: ReadonlyMap<string, string> = new Map([
   ["270|", st03(x12.build270(SPEC_270))],
   ["271|", st03(x12.build271(SPEC_271))],
+  ["276|", st03(x12.build276(SPEC_276))],
   ["277|", st03(x12.build277(SPEC_277))],
   ["277|277CA", st03(x12.build277CA(SPEC_277))],
   ["278|request", st03(x12.build278Request(SPEC_278))],
@@ -1124,26 +1182,52 @@ describe("AC9: a row is never empty where it looks populated", () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC10: nothing is claimed for a transaction that has neither direction.
+// AC10: the 276 and the 277 are two halves of ONE guide, and both are here.
+//
+// This block used to assert the OPPOSITE, because the package implemented the
+// 277 half alone: no 276 row, no 276 reader or builder, and a note on the 277
+// row saying so. The 276 shipped, so the assertions are inverted rather than
+// deleted - what they are for is that the row set and the entry point agree
+// about this pair, in whichever direction the truth runs.
 // ---------------------------------------------------------------------------
 
-describe("AC10: no row for a transaction this package does not implement", () => {
-  it("carries no 276 row", () => {
-    expect(ROWS.filter((r) => r.transaction === "276")).toEqual([]);
-    expect(ROWS.filter((r) => r.variant === "276")).toEqual([]);
+describe("AC10: the 276 and 277 halves of 005010X212 each carry a row", () => {
+  it("carries a 276 row naming the same guide as the 277", () => {
+    expect(row("276", null).tr3).toBe("005010X212");
+    expect(row("276", null).tr3).toBe(row("277", null).tr3);
+    expect(row("276", null).title).toContain("Request");
+    expect(row("277", null).title).toContain("Response");
   });
 
-  it("has no 276 reader or builder to justify one", () => {
-    expect(IMPLEMENTED.filter((entry) => entry.transaction === "276")).toEqual([]);
-    expect(ENTRY_POINT_EXPORTS.filter((name) => name.includes("276"))).toEqual([]);
+  it("has a 276 reader and a 276 builder to justify it", () => {
+    expect(
+      sorted(IMPLEMENTED.filter((e) => e.transaction === "276").map((e) => e.direction)),
+    ).toEqual(["build", "read", "read"]);
+    expect(
+      sorted(
+        ENTRY_POINT_EXPORTS.filter(
+          (name) => /^(?:get|parse|build)/.test(name) && name.includes("276"),
+        ),
+      ),
+    ).toEqual(["build276", "get276StatusInquiry", "parse276StatusInquiries"]);
   });
 
-  it("records on the 277 row that the adopted identifier covers the pair", () => {
-    const note = row("277", null).note ?? "";
-    expect(note).toContain("005010X212");
-    expect(note).toContain("276");
-    expect(note).toContain("277");
-    expect(note.toLowerCase()).toContain("half");
+  it("records on both rows that the adopted identifier covers the pair", () => {
+    for (const transaction of ["276", "277"]) {
+      const note = row(transaction, null).note ?? "";
+      expect(note).toContain("005010X212");
+      expect(note).toContain("276");
+      expect(note).toContain("277");
+      expect(note.toLowerCase()).toContain("half");
+    }
+  });
+
+  it("gives the two halves the same adoption and the same adopted identifiers", () => {
+    expect(row("276", null).adoption).toBe(row("277", null).adoption);
+    expect(row("276", null).cfrAdopted).toEqual(row("277", null).cfrAdopted);
+    // And they are NOT the same array object, so a consumer holding one cannot
+    // change what a reader of the other sees.
+    expect(row("276", null).cfrAdopted).not.toBe(row("277", null).cfrAdopted);
   });
 });
 

@@ -60,6 +60,7 @@ import * as rootExports from "../src/index.js";
 import {
   build270,
   build271,
+  build276,
   build277,
   build277CA,
   build278Request,
@@ -83,6 +84,7 @@ import {
 import type {
   Build270Spec,
   Build271Spec,
+  Build276Spec,
   Build277Spec,
   Build278Spec,
   Build820Spec,
@@ -315,6 +317,61 @@ const SPEC_270: Build270Spec = {
                 idCode: "MBR0001",
               },
               inquiries: [{ serviceTypeCodes: [{ code: "30" }] }],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+const SPEC_276: Build276Spec = {
+  envelope: ENVELOPE,
+  informationSources: [
+    {
+      name: {
+        entityIdentifierCode: "PR",
+        entityTypeQualifier: "2",
+        lastNameOrOrganizationName: "MEDPAY INSURANCE",
+        idQualifier: "PI",
+        idCode: "PAYER01",
+      },
+      receivers: [
+        {
+          name: {
+            entityIdentifierCode: "41",
+            entityTypeQualifier: "2",
+            lastNameOrOrganizationName: "ANYTOWN CLINIC",
+            idQualifier: "46",
+            idCode: "RECVR01",
+          },
+          providers: [
+            {
+              name: {
+                entityIdentifierCode: "1P",
+                entityTypeQualifier: "2",
+                lastNameOrOrganizationName: "ANYTOWN CLINIC",
+                idQualifier: "XX",
+                idCode: "1234567890",
+              },
+              subscribers: [
+                {
+                  name: {
+                    entityIdentifierCode: "IL",
+                    entityTypeQualifier: "1",
+                    lastNameOrOrganizationName: "DOE",
+                    firstName: "JANE",
+                    idQualifier: "MI",
+                    idCode: "MBR0001",
+                  },
+                  claims: [
+                    {
+                      trace: { traceTypeCode: "1", referenceId: "STATUS0001" },
+                      references: [{ qualifier: "1K", value: "PCN0001" }],
+                    },
+                  ],
+                },
+              ],
             },
           ],
         },
@@ -676,6 +733,10 @@ const BUILDER_CASES: Readonly<Record<string, BuilderCase>> = {
   build271: {
     emit: () => serializeX12(build271(SPEC_271)),
     refuse: () => serializeX12(build271({ ...SPEC_271, envelope: BAD_ENVELOPE })),
+  },
+  build276: {
+    emit: () => serializeX12(build276(SPEC_276)),
+    refuse: () => serializeX12(build276({ ...SPEC_276, envelope: BAD_ENVELOPE })),
   },
   build277: {
     emit: () => serializeX12(build277(SPEC_277)),

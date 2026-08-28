@@ -271,11 +271,11 @@ describe("builder element escaping: the source gate", () => {
     // scanned (a rename, a moved directory) is a failure rather than a silently
     // smaller sweep.
     //
-    // ELEVEN now: the 270 domain builder declares one like every other builder
-    // that emits a variable-width element, so the sweep grew with the surface
-    // rather than around it.
-    expect(declarations).toHaveLength(11);
-    expect(new Set(declarations.map((d) => d.file)).size).toBe(11);
+    // ELEVEN with the 270 domain builder and TWELVE with the 276 one: each
+    // declares an `esc` like every other builder that emits a variable-width
+    // element, so the sweep grew with the surface rather than around it.
+    expect(declarations).toHaveLength(12);
+    expect(new Set(declarations.map((d) => d.file)).size).toBe(12);
     expect(modules.some((m) => m.endsWith(join("transactions", "ack", "build-ta1.ts")))).toBe(true);
     expect(
       declarations.some((d) => d.file.endsWith(join("transactions", "ack", "build-ta1.ts"))),
@@ -283,9 +283,10 @@ describe("builder element escaping: the source gate", () => {
   });
 
   it("pins the invocation count, because the first draft published a line count", () => {
-    // 451 invocations, counted comment-stripped on this tree with `ctx.esc(...)`
-    // included. The 270 domain builder added the difference from 408, across
-    // its envelope, its BHT, its four loop emitters and its EQ composites; the
+    // 487 invocations, counted comment-stripped on this tree with `ctx.esc(...)`
+    // included. The 276 domain builder added the difference from 451, across
+    // its envelope, its BHT, its five loop emitters, its claim loop and its SVC
+    // composite; the 270 one had added the difference from 408 before it. The
     // figure below moved in the same commit as the code, which is what pinning
     // it is for. The rest of this note is the history of the number.
     //
@@ -316,8 +317,8 @@ describe("builder element escaping: the source gate", () => {
           .filter((l) => /\besc\(/u.test(l)).length,
       0,
     );
-    expect(invocations).toBe(451);
-    expect(lines).toBe(419);
+    expect(invocations).toBe(487);
+    expect(lines).toBe(452);
     expect(invocations).toBeGreaterThan(lines);
   });
 
@@ -342,14 +343,16 @@ describe("builder element escaping: the source gate", () => {
       .filter(([, n]) => n > 1);
     expect(findings).toEqual([]);
 
-    // The five that remain are each the one-line body of that module's
-    // `escDec`. `build-837`'s reads through `decStr`, so it has none.
+    // The six that remain are each the one-line body of that module's
+    // `escDec`; the sixth arrived with the 276 domain builder, which emits an
+    // AMT amount and an SVC charge and units. `build-837`'s reads through
+    // `decStr`, so it has none.
     const declared = modules.filter((m) =>
       /function escDec\([^\n]*\n\s*return esc\(requireCallerDecimal\([^\n]*\.toString\(\)\);/u.test(
         code(m),
       ),
     );
-    expect(declared).toHaveLength(5);
+    expect(declared).toHaveLength(6);
     expect(modules.filter((m) => escToStringSlots(m) === 1)).toEqual(declared);
   });
 

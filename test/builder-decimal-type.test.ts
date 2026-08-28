@@ -93,11 +93,16 @@ import {
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
 
-/** The six builder modules that emit an `X12Decimal`. Re-derived, not listed. */
+/**
+ * The seven builder modules that emit an `X12Decimal`. Re-derived, not listed.
+ * The seventh is `build-276.ts`, which emits an AMT claim amount and the SVC
+ * line charge and units of a claim-status REQUEST.
+ */
 const DECIMAL_MODULES = [
   join("transactions", "claim", "build-837.ts"),
   join("transactions", "remit", "build-835.ts"),
   join("transactions", "premium", "build-820.ts"),
+  join("transactions", "status", "build-276.ts"),
   join("transactions", "status", "build-277.ts"),
   join("transactions", "eligibility", "build-271.ts"),
   join("transactions", "enrollment", "build-834.ts"),
