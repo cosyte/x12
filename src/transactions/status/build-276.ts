@@ -42,6 +42,7 @@ import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
+import { FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET } from "../../code-lists/functional-identifier.js";
 import type { X12Decimal } from "../../decimal.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
@@ -167,18 +168,23 @@ function leafList<T>(value: readonly T[] | null | undefined, at: string): readon
  */
 const X212_VERSION_RELEASE = "005010X212";
 
-/**
- * GS-01 functional identifier code for the 276. `HR` = Health Care Claim Status
- * Request, X12 data element 479. It is deliberately NOT the 277's `HN` (Health
- * Care Claim Status Notification): the two directions of this pair carry
- * different functional identifiers exactly as the eligibility pair's `HS`
- * inquiry and `HB` information do, and reusing the response's code would put a
- * request in a group a receiver routes to its response handler. @internal
- */
-const X12_276_FUNCTIONAL_ID = "HR";
-
 /** ST-01 transaction set identifier code for the claim status REQUEST. @internal */
 const X12_276_TRANSACTION_SET_ID = "276";
+
+/**
+ * GS-01 functional identifier code for the 276, READ OUT OF the cited data
+ * element 479 table rather than restated here. That table records where the
+ * value came from and is cross-checked against the GS-01 the eight other
+ * builders in this package already declare, which is what stops this slot being
+ * one module's assertion about a document nobody here can open.
+ *
+ * It resolves to a DIFFERENT code from the 277's, and that is the safety
+ * property: the two directions of this pair travel under their own functional
+ * identifiers exactly as the eligibility pair's inquiry and information halves
+ * do, and reusing the response's code would put a request in a group a receiver
+ * routes to its response handler. @internal
+ */
+const X12_276_FUNCTIONAL_ID = FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET[X12_276_TRANSACTION_SET_ID];
 
 /** GS-07 standards agency code - `X` for ASC X12. @internal */
 const X12_AGENCY_CODE = "X";

@@ -16,9 +16,10 @@ import type { X12Decimal } from "../../decimal.js";
 
 /**
  * Interchange, group and transaction identity for the built 276. Mirrors
- * {@link "./build-277-types.js".Build277EnvelopeSpec}; the builder fixes GS-01
- * to `"HR"` (Health Care Claim Status Request) and the version and release to
- * `"005010X212"`, so the caller never hand-codes them.
+ * {@link "./build-277-types.js".Build277EnvelopeSpec}; the builder fixes the
+ * version and release to `"005010X212"` and takes GS-01 from the cited data
+ * element 479 table at `src/code-lists/functional-identifier.ts`, so the caller
+ * never hand-codes either.
  *
  * @example
  * ```ts

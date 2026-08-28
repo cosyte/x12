@@ -5,9 +5,11 @@
  *   reconcile, parsing it raises NO warning, and it round-trips through
  *   `get276StatusInquiry` field for field.
  * - Envelope identity: GS-01 `HR`, ST-01 `276`, ST-03 / GS-08 `005010X212`, and
- *   a BHT whose purpose code says request. The identifiers are the ones this
- *   TR3 gives the claim-status REQUEST and are deliberately NOT the 277's
- *   response identifiers.
+ *   a BHT whose purpose code says request, none of them the 277's response
+ *   identifiers. GS-01 is not asserted here as something this TR3 "gives": the
+ *   package has not purchased that TR3, and the value is read from the cited
+ *   data element 479 table at `src/code-lists/functional-identifier.ts`, whose
+ *   own provenance gate is `test/code-lists-functional-identifier.test.ts`.
  * - The HL spine the builder OWNS: every HL-01, HL-02 and HL-04 is computed
  *   from the nested tree, so a caller cannot state an inconsistent hierarchy.
  * - Refusals, which are the whole of "spec-clean by construction": no
@@ -55,6 +57,7 @@ import type {
   X12ParseWarning,
   X12StatusInquiry,
 } from "../src/index.js";
+import { FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET } from "../src/code-lists/functional-identifier.js";
 
 import { specFromModel } from "./_helpers/status-inquiry-spec.js";
 
@@ -316,7 +319,8 @@ describe("build276: the emitted document", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Envelope identity: the identifiers 005010X212 gives the REQUEST.
+// Envelope identity: the identifiers the REQUEST travels under, and where each
+// of them came from.
 // ---------------------------------------------------------------------------
 
 describe("build276: the envelope identifiers", () => {
@@ -331,12 +335,25 @@ describe("build276: the envelope identifiers", () => {
     expect(tx?.st.elements[3]).toBe("005010X212");
   });
 
+  it("takes GS-01 from the cited element 479 table rather than a literal of its own", () => {
+    // Provenance, not just value. The assertion above pins WHICH code reaches
+    // the wire; this one pins WHERE it came from, which is the half a literal
+    // in this file cannot distinguish from a code supplied out of thin air.
+    // `src/code-lists/functional-identifier.ts` is that carrier, it records the
+    // reference it was read from, and eight of its nine rows are cross-checked
+    // against the GS-01 this package's other builders already declare by
+    // `test/code-lists-functional-identifier.test.ts`.
+    const ix = build276(MINIMAL_SPEC);
+    expect(ix.groups[0]?.gs.elements[1]).toBe(FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET["276"]);
+  });
+
   it("does NOT reuse the 277's response functional identifier", () => {
     // `HN` is the claim status NOTIFICATION, which is the response half of this
     // pair. A request in an `HN` group is one a receiver routes to its response
     // handler, so the two must differ and this pins that they do.
     const ix = build276(MINIMAL_SPEC);
     expect(ix.groups[0]?.gs.elements[1]).not.toBe("HN");
+    expect(ix.groups[0]?.gs.elements[1]).not.toBe(FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET["277"]);
   });
 
   it("emits a BHT whose purpose code says request", () => {

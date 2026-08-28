@@ -43,9 +43,17 @@ model.
 **Emit.** `build276(spec)` emits a spec-clean 276 by construction: it owns the
 HL spine, computing every HL-01, HL-02 and HL-04 from the nested spec, so a
 structurally inconsistent hierarchy is unrepresentable and SE-01 is correct by
-construction. It stamps the identifiers `005010X212` gives the claim status
-REQUEST - GS-01 `HR`, ST-01 `276`, GS-08 and ST-03 `005010X212` - and never
-reuses the 277's response identifier `HN`.
+construction. It stamps ST-01 `276` and `005010X212` into GS-08 and ST-03, and
+takes GS-01 from a new cited data element 479 table
+(`src/code-lists/functional-identifier.ts`) rather than restating a code from a
+TR3 this package has not purchased. That table records the reference it was read
+from, with the retrieval date and content digest, and bundles code values only:
+descriptions ship from it no more than they do from the AAA snapshots beside it,
+because the redistribution terms recorded there do not permit it. Eight of its
+nine rows are cross-checked against the GS-01 this package's other builders
+already declare, so the row the 276 uses arrives with the same eight-way
+agreement behind it. The resulting GS-01 is `HR`, which is not the 277's
+response identifier `HN`.
 
 It refuses, with the typed `ClaimStatus276BuildError` and its own stable
 `CLAIM_STATUS_276_BUILD_ERROR_CODES`, anything it cannot make spec-clean: no
