@@ -31,7 +31,13 @@ export {
   type ClaimAdjustmentGroupCode,
 } from "./cagc.js";
 export { RARC, lookupRarc } from "./rarc.js";
+export { codeListRedistributionIsPermitted } from "./meta.js";
 export type { CodeListEntry, CodeListMeta, CodeListSnapshot } from "./meta.js";
+export type {
+  CodeListCompleteness,
+  CodeListRedistribution,
+  CodeListRedistributionStatus,
+} from "./redistribution.js";
 export {
   HI_QUALIFIERS,
   isDiagnosisQualifier,

@@ -21,6 +21,7 @@
  */
 
 import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js";
+import { CLAIM_STATUS_REDISTRIBUTION } from "./redistribution.js";
 
 /**
  * Bundled Claim Status Category Code (CSCC) snapshot. Used by the 277 and
@@ -32,6 +33,7 @@ import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js
  * import { CLAIM_STATUS_CATEGORY_CODES } from "@cosyte/x12";
  * CLAIM_STATUS_CATEGORY_CODES.codes["A2"]; // "Acknowledgement/Acceptance into adjudication system"
  * CLAIM_STATUS_CATEGORY_CODES.codes["F2"]; // "Finalized/Denial"
+ * CLAIM_STATUS_CATEGORY_CODES.meta.redistribution?.status; // "licence-required"
  * ```
  */
 export const CLAIM_STATUS_CATEGORY_CODES: CodeListSnapshot = Object.freeze({
@@ -43,6 +45,9 @@ export const CLAIM_STATUS_CATEGORY_CODES: CodeListSnapshot = Object.freeze({
     publishedDate: "2023-11-01",
     snapshotDate: "2026-06-27",
     note: "Common A/P/F/D/E-family subset; WPC-maintained list refreshed on the Phase 10 release cadence, never at runtime.",
+    maintainingOrganization: "ASC X12",
+    redistribution: CLAIM_STATUS_REDISTRIBUTION,
+    completeness: "cited-subset",
   }),
   codes: Object.freeze({
     A0: "Acknowledgement/Forwarded - The claim/encounter has been forwarded to another entity.",

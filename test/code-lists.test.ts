@@ -9,22 +9,48 @@
  * - `isClaimAdjustmentGroupCode` narrows correctly.
  * - The fixed-4 Claim Adjustment Group Codes are exactly CO/PR/OA/PI.
  * - Snapshots are frozen (no mutation).
+ * - The maintaining organisation and the redistribution status a consumer
+ *   reads off `meta`, as two separately readable values.
+ * - Whether a snapshot is the complete published list or a cited part of it.
+ * - That a list which may not be redistributed is STILL exactly the part it
+ *   already shipped, and names the licensor who could change that.
+ * - That this change added no code and altered no description, pinned by
+ *   digest so an addition or an edit reds here.
  */
+
+import { createHash } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
 import {
   CARC,
   CLAIM_ADJUSTMENT_GROUP_CODES,
+  CLAIM_STATUS_CATEGORY_CODES,
+  CLAIM_STATUS_CODES,
   CLP_STATUS,
+  MAINTENANCE_TYPE_CODES,
   RARC,
+  SERVICE_TYPE_CODES,
+  codeListRedistributionIsPermitted,
   isClaimAdjustmentGroupCode,
   lookupCarc,
   lookupClpStatus,
   lookupRarc,
 } from "../src/index.js";
+import type { CodeListSnapshot } from "../src/index.js";
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/u;
+
+/** Every bundled `CodeListSnapshot`, named. */
+const ALL_SNAPSHOTS: readonly (readonly [string, CodeListSnapshot])[] = [
+  ["CARC", CARC],
+  ["RARC", RARC],
+  ["CLAIM_STATUS_CATEGORY_CODES", CLAIM_STATUS_CATEGORY_CODES],
+  ["CLAIM_STATUS_CODES", CLAIM_STATUS_CODES],
+  ["SERVICE_TYPE_CODES", SERVICE_TYPE_CODES],
+  ["CLP_STATUS", CLP_STATUS],
+  ["MAINTENANCE_TYPE_CODES", MAINTENANCE_TYPE_CODES],
+];
 
 describe("code-list metadata invariants", () => {
   it.each([
@@ -92,5 +118,207 @@ describe("Claim Adjustment Group Codes (CAGC)", () => {
     expect(isClaimAdjustmentGroupCode("CR")).toBe(false);
     expect(isClaimAdjustmentGroupCode("")).toBe(false);
     expect(isClaimAdjustmentGroupCode("pr")).toBe(false);
+  });
+});
+
+describe("AC-3: a consumer reads the maintainer and the terms as two separate values", () => {
+  it.each(ALL_SNAPSHOTS)("%s: both are on the published metadata", (name, snap) => {
+    expect(snap.meta.maintainingOrganization, `${name} maintainer`).toBeTruthy();
+    expect(snap.meta.redistribution, `${name} redistribution`).toBeDefined();
+    // Two READINGS, not one verdict: who keeps the list, and what may be done
+    // with its text, are answered in different fields.
+    expect(typeof snap.meta.maintainingOrganization).toBe("string");
+    expect(typeof snap.meta.redistribution?.status).toBe("string");
+  });
+
+  it("Claim Adjustment Reason Codes: maintained by X12, and a licence must be purchased", () => {
+    expect(CARC.meta.maintainingOrganization).toBe("ASC X12");
+    expect(CARC.meta.redistribution?.status).toBe("licence-required");
+    expect(codeListRedistributionIsPermitted(CARC.meta)).toBe(false);
+  });
+
+  it("Remittance Advice Remark Codes: maintained by CMS, and no licence is required", () => {
+    expect(RARC.meta.maintainingOrganization).toBe("CMS");
+    expect(RARC.meta.redistribution?.status).toBe("permitted");
+    expect(codeListRedistributionIsPermitted(RARC.meta)).toBe(true);
+    // Nobody to ask, because nothing needs asking.
+    expect(RARC.meta.redistribution?.approach).toBeUndefined();
+  });
+
+  it("the two answers vary independently across the bundled lists", () => {
+    // If either field were a constant it would be carrying no information, and
+    // the single shared review this replaced would have been adequate.
+    expect(new Set(ALL_SNAPSHOTS.map(([, s]) => s.meta.maintainingOrganization)).size).toBe(2);
+    expect(new Set(ALL_SNAPSHOTS.map(([, s]) => s.meta.redistribution?.status)).size).toBe(3);
+  });
+
+  it.each(ALL_SNAPSHOTS)("%s: the metadata is frozen, record included", (name, snap) => {
+    expect(Object.isFrozen(snap.meta), name).toBe(true);
+    expect(Object.isFrozen(snap.meta.redistribution), name).toBe(true);
+  });
+});
+
+describe("AC-4: a snapshot says whether it is the whole list or a cited part of it", () => {
+  it.each(ALL_SNAPSHOTS)("%s: completeness is one of the two stated values", (name, snap) => {
+    expect(["complete-published-list", "cited-subset"], name).toContain(snap.meta.completeness);
+  });
+
+  it("every bundled list is a cited part today, which is why a miss means nothing", () => {
+    // The distinction this exists for: outside a cited part, a lookup miss says
+    // this package does not carry the code, NOT that the publisher never issued
+    // it. Reading a miss as the second answer is the wrong-answer failure.
+    for (const [name, snap] of ALL_SNAPSHOTS) {
+      expect(snap.meta.completeness, name).toBe("cited-subset");
+    }
+    expect(lookupCarc("9999")).toBeUndefined();
+  });
+});
+
+describe("AC-2: a list that may not be redistributed stays put, and names its licensor", () => {
+  const RESTRICTED = ALL_SNAPSHOTS.filter(([, s]) => !codeListRedistributionIsPermitted(s.meta));
+
+  it("there are restricted lists to test, so the cases below are not vacuous", () => {
+    expect(RESTRICTED.map(([name]) => name)).toEqual([
+      "CARC",
+      "CLAIM_STATUS_CATEGORY_CODES",
+      "CLAIM_STATUS_CODES",
+      "SERVICE_TYPE_CODES",
+      "CLP_STATUS",
+      "MAINTENANCE_TYPE_CODES",
+    ]);
+  });
+
+  it.each(RESTRICTED)("%s: is still exactly a cited part, not enlarged", (name, snap) => {
+    expect(snap.meta.completeness, name).toBe("cited-subset");
+  });
+
+  it.each(RESTRICTED)("%s: names the licensor who must be approached", (name, snap) => {
+    const approach = snap.meta.redistribution?.approach ?? "";
+    expect(approach.length, name).toBeGreaterThan(0);
+    // A named party AND a route to it. A refusal naming neither is a dead end.
+    expect(approach, name).toContain("ASC X12");
+    expect(approach, name).toContain("https://x12.org/products/licensing-program");
+  });
+});
+
+describe("AC-8: no code and no description changed", () => {
+  /**
+   * Digest of a bundled list's exact `code -> description` pairs, order
+   * normalised so a re-ordering is not mistaken for an edit.
+   *
+   * A digest rather than a copy of the tables ON PURPOSE. Six of the seven
+   * lists carry descriptions this package may not redistribute, and pasting a
+   * second copy of them into a test would be exactly the exposure the record
+   * beside them exists to prevent. The digest pins every byte without making a
+   * copy, and the explicit code keys below make the "added none" half readable.
+   */
+  function digest(snap: CodeListSnapshot): string {
+    const entries = Object.entries(snap.codes).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return createHash("sha256").update(JSON.stringify(entries), "utf8").digest("hex");
+  }
+
+  /**
+   * Taken on the tree BEFORE this change, with `codes` untouched by it. A code
+   * added, a code dropped or a description reworded moves the digest.
+   */
+  const EXPECTED: Readonly<Record<string, { readonly count: number; readonly sha256: string }>> = {
+    CARC: {
+      count: 29,
+      sha256: "529df9cbe8d9a3c8f2020980dc21fb3f103fd01b7ffed834314562062ac9f2b3",
+    },
+    RARC: {
+      count: 12,
+      sha256: "670183fb3a85760ec5accaa7dce93f83587782e9db5b927fef4c3635edd75bfc",
+    },
+    "CLAIM-STATUS-CATEGORY": {
+      count: 29,
+      sha256: "09fd13c05e5b90167f70afd53c3fb31bb89f465e5b9fe65ac458a868bb0f06a5",
+    },
+    "CLAIM-STATUS": {
+      count: 25,
+      sha256: "09d95f60ac0bf591bc53f2acbebb9ddaea0c0c49f90efd7f6d9fb4095b7b6ab0",
+    },
+    "SERVICE-TYPE": {
+      count: 40,
+      sha256: "3d75a45b4148ab2ed7f0e5b7a1d655a148ec76425178ab50b21327a69d8f7cec",
+    },
+    "CLP-STATUS": {
+      count: 10,
+      sha256: "3ddc3ad59bfc5f71b5e9f3f038346d051b24135e9f42af721f85ec1255c944ca",
+    },
+    "MAINTENANCE-TYPE": {
+      count: 9,
+      sha256: "931caca746a13573d78acf77f58a1671ef91e59d3525c638f213e12b5378f181",
+    },
+  };
+
+  it.each(ALL_SNAPSHOTS)("%s: returns exactly the codes it returned before", (name, snap) => {
+    const expected = EXPECTED[snap.meta.id];
+    expect(expected, `${name} has a pinned baseline`).toBeDefined();
+    expect(Object.keys(snap.codes).length, name).toBe(expected?.count);
+    expect(digest(snap), `${name}: a code or a description changed`).toBe(expected?.sha256);
+  });
+
+  it("the codes a restricted list carries are the ones it already carried", () => {
+    // Spelled out for the two lists a consumer leans on hardest, so a diff of
+    // the bundled set is readable and not only digest-deep.
+    expect(Object.keys(CARC.codes).sort()).toEqual(
+      [
+        "1",
+        "10",
+        "109",
+        "11",
+        "119",
+        "15",
+        "16",
+        "18",
+        "197",
+        "2",
+        "204",
+        "22",
+        "23",
+        "24",
+        "26",
+        "27",
+        "29",
+        "3",
+        "31",
+        "4",
+        "45",
+        "5",
+        "50",
+        "6",
+        "7",
+        "8",
+        "9",
+        "96",
+        "97",
+      ].sort(),
+    );
+    expect(Object.keys(RARC.codes).sort()).toEqual(
+      [
+        "M1",
+        "M127",
+        "M86",
+        "MA01",
+        "MA15",
+        "N122",
+        "N130",
+        "N179",
+        "N30",
+        "N4",
+        "N522",
+        "N657",
+      ].sort(),
+    );
+  });
+
+  it("CONTROL: the digest really does move when a description changes", () => {
+    // Without this the pins above could pass over a broken digest function.
+    const altered: CodeListSnapshot = {
+      meta: CARC.meta,
+      codes: { ...CARC.codes, "1": "Deductible Amount (edited)" },
+    };
+    expect(digest(altered)).not.toBe(EXPECTED["CARC"]?.sha256);
   });
 });

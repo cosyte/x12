@@ -17,6 +17,7 @@
  */
 
 import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js";
+import { X12_TR3_REDISTRIBUTION_NOT_ESTABLISHED } from "./redistribution.js";
 
 /**
  * Bundled CLP-02 (Claim Status) snapshot. Used by the 835 helper to
@@ -28,6 +29,7 @@ import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js
  * import { CLP_STATUS } from "@cosyte/x12";
  * CLP_STATUS.codes["1"];  // "Processed as Primary"
  * CLP_STATUS.codes["4"];  // "Denied"
+ * CLP_STATUS.meta.redistribution?.status; // "not-established"
  * ```
  */
 export const CLP_STATUS: CodeListSnapshot = Object.freeze({
@@ -38,6 +40,9 @@ export const CLP_STATUS: CodeListSnapshot = Object.freeze({
     publishedDate: "2010-04-01",
     snapshotDate: "2026-06-27",
     note: "Initial subset; X12-internal list (not WPC) - codes are stable.",
+    maintainingOrganization: "ASC X12",
+    redistribution: X12_TR3_REDISTRIBUTION_NOT_ESTABLISHED,
+    completeness: "cited-subset",
   }),
   codes: Object.freeze({
     "1": "Processed as Primary",

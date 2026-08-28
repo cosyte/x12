@@ -23,6 +23,7 @@
  */
 
 import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js";
+import { CARC_REDISTRIBUTION } from "./redistribution.js";
 
 /**
  * Bundled CARC snapshot. `meta.publishedDate` is the WPC publication
@@ -31,12 +32,20 @@ import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js
  * the ergonomic `{ code, description }` shape consumed by the 835
  * helper.
  *
+ * `meta.maintainingOrganization` and `meta.redistribution` carry the answer a
+ * consumer needs before displaying, caching or re-publishing a description:
+ * this list is X12's and its descriptions require a purchased licence, so the
+ * bundled snapshot stays exactly the cited part it has always been and the
+ * record names the licensor to approach.
+ *
  * @example
  * ```ts
  * import { CARC } from "@cosyte/x12";
- * CARC.meta.snapshotDate;          // "2026-06-27"
- * CARC.codes["45"];                // "Charge exceeds fee schedule..."
- * Object.keys(CARC.codes).length;  // count of bundled codes
+ * CARC.meta.snapshotDate;              // "2026-06-27"
+ * CARC.codes["45"];                    // "Charge exceeds fee schedule..."
+ * Object.keys(CARC.codes).length;      // count of bundled codes
+ * CARC.meta.maintainingOrganization;   // "ASC X12"
+ * CARC.meta.redistribution?.status;    // "licence-required"
  * ```
  */
 export const CARC: CodeListSnapshot = Object.freeze({
@@ -47,6 +56,9 @@ export const CARC: CodeListSnapshot = Object.freeze({
     publishedDate: "2026-03-01",
     snapshotDate: "2026-06-27",
     note: "Pre-launch initial subset (~30 most commonly observed codes). Phase 10 ships a full-regen script.",
+    maintainingOrganization: "ASC X12",
+    redistribution: CARC_REDISTRIBUTION,
+    completeness: "cited-subset",
   }),
   codes: Object.freeze({
     "1": "Deductible Amount",

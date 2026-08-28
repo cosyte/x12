@@ -14,6 +14,7 @@
  */
 
 import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js";
+import { X12_TR3_REDISTRIBUTION_NOT_ESTABLISHED } from "./redistribution.js";
 
 /**
  * Bundled INS-03 (Maintenance Type) snapshot. Used by the 834 helper to
@@ -26,6 +27,7 @@ import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js
  * import { MAINTENANCE_TYPE_CODES } from "@cosyte/x12";
  * MAINTENANCE_TYPE_CODES.codes["021"]; // "Addition"
  * MAINTENANCE_TYPE_CODES.codes["024"]; // "Cancellation or Termination"
+ * MAINTENANCE_TYPE_CODES.meta.redistribution?.status; // "not-established"
  * ```
  */
 export const MAINTENANCE_TYPE_CODES: CodeListSnapshot = Object.freeze({
@@ -36,6 +38,9 @@ export const MAINTENANCE_TYPE_CODES: CodeListSnapshot = Object.freeze({
     publishedDate: "2010-04-01",
     snapshotDate: "2026-06-28",
     note: "HIPAA-relevant subset; X12-internal list - codes are stable.",
+    maintainingOrganization: "ASC X12",
+    redistribution: X12_TR3_REDISTRIBUTION_NOT_ESTABLISHED,
+    completeness: "cited-subset",
   }),
   codes: Object.freeze({
     "001": "Change",

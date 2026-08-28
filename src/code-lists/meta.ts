@@ -19,17 +19,27 @@
  * wrong code, only a missing description.
  */
 
+import type { CodeListCompleteness, CodeListRedistribution } from "./redistribution.js";
+
 /**
  * Metadata header attached to every bundled code-list snapshot. Surfaces
  * the snapshot's identity + provenance + freshness so consumers can
- * decide whether a stale description matters for their use case.
+ * decide whether a stale description matters for their use case, and its
+ * maintaining organisation + redistribution record so they can decide
+ * whether displaying, caching or re-publishing a description is theirs to
+ * do. Those last two are SEPARATE readings: who keeps the list and what
+ * may be done with its text are different questions with different
+ * answers, and the bundled lists really do disagree on both.
  *
  * @example
  * ```ts
  * import { CARC } from "@cosyte/x12";
- * CARC.meta.id;             // "CARC"
- * CARC.meta.snapshotDate;   // ISO date string this snapshot was captured
- * CARC.meta.publishedDate;  // ISO date string of the underlying WPC publication
+ * CARC.meta.id;                        // "CARC"
+ * CARC.meta.snapshotDate;              // ISO date string this snapshot was captured
+ * CARC.meta.publishedDate;             // ISO date string of the underlying publication
+ * CARC.meta.maintainingOrganization;   // "ASC X12"
+ * CARC.meta.redistribution?.status;    // "licence-required"
+ * CARC.meta.completeness;              // "cited-subset"
  * ```
  */
 export interface CodeListMeta {
@@ -39,6 +49,46 @@ export interface CodeListMeta {
   readonly publishedDate: string;
   readonly snapshotDate: string;
   readonly note?: string;
+  /**
+   * Who maintains the published list, read off a source carried for this
+   * package. `undefined` means the list carries NO maintainer at all, which
+   * snapshot validation refuses rather than tolerates: a list nobody is
+   * recorded as maintaining is a list nobody can be asked about.
+   */
+  readonly maintainingOrganization: string | undefined;
+  /**
+   * What may be done with this list's descriptions, and whom to approach
+   * where the answer is not "anything". `undefined` means the list carries no
+   * record at all, which snapshot validation refuses. An unsettled question
+   * is recorded as `status: "not-established"` instead, which IS a record.
+   */
+  readonly redistribution: CodeListRedistribution | undefined;
+  /**
+   * Whether `codes` is the complete published list or a cited part of it, so a
+   * code this package does not know can be told from a code the publisher
+   * never issued.
+   */
+  readonly completeness: CodeListCompleteness;
+}
+
+/**
+ * Whether this list's descriptions may be regenerated and redistributed, read
+ * off its own record and nothing else. Only a recorded `"permitted"` answers
+ * `true`: a licence requirement, an unsettled status and a missing record all
+ * answer `false`, so a permission is never inferred from an absence.
+ *
+ * Exported so a consumer applies the same bar this package applies to itself,
+ * rather than re-deriving one from the status string.
+ *
+ * @example
+ * ```ts
+ * import { CARC, RARC, codeListRedistributionIsPermitted } from "@cosyte/x12";
+ * codeListRedistributionIsPermitted(RARC.meta); // true  (CMS, no licence)
+ * codeListRedistributionIsPermitted(CARC.meta); // false (X12, licence required)
+ * ```
+ */
+export function codeListRedistributionIsPermitted(meta: CodeListMeta): boolean {
+  return meta.redistribution?.status === "permitted";
 }
 
 /**

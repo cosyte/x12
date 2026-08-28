@@ -19,17 +19,26 @@
  */
 
 import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js";
+import { RARC_REDISTRIBUTION } from "./redistribution.js";
 
 /**
  * Bundled RARC snapshot. Companion to {@link "./carc.js".CARC}; same
  * freshness + safety posture. Use {@link lookupRarc} for the ergonomic
  * lookup.
  *
+ * **The redistribution answer differs from CARC's, and that is the point of
+ * recording it per list.** This list is maintained by CMS rather than by X12
+ * and needs no licence, so its descriptions are free to redistribute where
+ * CARC's are not. The snapshot is still only the cited part of the published
+ * list, which `meta.completeness` says.
+ *
  * @example
  * ```ts
  * import { RARC } from "@cosyte/x12";
- * RARC.codes["N4"];   // "Missing/incomplete/invalid prior insurance carrier(s) EOB."
- * RARC.codes["MA01"]; // (or undefined if outside this subset)
+ * RARC.codes["N4"];                    // "Missing/incomplete/invalid prior insurance carrier(s) EOB."
+ * RARC.codes["MA01"];                  // (or undefined if outside this subset)
+ * RARC.meta.maintainingOrganization;   // "CMS"
+ * RARC.meta.redistribution?.status;    // "permitted"
  * ```
  */
 export const RARC: CodeListSnapshot = Object.freeze({
@@ -40,6 +49,9 @@ export const RARC: CodeListSnapshot = Object.freeze({
     publishedDate: "2026-03-01",
     snapshotDate: "2026-06-27",
     note: "Pre-launch initial subset (~15 most commonly observed codes). Phase 10 ships a full-regen script.",
+    maintainingOrganization: "CMS",
+    redistribution: RARC_REDISTRIBUTION,
+    completeness: "cited-subset",
   }),
   codes: Object.freeze({
     M1: "X-ray not taken within the past 12 months or near enough to the start of treatment.",
