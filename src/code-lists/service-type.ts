@@ -18,7 +18,7 @@
  */
 
 import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js";
-import { X12_TR3_REDISTRIBUTION_NOT_ESTABLISHED } from "./redistribution.js";
+import { SERVICE_TYPE_REDISTRIBUTION } from "./redistribution.js";
 
 /**
  * Bundled Service Type Code (EB-03) snapshot. Used by the 271 helper to
@@ -30,7 +30,7 @@ import { X12_TR3_REDISTRIBUTION_NOT_ESTABLISHED } from "./redistribution.js";
  * import { SERVICE_TYPE_CODES } from "@cosyte/x12";
  * SERVICE_TYPE_CODES.codes["30"]; // "Health Benefit Plan Coverage"
  * SERVICE_TYPE_CODES.codes["88"]; // "Pharmacy"
- * SERVICE_TYPE_CODES.meta.redistribution?.status; // "not-established"
+ * SERVICE_TYPE_CODES.meta.redistribution?.status; // "licence-required"
  * ```
  */
 export const SERVICE_TYPE_CODES: CodeListSnapshot = Object.freeze({
@@ -43,7 +43,7 @@ export const SERVICE_TYPE_CODES: CodeListSnapshot = Object.freeze({
     snapshotDate: "2026-06-27",
     note: "Initial common subset; X12-maintained list (~600 codes) - refreshed on the Phase 10 release cadence, never at runtime.",
     maintainingOrganization: "ASC X12",
-    redistribution: X12_TR3_REDISTRIBUTION_NOT_ESTABLISHED,
+    redistribution: SERVICE_TYPE_REDISTRIBUTION,
     completeness: "cited-subset",
   }),
   codes: Object.freeze({

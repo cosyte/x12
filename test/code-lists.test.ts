@@ -14,6 +14,10 @@
  * - Whether a snapshot is the complete published list or a cited part of it.
  * - That a list which may not be redistributed is STILL exactly the part it
  *   already shipped, and names the licensor who could change that.
+ * - That the recorded terms agree with the sources they were read off: a list
+ *   the X12 External Code Lists index publishes cites its own row there and
+ *   never claims the index is silent about it, and only the two lists that
+ *   really are absent from it carry the unsettled record.
  * - That this change added no code and altered no description, pinned by
  *   digest so an addition or an edit reds here.
  */
@@ -198,6 +202,101 @@ describe("AC-2: a list that may not be redistributed stays put, and names its li
     // A named party AND a route to it. A refusal naming neither is a dead end.
     expect(approach, name).toContain("ASC X12");
     expect(approach, name).toContain("https://x12.org/products/licensing-program");
+  });
+});
+
+describe("AC-1/AC-5: the recorded terms agree with the sources they were read off", () => {
+  /**
+   * The two sentences a list may only carry if the X12 External Code Lists
+   * index really is silent about it. They are the load-bearing half of the
+   * `"not-established"` answer: a status label is a word, but this is the
+   * evidence a consumer reads to decide whom to approach, and it ships to npm
+   * as public metadata.
+   */
+  const ABSENT_FROM_THE_INDEX = "rather than published on the X12 External Code Lists index";
+  const NAMED_BY_NO_SOURCE = "no source obtained for this package names it";
+
+  /**
+   * Every bundled list the index publishes, with the external code list id its
+   * row carries. Read off the index retrieved for this change; the id is in the
+   * list's own recorded terms, which is what makes the pairing checkable here
+   * rather than a second copy of the source.
+   */
+  const PUBLISHED_ON_THE_INDEX: readonly (readonly [string, CodeListSnapshot, string])[] = [
+    ["CARC", CARC, "139"],
+    ["RARC", RARC, "411"],
+    ["CLAIM_STATUS_CATEGORY_CODES", CLAIM_STATUS_CATEGORY_CODES, "507"],
+    ["CLAIM_STATUS_CODES", CLAIM_STATUS_CODES, "508"],
+    ["SERVICE_TYPE_CODES", SERVICE_TYPE_CODES, "958"],
+  ];
+
+  /** The lists no carried source names at all: TR3-internal element code lists. */
+  const ABSENT_FROM_THE_INDEX_LISTS: readonly (readonly [string, CodeListSnapshot])[] = [
+    ["CLP_STATUS", CLP_STATUS],
+    ["MAINTENANCE_TYPE_CODES", MAINTENANCE_TYPE_CODES],
+  ];
+
+  it.each(PUBLISHED_ON_THE_INDEX)(
+    "%s: cites its external code list id and never claims the index is silent about it",
+    (name, snap, listId) => {
+      const terms = snap.meta.redistribution?.terms ?? "";
+      expect(terms, `${name} cites its index row`).toContain(`external code list ${listId}`);
+      expect(terms, `${name} must not deny a row it has`).not.toContain(ABSENT_FROM_THE_INDEX);
+      expect(terms, `${name} is named by a carried source`).not.toContain(NAMED_BY_NO_SOURCE);
+    },
+  );
+
+  it.each(PUBLISHED_ON_THE_INDEX)(
+    "%s: the terms do not contradict the description in the same frozen object",
+    (name, snap) => {
+      // The snapshot's own description already calls the service type list an
+      // X12 external code source. A `terms` string denying that, sitting in the
+      // same frozen object, is a package disagreeing with itself in public.
+      const terms = snap.meta.redistribution?.terms ?? "";
+      if (snap.meta.description.includes("external code source")) {
+        expect(terms, name).not.toContain("rather than published on the X12");
+      }
+    },
+  );
+
+  it.each(ABSENT_FROM_THE_INDEX_LISTS)(
+    "%s: is TR3-only, so it keeps the unsettled record and says so",
+    (name, snap) => {
+      const terms = snap.meta.redistribution?.terms ?? "";
+      expect(snap.meta.redistribution?.status, name).toBe("not-established");
+      expect(terms, name).toContain("NOT ESTABLISHED");
+      expect(terms, name).toContain(ABSENT_FROM_THE_INDEX);
+      expect(terms, name).toContain(NAMED_BY_NO_SOURCE);
+    },
+  );
+
+  it("CONTROL: both sentences are really in the tree, so the checks above are not vacuous", () => {
+    // If the wording ever moved, the `not.toContain` assertions would pass over
+    // a claim they were written to catch. This pins that they still exist.
+    const unsettled = ALL_SNAPSHOTS.filter(
+      ([, s]) => s.meta.redistribution?.status === "not-established",
+    );
+    expect(unsettled.length).toBeGreaterThan(0);
+    for (const [name, snap] of unsettled) {
+      expect(snap.meta.redistribution?.terms, name).toContain(ABSENT_FROM_THE_INDEX);
+      expect(snap.meta.redistribution?.terms, name).toContain(NAMED_BY_NO_SOURCE);
+    }
+  });
+
+  it("CONTROL: every bundled list is in exactly one of the two tables", () => {
+    const covered = [
+      ...PUBLISHED_ON_THE_INDEX.map(([name]) => name),
+      ...ABSENT_FROM_THE_INDEX_LISTS.map(([name]) => name),
+    ].sort();
+    expect(new Set(covered).size).toBe(covered.length);
+    expect(covered).toEqual(ALL_SNAPSHOTS.map(([name]) => name).sort());
+  });
+
+  it("CONTROL: this is a metadata split and moved no code", () => {
+    // The service type snapshot is still the 40-code cited part it shipped as.
+    expect(Object.keys(SERVICE_TYPE_CODES.codes).length).toBe(40);
+    expect(SERVICE_TYPE_CODES.meta.completeness).toBe("cited-subset");
+    expect(codeListRedistributionIsPermitted(SERVICE_TYPE_CODES.meta)).toBe(false);
   });
 });
 

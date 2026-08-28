@@ -7,7 +7,7 @@
  * Answering both with one sentence hides a permission this package already has
  * and hides a restriction it must respect.
  *
- * **"Not established" is a recorded answer, not a placeholder.** Three bundled
+ * **"Not established" is a recorded answer, not a placeholder.** Two bundled
  * lists are printed inside a purchased ASC X12 Technical Report Type 3 rather
  * than on the X12 External Code Lists index, and no source obtained for this
  * package names them or states whether their descriptions may be redistributed.
@@ -15,6 +15,14 @@
  * {@link "./meta.js".codeListRedistributionIsPermitted} answers `false` for it
  * exactly as it does for a licence-restricted list: an unsettled question is
  * never read as a permission.
+ *
+ * **A list the index publishes is never "not established" on the ground that
+ * the index is silent about it.** The index is the record of what X12 publishes
+ * and who maintains it, so a list carrying a row there is answered from that
+ * row, and only a list absent from it can be unnamed by the sources. Five of
+ * the seven bundled lists have such a row; the two that do not are the two
+ * above. `test/code-lists.test.ts` holds that split so a record cannot drift
+ * back onto a list the index names.
  *
  * Every quotation below is from a source retrieved on the date beside it. The
  * quoted text is the licensor's own statement of its terms; no code
@@ -149,11 +157,40 @@ export const CLAIM_STATUS_REDISTRIBUTION: CodeListRedistribution = Object.freeze
 });
 
 /**
- * Terms for the lists printed inside a purchased Technical Report Type 3. NOT
- * ESTABLISHED, deliberately and on the record: the sources obtained for this
- * package do not name these lists at all, so neither a permission nor a
- * restriction can be read off them. They are treated as not redistributable,
- * which is what an unsettled question has to mean here.
+ * Terms for the **Service Type Codes**. The X12 External Code Lists index
+ * carries a row for this list, so its answer is read off that row rather than
+ * recorded as unsettled: it is an X12-maintained external code list, and X12's
+ * own published policy is that reproducing an X12 product needs X12's
+ * permission. Same evidence, and therefore the same answer, as the two
+ * claim-status lists above.
+ *
+ * The bundled snapshot is a subset cited from a Technical Report Type 3, which
+ * is where its `meta.source` points; that is a statement about where the cited
+ * codes were read, and NOT a statement that the published list is unavailable
+ * elsewhere. Conflating the two is what put this list on the shared
+ * not-established record.
+ *
+ * @internal
+ */
+export const SERVICE_TYPE_REDISTRIBUTION: CodeListRedistribution = Object.freeze({
+  status: "licence-required",
+  terms: `The X12 External Code Lists index publishes the Service Type Codes as external code list 958, maintained by an X12 code maintenance committee group and last updated 07/01/2026, under the scope statement "These codes identify business groupings for health care services or benefits" (https://x12.org/codes, retrieved 2026-08-28). The bundled subset here is cited from the Technical Report Type 3 section named in this snapshot's source field; the published list behind it is that X12-maintained code list. ${X12_COPYRIGHT} HL7's CARIN Consumer Directed Payer Data Exchange code system stubs reproduce X12's intellectual-property policy, under which "All X12 products are subject to this IP policy, including published and draft works" and "X12 is the only organization authorized to grant permission for use of X12 products" (retrieved 2026-08-28). No source obtained for this package exempts this list from those terms, so its descriptions are treated the same way the Claim Adjustment Reason Codes are.`,
+  approach: X12_PERMISSION_ROUTE,
+});
+
+/**
+ * Terms for the lists printed inside a purchased Technical Report Type 3 AND
+ * absent from the X12 External Code Lists index. NOT ESTABLISHED, deliberately
+ * and on the record: the sources obtained for this package do not name these
+ * lists at all, so neither a permission nor a restriction can be read off them.
+ * They are treated as not redistributable, which is what an unsettled question
+ * has to mean here.
+ *
+ * **Both halves of that sentence are load-bearing, and the second one is the
+ * one that is easy to get wrong.** A list this record is attached to must be
+ * absent from the index: a list the index publishes is named by a carried
+ * source, whatever its snapshot was cited from. Only the CLP-02 claim-status
+ * dispositions and the INS-03 maintenance types satisfy that today.
  *
  * @internal
  */

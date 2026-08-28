@@ -54,8 +54,22 @@ const REPO_ROOT = process.cwd();
 const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
 const REFRESH_PATH = join(REPO_ROOT, "scripts", "refresh-code-lists.ts");
 
-/** The three lists whose descriptions the carried sources say nothing about. */
-const NOT_ESTABLISHED_IDS = ["SERVICE-TYPE", "CLP-STATUS", "MAINTENANCE-TYPE"] as const;
+/**
+ * The two lists whose descriptions the carried sources say nothing about: the
+ * CLP-02 dispositions and the INS-03 maintenance types, neither of which the X12
+ * External Code Lists index publishes a row for. A list the index DOES publish
+ * is answered from that row instead, however small the bundled subset is and
+ * whichever document the subset was cited from.
+ */
+const NOT_ESTABLISHED_IDS = ["CLP-STATUS", "MAINTENANCE-TYPE"] as const;
+
+/** The lists the index publishes as X12-maintained, so X12's terms govern them. */
+const LICENCE_REQUIRED_IDS = [
+  "CARC",
+  "CLAIM-STATUS-CATEGORY",
+  "CLAIM-STATUS",
+  "SERVICE-TYPE",
+] as const;
 
 /** Build a target around an arbitrary meta, for the synthetic-set cases. */
 function target(
@@ -132,15 +146,42 @@ describe("AC-1: the terms and the maintainer are recorded per list, not as one r
     );
     expect(RARC.meta.redistribution?.terms).toContain("Code Systems Not Requiring Licenses");
     expect(RARC.meta.redistribution?.terms).toContain("maintained by CMS");
+    // The service type list is answered from its own index row, quoted with the
+    // list id and the scope statement that row carries.
+    expect(SERVICE_TYPE_CODES.meta.redistribution?.terms).toContain("external code list 958");
+    expect(SERVICE_TYPE_CODES.meta.redistribution?.terms).toContain(
+      "These codes identify business groupings for health care services or benefits",
+    );
     for (const id of NOT_ESTABLISHED_IDS) {
       const found = TARGETS.find((t) => t.snapshot.meta.id === id);
       expect(found?.snapshot.meta.redistribution?.terms).toContain("NOT ESTABLISHED");
     }
   });
+
+  it("a list the index publishes is licence-restricted, not unsettled", () => {
+    // The correction this file's split encodes: an X12-maintained list with a
+    // row on the External Code Lists index is answered from that row. Being
+    // cited from a purchased TR3 says where the bundled subset was read, never
+    // that the published list is unnamed by any source obtained here.
+    for (const id of LICENCE_REQUIRED_IDS) {
+      const found = TARGETS.find((t) => t.snapshot.meta.id === id);
+      expect(found, `${id} is a bundled target`).toBeDefined();
+      expect(found?.snapshot.meta.redistribution?.status, id).toBe("licence-required");
+      expect(found?.snapshot.meta.maintainingOrganization, id).toBe("ASC X12");
+    }
+  });
+
+  it("the two tables together account for every bundled list, once each", () => {
+    // So a list added later cannot slip through unclassified, and so neither
+    // table can quietly become vacuous.
+    const classified: string[] = [...LICENCE_REQUIRED_IDS, ...NOT_ESTABLISHED_IDS, "RARC"].sort();
+    expect(new Set(classified).size).toBe(classified.length);
+    expect(classified).toEqual(TARGETS.map((t) => t.snapshot.meta.id).sort());
+  });
 });
 
 describe("AC-5: an unsettled status is recorded as unsettled and never read as a permission", () => {
-  it("the three lists the sources do not settle say so, and name who to ask", () => {
+  it("the lists the sources do not settle say so, and name who to ask", () => {
     for (const id of NOT_ESTABLISHED_IDS) {
       const found = TARGETS.find((t) => t.snapshot.meta.id === id);
       expect(found, `${id} is a bundled target`).toBeDefined();

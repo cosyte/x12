@@ -1738,15 +1738,20 @@ not agree.** Each bundled snapshot carries its own maintaining organisation and 
 redistribution record on `meta`, so a consumer deciding whether a description is theirs to display,
 cache or re-publish reads that list's answer rather than a single sentence covering all seven:
 
-| Bundled list                          | Maintained by | Redistribution        | Approach for permission |
-| ------------------------------------- | ------------- | --------------------- | ----------------------- |
-| CARC (Claim Adjustment Reason Codes)  | ASC X12       | licence required      | ASC X12 (see below)     |
-| RARC (Remittance Advice Remark Codes) | CMS           | permitted, no licence | none needed             |
-| CSCC (Claim Status Category Codes)    | ASC X12       | licence required      | ASC X12 (see below)     |
-| CSC (Claim Status Codes)              | ASC X12       | licence required      | ASC X12 (see below)     |
-| Service type (EB-03)                  | ASC X12       | **not established**   | ASC X12 (see below)     |
-| CLP-02 claim status                   | ASC X12       | **not established**   | ASC X12 (see below)     |
-| INS-03 maintenance type               | ASC X12       | **not established**   | ASC X12 (see below)     |
+| Bundled list                          | External code list | Maintained by | Redistribution        | Approach for permission |
+| ------------------------------------- | ------------------ | ------------- | --------------------- | ----------------------- |
+| CARC (Claim Adjustment Reason Codes)  | 139                | ASC X12       | licence required      | ASC X12 (see below)     |
+| RARC (Remittance Advice Remark Codes) | 411                | CMS           | permitted, no licence | none needed             |
+| CSCC (Claim Status Category Codes)    | 507                | ASC X12       | licence required      | ASC X12 (see below)     |
+| CSC (Claim Status Codes)              | 508                | ASC X12       | licence required      | ASC X12 (see below)     |
+| Service type (EB-03)                  | 958                | ASC X12       | licence required      | ASC X12 (see below)     |
+| CLP-02 claim status                   | none               | ASC X12       | **not established**   | ASC X12 (see below)     |
+| INS-03 maintenance type               | none               | ASC X12       | **not established**   | ASC X12 (see below)     |
+
+The **External code list** column is the list's id on the X12 External Code Lists index. It is the
+column that decides the one beside it: a list with a row there is answered from that row, and only a
+list with no row can be one the carried sources never name. `none` means exactly that the index
+publishes no row for the list, not that the list is unimportant.
 
 **The approach, for every row that needs one:** ASC X12, which publishes that it is the only
 organisation authorised to grant permission for the use of X12 products. Permission to reproduce X12
@@ -1757,19 +1762,29 @@ distribution. Subscriptions to X12-maintained code lists are bought through the 
 Subscription page linked from <https://x12.org/codes>.
 
 The evidence behind each row is quoted on the list itself, at `meta.redistribution.terms`. In short:
-the X12 External Code Lists index records CARC as external code list 139 and the two claim-status
-lists as 507 and 508, all maintained by an X12 code maintenance committee group, under the statement
-that all X12 work products are copyrighted and that subscriptions to X12-maintained code lists are
-purchased. The same index records RARC as external code list 411 maintained by CMS, and HL7's CARIN
-Consumer Directed Payer Data Exchange terminology licensure page puts CARC among the code systems
-that require a purchased licence and RARC among those requiring none.
+the X12 External Code Lists index records CARC as external code list 139, the two claim-status lists
+as 507 and 508, and the service type codes as 958, all maintained by an X12 code maintenance
+committee group, under the statement that all X12 work products are copyrighted and that
+subscriptions to X12-maintained code lists are purchased. X12's own intellectual-property policy,
+reproduced in HL7's CARIN Consumer Directed Payer Data Exchange code system stubs, adds that all X12
+products are subject to it and that X12 is the only organisation authorised to grant permission for
+their use. The same index records RARC as external code list 411 maintained by CMS, and HL7's CARIN
+terminology licensure page puts CARC among the code systems that require a purchased licence and RARC
+among those requiring none.
 
-**"Not established" is a recorded answer here, not a gap waiting to be tidied.** The last three lists
-are printed inside a purchased ASC X12 Technical Report Type 3 rather than published on the External
-Code Lists index, and no source obtained for this package names them or states whether their
-descriptions may be redistributed. They are therefore treated as **not redistributable** wherever a
-permission decision is made, exactly as a licence-restricted list is: an unsettled question is never
-read as a permission.
+**Being cited from a TR3 is not evidence of a missing publisher.** Three bundled lists point their
+`meta.source` at a purchased Technical Report Type 3: the service type codes, the CLP-02 dispositions
+and the INS-03 maintenance types. Only the last two are absent from the External Code Lists index;
+the service type codes have a row there, so they are answered from it. Where a bundled subset was
+read is a different question from what the publisher publishes, and only the second decides the
+terms.
+
+**"Not established" is a recorded answer here, not a gap waiting to be tidied.** The last two lists,
+the CLP-02 dispositions and the INS-03 maintenance types, are printed inside a purchased ASC X12
+Technical Report Type 3 and have no row on the External Code Lists index at all, and no source
+obtained for this package names them or states whether their descriptions may be redistributed. They
+are therefore treated as **not redistributable** wherever a permission decision is made, exactly as a
+licence-restricted list is: an unsettled question is never read as a permission.
 
 Consequences you can rely on:
 

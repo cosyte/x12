@@ -23,16 +23,22 @@ told from a code the publisher never issued. New exports:
 `codeListRedistributionIsPermitted`, and the `CodeListRedistribution`,
 `CodeListRedistributionStatus` and `CodeListCompleteness` types.
 
-**"Not established" is a recorded answer, and it is not a permission.** Three
-bundled lists are printed inside a purchased Technical Report Type 3 rather than
-published on the X12 External Code Lists index, and no source obtained for this
-package names them or states whether their descriptions may be redistributed.
-Their status is recorded as unsettled and they are treated as not
-redistributable wherever a permission decision is made, exactly as a
-licence-restricted list is. `codeListRedistributionIsPermitted` answers `true`
-only on a recorded permission: a licence requirement, an unsettled status and a
-missing record all answer `false`, so a permission is never inferred from an
-absence.
+**"Not established" is a recorded answer, and it is not a permission.** Two
+bundled lists, the CLP-02 claim dispositions and the INS-03 maintenance types,
+are printed inside a purchased Technical Report Type 3 and have no row on the X12
+External Code Lists index, and no source obtained for this package names them or
+states whether their descriptions may be redistributed. Their status is recorded
+as unsettled and they are treated as not redistributable wherever a permission
+decision is made, exactly as a licence-restricted list is.
+`codeListRedistributionIsPermitted` answers `true` only on a recorded
+permission: a licence requirement, an unsettled status and a missing record all
+answer `false`, so a permission is never inferred from an absence.
+
+The other five bundled lists each have a row on that index, and are answered from
+it: 139 for CARC, 411 for RARC, 507 and 508 for the claim-status lists and 958
+for the service type codes. A list shipping as a subset cited from a TR3 is not
+thereby a list the index is silent about, and the five index rows are what decide
+those five answers.
 
 **`pnpm refresh:code-lists --fetch` now answers each list independently.** It
 reports every bundled list's regeneration permission from that list's own
