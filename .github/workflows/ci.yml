@@ -37,6 +37,7 @@ jobs:
     uses: cosyte/.github/.github/workflows/ci.yml@main
     with:
       run-phi-scan: true
+      check-docs-content: true
 
   # Prove the publish pipeline on every push/PR WITHOUT burning a version or needing registry auth
   # (X12-10, mirroring config's REL-PIPE). Two auth-free proofs:
