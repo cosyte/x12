@@ -1,7 +1,7 @@
 ---
 id: cookbook
 title: Cookbook
-sidebar_position: 2
+sidebar_position: 10
 ---
 
 # Cookbook
@@ -147,6 +147,64 @@ for (const claim of ack.claims) {
 `get277CADisposition` refuses a non-X214 transaction (returns `undefined`). Unknown category/status
 codes are preserved verbatim and raise `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` /
 `X12_UNKNOWN_CLAIM_STATUS`. The code is never dropped.
+
+### The plain 277 (X212): a status answer, with the charge it is about
+
+The X212 response carries the same STC triple plus the claim-level totals and the Loop 2220 service
+lines, and it echoes the requesting 276's `TRN-02` so you can reassociate:
+
+```ts runnable
+import { parseX12, get277Status } from "@cosyte/x12";
+
+const raw277 = [
+  "ISA*00*          *00*          *ZZ*MEDPAY         *ZZ*ANYTOWNCLINIC  *260601*1200*^*00501*000000010*0*P*:~",
+  "GS*HN*MEDPAY*ANYTOWNCLINIC*20260601*1200*10*X*005010X212~",
+  "ST*277*0001*005010X212~",
+  "BHT*0010*08*STATUS-001*20260601*1200*DG~",
+  "HL*1**20*1~",
+  "NM1*PR*2*MEDPAY INSURANCE*****PI*PAYER01~",
+  "HL*2*1*21*1~",
+  "NM1*41*2*ANYTOWN CLINIC*****46*RECVR01~",
+  "HL*3*2*19*1~",
+  "NM1*1P*2*ANYTOWN CLINIC*****XX*1234567890~",
+  "HL*4*3*22*0~",
+  "NM1*IL*1*DOE*JANE****MI*MBR0001~",
+  "TRN*2*ECHO-276-TRACE-001~",
+  "STC*A2:20:PR*20260601*WQ*150~",
+  "REF*1K*PCN0001~",
+  "DTP*472*D8*20260520~",
+  "SVC*HC:99213*150*0****1~",
+  "STC*A2:20*20260601~",
+  "REF*FJ*LINE001~",
+  "DTP*472*D8*20260520~",
+  "SE*19*0001~",
+  "GE*1*10~",
+  "IEA*1*000000010~",
+].join("\n");
+
+const ix277 = parseX12(raw277);
+const tx277 = ix277.groups[0]?.transactions.find((t) => t.st.elements[1] === "277");
+const response = tx277 ? get277Status(ix277.delimiters, tx277) : undefined;
+
+response?.transactionType; // => "claim-status"
+
+// Reassociate on the trace you submitted, never on a name or a date.
+const statusClaim = response?.claims[0];
+statusClaim?.traces[0]?.referenceId; // => "ECHO-276-TRACE-001"
+statusClaim?.references[0]?.value; // => "PCN0001"
+
+// The claim-level STC: the triple, plus what the status is ABOUT.
+const info = statusClaim?.statuses[0];
+info?.actionCode; // => "WQ"
+info?.totalChargeAmount?.toString(); // => "150"
+info?.statuses[0]?.categoryCode; // => "A2"
+info?.statuses[0]?.statusCode; // => "20"
+info?.statuses[0]?.statusDescription; // => "Accepted for processing."
+
+// Loop 2220 carries the per-line answer.
+statusClaim?.serviceLines[0]?.procedureCode; // => "99213"
+statusClaim?.serviceLines[0]?.statuses[0]?.statuses[0]?.statusCode; // => "20"
+```
 
 ---
 
@@ -298,7 +356,167 @@ they always did; nothing moved off it to build this.
 
 ---
 
-## 4. Parse an 837 claim: variant, hierarchy, diagnoses
+## 4. Read the inquiry side: a 270 and a 276
+
+**The problem:** you are the payer or the clearinghouse, and what arrives is the **question** rather
+than the answer. A 270 asks whether a member is covered; a 276 asks what happened to a claim. Both
+are hierarchical documents, and the answer you send back has to reassociate to the trace the
+submitter chose.
+
+Write "270" and "276" separately when you describe this. They are two different implementation
+guides (`005010X279A1` and `005010X212`), each with a reader and a builder of its own, and one paired
+label over two halves is how this documentation was wrong about them once already.
+
+### The 270 eligibility inquiry
+
+`get270Inquiry(delimiters, tx)` walks one transaction set; `parse270Inquiries(raw)` takes the raw
+bytes and gives you every 270 in the interchange, in transmitted order. The hierarchy is presented as
+the sender declared it: source, receiver, subscriber, and a dependent as **its own level** rather
+than flattened onto the subscriber it hangs under.
+
+```ts runnable
+import { parse270Inquiries } from "@cosyte/x12";
+
+const raw270 = [
+  "ISA*00*          *00*          *ZZ*ANYTOWNCLINIC  *ZZ*MEDPAY         *260601*1200*^*00501*000000001*0*P*:~",
+  "GS*HS*ANYTOWNCLINIC*MEDPAY*20260601*1200*1*X*005010X279A1~",
+  "ST*270*0001*005010X279A1~",
+  "BHT*0022*13*REQ-0001*20260601*1200~",
+  "HL*1**20*1~",
+  "NM1*PR*2*MEDPAY INSURANCE*****PI*PAYER01~",
+  "HL*2*1*21*1~",
+  "NM1*1P*2*ANYTOWN CLINIC*****XX*1234567890~",
+  "HL*3*2*22*0~",
+  "TRN*1*ELIG20260601001*9SAMPLEORG~",
+  "NM1*IL*1*DOE*JANE*A***MI*MBR0001~",
+  "N3*100 MAIN ST~",
+  "N4*COLUMBUS*OH*43215~",
+  "DMG*D8*19850515*F~",
+  "DTP*291*D8*20260601~",
+  "EQ*30^35*HC:99213:25*IND~",
+  "SE*15*0001~",
+  "GE*1*1~",
+  "IEA*1*000000001~",
+].join("\n");
+
+const inquiry = parse270Inquiries(raw270)[0];
+
+inquiry?.header?.purposeCode; // => "13"
+
+// This interchange is pretty-printed, and the 270 reader SAYS SO rather than
+// absorbing it in silence: the shared parse consumes the CR / LF run before
+// the next segment opens, so it is part of no element, nothing on the model
+// records it, and `serializeX12` cannot put it back. The typed model is
+// otherwise identical to the compact form's.
+inquiry?.warnings.map((w) => w.code); // => ["X12_270_INTER_SEGMENT_LINE_BREAK"]
+
+const asked = inquiry?.informationSources[0]?.receivers[0]?.subscribers[0];
+
+// The trace you must echo on the 271 you send back.
+asked?.traces[0]?.referenceId; // => "ELIG20260601001"
+
+asked?.name?.lastNameOrOrganizationName; // => "DOE"
+asked?.name?.idCode; // => "MBR0001"
+asked?.name?.dateOfBirth; // => "19850515"
+
+// EQ-01 repeats, so the service types come back as a list, and the bundled
+// snapshot fills a description in beside the code without ever replacing it.
+const request = asked?.inquiries[0];
+request?.serviceTypeCodes.map((s) => s.code); // => ["30", "35"]
+request?.serviceTypeCodes[0]?.description; // => "Health Benefit Plan Coverage"
+
+// EQ-02 is a composite, and comes back as separated components rather than
+// one joined string: the separator is framing and appears in no value.
+request?.procedure?.qualifier; // => "HC"
+request?.procedure?.code; // => "99213"
+request?.procedure?.modifiers; // => ["25"]
+```
+
+**Read that line-break code's bound literally: CR and LF, and nothing else.** Whitespace that is not
+CR or LF, a space or a tab between segments, is not consumed by the shared interchange parse at all.
+It becomes part of the next segment's identifier, the functional group never frames, and
+`parse270Inquiries` answers the **empty list**, with the loss reported on the interchange's own
+warning channel rather than on a 270's. The code is raised once per transaction set however many
+runs the document carries, and it is raised on the 270 path only.
+
+**The declared HL parent pointers are preserved verbatim and never re-numbered.** A level whose
+declared parent does not resolve is left off the tree, together with everything beneath it, and the
+loss is reported (`X12_270_LEVEL_DETACHED`) rather than re-parented onto whichever level happened to
+be open. Check `inquiry.warnings` before you conclude a subscriber had no dependents.
+
+### The 276 claim status request
+
+`get276StatusInquiry(delimiters, tx)` and `parse276StatusInquiries(raw)` are the same pair one guide
+over. The 276 adds a provider level (`19`) between the receiver and the subscriber, and each claim
+carries the `TRN-02` the 277 has to echo:
+
+```ts runnable
+import { parse276StatusInquiries } from "@cosyte/x12";
+
+const raw276 = [
+  "ISA*00*          *00*          *ZZ*ANYTOWNCLINIC  *ZZ*MEDPAY         *260601*1200*^*00501*000000011*0*P*:~",
+  "GS*HR*ANYTOWNCLINIC*MEDPAY*20260601*1200*11*X*005010X212~",
+  "ST*276*0001*005010X212~",
+  "BHT*0010*13*STATUS-0001*20260601*1200~",
+  "HL*1**20*1~",
+  "NM1*PR*2*MEDPAY INSURANCE*****PI*PAYER01~",
+  "HL*2*1*21*1~",
+  "NM1*41*2*ANYTOWN CLINIC*****46*RECVR01~",
+  "HL*3*2*19*1~",
+  "NM1*1P*2*ANYTOWN CLINIC*****XX*1234567890~",
+  "HL*4*3*22*0~",
+  "NM1*IL*1*DOE*JANE*A***MI*MBR0001~",
+  "DMG*D8*19850515*F~",
+  "TRN*1*STATUS20260601001*9SAMPLEORG~",
+  "REF*1K*PCN0001~",
+  "AMT*T3*150~",
+  "DTP*472*D8*20260520~",
+  "SVC*HC:99213:25*150*****1~",
+  "REF*FJ*LINE001~",
+  "DTP*472*D8*20260520~",
+  "SE*19*0001~",
+  "GE*1*11~",
+  "IEA*1*000000011~",
+].join("\n");
+
+const statusRequest = parse276StatusInquiries(raw276)[0];
+
+statusRequest?.warnings.map((w) => w.code); // => []
+statusRequest?.hierarchies.map((h) => h.levelCode); // => ["20", "21", "19", "22"]
+
+const subscriber = statusRequest?.informationSources[0]?.receivers[0]?.providers[0]?.subscribers[0];
+subscriber?.name?.idCode; // => "MBR0001"
+
+const askedAbout = subscriber?.claims[0];
+
+// The trace the 277 must echo back, verbatim.
+askedAbout?.trace?.referenceId; // => "STATUS20260601001"
+askedAbout?.references.map((r) => [r.qualifier, r.value]); // => [["1K", "PCN0001"]]
+
+// Money is X12Decimal here too, on the request side as much as the response.
+askedAbout?.amounts[0]?.amount.toString(); // => "150"
+
+const askedLine = askedAbout?.serviceLines[0];
+askedLine?.procedure?.code; // => "99213"
+askedLine?.lineChargeAmount?.toString(); // => "150"
+askedLine?.unitsOfService?.toString(); // => "1"
+```
+
+The 276 reader attaches a level by its **own** HL-02 and by nothing else, exactly as the 270 does, so
+a dangling pointer, a pointer naming a level of the wrong kind, and a parent chain that returns to
+itself each leave that level and its subtree off the model, reported and never re-parented. The two
+readers' warning codes are **siblings, never one widened set** (`X12_270_*` and `X12_276_*`): gate on
+the one belonging to the document you are reading, and do not assume a code one of them raises has a
+counterpart on the other. The line-break report above is exactly that case: it exists on the 270 path
+and on no other, which is why the same pretty-printed framing leaves this 276 with an empty warning
+list. A 276 short of what a row is built from has reports of its own instead
+(`X12_276_REFERENCE_ROW_DROPPED` for a `REF` missing either element, `X12_276_DATE_ROW_DROPPED` for a
+`DTP` missing its qualifier or its value), because each of those is a record rather than a slot and
+there is no half a row to keep.
+
+---
+
+## 5. Parse an 837 claim: variant, hierarchy, diagnoses
 
 **The problem:** you received a claim and need to know which flavor it is (Professional / Institutional
 / Dental), walk the HL hierarchy (billing provider → subscriber → claim), and read the diagnosis codes
@@ -575,7 +793,180 @@ measured in `KNOWN-LIMITATIONS.md`.
 
 ---
 
-## 5. Parse a 999 acknowledgment: disposition + segment errors
+## 6. Read a 278 services review: the certification decision
+
+**The problem:** you asked a utilization management organization to authorize a service, and the 278
+response came back. You need the **certification action** (was it certified, pended, denied?) and the
+authorization number to put on the claim you are about to send.
+
+`get278Request(delimiters, tx)` and `get278Response(delimiters, tx)` read the two directions of one
+implementation guide. Both are 278s, so route on the direction the model reports rather than on
+`ST-01` alone; a reader hands back `undefined` for a transaction it does not decode.
+
+**The `HCR-01` certification action is the field this library places verbatim and never infers.** It
+is response-only: a request carries no decision at all, and `review.decision` is `undefined` there
+rather than defaulted to anything.
+
+```ts runnable
+import { parseX12, get278Response } from "@cosyte/x12";
+
+const raw278 = [
+  "ISA*00*          *00*          *ZZ*UMOPAYER       *ZZ*SUBMITTER      *260601*1230*^*00501*000000002*0*P*:~",
+  "GS*HI*UMOPAYER*SUBMITTER*20260601*1230*1*X*005010X216~",
+  "ST*278*0002*005010X216~",
+  "BHT*0078*11*AUTHRESP-202606*20260601*1230~",
+  "HL*1**20*1~",
+  "NM1*X3*2*UTILIZATION REVIEW CO*****PI*UMO001~",
+  "HL*2*1*21*1~",
+  "NM1*1P*2*RENDERING CLINIC*****XX*1234567893~",
+  "HL*3*2*22*1~",
+  "NM1*IL*1*DOE*JANE****MI*MBR0001~",
+  "DMG*D8*19850515*F~",
+  "HL*4*3*EV*1~",
+  "TRN*1*AUTHREQ-202606-0001*9SUBMITTER~",
+  "UM*HS*I*1~",
+  "HCR*A1*AUTH123456~",
+  "DTP*472*RD8*20260601-20260605~",
+  "HI*ABK:E1165~",
+  "SE*16*0002~",
+  "GE*1*1~",
+  "IEA*1*000000002~",
+].join("");
+
+const ix278 = parseX12(raw278);
+const tx278 = ix278.groups[0]?.transactions.find((t) => t.st.elements[1] === "278");
+const review278 = tx278 ? get278Response(ix278.delimiters, tx278) : undefined;
+
+review278?.direction; // => "response"
+review278?.warnings.length; // => 0
+review278?.utilizationManagementOrganization?.name; // => "UTILIZATION REVIEW CO"
+review278?.subscriber?.idCode; // => "MBR0001"
+
+const review = review278?.reviews[0];
+
+// The trace that reassociates this answer to the request you sent.
+review?.traces[0]?.referenceId; // => "AUTHREQ-202606-0001"
+review?.requestCategoryCode; // => "HS"
+review?.certificationTypeCode; // => "I"
+
+// HCR-01: the certification action, verbatim, never inferred from anything else.
+review?.decision?.actionCode; // => "A1"
+review?.decision?.reviewIdentificationNumber; // => "AUTH123456"
+
+// The diagnosis carries its code system, resolved from the HI qualifier.
+review?.diagnoses[0]?.qualifier; // => "ABK"
+review?.diagnoses[0]?.code; // => "E1165"
+review?.diagnoses[0]?.codeSystem; // => "ICD-10-CM"
+```
+
+**One thing to know before you build a 278 rather than read one.** Every `HL-03` in this library is a
+library constant chosen by tree position, with a single exception: `Build278ReviewSpec.levelCode`,
+which you supply and which the guides limit to `EV` (patient event) and `SS` (service). A level
+outside those two emits a perfectly well-formed document whose review loop no reader opens, so the
+review **and its certification decision** would come back absent with no warning. `build278Request`
+and `build278Response` therefore **refuse** an out-of-enum level rather than emit a document that
+loses it. Omit `levelCode` and it defaults to `EV`.
+
+---
+
+## 7. Walk an 834 enrollment roster: one member at a time
+
+**The problem:** a plan sponsor sent a benefit enrollment and maintenance file. You need the header
+(who sponsored it, who the payer is), then each member, each member's coverage, and above all what to
+**do** with each one: add, change, or terminate.
+
+The 834 splits into two calls, because the two halves have different shapes.
+`get834Header(delimiters, tx)` is a small synchronous read that stops at the first `INS`.
+`get834Enrollments(delimiters, tx)` is an **async iterable** yielding one decoded member per `INS`
+loop, so a consumer of a large roster holds one member at a time rather than the whole decoded file.
+
+```ts runnable
+import { parseX12, get834Header, get834Enrollments, type X12Enrollment } from "@cosyte/x12";
+
+const raw834 = [
+  "ISA*00*          *00*          *ZZ*EMPLOYERCO     *ZZ*MEDPAY         *260601*1200*^*00501*000000001*0*P*:~",
+  "GS*BE*EMPLOYERCO*MEDPAY*20260601*1200*1*X*005010X220A1~",
+  "ST*834*0001~",
+  "BGN*00*ENR-202606*20260601*1200****2~",
+  "REF*38*POLICY-0001~",
+  "DTP*007*D8*20260601~",
+  "N1*P5*EMPLOYER CO*FI*444556666~",
+  "N1*IN*MEDPAY INSURANCE*FI*111223333~",
+  "INS*Y*18*021*EC*A***FT~",
+  "REF*0F*MBR0001~",
+  "REF*1L*GROUP-0001~",
+  "DTP*356*D8*20260101~",
+  "NM1*IL*1*DOE*JANE*A***MI*MBR0001~",
+  "N3*100 MAIN ST~",
+  "N4*COLUMBUS*OH*43215~",
+  "DMG*D8*19850515*F~",
+  "HD*021**HLT*GOLD PPO*FAM~",
+  "DTP*348*D8*20260101~",
+  "AMT*P3*125.00~",
+  "INS*N*01*024*XN*A***TE~",
+  "REF*0F*MBR0002~",
+  "NM1*IL*1*ROE*JOHN****MI*MBR0002~",
+  "DMG*D8*19900101*M~",
+  "HD*024**DEN~",
+  "DTP*349*D8*20260531~",
+  "SE*23*0001~",
+  "GE*1*1~",
+  "IEA*1*000000001~",
+].join("");
+
+const ix834 = parseX12(raw834);
+const tx834 = ix834.groups[0]?.transactions.find((t) => t.st.elements[1] === "834");
+if (tx834 === undefined) throw new Error("no 834 in interchange");
+
+const header = get834Header(ix834.delimiters, tx834);
+header?.transactionSetPurposeCode; // => "00"
+header?.referenceId; // => "ENR-202606"
+header?.sponsor?.name; // => "EMPLOYER CO"
+header?.payer?.name; // => "MEDPAY INSURANCE"
+
+// One member at a time, in transmitted order.
+const members: X12Enrollment[] = [];
+for await (const member of get834Enrollments(ix834.delimiters, tx834)) members.push(member);
+
+members.length; // => 2
+
+// INS-03 is the maintenance type: the safety-critical field of this document.
+// The verbatim code is ALWAYS on the model; the description is looked up beside
+// it and never in place of it.
+const added = members[0];
+added?.subscriberIndicator; // => "Y"
+added?.maintenanceTypeCode; // => "021"
+added?.maintenanceTypeDescription; // => "Addition"
+added?.member?.lastName; // => "DOE"
+added?.member?.idCode; // => "MBR0001"
+
+// Coverage sits under the member, with its own dates and amounts. Money is
+// X12Decimal here as everywhere.
+added?.healthCoverages[0]?.insuranceLineCode; // => "HLT"
+added?.healthCoverages[0]?.planCoverageDescription; // => "GOLD PPO"
+added?.healthCoverages[0]?.amounts[0]?.amount.toString(); // => "125.00"
+
+const terminated = members[1];
+terminated?.maintenanceTypeCode; // => "024"
+terminated?.maintenanceTypeDescription; // => "Cancellation or Termination"
+terminated?.healthCoverages[0]?.insuranceLineCode; // => "DEN"
+```
+
+**Never infer an action for a maintenance-type code this library does not recognise.** An unknown
+`INS-03` or `HD-01` keeps its verbatim code, gets **no** description, and raises
+`X12_834_UNKNOWN_MAINTENANCE_TYPE` on **that member's own** `warnings` rather than on the
+interchange's. Terminating coverage because a code did not resolve is the harm this rule exists to
+prevent, so gate on the warning and route the member to a human.
+
+Two honest bounds on the stream. It iterates an **already-parsed** transaction set, so the file is
+fully parsed into `tx.segments` before iteration begins: the memory win is on the result side, not
+the input side, and this is not a byte-streaming reader for arbitrarily large files. And a coverage
+`AMT` whose amount does not decode loses its whole row, reported by `X12_AMOUNT_ROW_DROPPED` on that
+member.
+
+---
+
+## 8. Parse a 999 acknowledgment: disposition + segment errors
 
 **The problem:** you submitted an 837 and got a 999 back. Was the batch accepted? If not, which
 segments and elements failed, and where?
@@ -622,12 +1013,57 @@ for (const response of ack.transactionResponses) {
 ```
 
 `X12_ACK_DISPOSITION_CODES` is the code registry if you prefer explicit comparisons
-(`ack.ak9.disposition === X12_ACK_DISPOSITION_CODES.R`). The TA1 interchange ack has a parallel pair,
-`parseTA1(ix)` / `buildTA1(spec)`.
+(`ack.ak9.disposition === X12_ACK_DISPOSITION_CODES.R`).
+
+### The TA1 interchange acknowledgment sits one envelope out
+
+A 999 acknowledges a functional group. A **TA1** acknowledges the **interchange** itself: it says
+whether the ISA / IEA envelope was readable at all, and it is the answer you get when the file never
+reached the point of having a functional group to report on. It has its own pair, `parseTA1(ix)` and
+`buildTA1(spec)`, and `parseTA1` takes the parsed interchange rather than raw bytes because a TA1 is
+an envelope-level segment.
+
+```ts runnable
+import { parseX12, parseTA1, isAcceptDisposition, TA1_ACK_CODES } from "@cosyte/x12";
+
+// An interchange carrying nothing but a TA1: no functional group at all.
+const rawTa1 =
+  "ISA*00*          *00*          *ZZ*RECEIVER       *ZZ*SENDER         " +
+  "*220101*1230*^*00501*000000020*0*P*:~" +
+  "TA1*000000019*220101*1200*A*000~" +
+  "IEA*0*000000020~";
+
+const ixTa1 = parseX12(rawTa1);
+const ta1 = parseTA1(ixTa1);
+
+ixTa1.groups.length; // => 0
+ta1?.interchangeControlNumber; // => "000000019"
+ta1?.ackCode; // => TA1_ACK_CODES.A
+ta1?.noteCodeRaw; // => "000"
+
+// TA1-01 is the reassociation key: it echoes the ISA-13 of the interchange
+// being acknowledged, verbatim, and is how you match this answer to the file
+// you sent. It is NOT this interchange's own control number.
+ta1?.interchangeControlNumber === ixTa1.isa.elements[13]; // => false
+
+// One boolean for "did the envelope pass?", shared with the 999 dispositions.
+isAcceptDisposition(ta1?.ackCode ?? ""); // => true
+
+// The five decoded fields are post-`?`-unescape; `ta1.raw` is the segment as
+// transmitted, so do not apply `unescapeRelease` to the decoded ones yourself.
+ta1?.raw.raw; // => "TA1*000000019*220101*1200*A*000"
+```
+
+`buildTA1` is the emit half, and it is a pure function like every other builder: it never auto-sends,
+opens a socket, or touches the filesystem. It refuses an empty element at all five slots rather than
+emitting a short segment, and it releases an active delimiter in a value rather than letting it shift
+the disposition element. What it cannot verify is the envelope you will embed the segment in, so
+state your delimiter set on `BuildTA1Options` if it differs from the default, or a value carrying a
+byte that is a delimiter there and not here comes back with a stray release character.
 
 ---
 
-## 6. Handle warnings: the lenient, never-throw contract
+## 9. Handle warnings: the lenient, never-throw contract
 
 **The problem:** you want to log or triage every tolerated deviation without your pipeline throwing on
 a vendor quirk. `@cosyte/x12` is liberal on input: **only four Tier-3 structural errors ever throw**;

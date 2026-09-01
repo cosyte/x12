@@ -1,7 +1,7 @@
 ---
 id: quickstart
 title: Quickstart
-sidebar_position: 1
+sidebar_position: 3
 ---
 
 # Quickstart
@@ -133,10 +133,15 @@ parseX12("this is not an X12 interchange"); // throws X12ParseError (X12_NO_ISA_
 
 ## Next
 
-- [Cookbook](./cookbook): recipes for the 277CA reject routing, the 271 TRN-echo round-trip, the 837
-  claim walk, the 999 acknowledgment, and warning triage.
+- [Cookbook](./cookbook): recipes for the 277CA and 277 status answers, the 271 TRN-echo round-trip,
+  the 270 and 276 inquiry side, the 837 claim walk, the 278 certification decision, the 834 roster,
+  the 999 and TA1 acknowledgments, and warning triage.
 - [Core Concepts](./spec-notes-envelope): the envelope/loop model, the transaction sets, the
   tolerance tiers, and decimal-exact money.
+- [Building and serializing X12](./emit-and-serialize): the emit half, and what a round trip does
+  and does not reproduce.
+- [Trading-partner profiles](./profiles): documenting a partner's conventions without changing the
+  parse.
 - [Troubleshooting & known limitations](./troubleshooting): fatal codes, the fail-safe rules, and
   what v1 does not do.
 

@@ -91,6 +91,10 @@ model.
 - [Quickstart](./quickstart): parse an 835 remittance and post the cash in a few lines.
 - [Core Concepts](./spec-notes-envelope): the envelope/loop model, the transaction sets, the
   tolerance tiers, and decimal-exact money.
+- [Building and serializing X12](./emit-and-serialize): the emit half, `serializeX12` and
+  `buildInterchange`, and what a round trip does and does not reproduce.
+- [Trading-partner profiles](./profiles): describing what a partner actually sends, as
+  fixture-grounded data rather than silent leniency.
 - [Cookbook](./cookbook): task-oriented recipes for the transactions you actually get handed.
 - [Troubleshooting & known limitations](./troubleshooting): fatal codes, the fail-safe rules, and
   what v1 does not do.

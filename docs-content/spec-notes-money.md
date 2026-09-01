@@ -2,7 +2,7 @@
 id: spec-notes-money
 title: Decimal-exact money
 sidebar_label: Decimal-exact money
-sidebar_position: 4
+sidebar_position: 7
 ---
 
 # Decimal-exact money

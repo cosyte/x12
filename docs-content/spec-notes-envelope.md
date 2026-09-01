@@ -2,7 +2,7 @@
 id: spec-notes-envelope
 title: The envelope & loop model
 sidebar_label: Envelope & loop model
-sidebar_position: 1
+sidebar_position: 4
 ---
 
 # The envelope & loop model
@@ -215,7 +215,9 @@ independent witness. That is why the six cases are enumerated here rather than l
 
 So for a file whose only irregularity is pretty-printing, the round trip is safe to build on for data
 and not for a byte-level diff, and diffing your emit against `serializeX12(parseX12(source))` is the
-way to ignore the line-break noise.
+way to ignore the line-break noise. [Building and serializing X12](./emit-and-serialize) covers the
+emit side as a whole: composing an interchange from nothing, what a builder refuses, and the
+`{ specClean: true }` reconciliation.
 
 ## Segments outside a transaction
 
