@@ -2,7 +2,7 @@
 id: spec-notes-transaction-sets
 title: The 80/20 transaction sets
 sidebar_label: The transaction sets
-sidebar_position: 2
+sidebar_position: 5
 ---
 
 # The 80/20 transaction sets
@@ -11,7 +11,7 @@ X12 defines hundreds of transaction sets; HIPAA mandates a small handful for hea
 handful again carry the overwhelming majority of real integration traffic. `@cosyte/x12` covers the
 HIPAA **005010** healthcare sets and nothing else. Every set in the map below ships a lenient
 **reader** and a spec-clean domain **builder**. This page is the map: what each set is, which
-function reads it, which builds it, and the one field each one preserves *verbatim* because getting
+function reads it, which builds it, and the one field each one preserves _verbatim_ because getting
 it wrong causes harm.
 
 > **Both inquiry directions are in the map now.** The 270 eligibility inquiry and the 276 claim
@@ -25,20 +25,20 @@ it wrong causes harm.
 
 ## The map
 
-| Set | What it is | Read | Build | Preserved verbatim |
-|---|---|---|---|---|
-| **270** | Eligibility inquiry | `get270Inquiry` / `parse270Inquiries` | `build270` | the declared HL parent pointers, never re-numbered and never re-parented |
-| **271** | Eligibility response | `get271Eligibility` | `build271` | the 270's `TRN-02` trace, echoed onto the 271 (reassociation) |
-| **276** | Claim status request | `get276StatusInquiry` / `parse276StatusInquiries` | `build276` | the declared HL parent pointers, never re-numbered and never re-parented; the `TRN-02` trace the 277 must echo |
-| **277** | Claim status response | `get277Status` | `build277` | the 276's trace; the STC category/status/entity triple |
-| **277CA** | Claim acknowledgment | `get277CADisposition` | `build277CA` | per-claim accept/reject disposition + your submitted trace |
-| **278** | Services review request / response | `get278Request` / `get278Response` | `build278Request` / `build278Response` | the `HCR-01` certification action (response), never inferred |
-| **820** | Premium payment | `get820Payments` | `build820` | monetary amounts (emitted as-is; no balance equation) |
-| **834** | Benefit enrollment & maintenance | `get834Header` / `get834Enrollments` | `build834` | the `INS-03` / `HD-01` maintenance-type code (X12 0875) |
-| **835** | Claim payment / advice (ERA) | `get835` | `build835` | every monetary field; the balance is checked, never rebalanced |
-| **837P / 837I / 837D** | Professional / institutional / dental claims | `get837Claims` | `build837P` / `build837I` / `build837D` | the HL hierarchy; HI diagnosis qualifier → code system |
-| **999** | Implementation acknowledgment | `parse999` | `build999` | per-segment / per-element syntax error notes |
-| **TA1** | Interchange acknowledgment | `parseTA1` | `buildTA1` | the interchange acknowledgment + note codes |
+| Set                    | What it is                                   | Read                                              | Build                                   | Preserved verbatim                                                                                             |
+| ---------------------- | -------------------------------------------- | ------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **270**                | Eligibility inquiry                          | `get270Inquiry` / `parse270Inquiries`             | `build270`                              | the declared HL parent pointers, never re-numbered and never re-parented                                       |
+| **271**                | Eligibility response                         | `get271Eligibility`                               | `build271`                              | the 270's `TRN-02` trace, echoed onto the 271 (reassociation)                                                  |
+| **276**                | Claim status request                         | `get276StatusInquiry` / `parse276StatusInquiries` | `build276`                              | the declared HL parent pointers, never re-numbered and never re-parented; the `TRN-02` trace the 277 must echo |
+| **277**                | Claim status response                        | `get277Status`                                    | `build277`                              | the 276's trace; the STC category/status/entity triple                                                         |
+| **277CA**              | Claim acknowledgment                         | `get277CADisposition`                             | `build277CA`                            | per-claim accept/reject disposition + your submitted trace                                                     |
+| **278**                | Services review request / response           | `get278Request` / `get278Response`                | `build278Request` / `build278Response`  | the `HCR-01` certification action (response), never inferred                                                   |
+| **820**                | Premium payment                              | `get820Payments`                                  | `build820`                              | monetary amounts (emitted as-is; no balance equation)                                                          |
+| **834**                | Benefit enrollment & maintenance             | `get834Header` / `get834Enrollments`              | `build834`                              | the `INS-03` / `HD-01` maintenance-type code (X12 0875)                                                        |
+| **835**                | Claim payment / advice (ERA)                 | `get835`                                          | `build835`                              | every monetary field; the balance is checked, never rebalanced                                                 |
+| **837P / 837I / 837D** | Professional / institutional / dental claims | `get837Claims`                                    | `build837P` / `build837I` / `build837D` | the HL hierarchy; HI diagnosis qualifier → code system                                                         |
+| **999**                | Implementation acknowledgment                | `parse999`                                        | `build999`                              | per-segment / per-element syntax error notes                                                                   |
+| **TA1**                | Interchange acknowledgment                   | `parseTA1`                                        | `buildTA1`                              | the interchange acknowledgment + note codes                                                                    |
 
 ## Routing: which set is this?
 
@@ -71,6 +71,10 @@ const remit = tx ? get835(ix.delimiters, tx) : undefined;
 remit?.traces[0]?.referenceId; // => "0012345"
 ```
 
+Every set in the map has at least one worked example on this site, and the
+[Cookbook](./cookbook) is where they live. The general emit surface those domain builders sit on top
+of is [Building and serializing X12](./emit-and-serialize).
+
 ## The reader/builder symmetry
 
 Every builder round-trips through its reader: `get835(parseX12(serializeX12(build835(spec))))`
@@ -95,7 +99,7 @@ out-of-enum level (`X12_278_BUILD_INVALID_SPEC`) rather than emit a document tha
 - **Non-healthcare sets**: 850 (purchase order), 856 (ASN), 810 (invoice), 204 (load tender), etc.
 - **The EDIFACT syntax family**: a different standard entirely.
 - **Transport**: AS2, SFTP, MLLP-style delivery. This is a parser/serializer, not a comms stack.
-- **Pre-005010 field maps.** Pre-005010 input is *tolerated and flagged* (`X12_PRE_005010`), not
+- **Pre-005010 field maps.** Pre-005010 input is _tolerated and flagged_ (`X12_PRE_005010`), not
   decoded against those older guides.
 
 See [Troubleshooting & known limitations](./troubleshooting) for the full non-goals list.

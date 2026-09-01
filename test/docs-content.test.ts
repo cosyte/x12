@@ -529,7 +529,10 @@ function checkNoUmbrellaItemIds(files: ReadonlyMap<string, string>): string[] {
  * @param pages - The bundle's markdown pages.
  * @returns One finding per missing requirement.
  */
-function checkBundleShape(files: ReadonlyMap<string, string>, pages: readonly DocsPage[]): string[] {
+function checkBundleShape(
+  files: ReadonlyMap<string, string>,
+  pages: readonly DocsPage[],
+): string[] {
   const findings: string[] = [];
   if (pages.length === 0) {
     findings.push("docs-content/ carries no markdown page, so the narrative bundle would be empty");
@@ -670,8 +673,16 @@ function seedPage(file: string, fields: readonly string[], body = ""): DocsPage 
 function seedBundle(): { pages: DocsPage[]; order: string[] } {
   return {
     pages: [
-      seedPage("intro.md", ["id: intro", "title: Getting started", "sidebar_position: 1"], "[a](./b)"),
-      seedPage("b.md", ["id: b", "title: B", "sidebar_position: 2"], "```ts\nimport { parseX12 } from '@cosyte/x12';\nparseX12('');\n```"),
+      seedPage(
+        "intro.md",
+        ["id: intro", "title: Getting started", "sidebar_position: 1"],
+        "[a](./b)",
+      ),
+      seedPage(
+        "b.md",
+        ["id: b", "title: B", "sidebar_position: 2"],
+        "```ts\nimport { parseX12 } from '@cosyte/x12';\nparseX12('');\n```",
+      ),
     ],
     order: ["intro", "b"],
   };
@@ -747,7 +758,7 @@ describe("the bundle-contract checkers still see", () => {
       seedPage(
         "intro.md",
         ["id: intro", "title: I", "sidebar_position: 1"],
-        "```ts runnable\nimport { parseX12, notAnExport } from \"@cosyte/x12\";\n```",
+        '```ts runnable\nimport { parseX12, notAnExport } from "@cosyte/x12";\n```',
       ),
     ];
     const findings = checkImportedSymbols(pages, new Set(["parseX12"]));
@@ -761,7 +772,7 @@ describe("the bundle-contract checkers still see", () => {
       seedPage(
         "intro.md",
         ["id: intro", "title: I", "sidebar_position: 1"],
-        "```ts\nimport { type GoneType } from \"@cosyte/x12\";\n```",
+        '```ts\nimport { type GoneType } from "@cosyte/x12";\n```',
       ),
     ];
     expect(checkImportedSymbols(pages, new Set(["parseX12"])).join("\n")).toContain("GoneType");
@@ -848,9 +859,9 @@ describe("the bundle-contract checkers still see", () => {
         ["The build834 builder exists.", "```js", "build834(spec);", "```"].join("\n"),
       ),
     ];
-    expect(checkTransactionSetCoverage(pages, new Map([["834", ["build834"]]])).join("\n")).toContain(
-      "transaction set 834",
-    );
+    expect(
+      checkTransactionSetCoverage(pages, new Map([["834", ["build834"]]])).join("\n"),
+    ).toContain("transaction set 834");
   });
 
   it("derives the public export set from src/index.ts, aliases and type exports included", () => {
