@@ -1,63 +1,215 @@
 <a href="https://cosyte.com">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://cosyte.com/tile/cosyte-lockup-tile-on-dark-1200x300.png">
-    <img alt="Cosyte: a plus mark set in two overlapping rounded squares, one solid and one outlined, beside the Cosyte wordmark" src="https://cosyte.com/tile/cosyte-lockup-tile-on-light-1200x300.png">
+    <img alt="The Cosyte logo on its own white ground: the icon beside the word Cosyte." src="https://cosyte.com/tile/cosyte-lockup-tile-on-light-1200x300.png">
   </picture>
 </a>
 
 # @cosyte/x12
 
-> Parse real-world, vendor-quirky ASC X12 healthcare EDI (835 remits, 837 claims, 271 eligibility responses, 277/277CA status, 278, 820, 834, 999/TA1) and pull the fields you need without reading a TR3.
+> Read the money out of an 835, an 837 or a 271 without a TR3 open on your desk.
 
 [![npm version](https://img.shields.io/npm/v/@cosyte/x12.svg)](https://www.npmjs.com/package/@cosyte/x12)
 [![CI](https://img.shields.io/github/actions/workflow/status/cosyte/x12/ci.yml?branch=main&label=CI)](https://github.com/cosyte/x12/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
 
-A developer-focused ASC X12 EDI parser and utility library for Node.js and TypeScript: the payer-side sibling of [`@cosyte/hl7`](https://github.com/cosyte/hl7). Zero runtime dependencies, dual ESM/CJS, strict types. Lenient on the way in (vendor deviations become warnings, not exceptions), spec-clean on the way out: every domain builder emits spec-clean X12 by construction, and the general serializer does so on request.
+Developer-focused ASC X12 EDI parser and utility library for Node.js/TypeScript.
 
-> **Status:** pre-alpha, **published on npm** from a public repo, on the `0.0.x`-until-first-alpha ladder. `npm view @cosyte/x12 version` is the source of truth for the current version and this page does not restate it; the badge above is a convenience, not the record. Typed **read** and **emit** support is complete for 270, 271, 276, 277/277CA, 278 (request + response), 820, 834, 835, 837P/I/D, 999, and TA1: every one of those has both a per-transaction reader and a matching domain builder, on top of a general serializer and interchange builder. Pre-alpha means the public API may still move before `0.1`. Pin an exact version.
+## Why this exists
 
-## Quickstart
+Reading an X12 healthcare transaction correctly normally means buying the TR3 implementation guide
+for it and then hand-mapping element positions that no compiler will ever check. This library
+removes that step for the engineer who has one 835 to post, one 271 to answer or one 837 to send,
+and who needs the amounts to be exactly right rather than approximately right. The nearest
+alternatives are a general-purpose EDI translator, which frames segments correctly but knows nothing
+about what CLP-04 means, and a hand-rolled split on the segment terminator, which works until the
+first trading partner sends a repetition separator you did not plan for. This is neither: a
+zero-dependency TypeScript library that decodes the healthcare transaction sets into typed models,
+keeps every amount in exact decimal arithmetic, and reports each vendor deviation it tolerated with
+a stable code instead of failing or guessing.
+
+## Status
+
+**Version 0.0.18**, published on npm from a public repository.
+
+On the `0.0.x` ladder the public API is not settled and may still move before `0.1.0`, so pin an
+exact version rather than a range. Typed read and typed emit both ship for every transaction set
+this package covers: 270, 271, 276, 277 and 277CA, 278 request and response, 820, 834, 835, 837P,
+837I and 837D, 999 and TA1, each with a reader and a matching domain builder.
+`X12_TR3_CONFORMANCE` is the machine-readable answer to which implementation guide each one
+follows, and is a better source than this page.
+
+Not covered, and deliberately so: a byte-exact round trip is not guaranteed in general (see
+[Compatibility](#compatibility)), and non-healthcare transaction sets, EDIFACT, transport such as
+AS2 and SFTP, and pre-005010 revisions are all out of scope.
+
+## Install
 
 ```bash
-# pnpm (recommended), also works with: npm install @cosyte/x12  |  yarn add @cosyte/x12
 pnpm add @cosyte/x12
 ```
 
-Parse an 835 remittance advice and read the money, three lines of useful output, no TR3 lookup:
+`npm install @cosyte/x12` and `yarn add @cosyte/x12` work the same way.
 
-```ts
+Node `>=22.0.0` is the engine floor, and there are zero runtime dependencies. The package ships
+dual ESM and CJS builds with type declarations for both conditions, so `import` and `require` each
+resolve to the artifact meant for them.
+
+## Usage
+
+Parse an 835 remittance advice and read the money: the payment total, the claim's
+charge/paid/patient-responsibility split, and the adjustment reason behind the difference. The
+interchange below is synthetic, with a fabricated payer, provider, patient and amounts.
+
+```ts runnable
 import { parseX12, get835 } from "@cosyte/x12";
 
-const ix = parseX12(rawEdi); // never throws except on 4 structural fatals
-const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "835");
-const remit = tx ? get835(ix.delimiters, tx) : undefined;
+const raw = `ISA*00*          *00*          *ZZ*MEDICARE       *ZZ*SUBMITTER      *260601*1200*^*00501*000000001*0*P*:~
+GS*HP*MEDICARE*SUBMITTER*20260601*1200*1*X*005010X221A1~
+ST*835*0001~
+BPR*I*450.00*C*ACH*CCP*01*123456789*DA*987654321*1512345678**01*111111111*DA*222222222*20260601~
+TRN*1*0012345*1512345678~
+DTM*405*20260601~
+N1*PR*MEDICARE PART A~
+N3*123 PAYER WAY~
+N4*BALTIMORE*MD*21244~
+PER*BL*JANE COORDINATOR*TE*5551234567~
+N1*PE*SAMPLE CLINIC INC~
+N3*456 PROVIDER LN~
+N4*CLEVELAND*OH*44113~
+REF*TJ*123456789~
+LX*1~
+CLP*PT-ACCT-001*1*500.00*450.00*50.00*MC*PAYER-CLAIM-001*11*1~
+NM1*QC*1*PATIENT*TEST*A***MI*MEMBER001~
+NM1*82*2*RENDERING PROVIDER INC*****XX*1234567890~
+DTM*232*20260501~
+DTM*233*20260501~
+SVC*HC:99213*500.00*450.00**1~
+DTM*472*20260501~
+CAS*PR*1*50.00~
+REF*6R*LINE-CTRL-001~
+SE*23*0001~
+GE*1*1~
+IEA*1*000000001~`;
 
-remit?.payment.totalActualPayment?.toString(); // "450.00": BigInt-exact, never a float
-remit?.claims[0]?.patientControlNumber; // "PT-ACCT-001": your account number, echoed back
-remit?.claims[0]?.serviceLines[0]?.adjustments[0]?.reasonCode; // "1": CARC (why it was adjusted)
+const ix = parseX12(raw);
+ix.warnings; // => []
+
+const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "835");
+if (tx === undefined) throw new Error("no 835 in this interchange");
+const remit = get835(ix.delimiters, tx);
+
+// The payment header: the money-movement primitive.
+remit.payment.totalActualPayment?.toString(); // => "450.00"
+remit.payment.creditDebitFlag; // => "C"
+remit.payment.method; // => "ACH"
+remit.traces[0]?.referenceId; // => "0012345"
+
+// Per claim: your own account number echoed back, and the split.
+const claim = remit.claims[0];
+claim?.patientControlNumber; // => "PT-ACCT-001"
+claim?.totalChargeAmount?.toString(); // => "500.00"
+claim?.totalPaymentAmount?.toString(); // => "450.00"
+claim?.patientResponsibilityAmount?.toString(); // => "50.00"
+
+// Per service line: who owes the difference, and why.
+const adjustment = claim?.serviceLines[0]?.adjustments[0];
+adjustment?.groupCode; // => "PR"
+adjustment?.reasonCode; // => "1"
+adjustment?.reasonDescription; // => "Deductible Amount"
+adjustment?.amount?.toString(); // => "50.00"
 ```
 
-That's the pitch: no schema upload, no spec knowledge. The parser accepts vendor-quirky input by default and flags what it tolerated with stable warning codes; you reach for strict mode, dot-paths, profiles, or the emit builders when you want them.
+The `groupCode` is what tells you who owes the money (`PR` patient responsibility, `CO` contractual
+obligation, and so on). Read it; never infer it.
 
-## What's inside
+## PHI and safety
 
-- **Typed read + emit, per transaction**: 270, 271, 276, 277/277CA, 278, 820, 834, 835, 837P/I/D, plus 999/TA1 acknowledgments. Per-transaction helpers (`get835`, `get837Claims`, `get270Inquiry`, `get276StatusInquiry`, `get271Eligibility`, …) and a matching domain builder for each (`build835`, `build837P/I/D`, `build270`, `build276`, `build271`, …). `X12_TR3_CONFORMANCE` is the machine-readable answer to which guide each one implements.
-- **Postel's Law**: a lenient parser (deviations → warnings with a stable code + positional context) and a conservative serializer. `serializeX12` is byte-faithful **for the segments on the model** by default: each comes back verbatim, including element padding, composites, and `?`-release escapes. **`serialize(parse(s)) === s` is not guaranteed in general.** Six constructs are known not to survive: line breaks between segments (any run of CR / LF between segments is absorbed at parse, so a pretty-printed or double-spaced file emits compact), a doubled terminator outside a transaction, a missing final terminator (the emit supplies one), post-IEA `trailingBytes` (re-joined, not verbatim), a TA1 that followed a functional group (emitted right after the ISA, so it is **reordered**, though nothing is lost), and a segment whose first element is empty outside a transaction (skipped entirely, with no warning at all). A **segment outside a transaction is not on that list**: it is reported as `X12_UNEXPECTED_SEGMENT`, kept on the model at `ix.orphanSegments` with a structural `anchor`, and re-emitted at that anchor, so the segment, its value and its warning all survive the round trip - placement is by the anchor and never by `segmentIndex`, which indexes the input stream the emit does not follow. The last five break the round trip on inputs with no line breaks at all, so do not treat "no line breaks" as sufficient; five of the six are silent, so a clean warnings list does not mean byte-exact either. Measured across every fixture committed to this repository: each emit is a fixed point and re-parses to an identical model with an identical warning stream, the fixtures carrying no line break return byte-identical, and the rest differ from their source by line breaks and nothing else. No corpus size is quoted here: it moves with every fixture added, and `test/serialize.test.ts` re-derives the sweep from the tree on every run. See [Line endings between segments](./docs-content/spec-notes-envelope.md). `{ specClean: true }` reconciles the envelope, and `{ specClean: true, recomputeCounts: true }` also emits the corrected counts (`recomputeCounts` does nothing on its own). A mismatch is always warned, never silently corrected. Only **4 structural failures** are ever fatal.
-- **Money is exact, and never invented**: every monetary/percent/quantity field decodes as `X12Decimal` (string-backed, BigInt arithmetic), and the library **never `parseFloat`s** an EDI amount. **No slot holds an amount this library did not decode.** Where a reader used to substitute `X12Decimal.ZERO` the slot is now `X12Decimal | undefined` and reads `undefined`, so "the sender stated zero" and "the sender stated nothing" are different readings; through `0.0.12` they were the same `0`. That is a rule about the substitution, not a census of the model: some rows are dropped whole instead, which is a different and pre-existing shape, and no total is published here. Read [KNOWN-LIMITATIONS.md](./KNOWN-LIMITATIONS.md).
-- **Safety-critical fidelity**: TRN reassociation traces, 835 balance invariants, 837 HL hierarchy integrity, 834 maintenance types, and 278 certification actions are preserved **verbatim** and never inferred; ambiguity yields a warning or a typed refusal, never a confident wrong answer.
-- **PHI-disciplined**: synthetic-only fixtures, a PHI commit-gate, and a warning `message` that is a **lookup into a frozen registry**, not something built from your document. No warning factory in the library takes a value parameter, so no element can reach a diagnostic: the code and `position` say what and where, and the bytes stay on the model. `ALL_WARNING_MESSAGES` is exported so you can assert it. **Builder refusals are a different, and deliberately weaker, surface:** the refusal sites in the builder modules name a value you passed in, so you can see which control number, count or code was refused (no site count is quoted here - it moves with every builder added, and `test/builder-refusal-bounds.test.ts` re-derives it from the source on every run). **What they will never name is a `claimId`, a member id, a member name, a trace or a diagnosis code** - a guarantee that held for the refusal templates and, until the release after `0.0.10`, did not hold for the shared type guards underneath them: a JSON-driven caller who sent a number where the types say string got `a number ("900412345678")` back, bounded but not redacted, from a guard standing on every element of every builder. Those guards report the type now and never the value. The array guard's primitive arm is redacted with them, but it still reports the `length` and the class tag of a forged array-like, bounded, because those describe the shape you forged rather than the contents of a document element. Each goes through `renderCallerValue`, capping the rendered **fragment** at `BUILD_REFUSAL_VALUE_MAX_RENDERED` (90 characters); all three names are exported so you can assert the ceiling. The whole `message` is that plus the site's own fixed text, so it is bounded by a constant but a larger one: a 120,000-character control number gave a 120,066-character `X12BuildError.message` before this and gives 150 now. That is robustness, not redaction: the value is one you supplied and bounding it hides nothing from you. It is also not escaped, and on the **ack** path it is not always strictly your own, since `build999`'s AK2-02 and `buildTA1` echo an inbound document's control numbers by design. Log `err.code`, not `err.message`, from a builder. **`defineProfile()` is bounded on the same terms since `0.0.6`** (twelve refusal sites, twenty-three caller values; the worst message measured **360,181 characters** before and **431** now, both at the `fixture` refusal, which names three caller values; the ceiling for that site is 443 and the suite asserts every site under 500; `X12ProfileError.profileName` is deliberately left unbounded so it still matches the name you passed). **And a forged non-array in a builder spec now refuses instead of hanging:** every indexed loop takes its bound from a checked array, so `{ length: "9".repeat(120000) }` draws a typed refusal rather than coercing to `Infinity` and looping forever. A few `for…of` reads still throw an untyped `TypeError` instead; both are in [KNOWN-LIMITATIONS.md](./KNOWN-LIMITATIONS.md). **The one deliberate exception:** `X12ParseError.snippet` on the four Tier-3 structural fatals is a bounded (≤ 64 character) copy of the start of the input, so on real traffic it can carry PHI. The library does not redact it. Redact at your call site, or log `err.code` and `err.position` instead. See [Keeping PHI out of logs](./docs-content/troubleshooting.md).
+X12 healthcare transactions carry protected health information, so treat every interchange you hand
+this library as PHI.
 
-See the [**Cookbook**](./docs-content/cookbook.md) for task-oriented recipes (post an 835, route 277CA rejections, round-trip a 271, walk an 837, read a 999) and [**KNOWN-LIMITATIONS.md**](./KNOWN-LIMITATIONS.md) for the honest do-not-over-trust list.
+**What it does with your document.** It decodes it in memory and nothing else. No socket is opened,
+nothing is written to disk, and nothing is fetched at run time: the bundled code lists are versioned
+data snapshots, so updating one is a release rather than a network call. The acknowledgment builders
+are pure functions and never auto-send.
+
+**What it keeps out of diagnostics.** A warning `message` is a lookup into a frozen registry rather
+than something built from your document, and no warning factory in this library takes a value
+parameter, so no element of yours can reach a diagnostic. The code and the `position` say what and
+where; the bytes stay on the model. `ALL_WARNING_MESSAGES` is exported so you can assert that.
+
+**The one deliberate exception.** `X12ParseError.snippet` on the four structural fatals is a bounded
+copy of the start of the input, so on real traffic it can carry PHI, and it is not redacted. Log
+`err.code` and `err.position` instead, or redact at your call site.
+
+**Builder refusals are a weaker surface, deliberately.** A `build*` refusal names the control
+number, count or code you passed in, so that you can see what was refused. The rendered fragment is
+bounded by an exported constant, but it is bounded rather than redacted. Log `err.code`, not
+`err.message`, from a builder.
+
+**What you still own.** Transport, storage, retention, access control, audit logging, and every log
+line your own code writes. This library makes no HIPAA compliance claim on your behalf.
+
+## API
+
+Everything ships from one entry point; there are no subpath imports.
+
+- **Read.** `parseX12` decodes an interchange into a model, and a per-transaction reader turns a
+  transaction set into a typed one (`get835`, `get837Claims`, `get270Inquiry`, `get271Eligibility`,
+  `get276StatusInquiry`, `parse999`, `parseTA1`, and the rest).
+- **Emit.** `serializeX12` and `buildInterchange` are the general path, and every transaction set
+  with a reader also has a domain builder (`build835`, `build837P`, `build271`, and the rest) that
+  layers that guide's own invariants on top.
+- **Errors and warnings.** Parsing is lenient, and only **four** structural failures are ever fatal
+  (`X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`, `X12_INVALID_DELIMITERS`, `X12_EMPTY_INPUT`).
+  Everything else arrives on `ix.warnings` as a stable code with positional context, so a tolerated
+  deviation is visible rather than silent.
+- **Money.** Every monetary, percent and quantity field decodes as `X12Decimal`, which is
+  string-backed with BigInt arithmetic, and this library never **`parseFloat`s** an EDI amount. A
+  slot the sender left empty reads `undefined` rather than zero, so "stated zero" and "stated
+  nothing" stay different readings.
+- **Conformance.** `X12_TR3_CONFORMANCE` states which implementation guide each transaction set
+  follows and how that identifier stands against the federal incorporation by reference.
+
+Task-oriented recipes are in the [cookbook](./docs-content/cookbook.md), and
+[KNOWN-LIMITATIONS.md](./KNOWN-LIMITATIONS.md) is the honest do-not-over-trust list.
+
+## Compatibility
+
+- **005010 HIPAA transaction sets**, with hooks for the errata revisions the industry actually
+  exchanges. Non-healthcare sets such as 850, 856, 810 and 204, plus EDIFACT, AS2 and SFTP
+  transport, and pre-005010 revisions, are out of scope.
+- **Vendor deviations become warnings, not exceptions.** Built-in profiles record whose
+  companion-guide deviation they accommodate; selecting one never changes an otherwise correct
+  parse, and profiles are authored through the same public `defineProfile()` API you have.
+- **Round trips are not byte-exact in general.** `serializeX12` reproduces the segments on the model
+  verbatim, including element padding, composites and `?`-release escapes, but
+  **`serialize(parse(s)) === s` is not guaranteed in general**. Line breaks between segments are the
+  common case: any run of CR or LF between segments is absorbed at parse, so a pretty-printed file
+  emits compact. Most of the constructs that break a round trip are silent, so "my file has no line
+  breaks" is not sufficient either. [KNOWN-LIMITATIONS.md](./KNOWN-LIMITATIONS.md) is the canonical
+  list.
+
+## Contributing
+
+Questions, bug reports and trading-partner quirks all belong in
+[GitHub issues](https://github.com/cosyte/x12/issues).
+
+Pull requests are welcome. A contribution must clear `pnpm typecheck`, `pnpm lint` and `pnpm test`,
+hold the per-directory coverage floors, pass the PHI commit gate (`pnpm phi-scan`) and the prose
+gates (`pnpm check:no-emdash`, `pnpm check:no-internal-refs`), and carry a changeset. Every fixture
+must be synthetic: never open a pull request carrying a real patient's data.
 
 ## Trademarks
 
-Availity and Blue Cross Blue Shield are trademarks of their respective owners. cosyte is not affiliated with, endorsed by, or
-sponsored by any of them. The names identify the trading partners whose companion-guide deviations the built-in profiles accommodate. See [TRADEMARKS.md](./TRADEMARKS.md).
+Availity and Blue Cross Blue Shield are trademarks of their respective owners. cosyte is not
+affiliated with, endorsed by, or sponsored by any of them. The names identify the trading partners
+whose companion-guide deviations the built-in profiles accommodate. See
+[TRADEMARKS.md](./TRADEMARKS.md).
 
 ## License
 
-MIT. See [LICENSE](./LICENSE).
+MIT, copyright Cosyte. See [LICENSE](./LICENSE).
 
 Built by [Cosyte](https://cosyte.com).
