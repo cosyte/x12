@@ -8,3 +8,6 @@ coverage/
 *.log
 .env*
 dist-artifacts/
+.readme-dist/
+.cosyte-doc-snippets/
+.cosyte-readme-snippets/
