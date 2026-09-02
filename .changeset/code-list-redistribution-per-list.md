@@ -1,5 +1,5 @@
 ---
-"@cosyte/x12": patch
+"@cosyte/x12": minor
 ---
 
 **Every bundled code list now publishes who maintains it and whether its

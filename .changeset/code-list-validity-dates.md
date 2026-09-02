@@ -1,5 +1,5 @@
 ---
-"@cosyte/x12": patch
+"@cosyte/x12": minor
 ---
 
 The bundled CARC and RARC snapshots now carry the maintainer's per-code dates,
