@@ -14,7 +14,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
 
-Developer-focused ASC X12 EDI parser and utility library for Node.js/TypeScript.
+Developer-focused ASC X12 healthcare EDI parser, serializer, and builder for Node.js and TypeScript: lenient on parse, spec-clean on emit.
 
 ## Why this exists
 

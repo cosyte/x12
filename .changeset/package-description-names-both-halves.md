@@ -3,8 +3,8 @@
 ---
 
 The package description now names both halves of what this library does and the
-scope it covers. It changes no parse and no emit behaviour: only the
-`description` metadata field moves.
+scope it covers. It changes no parse and no emit behaviour: the `description`
+metadata field moves, and the README states that same sentence.
 
 The previous wording, "parser and utility library", described the read half
 alone, while a matching domain builder ships for every transaction that has a
