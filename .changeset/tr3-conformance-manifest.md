@@ -1,5 +1,5 @@
 ---
-"@cosyte/x12": patch
+"@cosyte/x12": minor
 ---
 
 A new package-root export, `X12_TR3_CONFORMANCE`, states which implementation

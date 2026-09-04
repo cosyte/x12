@@ -1,5 +1,5 @@
 ---
-"@cosyte/x12": patch
+"@cosyte/x12": minor
 ---
 
 Trading-partner profiles now say whether the deviation they describe is one a

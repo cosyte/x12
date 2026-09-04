@@ -1,5 +1,5 @@
 ---
-"@cosyte/x12": patch
+"@cosyte/x12": minor
 ---
 
 Typed read and emit support for the 276 Health Care Claim Status Request

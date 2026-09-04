@@ -1,5 +1,5 @@
 ---
-"@cosyte/x12": patch
+"@cosyte/x12": minor
 ---
 
 **A rejected 271 no longer reads as a member with no benefits.** `AAA`
