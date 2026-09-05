@@ -1,0 +1,20 @@
+# Install hardening. Both settings are OFF by default at the pinned pnpm, so they
+# are in force only because this file says so.
+#
+# The values are NOT chosen here. They are the estate standard, declared in the
+# config repo's drift-manifest.json under
+# `baselines.package.groups.installHardening`, and drift-check.js grades this file
+# against that declaration. Change the standard there, never the number here.
+#
+# minimumReleaseAge is pnpm's own 24 hours in minutes: malware is usually caught
+# quickly, so refusing a release younger than a day is what stands between a
+# compromised publish and this checkout during the window before it is pulled.
+# trustPolicy `no-downgrade` refuses a package whose trust level would drop.
+#
+# THE pnpm PIN IS PART OF THE CONTROL, NOT A SEPARATE FACT. minimumReleaseAge
+# arrived in pnpm 10.16.0 and trustPolicy in 10.21.0; an older pnpm ignores both
+# keys outright, which is a settings file that decorates rather than defends. So
+# `packageManager` in package.json is pinned above both floors, and lowering it
+# below them disarms this file silently.
+minimumReleaseAge: 1440
+trustPolicy: no-downgrade

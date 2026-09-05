@@ -27,7 +27,38 @@
  *   <path> [<path>...]       - scan specific paths
  *   (no args)                - scan all in-scope working-tree files
  *
- * Exit codes: 0 (clean), 1 (hits found), 2 (invocation error).
+ * Exit codes: 0 (clean), 1 (hits found), 2 (invocation error, and every refusal
+ * including the completeness refusal below).
+ *
+ * ---------------------------------------------------------------------------
+ * A TARGET THIS RUN ENUMERATED AND NEVER READ REFUSES THE SCAN (exit 2), AFTER
+ * THE HITS IT DID FIND ARE REPORTED.
+ *
+ * `--allow-fixture` is the only thing that produces such a target: it withdraws
+ * a path from a list this run had already built. Before this rule the
+ * withdrawal was silent, so the run returned 0 for no hits and 1 for hits over
+ * the targets it DID open, and a corpus whose only violator was withdrawn
+ * reported CLEAN. A scan that did not open a file has no clean verdict about
+ * it, which is the same property `reconcileObserved` asserts for all mode
+ * against the index, one level up.
+ *
+ * THE ORDER IS PART OF THE RULE. The hits are reported FIRST and the refusal
+ * comes after, so a run that found a real violator still prints its locus and
+ * its offending value before it exits: refusing earlier would trade one blind
+ * spot for another, and a caller who is handed a refusal with no evidence
+ * learns nothing about the corpus.
+ *
+ * IT IS EXIT 2, THE CODE EVERY OTHER REFUSAL HERE USES, AND NOT A NEW ONE. The
+ * documented contract is 0/1/2 and the meaning of 2 is "this scan is refused,
+ * not clean and not a hit report"; a fourth code would make every existing
+ * caller's branch wrong. What matters to a caller is that it is non-zero and
+ * that it is NOT the hits code, because those are the two answers a CI runner
+ * and a git hook already branch on.
+ *
+ * A RUN CARRYING NO `--allow-fixture` CANNOT REACH IT. Nothing else removes a
+ * path from `targets` after enumeration, so `enumerated` and `read` are equal
+ * on every all-mode sweep, every `--staged` run (the commit-blocking route) and
+ * every explicit-path run, and this rule is invisible to all three.
  *
  * ---------------------------------------------------------------------------
  * AN IN-SCOPE ENTRY THAT IS NOT A REGULAR FILE REFUSES THE SCAN (exit 2). It is
@@ -844,6 +875,32 @@ function gitModeKind(mode: string): string {
 const RAW_RECORD = /^:(?:\d{6}) (\d{6}) [0-9a-f]+ [0-9a-f]+ ([A-Z])\d*$/;
 
 /**
+ * Refuse (exit 2) over targets this run ENUMERATED and never READ.
+ *
+ * SEPARATE FROM `reconcileObserved`, WHICH ASKS THE SAME QUESTION ONE LEVEL UP. That one compares
+ * an all-mode walk against the INDEX, so it catches a corpus the sweep never saw. This one compares
+ * the target list against what was actually opened, so it catches a target the run itself withdrew
+ * after building the list, which is what `--allow-fixture` does and which no index can see.
+ *
+ * EVERY OFFENDER IS NAMED, and nothing but the repo-relative paths the caller already supplied is
+ * printed: the same locus every hit carries, and never a byte off the target.
+ */
+function refuseUnreadTargets(unread: string[]): void {
+  if (unread.length === 0) return;
+  const lines = unread.map((p) => `  - ${p}`).join("\n");
+  const noun =
+    unread.length === 1
+      ? "target was enumerated and never read"
+      : "targets were enumerated and never read";
+  throw new InvocationError(
+    `refusing the scan: ${String(unread.length)} ${noun}:\n${lines}\n` +
+      "A scan that never opened a file has found nothing in it, which is not the same as finding " +
+      "it clean, so this run has no verdict about it and reports none. Drop the --allow-fixture " +
+      "for that path, or declare its synthetic tokens in scripts/phi-allow-list.txt instead.",
+  );
+}
+
+/**
  * Refuse (exit 2) over in-scope paths git reports as UNMERGED. Separate from
  * `refuseUnscannable` because the reason differs in kind: such a path is usually
  * an ordinary regular file, and what it lacks is a SINGLE staged blob rather
@@ -1522,12 +1579,18 @@ function main(): number {
     throw err;
   }
 
+  // The list this run DECLARED, captured before anything is withdrawn from it. `--allow-fixture` is
+  // the only thing that withdraws, and the difference between these two sets is what the
+  // completeness refusal below is about.
+  const enumerated = new Set(targets.map((t) => t.path));
   targets = targets.filter((t) => !allowed.has(t.path));
 
   const hits: Hit[] = [];
+  const read = new Set<string>();
   for (const t of targets) {
     try {
       scanTarget(t, allow, hits);
+      read.add(t.path);
     } catch (err) {
       if (err instanceof InvocationError) {
         process.stderr.write(`[phi-scan] ${err.message}\n`);
@@ -1537,7 +1600,28 @@ function main(): number {
     }
   }
 
-  report(hits);
+  const unread = [...enumerated].filter((p) => !read.has(p));
+
+  // HITS FIRST, THEN THE REFUSAL. A caller handed a refusal with no evidence learns nothing about
+  // the corpus, so the violator this run DID open is reported with its locus and its value before
+  // the run refuses over the target it did not.
+  //
+  // BUT NEVER THE CLEAN LINE UNDER A REFUSAL. `report` prints `OK - no hits` when there are none,
+  // and a run that is about to refuse has no clean verdict to publish: printing one and then
+  // exiting non-zero is the confusing shape every other refusal here avoids. A run with no
+  // withdrawal has an empty `unread` and reaches `report` exactly as before.
+  if (hits.length > 0 || unread.length === 0) report(hits);
+
+  try {
+    refuseUnreadTargets(unread);
+  } catch (err) {
+    if (err instanceof InvocationError) {
+      process.stderr.write(`[phi-scan] ${err.message}\n`);
+      return 2;
+    }
+    throw err;
+  }
+
   return hits.length === 0 ? 0 : 1;
 }
 
