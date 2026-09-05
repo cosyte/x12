@@ -344,13 +344,21 @@ describe("phi-scan: --allow-fixture override gate", () => {
     expect(r.stderr).toMatch(/phi-scan-overrides\.md/);
   });
 
-  it("honors --allow-fixture WITH an override-log entry (exit 0)", () => {
+  /**
+   * RE-POINTED 2026-09-05, DELIBERATELY, AND NOT DELETED. This case used to assert exit `0` for
+   * exactly this invocation, and that answer was the defect: the run enumerated one target,
+   * withdrew it, opened nothing, and reported CLEAN over a corpus it had not read. The override log
+   * still gates the bypass in exactly the same way, which is what this case is here to pin; what
+   * moved is the verdict the run reaches AFTER the gate admits it, and the completeness cases below
+   * pin that half.
+   */
+  it("honors --allow-fixture WITH an override-log entry, then REFUSES the unread target (exit 2)", () => {
     const p = write("violator2.edi", interchange(OVERRIDE_VIOLATOR));
     const rel = relative(REPO_ROOT, p).split(sep).join("/");
 
     // The fixture is a genuine violator: scanned on its own (no override) it
     // must trip. This proves the override - not an empty target set - is what
-    // flips the next run to clean.
+    // changes the next run's answer.
     expect(runScanner([p]).code).toBe(1);
 
     const original = readFileSync(OVERRIDES_PATH, "utf8");
@@ -360,7 +368,14 @@ describe("phi-scan: --allow-fixture override gate", () => {
         `\n### ${rel}\n\n- **Reason:** unit test\n- **Approved by:** vitest\n`,
       );
       const r = runScanner(["--allow-fixture", p]);
-      expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+      // NOT the unlogged-bypass refusal, which is the other exit-2 route through this gate: that
+      // one names the override log and never opens anything, and telling them apart by message is
+      // what keeps this case from passing for the wrong reason.
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).not.toMatch(/phi-scan-overrides\.md/);
+      expect(r.stderr).toContain("enumerated and never read");
+      expect(r.stderr).toContain(rel);
+      expect(r.stdout).not.toMatch(/OK - no hits/);
     } finally {
       writeFileSync(OVERRIDES_PATH, original);
     }
@@ -2023,5 +2038,191 @@ describe("phi-scan: a DECLARED directory is a wider list than the walk roots", (
     const files = r.stderr.split("\n").filter((l) => l.startsWith("[phi-scan] HIT:"));
     expect(files.length, `stderr: ${r.stderr}`).toBe(1);
     expect(r.stderr).toMatch(/across 1 file/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A target this run ENUMERATED and never READ
+// ---------------------------------------------------------------------------
+//
+// `--allow-fixture` is the only thing that produces one: it withdraws a path from a list this run
+// had already built. Before the rule these cases pin, that withdrawal was SILENT, so a corpus whose
+// only violator was withdrawn reported CLEAN at exit 0 and a corpus with a second violator reported
+// only its HITS code, in both cases attesting over a file nobody opened.
+//
+// THE ORDER IS HALF THE PROPERTY. The hits are reported FIRST and the refusal comes after, so a run
+// that found a real violator still prints its locus and its value before it declines to vouch for
+// the target it did not read.
+//
+// 🛑 EVERY VIOLATOR BELOW IS ASSEMBLED WITH `seg(...)`, as the whole file's rule requires.
+
+/** The one line whose removal removes the completeness rule and nothing else. */
+const COMPLETENESS_LINE = "const unread = [...enumerated].filter((p) => !read.has(p));";
+
+/** A decoy that scans CLEAN on its own, so withdrawing it is the ONLY difference in a graded run. */
+const CLEAN_DECOY = "synthetic notes, member MEMBER001, dos 20260601\n";
+
+function runScript(cwd: string, script: string, args: string[]): RunResult {
+  const r = spawnSync(NODE_BIN, [script, ...args], { cwd, encoding: "utf8", shell: false });
+  return { code: r.status ?? -1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
+}
+
+/** Run `body` with `### <path>` entries appended to the real override log, then restore it. */
+function withOverrideLogEntries(paths: string[], body: () => void): void {
+  const original = readFileSync(OVERRIDES_PATH, "utf8");
+  try {
+    for (const rel of paths) {
+      appendFileSync(
+        OVERRIDES_PATH,
+        `\n### ${rel}\n\n- **Reason:** unit test\n- **Approved by:** vitest\n`,
+      );
+    }
+    body();
+  } finally {
+    writeFileSync(OVERRIDES_PATH, original);
+  }
+}
+
+describe("phi-scan: an enumerated-and-unread target refuses, AFTER the hits are reported", () => {
+  it("refuses (exit 2) over a withdrawn decoy and still prints the violator's value", () => {
+    const violator = write("completeness-violator.edi", interchange(DASHED_SSN_VIOLATOR));
+    const decoy = write("completeness-decoy.txt", CLEAN_DECOY);
+    const violatorRel = relative(REPO_ROOT, violator).split(sep).join("/");
+    const decoyRel = relative(REPO_ROOT, decoy).split(sep).join("/");
+
+    // Anti-vacuity, both directions: the violator is a genuine hit on its own and the decoy is
+    // genuinely clean on its own, so the withdrawal is the only thing the graded run changes.
+    expect(runScanner([violator]).code).toBe(1);
+    expect(runScanner([decoy]).code).toBe(0);
+
+    withOverrideLogEntries([decoyRel], () => {
+      const r = runScanner([violator, decoy, "--allow-fixture", decoy]);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      // The hit detail comes FIRST, with the offending value, or a caller is handed a refusal it
+      // can learn nothing from.
+      expect(r.stderr).toContain(violatorRel);
+      expect(r.stderr).toContain(DASHED_SSN);
+      // Then the refusal, naming the target that was never opened.
+      expect(r.stderr).toContain("enumerated and never read");
+      expect(r.stderr).toContain(decoyRel);
+      expect(r.stderr.indexOf(DASHED_SSN)).toBeLessThan(
+        r.stderr.indexOf("enumerated and never read"),
+      );
+      expect(r.stdout).not.toMatch(/OK - no hits/);
+    });
+  });
+
+  it("refuses even when the withdrawn target is the corpus's ONLY violator", () => {
+    // The shape that used to report clean outright: withdraw the one file carrying PHI and the run
+    // had nothing left to find, so it said so.
+    const violator = write("completeness-only-violator.edi", interchange(DASHED_SSN_VIOLATOR));
+    const rel = relative(REPO_ROOT, violator).split(sep).join("/");
+
+    withOverrideLogEntries([rel], () => {
+      const r = runScanner([violator, "--allow-fixture", violator]);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("enumerated and never read");
+      expect(r.stderr).toContain(rel);
+      expect(r.stdout).not.toMatch(/OK - no hits/);
+    });
+  });
+
+  it("names EVERY unread target, not just the first", () => {
+    const violator = write("completeness-many-violator.edi", interchange(DASHED_SSN_VIOLATOR));
+    const a = write("completeness-many-a.txt", CLEAN_DECOY);
+    const b = write("completeness-many-b.txt", CLEAN_DECOY);
+    const aRel = relative(REPO_ROOT, a).split(sep).join("/");
+    const bRel = relative(REPO_ROOT, b).split(sep).join("/");
+
+    withOverrideLogEntries([aRel, bRel], () => {
+      const r = runScanner([violator, a, b, "--allow-fixture", a, "--allow-fixture", b]);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("2 targets were enumerated and never read");
+      expect(r.stderr).toContain(aRel);
+      expect(r.stderr).toContain(bRel);
+    });
+  });
+
+  it("a run with NO --allow-fixture is untouched: the same two targets exit 1 and say nothing", () => {
+    const violator = write("completeness-nobypass-violator.edi", interchange(DASHED_SSN_VIOLATOR));
+    const decoy = write("completeness-nobypass-decoy.txt", CLEAN_DECOY);
+
+    const r = runScanner([violator, decoy]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain(DASHED_SSN);
+    expect(r.stderr).not.toContain("enumerated and never read");
+  });
+
+  it("a clean run with NO --allow-fixture still exits 0 and prints OK", () => {
+    const clean = write("completeness-clean.txt", CLEAN_DECOY);
+    const r = runScanner([clean]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+    expect(r.stdout).toMatch(/OK - no hits/);
+    expect(r.stderr).not.toContain("enumerated and never read");
+  });
+
+  it("neither enumerating route is changed: all mode and --staged still exit 0 over a clean repo", () => {
+    // Both routes build their target list and read every entry on it, so `enumerated` and `read`
+    // are equal and this rule is unreachable from either. `--staged` is the commit-blocking route,
+    // so a scanner that refused too eagerly here would block every commit in the repo.
+    const root = makeRepo();
+    expect(runIn(root, []).code).toBe(0);
+
+    git(root, ["add", "."]);
+    const staged = runIn(root, ["--staged"]);
+    expect(staged.code, `stderr: ${staged.stderr}`).toBe(0);
+    expect(staged.stderr).not.toContain("enumerated and never read");
+  });
+
+  /**
+   * THE POSITIVE CONTROL, AND THE REASON THE CASES ABOVE ARE NOT VACUOUS.
+   *
+   * It plants a COPY of the shipped scanner with the one line that computes the unread set replaced
+   * by an empty list, runs the SAME argv as the graded case above against the SAME corpus, and
+   * requires the answer to change from the refusal back to the plain hits code. An assertion nobody
+   * has seen fail is indistinguishable from one that cannot, and this repo's own history is that a
+   * gate reported green over an unopened corpus for weeks.
+   *
+   * The removal is ASSERTED to have landed, so the control cannot go vacuous if the line is
+   * reworded: it reds by name instead of silently proving nothing.
+   */
+  it("MUTATION CONTROL: with the refusal branch removed, the same run reports only its HITS code", () => {
+    const source = readFileSync(SCANNER_PATH, "utf8");
+    expect(
+      source.includes(COMPLETENESS_LINE),
+      `scripts/phi-scan.ts no longer contains the line this control removes ` +
+        `(${COMPLETENESS_LINE}). Re-derive the control before trusting the cases above.`,
+    ).toBe(true);
+
+    const root = makeRepo();
+    writeFileSync(
+      join(root, "scripts", "phi-scan-mutant.ts"),
+      source.replace(COMPLETENESS_LINE, "const unread: string[] = [];"),
+    );
+    writeFileSync(join(root, "test", "fixtures", "violator.edi"), interchange(DASHED_SSN_VIOLATOR));
+    writeFileSync(join(root, "test", "fixtures", "decoy.txt"), CLEAN_DECOY);
+    writeFileSync(
+      join(root, "phi-scan-overrides.md"),
+      "# PHI scan overrides\n\n## Entries\n\n### test/fixtures/decoy.txt\n\n- **Reason:** control\n",
+    );
+
+    const argv = [
+      "test/fixtures/violator.edi",
+      "test/fixtures/decoy.txt",
+      "--allow-fixture",
+      "test/fixtures/decoy.txt",
+    ];
+
+    // The shipped scanner, over this corpus and this argv: REFUSED.
+    const shipped = runIn(root, argv);
+    expect(shipped.code, `stderr: ${shipped.stderr}`).toBe(2);
+    expect(shipped.stderr).toContain("enumerated and never read");
+
+    // The same thing with the rule removed: back to the plain hits code, saying nothing about the
+    // target it did not read. That is the defect, reproduced on demand.
+    const weakened = runScript(root, join(root, "scripts", "phi-scan-mutant.ts"), argv);
+    expect(weakened.code, `stderr: ${weakened.stderr}`).toBe(1);
+    expect(weakened.stderr).not.toContain("enumerated and never read");
+    expect(weakened.stderr).toContain(DASHED_SSN);
   });
 });
