@@ -27,7 +27,7 @@
   "engines": {
     "node": ">=22.0.0"
   },
-  "packageManager": "pnpm@10.0.0",
+  "packageManager": "pnpm@10.34.5",
   "sideEffects": false,
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -90,7 +90,7 @@
   "pnpm": {
     "overrides": {
       "esbuild@>=0.27.3 <0.28.1": "0.28.1",
-      "js-yaml@>=4.0.0 <4.2.0": "4.2.0"
+      "js-yaml@>=4.0.0 <4.3.0": "4.3.0"
     }
   },
   "devDependencies": {
