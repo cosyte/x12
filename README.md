@@ -175,6 +175,74 @@ Everything ships from one entry point; there are no subpath imports.
 Task-oriented recipes are in the [cookbook](./docs-content/cookbook.md), and
 [KNOWN-LIMITATIONS.md](./KNOWN-LIMITATIONS.md) is the honest do-not-over-trust list.
 
+### Dates and times
+
+Every typed reader surfaces its dates verbatim, as the qualifier the sender used plus the bytes it
+carried. `toObject`, `toISO` and `toDate` are the three ways to read one, and every `@cosyte/*`
+parser exports the same three names with the same shapes and the same timezone rule.
+
+```ts
+import { toObject, toISO, toDate } from "@cosyte/x12";
+
+// A DTP or DTM date off any typed reader: claim.dates[0], eligibility.dates[0], and so on.
+const day = { formatQualifier: "D8", value: "20260601" };
+
+toObject(day); // { year: 2026, month: 6, day: 1 }
+toISO(day); // "2026-06-01"
+
+// A calendar day is not an instant. Without a stated offset there is no answer.
+toDate(day); // undefined
+toDate(day, { assumeOffsetMinutes: 0 })?.toISOString(); // "2026-06-01T00:00:00.000Z"
+toDate(day, { assumeOffsetMinutes: -300 })?.toISOString(); // "2026-06-01T05:00:00.000Z"
+
+// A range converts to nothing, because an interval is not a point in time.
+const span = { formatQualifier: "RD8", value: "20260601-20260605" };
+toISO(span); // undefined
+```
+
+**The decoded format qualifier set is `D8` and `RD8`, and nothing else.** Those are the two DTP-02
+values this library already parses and builds: `D8` is a single `CCYYMMDD` day, and `RD8` is a
+`CCYYMMDD-CCYYMMDD` range. A qualifier outside that pair, an absent one, a value whose digits do not
+match the shape its qualifier declares, and a day that is not on the calendar all convert to
+`undefined`. None of the three ever throws, so a lenient parse stays lenient all the way to the
+value you read.
+
+**`RD8` converts to `undefined` from all three, deliberately.** An interval is not a point in time,
+so there is no single day to hand back for a service period or an eligibility span. Handing back the
+first endpoint would be a quiet wrong answer with a right-looking shape. Split the range yourself
+and convert whichever end you meant.
+
+**`toDate` returns an instant only when you state the zone.** No X12 date element this library
+decodes carries a UTC offset, so `assumeOffsetMinutes` (signed minutes east of UTC) is the only way
+one reaches the result. Without it the answer is `undefined`: the host machine's timezone is never
+read and UTC is never assumed, because the same midnight is two different instants either side of a
+border and a date of birth read in the wrong zone is a day out.
+
+`toObject` returns only the components the value stated, with `month` spec-native 1 to 12 rather
+than the JavaScript `Date` 0 to 11, so `Object.keys()` of the result tells you the precision. Delete
+`offsetMinutes` and what is left is accepted by `Temporal.PlainDateTime.from` and by luxon's
+`DateTime.fromObject` with no renaming. Neither library is a dependency here; this package still has
+zero of those.
+
+`parseDocumentDate`, which reads the document date for the date-aware code-list queries, keeps its
+own contract and still THROWS on input it refuses. That divergence is deliberate: it answers a
+caller who asked a validity question and could not state the day, while these three read a document
+that was already parsed leniently.
+
+#### Using two @cosyte parsers in one file
+
+The three names are identical in every `@cosyte/*` parser, so importing two of them means aliasing:
+
+```ts
+import { toISO as x12ToISO } from "@cosyte/x12";
+import { toISO as hl7ToISO } from "@cosyte/hl7";
+
+x12ToISO({ formatQualifier: "D8", value: "20260601" });
+hl7ToISO(someParsedHl7Timestamp);
+```
+
+A namespace import works too: `import * as x12 from "@cosyte/x12"`, then `x12.toISO(day)`.
+
 ## Compatibility
 
 - **005010 HIPAA transaction sets**, with hooks for the errata revisions the industry actually

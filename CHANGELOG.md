@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`toObject`, `toISO` and `toDate`: one date conversion surface, shared with every `@cosyte/*`
+  parser.** Three new package-root exports read a date off any typed reader, plus `DateParts`,
+  `ToDateOptions` and `X12DateValue`. Purely additive: no exported name is removed, renamed or
+  altered, `parseDocumentDate` keeps its own contract including its throwing one, no parse and no
+  emit behaviour moves, and there is still not a single runtime dependency.
+
+  The parameter is structural, so all eight `X12*Date` types are accepted through the same three
+  names with no per-transaction variant. What is decoded is exactly what this package already parses
+  or builds and nothing more: `D8`, a single `CCYYMMDD` day, and `RD8`, a `CCYYMMDD-CCYYMMDD` range.
+  `D8` converts to `{ year, month, day }` with `month` spec-native 1 to 12. Everything else answers
+  `undefined` and nothing ever throws: a qualifier outside that pair, an absent one (which is how
+  `X12PremiumDate` and `X12EnrollmentDate` reach this surface, since neither surfaces DTP-02 or
+  DTM-03 at all), a value whose digits do not match the shape its qualifier declares, and a day that
+  is not on the calendar.
+
+  **`RD8` converts to `undefined` from all three, deliberately.** An interval is not a point in
+  time; returning the first endpoint would be a quiet wrong answer with a right-looking shape.
+  **`toDate` returns an instant only when the caller states the zone**, through
+  `assumeOffsetMinutes`: no X12 date element decoded here carries a UTC offset, the host machine's
+  timezone is never read, and UTC is never assumed. A four-digit year below 100 stays that year.
+
+  Held by `test/conversion-surface.test.ts`, the same eleven-row case table every sibling parser
+  carries, five of whose rows are recorded as skips with a written reason and a live test measuring
+  the property behind each.
+
 - **`pnpm check:no-internal-refs` - a gate on internal project bookkeeping reaching a consumer**
   (`X12-NO-INTERNAL-REFS-GATE`), with `.github/workflows/no-internal-refs.yml` running it on every
   push and PR. Documentation and tooling only: the `src/` half of the diff is comment-only and
