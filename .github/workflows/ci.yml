@@ -17,8 +17,14 @@ jobs:
   # Universal gates from the shared pipeline (typecheck, lint, format, test, coverage, build, attw,
   # dual ESM/CJS smoke, actionlint) on the standard Node matrix (22 + 24). x12 ships a PHI scanner,
   # so the shared pipeline's optional PHI-scan step is switched on.
+  #
+  # The shared pipeline is named at an immutable published reference, never at the callee's default
+  # branch: a floating reference delivers every later change made there on that repository's clock
+  # rather than this one's, reviewed by nobody here, so x12's CI conclusion could move with no x12
+  # commit. Bump this by naming a newer release from https://github.com/cosyte/.github/releases.
   ci:
-    uses: cosyte/.github/.github/workflows/ci.yml@main
+    # cosyte/.github release workflows-2026-09-04-f29e9cc83cac
+    uses: cosyte/.github/.github/workflows/ci.yml@f29e9cc83cac4bd5fc73a68cefa22f136cd39608
     with:
       run-phi-scan: true
 
