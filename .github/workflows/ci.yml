@@ -17,10 +17,27 @@ jobs:
   # Universal gates from the shared pipeline (typecheck, lint, format, test, coverage, build, attw,
   # dual ESM/CJS smoke, actionlint) on the standard Node matrix (22 + 24). x12 ships a PHI scanner,
   # so the shared pipeline's optional PHI-scan step is switched on.
+  #
+  # THE DOCS-CONTENT GATE, and what it will and will not red you for. `check-docs-content: true`
+  # switches on the shared pipeline's docs-content checker. WHICH DIRECTORY IT VALIDATES: this
+  # repo's `docs-content/`, the tree packed into `docs-content.tar.gz` at release and mounted by
+  # the `cosyte/docs` site. WHAT FAILS THIS CHECK: a package-internal link target under that
+  # directory resolving to no REGULAR FILE (the accepted spellings are `<t>`, `<t>.md`, `<t>.mdx`,
+  # `<t>/index.md` and `<t>/index.mdx`, so a bare directory named `<t>` resolves nothing); a
+  # `sidebars.json` document id no file declares; and an image destination with no file at exactly
+  # that path. Same-page anchors, external URLs, site-absolute paths and relative links that escape
+  # `docs-content/` are REPORTED and never failed, because `cosyte/docs` owns those classes.
+  # WHERE THE RULES LIVE: not here. They are implemented in the shared reusable workflow's own
+  # repository, `cosyte/.github` (the `github-profile` repo in the meta checkout), which is also
+  # where a rule that looks wrong gets fixed. The input is off by default and switching it on
+  # requires `docs-content/sidebars.json` under that exact name. Why it is on: nothing between an
+  # author and the published site used to resolve these links, and a broken one x12 shipped kept
+  # docs.cosyte.com red for eight consecutive days while every x12 check stayed green.
   ci:
     uses: cosyte/.github/.github/workflows/ci.yml@main
     with:
       run-phi-scan: true
+      check-docs-content: true
 
   # Prove the publish pipeline on every push/PR WITHOUT burning a version or needing registry auth
   # (X12-10, mirroring config's REL-PIPE). Two auth-free proofs:
