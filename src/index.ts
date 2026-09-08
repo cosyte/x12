@@ -638,6 +638,17 @@ export {
 // Phase 6 - shared HL hierarchy primitive (271 / 277 / 277CA walkers).
 export type { X12Hl } from "./transactions/shared/hl.js";
 
+// The shared date conversion surface, over every `X12*Date` carrier the typed
+// readers surface. `toDate` returns `undefined` unless the caller states the
+// zone: an X12 date element is a calendar day, and turning one into an instant
+// without a stated offset would mean reading the host machine's timezone.
+export { toDate, toISO, toObject } from "./transactions/shared/date-conversion.js";
+export type {
+  DateParts,
+  ToDateOptions,
+  X12DateValue,
+} from "./transactions/shared/date-conversion.js";
+
 // Phase 3 - acknowledgments surface: parse / build 999 (005010X231A1) and
 // envelope-level TA1 as pure functions. See `src/transactions/ack/index.ts`
 // for the full barrel.
