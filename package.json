@@ -70,6 +70,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "clean": "rm -rf dist coverage *.tsbuildinfo",
+    "differential": "tsx scripts/differential.ts --oracle pyx12==4.0.0",
     "phi-scan": "tsx scripts/phi-scan.ts",
     "check:no-emdash": "bash scripts/check-no-emdash.sh",
     "check:no-internal-refs": "bash scripts/check-no-internal-refs.sh",

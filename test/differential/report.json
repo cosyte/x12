@@ -1,0 +1,620 @@
+{
+  "schemaVersion": 1,
+  "library": {
+    "package": "@cosyte/x12",
+    "commit": "ff34cf23a94cfa3d65a484da5b0e9e2af0674d37",
+    "workingTreeDirty": false
+  },
+  "oracle": {
+    "package": "pyx12",
+    "version": "4.0.0",
+    "licence": "BSD",
+    "licenceClassifier": "License :: OSI Approved :: BSD License",
+    "mapIndex": "pyx12/map/maps.xml",
+    "interchangeControlVersion": "00501"
+  },
+  "compared": [
+    {
+      "transaction": "277",
+      "variant": "277CA",
+      "title": "Health Care Claim Acknowledgment",
+      "libraryTr3": "005010X214",
+      "oracleTr3": "005010X214",
+      "oracleFunctionalIdentifierCode": "HN",
+      "oracleMapFile": "277.5010.X214.xml",
+      "oracleMapTransactionId": "277",
+      "oracleMapTitle": "HIPAA Health Care Claim Acknowledgement X214-277",
+      "tr3RevisionDiffers": false,
+      "documents": 3,
+      "documentIds": [
+        "test/fixtures/golden/277ca.edi",
+        "test/fixtures/status/277ca-canonical.edi",
+        "test/fixtures/status/277ca-hl-orphan.edi"
+      ],
+      "elementPositions": 351,
+      "divergences": []
+    },
+    {
+      "transaction": "820",
+      "variant": null,
+      "title": "Payroll Deducted and Other Group Premium Payment for Insurance Products",
+      "libraryTr3": "005010X218",
+      "oracleTr3": "005010X218",
+      "oracleFunctionalIdentifierCode": "RA",
+      "oracleMapFile": "820.5010.X218.xml",
+      "oracleMapTransactionId": "820A1",
+      "oracleMapTitle": "HIPAA Payment Order/Remittance Advice 005010X218 820A1",
+      "tr3RevisionDiffers": false,
+      "documents": 4,
+      "documentIds": [
+        "test/fixtures/golden/820.edi",
+        "test/fixtures/premium/820-canonical.edi",
+        "test/fixtures/premium/820-edge.edi",
+        "test/fixtures/premium/820-loop.edi"
+      ],
+      "elementPositions": 391,
+      "divergences": []
+    },
+    {
+      "transaction": "834",
+      "variant": null,
+      "title": "Benefit Enrollment and Maintenance",
+      "libraryTr3": "005010X220A1",
+      "oracleTr3": "005010X220A1",
+      "oracleFunctionalIdentifierCode": "BE",
+      "oracleMapFile": "834.5010.X220.A1.xml",
+      "oracleMapTransactionId": "834A1",
+      "oracleMapTitle": "HIPAA Benefit Enrollment and Maintenance 005010X220A1 834A1",
+      "tr3RevisionDiffers": false,
+      "documents": 3,
+      "documentIds": [
+        "test/fixtures/enrollment/834-canonical.edi",
+        "test/fixtures/enrollment/834-edge.edi",
+        "test/fixtures/golden/834.edi"
+      ],
+      "elementPositions": 368,
+      "divergences": []
+    },
+    {
+      "transaction": "835",
+      "variant": null,
+      "title": "Health Care Claim Payment/Advice",
+      "libraryTr3": "005010X221A1",
+      "oracleTr3": "005010X221A1",
+      "oracleFunctionalIdentifierCode": "HP",
+      "oracleMapFile": "835.5010.X221.A1.xml",
+      "oracleMapTransactionId": "835W1",
+      "oracleMapTitle": "HIPAA Health Care Claim Payment/Advice 005010X221A1 835W1",
+      "tr3RevisionDiffers": false,
+      "documents": 7,
+      "documentIds": [
+        "test/fixtures/golden/835.edi",
+        "test/fixtures/remit/835-availity-quirk.edi",
+        "test/fixtures/remit/835-carc-rarc-mix.edi",
+        "test/fixtures/remit/835-imbalance.edi",
+        "test/fixtures/remit/835-medicare-canonical.edi",
+        "test/fixtures/remit/835-multi-claim.edi",
+        "test/fixtures/remit/835-with-plb.edi"
+      ],
+      "elementPositions": 828,
+      "divergences": []
+    },
+    {
+      "transaction": "837",
+      "variant": "P",
+      "title": "Health Care Claim: Professional",
+      "libraryTr3": "005010X222A2",
+      "oracleTr3": "005010X222A1",
+      "oracleFunctionalIdentifierCode": "HC",
+      "oracleMapFile": "837.5010.X222.A1.xml",
+      "oracleMapTransactionId": "837",
+      "oracleMapTitle": "HIPAA Health Care Claim: Professional X222A1-837",
+      "tr3RevisionDiffers": true,
+      "documents": 13,
+      "documentIds": [
+        "test/fixtures/claim/837p-canonical.edi",
+        "test/fixtures/claim/837p-comprehensive.edi",
+        "test/fixtures/claim/837p-edge-cases.edi",
+        "test/fixtures/claim/837p-empty-optionals.edi",
+        "test/fixtures/claim/837p-hl-orphan.edi",
+        "test/fixtures/claim/837p-unknown-hi.edi",
+        "test/fixtures/claim/837p-with-patient-hl.edi",
+        "test/fixtures/envelope/availity-repetition.edi",
+        "test/fixtures/envelope/bcbs-subelement.edi",
+        "test/fixtures/envelope/medicare-canonical.edi",
+        "test/fixtures/envelope/no-trailing-crlf.edi",
+        "test/fixtures/envelope/syntactic-core-body.edi",
+        "test/fixtures/golden/837p.edi"
+      ],
+      "elementPositions": 1579,
+      "divergences": [
+        {
+          "document": "test/fixtures/envelope/syntactic-core-body.edi",
+          "transaction": "837",
+          "variant": "P",
+          "kind": "element-count",
+          "position": {
+            "segmentOrdinal": 6,
+            "segment": "REF",
+            "path": ""
+          },
+          "library": "2",
+          "oracle": "4"
+        },
+        {
+          "document": "test/fixtures/envelope/syntactic-core-body.edi",
+          "transaction": "837",
+          "variant": "P",
+          "kind": "element-value",
+          "position": {
+            "segmentOrdinal": 6,
+            "segment": "REF",
+            "path": "02"
+          },
+          "library": "ID*WITH*STAR",
+          "oracle": "ID?"
+        }
+      ]
+    },
+    {
+      "transaction": "837",
+      "variant": "I",
+      "title": "Health Care Claim: Institutional",
+      "libraryTr3": "005010X223A3",
+      "oracleTr3": "005010X223A2",
+      "oracleFunctionalIdentifierCode": "HC",
+      "oracleMapFile": "837Q3.I.5010.X223.A1.xml",
+      "oracleMapTransactionId": "837Q3",
+      "oracleMapTitle": "HIPAA Health Care Claim - Institutional 005010X223A2 837Q3",
+      "tr3RevisionDiffers": true,
+      "documents": 3,
+      "documentIds": [
+        "test/fixtures/claim/837i-canonical.edi",
+        "test/fixtures/claim/837i-pay-to-plan.edi",
+        "test/fixtures/golden/837i.edi"
+      ],
+      "elementPositions": 496,
+      "divergences": []
+    },
+    {
+      "transaction": "999",
+      "variant": null,
+      "title": "Implementation Acknowledgment",
+      "libraryTr3": "005010X231A1",
+      "oracleTr3": "005010X231A1",
+      "oracleFunctionalIdentifierCode": "FA",
+      "oracleMapFile": "999.5010X231.A1.xml",
+      "oracleMapTransactionId": "999",
+      "oracleMapTitle": "HIPAA Implementation Acknowledgment 999",
+      "tr3RevisionDiffers": false,
+      "documents": 4,
+      "documentIds": [
+        "test/fixtures/ack/999-accept-with-errors.edi",
+        "test/fixtures/ack/999-accept.edi",
+        "test/fixtures/ack/999-reject-control-number-mismatch.edi",
+        "test/fixtures/golden/999.edi"
+      ],
+      "elementPositions": 185,
+      "divergences": []
+    }
+  ],
+  "uncovered": [
+    {
+      "transaction": "270",
+      "variant": null,
+      "title": "Health Care Eligibility Benefit Inquiry",
+      "libraryTr3": "005010X279A1",
+      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X279."
+    },
+    {
+      "transaction": "271",
+      "variant": null,
+      "title": "Health Care Eligibility Benefit Response",
+      "libraryTr3": "005010X279A1",
+      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X279."
+    },
+    {
+      "transaction": "276",
+      "variant": null,
+      "title": "Health Care Claim Status Request",
+      "libraryTr3": "005010X212",
+      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X212."
+    },
+    {
+      "transaction": "277",
+      "variant": null,
+      "title": "Health Care Claim Status Response",
+      "libraryTr3": "005010X212",
+      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X212."
+    },
+    {
+      "transaction": "278",
+      "variant": "request",
+      "title": "Health Care Services Review: Request for Review",
+      "libraryTr3": "005010X217",
+      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X217."
+    },
+    {
+      "transaction": "278",
+      "variant": "response",
+      "title": "Health Care Services Review: Response",
+      "libraryTr3": "005010X217",
+      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X217."
+    },
+    {
+      "transaction": "837",
+      "variant": "D",
+      "title": "Health Care Claim: Dental",
+      "libraryTr3": "005010X224A2",
+      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X224."
+    },
+    {
+      "transaction": "TA1",
+      "variant": null,
+      "title": "Interchange Acknowledgment",
+      "libraryTr3": null,
+      "reason": "This package implements no implementation guide identifier for Interchange Acknowledgment, so pyx12's map index has no version or release identifier to bind a map to."
+    }
+  ],
+  "unevaluated": [],
+  "skipped": [
+    {
+      "document": "test/fixtures/ack/ta1-accept-with-errors.edi",
+      "assigned": [],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/ack/ta1-accept.edi",
+      "assigned": [],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/ack/ta1-reject-control-mismatch.edi",
+      "assigned": [],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/auth/278-comprehensive.edi",
+      "assigned": [],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/auth/278-edge.edi",
+      "assigned": [
+        "278/request",
+        "278/response"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/auth/278-request.edi",
+      "assigned": [
+        "278/request",
+        "278/response"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/auth/278-response.edi",
+      "assigned": [],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/claim/837d-canonical.edi",
+      "assigned": [
+        "837/D"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/claim/837p-unknown-variant.edi",
+      "assigned": [],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/270-canonical.edi",
+      "assigned": [
+        "270/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/270-dangling-parent.edi",
+      "assigned": [
+        "270/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/270-dependent.edi",
+      "assigned": [
+        "270/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/270-duplicate-hl-id.edi",
+      "assigned": [
+        "270/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/270-hl-cycle.edi",
+      "assigned": [
+        "270/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/270-minimal.edi",
+      "assigned": [
+        "270/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/270-missing-hierarchy.edi",
+      "assigned": [
+        "270/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/270-no-inquiry.edi",
+      "assigned": [
+        "270/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/270-quirk-delimiters.edi",
+      "assigned": [
+        "270/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/270-quirk-linebreaks.edi",
+      "assigned": [
+        "270/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/270-two-transactions.edi",
+      "assigned": [
+        "270/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-before-hierarchy.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-dependent.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-information-receiver.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-information-source.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-malformed.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-no-hierarchy-id.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-only-loop.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-repeated.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-subscriber.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-two-dependents.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-two-subscribers.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-with-benefits.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-canonical.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-dependent.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/eligibility/271-no-benefits-no-aaa.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/golden/270.edi",
+      "assigned": [
+        "270/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/golden/271.edi",
+      "assigned": [
+        "271/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/golden/276.edi",
+      "assigned": [
+        "276/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/golden/277.edi",
+      "assigned": [
+        "277/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/golden/278-request.edi",
+      "assigned": [
+        "278/request",
+        "278/response"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/golden/278-response.edi",
+      "assigned": [],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/golden/837d.edi",
+      "assigned": [
+        "837/D"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/golden/ta1.edi",
+      "assigned": [],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/status/276-canonical.edi",
+      "assigned": [
+        "276/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/status/276-dangling-parent.edi",
+      "assigned": [
+        "276/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/status/276-duplicate-hl-id.edi",
+      "assigned": [
+        "276/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/status/276-hl-cycle.edi",
+      "assigned": [
+        "276/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/status/276-minimal.edi",
+      "assigned": [
+        "276/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/status/276-short-rows.edi",
+      "assigned": [
+        "276/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/status/276-two-transactions.edi",
+      "assigned": [
+        "276/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/status/276-wrong-kind-parent.edi",
+      "assigned": [
+        "276/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/status/277-canonical.edi",
+      "assigned": [
+        "277/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/status/277-unknown-status.edi",
+      "assigned": [
+        "277/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+    }
+  ]
+}

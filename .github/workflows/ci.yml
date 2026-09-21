@@ -60,3 +60,88 @@ jobs:
       # current version is already on npm, which `publish --dry-run` skips.
       - name: Pack integrity
         run: npm pack --dry-run --ignore-scripts
+
+  # Re-run the differential comparison against the external oracle on every push and PR.
+  #
+  # The committed `test/differential/report.json` is the record of one run, and `pnpm test` only
+  # gates it against `X12_TR3_CONFORMANCE` going stale. Neither notices a parse change that moves a
+  # decoded value away from what the other reader returns, so a harness that ran once at landing
+  # would go on recording agreement that was true once. This job is what keeps it true: the oracle is
+  # obtained for real and the comparison is run for real.
+  #
+  # WHAT THIS JOB GATES ON IS REPRODUCTION, NOT THE EXIT STATUS, and that is deliberate. The corpus
+  # holds a document the two readers genuinely disagree about, so `pnpm run differential` exits
+  # non-zero by design for as long as that disagreement stands: a divergence is reported and left
+  # standing rather than fixed or suppressed, and the exit status is how the command says so. Gating
+  # on the status would leave exactly two ways to a green check, fixing the parser or dropping the
+  # document from the corpus, and the second is the cheap one. So the step below runs the comparison
+  # for real and then asserts that the report it just produced is the report this repository
+  # committed, divergences included. A parse change that moves a decoded value reds here, and so does
+  # a corpus change, a new disagreement, a disagreement that quietly went away, and an unreachable
+  # oracle, which writes no report at all.
+  #
+  # The version is written twice, here and in `package.json`'s `differential` script, and the two
+  # cannot silently drift: the harness asks the oracle which version it is actually running and
+  # refuses any answer that is not the one `package.json` pins. Bump one without the other and this
+  # job reds on that refusal rather than producing a report about a different reader.
+  #
+  # The oracle is a Python package, so it goes in a throwaway virtual environment. The runner's own
+  # `python3` is externally managed and installing into it is refused, which is why the venv is not
+  # optional.
+  differential:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Provision the oracle
+        run: |
+          python3 -m venv .differential-venv
+          .differential-venv/bin/pip install --disable-pip-version-check "pyx12==4.0.0"
+      - name: Compare against the oracle
+        env:
+          X12_DIFFERENTIAL_PYTHON: .differential-venv/bin/python
+        run: |
+          cp test/differential/report.json "$RUNNER_TEMP/committed-report.json"
+          rm test/differential/report.json
+          set +e
+          pnpm run differential
+          status=$?
+          set -e
+          echo "the comparison exited with status ${status}"
+          if [ ! -f test/differential/report.json ]; then
+            echo "The run wrote no report, so it never reached the oracle." >&2
+            exit 1
+          fi
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const read = (path) => {
+              const report = JSON.parse(readFileSync(path, "utf8"));
+              // The provenance block names the commit the run was produced from
+              // and whether that tree was dirty, so it differs by construction.
+              delete report.library;
+              return JSON.stringify(report, null, 2).split("\n");
+            };
+            const committed = read(process.env.RUNNER_TEMP + "/committed-report.json");
+            const live = read("test/differential/report.json");
+            if (committed.join("\n") === live.join("\n")) {
+              console.log("the live comparison reproduces the committed report, divergences included");
+              process.exit(0);
+            }
+            for (let i = 0; i < Math.max(committed.length, live.length); i += 1) {
+              if (committed[i] === live[i]) continue;
+              console.error("the live comparison does not reproduce the committed report");
+              console.error("first difference at line " + String(i + 1) + ":");
+              console.error("  committed: " + (committed[i] ?? "(end of file)"));
+              console.error("  live:      " + (live[i] ?? "(end of file)"));
+              break;
+            }
+            console.error("Regenerate it with: pnpm run differential");
+            process.exit(1);
+          '
