@@ -60,3 +60,41 @@ jobs:
       # current version is already on npm, which `publish --dry-run` skips.
       - name: Pack integrity
         run: npm pack --dry-run --ignore-scripts
+
+  # Re-run the differential comparison against the external oracle on every push and PR.
+  #
+  # The committed `test/differential/report.json` is the record of one run, and `pnpm test` only
+  # gates it against `X12_TR3_CONFORMANCE` going stale. Neither notices a parse change that moves a
+  # decoded value away from what the other reader returns, so a harness that ran once at landing
+  # would go on recording agreement that was true once. This job is what keeps it true: the oracle is
+  # obtained for real and the comparison is run for real, and a disagreement, an unreachable oracle,
+  # or a compared transaction that put no document through both readers all exit non-zero.
+  #
+  # The version is written twice, here and in `package.json`'s `differential` script, and the two
+  # cannot silently drift: the harness asks the oracle which version it is actually running and
+  # refuses any answer that is not the one `package.json` pins. Bump one without the other and this
+  # job reds on that refusal rather than producing a report about a different reader.
+  #
+  # The oracle is a Python package, so it goes in a throwaway virtual environment. The runner's own
+  # `python3` is externally managed and installing into it is refused, which is why the venv is not
+  # optional.
+  differential:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Provision the oracle
+        run: |
+          python3 -m venv .differential-venv
+          .differential-venv/bin/pip install --disable-pip-version-check "pyx12==4.0.0"
+      - name: Compare against the oracle
+        run: pnpm run differential
+        env:
+          X12_DIFFERENTIAL_PYTHON: .differential-venv/bin/python

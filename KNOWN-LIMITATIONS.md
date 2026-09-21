@@ -1704,14 +1704,36 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   need to know whether your partner may lawfully require something, read `conformance`, not the
   effect bucket.
 
-## Conformance testing not yet wired
+## What the differential corpus proves, and what it does not
 
-- **No external-oracle differential corpus yet.** A best-effort differential harness against CMS
-  Medicare 835 public examples (and/or another external X12 reader) is planned for the first real
-  release but is **not yet wired**, pending a redistribution-terms review of the CMS sample material.
-  Conformance today rests on the three-tier synthetic corpus (spec-clean → vendor-quirk → round-trip
-  goldens), property/round-trip tests, and a nightly amplified byte-flip fuzz job, not on parity with
-  a third-party implementation. Do not assume byte-for-byte agreement with any specific vendor parser.
+- **Every document in the corpus is read twice, once by this library and once by pyx12, and the two
+  readings are compared element position by element position.** pyx12 is an independent, open-source,
+  BSD-licensed HIPAA X12 parser and validator, pinned to one exact version and used only as a
+  development tool: it is never a dependency of this package, whose published runtime dependency set
+  is empty. `pnpm run differential` runs the comparison and writes `test/differential/report.json`,
+  which carries the oracle's name, version and licence, the commit this library was read from, the
+  documents that went through both readers, the number of element positions compared, and every
+  disagreement found, with both readings left exactly as each reader returned them.
+- **Seven of the transactions this library reads are compared against nothing at all, and the report
+  names every one with the reason.** pyx12's own map index binds no 005010 map for the 270, the 271,
+  the 276, the 277 claim status response (005010X212), the 278 in either direction, the dental claim,
+  or the TA1 interchange acknowledgment, which sits in the envelope rather than in a functional group.
+  Silence about those is silence, never agreement. What is compared is the rest of the read scope: the
+  277 claim acknowledgment (005010X214), the 820, the 834, the 835, the professional claim, the
+  institutional claim and the 999.
+- **For two of the compared transactions the two implementations target different published errata of
+  the same implementation guide, and the report records both identifiers rather than implying one.**
+  pyx12 maps an earlier errata of the professional claim and of the institutional claim than this
+  library implements, so agreement there is agreement between two revisions of one guide.
+- **Agreement with one other reader is not conformance to a Technical Report Type 3, and it is not a
+  compliance statement.** Two parsers can agree and both be wrong about the same clause; one reader is
+  not the standard, and no report produced here says anything about HIPAA compliance, which is a
+  property of a deployment and never of a library. Conformance still rests on the three-tier synthetic
+  corpus (spec-clean, vendor-quirk, round-trip goldens), property and round-trip tests, and a nightly
+  amplified byte-flip fuzz job. Do not assume byte-for-byte agreement with any specific vendor parser.
+- **The corpus is this repository's own synthetic per-transaction fixtures and nothing else.** No CMS
+  Medicare 835 public sample material is in it: the redistribution-terms review of that material is
+  not cleared, and it is not used here until it is.
 
 ## Scope (non-goals for v1)
 
