@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "library": {
     "package": "@cosyte/x12",
-    "commit": "cb5ef9ae0e558261cba944ce2096e65503f02da1",
-    "workingTreeDirty": true
+    "commit": "df0f48534ecdd8d1ed582ce86b97b095289d4a37",
+    "workingTreeDirty": false
   },
   "oracle": {
     "package": "pyx12",
