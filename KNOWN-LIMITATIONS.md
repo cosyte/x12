@@ -1706,21 +1706,39 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
 
 ## What the differential corpus proves, and what it does not
 
-- **Every document in the corpus is read twice, once by this library and once by pyx12, and the two
-  readings are compared element position by element position.** pyx12 is an independent, open-source,
-  BSD-licensed HIPAA X12 parser and validator, pinned to one exact version and used only as a
-  development tool: it is never a dependency of this package, whose published runtime dependency set
-  is empty. `pnpm run differential` runs the comparison and writes `test/differential/report.json`,
-  which carries the oracle's name, version and licence, the commit this library was read from, the
-  documents that went through both readers, the number of element positions compared, and every
-  disagreement found, with both readings left exactly as each reader returned them.
-- **Seven of the transactions this library reads are compared against nothing at all, and the report
-  names every one with the reason.** pyx12's own map index binds no 005010 map for the 270, the 271,
-  the 276, the 277 claim status response (005010X212), the 278 in either direction, the dental claim,
-  or the TA1 interchange acknowledgment, which sits in the envelope rather than in a functional group.
-  Silence about those is silence, never agreement. What is compared is the rest of the read scope: the
-  277 claim acknowledgment (005010X214), the 820, the 834, the 835, the professional claim, the
-  institutional claim and the 999.
+- **Every synthetic document this repository ships is read twice, once by this library and once by
+  pyx12, and the two readings are compared element position by element position.** pyx12 is an
+  independent, open-source, BSD-licensed HIPAA X12 parser and validator, pinned to one exact version
+  and used only as a development tool: it is never a dependency of this package, whose published
+  runtime dependency set is empty. `pnpm run differential` runs the comparison and writes
+  `test/differential/report.json`, which carries the oracle's name, version and licence, the commit
+  this library was read from, the documents that went through both readers, the number of element
+  positions compared, every document the run looked at and did not compare with the reason, and every
+  disagreement found, with both readings left exactly as each reader returned them. Which comparison
+  a document belongs to is decided by the document's own GS-08 and ST-01, never by where it is filed,
+  so the awkward documents are in the corpus rather than beside it.
+- **🩺 The two readers disagree about the release character, and the report records the disagreement
+  rather than settling it.** One synthetic document escapes the element separator with `?` inside a
+  transaction set body. This library reads `?` as a release character there, as it has on every
+  released version, so `REF*EA*ID?*WITH?*STAR` is two elements whose second value is `ID*WITH*STAR`;
+  pyx12 reads no release character, so the same segment is four elements whose second value is `ID?`.
+  005010 transmits no release character at all and nothing in it picks between the two readings, which
+  is the same ambiguity the envelope-splitter entry above is about, and it is the one input class in
+  this corpus on which two conforming readers can genuinely differ. **The disagreement is published,
+  not resolved:** the report holds both readings verbatim for that position, nothing about how this
+  library reads the release character moved to produce it, and `pnpm run differential` exits non-zero
+  for as long as it stands. If you exchange documents that escape a delimiter in a body element, do
+  not assume your counterparty's parser frames that segment the way this one does.
+- **Eight rows of this library's read scope are compared against nothing, and the report names every
+  one with the reason.** pyx12 publishes no 005010 implementation guide map for the 270, the 271, the
+  276, the 277 claim status response (005010X212), the 278 in either direction, the dental claim, or
+  the TA1 interchange acknowledgment, which sits in the envelope rather than in a functional group.
+  Read that as a statement about the maps that reader publishes and not about what it can frame:
+  what is missing is the implementation guide, not the ability to read bytes. Either way this
+  library's reading of those transactions is compared against nothing here, and silence about them is
+  silence, never agreement. What is compared is the rest of the read scope: the 277 claim
+  acknowledgment (005010X214), the 820, the 834, the 835, the professional claim, the institutional
+  claim and the 999.
 - **For two of the compared transactions the two implementations target different published errata of
   the same implementation guide, and the report records both identifiers rather than implying one.**
   pyx12 maps an earlier errata of the professional claim and of the institutional claim than this
@@ -1731,9 +1749,10 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   property of a deployment and never of a library. Conformance still rests on the three-tier synthetic
   corpus (spec-clean, vendor-quirk, round-trip goldens), property and round-trip tests, and a nightly
   amplified byte-flip fuzz job. Do not assume byte-for-byte agreement with any specific vendor parser.
-- **The corpus is this repository's own synthetic per-transaction fixtures and nothing else.** No CMS
-  Medicare 835 public sample material is in it: the redistribution-terms review of that material is
-  not cleared, and it is not used here until it is.
+- **The corpus is this repository's own synthetic fixtures and nothing else.** No CMS Medicare 835
+  public sample material is in it: the redistribution-terms review of that material is not cleared,
+  and it is not used here until it is. What that bounds is the evidence, not the claim: two readers
+  agreeing over synthetic documents have agreed over synthetic documents.
 
 ## Scope (non-goals for v1)
 

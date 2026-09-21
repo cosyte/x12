@@ -109,6 +109,26 @@ function doubleOracle(read: (document: CorpusDocument) => OracleRead): Different
   };
 }
 
+/**
+ * A minimal synthetic professional claim, carrying the group and transaction set
+ * identifiers and nothing else of interest. The double's map index binds no
+ * claim, so this document assigns to a transaction that is not compared. Every
+ * token in it is a placeholder the allow list already declares, and it carries
+ * no name, contact or date-of-birth element.
+ */
+const CLAIM = [
+  "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       *260101*1200*^*00501*000000002*0*P*:~",
+  "GS*HC*SENDER*RECEIVER*20260101*1200*1*X*005010X222A2~",
+  "ST*837*0001~",
+  "BHT*0019*00*0012345*20260101*1200*CH~",
+  "SE*3*0001~",
+  "GE*1*1~",
+  "IEA*1*000000002~",
+].join("");
+
+/** The same document under an implementation guide no conformance row names. */
+const UNKNOWN_GUIDE = CLAIM.replace("005010X222A2", "005010X999A1");
+
 const CORPUS: CorpusDocument[] = [{ id: "remittance.edi", text: REMITTANCE }];
 
 describe("differential harness", () => {
@@ -223,6 +243,52 @@ describe("differential harness", () => {
     const entry = run.report.compared.find((e) => e.transaction === "835");
     expect(entry?.documents).toBe(1);
     expect(entry?.documentIds).toEqual(["remittance.edi"]);
+  });
+
+  it("AC-2: every corpus document is compared, unevaluated or skipped, and never nowhere", async () => {
+    // What "one entry per transaction and variant the run put through both
+    // readers" is worth depends on which documents reached the readers at all.
+    // A document the run considers and puts in no list is invisible in the
+    // artifact, so the run accounts for every one it was handed: compared,
+    // refused by a reader, or skipped with what its own identifiers said it was.
+    const corpus: CorpusDocument[] = [
+      ...CORPUS,
+      { id: "claim.edi", text: CLAIM },
+      { id: "unknown-guide.edi", text: UNKNOWN_GUIDE },
+      { id: "empty.edi", text: "" },
+    ];
+    const run = await runDifferential({
+      library: LIBRARY,
+      corpus,
+      oracle: doubleOracle((document) => echoRead(document.text)),
+    });
+
+    const accounted = [
+      ...run.report.compared.flatMap((entry) => entry.documentIds),
+      ...run.report.unevaluated.map((entry) => entry.document),
+      ...run.report.skipped.map((entry) => entry.document),
+    ].sort();
+    expect(accounted).toEqual(corpus.map((document) => document.id).sort());
+
+    // The claim assigns to a transaction this run does not compare, and the
+    // report says so rather than dropping it: the reason names the identifiers
+    // the decision was taken on.
+    expect(run.report.skipped).toEqual([
+      {
+        document: "claim.edi",
+        assigned: ["837/P"],
+        reason:
+          "This document's own GS-08 and ST-01 name no transaction oracle-double maps at " +
+          "interchange control version 00501.",
+      },
+      {
+        document: "unknown-guide.edi",
+        assigned: [],
+        reason:
+          "This document's own GS-08 and ST-01 name no transaction oracle-double maps at " +
+          "interchange control version 00501.",
+      },
+    ]);
   });
 
   it("AC-6: a document the oracle refuses is unevaluated, never agreement", async () => {

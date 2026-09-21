@@ -15,6 +15,15 @@
  * In that last case nothing is written, because a report left standing after a
  * run that never reached the oracle records agreement nobody observed.
  *
+ * THE CORPUS HOLDS A REAL DISAGREEMENT TODAY, so a faithful run of this command
+ * exits 1 and writes a report that records it. The two readers split
+ * `REF*EA*ID?*WITH?*STAR` differently, because this library reads `?` as a
+ * release character in a transaction set body and the oracle does not, and
+ * fixing that is out of this comparison's scope: what it owes is the record.
+ * Read the exit status as the state of the world rather than as a broken
+ * harness, and gate on the live run REPRODUCING the committed report, which is
+ * what this repository's own CI does.
+ *
  * SECURITY: every subprocess is array-form, no shell.
  */
 
@@ -38,17 +47,23 @@ const CORPUS_ROOT = join(REPO_ROOT, "test", "fixtures");
 const REPORT_PATH = join(REPO_ROOT, "test", "differential", "report.json");
 
 /**
- * The one fixture directory that is not a transaction corpus. Its documents
- * exist to exercise interchange framing, delimiter detection and the syntactic
- * core, and one of them carries a professional claim group identifier over a
- * body assembled from segments of several different transactions. Reading that
- * document as a professional claim would file an envelope finding against a
- * reader that never sees such a document, so this directory stays out and the
- * per-transaction corpora are what the comparison is over.
+ * Every synthetic `.edi` document this repo already ships, in a stable order.
+ *
+ * The corpus is the whole fixture tree, and no directory is held out of it. What
+ * a document IS, the harness reads from the document: the functional group
+ * identifier in GS-08 and the transaction set identifier in ST-01 decide which
+ * comparison its positions are counted under, and a document those identifiers
+ * do not resolve to exactly one compared transaction is recorded as skipped
+ * rather than dropped. A directory name is a filing convenience and decides
+ * nothing here, so the two readers are compared over every document this
+ * repository has, including the ones whose whole purpose is an awkward
+ * syntactic core.
+ *
+ * That is not a detail of tidiness. The comparison is of how two readers frame
+ * segments and split elements, which is a question about bytes and delimiters
+ * rather than about whether a body is a plausible claim, and the documents most
+ * likely to separate two readers are exactly the awkward ones.
  */
-const NOT_A_TRANSACTION_CORPUS = "envelope";
-
-/** Every synthetic `.edi` document this repo already ships, in a stable order. */
 export function collectCorpus(root: string): CorpusDocument[] {
   const documents: CorpusDocument[] = [];
   const walk = (dir: string): void => {
@@ -57,7 +72,7 @@ export function collectCorpus(root: string): CorpusDocument[] {
     )) {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name !== NOT_A_TRANSACTION_CORPUS) walk(full);
+        walk(full);
       } else if (entry.isFile() && entry.name.endsWith(".edi")) {
         documents.push({
           id: relative(REPO_ROOT, full).split(sep).join("/"),
@@ -122,16 +137,29 @@ async function main(): Promise<number> {
   const uncovered = run.report.uncovered.length;
   const documents = run.report.compared.reduce((n, entry) => n + entry.documents, 0);
   const positions = run.report.compared.reduce((n, entry) => n + entry.elementPositions, 0);
+  const divergences = run.report.compared.reduce((n, entry) => n + entry.divergences.length, 0);
   process.stdout.write(
     `${run.report.oracle.package} ${run.report.oracle.version} (${run.report.oracle.licence}): ` +
       `${String(compared)} transactions compared, ${String(uncovered)} not mapped, ` +
       `${String(documents)} documents, ${String(positions)} element positions, ` +
-      `${String(run.report.unevaluated.length)} unevaluated.\n`,
+      `${String(divergences)} divergences, ${String(run.report.unevaluated.length)} unevaluated, ` +
+      `${String(run.report.skipped.length)} skipped.\n`,
   );
   process.stdout.write(`Report: ${relative(REPO_ROOT, REPORT_PATH)}\n`);
 
   if (run.failures.length > 0) {
     for (const failure of run.failures) process.stderr.write(`${failure}\n`);
+    // The report was written first and holds every reading verbatim. A
+    // disagreement between two readers is the result this comparison exists to
+    // publish, not a number to tune away, so the run that finds one reports it,
+    // leaves it standing and exits non-zero. Regenerating the committed report
+    // is this command, and this exit status is what it looks like while a
+    // disagreement stands.
+    process.stderr.write(
+      `Exit status 1. ${String(divergences)} divergence(s) recorded in ` +
+        `${relative(REPO_ROOT, REPORT_PATH)}, with both readings exactly as each reader ` +
+        `returned them. The report was written before this status was chosen.\n`,
+    );
     return 1;
   }
   return 0;

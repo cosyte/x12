@@ -15,6 +15,13 @@
  * compared transaction that put no document, or no element position, through
  * both readers fails the run, because an empty comparison and a clean one are
  * indistinguishable in a report that only counts disagreements.
+ *
+ * Every document handed to a run is accounted for: it is compared, or it is
+ * recorded as unevaluated against the reader that refused it, or it is recorded
+ * as skipped with what its own identifiers said it was. A document the run
+ * considered and put nowhere would be invisible in the artifact, and an
+ * invisible document is how a corpus quietly loses the case that discriminates
+ * two readers.
  */
 
 import {
@@ -140,6 +147,19 @@ export interface Unevaluated {
   readonly reason: string;
 }
 
+/**
+ * A corpus document the run looked at and did not compare, with what its own
+ * identifiers said it was. Every document handed to the run lands in exactly one
+ * of `compared`, `unevaluated` and `skipped`, so a document the corpus never
+ * reached and one the run dropped are different things a reader can tell apart.
+ */
+export interface SkippedDocument {
+  readonly document: string;
+  /** The read-scope keys the document's own GS-08 and ST-01 resolve to. */
+  readonly assigned: readonly string[];
+  readonly reason: string;
+}
+
 /** One transaction and variant the run put through both readers. */
 export interface ComparedEntry {
   readonly transaction: string;
@@ -186,6 +206,7 @@ export interface DifferentialReport {
   readonly compared: readonly ComparedEntry[];
   readonly uncovered: readonly UncoveredEntry[];
   readonly unevaluated: readonly Unevaluated[];
+  readonly skipped: readonly SkippedDocument[];
 }
 
 /** The outcome of one run: what to write, and every reason it failed. */
@@ -531,6 +552,7 @@ export async function runDifferential(input: DifferentialInput): Promise<Differe
     divergences.set(key, []);
   }
   const unevaluated: Unevaluated[] = [];
+  const skipped: SkippedDocument[] = [];
 
   for (const document of input.corpus) {
     let assigned: Set<string>;
@@ -550,11 +572,24 @@ export async function runDifferential(input: DifferentialInput): Promise<Differe
       });
       continue;
     }
+    // A document reaches the comparison only when its own identifiers name
+    // exactly one transaction the oracle maps. Everything else is recorded
+    // rather than dropped: a document the run considered and did not compare is
+    // not a document the corpus never held.
     const targets = [...assigned].filter((key) => byKey.has(key));
-    if (targets.length !== 1) continue;
-    const key = targets[0] ?? "";
-    const target = byKey.get(key);
-    if (target === undefined) continue;
+    const target = targets.length === 1 ? byKey.get(targets[0] ?? "") : undefined;
+    if (target === undefined) {
+      skipped.push({
+        document: document.id,
+        assigned: [...assigned].sort(),
+        reason:
+          targets.length === 0
+            ? `This document's own GS-08 and ST-01 name no transaction ${description.package} maps at interchange control version ${description.interchangeControlVersion}.`
+            : `This document's own GS-08 and ST-01 name ${String(targets.length)} transactions ${description.package} maps, so it belongs to no single comparison.`,
+      });
+      continue;
+    }
+    const key = scopeKey(target.row);
 
     const read = await input.oracle.read(document);
     if (!read.ok) {
@@ -631,6 +666,7 @@ export async function runDifferential(input: DifferentialInput): Promise<Differe
       compared,
       uncovered,
       unevaluated,
+      skipped,
     },
     failures,
   };

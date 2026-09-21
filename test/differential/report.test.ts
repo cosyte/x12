@@ -8,8 +8,8 @@
  * reader to tell agreement from an empty comparison.
  */
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, sep } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -30,6 +30,21 @@ const REPORT: DifferentialReport = JSON.parse(
 
 const COMPARED_KEYS = REPORT.compared.map((entry) => scopeKey(entry));
 const UNCOVERED_KEYS = REPORT.uncovered.map((entry) => scopeKey(entry));
+
+/** The kinds a divergence record may carry, as the harness declares them. */
+const DIVERGENCE_KINDS = ["segment-count", "segment-id", "element-count", "element-value"];
+
+/**
+ * Every synthetic document under the fixture root, enumerated independently of
+ * the harness's own walk so the two can disagree.
+ */
+function fixtureDocuments(): readonly string[] {
+  const root = join(process.cwd(), "test", "fixtures");
+  return readdirSync(root, { recursive: true, encoding: "utf8" })
+    .filter((entry) => entry.endsWith(".edi"))
+    .map((entry) => `test/fixtures/${entry.split(sep).join("/")}`)
+    .sort();
+}
 
 describe("differential report", () => {
   it("AC-9: covered plus uncovered still equals the read scope at head", () => {
@@ -59,6 +74,42 @@ describe("differential report", () => {
       expect(entry.documents).toBeGreaterThan(0);
       expect(entry.documents).toBe(entry.documentIds.length);
       expect(entry.elementPositions).toBeGreaterThan(0);
+    }
+  });
+
+  it("AC-2: the committed report accounts for every synthetic document in the tree", () => {
+    // The corpus is the whole fixture tree and no directory is held out of it,
+    // so every `.edi` this repository ships is in exactly one of the three
+    // lists. A document quietly outside the run would leave no trace here, and
+    // the awkward documents are the ones most likely to separate two readers.
+    const accounted = [
+      ...REPORT.compared.flatMap((entry) => entry.documentIds),
+      ...REPORT.unevaluated.map((entry) => entry.document),
+      ...REPORT.skipped.map((entry) => entry.document),
+    ].sort();
+    const fixtures = fixtureDocuments();
+    expect(fixtures.length).toBeGreaterThan(0);
+    expect(accounted).toEqual(fixtures);
+    for (const entry of REPORT.skipped) {
+      expect(entry.reason.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("AC-4: every divergence the committed report records keeps both readings", () => {
+    for (const entry of REPORT.compared) {
+      for (const divergence of entry.divergences) {
+        expect(entry.documentIds).toContain(divergence.document);
+        expect(DIVERGENCE_KINDS).toContain(divergence.kind);
+        expect(divergence.transaction).toBe(entry.transaction);
+        expect(divergence.variant).toBe(entry.variant);
+        if (divergence.kind !== "segment-count") {
+          expect(divergence.position?.segment.length ?? 0).toBeGreaterThan(0);
+        }
+        // Neither side is dropped, and a record of two identical readings would
+        // not be a disagreement at all.
+        expect([divergence.library, divergence.oracle]).not.toEqual([null, null]);
+        expect(divergence.library).not.toBe(divergence.oracle);
+      }
     }
   });
 
