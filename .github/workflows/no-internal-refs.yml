@@ -15,11 +15,24 @@ name: Public-surface gate
 # history has been a claim defect in a prose carrier, and until this landed no test in the
 # suite could fail on one.
 #
+# WHAT ACTUALLY SCANS, AND WHERE THE RULE LIVES. `pnpm check:no-internal-refs`, which is
+# this repository's own `scripts/check-no-internal-refs.sh`. The job below delegates the
+# plumbing (checkout, pnpm, Node) to the shared gate workflow, which carries no pattern, no
+# allow-list and no file selection of its own: it prepares the tree, runs the command, and
+# lets the command's exit status decide the job. The rule set stays here, which matters in
+# this repository more than most: `X12` is both a standards designator and our own item
+# prefix, and only a per-repo rule set can tell the two apart.
+#
+# THE JOB ID IS LOAD-BEARING. A called job's check run is named
+# `<caller job id> / <inner job id>`, so the job id `no-internal-refs` below publishes
+# `no-internal-refs / public-surface`. A branch ruleset binds to that exact string, and
+# renaming the job detaches the requirement with no error anywhere.
+#
 # WHY A SEPARATE WORKFLOW, and not a job in ci.yml. Same reasoning as the em-dash gate next
 # door, and the first half is the deciding one:
 #
-#   The reusable pipeline is not an option. x12's `ci` job calls
-#   cosyte/.github/.github/workflows/ci.yml@main, which runs a fixed ladder and no arbitrary
+#   The shared ci pipeline is not an option. x12's `ci` job calls
+#   cosyte/.github/.github/workflows/ci.yml, which runs a fixed ladder and no arbitrary
 #   repo script, so there is nowhere in it to hang this. Adding a step there would land the
 #   gate on every caller at once, and remediating each is its own deliberate piece of work.
 #   A shared pipeline is the wrong place to land a rule most of its callers cannot yet
@@ -58,20 +71,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 jobs:
+  # The check-run context prefix. See the note above before touching this id.
   no-internal-refs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      # The script self-tests before it reports. It proves each rule still matches its own
-      # positive sample, that each `X12-` spelling this port diverged for still matches ON
-      # ITS OWN, and that every rule still lets through the 005010 segment-field references
-      # it was most likely to destroy (`ISA-06`, `ST-03`, `SVC-07`, `PWK-01`, `ICD-10-CM`).
-      # It refuses to print OK from a scan that did not read all of its input. No
-      # `|| true`, no `continue-on-error`: a check that cannot fail is documentation.
-      - name: Check the public surface and the shipped doc comments
-        run: bash scripts/check-no-internal-refs.sh
+    # Pinned to the 40 character commit, not to the tag beside it: a tag can be moved
+    # or deleted by anyone who gains write access to the workflow's repository, so a
+    # tag is not an immutable reference and is not a pin. The trailing comment is the
+    # published reference that commit was released as, so the release note stays
+    # findable from here.
+    uses: cosyte/.github/.github/workflows/gate-no-internal-refs.yml@84ecccd771cbc9c1ece003a3f8ff61415360395b # workflows-2026-09-18-84ecccd771cb
+    # No more than the scan needs. A called workflow's GITHUB_TOKEN can only be
+    # downgraded by its caller, and this gate reads the tree and nothing else.
+    permissions:
+      contents: read

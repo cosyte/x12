@@ -18,9 +18,28 @@ name: Em-dash gate
 # this repo and outside this unit. Until that happens the gate informs a human; it does not
 # stop one.
 #
+# WHAT ACTUALLY SCANS, AND WHERE THE RULE LIVES. `pnpm check:no-emdash`, which is this
+# repository's own `scripts/check-no-emdash.sh`. The jobs below delegate the plumbing
+# (checkout, pnpm, Node) to the shared gate workflow, and that workflow carries no
+# pattern, no allow-list and no file selection of its own: it prepares the tree, runs the
+# command, and lets the command's exit status decide the job. So the rule stays here and
+# only the harness is shared.
+#
+# TWO CONTEXTS, NOT ONE, AND THE JOB ID IS LOAD-BEARING. A called job's check run is named
+# `<caller job id> / <inner job id>`, so the job id `no-emdash` below publishes
+# `no-emdash / tracked-files` and `no-emdash / messages`. A branch ruleset binds to those
+# exact strings: renaming the job detaches the requirement with no error anywhere, and a
+# required context nothing emits blocks every pull request. Do not rename it.
+#
+#   `no-emdash / tracked-files` is REQUIRED and is the one that blocks a merge.
+#   `no-emdash / messages` runs, reds its own context, and is deliberately NOT required.
+#   Dependabot composes a pull request body out of upstream release notes, em dashes
+#   included, and a gate that fails on someone else's clock becomes a tax. The detection is
+#   unchanged either way; only what blocks is narrowed.
+#
 # WHY A SEPARATE WORKFLOW, and not a job in ci.yml:
 #
-#   The reusable pipeline is not an option. x12's `ci` job calls
+#   The shared ci pipeline is not an option. x12's `ci` job calls
 #   cosyte/.github/.github/workflows/ci.yml@main, which runs a fixed ladder and no arbitrary
 #   repo script, so there is nowhere in it to hang this. Adding a step to it is an org-repo
 #   change that lands the gate on all 13 callers at once, and six of them violate the ban
@@ -45,11 +64,9 @@ name: Em-dash gate
 #
 #   Both halves live here rather than splitting the file scan back into ci.yml (which is
 #   how website ended up): the file scan is a checkout and one grep, so it costs nothing
-#   to re-run on `edited`, and one file is one thing to read. knowledgebase runs the two
-#   halves as two steps of one job for the same reason (knowledgebase#12).
+#   to re-run on `edited`, and one file is one thing to read.
 #
-# Run it locally with `pnpm check:no-emdash`, which is also on `scripts/verify.sh x12`'s
-# ladder in the meta-repo.
+# Run it locally with `pnpm check:no-emdash`.
 
 on:
   push:
@@ -63,45 +80,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 jobs:
+  # The check-run context prefix. See the note above before touching this id.
   no-emdash:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          # Full history: the commit-message step below reads the PR's commit range,
-          # and the default shallow clone does not contain the base commit.
-          fetch-depth: 0
-
-      - name: Check tracked files
-        run: bash scripts/check-no-emdash.sh
-
-      # The rule names commit messages explicitly, and a squash merge composes its
-      # message from the PR title, the PR body, and the branch commits, so all three are
-      # checked. Pull requests only: on a push to main the message is already written,
-      # and this gate exists to stop it landing.
-      - name: Check PR title, body, and commit messages
-        if: github.event_name == 'pull_request'
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          # Collect first, scan second, and set the shell options here rather than trust
-          # the runner's default: piping the collection straight into the scanner would
-          # hide a failed `git log` (a rewritten base commit, or a future edit that drops
-          # fetch-depth) behind a clean title and body, and the gate would print OK over
-          # commits it never read. The title and body arrive through env and are never
-          # interpolated into the script, so a PR description cannot inject shell.
-          set -euo pipefail
-          {
-            printf '%s\n' "$PR_TITLE"
-            printf '%s\n' "$PR_BODY"
-            git log --format=%B "$BASE_SHA..$HEAD_SHA"
-          } > "$RUNNER_TEMP/pr-messages.txt"
-          bash scripts/check-no-emdash.sh --stdin "the PR title, body, or commit messages" \
-            < "$RUNNER_TEMP/pr-messages.txt"
+    # Pinned to the 40 character commit, not to the tag beside it: a tag can be moved
+    # or deleted by anyone who gains write access to the workflow's repository, so a
+    # tag is not an immutable reference and is not a pin. The trailing comment is the
+    # published reference that commit was released as, so the release note stays
+    # findable from here.
+    uses: cosyte/.github/.github/workflows/gate-no-emdash.yml@84ecccd771cbc9c1ece003a3f8ff61415360395b # workflows-2026-09-18-84ecccd771cb
+    # No more than the scan needs. A called workflow's GITHUB_TOKEN can only be
+    # downgraded by its caller, and this gate reads the tree and nothing else.
+    permissions:
+      contents: read
