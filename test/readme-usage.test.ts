@@ -1,14 +1,17 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, rmSync } from "node:fs";
 import { join, relative } from "node:path";
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   docSnippetSuite,
   extractRunnableSnippets,
   rewriteAssertions,
+  runSnippet,
 } from "@cosyte/vitest-config/snippets";
+
+import { fences, section } from "./_helpers/first-use.js";
 
 /**
  * README/code-agreement gate. The `## Usage` block is the single most copied thing on this page:
@@ -139,5 +142,34 @@ describe("the README usage example is runnable, self-contained and synthetic", (
     const planted = seg("ISA", "00", "x");
     expect(interchangeLiterals(`const raw = \`${planted}\`;\n`)).toEqual([planted]);
     expect(interchangeLiterals(`const raw = \`${seg("GS", "HP", "A", "B")}\`;\n`)).toEqual([]);
+  });
+});
+
+/** Temp modules for the negative control below; removed when the file is done. */
+const CONTROL_TMP_DIR = join(root, ".cosyte-readme-control-snippets");
+
+afterAll(() => {
+  rmSync(CONTROL_TMP_DIR, { recursive: true, force: true });
+});
+
+describe("the README gate binds the FIRST ## Usage block and can go red", () => {
+  it("AC-XT2: the block the gate executes is the first fenced block under ## Usage", () => {
+    const first = fences(section(readme, "## Usage"))[0];
+    expect(first?.lang).toBe("ts");
+    expect(first?.tags).toContain("runnable");
+    expect(snippets[0]?.code).toBe(first?.body);
+  });
+
+  it("AC-XT3: a changed claimed value turns the executed block red", async () => {
+    const code = snippets[0]?.code ?? "";
+    const claim = 'adjustment?.reasonCode; // => "1"';
+    expect(code.split(claim).length - 1).toBe(1);
+    const mutated = code.replace(claim, 'adjustment?.reasonCode; // => "2"');
+    await expect(
+      runSnippet(mutated, {
+        resolve: (specifier) => (specifier === "@cosyte/x12" ? ENTRY : undefined),
+        tmpDir: CONTROL_TMP_DIR,
+      }),
+    ).rejects.toThrow();
   });
 });
