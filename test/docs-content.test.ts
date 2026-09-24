@@ -10,7 +10,12 @@ import {
   runSnippet,
 } from "@cosyte/vitest-config/snippets";
 
-import { committedFixtureTexts, fences, interchangeLiterals } from "./_helpers/first-use.js";
+import {
+  committedFixtureTexts,
+  compileErrors,
+  fences,
+  interchangeLiterals,
+} from "./_helpers/first-use.js";
 
 /**
  * Doc/code-agreement gate. Every ```` ```ts runnable ```` block in `docs-content/` is extracted,
@@ -909,6 +914,13 @@ const QUICKSTART_FIRST_RUNNABLE = extractRunnableSnippets(QUICKSTART)[0];
 const FIRST_USE_TMP = join(root, ".cosyte-first-use-snippets");
 const resolveEntry = (specifier: string): string | undefined =>
   specifier === "@cosyte/x12" ? ENTRY : undefined;
+/**
+ * The snippet harness strips types without checking them, so compiling is checked separately, the
+ * way a reader's new TypeScript project compiles the block, against the source entry point the
+ * bundler compiles into the published types. A program over the source takes seconds to check, so
+ * these cases state their own budget.
+ */
+const COMPILE_TIMEOUT = 60_000;
 
 afterAll(() => {
   rmSync(FIRST_USE_TMP, { recursive: true, force: true });
@@ -921,6 +933,34 @@ describe("the quickstart's first example", () => {
     expect(QUICKSTART_FIRST?.tags).not.toContain("throws");
     expect(QUICKSTART_FIRST_RUNNABLE?.code).toBe(QUICKSTART_FIRST?.body);
   });
+
+  it(
+    "AC-XT1: compiles in a new TypeScript project against the package's types",
+    () => {
+      expect(
+        compileErrors(root, "@cosyte/x12", PUBLIC_ENTRY_SOURCE, QUICKSTART_FIRST?.body ?? ""),
+      ).toEqual([]);
+    },
+    COMPILE_TIMEOUT,
+  );
+
+  it(
+    "AC-XT1: a block that does not compile is reported, so it turns this suite red",
+    () => {
+      const code = QUICKSTART_FIRST?.body ?? "";
+      const guard = 'if (remit === undefined) throw new Error("not an 835");\n';
+      expect(code.split(guard).length - 1).toBe(1);
+      const errors = compileErrors(
+        root,
+        "@cosyte/x12",
+        PUBLIC_ENTRY_SOURCE,
+        code.replace(guard, ""),
+      );
+      expect(errors).not.toEqual([]);
+      for (const error of errors) expect(error).toContain("TS18048");
+    },
+    COMPILE_TIMEOUT,
+  );
 
   it("AC-XT1: runs against the built package and every claimed value holds", async () => {
     expect(QUICKSTART_FIRST_RUNNABLE).toBeDefined();

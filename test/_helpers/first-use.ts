@@ -1,12 +1,72 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 
+import ts from "typescript";
+
 /**
  * Readers for the package's first-use path: the first fenced block of
  * `docs-content/quickstart.md`, the first fenced block under `## Usage` in `README.md`, and the
  * install command both documents print. Every reader works on the text of the document as it is
  * on disk at test time, never on a copy held here.
  */
+
+/**
+ * The compiler options of a new project, as `tsc --init` of the TypeScript this repository pins
+ * writes them: `strict` plus `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` and
+ * `verbatimModuleSyntax`, NodeNext modules. The emit-only settings it also writes (`sourceMap`,
+ * `declaration`, `declarationMap`, `jsx`) are left out because nothing is emitted, and Node's
+ * types are loaded where `tsc --init` writes `types: []`, because every first-use example is a
+ * Node program.
+ */
+const READER_OPTIONS: ts.CompilerOptions = {
+  module: ts.ModuleKind.NodeNext,
+  moduleResolution: ts.ModuleResolutionKind.NodeNext,
+  target: ts.ScriptTarget.ESNext,
+  strict: true,
+  noUncheckedIndexedAccess: true,
+  exactOptionalPropertyTypes: true,
+  verbatimModuleSyntax: true,
+  isolatedModules: true,
+  noUncheckedSideEffectImports: true,
+  moduleDetection: ts.ModuleDetectionKind.Force,
+  skipLibCheck: true,
+  noEmit: true,
+  types: ["node"],
+};
+
+/**
+ * Every TypeScript error a reader's new project reports for one example, as `line N: TSxxxx
+ * message`; empty when the example compiles. The example is compiled as an ES module sitting in
+ * the repository root, with `pkg` resolved to `entry`, the single source file the bundler compiles
+ * into the published entry point and its types. Only the example's own errors are returned.
+ */
+export function compileErrors(root: string, pkg: string, entry: string, code: string): string[] {
+  const file = join(root, "first-use-example.mts");
+  const options: ts.CompilerOptions = {
+    ...READER_OPTIONS,
+    typeRoots: [join(root, "node_modules", "@types")],
+    paths: { [pkg]: [entry] },
+  };
+  const host = ts.createCompilerHost(options, true);
+  const getSourceFile = host.getSourceFile.bind(host);
+  host.getSourceFile = (name, language, onError, create) =>
+    name === file
+      ? ts.createSourceFile(name, code, language, true)
+      : getSourceFile(name, language, onError, create);
+  const fileExists = host.fileExists.bind(host);
+  host.fileExists = (name) => name === file || fileExists(name);
+  const readFile = host.readFile.bind(host);
+  host.readFile = (name) => (name === file ? code : readFile(name));
+  const program = ts.createProgram([file], options, host);
+  return ts
+    .getPreEmitDiagnostics(program, program.getSourceFile(file))
+    .filter((d) => d.file?.fileName === file)
+    .map((d) => {
+      const line = d.file?.getLineAndCharacterOfPosition(d.start ?? 0).line ?? 0;
+      const text = ts.flattenDiagnosticMessageText(d.messageText, " ");
+      return `line ${String(line + 1)}: TS${String(d.code)} ${text}`;
+    });
+}
 
 /** One fenced code block: its info string split into language and tags, and its body. */
 export interface Fence {
@@ -86,18 +146,19 @@ export function committedFixtureTexts(root: string, dir: string): Map<string, st
 
 /**
  * The package names a document tells a reader to install: the first non-flag argument of every
- * `npm install`, `npm i`, `pnpm add`, `yarn add` or `bun add`, with any `@version` suffix removed.
- * A specifier ends at whitespace, a quote or a backtick, so an inline-code command reads cleanly.
+ * `npm install`, `npm i`, `npm add`, `pnpm add`, `pnpm install`, `pnpm i`, `yarn add`, `bun add`
+ * or `deno add npm:`, read as a package name, so any `@version` suffix, closing quote or backtick,
+ * or sentence-ending full stop is left off. A local path or a protocol specifier (`file:../pkg`,
+ * `link:`, `git+https:`) installs whatever that path or URL holds rather than resolving a package
+ * name, so it is not a registry specifier and is not read.
  */
 export function installSpecifiers(markdown: string): string[] {
   const out: string[] = [];
   const command =
-    /\b(?:npm (?:install|i)|pnpm add|yarn add|bun add)((?:[ \t]+-{1,2}[\w-]+)*)[ \t]+([^\s`'"]+)/g;
+    /\b(?:npm (?:install|add|i)|pnpm (?:add|install|i)|yarn add|bun add|deno add)((?:[ \t]+-{1,2}[\w-]+)*)[ \t]+(?:npm:)?(@?\w[\w.-]*(?:\/[\w.-]+)?)(?![\w.:/+-])/g;
   for (const match of markdown.matchAll(command)) {
     const spec = match[2];
-    if (spec === undefined) continue;
-    const versionAt = spec.indexOf("@", 1);
-    out.push(versionAt === -1 ? spec : spec.slice(0, versionAt));
+    if (spec !== undefined) out.push(spec.replace(/\.+$/, ""));
   }
   return out;
 }

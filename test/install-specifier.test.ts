@@ -30,4 +30,18 @@ describe("the documented install specifier", () => {
       "@cosyte/x12",
     ]);
   });
+
+  it("AC-XT6: every install command form a reader may copy is read, inline code included", () => {
+    const forms = [
+      "pnpm i @cosyte/x13",
+      "pnpm install @cosyte/x13",
+      "npm add @cosyte/x13",
+      "deno add npm:@cosyte/x13",
+      "run `npm install @cosyte/x13` first",
+      "then run npm install @cosyte/x13.",
+    ];
+    for (const form of forms) expect(installSpecifiers(form), form).toEqual(["@cosyte/x13"]);
+    expect(installSpecifiers("pnpm install\npnpm install --frozen-lockfile")).toEqual([]);
+    expect(installSpecifiers("pnpm add file:../x12")).toEqual([]);
+  });
 });

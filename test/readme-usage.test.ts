@@ -11,7 +11,7 @@ import {
   runSnippet,
 } from "@cosyte/vitest-config/snippets";
 
-import { fences, section } from "./_helpers/first-use.js";
+import { compileErrors, fences, section } from "./_helpers/first-use.js";
 
 /**
  * README/code-agreement gate. The `## Usage` block is the single most copied thing on this page:
@@ -147,6 +147,14 @@ describe("the README usage example is runnable, self-contained and synthetic", (
 
 /** Temp modules for the negative control below; removed when the file is done. */
 const CONTROL_TMP_DIR = join(root, ".cosyte-readme-control-snippets");
+/**
+ * The snippet harness strips types without checking them, so "fails to compile" is checked here,
+ * the way a reader's new TypeScript project compiles the block, against the source entry point the
+ * bundler compiles into the published types. A program over the source takes seconds to check, so
+ * these cases state their own budget.
+ */
+const SOURCE_ENTRY = join(root, "src", "index.ts");
+const COMPILE_TIMEOUT = 60_000;
 
 afterAll(() => {
   rmSync(CONTROL_TMP_DIR, { recursive: true, force: true });
@@ -159,6 +167,28 @@ describe("the README gate binds the FIRST ## Usage block and can go red", () => 
     expect(first?.tags).toContain("runnable");
     expect(snippets[0]?.code).toBe(first?.body);
   });
+
+  it(
+    "AC-XT2: compiles in a new TypeScript project against the package's types",
+    () => {
+      const first = fences(section(readme, "## Usage"))[0];
+      expect(compileErrors(root, "@cosyte/x12", SOURCE_ENTRY, first?.body ?? "")).toEqual([]);
+    },
+    COMPILE_TIMEOUT,
+  );
+
+  it(
+    "AC-XT2: a block that does not compile is reported, so it turns this suite red",
+    () => {
+      const code = fences(section(readme, "## Usage"))[0]?.body ?? "";
+      const guard = 'if (remit === undefined) throw new Error("not an 835");\n';
+      expect(code.split(guard).length - 1).toBe(1);
+      const errors = compileErrors(root, "@cosyte/x12", SOURCE_ENTRY, code.replace(guard, ""));
+      expect(errors).not.toEqual([]);
+      for (const error of errors) expect(error).toContain("TS18048");
+    },
+    COMPILE_TIMEOUT,
+  );
 
   it("AC-XT3: a changed claimed value turns the executed block red", async () => {
     const code = snippets[0]?.code ?? "";
