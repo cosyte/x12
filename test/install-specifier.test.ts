@@ -42,6 +42,8 @@ describe("the documented install specifier", () => {
     ];
     for (const form of forms) expect(installSpecifiers(form), form).toEqual(["@cosyte/x13"]);
     expect(installSpecifiers("pnpm install\npnpm install --frozen-lockfile")).toEqual([]);
-    expect(installSpecifiers("pnpm add file:../x12")).toEqual([]);
+    expect(
+      installSpecifiers("pnpm add file:../x12\nnpm install git+https://x.test/x12.git"),
+    ).toEqual([]);
   });
 });
