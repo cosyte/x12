@@ -99,6 +99,7 @@ ix.warnings; // => []
 const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "835");
 if (tx === undefined) throw new Error("no 835 in this interchange");
 const remit = get835(ix.delimiters, tx);
+if (remit === undefined) throw new Error("not an 835");
 
 // The payment header: the money-movement primitive.
 remit.payment.totalActualPayment?.toString(); // => "450.00"

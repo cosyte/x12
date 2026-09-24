@@ -1,10 +1,21 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { docSnippetSuite } from "@cosyte/vitest-config/snippets";
+import {
+  docSnippetSuite,
+  extractRunnableSnippets,
+  runSnippet,
+} from "@cosyte/vitest-config/snippets";
+
+import {
+  committedFixtureTexts,
+  compileErrors,
+  fences,
+  interchangeLiterals,
+} from "./_helpers/first-use.js";
 
 /**
  * Doc/code-agreement gate. Every ```` ```ts runnable ```` block in `docs-content/` is extracted,
@@ -885,5 +896,103 @@ describe("the bundle-contract checkers still see", () => {
       "outer",
       "parseX12",
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The quickstart's FIRST example is the first thing a reader runs from the
+// docs site, so it is held to the README gate's standard: it must be the block
+// the snippet sweep executes, its interchange must be a committed synthetic
+// fixture (the page is public, and `test/fixtures` is the corpus `pnpm
+// phi-scan` reads), and a changed value in it must turn this suite red.
+// ---------------------------------------------------------------------------
+
+const QUICKSTART = readFileSync(join(DOCS_DIR, "quickstart.md"), "utf8");
+const QUICKSTART_FIRST = fences(QUICKSTART)[0];
+const QUICKSTART_FIRST_RUNNABLE = extractRunnableSnippets(QUICKSTART)[0];
+/** Temp modules for the explicit first-use runs; inside the root, as the harness requires. */
+const FIRST_USE_TMP = join(root, ".cosyte-first-use-snippets");
+const resolveEntry = (specifier: string): string | undefined =>
+  specifier === "@cosyte/x12" ? ENTRY : undefined;
+/**
+ * The snippet harness strips types without checking them, so compiling is checked separately, the
+ * way a reader's new TypeScript project compiles the block, against the source entry point the
+ * bundler compiles into the published types. A program over the source takes seconds to check, so
+ * these cases state their own budget.
+ */
+const COMPILE_TIMEOUT = 60_000;
+
+afterAll(() => {
+  rmSync(FIRST_USE_TMP, { recursive: true, force: true });
+});
+
+describe("the quickstart's first example", () => {
+  it("AC-XT1: is a runnable TypeScript block, so the snippet sweep executes it", () => {
+    expect(QUICKSTART_FIRST?.lang).toBe("ts");
+    expect(QUICKSTART_FIRST?.tags).toContain("runnable");
+    expect(QUICKSTART_FIRST?.tags).not.toContain("throws");
+    expect(QUICKSTART_FIRST_RUNNABLE?.code).toBe(QUICKSTART_FIRST?.body);
+  });
+
+  it(
+    "AC-XT1: compiles in a new TypeScript project against the package's types",
+    () => {
+      expect(
+        compileErrors(root, "@cosyte/x12", PUBLIC_ENTRY_SOURCE, QUICKSTART_FIRST?.body ?? ""),
+      ).toEqual([]);
+    },
+    COMPILE_TIMEOUT,
+  );
+
+  it(
+    "AC-XT1: a block that does not compile is reported, so it turns this suite red",
+    () => {
+      const code = QUICKSTART_FIRST?.body ?? "";
+      const guard = 'if (remit === undefined) throw new Error("not an 835");\n';
+      expect(code.split(guard).length - 1).toBe(1);
+      const errors = compileErrors(
+        root,
+        "@cosyte/x12",
+        PUBLIC_ENTRY_SOURCE,
+        code.replace(guard, ""),
+      );
+      expect(errors).not.toEqual([]);
+      for (const error of errors) expect(error).toContain("TS18048");
+    },
+    COMPILE_TIMEOUT,
+  );
+
+  it("AC-XT1: runs against the built package and every claimed value holds", async () => {
+    expect(QUICKSTART_FIRST_RUNNABLE).toBeDefined();
+    if (QUICKSTART_FIRST_RUNNABLE === undefined) return;
+    await runSnippet(QUICKSTART_FIRST_RUNNABLE, { resolve: resolveEntry, tmpDir: FIRST_USE_TMP });
+  });
+
+  it("AC-XT4: its interchange is a copy of a synthetic fixture committed under test/fixtures", () => {
+    const literals = interchangeLiterals(QUICKSTART_FIRST_RUNNABLE?.code ?? "");
+    expect(literals).toHaveLength(1);
+    const fixtures = committedFixtureTexts(root, join(root, "test", "fixtures"));
+    expect(fixtures.get((literals[0] ?? "").trimEnd())).toBeDefined();
+  });
+
+  it("AC-XT3: a changed claimed value turns the run red", async () => {
+    const code = QUICKSTART_FIRST_RUNNABLE?.code ?? "";
+    const claim = 'claim?.patientControlNumber; // => "PT-ACCT-001"';
+    expect(code.split(claim).length - 1).toBe(1);
+    const mutated = code.replace(claim, 'claim?.patientControlNumber; // => "PT-ACCT-002"');
+    await expect(
+      runSnippet(mutated, { resolve: resolveEntry, tmpDir: FIRST_USE_TMP }),
+    ).rejects.toThrow();
+  });
+
+  it("AC-XT3: a changed input value turns the run red and leaves the fixture corpus", async () => {
+    const code = QUICKSTART_FIRST_RUNNABLE?.code ?? "";
+    expect(code.split("CLP*PT-ACCT-001*").length - 1).toBe(1);
+    const mutated = code.replace("CLP*PT-ACCT-001*", "CLP*PT-ACCT-002*");
+    const fixtures = committedFixtureTexts(root, join(root, "test", "fixtures"));
+    expect(fixtures.get((interchangeLiterals(mutated)[0] ?? "").trimEnd())).toBeUndefined();
+    await expect(
+      runSnippet(mutated, { resolve: resolveEntry, tmpDir: FIRST_USE_TMP }),
+    ).rejects.toThrow();
   });
 });
