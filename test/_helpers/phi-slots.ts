@@ -102,6 +102,8 @@ import {
   type X12Segment,
 } from "../../src/index.js";
 
+import { buildInterchange } from "./envelope.js";
+
 const FIXTURE_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "golden");
 
 /** Load a committed golden fixture as the spec-clean template for a slot. */
@@ -192,6 +194,21 @@ const UNKNOWN_STC_277 = swap(G_277, "STC*A2:20:PR", "STC*Z9:20:PR");
  */
 function withGroupCountMismatch(raw: string): string {
   return swap(raw, "~IEA*1*", "~IEA*7*");
+}
+
+/**
+ * A synthetic transaction set carrying one BDS and one BIN, built in code
+ * because no golden carries either. Both declare lengths that match their
+ * data, so the only diagnostic a binary slot produces is the one its plant
+ * drives; no typed reader claims a 275, so nothing else runs over it. AC-8.
+ */
+function binaryTemplate(bds: string, bin: string): string {
+  return buildInterchange({
+    functionalIdCode: "PI",
+    transactionSetId: "275",
+    versionRelease: "005010X210",
+    transactionBody: [bds, bin],
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1048,5 +1065,31 @@ export const PHI_SLOTS: readonly DiagnosticSlot<string>[] = [
     plant: (m) =>
       swap(G_TA1, "*250101*1200*A*000~", `*${m}*1200*A*000~`).replace("~IEA*0*", "~IEA*9*"),
     expectCode: WARNING_CODES.X12_GROUP_COUNT_MISMATCH,
+  },
+
+  // ---- binary segments (BDS / BIN), AC-8 -----------------------------------
+  // own. A marker in a length element is not a count, so it raises the
+  // unusable-length code; a marker in a data element runs past the four octets
+  // declared for it, so it raises the span-not-terminated code while its first
+  // four octets sit on the model as the data.
+  {
+    name: "BDS-02 length of binary data",
+    plant: (m) => binaryTemplate(`BDS*B64*${m}*SYNTHDATA`, "BIN*4*DATA"),
+    expectCode: WARNING_CODES.X12_BINARY_LENGTH_INVALID,
+  },
+  {
+    name: "BDS-03 binary data",
+    plant: (m) => binaryTemplate(`BDS*B64*4*${m}`, "BIN*4*DATA"),
+    expectCode: WARNING_CODES.X12_BINARY_LENGTH_MISMATCH,
+  },
+  {
+    name: "BIN-01 length of binary data",
+    plant: (m) => binaryTemplate("BDS*B64*4*DATA", `BIN*${m}*SYNTHDATA`),
+    expectCode: WARNING_CODES.X12_BINARY_LENGTH_INVALID,
+  },
+  {
+    name: "BIN-02 binary data",
+    plant: (m) => binaryTemplate("BDS*B64*4*DATA", `BIN*4*${m}`),
+    expectCode: WARNING_CODES.X12_BINARY_LENGTH_MISMATCH,
   },
 ];

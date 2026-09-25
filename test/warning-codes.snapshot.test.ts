@@ -56,6 +56,10 @@ describe("public API: WARNING_CODES surface is stable", () => {
         "X12_837_SERVICE_SEGMENT_WITHOUT_LX",
         "X12_837_UNKNOWN_VARIANT",
         "X12_AMOUNT_ROW_DROPPED",
+        "X12_BINARY_DATA_TRUNCATED",
+        "X12_BINARY_LENGTH_INVALID",
+        "X12_BINARY_LENGTH_MISMATCH",
+        "X12_BINARY_LENGTH_UNVERIFIABLE",
         "X12_CONTROL_NUMBER_MISMATCH",
         "X12_DANGLING_RELEASE_CHAR",
         "X12_GROUP_COUNT_MISMATCH",
@@ -88,7 +92,7 @@ describe("public API: WARNING_CODES surface is stable", () => {
     for (const [k, v] of Object.entries(WARNING_CODES)) expect(k).toBe(v);
   });
 
-  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS) -> 27 (X12-DISCARD-AFTER-STRAY-LX) -> 28 (X12-PAY-TO-FUSION) -> 29 (X12-837-SV-UNDEFINED-DECIMAL) -> 30 (X12-AMT-ADX-ABSENT-AMOUNT) -> 31 (X12-STATED-AMOUNT-DISCARDED) -> 32 (X12-837-AMBIGUOUS-VARIANT) -> 33 (X12-837-SV1-OVERWRITE) -> 34 (X12-ISA-ELEMENT-ARITY) -> 40 (the 270 typed model) -> 44 (the 271 AAA request-validation surface) -> 49 (the 276 typed model) -> 51 (the declared-guide check)", () => {
+  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS) -> 27 (X12-DISCARD-AFTER-STRAY-LX) -> 28 (X12-PAY-TO-FUSION) -> 29 (X12-837-SV-UNDEFINED-DECIMAL) -> 30 (X12-AMT-ADX-ABSENT-AMOUNT) -> 31 (X12-STATED-AMOUNT-DISCARDED) -> 32 (X12-837-AMBIGUOUS-VARIANT) -> 33 (X12-837-SV1-OVERWRITE) -> 34 (X12-ISA-ELEMENT-ARITY) -> 40 (the 270 typed model) -> 44 (the 271 AAA request-validation surface) -> 49 (the 276 typed model) -> 51 (the declared-guide check) -> 55 (BDS / BIN binary framing, AC-9)", () => {
     // SIX added by the 270 typed read path, and nothing renamed, removed or
     // renumbered: the two tolerances that path reports (a declared
     // non-conventional delimiter, whitespace between segments), the two
@@ -122,7 +126,13 @@ describe("public API: WARNING_CODES surface is stable", () => {
     // a transaction set declaring a guide its reader does not implement, and
     // one declaring none at all. Two codes and not one, because a caller
     // switches on the difference.
-    expect(Object.keys(WARNING_CODES)).toHaveLength(51);
+    //
+    // FOUR more added by BDS / BIN binary framing (AC-9): input that ends
+    // before the declared length, an unusable length element, a declared span
+    // not followed by the segment terminator, and a string span holding a
+    // character that is not one octet. Four codes and not one, because each
+    // leaves the model in a different state and a caller switches on which.
+    expect(Object.keys(WARNING_CODES)).toHaveLength(55);
   });
 
   it("keeps the four REQUIRED_LOOPS the 837 owns and adds the 270's three", () => {
