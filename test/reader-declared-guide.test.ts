@@ -679,6 +679,7 @@ describe("AC-4: every identifier the conformance table implements reads with no 
   const READERS_BY_ROW: Readonly<Record<string, readonly string[]>> = {
     "270/": ["get270Inquiry", "parse270Inquiries"],
     "271/": ["get271Eligibility"],
+    // AC-5 and AC-9 (claims attachments): each new read row reads with no guide code.
     "275/": ["get275Attachments"],
     "276/": ["get276StatusInquiry", "parse276StatusInquiries"],
     "277/": ["get277Status"],

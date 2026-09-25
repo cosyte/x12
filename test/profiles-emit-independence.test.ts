@@ -708,7 +708,7 @@ const SPEC_TA1: BuildTA1Spec = {
   noteCode: "000",
 };
 
-/** A 277 request for additional information: one level, one request. */
+/** A 277 request for additional information: one level, one request (AC-15). */
 const SPEC_277_RFAI: Build277RfaiSpec = {
   envelope: ENVELOPE,
   header: { hierarchicalStructureCode: "0010", transactionSetPurposeCode: "08" },
@@ -727,7 +727,7 @@ const SPEC_277_RFAI: Build277RfaiSpec = {
   ],
 };
 
-/** A 275 carrying one attachment. */
+/** A 275 carrying one attachment (AC-12). */
 const SPEC_275: Build275Spec = {
   envelope: ENVELOPE,
   lines: [{ attachments: [{ filterCode: "B64", data: "U1lOVEhFVElD" }] }],

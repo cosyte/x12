@@ -95,6 +95,7 @@ const CFR_162_920_IDENTIFIERS: ReadonlySet<string> = new Set([
   "005010X224",
   "005010X224A1",
   "005010X279",
+  // AC-17: the two identifiers 91 FR 14404 added to the section.
   "006020X313",
   "006020X314",
 ]);
@@ -108,6 +109,7 @@ const CFR_162_920_IDENTIFIERS: ReadonlySet<string> = new Set([
 const EXPECTED_ROWS: readonly (readonly [string, string | null, string | null])[] = [
   ["270", null, "005010X279A1"],
   ["271", null, "005010X279A1"],
+  // AC-17: the two claims attachments rows.
   ["275", null, "006020X314"],
   ["276", null, "005010X212"],
   ["277", null, "005010X212"],
@@ -796,6 +798,7 @@ function st03(ix: X12Interchange): string {
 const EMITTED_ST03: ReadonlyMap<string, string> = new Map([
   ["270|", st03(x12.build270(SPEC_270))],
   ["271|", st03(x12.build271(SPEC_271))],
+  // AC-12, AC-15, AC-17: each attachments builder emits the identifier its row names.
   ["275|", st03(x12.build275(SPEC_275))],
   ["276|", st03(x12.build276(SPEC_276))],
   ["277|", st03(x12.build277(SPEC_277))],
@@ -843,6 +846,7 @@ describe("AC1: the manifest names the identifier each transaction implements", (
   it("spells every identifier in the published form", () => {
     for (const r of ROWS) {
       if (r.tr3 === null) continue;
+      // AC-17: the two 006020 rows are spelled as 162.920(a)(19) and (a)(20) print them.
       expect(r.tr3, `${keyOf(r)} identifier`).toMatch(/^00(?:5010|6020)X\d{3}(?:[A-Z]\d)?$/);
     }
   });
