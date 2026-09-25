@@ -53,6 +53,8 @@ export {
   duplicateHierarchyId,
   entitySegmentDiscardedAfterLx,
   groupCountMismatch,
+  guideNotDeclared,
+  guideNotImplemented,
   hierarchyCycle,
   hlParentLevelInvalid,
   hlParentMismatch,
