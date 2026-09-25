@@ -10,13 +10,12 @@
  * string-searched out of the official Government Publishing Office XML of
  * 45 CFR 162.920 (title 45, volume 2, 2024 annual edition), retrieved
  * 2026-08-25, and that enumeration is exhaustive: thirteen matches of
- * `005010X[0-9A-Za-z]*`, each occurring once. Two doc comments in this tree say
- * otherwise and are deliberately NOT evidence here:
+ * `005010X[0-9A-Za-z]*`, each occurring once. One doc comment in this tree says
+ * otherwise and is deliberately NOT evidence here:
  * `src/transactions/ack/build-999.ts` calls 005010X231A1 the HIPAA cited guide
- * for the 999, and `src/transactions/auth/build-278.ts` documents an ST-03 of
- * 005010X216 for the 278 response. Neither identifier appears in the section at
- * all. Both carriers are out of scope to change here; the manifest is where the
- * regulation's answer is published.
+ * for the 999, and that identifier appears nowhere in the section. The carrier
+ * is out of scope to change here; the manifest is where the regulation's answer
+ * is published.
  *
  * **The build direction is graded against what the builder really emits.** Each
  * build row is checked against the ST-03 the corresponding builder writes for a
@@ -1095,37 +1094,40 @@ describe("AC8: every build row agrees with the emitted ST-03", () => {
     expect(sorted(EMITTED_ST03.keys())).toEqual(sorted(buildRows.filter((k) => k !== "TA1|")));
   });
 
-  it("names the identifier the builder writes, on every row but one", () => {
+  it("names the identifier the builder writes, on every build row", () => {
+    // AC-4: no row is exempted, so no builder emits 005010X216.
     for (const r of ROWS) {
       if (!r.directions.includes("build")) continue;
       const emitted = EMITTED_ST03.get(keyOf(r));
       if (emitted === undefined) continue;
-      if (keyOf(r) === "278|response") continue;
       expect(r.tr3, `${keyOf(r)} does not name what its builder emits (${emitted})`).toBe(emitted);
+      expect(emitted, `${keyOf(r)} builder emits the 278 notification guide`).not.toBe(
+        "005010X216",
+      );
     }
   });
 
-  it("permits exactly one divergence, the 278 response", () => {
+  it("permits no divergence, the 278 response included", () => {
+    // AC-2 + AC-4
     const diverging = ROWS.filter((r) => {
       const emitted = EMITTED_ST03.get(keyOf(r));
       return emitted !== undefined && emitted !== r.tr3;
     }).map(keyOf);
-    expect(diverging).toEqual(["278|response"]);
-    expect(EMITTED_ST03.get("278|response")).toBe("005010X216");
+    expect(diverging).toEqual([]);
+    expect(EMITTED_ST03.get("278|response")).toBe(row("278", "response").tr3);
   });
 
-  it("records the divergence in the 278 response note", () => {
+  it("names no 005010X216 in the 278 response note", () => {
+    // AC-2: the row records no divergence from the guide it names.
     const note = row("278", "response").note ?? "";
-    expect(note).toContain("005010X216");
-    expect(note).toContain("45 CFR 162.920");
-    expect(note).toContain("unchanged");
+    expect(note).not.toContain("005010X216");
   });
 
-  it("leaves the emitted value alone", () => {
-    // The out-of-scope half, pinned so a later change to what goes on the wire
-    // is a deliberate one with its own evidence rather than a side effect of a
-    // declaration change.
-    expect(st03(x12.build278Response(SPEC_278))).toBe("005010X216");
+  it("emits 005010X217 on both 278 directions", () => {
+    // AC-4: pinned so a later change to what goes on the wire is a deliberate
+    // one with its own evidence rather than a side effect of a declaration
+    // change.
+    expect(st03(x12.build278Response(SPEC_278))).toBe("005010X217");
     expect(st03(x12.build278Request(SPEC_278))).toBe("005010X217");
   });
 

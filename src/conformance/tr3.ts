@@ -244,13 +244,7 @@ export const X12_TR3_CONFORMANCE: readonly X12Tr3Conformance[] = Object.freeze([
     directions: READ_AND_BUILD,
     adoption: "incorporated-by-reference",
     cfrAdopted: ["005010X217", "005010X217E1"],
-    note:
-      "45 CFR 162.920 names one document for the 278 in both directions, 005010X217 with its " +
-      "errata 005010X217E1, and names no 005010X216 anywhere. `build278Response` nevertheless " +
-      "writes 005010X216 into ST-03 and GS-08, and that emitted value is unchanged: moving it " +
-      "would change what a trading partner receives and what an already published document " +
-      "declares. Read this row as the conformance target and the emitted 005010X216 as a " +
-      "divergence from it.",
+    note: null,
   }),
   tr3Row({
     transaction: "820",

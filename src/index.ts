@@ -596,9 +596,8 @@ export {
 } from "./transactions/enrollment/index.js";
 
 // Phase 7 - 278 Health Care Services Review surface (TR3 005010X217, which
-// covers both the request and the response direction). The identifier
-// `build278Response` writes into ST-03 is not that one and is unchanged; the
-// 278 response row of `X12_TR3_CONFORMANCE` records the divergence.
+// covers both the request and the response direction). Both builders write
+// that identifier into GS-08 and ST-03.
 export {
   AUTH_278_BUILD_ERROR_CODES,
   AUTH_278_LOOP_2000A,
