@@ -6,13 +6,16 @@
  * comparison and report whether it reproduces the committed report.
  *
  * The oracles are named, each with its exact version, by the `--oracle`
- * arguments `package.json` passes in, in precedence order: a transaction is
- * compared against the first oracle that maps it and against no other. An
- * oracle's `--with <name>==<version>` companion pins and its `--python
- * <major>.<minor>.<micro>` interpreter pin follow its own `--oracle`. Nothing
- * here decides which oracles to use or which versions of them: that is one pin
- * per oracle, in one place, obtained and invoked by the driver named for it in
- * `scripts/differential/`.
+ * arguments `package.json`'s `differential` script passes in, in precedence
+ * order: a transaction is compared against the first oracle that maps it and
+ * against no other. An oracle's `--with <name>==<version>` companion pins and
+ * its `--python <major>.<minor>.<micro>` interpreter pin follow its own
+ * `--oracle`. Nothing here decides which oracles to use or which versions of
+ * them: that is one pin per oracle, in one place, obtained and invoked by the
+ * driver named for it in `scripts/differential/`. `differential:check` passes
+ * no `--oracle` of its own; it reads the arguments of the `differential`
+ * script, so the check runs exactly the comparison that script runs and the
+ * pins are never written a second time.
  *
  * EXIT STATUS. Each status means one thing, and neither command uses any other.
  *
@@ -176,12 +179,40 @@ function parseArguments(argv: readonly string[]): Invocation {
     if (flag === "--with") current.companions.push(value);
     else current.python = value;
   }
+  if (oracles.length === 0 && check) {
+    return { oracles: parseArguments(differentialScriptArguments()).oracles, check };
+  }
   if (oracles.length === 0) {
     throw new TypeError(
       'The oracles and their exact versions are required: pass --oracle "<name>==<version>".',
     );
   }
   return { oracles, check };
+}
+
+/**
+ * The arguments `package.json`'s `differential` script hands this file, which
+ * is where the pins are written. The script is read as whitespace-separated
+ * words and nothing else, so a script this cannot read that way is refused
+ * rather than guessed at.
+ */
+function differentialScriptArguments(): string[] {
+  const manifest = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as {
+    scripts?: Record<string, string>;
+  };
+  const script = manifest.scripts?.differential ?? "";
+  const words = script.trim().split(/\s+/u);
+  if (words[0] !== "tsx" || words[1] !== "scripts/differential.ts" || /["'`$\\|;&<>]/u.test(script)) {
+    throw new TypeError(
+      `package.json's differential script must be "tsx scripts/differential.ts" followed by plain ` +
+        `--oracle, --with and --python arguments, got ${JSON.stringify(script)}.`,
+    );
+  }
+  const rest = words.slice(2);
+  if (rest.includes("--check")) {
+    throw new TypeError("package.json's differential script must not pass --check itself.");
+  }
+  return rest;
 }
 
 /** Build the driver each `--oracle` names. Refuses a requirement that leaves anything free. */
