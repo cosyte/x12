@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**What 0.1 means for you.** This release is the first whose public API we treat as settled: the
+exported readers, builders, types and warning codes are the surface we keep stable, and the warning
+registry only ever gains codes. It covers typed read and typed emit for 270, 271, 276, 277 and
+277CA, 278 request and response, 820, 834, 835, 837P, 837I and 837D, 999 and TA1, plus the 277
+request for additional information (`006020X313`) and the 275 that answers it (`006020X314`) at the
+base 006020 structure; every amount as an exact `X12Decimal`; and a lenient parser whose only fatal
+failures are the four structural ones. While the package is below 1.0, a breaking change bumps the
+minor version and is called out here with its migration; a fix that changes no public value ships
+as a patch. Upgrading from 0.0.x is itself breaking in five places, each described in the entries
+below: `CodeListMeta`, `X12Eligibility` and `X12ProfileDescription` gain a required member,
+`X12ClaimStatusResponse` gains a third `transactionType`, and `build278Response` declares
+`005010X217`. Not covered yet: a byte-exact round trip in general (`KNOWN-LIMITATIONS.md` lists the
+cases), implementation-guide usage checks and attachment decoding for the two 006020 guides,
+non-healthcare sets, EDIFACT, transport, revisions before 005010, and any bundled CORE Code
+Combinations table.
+
 ### Added
 
 - **`toObject`, `toISO` and `toDate`: one date conversion surface, shared with every `@cosyte/*`

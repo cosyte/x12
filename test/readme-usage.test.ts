@@ -1,6 +1,7 @@
-import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync, rmSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -202,4 +203,59 @@ describe("the README gate binds the FIRST ## Usage block and can go red", () => 
       }),
     ).rejects.toThrow();
   });
+});
+
+/**
+ * The block PRINTS its key results, and the page shows what it prints in a `text` block right
+ * after it. That output block is a claim too, so it is checked the way a reader would check it: the
+ * block is run as a program, as-is apart from the one specifier rewritten to this suite's build,
+ * and its stdout must be the output block byte for byte. A negative control changes one amount in
+ * the interchange and the printed output has to change with it, so a runner that executed nothing
+ * could not pass.
+ */
+describe("the README usage example prints exactly what the page says it prints", () => {
+  const TSX = join(root, "node_modules", ".bin", "tsx");
+  const SPECIFIER = '"@cosyte/x12"';
+
+  function runAsProgram(
+    code: string,
+    name: string,
+  ): { status: number | null; stdout: string; stderr: string } {
+    expect(code.split(SPECIFIER).length - 1, "the block imports @cosyte/x12 exactly once").toBe(1);
+    mkdirSync(CONTROL_TMP_DIR, { recursive: true });
+    const file = join(CONTROL_TMP_DIR, name);
+    writeFileSync(file, code.replace(SPECIFIER, JSON.stringify(pathToFileURL(ENTRY).href)), "utf8");
+    const run = spawnSync(TSX, [file], {
+      cwd: root,
+      encoding: "utf8",
+      shell: false,
+      timeout: 60_000,
+    });
+    return { status: run.status, stdout: run.stdout, stderr: run.stderr };
+  }
+
+  it("is followed by the text block holding its output", () => {
+    const blocks = fences(section(readme, "## Usage"));
+    expect(blocks.map((block) => block.lang).slice(0, 2)).toEqual(["ts", "text"]);
+  });
+
+  it("runs as a program and prints the text block byte for byte", () => {
+    const [code, shown] = fences(section(readme, "## Usage"));
+    const run = runAsProgram(code?.body ?? "", "usage-stdout.mts");
+    expect(run.stderr).toBe("");
+    expect(run.status).toBe(0);
+    expect(run.stdout).toBe(`${shown?.body ?? ""}\n`);
+  }, 60_000);
+
+  it("CONTROL: a changed amount in the interchange changes what it prints", () => {
+    const [code, shown] = fences(section(readme, "## Usage"));
+    const body = code?.body ?? "";
+    // The patient-responsibility amount in the CLP segment, and nothing else.
+    const clp = "*500.00*450.00*50.00*";
+    expect(body.split(clp).length - 1).toBe(1);
+    const run = runAsProgram(body.replace(clp, "*500.00*450.00*60.00*"), "usage-control.mts");
+    expect(run.status).toBe(0);
+    expect(run.stdout).not.toBe(`${shown?.body ?? ""}\n`);
+    expect(run.stdout).toContain("patient owes 60.00");
+  }, 60_000);
 });
