@@ -22,6 +22,17 @@
  *      like a segment, so the AC8 control proves the detector rather than
  *      assuming it, is assembled at runtime by {@link seg} - the same shape
  *      `test/scripts/phi-scan.test.ts` uses, and for the same reason.
+ *
+ * THE RELEASE COMMIT ITSELF PASSES, AND THAT IS A STATE, NOT AN EXEMPTION. The
+ * release pipeline runs `pnpm test` on Changesets' version commit before it
+ * publishes, and that commit moves the manifest to `0.1.0` and consumes every
+ * pending changeset at once. There the prepare-state checks that read the
+ * pending set and the manifest band are skipped, and only there:
+ * {@link isReleaseCommit} holds when the manifest reads the prepared version
+ * AND nothing is pending. A premature bump (the prepared version with the set
+ * still pending) and a set removed without the bump both still fail, each
+ * pinned by a case below, and the section and inventory-enumeration checks run
+ * in every state.
  */
 
 import { readFileSync, readdirSync } from "node:fs";
@@ -901,20 +912,53 @@ function failsWith(state: RepoState, pattern: RegExp): void {
   expect(failures.some((failure) => pattern.test(failure))).toBe(true);
 }
 
+/**
+ * Whether the tree is Changesets' version commit for the prepared release: the
+ * manifest already reads the prepared version and the whole set is consumed.
+ * Both halves are required, so neither a hand bump with the set still pending
+ * nor a set deleted without the bump reads as a release.
+ */
+function isReleaseCommit(
+  manifestVersion: string,
+  changesets: readonly PendingChangeset[],
+): boolean {
+  return manifestVersion === PREPARED_VERSION && changesets.length === 0;
+}
+
+const RELEASE_COMMIT = isReleaseCommit(readManifestVersion(ROOT), readPendingChangesets(ROOT));
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
+describe("release prep 0.1.0: recognizing the release commit", () => {
+  it("is the prepared version with nothing left pending", () => {
+    expect(isReleaseCommit(PREPARED_VERSION, [])).toBe(true);
+  });
+
+  it("is not a bump made while the set is still pending", () => {
+    expect(isReleaseCommit(PREPARED_VERSION, FIXTURE_CHANGESETS)).toBe(false);
+  });
+
+  it("is not a set removed without the bump", () => {
+    expect(isReleaseCommit("0.0.18", [])).toBe(false);
+  });
+
+  it("is not the 0.0.x manifest with the set pending, which is the prepared state", () => {
+    expect(isReleaseCommit("0.0.18", FIXTURE_CHANGESETS)).toBe(false);
+  });
+});
+
 describe("release prep 0.1.0: the repository", () => {
-  it("passes the release-prep check", { timeout: 60_000 }, () => {
+  it.skipIf(RELEASE_COMMIT)("passes the release-prep check", { timeout: 60_000 }, () => {
     expect(checkReleasePrep(readRepoState())).toEqual([]);
   });
 
-  it("AC7: the package manifest is still in the 0.0.x band", () => {
+  it.skipIf(RELEASE_COMMIT)("AC7: the package manifest is still in the 0.0.x band", () => {
     expect(readManifestVersion(ROOT)).toMatch(MANIFEST_BAND);
   });
 
-  it("AC3: the pending changesets resolve to exactly 0.1.0", () => {
+  it.skipIf(RELEASE_COMMIT)("AC3: the pending changesets resolve to exactly 0.1.0", () => {
     const parsed = readPendingChangesets(ROOT).map(parseChangeset);
     expect(parsed.filter((entry) => typeof entry === "string")).toEqual([]);
     const bumps = parsed.filter((entry): entry is ParsedChangeset => typeof entry !== "string");

@@ -33,8 +33,11 @@ a stable code instead of failing or guessing.
 
 **Version 0.0.18**, published on npm from a public repository.
 
-On the `0.0.x` ladder the public API is not settled and may still move before `0.1.0`, so pin an
-exact version rather than a range. Typed read and typed emit both ship for every transaction set
+From `0.1.0` the public API is settled and safe to depend on: the exported readers, builders,
+types and warning codes are the surface we keep stable, and the warning registry only ever gains
+codes. Below 1.0 a breaking change bumps the minor version and is called out in the changelog with
+its migration. On a `0.0.x` version, pin an exact version rather than a range. Typed read and typed
+emit both ship for every transaction set
 this package covers: 270, 271, 276, 277 and 277CA, 278 request and response, 820, 834, 835, 837P,
 837I and 837D, 999 and TA1, each with a reader and a matching domain builder, and the two claims
 attachments guides 45 CFR 162.2002 adopts for the period on and after 26 May 2028: the 277 request
