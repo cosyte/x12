@@ -24,18 +24,8 @@
     },
     {
       "type": "category",
-      "label": "Emitting X12",
-      "items": ["emit-and-serialize"]
-    },
-    {
-      "type": "category",
-      "label": "Trading partners",
-      "items": ["profiles"]
-    },
-    {
-      "type": "category",
       "label": "Guides",
-      "items": ["cookbook"]
+      "items": ["emit-and-serialize", "profiles", "cookbook"]
     },
     {
       "type": "category",
