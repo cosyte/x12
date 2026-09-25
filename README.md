@@ -99,32 +99,38 @@ GE*1*1~
 IEA*1*000000001~`;
 
 const ix = parseX12(raw);
-ix.warnings; // => []
-
 const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "835");
 if (tx === undefined) throw new Error("no 835 in this interchange");
 const remit = get835(ix.delimiters, tx);
 if (remit === undefined) throw new Error("not an 835");
 
-// The payment header: the money-movement primitive.
-remit.payment.totalActualPayment?.toString(); // => "450.00"
-remit.payment.creditDebitFlag; // => "C"
-remit.payment.method; // => "ACH"
-remit.traces[0]?.referenceId; // => "0012345"
-
-// Per claim: your own account number echoed back, and the split.
+// The payment, the claim's split, and who owes the difference and why.
 const claim = remit.claims[0];
-claim?.patientControlNumber; // => "PT-ACCT-001"
-claim?.totalChargeAmount?.toString(); // => "500.00"
-claim?.totalPaymentAmount?.toString(); // => "450.00"
-claim?.patientResponsibilityAmount?.toString(); // => "50.00"
-
-// Per service line: who owes the difference, and why.
 const adjustment = claim?.serviceLines[0]?.adjustments[0];
+console.log("paid", remit.payment.totalActualPayment?.toString(), "by", remit.payment.method);
+console.log("claim", claim?.patientControlNumber, "charged", claim?.totalChargeAmount?.toString());
+console.log("patient owes", claim?.patientResponsibilityAmount?.toString());
+console.log("reason", adjustment?.groupCode, adjustment?.reasonCode, adjustment?.reasonDescription);
+console.log("warnings", ix.warnings.length);
+
+// The values printed above, which the test suite asserts on every run:
+remit.payment.totalActualPayment?.toString(); // => "450.00"
+claim?.totalChargeAmount?.toString(); // => "500.00"
+claim?.patientResponsibilityAmount?.toString(); // => "50.00"
 adjustment?.groupCode; // => "PR"
 adjustment?.reasonCode; // => "1"
 adjustment?.reasonDescription; // => "Deductible Amount"
-adjustment?.amount?.toString(); // => "50.00"
+ix.warnings; // => []
+```
+
+It prints:
+
+```text
+paid 450.00 by ACH
+claim PT-ACCT-001 charged 500.00
+patient owes 50.00
+reason PR 1 Deductible Amount
+warnings 0
 ```
 
 The `groupCode` is what tells you who owes the money (`PR` patient responsibility, `CO` contractual

@@ -123,3 +123,30 @@ jobs:
           export X12_DIFFERENTIAL_PYTHON="$RUNNER_TEMP/pyx12-venv/bin/python"
           export X12_DIFFERENTIAL_LINUXFORHEALTH_PYTHON="$RUNNER_TEMP/linuxforhealth-venv/bin/python"
           pnpm run differential:check
+
+  # The runnable examples under examples/, checked the way a consumer meets them: each imports
+  # `@cosyte/x12` by name, which resolves through package.json `exports` to the BUILT dist/, so the
+  # build runs first. Each example asserts its own output, so `pnpm examples` goes red when one
+  # drifts from the package. The PHI scan's default walk (src/ and test/) does not reach examples/,
+  # so the example files are named to it here. Actions are pinned to the commits the tags this
+  # file's other jobs use resolve to.
+  examples:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # actions/checkout v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      # pnpm/action-setup v6.0.10
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+      # actions/setup-node v6.5.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm typecheck:examples
+      - run: pnpm lint:examples
+      - run: pnpm examples
+      - run: pnpm phi-scan:examples
