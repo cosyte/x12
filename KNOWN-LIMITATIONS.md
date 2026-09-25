@@ -1771,10 +1771,13 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   accept a document and set one of its segments aside without raising, so a document is compared only
   when the model kept every segment of every transaction set, ST through SE, that the oracle framed
   for it; one whose model kept fewer is recorded as unevaluated with its own refusal kind, and none of
-  its positions is counted as agreement. The two readers place the 276 subscriber's demographics
+  its positions is counted as agreement. 🩺 The two readers place the 276 subscriber's demographics
   segment (DMG) differently: that model reads it ahead of the subscriber's name and this library
-  after it, and a document carrying one where this library puts it loses it to that model, which then
-  refuses the document. So the one 276 compared against it carries no subscriber DMG. Agreement on the
+  after it. A document carrying one where this library puts it loses it to that model, which then
+  refuses the document; and this library's 276 reader keeps a DMG only after the name already read at
+  its level, so one sent ahead of the name is not on the decoded inquiry and no warning says so. Which
+  position the implementation guide specifies is not settled here, and nothing about either reader
+  moved to produce this. So the one 276 compared against it carries no subscriber DMG. Agreement on the
   270, the 271, the 276 and the 277 claim status response is agreement over the documents that model
   accepted whole, which the report lists by name, and nothing wider: in particular no document
   compared against it carries a dependent level, and no 276 compared against it carries a DMG, so that
