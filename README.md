@@ -31,7 +31,7 @@ a stable code instead of failing or guessing.
 
 ## Status
 
-**Version 0.0.18**, published on npm from a public repository.
+**Version 0.1.0**, published on npm from a public repository.
 
 From `0.1.0` the public API is settled and safe to depend on: the exported readers, builders,
 types and warning codes are the surface we keep stable, and the warning registry only ever gains

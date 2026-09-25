@@ -1,6 +1,6 @@
 {
   "name": "@cosyte/x12",
-  "version": "0.0.18",
+  "version": "0.1.0",
   "description": "Developer-focused ASC X12 healthcare EDI parser, serializer, and builder for Node.js and TypeScript: lenient on parse, spec-clean on emit.",
   "license": "MIT",
   "author": "Cosyte <hello@cosyte.com> (https://cosyte.com)",
