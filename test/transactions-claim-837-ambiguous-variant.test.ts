@@ -185,7 +185,12 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     // The whole channel. The two line codes are exactly the ones raised at
     // `0.0.13`, in the same order; the new code is ADDED ahead of them,
     // because resolution runs before the walk.
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, AMBIGUOUS, WITHOUT_LX, NOT_DECODED]);
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      AMBIGUOUS,
+      WITHOUT_LX,
+      NOT_DECODED,
+    ]);
   });
 
   it("🩺 the same document read with an explicit type decodes it, and is silent", () => {
@@ -296,7 +301,12 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     // It reports the RESOLUTION, and there is one of those per transaction.
     const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1, "LX*2~", SV2, "LX*3~", SV3]));
     expect(channel(sub).filter((c) => c === AMBIGUOUS)).toHaveLength(1);
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, AMBIGUOUS, NOT_DECODED, NOT_DECODED]);
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      AMBIGUOUS,
+      NOT_DECODED,
+      NOT_DECODED,
+    ]);
   });
 });
 

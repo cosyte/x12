@@ -355,7 +355,10 @@ describe("X12-VARIANT-ICR-UNGROUNDED: what still does NOT resolve", () => {
   it("🩺 an ST-03 outside the set with NO SVx still raises X12_837_UNKNOWN_VARIANT", () => {
     const sub = parse837("005010X221A1", [...HEADER, CLM, "HI*ABK:J20.9~"]);
     expect(sub.variant).toBe("unknown");
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, WARNING_CODES.X12_837_UNKNOWN_VARIANT]);
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      WARNING_CODES.X12_837_UNKNOWN_VARIANT,
+    ]);
   });
 
   it("an ABSENT ST-03 still falls back exactly as it did", () => {

@@ -366,7 +366,10 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     expect(typed.variant).toBe("P");
     expect(typed.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     expect(typed.claims[0]?.serviceLines[0]?.procedureCode).toBe("99213");
-    expect(channel(typed)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX]);
+    expect(channel(typed)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
+    ]);
 
     // And the fallback takes the FIRST SVx: a stray SV2 placed AFTER the
     // conformant line changes nothing. Every sentence about this says

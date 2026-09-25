@@ -205,7 +205,10 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: with no SVx to fall back on, the variant
   it("CONTROL: an unknown variant with no LX at all raises only the variant code", () => {
     // Isolates the two codes from each other: no LX, no dropped line.
     const { sub } = parse837("005010XZZZZZ", claimBody([]));
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, WARNING_CODES.X12_837_UNKNOWN_VARIANT]);
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      WARNING_CODES.X12_837_UNKNOWN_VARIANT,
+    ]);
   });
 });
 
@@ -221,7 +224,10 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: the SVx fallback table is keyed by a wir
     // so the table is null-prototype anyway, and this pins the honest case.
     const { sub } = parse837("005010XZZZZZ", claimBody(["ZZ*NOT-A-SERVICE-SEGMENT~"]));
     expect(sub.variant).toBe("unknown");
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, WARNING_CODES.X12_837_UNKNOWN_VARIANT]);
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      WARNING_CODES.X12_837_UNKNOWN_VARIANT,
+    ]);
   });
 });
 
