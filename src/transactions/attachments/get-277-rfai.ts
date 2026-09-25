@@ -143,7 +143,10 @@ interface RequestAccumulator {
 
 /** @internal */
 interface ServiceLineAccumulator {
-  readonly head: Omit<X12AdditionalInformationRequestServiceLine, "statuses" | "references" | "dates">;
+  readonly head: Omit<
+    X12AdditionalInformationRequestServiceLine,
+    "statuses" | "references" | "dates"
+  >;
   readonly statuses: X12AdditionalInformationRequestStatus[];
   readonly references: X12AdditionalInformationRequestReference[];
   readonly dates: X12AdditionalInformationRequestDate[];
@@ -319,7 +322,10 @@ function decodeEntity(
 }
 
 /** @internal */
-function decodeTrace(seg: X12Segment, delimiters: Delimiters): X12AdditionalInformationRequestTrace {
+function decodeTrace(
+  seg: X12Segment,
+  delimiters: Delimiters,
+): X12AdditionalInformationRequestTrace {
   return Object.freeze({
     traceTypeCode: elementOptional(seg, 1, delimiters),
     referenceId: elementOptional(seg, 2, delimiters),

@@ -283,9 +283,16 @@ describe("refusal messages: the source gate", () => {
     // dependent that does, a dependent with no claim, a claim carrying nothing
     // a payer could find it by, a claim with no trace, a service line
     // identifying no service, and an over-long interchange control number.
+    //
+    // FIFTEEN modules and 131 sites now: `build-277-rfai.ts` and
+    // `build-275.ts`, the two attachments builders (AC-11, AC-14, AC-16), bring
+    // FOURTEEN sites between them: each one-line `refuseSpec` thrower the shared
+    // caller guards call back into, each refusal AC-14 and AC-16 name, and each
+    // over-long interchange control number. Neither interpolates anything but a
+    // structural `locator`, so no document value reaches a message.
     const raising = new Set(sites.map((s) => s.file));
-    expect(raising.size).toBe(13);
-    expect(sites.length).toBe(117);
+    expect(raising.size).toBe(15);
+    expect(sites.length).toBe(131);
     expect(modules.some((m) => m.endsWith(join("profiles", "validate.ts")))).toBe(true);
   });
 

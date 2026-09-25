@@ -73,7 +73,10 @@ const MAX_OCTET = 0xff;
  * @internal
  */
 function refuseSpec(message: string): never {
-  throw new Attachment275BuildError(ATTACHMENT_275_BUILD_ERROR_CODES.X12_275_BUILD_INVALID_SPEC, message);
+  throw new Attachment275BuildError(
+    ATTACHMENT_275_BUILD_ERROR_CODES.X12_275_BUILD_INVALID_SPEC,
+    message,
+  );
 }
 
 /**
@@ -226,7 +229,10 @@ function enforceStructure(spec: Build275Spec): readonly (readonly string[])[] {
   if (typeof spec.envelope !== "object" || spec.envelope === null) {
     refuseSpec("build275: spec.envelope must be an object.");
   }
-  if (spec.beginning !== undefined && (typeof spec.beginning !== "object" || spec.beginning === null)) {
+  if (
+    spec.beginning !== undefined &&
+    (typeof spec.beginning !== "object" || spec.beginning === null)
+  ) {
     refuseSpec("build275: spec.beginning must be an object where given.");
   }
   requireCallerArray(spec.entities, "build275: spec.entities", refuseSpec);
@@ -256,13 +262,23 @@ function enforceLine(line: Build275LineSpec, locator: string): readonly string[]
     if (typeof line.status !== "object" || line.status === null) {
       refuseSpec(`build275: the status at ${locator} must be an object where given.`);
     }
-    const codes = requireCallerArray(line.status.codes, `build275: ${locator}.status.codes`, refuseSpec);
+    const codes = requireCallerArray(
+      line.status.codes,
+      `build275: ${locator}.status.codes`,
+      refuseSpec,
+    );
     if (codes.length > MAX_STATUS_CODES) {
-      refuseSpec(`build275: the status at ${locator} carries more than three composites; STC-01, STC-10 and STC-11 hold three.`);
+      refuseSpec(
+        `build275: the status at ${locator} carries more than three composites; STC-01, STC-10 and STC-11 hold three.`,
+      );
     }
   }
   requireCallerArray(line.references, `build275: ${locator}.references`, refuseSpec);
-  const attachments = requireCallerArray(line.attachments, `build275: ${locator}.attachments`, refuseSpec);
+  const attachments = requireCallerArray(
+    line.attachments,
+    `build275: ${locator}.attachments`,
+    refuseSpec,
+  );
   return attachments.map((attachment, a) =>
     enforceAttachment(attachment, `${locator}.attachments[${String(a)}]`),
   );
@@ -318,7 +334,9 @@ function asOctets(data: string | Uint8Array, locator: string): string {
     for (const byte of data) out += String.fromCharCode(byte);
     return out;
   }
-  return refuseSpec(`build275: the data of the attachment at ${locator} must be a string or a Uint8Array.`);
+  return refuseSpec(
+    `build275: the data of the attachment at ${locator} must be a string or a Uint8Array.`,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -375,7 +393,12 @@ function emitLine(
     const composite = (index: number): string => {
       const code = status.codes[index];
       if (code === undefined) return "";
-      return comp([code.categoryCode, code.statusCode, code.entityCode ?? "", code.codeListQualifier ?? ""]);
+      return comp([
+        code.categoryCode,
+        code.statusCode,
+        code.entityCode ?? "",
+        code.codeListQualifier ?? "",
+      ]);
     };
     body.push(
       seg([

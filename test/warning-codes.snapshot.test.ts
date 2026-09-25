@@ -13,9 +13,20 @@
  * reviewable directly in the diff.
  */
 
+import { createHash } from "node:crypto";
+
 import { describe, expect, it } from "vitest";
 
-import { FATAL_CODES, REQUIRED_LOOPS, WARNING_CODES } from "../src/index.js";
+import {
+  ALL_WARNING_MESSAGES,
+  FATAL_CODES,
+  REQUIRED_LOOPS,
+  WARNING_CODES,
+  attachmentAbsent,
+  rfaiHeaderAbsent,
+  rfaiLevelAbsent,
+  rfaiRequestAbsent,
+} from "../src/index.js";
 
 function sortedWarningCodes(): string[] {
   return Object.values(WARNING_CODES).sort((a, b) => a.localeCompare(b));
@@ -27,6 +38,7 @@ function sortedFatalCodes(): string[] {
 
 describe("public API: WARNING_CODES surface is stable", () => {
   it("the sorted set of Tier-2 warning codes matches the locked snapshot", () => {
+    // AC-18: the four attachments codes are the only lines this snapshot gained.
     expect(sortedWarningCodes()).toMatchInlineSnapshot(`
       [
         "X12_270_DATE_ROW_DROPPED",
@@ -144,6 +156,27 @@ describe("public API: WARNING_CODES surface is stable", () => {
     // its own reader's path alone, so no other transaction set's warning stream
     // moves.
     expect(Object.keys(WARNING_CODES)).toHaveLength(59);
+  });
+
+  it("AC-18: gives no code that existed before the attachments readers a new message", () => {
+    // Every message the registry carried before the four attachments codes
+    // were added, sorted and joined, is pinned by digest: re-wording one moves
+    // it, and so does dropping one. The four added codes' own messages are set
+    // aside through their factories, so an addition cannot move it.
+    const at = { segmentIndex: 0, transactionIndex: 0 };
+    const added = new Set(
+      [attachmentAbsent, rfaiHeaderAbsent, rfaiLevelAbsent, rfaiRequestAbsent].map(
+        (factory) => factory(at).message,
+      ),
+    );
+    expect(added.size).toBe(4);
+    const kept = [...ALL_WARNING_MESSAGES]
+      .filter((message) => !added.has(message))
+      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    expect(kept).toHaveLength(86);
+    expect(createHash("sha256").update(kept.join("\n")).digest("hex")).toBe(
+      "3ae065bdb0c9d6b0bdfb7f03476e95030484d5c6e577adc81b5e5bd9f517193d",
+    );
   });
 
   it("keeps the four REQUIRED_LOOPS the 837 owns and adds the 270's three", () => {

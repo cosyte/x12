@@ -36,13 +36,18 @@ a stable code instead of failing or guessing.
 On the `0.0.x` ladder the public API is not settled and may still move before `0.1.0`, so pin an
 exact version rather than a range. Typed read and typed emit both ship for every transaction set
 this package covers: 270, 271, 276, 277 and 277CA, 278 request and response, 820, 834, 835, 837P,
-837I and 837D, 999 and TA1, each with a reader and a matching domain builder.
-`X12_TR3_CONFORMANCE` is the machine-readable answer to which implementation guide each one
-follows, and is a better source than this page.
+837I and 837D, 999 and TA1, each with a reader and a matching domain builder, and the two claims
+attachments guides 45 CFR 162.2002 adopts for the period on and after 26 May 2028: the 277 request
+for additional information (`006020X313`) and the 275 that answers it (`006020X314`). For those two the base X12 006020
+structure is typed and no implementation-guide usage is checked, so a qualifier or segment the
+guide requires is carried as sent and never validated; `KNOWN-LIMITATIONS.md` lists what else
+they leave open. `X12_TR3_CONFORMANCE` is the machine-readable answer to which implementation
+guide each one follows, and is a better source than this page.
 
 Not covered, and deliberately so: a byte-exact round trip is not guaranteed in general (see
 [Compatibility](#compatibility)), and non-healthcare transaction sets, EDIFACT, transport such as
-AS2 and SFTP, and pre-005010 revisions are all out of scope.
+AS2 and SFTP, pre-005010 revisions, 006020 guides other than the two attachments guides, and
+decoding what an attachment carries are all out of scope.
 
 ## Install
 
@@ -144,10 +149,15 @@ where; the bytes stay on the model. `ALL_WARNING_MESSAGES` is exported so you ca
 copy of the start of the input, so on real traffic it can carry PHI, and it is not redacted. Log
 `err.code` and `err.position` instead, or redact at your call site.
 
+**An attachment refuses to print.** The data of each BDS a 275 carries is read into
+`X12AttachmentData`, whose string, JSON and `util.inspect` forms state its octet count and nothing
+else; `readOctets()` is the one route to the octets.
+
 **Builder refusals are a weaker surface, deliberately.** A `build*` refusal names the control
 number, count or code you passed in, so that you can see what was refused. The rendered fragment is
-bounded by an exported constant, but it is bounded rather than redacted. Log `err.code`, not
-`err.message`, from a builder.
+bounded by an exported constant, but it is bounded rather than redacted. The two attachments
+builders are the exception and name no value at all. Log `err.code`, not `err.message`, from a
+builder.
 
 **What you still own.** Transport, storage, retention, access control, audit logging, and every log
 line your own code writes. This library makes no HIPAA compliance claim on your behalf.

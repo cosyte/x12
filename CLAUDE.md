@@ -20,7 +20,7 @@ FIRST**; the pre-compression file is verbatim at relocated narrative §11.
 Pre-alpha `0.0.x`, **published** to npm from a public repo. **Never quote a version here:** `npm view @cosyte/x12 version` is the only
 source of truth.
 
-- **Read scope is decoded for** 270, 271, 276, 277 / 277CA, 278, 820, 834, 835, 837P/I/D, 999, TA1.
+- **Read scope is decoded for** 270, 271, 275 (006020X314), 276, 277 / 277CA / 277 RFAI (006020X313), 278, 820, 834, 835, 837P/I/D, 999, TA1.
 - **Emit scope is complete for every transaction that has a reader**: general (`serializeX12` + `buildInterchange`) plus a per-TR3
   domain builder for each, and the pure-function `build999` / `buildTA1`, each layering the safety-critical per-TR3 invariants
   (balance, certification, maintenance-type fidelity, count reconciliation) on the general builder.

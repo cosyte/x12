@@ -233,9 +233,15 @@ function enforceStructure(spec: Build277RfaiSpec): void {
     refuseSpec(`build277RequestForAdditionalInformation:spec.envelope must be an object.`);
   }
   if (typeof spec.header !== "object" || spec.header === null) {
-    refuseSpec(`build277RequestForAdditionalInformation:spec.header must be an object carrying the BHT elements.`);
+    refuseSpec(
+      `build277RequestForAdditionalInformation:spec.header must be an object carrying the BHT elements.`,
+    );
   }
-  const levels = requireCallerArray(spec.levels, `build277RequestForAdditionalInformation:spec.levels`, refuseSpec);
+  const levels = requireCallerArray(
+    spec.levels,
+    `build277RequestForAdditionalInformation:spec.levels`,
+    refuseSpec,
+  );
   if (levels.length === 0) {
     throw new Rfai277BuildError(
       RFAI_277_BUILD_ERROR_CODES.X12_277_RFAI_BUILD_NO_LEVEL,
@@ -243,7 +249,8 @@ function enforceStructure(spec: Build277RfaiSpec): void {
     );
   }
   let requests = 0;
-  for (const [i, level] of levels.entries()) requests += enforceLevel(level, `levels[${String(i)}]`);
+  for (const [i, level] of levels.entries())
+    requests += enforceLevel(level, `levels[${String(i)}]`);
   if (requests === 0) {
     throw new Rfai277BuildError(
       RFAI_277_BUILD_ERROR_CODES.X12_277_RFAI_BUILD_NO_REQUEST,
@@ -255,15 +262,29 @@ function enforceStructure(spec: Build277RfaiSpec): void {
 /** Enforce one level and its subordinates; answer how many requests they carry. @internal */
 function enforceLevel(level: Build277RfaiLevelSpec, locator: string): number {
   if (typeof level !== "object" || level === null) {
-    refuseSpec(`build277RequestForAdditionalInformation:the level at ${locator} must be an object.`);
+    refuseSpec(
+      `build277RequestForAdditionalInformation:the level at ${locator} must be an object.`,
+    );
   }
-  requireCallerArray(level.entities, `build277RequestForAdditionalInformation:${locator}.entities`, refuseSpec);
-  const requests = requireCallerArray(level.requests, `build277RequestForAdditionalInformation:${locator}.requests`, refuseSpec);
+  requireCallerArray(
+    level.entities,
+    `build277RequestForAdditionalInformation:${locator}.entities`,
+    refuseSpec,
+  );
+  const requests = requireCallerArray(
+    level.requests,
+    `build277RequestForAdditionalInformation:${locator}.requests`,
+    refuseSpec,
+  );
   for (const [r, request] of requests.entries()) {
     enforceRequest(request, `${locator}.requests[${String(r)}]`);
   }
   let count = requests.length;
-  const children = requireCallerArray(level.children, `build277RequestForAdditionalInformation:${locator}.children`, refuseSpec);
+  const children = requireCallerArray(
+    level.children,
+    `build277RequestForAdditionalInformation:${locator}.children`,
+    refuseSpec,
+  );
   for (const [c, child] of children.entries()) {
     count += enforceLevel(child, `${locator}.children[${String(c)}]`);
   }
@@ -273,7 +294,9 @@ function enforceLevel(level: Build277RfaiLevelSpec, locator: string): number {
 /** @internal */
 function enforceRequest(request: Build277RfaiRequestSpec, locator: string): void {
   if (typeof request !== "object" || request === null) {
-    refuseSpec(`build277RequestForAdditionalInformation:the request at ${locator} must be an object.`);
+    refuseSpec(
+      `build277RequestForAdditionalInformation:the request at ${locator} must be an object.`,
+    );
   }
   if (request.trace === undefined || request.trace === null) {
     throw new Rfai277BuildError(
@@ -281,20 +304,48 @@ function enforceRequest(request: Build277RfaiRequestSpec, locator: string): void
       `build277RequestForAdditionalInformation:the claim-level request at ${locator} has no trace; the base 006020 277 opens that loop with a TRN.`,
     );
   }
-  const statuses = requireCallerArray(request.statuses, `build277RequestForAdditionalInformation:${locator}.statuses`, refuseSpec);
-  for (const [s, status] of statuses.entries()) enforceStatus(status, `${locator}.statuses[${String(s)}]`);
-  requireCallerArray(request.references, `build277RequestForAdditionalInformation:${locator}.references`, refuseSpec);
-  requireCallerArray(request.dates, `build277RequestForAdditionalInformation:${locator}.dates`, refuseSpec);
-  requireCallerArray(request.quantities, `build277RequestForAdditionalInformation:${locator}.quantities`, refuseSpec);
-  requireCallerArray(request.amounts, `build277RequestForAdditionalInformation:${locator}.amounts`, refuseSpec);
-  const lines = requireCallerArray(request.serviceLines, `build277RequestForAdditionalInformation:${locator}.serviceLines`, refuseSpec);
-  for (const [l, line] of lines.entries()) enforceServiceLine(line, `${locator}.serviceLines[${String(l)}]`);
+  const statuses = requireCallerArray(
+    request.statuses,
+    `build277RequestForAdditionalInformation:${locator}.statuses`,
+    refuseSpec,
+  );
+  for (const [s, status] of statuses.entries())
+    enforceStatus(status, `${locator}.statuses[${String(s)}]`);
+  requireCallerArray(
+    request.references,
+    `build277RequestForAdditionalInformation:${locator}.references`,
+    refuseSpec,
+  );
+  requireCallerArray(
+    request.dates,
+    `build277RequestForAdditionalInformation:${locator}.dates`,
+    refuseSpec,
+  );
+  requireCallerArray(
+    request.quantities,
+    `build277RequestForAdditionalInformation:${locator}.quantities`,
+    refuseSpec,
+  );
+  requireCallerArray(
+    request.amounts,
+    `build277RequestForAdditionalInformation:${locator}.amounts`,
+    refuseSpec,
+  );
+  const lines = requireCallerArray(
+    request.serviceLines,
+    `build277RequestForAdditionalInformation:${locator}.serviceLines`,
+    refuseSpec,
+  );
+  for (const [l, line] of lines.entries())
+    enforceServiceLine(line, `${locator}.serviceLines[${String(l)}]`);
 }
 
 /** @internal */
 function enforceServiceLine(line: Build277RfaiServiceLineSpec, locator: string): void {
   if (typeof line !== "object" || line === null) {
-    refuseSpec(`build277RequestForAdditionalInformation:the service line at ${locator} must be an object.`);
+    refuseSpec(
+      `build277RequestForAdditionalInformation:the service line at ${locator} must be an object.`,
+    );
   }
   if (line.service === undefined || line.service === null) {
     throw new Rfai277BuildError(
@@ -302,14 +353,33 @@ function enforceServiceLine(line: Build277RfaiServiceLineSpec, locator: string):
       `build277RequestForAdditionalInformation:the service line at ${locator} has no service; the base 006020 277 opens that loop with an SVC.`,
     );
   }
-  const modifiers = requireCallerArray(line.service.modifiers, `build277RequestForAdditionalInformation:${locator}.service.modifiers`, refuseSpec);
+  const modifiers = requireCallerArray(
+    line.service.modifiers,
+    `build277RequestForAdditionalInformation:${locator}.service.modifiers`,
+    refuseSpec,
+  );
   if (modifiers.length > MAX_MODIFIERS) {
-    refuseSpec(`build277RequestForAdditionalInformation:the service at ${locator} carries more than four modifiers; SVC-01 holds four.`);
+    refuseSpec(
+      `build277RequestForAdditionalInformation:the service at ${locator} carries more than four modifiers; SVC-01 holds four.`,
+    );
   }
-  const statuses = requireCallerArray(line.statuses, `build277RequestForAdditionalInformation:${locator}.statuses`, refuseSpec);
-  for (const [s, status] of statuses.entries()) enforceStatus(status, `${locator}.statuses[${String(s)}]`);
-  requireCallerArray(line.references, `build277RequestForAdditionalInformation:${locator}.references`, refuseSpec);
-  requireCallerArray(line.dates, `build277RequestForAdditionalInformation:${locator}.dates`, refuseSpec);
+  const statuses = requireCallerArray(
+    line.statuses,
+    `build277RequestForAdditionalInformation:${locator}.statuses`,
+    refuseSpec,
+  );
+  for (const [s, status] of statuses.entries())
+    enforceStatus(status, `${locator}.statuses[${String(s)}]`);
+  requireCallerArray(
+    line.references,
+    `build277RequestForAdditionalInformation:${locator}.references`,
+    refuseSpec,
+  );
+  requireCallerArray(
+    line.dates,
+    `build277RequestForAdditionalInformation:${locator}.dates`,
+    refuseSpec,
+  );
 }
 
 /**
@@ -318,9 +388,15 @@ function enforceServiceLine(line: Build277RfaiServiceLineSpec, locator: string):
  */
 function enforceStatus(status: Build277RfaiStatusSpec, locator: string): void {
   if (typeof status !== "object" || status === null) {
-    refuseSpec(`build277RequestForAdditionalInformation:the status at ${locator} must be an object.`);
+    refuseSpec(
+      `build277RequestForAdditionalInformation:the status at ${locator} must be an object.`,
+    );
   }
-  const codes = requireCallerArray(status.codes, `build277RequestForAdditionalInformation:${locator}.codes`, refuseSpec);
+  const codes = requireCallerArray(
+    status.codes,
+    `build277RequestForAdditionalInformation:${locator}.codes`,
+    refuseSpec,
+  );
   if (codes.length === 0) {
     throw new Rfai277BuildError(
       RFAI_277_BUILD_ERROR_CODES.X12_277_RFAI_BUILD_STATUS_CODE_EMPTY,
@@ -328,7 +404,9 @@ function enforceStatus(status: Build277RfaiStatusSpec, locator: string): void {
     );
   }
   if (codes.length > MAX_STATUS_CODES) {
-    refuseSpec(`build277RequestForAdditionalInformation:the status at ${locator} carries more than three composites; STC-01, STC-10 and STC-11 hold three.`);
+    refuseSpec(
+      `build277RequestForAdditionalInformation:the status at ${locator} carries more than three composites; STC-01, STC-10 and STC-11 hold three.`,
+    );
   }
   for (const [c, code] of codes.entries()) {
     const at = `${locator}.codes[${String(c)}]`;
@@ -372,7 +450,9 @@ function emitLevel(
 ): void {
   const id = String(counter.next);
   counter.next += 1;
-  body.push(ctx.seg(["HL", id, parentId ?? "", ctx.esc(level.levelCode), ctx.esc(level.childCode ?? "")]));
+  body.push(
+    ctx.seg(["HL", id, parentId ?? "", ctx.esc(level.levelCode), ctx.esc(level.childCode ?? "")]),
+  );
   for (const entity of level.entities ?? []) body.push(emitEntity(entity, ctx));
   for (const request of level.requests ?? []) emitRequest(request, body, ctx);
   for (const child of level.children ?? []) emitLevel(child, id, body, ctx, counter);

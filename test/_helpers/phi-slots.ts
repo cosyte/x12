@@ -84,8 +84,10 @@ import {
   WARNING_CODES,
   get270Inquiry,
   get271Eligibility,
+  get275Attachments,
   get276StatusInquiry,
   get277CADisposition,
+  get277RequestForAdditionalInformation,
   get277Status,
   get278Request,
   get278Response,
@@ -199,8 +201,10 @@ function withGroupCountMismatch(raw: string): string {
 /**
  * A synthetic transaction set carrying one BDS and one BIN, built in code
  * because no golden carries either. Both declare lengths that match their
- * data, so the only diagnostic a binary slot produces is the one its plant
- * drives; no typed reader claims a 275, so nothing else runs over it. AC-8.
+ * data, so the only binary framing diagnostic a binary slot produces is the one
+ * its plant drives. The 275 reader runs over it too and adds the guide warning
+ * its `005010X210` declaration earns, plus the framing warning again on the
+ * reading, which is where AC-8 of the attachments readers puts it.
  */
 function binaryTemplate(bds: string, bin: string): string {
   return buildInterchange({
@@ -208,6 +212,31 @@ function binaryTemplate(bds: string, bin: string): string {
     transactionSetId: "275",
     versionRelease: "005010X210",
     transactionBody: [bds, bin],
+  });
+}
+
+/**
+ * A synthetic 277 request for additional information declaring `006020X313`
+ * in GS-08 (the ST carries no ST-03), built in code because no golden carries
+ * one. `body` replaces the whole transaction body, so a slot can leave out the
+ * BHT, the HL or the request its code reports. AC-11.
+ */
+function rfaiTemplate(body: readonly string[]): string {
+  return buildInterchange({
+    functionalIdCode: "HN",
+    transactionSetId: "277",
+    versionRelease: "006020X313",
+    transactionBody: body,
+  });
+}
+
+/** The same for a 275 declaring `006020X314`. AC-11. */
+function attachmentTemplate(body: readonly string[]): string {
+  return buildInterchange({
+    functionalIdCode: "PI",
+    transactionSetId: "275",
+    versionRelease: "006020X314",
+    transactionBody: body,
   });
 }
 
@@ -259,9 +288,13 @@ function runHelpers(
         case "276":
           push(get276StatusInquiry(ix.delimiters, tx)?.warnings);
           break;
+        case "275":
+          push(get275Attachments(ix.delimiters, tx)?.warnings);
+          break;
         case "277":
           push(get277Status(ix.delimiters, tx)?.warnings);
           push(get277CADisposition(ix.delimiters, tx)?.warnings);
+          push(get277RequestForAdditionalInformation(ix.delimiters, tx)?.warnings);
           break;
         case "278":
           push(get278Request(ix.delimiters, tx)?.warnings);
@@ -1091,5 +1124,42 @@ export const PHI_SLOTS: readonly DiagnosticSlot<string>[] = [
     name: "BIN-02 binary data",
     plant: (m) => binaryTemplate("BDS*B64*4*DATA", `BIN*4*${m}`),
     expectCode: WARNING_CODES.X12_BINARY_LENGTH_MISMATCH,
+  },
+
+  // ---- claims attachments: the 277 request and the 275, AC-11 ---------------
+  // co-located. Each of the four codes reports an ABSENCE and reads no value,
+  // so the marker rides in an element the same reader does read, on the same
+  // document, while the absence is reported. One slot per code, so each code
+  // is swept; the 275 data slot is the one a leak would matter most for.
+  {
+    name: "TRN-02 on a 277 request for additional information with no BHT",
+    plant: (m) => rfaiTemplate(["HL*1**20*0", `TRN*1*${m}`, "STC*R0:18842-5::LOI"]),
+    expectCode: WARNING_CODES.X12_277_RFAI_HEADER_ABSENT,
+  },
+  {
+    name: "BHT-03 on a 277 request for additional information with no HL",
+    plant: (m) => rfaiTemplate([`BHT*0010*08*${m}*20260601`]),
+    expectCode: WARNING_CODES.X12_277_RFAI_LEVEL_ABSENT,
+  },
+  {
+    name: "NM1-03 / NM1-09 on a 277 request for additional information with no request",
+    plant: (m) =>
+      rfaiTemplate(["BHT*0010*08*RFAI-0001", "HL*1**22*0", `NM1*QC*1*${m}*JANE****MI*${m}`]),
+    expectCode: WARNING_CODES.X12_277_RFAI_REQUEST_ABSENT,
+  },
+  {
+    name: "REF-02 and NM1-03 on a 275 with no BDS",
+    plant: (m) => attachmentTemplate([`NM1*QC*1*${m}*JANE`, "LX*1", `REF*1K*${m}`]),
+    expectCode: WARNING_CODES.X12_275_ATTACHMENT_ABSENT,
+  },
+  {
+    name: "BDS-03 attachment data on a 275 read by the 275 reader, which warns on its declared guide",
+    plant: (m) =>
+      swap(
+        attachmentTemplate(["LX*1", `BDS*B64*${String(m.length)}*${m}`]),
+        "~ST*275*0001~",
+        "~ST*275*0001*005010X210~",
+      ),
+    expectCode: WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
   },
 ];

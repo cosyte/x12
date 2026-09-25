@@ -32,7 +32,12 @@
  * SVC, DTP, CAT, PID and OOI stay verbatim on the transaction set.
  */
 
-import { decodeSegment, elementDecimal, elementOptional, componentOptional } from "../../parser/segment.js";
+import {
+  decodeSegment,
+  elementDecimal,
+  elementOptional,
+  componentOptional,
+} from "../../parser/segment.js";
 import type { X12DecimalWarningSink, X12Segment } from "../../parser/segment.js";
 import { unescapeRelease } from "../../parser/release.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
