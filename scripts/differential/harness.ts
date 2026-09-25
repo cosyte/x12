@@ -1,18 +1,24 @@
 /**
  * The differential harness: read the same documents through this library and
- * through an independent open-source X12 reader, and record where the two
- * agree, where they disagree, and which transactions the oracle has no map for.
+ * through independent open-source X12 readers, and record where they agree,
+ * where they disagree, and which transactions no oracle has a map or model for.
  *
- * The oracle sits outside this module's boundary - it is another process, in
+ * Each oracle sits outside this module's boundary - it is another process, in
  * another language - so it arrives as a {@link DifferentialOracle}. Everything
  * else runs for real: the read scope is derived from `X12_TR3_CONFORMANCE`, the
  * corpus is assigned by parsing each document with this library's own parser,
  * and the comparison walks this library's own published accessors.
  *
- * Three refusals are deliberately NOT treated as agreement. An oracle that
- * cannot be invoked aborts the run before a report exists. A document either
- * reader refuses is recorded as unevaluated against the side that refused it. A
- * compared transaction that put no document, or no element position, through
+ * The oracles arrive as an ORDERED list, and the order is precedence: a
+ * read-scope row is compared against the first oracle that binds it and against
+ * no other, so adding an oracle to the end of the list can only take rows off
+ * the uncovered list, never move a row an earlier oracle already compares.
+ *
+ * Three refusals are deliberately NOT treated as agreement, and each applies to
+ * every oracle alike. An oracle that cannot be invoked, or that is not the one
+ * it was pinned to, aborts the run before a report exists. A document either
+ * reader refuses is recorded as unevaluated against the reader that refused it.
+ * A compared transaction that put no document, or no element position, through
  * both readers fails the run, because an empty comparison and a clean one are
  * indistinguishable in a report that only counts disagreements.
  *
@@ -40,25 +46,57 @@ import {
 /** The interchange control version number the comparison is scoped to. */
 export const INTERCHANGE_CONTROL_VERSION = "00501";
 
-/** One `(vriic, fic)` binding from the oracle's own map index. */
+/**
+ * One binding from an oracle's own index of what it reads: an implementation
+ * guide, bound to the map or model the oracle reads that guide with.
+ */
 export interface OracleBinding {
   readonly icvn: string;
   readonly vriic: string;
-  readonly fic: string;
+  /**
+   * The ST-01 transaction set the binding is restricted to, or `null` when the
+   * oracle selects by implementation guide alone. A guide shared by two
+   * transaction sets (the 270 and the 271 both declare 005010X279A1) binds each
+   * only through this.
+   */
+  readonly transactionSet: string | null;
+  readonly fic: string | null;
   readonly tspc: string | null;
-  readonly mapFile: string;
-  readonly mapTransactionId: string | null;
-  readonly mapTitle: string | null;
+  /** The map file or model module the oracle reads the guide with. */
+  readonly model: string;
+  /** The identifier that map or model declares for itself. */
+  readonly modelId: string | null;
+  /** The title that map or model declares for itself. */
+  readonly modelTitle: string | null;
 }
 
-/** What the oracle says about itself, read from the oracle rather than assumed. */
+/** One package an oracle runs on, at the version the running oracle reports. */
+export interface OracleCompanion {
+  readonly package: string;
+  readonly version: string;
+}
+
+/** What an oracle says about itself, read from the oracle rather than assumed. */
 export interface OracleDescription {
   readonly package: string;
   readonly version: string;
   readonly licence: string;
   readonly licenceClassifier: string | null;
-  readonly mapIndex: string;
+  /** What {@link OracleBinding.model} names for this oracle. */
+  readonly bindingKind: "map" | "model";
+  /** Where inside the installed oracle its bindings were read from. */
+  readonly bindingSource: string;
   readonly interchangeControlVersion: string;
+  /**
+   * The interpreter version the oracle ran under, when its requirement pins
+   * one and the run checked it; `null` when its requirement pins none.
+   */
+  readonly python: string | null;
+  /**
+   * Every companion package the oracle's requirement pins, at the version the
+   * running oracle reports. Empty when the requirement pins the oracle alone.
+   */
+  readonly companions: readonly OracleCompanion[];
   readonly bindings: readonly OracleBinding[];
 }
 
@@ -92,9 +130,11 @@ export interface CorpusDocument {
 }
 
 /**
- * The oracle, as the harness sees it. Both calls may throw
- * {@link OracleUnavailableError}; nothing else about the transport is visible
- * here.
+ * An oracle, as the harness sees it. Both calls may throw
+ * {@link OracleUnavailableError}, and `describe` may also throw when the
+ * installation shows the oracle is not the one it was pinned to; nothing else
+ * about the transport is visible here, and any throw aborts the run before a
+ * report exists.
  */
 export interface DifferentialOracle {
   describe(): Promise<OracleDescription>;
@@ -127,23 +167,33 @@ export interface ElementPosition {
 /** What the two readers disagreed about. */
 export type DivergenceKind = "segment-count" | "segment-id" | "element-count" | "element-value";
 
-/** One disagreement, with both readings left exactly as each reader gave them. */
+/**
+ * One disagreement, with both readings left exactly as each reader gave them.
+ * `library` is this library's reading, `oracle` is the other reader's, and
+ * `otherReader` names which oracle that other reader was.
+ */
 export interface Divergence {
-  readonly kind: DivergenceKind;
   readonly document: string;
   readonly transaction: string;
   readonly variant: string | null;
+  readonly otherReader: string;
+  readonly kind: DivergenceKind;
   readonly position: ElementPosition | null;
   readonly library: string | null;
   readonly oracle: string | null;
 }
 
-/** A document neither counted as agreement nor as disagreement, and why. */
+/**
+ * A document neither counted as agreement nor as disagreement, and why.
+ * `refusedBy` is `"library"` or the package name of the oracle that refused it;
+ * `refusalKind` is this library's fatal code or the oracle's own refusal kind.
+ */
 export interface Unevaluated {
   readonly document: string;
   readonly transaction: string | null;
   readonly variant: string | null;
-  readonly refusedBy: "library" | "oracle";
+  readonly refusedBy: string;
+  readonly refusalKind: string;
   readonly reason: string;
 }
 
@@ -160,17 +210,23 @@ export interface SkippedDocument {
   readonly reason: string;
 }
 
-/** One transaction and variant the run put through both readers. */
+/**
+ * One transaction and variant the run put through this library and exactly one
+ * oracle, named by `oracle`, with the guide and the map or model that oracle
+ * bound it to.
+ */
 export interface ComparedEntry {
   readonly transaction: string;
   readonly variant: string | null;
   readonly title: string;
   readonly libraryTr3: string | null;
+  readonly oracle: string;
   readonly oracleTr3: string;
-  readonly oracleFunctionalIdentifierCode: string;
-  readonly oracleMapFile: string;
-  readonly oracleMapTransactionId: string | null;
-  readonly oracleMapTitle: string | null;
+  readonly oracleTransactionSet: string | null;
+  readonly oracleFunctionalIdentifierCode: string | null;
+  readonly oracleModel: string;
+  readonly oracleModelId: string | null;
+  readonly oracleModelTitle: string | null;
   readonly tr3RevisionDiffers: boolean;
   readonly documents: number;
   readonly documentIds: readonly string[];
@@ -178,7 +234,7 @@ export interface ComparedEntry {
   readonly divergences: readonly Divergence[];
 }
 
-/** One transaction and variant the oracle has no map for, with the reason. */
+/** One transaction and variant no oracle binds, with the reason. */
 export interface UncoveredEntry {
   readonly transaction: string;
   readonly variant: string | null;
@@ -187,22 +243,28 @@ export interface UncoveredEntry {
   readonly reason: string;
 }
 
-/** The committed artifact. */
+/** An oracle as the report names it: everything it said about itself but its bindings. */
+export interface ReportOracle {
+  readonly package: string;
+  readonly version: string;
+  readonly licence: string;
+  readonly licenceClassifier: string | null;
+  readonly bindingKind: "map" | "model";
+  readonly bindingSource: string;
+  readonly interchangeControlVersion: string;
+  readonly python: string | null;
+  readonly companions: readonly OracleCompanion[];
+}
+
+/** The committed artifact. `oracles` is in precedence order. */
 export interface DifferentialReport {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly library: {
     readonly package: string;
     readonly commit: string;
     readonly workingTreeDirty: boolean;
   };
-  readonly oracle: {
-    readonly package: string;
-    readonly version: string;
-    readonly licence: string;
-    readonly licenceClassifier: string | null;
-    readonly mapIndex: string;
-    readonly interchangeControlVersion: string;
-  };
+  readonly oracles: readonly ReportOracle[];
   readonly compared: readonly ComparedEntry[];
   readonly uncovered: readonly UncoveredEntry[];
   readonly unevaluated: readonly Unevaluated[];
@@ -215,13 +277,15 @@ export interface DifferentialRun {
   readonly failures: readonly string[];
 }
 
-/** A read-scope row paired with the oracle binding that covers it. */
-interface CoveredTarget {
+/** A read-scope row paired with the oracle, and that oracle's binding, that covers it. */
+export interface CoveredTarget {
   readonly row: X12Tr3Conformance;
+  /** Index into the ordered oracle list. */
+  readonly oracle: number;
   readonly binding: OracleBinding;
 }
 
-/** The read scope, split into what the oracle maps and what it does not. */
+/** The read scope, split into what some oracle binds and what none does. */
 export interface ScopePartition {
   readonly covered: readonly CoveredTarget[];
   readonly uncovered: readonly UncoveredEntry[];
@@ -248,15 +312,40 @@ export function tr3Base(identifier: string): string {
   return identifier.replace(/(?:A|E)\d+$/u, "");
 }
 
+/** `a`, `a or b`, `a, b or c`. */
+function either(names: readonly string[]): string {
+  if (names.length <= 1) return names.join("");
+  return `${names.slice(0, -1).join(", ")} or ${names[names.length - 1] ?? ""}`;
+}
+
 /**
- * Partition the read scope against the oracle's own map index. A row is covered
- * when the index binds a map to the same implementation guide, revision suffix
- * aside; every other row is named as uncovered with the reason.
+ * The binding one oracle's own index holds for one read-scope row, or
+ * `undefined`. The guide must match, revision suffix aside, preferring the exact
+ * revision; a binding restricted to a transaction set must name the row's.
  */
-export function partitionScope(description: OracleDescription): ScopePartition {
-  const bindings = description.bindings.filter(
-    (b) => b.icvn === description.interchangeControlVersion && b.vriic !== "",
+function bindingFor(
+  description: OracleDescription,
+  row: X12Tr3Conformance,
+): OracleBinding | undefined {
+  if (row.tr3 === null) return undefined;
+  const base = tr3Base(row.tr3);
+  const candidates = description.bindings.filter(
+    (b) =>
+      b.icvn === description.interchangeControlVersion &&
+      b.vriic !== "" &&
+      tr3Base(b.vriic) === base &&
+      (b.transactionSet === null || b.transactionSet === row.transaction),
   );
+  return candidates.find((b) => b.vriic === row.tr3) ?? candidates[0];
+}
+
+/**
+ * Partition the read scope against each oracle's own index, in precedence
+ * order. A row goes to the FIRST oracle that binds it and to no later one; a
+ * row no oracle binds is named as uncovered with a reason naming every oracle
+ * and its exact version.
+ */
+export function partitionScope(descriptions: readonly OracleDescription[]): ScopePartition {
   const covered: CoveredTarget[] = [];
   const uncovered: UncoveredEntry[] = [];
   for (const row of readScope()) {
@@ -267,25 +356,35 @@ export function partitionScope(description: OracleDescription): ScopePartition {
         libraryTr3: null,
         reason:
           `This package implements no implementation guide identifier for ${row.title}, so ` +
-          `${description.package}'s map index has no version or release identifier to bind a map to.`,
+          `there is no version or release identifier for ` +
+          either(
+            descriptions.map((d) => `${d.package} ${d.version} (${d.bindingSource})`),
+          ) +
+          ` to bind a map or model to.`,
       });
       continue;
     }
-    const base = tr3Base(row.tr3);
-    const candidates = bindings.filter((b) => tr3Base(b.vriic) === base);
-    const binding = candidates.find((b) => b.vriic === row.tr3) ?? candidates[0];
+    const index = descriptions.findIndex((d) => bindingFor(d, row) !== undefined);
+    const description = descriptions[index];
+    const binding = description === undefined ? undefined : bindingFor(description, row);
     if (binding === undefined) {
+      const base = tr3Base(row.tr3);
       uncovered.push({
         ...shared,
         libraryTr3: row.tr3,
         reason:
-          `${description.package} ${description.version} binds no map in ${description.mapIndex} at ` +
-          `interchange control version ${description.interchangeControlVersion} for implementation ` +
-          `guide ${base}.`,
+          descriptions
+            .map(
+              (d) =>
+                `${d.package} ${d.version} binds no ${d.bindingKind} in ${d.bindingSource} at ` +
+                `interchange control version ${d.interchangeControlVersion} for transaction set ` +
+                `${row.transaction} under implementation guide ${base}`,
+            )
+            .join("; ") + ".",
       });
       continue;
     }
-    covered.push({ row, binding });
+    covered.push({ row, oracle: index, binding });
   }
   return { covered, uncovered };
 }
@@ -434,6 +533,7 @@ interface PairResult {
 function comparePair(
   document: CorpusDocument,
   row: X12Tr3Conformance,
+  otherReader: string,
   library: { segments: readonly LibrarySegment[]; delimiters: Delimiters },
   oracle: { segments: readonly OracleSegment[]; delimiters: OracleDelimiters },
 ): PairResult {
@@ -442,6 +542,7 @@ function comparePair(
     document: document.id,
     transaction: row.transaction,
     variant: row.variant,
+    otherReader,
   };
   const count = Math.min(library.segments.length, oracle.segments.length);
   if (library.segments.length !== oracle.segments.length) {
@@ -526,22 +627,53 @@ export interface LibraryProvenance {
   readonly workingTreeDirty: boolean;
 }
 
-/** Everything the harness needs for one run. */
+/** Everything the harness needs for one run. `oracles` is in precedence order. */
 export interface DifferentialInput {
-  readonly oracle: DifferentialOracle;
+  readonly oracles: readonly DifferentialOracle[];
   readonly corpus: readonly CorpusDocument[];
   readonly library: LibraryProvenance;
 }
 
 /**
- * Run the comparison. Throws {@link OracleUnavailableError} before any report
- * exists when the oracle cannot be invoked; otherwise always returns a report,
- * with every reason the run failed listed beside it.
+ * Ask every oracle to describe itself, in order. Any refusal aborts the run
+ * before a report exists. Two oracles answering to one package name, or to two
+ * interchange control versions, would make the report's attribution ambiguous,
+ * so both are refused too.
+ */
+async function describeAll(
+  oracles: readonly DifferentialOracle[],
+): Promise<{ descriptions: readonly OracleDescription[]; icvn: string }> {
+  if (oracles.length === 0) {
+    throw new TypeError("The differential comparison needs at least one oracle.");
+  }
+  const descriptions: OracleDescription[] = [];
+  for (const oracle of oracles) descriptions.push(await oracle.describe());
+  const names = descriptions.map((d) => d.package);
+  const repeated = names.find((name, i) => names.indexOf(name) !== i);
+  if (repeated !== undefined) {
+    throw new TypeError(`Two oracles describe themselves as ${repeated}.`);
+  }
+  const versions = new Set(descriptions.map((d) => d.interchangeControlVersion));
+  const [icvn] = versions;
+  if (versions.size !== 1 || icvn === undefined) {
+    throw new TypeError(
+      `The oracles describe different interchange control versions: ${[...versions].join(", ")}.`,
+    );
+  }
+  return { descriptions, icvn };
+}
+
+/**
+ * Run the comparison. Throws before any report exists when an oracle cannot be
+ * invoked or is not the one it was pinned to; otherwise always returns a
+ * report, with every reason the run failed listed beside it.
  */
 export async function runDifferential(input: DifferentialInput): Promise<DifferentialRun> {
-  const description = await input.oracle.describe();
-  const { covered, uncovered } = partitionScope(description);
+  const { descriptions, icvn } = await describeAll(input.oracles);
+  const { covered, uncovered } = partitionScope(descriptions);
   const byKey = new Map(covered.map((target) => [scopeKey(target.row), target]));
+  const packageOf = (target: CoveredTarget): string => descriptions[target.oracle]?.package ?? "";
+  const anyOracle = either(descriptions.map((d) => d.package));
 
   const documents = new Map<string, string[]>();
   const positions = new Map<string, number>();
@@ -568,12 +700,13 @@ export async function runDifferential(input: DifferentialInput): Promise<Differe
         transaction: null,
         variant: null,
         refusedBy: "library",
+        refusalKind: code,
         reason: code,
       });
       continue;
     }
     // A document reaches the comparison only when its own identifiers name
-    // exactly one transaction the oracle maps. Everything else is recorded
+    // exactly one transaction some oracle binds. Everything else is recorded
     // rather than dropped: a document the run considered and did not compare is
     // not a document the corpus never held.
     const targets = [...assigned].filter((key) => byKey.has(key));
@@ -584,25 +717,29 @@ export async function runDifferential(input: DifferentialInput): Promise<Differe
         assigned: [...assigned].sort(),
         reason:
           targets.length === 0
-            ? `This document's own GS-08 and ST-01 name no transaction ${description.package} maps at interchange control version ${description.interchangeControlVersion}.`
-            : `This document's own GS-08 and ST-01 name ${String(targets.length)} transactions ${description.package} maps, so it belongs to no single comparison.`,
+            ? `This document's own GS-08 and ST-01 name no transaction ${anyOracle} maps at interchange control version ${icvn}.`
+            : `This document's own GS-08 and ST-01 name ${String(targets.length)} transactions the oracles map, so it belongs to no single comparison.`,
       });
       continue;
     }
     const key = scopeKey(target.row);
+    const otherReader = packageOf(target);
 
-    const read = await input.oracle.read(document);
+    const oracle = input.oracles[target.oracle];
+    if (oracle === undefined) throw new TypeError(`no oracle at position ${String(target.oracle)}`);
+    const read = await oracle.read(document);
     if (!read.ok) {
       unevaluated.push({
         document: document.id,
         transaction: target.row.transaction,
         variant: target.row.variant,
-        refusedBy: "oracle",
+        refusedBy: otherReader,
+        refusalKind: read.refusal.kind,
         reason: `${read.refusal.kind}: ${read.refusal.detail}`,
       });
       continue;
     }
-    const pair = comparePair(document, target.row, library, read);
+    const pair = comparePair(document, target.row, otherReader, library, read);
     documents.get(key)?.push(document.id);
     positions.set(key, (positions.get(key) ?? 0) + pair.elementPositions);
     divergences.get(key)?.push(...pair.divergences);
@@ -616,11 +753,13 @@ export async function runDifferential(input: DifferentialInput): Promise<Differe
       variant: target.row.variant,
       title: target.row.title,
       libraryTr3: target.row.tr3,
+      oracle: packageOf(target),
       oracleTr3: target.binding.vriic,
+      oracleTransactionSet: target.binding.transactionSet,
       oracleFunctionalIdentifierCode: target.binding.fic,
-      oracleMapFile: target.binding.mapFile,
-      oracleMapTransactionId: target.binding.mapTransactionId,
-      oracleMapTitle: target.binding.mapTitle,
+      oracleModel: target.binding.model,
+      oracleModelId: target.binding.modelId,
+      oracleModelTitle: target.binding.modelTitle,
       tr3RevisionDiffers: target.row.tr3 !== target.binding.vriic,
       documents: ids.length,
       documentIds: ids,
@@ -646,23 +785,26 @@ export async function runDifferential(input: DifferentialInput): Promise<Differe
       failures.push(
         `${name}: ${divergence.kind} in ${divergence.document} at ${where}: ` +
           `this library read ${JSON.stringify(divergence.library)}, ` +
-          `${description.package} read ${JSON.stringify(divergence.oracle)}.`,
+          `${divergence.otherReader} read ${JSON.stringify(divergence.oracle)}.`,
       );
     }
   }
 
   return {
     report: {
-      schemaVersion: 1,
+      schemaVersion: 2,
       library: input.library,
-      oracle: {
-        package: description.package,
-        version: description.version,
-        licence: description.licence,
-        licenceClassifier: description.licenceClassifier,
-        mapIndex: description.mapIndex,
-        interchangeControlVersion: description.interchangeControlVersion,
-      },
+      oracles: descriptions.map((d) => ({
+        package: d.package,
+        version: d.version,
+        licence: d.licence,
+        licenceClassifier: d.licenceClassifier,
+        bindingKind: d.bindingKind,
+        bindingSource: d.bindingSource,
+        interchangeControlVersion: d.interchangeControlVersion,
+        python: d.python,
+        companions: d.companions,
+      })),
       compared,
       uncovered,
       unevaluated,
