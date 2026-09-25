@@ -24,11 +24,27 @@ import { describe, expect, it } from "vitest";
 
 import {
   ALL_WARNING_MESSAGES,
+  ATTACHMENT_275_BUILD_ERROR_CODES,
+  Attachment275BuildError,
   NON_SPEC_SEGMENT_ID,
+  RFAI_277_BUILD_ERROR_CODES,
+  Rfai277BuildError,
   WARNING_CODES,
   X12ParseError,
+  attachmentAbsent,
+  build275,
+  build277RequestForAdditionalInformation,
+  get275Attachments,
+  get277RequestForAdditionalInformation,
   get834Enrollments,
   parseX12,
+  rfaiHeaderAbsent,
+  rfaiLevelAbsent,
+  rfaiRequestAbsent,
+  type Build275Spec,
+  type Build277RfaiSpec,
+  type X12ParseWarning,
+  type X12WarningCode,
 } from "../src/index.js";
 
 import { buildInterchange, buildIsa } from "./_helpers/envelope.js";
@@ -302,6 +318,301 @@ describe("PHI: binary segment framing (AC-8)", () => {
           }
         }
       }
+    });
+  }
+});
+
+describe("PHI: the claims attachments readers and builders (AC-11)", () => {
+  /**
+   * Every four-character window of the shared marker, lower-cased, so a
+   * partial or re-cased echo is caught as well as a whole one.
+   */
+  const WINDOWS: readonly string[] = Array.from({ length: PHI_MARKER_UNIT.length - 3 }, (_, i) =>
+    PHI_MARKER_UNIT.slice(i, i + 4).toLowerCase(),
+  );
+  const M = PHI_MARKER_UNIT;
+
+  /** Every string anywhere on `value`, so a leak through any field is caught. */
+  function strings(value: unknown): readonly string[] {
+    if (typeof value === "string") return [value];
+    if (typeof value !== "object" || value === null) return [];
+    return Object.values(value).flatMap(strings);
+  }
+
+  function carriesNoMarker(text: string, where: string): void {
+    for (const window of WINDOWS) expect(text.toLowerCase(), where).not.toContain(window);
+  }
+
+  const ADDED: readonly X12WarningCode[] = [
+    WARNING_CODES.X12_277_RFAI_HEADER_ABSENT,
+    WARNING_CODES.X12_277_RFAI_LEVEL_ABSENT,
+    WARNING_CODES.X12_277_RFAI_REQUEST_ABSENT,
+    WARNING_CODES.X12_275_ATTACHMENT_ABSENT,
+  ];
+
+  it("AC-11: registers each new warning code and sweeps each through the slot table", () => {
+    const at = { segmentIndex: 0, transactionIndex: 0 };
+    const built = [rfaiHeaderAbsent, rfaiLevelAbsent, rfaiRequestAbsent, attachmentAbsent].map(
+      (f) => f(at),
+    );
+    expect(built.map((w) => w.code)).toEqual(ADDED);
+    for (const warning of built) {
+      expect(Object.values(WARNING_CODES)).toContain(warning.code);
+      expect(ALL_WARNING_MESSAGES.has(warning.message)).toBe(true);
+    }
+    for (const code of ADDED) {
+      expect(
+        PHI_SLOTS.some((slot) => slot.expectCode === code),
+        `${code} has no slot in test/_helpers/phi-slots.ts`,
+      ).toBe(true);
+    }
+  });
+
+  /** A 275 or 277 interchange declaring its 006020 guide in GS-08, body as given. */
+  const doc = (set: "275" | "277", body: readonly string[]): string =>
+    buildInterchange({
+      functionalIdCode: set === "275" ? "PI" : "HN",
+      transactionSetId: set,
+      versionRelease: set === "275" ? "006020X314" : "006020X313",
+      transactionBody: body,
+    });
+
+  function readerWarnings(raw: string): readonly X12ParseWarning[] {
+    const ix = parseX12(raw);
+    const tx = ix.groups[0]?.transactions[0];
+    if (tx === undefined) throw new Error("the fixture framed no transaction set");
+    return [
+      ...(get275Attachments(ix.delimiters, tx)?.warnings ?? []),
+      ...(get277RequestForAdditionalInformation(ix.delimiters, tx)?.warnings ?? []),
+    ];
+  }
+
+  it("AC-11: no warning either new reader raises carries an attachment octet or any document value", () => {
+    const heading275 = [`BGN*02*${M}*20260601`, `NM1*QC*1*${M}*${M}****MI*${M}`];
+    const line275 = ["LX*1", `TRN*2*${M}`, `STC*R0:${M}::LOI`, `REF*1K*${M}`];
+    const documents: readonly string[] = [
+      // A 275 whose every framing warning is driven with the marker in the data.
+      doc("275", [...heading275, ...line275, `BDS*B64*4*${M}`, "REF*ZZ*AFTER"]),
+      doc("275", [...heading275, ...line275, `BDS*${M}*${M}*${M}`]),
+      doc("275", [...heading275, ...line275, `BDS*B64*${String(M.length + 1)}*€${M}`]),
+      doc("275", [...heading275, ...line275, `BDS*B64*${String(M.length)}*${M}`, `BIN*4*${M}`]),
+      doc("275", [...heading275, ...line275, `BDS*B64*999999*${M}`]),
+      // A 275 with no BDS at all.
+      doc("275", [...heading275, ...line275]),
+      // A 277 request: unknown codes, an undecodable amount, and each absence.
+      doc("277", [
+        `BHT*0010*08*${M}`,
+        `HL*1**${M}*0`,
+        `NM1*QC*1*${M}*${M}****MI*${M}`,
+        `TRN*1*${M}`,
+        `STC*${M}:${M}*20260601*WQ*${M}`,
+        `STC*R0:${M}::${M}`,
+        `REF*1K*${M}`,
+        `DTP*472*D8*${M}`,
+        `AMT*T3*${M}`,
+        `QTY*90*${M}`,
+        `SVC*HC:${M}*${M}`,
+      ]),
+      doc("277", ["HL*1**22*0", `TRN*1*${M}`]),
+      doc("277", [`BHT*0010*08*${M}`]),
+      doc("277", [`BHT*0010*08*${M}`, "HL*1**22*0", `NM1*QC*1*${M}`]),
+    ];
+    const seen = new Set<string>();
+    for (const raw of documents) {
+      for (const warning of readerWarnings(raw)) {
+        seen.add(warning.code);
+        expect(ALL_WARNING_MESSAGES.has(warning.message), warning.code).toBe(true);
+        for (const text of strings(warning)) carriesNoMarker(text, warning.code);
+      }
+    }
+    // Non-vacuity: every code these readers can raise was raised above.
+    for (const code of [
+      ...ADDED,
+      WARNING_CODES.X12_BINARY_DATA_TRUNCATED,
+      WARNING_CODES.X12_BINARY_LENGTH_INVALID,
+      WARNING_CODES.X12_BINARY_LENGTH_MISMATCH,
+      WARNING_CODES.X12_BINARY_LENGTH_UNVERIFIABLE,
+      WARNING_CODES.X12_UNKNOWN_CLAIM_STATUS_CATEGORY,
+      WARNING_CODES.X12_UNKNOWN_CLAIM_STATUS,
+      WARNING_CODES.X12_UNPARSEABLE_DECIMAL,
+    ]) {
+      expect(seen, code).toContain(code);
+    }
+  });
+
+  const ENVELOPE = {
+    senderId: "SENDER",
+    receiverId: "RECEIVER",
+    interchangeDate: "260601",
+    interchangeTime: "1200",
+    interchangeControlNumber: "000000001",
+    groupControlNumber: "1",
+    transactionSetControlNumber: "0001",
+  } as const;
+
+  /** A JS or JSON caller who defeated their own type checker. */
+  const asJsCaller = <T>(value: unknown): T => value as T;
+
+  /** A request carrying the marker in every string it has. */
+  const MARKED_REQUEST = {
+    trace: { traceTypeCode: "1", referenceId: M, originatingCompanyId: M },
+    statuses: [
+      { codes: [{ categoryCode: "R0", statusCode: M, codeListQualifier: "LOI" }], message: M },
+    ],
+    references: [{ qualifier: "1K", value: M }],
+    dates: [{ qualifier: "472", formatQualifier: "D8", value: M }],
+  };
+  const MARKED_LEVEL = {
+    levelCode: "22",
+    entities: [
+      {
+        entityIdentifierCode: "QC",
+        entityTypeQualifier: "1",
+        lastOrOrganizationName: M,
+        idCode: M,
+      },
+    ],
+  };
+  const RFAI: Build277RfaiSpec = {
+    envelope: ENVELOPE,
+    header: { hierarchicalStructureCode: "0010", transactionSetPurposeCode: "08", referenceId: M },
+    levels: [{ ...MARKED_LEVEL, requests: [MARKED_REQUEST] }],
+  };
+  const withRequest = (request: unknown): Build277RfaiSpec => ({
+    ...RFAI,
+    levels: [{ ...MARKED_LEVEL, requests: [asJsCaller(request)] }],
+  });
+
+  const RFAI_REFUSALS: readonly (readonly [string, Build277RfaiSpec, string])[] = [
+    ["no level", { ...RFAI, levels: [] }, RFAI_277_BUILD_ERROR_CODES.X12_277_RFAI_BUILD_NO_LEVEL],
+    [
+      "no request",
+      { ...RFAI, levels: [MARKED_LEVEL] },
+      RFAI_277_BUILD_ERROR_CODES.X12_277_RFAI_BUILD_NO_REQUEST,
+    ],
+    [
+      "no trace",
+      withRequest({ ...MARKED_REQUEST, trace: undefined }),
+      RFAI_277_BUILD_ERROR_CODES.X12_277_RFAI_BUILD_NO_TRACE,
+    ],
+    [
+      "an empty C043-01 beside a marked C043-02",
+      withRequest({
+        ...MARKED_REQUEST,
+        statuses: [{ codes: [{ categoryCode: "", statusCode: M }] }],
+      }),
+      RFAI_277_BUILD_ERROR_CODES.X12_277_RFAI_BUILD_STATUS_CODE_EMPTY,
+    ],
+    [
+      "an empty C043-02 beside a marked C043-01",
+      withRequest({
+        ...MARKED_REQUEST,
+        statuses: [{ codes: [{ categoryCode: M, statusCode: "" }] }],
+      }),
+      RFAI_277_BUILD_ERROR_CODES.X12_277_RFAI_BUILD_STATUS_CODE_EMPTY,
+    ],
+    [
+      "a service line with no SVC",
+      withRequest({
+        ...MARKED_REQUEST,
+        serviceLines: [{ references: [{ qualifier: "FJ", value: M }] }],
+      }),
+      RFAI_277_BUILD_ERROR_CODES.X12_277_RFAI_BUILD_NO_SERVICE,
+    ],
+    [
+      "a member id sent as a number",
+      withRequest({ ...MARKED_REQUEST, trace: { traceTypeCode: "1", referenceId: 900412345678 } }),
+      RFAI_277_BUILD_ERROR_CODES.X12_277_RFAI_BUILD_INVALID_SPEC,
+    ],
+    [
+      "an over-long interchange control number",
+      { ...RFAI, envelope: { ...ENVELOPE, interchangeControlNumber: `${M}${M}` } },
+      RFAI_277_BUILD_ERROR_CODES.X12_277_RFAI_BUILD_INVALID_SPEC,
+    ],
+  ];
+  for (const [name, spec, code] of RFAI_REFUSALS) {
+    it(`AC-11: build277RequestForAdditionalInformation refuses ${name} and echoes nothing`, () => {
+      let thrown: unknown;
+      try {
+        build277RequestForAdditionalInformation(spec);
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(Rfai277BuildError);
+      const err = thrown as Rfai277BuildError;
+      expect(err.code).toBe(code);
+      carriesNoMarker(err.message, name);
+      expect(err.message).not.toContain("900412345678");
+      expect(err.message).not.toContain("412345");
+    });
+  }
+
+  /** The data of every attachment below: a marker, so a leak of one octet run is visible. */
+  const DATA = `${M}${M}`;
+  const SPEC_275: Build275Spec = {
+    envelope: ENVELOPE,
+    beginning: { transactionSetPurposeCode: "02", referenceId: M },
+    entities: [{ entityIdentifierCode: "QC", entityTypeQualifier: "1", lastOrOrganizationName: M }],
+    lines: [
+      {
+        trace: { traceTypeCode: "2", referenceId: M },
+        references: [{ qualifier: "1K", value: M }],
+        attachments: [{ filterCode: "B64", data: DATA }],
+      },
+    ],
+  };
+  const withAttachment = (attachment: unknown): Build275Spec => ({
+    ...SPEC_275,
+    lines: [
+      { trace: { traceTypeCode: "2", referenceId: M }, attachments: [asJsCaller(attachment)] },
+    ],
+  });
+
+  const REFUSALS_275: readonly (readonly [string, Build275Spec, string])[] = [
+    [
+      "no attachment",
+      { ...SPEC_275, lines: [{ trace: { traceTypeCode: "2", referenceId: M } }] },
+      ATTACHMENT_275_BUILD_ERROR_CODES.X12_275_BUILD_NO_ATTACHMENT,
+    ],
+    [
+      "empty data",
+      withAttachment({ filterCode: "B64", data: "" }),
+      ATTACHMENT_275_BUILD_ERROR_CODES.X12_275_BUILD_EMPTY_DATA,
+    ],
+    [
+      "a filter code of the wrong length",
+      withAttachment({ filterCode: M, data: DATA }),
+      ATTACHMENT_275_BUILD_ERROR_CODES.X12_275_BUILD_FILTER_CODE_INVALID,
+    ],
+    [
+      "data holding a character above U+00FF",
+      withAttachment({ filterCode: "B64", data: `${DATA}€${DATA}` }),
+      ATTACHMENT_275_BUILD_ERROR_CODES.X12_275_BUILD_DATA_NOT_OCTETS,
+    ],
+    [
+      "data that is neither a string nor a Uint8Array",
+      withAttachment({ filterCode: "B64", data: 900412345678 }),
+      ATTACHMENT_275_BUILD_ERROR_CODES.X12_275_BUILD_INVALID_SPEC,
+    ],
+    [
+      "an over-long interchange control number",
+      { ...SPEC_275, envelope: { ...ENVELOPE, interchangeControlNumber: DATA } },
+      ATTACHMENT_275_BUILD_ERROR_CODES.X12_275_BUILD_INVALID_SPEC,
+    ],
+  ];
+  for (const [name, spec, code] of REFUSALS_275) {
+    it(`AC-11: build275 refuses ${name} and carries no attachment octet or document value`, () => {
+      let thrown: unknown;
+      try {
+        build275(spec);
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeInstanceOf(Attachment275BuildError);
+      const err = thrown as Attachment275BuildError;
+      expect(err.code).toBe(code);
+      carriesNoMarker(err.message, name);
+      expect(err.message).not.toContain("412345");
     });
   }
 });

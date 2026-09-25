@@ -12,16 +12,23 @@
  * `seg(...)` rather than written as literal segment text.
  */
 
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
   ALL_WARNING_MESSAGES,
   WARNING_CODES,
+  X12Decimal,
   X12_TR3_CONFORMANCE,
   get270Inquiry,
   get271Eligibility,
+  get275Attachments,
   get276StatusInquiry,
   get277CADisposition,
+  get277RequestForAdditionalInformation,
   get277Status,
   get278Request,
   get278Response,
@@ -166,6 +173,15 @@ const BODY_277: Body = (d) => [
   ["NM1", "IL", "1", "DOE", "JANE"],
   ["TRN", "2", "TRACE-0001"],
   ["STC", comp(d, "A2", "20"), "20260101", "WQ", "150"],
+];
+
+/** A 275 carrying one attachment whose data holds no delimiter. */
+const BODY_275: Body = () => [
+  ["BGN", "02", "ATTACH-0001", "20260101"],
+  ["NM1", "PR", "2", "PAYER ONE"],
+  ["LX", "1"],
+  ["TRN", "2", "TRACE-0001"],
+  ["BDS", "B64", "8", "U1lOVEhF"],
 ];
 
 const BODY_278: Body = () => [
@@ -344,6 +360,11 @@ const READERS: readonly ReaderCase[] = [
   txCase("get271Eligibility", "271", "HB", tr3Of("271", null), BODY_271, (d, tx) =>
     one(get271Eligibility(d, tx)),
   ),
+  // AC-9 (claims attachments): the 275 reader warns and returns as every
+  // reader in this list does, so it is swept by every check below.
+  txCase("get275Attachments", "275", "PI", tr3Of("275", null), BODY_275, (d, tx) =>
+    one(get275Attachments(d, tx)),
+  ),
   txCase("get276StatusInquiry", "276", "HR", R276, BODY_276, (d, tx) =>
     one(get276StatusInquiry(d, tx)),
   ),
@@ -388,15 +409,29 @@ const CA_READER: ReaderCase = txCase(
   (d, tx) => one(get277CADisposition(d, tx)),
 );
 
+/**
+ * The 277 request for additional information reader. Outside `READERS`
+ * because it returns no reading for a 277 declaring any other guide (D1),
+ * where every reader in that list warns and returns.
+ */
+const RFAI_READER: ReaderCase = txCase(
+  "get277RequestForAdditionalInformation",
+  "277",
+  "HN",
+  tr3Of("277", "RFAI"),
+  BODY_277,
+  (d, tx) => one(get277RequestForAdditionalInformation(d, tx)),
+);
+
 function readerNamed(name: string): ReaderCase {
-  const reader = [...READERS, CA_READER].find((r) => r.name === name);
+  const reader = [...READERS, CA_READER, RFAI_READER].find((r) => r.name === name);
   if (reader === undefined) throw new Error(`no reader ${name}`);
   return reader;
 }
 
 /** The reader's own guide number under another version: not a member of its set. */
 function foreign(reader: ReaderCase, version: "004010" | "008020" = "004010"): string {
-  return reader.tr3.replace("005010", version);
+  return reader.tr3.replace(/^00\d{4}/u, version);
 }
 
 async function readAs(reader: ReaderCase, declaration: Declaration): Promise<readonly Reading[]> {
@@ -450,6 +485,93 @@ describe("AC-1: a 277 declaring 006020X313 is labelled neither a claim status no
 });
 
 // ---------------------------------------------------------------------------
+// AC-5 (claims attachments): with the 006020X313 row present, the claim status
+// readers answer a 006020X313 277 exactly as they did without it.
+// ---------------------------------------------------------------------------
+
+describe("AC-5: the 006020X313 row leaves both existing 277 readers where they were", () => {
+  const X313 = "006020X313";
+  const GOLDEN = join(import.meta.dirname, "fixtures", "golden");
+
+  /** A reading as text, each exact decimal written out, so a digest can pin it. */
+  function stable(value: unknown): string {
+    return (
+      JSON.stringify(value, (_key, v: unknown) =>
+        v instanceof X12Decimal ? `X12Decimal(${v.toString()})` : v,
+      ) ?? "undefined"
+    );
+  }
+
+  function digest(value: unknown): string {
+    return createHash("sha256").update(stable(value)).digest("hex");
+  }
+
+  it("AC-5: the row is present and read, so the check below runs against it", () => {
+    const row = X12_TR3_CONFORMANCE.find((r) => r.tr3 === X313);
+    expect(row?.transaction).toBe("277");
+    expect(row?.directions).toContain("read");
+    expect(X12_TR3_CONFORMANCE.some((r) => r.tr3 === "006020X314")).toBe(true);
+  });
+
+  const routes: readonly (readonly [string, Declaration])[] = [
+    ["declared in ST-03", { st03: X313, gs08: X313 }],
+    ["declared in GS-08 under an ST with no ST-03", { st03: null, gs08: X313 }],
+  ];
+  for (const [route, declaration] of routes) {
+    it(`AC-5: ${route}, get277Status reads unrecognized-guide with one X12_GUIDE_NOT_IMPLEMENTED and get277CADisposition returns nothing`, () => {
+      const { d, tx } = firstTransaction(
+        interchange("277", "HN", declaration, BODY_277(CONVENTIONAL)),
+      );
+      const status = get277Status(d, tx);
+      expect(status?.transactionType).toBe("unrecognized-guide");
+      expect(guideChannel(status === undefined ? [] : [status])).toEqual([
+        [[GUIDE_NOT_IMPLEMENTED, 0]],
+      ]);
+      expect(get277CADisposition(d, tx)).toBeUndefined();
+    });
+  }
+
+  /**
+   * Each reading pinned by the digest it had on the tree the 006020X313 row was
+   * added to, measured there and here with the same serializer: the claim
+   * status and claim acknowledgment goldens, and the claim status golden
+   * re-declared as its adopted errata 005010X212E1. `[get277Status,
+   * get277CADisposition]` per document.
+   */
+  const UNCHANGED: readonly (readonly [string, string, string, string])[] = [
+    [
+      "005010X212",
+      "277",
+      "708339452c4495f426c180a8ee627e8c73b6ea183514426a95771d60c9dd8290",
+      "eb045d78d273107348b0300c01d29b7552d622abbc6faf81b3ec55359aa9950c",
+    ],
+    [
+      "005010X214",
+      "277ca",
+      "2b6c546aeb4723633f82e70f7c955887c04a568d211e830c5c7c0aed26ae1c68",
+      "2b6c546aeb4723633f82e70f7c955887c04a568d211e830c5c7c0aed26ae1c68",
+    ],
+    [
+      "005010X212E1",
+      "277",
+      "516bd2fd7d1fd47c0c40cacaebe311b1b6e126501f72b77f543e22cd37fa8650",
+      "eb045d78d273107348b0300c01d29b7552d622abbc6faf81b3ec55359aa9950c",
+    ],
+  ];
+  for (const [guide, file, statusDigest, caDigest] of UNCHANGED) {
+    it(`AC-5: a ${guide} 277 reads exactly as it did before the row was added`, () => {
+      const golden = readFileSync(join(GOLDEN, `${file}.edi`), "utf8").trimEnd();
+      const raw = guide === "005010X212E1" ? golden.replaceAll("005010X212", guide) : golden;
+      const ix = parseX12(raw);
+      const tx = ix.groups[0]?.transactions[0];
+      if (tx === undefined) throw new Error("the golden framed no transaction set");
+      expect(digest(get277Status(ix.delimiters, tx))).toBe(statusDigest);
+      expect(digest(get277CADisposition(ix.delimiters, tx))).toBe(caDigest);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // AC-2
 // ---------------------------------------------------------------------------
 
@@ -458,6 +580,9 @@ describe("AC-2: an ST-03 outside the reader's implemented set is warned once, at
     get278Request: ["005010X216"],
     get278Response: ["005010X216"],
     get277Status: ["006020X313"],
+    // AC-9 and D4 (claims attachments): the 278 attachments guide and the
+    // 162.2002(c) short spelling are both declarations of a guide not implemented.
+    get275Attachments: ["006020X316", "06020X314"],
   };
   for (const reader of READERS) {
     const declarations = [
@@ -554,9 +679,12 @@ describe("AC-4: every identifier the conformance table implements reads with no 
   const READERS_BY_ROW: Readonly<Record<string, readonly string[]>> = {
     "270/": ["get270Inquiry", "parse270Inquiries"],
     "271/": ["get271Eligibility"],
+    // AC-5 and AC-9 (claims attachments): each new read row reads with no guide code.
+    "275/": ["get275Attachments"],
     "276/": ["get276StatusInquiry", "parse276StatusInquiries"],
     "277/": ["get277Status"],
     "277/277CA": ["get277Status", "get277CADisposition"],
+    "277/RFAI": ["get277RequestForAdditionalInformation"],
     "278/request": ["get278Request"],
     "278/response": ["get278Response"],
     "820/": ["get820Payments"],

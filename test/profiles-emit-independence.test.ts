@@ -60,9 +60,11 @@ import * as rootExports from "../src/index.js";
 import {
   build270,
   build271,
+  build275,
   build276,
   build277,
   build277CA,
+  build277RequestForAdditionalInformation,
   build278Request,
   build278Response,
   build820,
@@ -84,7 +86,9 @@ import {
 import type {
   Build270Spec,
   Build271Spec,
+  Build275Spec,
   Build276Spec,
+  Build277RfaiSpec,
   Build277Spec,
   Build278Spec,
   Build820Spec,
@@ -704,6 +708,31 @@ const SPEC_TA1: BuildTA1Spec = {
   noteCode: "000",
 };
 
+/** A 277 request for additional information: one level, one request (AC-15). */
+const SPEC_277_RFAI: Build277RfaiSpec = {
+  envelope: ENVELOPE,
+  header: { hierarchicalStructureCode: "0010", transactionSetPurposeCode: "08" },
+  levels: [
+    {
+      levelCode: "20",
+      requests: [
+        {
+          trace: { traceTypeCode: "1", referenceId: "TRACE-0001" },
+          statuses: [
+            { codes: [{ categoryCode: "R4", statusCode: "18842-5", codeListQualifier: "LOI" }] },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+/** A 275 carrying one attachment (AC-12). */
+const SPEC_275: Build275Spec = {
+  envelope: ENVELOPE,
+  lines: [{ attachments: [{ filterCode: "B64", data: "U1lOVEhFVElD" }] }],
+};
+
 /**
  * One case per exported builder: the bytes it emits from a well-formed spec,
  * and the refusal it raises from the same spec with an impossible control
@@ -733,6 +762,17 @@ const BUILDER_CASES: Readonly<Record<string, BuilderCase>> = {
   build271: {
     emit: () => serializeX12(build271(SPEC_271)),
     refuse: () => serializeX12(build271({ ...SPEC_271, envelope: BAD_ENVELOPE })),
+  },
+  build275: {
+    emit: () => serializeX12(build275(SPEC_275)),
+    refuse: () => serializeX12(build275({ ...SPEC_275, envelope: BAD_ENVELOPE })),
+  },
+  build277RequestForAdditionalInformation: {
+    emit: () => serializeX12(build277RequestForAdditionalInformation(SPEC_277_RFAI)),
+    refuse: () =>
+      serializeX12(
+        build277RequestForAdditionalInformation({ ...SPEC_277_RFAI, envelope: BAD_ENVELOPE }),
+      ),
   },
   build276: {
     emit: () => serializeX12(build276(SPEC_276)),

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "library": {
     "package": "@cosyte/x12",
-    "commit": "ff34cf23a94cfa3d65a484da5b0e9e2af0674d37",
+    "commit": "b4663f948fe0a09643db3298041ab18ea65db592",
     "workingTreeDirty": false
   },
   "oracle": {
@@ -214,6 +214,13 @@
       "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X279."
     },
     {
+      "transaction": "275",
+      "variant": null,
+      "title": "Additional Information to Support a Health Care Claim or Encounter",
+      "libraryTr3": "006020X314",
+      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 006020X314."
+    },
+    {
       "transaction": "276",
       "variant": null,
       "title": "Health Care Claim Status Request",
@@ -226,6 +233,13 @@
       "title": "Health Care Claim Status Response",
       "libraryTr3": "005010X212",
       "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X212."
+    },
+    {
+      "transaction": "277",
+      "variant": "RFAI",
+      "title": "Health Care Claim Request for Additional Information",
+      "libraryTr3": "006020X313",
+      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 006020X313."
     },
     {
       "transaction": "278",

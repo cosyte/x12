@@ -52,19 +52,21 @@ const ST_POSITION: X12Position = Object.freeze({ segmentIndex: 0, transactionInd
 /**
  * The guides a reader implements, derived from `X12_TR3_CONFORMANCE`: for
  * every row whose `transaction` is `transaction` (and, where `variant` is
- * given, whose `variant` is that value) with `read` among its directions and
- * a non-null `tr3`, the `tr3` and every `cfrAdopted` entry, plus `extra`.
+ * given, whose `variant` is that value; `null` selects the row that has no
+ * variant) with `read` among its directions and a non-null `tr3`, the `tr3`
+ * and every `cfrAdopted` entry, plus `extra`.
  *
  * @example
  * ```ts
  * // implementedGuides("835") holds "005010X221A1" and "005010X221".
+ * // implementedGuides("277", null) holds the claim status row's guides alone.
  * ```
  *
  * @internal
  */
 export function implementedGuides(
   transaction: string,
-  variant?: string,
+  variant?: string | null,
   extra: Iterable<string> = [],
 ): ReadonlySet<string> {
   const guides = new Set<string>();

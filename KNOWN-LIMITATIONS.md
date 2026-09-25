@@ -1784,9 +1784,56 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
 
 ## Scope (non-goals for v1)
 
-- **Healthcare HIPAA 005010 only.** Non-healthcare transaction sets (850/856/810/204, etc.), the
-  EDIFACT syntax family, and pre-005010 versions are out of v1 scope. Pre-005010 input is tolerated
-  and flagged (`X12_PRE_005010`), not decoded to those older field maps.
+- **Healthcare HIPAA 005010, and two 006020 guides: the claims attachments pair.** Beside the
+  005010 transaction sets, the package reads and builds the 277 Health Care Claim Request for
+  Additional Information (`006020X313`) and the 275 Additional Information to Support a Health Care
+  Claim or Encounter (`006020X314`), which 45 CFR 162.920(a)(20) and (a)(19) name and 45 CFR
+  162.2002 adopts for the period on and after May 26, 2028. No other 006020 guide is read or built:
+  the services review pair the same rule proposed and did not adopt, the 278 `006020X315` and the
+  275 Additional Information to Support a Health Care Services Review `006020X316`, is out of
+  scope, and a 275 declaring `006020X316` is read as a guide the 275 reader does not implement.
+  Non-healthcare transaction sets
+  (850/856/810/204, etc.), the EDIFACT syntax family, and pre-005010 versions are out of v1 scope.
+  Pre-005010 input is tolerated and flagged (`X12_PRE_005010`), not decoded to those older field
+  maps. What the attachments pair leaves open, stated here beside it:
+  - **The base X12 006020 transaction sets are typed; no implementation-guide usage is asserted.**
+    Both guides are sold and no source this package carries states which segments, qualifiers or
+    codes they make required, situational or repeatable. So the readers carry every code and
+    qualifier verbatim and decide nothing about whether it is valid for the guide, and the builders
+    write every BHT code, HL level and child code, entity, reference and date qualifier exactly as
+    given and supply none. `build277RequestForAdditionalInformation` refuses only the absences the
+    base 006020 277 makes mandatory (no level, no claim-level request, a request with no TRN, an
+    empty C043-01 or C043-02, a service line with no SVC); `build275` refuses only what would make a
+    BDS-02 untrue or a BDS empty (no attachment, empty data, a filter code that is not three
+    characters, a character above U+00FF). A document conformant to either guide can carry a segment
+    or qualifier these models leave untyped: the 277's SBR, PAT, DMG, heading name loop, PWK loops
+    and TOO, the 275's DTM, IN1, DMG, PRV, PER, NX1 and each line's NM1, HI, SVC, DTP, CAT, PID and
+    OOI. They stay verbatim on the transaction set, and neither builder writes them: `build275`
+    writes each BDS directly after its line's LX, TRN, STC and REF, with no DTP, CAT or OOI before
+    it, so a trading partner whose guide places the BDS inside those loops needs them added by hand
+    through `buildInterchange`.
+  - **The 277 request reader validates no hierarchy.** Each HL is carried with HL-01, HL-02, HL-03
+    and HL-04 as sent; no parent pointer is checked and no level code is expected, because no
+    carried source states the guide's hierarchy. A claim-level segment sent before the first HL
+    reaches no level and stays on the transaction set.
+  - **ISA-12 is not decided here.** Which ISA-12 a 006020 interchange carries is an open question no
+    carried source answers. Both builders write this package's default, `00501`, unless the caller
+    supplies `interchangeControlVersion`, and both readers key on ST-03 and GS-08 and never on
+    ISA-12.
+  - **`06020X314` is not an adopted identifier.** 45 CFR 162.2002(c) prints the 275's guide one digit
+    short, as `06020X314`, where 162.920(a)(19) prints `006020X314`. The conformance row adopts the
+    162.920 spelling and records the other on its note as a typographical variant, so a 275 declaring
+    `06020X314` is warned `X12_GUIDE_NOT_IMPLEMENTED`.
+  - **Only the attachment data refuses to print.** A 275 attachment's BDS-03 is held in
+    `X12AttachmentData`, whose string, JSON and `util.inspect` forms carry its octet count and no
+    octet. Every other field of both readings, the names, member and claim identifiers and trace
+    numbers included, is a plain string, as on every other reading in this package.
+  - **An attachment is octets, and a string is not.** Pass an interchange carrying attachments to
+    `parseX12` as a `Buffer`, which is read one character per octet. `serializeX12` of a built 275
+    is a string of one character per octet: write it as latin1 (`Buffer.from(text, "latin1")`),
+    because encoding a character above U+007F as UTF-8 makes two octets of one and BDS-02 stops being
+    true of what was sent. Nothing inside an attachment is decoded; BDS-01 names a filter the sender
+    applied and this package applies none.
 - **No transport.** AS2, SFTP, and MLLP-style delivery are out of scope. This is a parser/serializer,
   not a communications stack.
 - **Published, still pre-alpha.** The package is published on npm as `@cosyte/x12` from a public

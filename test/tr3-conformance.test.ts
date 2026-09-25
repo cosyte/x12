@@ -36,6 +36,7 @@
  * invented, and the same invented tokens the existing build suites use.
  */
 
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -45,7 +46,9 @@ import * as x12 from "../src/index.js";
 import type {
   Build270Spec,
   Build271Spec,
+  Build275Spec,
   Build276Spec,
+  Build277RfaiSpec,
   Build277Spec,
   Build278Spec,
   Build820Spec,
@@ -64,14 +67,19 @@ import type {
 // ---------------------------------------------------------------------------
 
 /**
- * Every `005010` identifier 45 CFR 162.920 names, and nothing else. Read from
- * the official GPO XML of the 2024 annual edition, retrieved 2026-08-25;
- * thirteen matches, each occurring once.
+ * Every `005010` and `006020` identifier 45 CFR 162.920 names, and nothing
+ * else. The thirteen `005010` ones are read from the official GPO XML of the
+ * 2024 annual edition, retrieved 2026-08-25, each occurring once. The two
+ * `006020` ones are read from the current eCFR text of the section as amended
+ * by 91 FR 14404, which adds paragraphs (a)(19), naming `006020X314`, and
+ * (a)(20), naming `006020X313`, and no other `006020` identifier (AC-17).
  *
  * `005010X216`, `005010X214`, `005010X231A1`, `005010X279A1`, `005010X222A2`,
  * `005010X223A3`, `005010X224A2`, `005010X221A1` and `005010X220A1` are NOT in
  * it, which is what makes every `not-adopted` and `errata-in-practice` row a
- * checkable negative over a complete list rather than an inference.
+ * checkable negative over a complete list rather than an inference. Neither is
+ * `06020X314`, the spelling 45 CFR 162.2002(c) prints, which is a
+ * typographical variant and not an identifier the section names.
  */
 const CFR_162_920_IDENTIFIERS: ReadonlySet<string> = new Set([
   "005010X212",
@@ -87,6 +95,9 @@ const CFR_162_920_IDENTIFIERS: ReadonlySet<string> = new Set([
   "005010X224",
   "005010X224A1",
   "005010X279",
+  // AC-17: the two identifiers 91 FR 14404 added to the section.
+  "006020X313",
+  "006020X314",
 ]);
 
 /**
@@ -98,9 +109,12 @@ const CFR_162_920_IDENTIFIERS: ReadonlySet<string> = new Set([
 const EXPECTED_ROWS: readonly (readonly [string, string | null, string | null])[] = [
   ["270", null, "005010X279A1"],
   ["271", null, "005010X279A1"],
+  // AC-17: the two claims attachments rows.
+  ["275", null, "006020X314"],
   ["276", null, "005010X212"],
   ["277", null, "005010X212"],
   ["277", "277CA", "005010X214"],
+  ["277", "RFAI", "006020X313"],
   ["278", "request", "005010X217"],
   ["278", "response", "005010X217"],
   ["820", null, "005010X218"],
@@ -740,6 +754,31 @@ const SPEC_999: Build999Spec = {
   },
 };
 
+/** A 277 request for additional information: one level, one request (AC-17). */
+const SPEC_277_RFAI: Build277RfaiSpec = {
+  envelope: ENVELOPE,
+  header: { hierarchicalStructureCode: "0010", transactionSetPurposeCode: "08" },
+  levels: [
+    {
+      levelCode: "20",
+      requests: [
+        {
+          trace: { traceTypeCode: "1", referenceId: "TRACE-0001" },
+          statuses: [
+            { codes: [{ categoryCode: "R4", statusCode: "18842-5", codeListQualifier: "LOI" }] },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+/** A 275 carrying one attachment (AC-17). */
+const SPEC_275: Build275Spec = {
+  envelope: ENVELOPE,
+  lines: [{ attachments: [{ filterCode: "B64", data: "U1lOVEhFVElD" }] }],
+};
+
 /** The ST-03 of the single transaction set in a built interchange. */
 function st03(ix: X12Interchange): string {
   const value = ix.groups[0]?.transactions[0]?.st.elements[3];
@@ -759,9 +798,12 @@ function st03(ix: X12Interchange): string {
 const EMITTED_ST03: ReadonlyMap<string, string> = new Map([
   ["270|", st03(x12.build270(SPEC_270))],
   ["271|", st03(x12.build271(SPEC_271))],
+  // AC-12, AC-15, AC-17: each attachments builder emits the identifier its row names.
+  ["275|", st03(x12.build275(SPEC_275))],
   ["276|", st03(x12.build276(SPEC_276))],
   ["277|", st03(x12.build277(SPEC_277))],
   ["277|277CA", st03(x12.build277CA(SPEC_277))],
+  ["277|RFAI", st03(x12.build277RequestForAdditionalInformation(SPEC_277_RFAI))],
   ["278|request", st03(x12.build278Request(SPEC_278))],
   ["278|response", st03(x12.build278Response(SPEC_278))],
   ["820|", st03(x12.build820(SPEC_820))],
@@ -804,7 +846,8 @@ describe("AC1: the manifest names the identifier each transaction implements", (
   it("spells every identifier in the published form", () => {
     for (const r of ROWS) {
       if (r.tr3 === null) continue;
-      expect(r.tr3, `${keyOf(r)} identifier`).toMatch(/^005010X\d{3}(?:[A-Z]\d)?$/);
+      // AC-17: the two 006020 rows are spelled as 162.920(a)(19) and (a)(20) print them.
+      expect(r.tr3, `${keyOf(r)} identifier`).toMatch(/^00(?:5010|6020)X\d{3}(?:[A-Z]\d)?$/);
     }
   });
 });
@@ -1328,5 +1371,55 @@ describe("AC12: the manifest and its types come from the entry point", () => {
       readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8"),
     ) as { exports?: Record<string, unknown> };
     expect(sorted(Object.keys(manifest.exports ?? {}))).toEqual([".", "./package.json"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-17: the two claims attachments rows, and every row before them unchanged.
+// ---------------------------------------------------------------------------
+
+/**
+ * SHA-256 of `JSON.stringify` of the fifteen rows the manifest carried before
+ * the two 006020 rows were added, in their order. Measured on the tree those
+ * rows were added to; a pre-existing row edited in any column moves it.
+ */
+const PRE_EXISTING_ROWS_SHA256 = "12bae3f43eb8019abac5cfe5bb7b727230829a7cc122b1cd3a0b1e4e67a5c886";
+
+describe("AC-17: the claims attachments rows, and every pre-existing row unchanged", () => {
+  const ATTACHMENT_ROWS: readonly (readonly [string, string, string | null])[] = [
+    ["006020X313", "277", "RFAI"],
+    ["006020X314", "275", null],
+  ];
+
+  for (const [identifier, transaction, variant] of ATTACHMENT_ROWS) {
+    it(`AC-17: carries exactly one ${identifier} row, for the ${transaction}, incorporated, read and built`, () => {
+      const rows = ROWS.filter((r) => r.tr3 === identifier);
+      expect(rows).toHaveLength(1);
+      const [r] = rows;
+      expect(r?.transaction).toBe(transaction);
+      expect(r?.variant).toBe(variant);
+      expect(r?.adoption).toBe("incorporated-by-reference");
+      // Exactly the identifier as 162.920(a)(19) and (a)(20) spell it.
+      expect(r?.cfrAdopted).toEqual([identifier]);
+      expect(r?.directions).toEqual(["read", "build"]);
+    });
+  }
+
+  it("AC-17: adopts neither the 162.2002(c) spelling nor an unadopted attachments guide", () => {
+    for (const r of ROWS) {
+      for (const id of ["06020X314", "006020X315", "006020X316"]) {
+        expect(r.tr3, keyOf(r)).not.toBe(id);
+        expect(r.cfrAdopted, keyOf(r)).not.toContain(id);
+      }
+    }
+    // D4: the short spelling is recorded, on the note, as a variant.
+    expect(row("275", null).note).toContain("06020X314");
+  });
+
+  it("AC-17: leaves every pre-existing row exactly as it was", () => {
+    const preExisting = ROWS.filter((r) => r.tr3 !== "006020X313" && r.tr3 !== "006020X314");
+    expect(preExisting).toHaveLength(15);
+    const digest = createHash("sha256").update(JSON.stringify(preExisting)).digest("hex");
+    expect(digest).toBe(PRE_EXISTING_ROWS_SHA256);
   });
 });

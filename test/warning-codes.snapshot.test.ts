@@ -13,9 +13,20 @@
  * reviewable directly in the diff.
  */
 
+import { createHash } from "node:crypto";
+
 import { describe, expect, it } from "vitest";
 
-import { FATAL_CODES, REQUIRED_LOOPS, WARNING_CODES } from "../src/index.js";
+import {
+  ALL_WARNING_MESSAGES,
+  FATAL_CODES,
+  REQUIRED_LOOPS,
+  WARNING_CODES,
+  attachmentAbsent,
+  rfaiHeaderAbsent,
+  rfaiLevelAbsent,
+  rfaiRequestAbsent,
+} from "../src/index.js";
 
 function sortedWarningCodes(): string[] {
   return Object.values(WARNING_CODES).sort((a, b) => a.localeCompare(b));
@@ -27,6 +38,7 @@ function sortedFatalCodes(): string[] {
 
 describe("public API: WARNING_CODES surface is stable", () => {
   it("the sorted set of Tier-2 warning codes matches the locked snapshot", () => {
+    // AC-18: the four attachments codes are the only lines this snapshot gained.
     expect(sortedWarningCodes()).toMatchInlineSnapshot(`
       [
         "X12_270_DATE_ROW_DROPPED",
@@ -39,11 +51,15 @@ describe("public API: WARNING_CODES surface is stable", () => {
         "X12_271_AAA_REJECT_REASON_ABSENT",
         "X12_271_AAA_SEGMENT_MALFORMED",
         "X12_271_AAA_UNKNOWN_CODE",
+        "X12_275_ATTACHMENT_ABSENT",
         "X12_276_DATE_ROW_DROPPED",
         "X12_276_DUPLICATE_HIERARCHY_ID",
         "X12_276_HIERARCHY_CYCLE",
         "X12_276_LEVEL_DETACHED",
         "X12_276_REFERENCE_ROW_DROPPED",
+        "X12_277_RFAI_HEADER_ABSENT",
+        "X12_277_RFAI_LEVEL_ABSENT",
+        "X12_277_RFAI_REQUEST_ABSENT",
         "X12_834_UNKNOWN_MAINTENANCE_TYPE",
         "X12_835_BALANCE_NOT_EVALUABLE",
         "X12_835_REMIT_BALANCE_MISMATCH",
@@ -92,7 +108,7 @@ describe("public API: WARNING_CODES surface is stable", () => {
     for (const [k, v] of Object.entries(WARNING_CODES)) expect(k).toBe(v);
   });
 
-  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS) -> 27 (X12-DISCARD-AFTER-STRAY-LX) -> 28 (X12-PAY-TO-FUSION) -> 29 (X12-837-SV-UNDEFINED-DECIMAL) -> 30 (X12-AMT-ADX-ABSENT-AMOUNT) -> 31 (X12-STATED-AMOUNT-DISCARDED) -> 32 (X12-837-AMBIGUOUS-VARIANT) -> 33 (X12-837-SV1-OVERWRITE) -> 34 (X12-ISA-ELEMENT-ARITY) -> 40 (the 270 typed model) -> 44 (the 271 AAA request-validation surface) -> 49 (the 276 typed model) -> 51 (the declared-guide check) -> 55 (BDS / BIN binary framing, AC-9)", () => {
+  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS) -> 27 (X12-DISCARD-AFTER-STRAY-LX) -> 28 (X12-PAY-TO-FUSION) -> 29 (X12-837-SV-UNDEFINED-DECIMAL) -> 30 (X12-AMT-ADX-ABSENT-AMOUNT) -> 31 (X12-STATED-AMOUNT-DISCARDED) -> 32 (X12-837-AMBIGUOUS-VARIANT) -> 33 (X12-837-SV1-OVERWRITE) -> 34 (X12-ISA-ELEMENT-ARITY) -> 40 (the 270 typed model) -> 44 (the 271 AAA request-validation surface) -> 49 (the 276 typed model) -> 51 (the declared-guide check) -> 55 (BDS / BIN binary framing, AC-9) -> 59 (the attachments readers, AC-18)", () => {
     // SIX added by the 270 typed read path, and nothing renamed, removed or
     // renumbered: the two tolerances that path reports (a declared
     // non-conventional delimiter, whitespace between segments), the two
@@ -132,7 +148,35 @@ describe("public API: WARNING_CODES surface is stable", () => {
     // not followed by the segment terminator, and a string span holding a
     // character that is not one octet. Four codes and not one, because each
     // leaves the model in a different state and a caller switches on which.
-    expect(Object.keys(WARNING_CODES)).toHaveLength(55);
+    //
+    // FOUR more added by the attachments readers (AC-18), again with nothing
+    // renamed, removed or re-worded: three absences the 277 request for
+    // additional information reader reports (no BHT, no HL, no claim-level
+    // request) and the one the 275 reader reports (no BDS). Each is raised on
+    // its own reader's path alone, so no other transaction set's warning stream
+    // moves.
+    expect(Object.keys(WARNING_CODES)).toHaveLength(59);
+  });
+
+  it("AC-18: gives no code that existed before the attachments readers a new message", () => {
+    // Every message the registry carried before the four attachments codes
+    // were added, sorted and joined, is pinned by digest: re-wording one moves
+    // it, and so does dropping one. The four added codes' own messages are set
+    // aside through their factories, so an addition cannot move it.
+    const at = { segmentIndex: 0, transactionIndex: 0 };
+    const added = new Set(
+      [attachmentAbsent, rfaiHeaderAbsent, rfaiLevelAbsent, rfaiRequestAbsent].map(
+        (factory) => factory(at).message,
+      ),
+    );
+    expect(added.size).toBe(4);
+    const kept = [...ALL_WARNING_MESSAGES]
+      .filter((message) => !added.has(message))
+      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    expect(kept).toHaveLength(86);
+    expect(createHash("sha256").update(kept.join("\n")).digest("hex")).toBe(
+      "3ae065bdb0c9d6b0bdfb7f03476e95030484d5c6e577adc81b5e5bd9f517193d",
+    );
   });
 
   it("keeps the four REQUIRED_LOOPS the 837 owns and adds the 270's three", () => {

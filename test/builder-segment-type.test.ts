@@ -162,8 +162,13 @@ describe("builder segment joining: the source gate", () => {
     // it still does not get from `requireCallerSegment` is the SLOT in the
     // refusal message: a wrong-typed TA1-01 names the builder, not `TA1-01`.
     // Widening the joiner into it is still its own slice.
+    //
+    // THIRTEEN with the two attachments builders (AC-12, AC-15),
+    // `build-277-rfai.ts` and `build-275.ts`, each declaring one like every
+    // other domain builder does and each naming the transaction set number its
+    // file name carries.
     const joining = modules.filter(declaresJoiner);
-    expect(joining).toHaveLength(11);
+    expect(joining).toHaveLength(13);
     const ta1 = join("transactions", "ack", "build-ta1.ts");
     expect(modules.some((m) => m.endsWith(ta1))).toBe(true);
     expect(joining.some((m) => m.endsWith(ta1))).toBe(false);
