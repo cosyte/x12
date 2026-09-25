@@ -92,7 +92,9 @@ describe("get278Response - Tier-1 canonical (X216)", () => {
 
     expect(resp?.direction).toBe("response");
     expect(resp?.implementationConventionReference).toBe("005010X216");
-    expect(resp?.warnings).toHaveLength(0);
+    // AC-5: 005010X216 is outside the 278 readers' implemented set, so the
+    // declared-guide code is the one warning; the reading below is unchanged.
+    expect(resp?.warnings.map((w) => w.code)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED]);
 
     expect(resp?.reviews).toHaveLength(1);
     const review = resp?.reviews[0];
@@ -152,9 +154,12 @@ describe("get278Response - comprehensive (dependent, event + service, edge segme
     expect(event?.messages).toEqual(["Outpatient services certified"]);
     expect(event?.providers.map((p) => p.entityIdentifierCode)).toEqual(["71"]);
 
-    // One warning only - the unknown HI qualifier. The message names no value.
-    expect(resp?.warnings).toHaveLength(1);
-    expect(resp?.warnings[0]?.code).toBe(WARNING_CODES.X12_UNKNOWN_HI_QUALIFIER);
+    // The unknown HI qualifier, after the declared-guide code this document's
+    // 005010X216 raises (AC-5). The message names no value.
+    expect(resp?.warnings.map((w) => w.code)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      WARNING_CODES.X12_UNKNOWN_HI_QUALIFIER,
+    ]);
   });
 
   it("opens a distinct service-level (SS) review with its own UM, HCR, and REF", () => {

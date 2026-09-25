@@ -509,7 +509,7 @@ describe("additivity", () => {
     // resolution and repeats inside the open line.
     const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1_FIRST, SV2_FOREIGN]));
 
-    expect(channel(sub)).toEqual([AMBIGUOUS, REPEATED]);
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, AMBIGUOUS, REPEATED]);
     expect(sub.variant).toBe("P");
     expect(line(sub).charge).toBe("8500");
   });

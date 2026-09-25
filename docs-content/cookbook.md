@@ -800,8 +800,10 @@ response came back. You need the **certification action** (was it certified, pen
 authorization number to put on the claim you are about to send.
 
 `get278Request(delimiters, tx)` and `get278Response(delimiters, tx)` read the two directions of one
-implementation guide. Both are 278s, so route on the direction the model reports rather than on
-`ST-01` alone; a reader hands back `undefined` for a transaction it does not decode.
+implementation guide, `005010X217`. Both are 278s, so route on the direction the model reports
+rather than on `ST-01` alone; a reader hands back `undefined` for a transaction it does not decode.
+A 278 declaring any other guide is still read, and carries `X12_GUIDE_NOT_IMPLEMENTED`; that
+includes `005010X216`, which `build278Response` still writes into ST-03 and GS-08.
 
 **The `HCR-01` certification action is the field this library places verbatim and never infers.** It
 is response-only: a request carries no decision at all, and `review.decision` is `undefined` there
@@ -812,8 +814,8 @@ import { parseX12, get278Response } from "@cosyte/x12";
 
 const raw278 = [
   "ISA*00*          *00*          *ZZ*UMOPAYER       *ZZ*SUBMITTER      *260601*1230*^*00501*000000002*0*P*:~",
-  "GS*HI*UMOPAYER*SUBMITTER*20260601*1230*1*X*005010X216~",
-  "ST*278*0002*005010X216~",
+  "GS*HI*UMOPAYER*SUBMITTER*20260601*1230*1*X*005010X217~",
+  "ST*278*0002*005010X217~",
   "BHT*0078*11*AUTHRESP-202606*20260601*1230~",
   "HL*1**20*1~",
   "NM1*X3*2*UTILIZATION REVIEW CO*****PI*UMO001~",

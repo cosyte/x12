@@ -318,7 +318,9 @@ describe("X12-837-EMIT-IDENTIFIER-FIXED: an uncited reference is emitted, not re
     // promise that an arbitrary identifier round-trips as a declaration.
     const sub = submissionOf(build("P", "005010X222A9"));
     expect(sub.variant).toBe("P"); // resolved from the SV1, not from the declaration
-    expect(sub.warnings).toEqual([]);
+    // AC-5: 005010X222A9 is outside the 837 reader's implemented set, so the
+    // read carries the declared-guide code and nothing else.
+    expect(sub.warnings.map((w) => w.code)).toEqual(["X12_GUIDE_NOT_IMPLEMENTED"]);
   });
 
   it("accepts every cited reference for its OWN variant, base guide and errata alike", () => {

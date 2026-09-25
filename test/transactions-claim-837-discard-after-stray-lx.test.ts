@@ -332,7 +332,11 @@ describe("X12-DISCARD-AFTER-STRAY-LX: the silences this code must NOT break", ()
       "005010XZZZZZ",
     );
     expect(sub.claims[0]?.references).toEqual([{ qualifier: "6R", value: "LINE-CTRL-1" }]);
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_UNKNOWN_VARIANT, DROPPED]);
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      WARNING_CODES.X12_837_UNKNOWN_VARIANT,
+      DROPPED,
+    ]);
   });
 
   it("CONTROL: ordinary entity attachment with no LX in play raises nothing", () => {

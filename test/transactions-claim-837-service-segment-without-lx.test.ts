@@ -346,6 +346,7 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     // `revenueCode`, and this repo distinguishes the two by rule.
     expect(stray.claims[0]?.serviceLines[0]?.procedureCode).toBeUndefined();
     expect(channel(stray)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
       WARNING_CODES.X12_837_AMBIGUOUS_VARIANT,
       WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
       WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED,
@@ -357,7 +358,7 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     const clean = parse837([...HEADER, CLM, "LX*1~", SV1], UNRESOLVED_ICR);
     expect(clean.variant).toBe("P");
     expect(clean.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
-    expect(channel(clean)).toEqual([]);
+    expect(channel(clean)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED]);
 
     // CONTROL: a caller `type` wins ahead of both the ICR and the scan, so
     // the identical bytes read correctly. The orphan is still reported.
@@ -365,7 +366,7 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     expect(typed.variant).toBe("P");
     expect(typed.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     expect(typed.claims[0]?.serviceLines[0]?.procedureCode).toBe("99213");
-    expect(channel(typed)).toEqual([WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX]);
+    expect(channel(typed)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX]);
 
     // And the fallback takes the FIRST SVx: a stray SV2 placed AFTER the
     // conformant line changes nothing. Every sentence about this says
@@ -382,6 +383,7 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     // `[AMBIGUOUS]` alone until that slice, and its going red is the finding
     // rather than a regression: it was the pin ON that silence.
     expect(channel(trailing)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
       WARNING_CODES.X12_837_AMBIGUOUS_VARIANT,
       WARNING_CODES.X12_837_SERVICE_SEGMENT_REPEATED,
     ]);
