@@ -50,6 +50,7 @@ import {
   type X12Segment,
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
+import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 import { decodeSt03 } from "../shared/st03.js";
 import {
   REQUIRED_LOOPS,
@@ -179,6 +180,16 @@ export const VARIANT_BY_ICR: Readonly<Record<string, X12Claim837Variant>> = wire
 });
 
 /**
+ * The guides this reader implements: the three 837 rows of
+ * `X12_TR3_CONFORMANCE` (each row's `tr3` plus every `cfrAdopted` entry) and
+ * every key of {@link VARIANT_BY_ICR}, because a document declaring one of
+ * those is one this reader already resolves by its declaration. It decides
+ * only whether the declared-guide check warns; the variant is still resolved
+ * from the raw ST-03 text below, unmoved. @internal
+ */
+const IMPLEMENTED_GUIDES_837 = implementedGuides("837", undefined, Object.keys(VARIANT_BY_ICR));
+
+/**
  * Map SVx segment id → 837 variant for fall-back detection. Same
  * null-prototype construction and the same reason: `seg.id` is the
  * segment's first element, read off the wire. @internal
@@ -281,6 +292,13 @@ export function get837Claims(
   if (tx.st.elements[1] !== "837") return undefined;
 
   const warnings: X12ParseWarning[] = [];
+  // The declared guide (ST-03 decoded, else GS-08 decoded) against the guides
+  // this reader implements. Warned at the ST and never refused, and it is
+  // disjoint from the variant resolution below: that still keys on the RAW
+  // ST-03 text, so a declaration this check accepts can still leave the
+  // variant to the `SVx` fall-back, and neither decision reads the other.
+  const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_837);
+  if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
 
   // ST-03 is read TWICE on purpose, and the two reads are different values.

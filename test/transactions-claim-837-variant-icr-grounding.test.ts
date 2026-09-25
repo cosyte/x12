@@ -243,7 +243,7 @@ describe("X12-VARIANT-ICR-UNGROUNDED: the references production 837s carry", () 
     const fellBack = parse837("004010X098A1", SV2_ONLY);
     expect(fellBack.variant).toBe("I");
     expect(fellBack.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("7300");
-    expect(channel(fellBack)).toEqual([]);
+    expect(channel(fellBack)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED]);
   });
 
   /**
@@ -355,7 +355,10 @@ describe("X12-VARIANT-ICR-UNGROUNDED: what still does NOT resolve", () => {
   it("🩺 an ST-03 outside the set with NO SVx still raises X12_837_UNKNOWN_VARIANT", () => {
     const sub = parse837("005010X221A1", [...HEADER, CLM, "HI*ABK:J20.9~"]);
     expect(sub.variant).toBe("unknown");
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_UNKNOWN_VARIANT]);
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      WARNING_CODES.X12_837_UNKNOWN_VARIANT,
+    ]);
   });
 
   it("an ABSENT ST-03 still falls back exactly as it did", () => {
@@ -377,6 +380,7 @@ describe("X12-VARIANT-ICR-UNGROUNDED: the SVx fall-back is not narrowed", () => 
     const sub = parse837("004010X098A1", [...HEADER, SV2, CLM, "HI*ABK:J20.9~", "LX*1~", SV1]);
     expect(sub.variant).toBe("I");
     expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
       WARNING_CODES.X12_837_AMBIGUOUS_VARIANT,
       WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
       WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED,

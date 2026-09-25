@@ -18,8 +18,13 @@
  * hide a real disagreement inside the federal corpus. Nothing here asserts
  * which reading a regulator would enforce.
  *
- * **It changes no parse and no emit behaviour.** It is a static description of
- * what the surrounding code already does.
+ * **It changes no emit behaviour, and on the read side it decides one thing.**
+ * It is a static description of what the surrounding code does, and the typed
+ * readers read it back: the guides each reader checks a transaction set's
+ * declared guide against are derived from its rows (`tr3` plus every
+ * `cfrAdopted` entry), so this statement and that check cannot drift apart. A
+ * declaration outside a reader's rows is warned, never refused, and the
+ * reading is decoded exactly as it would be otherwise.
  */
 
 /**

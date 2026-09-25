@@ -365,6 +365,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **🩺 Every typed reader now checks the guide a transaction set declares, and warns when it is not
+  one that reader implements** (`X12-17`). Each reader used to admit a transaction set on ST-01
+  alone, so a 277 declaring `006020X313` (a claim request for additional information) came back
+  from `get277Status` labelled `claim-status`, and a 004010, 006020 or 008020 document of any type
+  was decoded against 005010 positions with nothing on the warning channel.
+
+  Two warning codes are added, additions only: **`X12_GUIDE_NOT_IMPLEMENTED`** where the declared
+  guide is outside the reader's set, and **`X12_GUIDE_NOT_DECLARED`** where nothing is declared.
+  Both are anchored at the ST, both messages are frozen literals that echo nothing, and their
+  factories `guideNotImplemented` / `guideNotDeclared` take a position only. The declaration is
+  ST-03, decoded of release escapes; **where ST-03 is absent or empty, GS-08 of the enclosing group,
+  decoded the same way**, which a parsed `X12TransactionSet` now carries on an optional `gs` member so
+  every reader keeps its `(delimiters, tx)` call. Where ST-03 is non-empty it alone decides, and a
+  disagreement with GS-08 is not reconciled. The implemented set is derived from
+  `X12_TR3_CONFORMANCE` (`tr3` plus `cfrAdopted` per row), plus every identifier the 837 variant
+  table resolves. The reading is still decoded and returned; nothing is refused, dropped or
+  re-decoded, and a document declaring an implemented guide reads exactly as before.
+
+  **Three things move for a consumer.** `X12ClaimStatusResponse.transactionType` widens to
+  `"claim-status" | "claim-acknowledgment" | "unrecognized-guide"`, the third set where
+  `get277Status`'s declared guide is outside its set or absent, **so an exhaustive `switch` over the
+  old two values stops compiling**; `get277CADisposition` admits what it admitted before. **A 278
+  declaring `005010X216` now warns on both 278 readers**, since the regulation names `005010X217` for
+  both directions, and `build278Response` still writes `005010X216`, so its round trip carries the
+  code until that builder moves. A 999 declaring the base `005010X231` warns too, because the
+  conformance row names only the errata.
+
 - **🩺 `implementationConventionReference` is POST-`?`-unescape in every typed reader that publishes
   it** (`X12-ST03-READ-NOT-RELEASE-AWARE`). A behaviour change on any document whose `ST-03` carries
   a release escape.

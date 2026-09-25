@@ -1,10 +1,12 @@
 /**
  * `get278Request` / `get278Response` - extract a typed
  * {@link X12ServicesReview} from a parsed X12 278 Health Care Services
- * Review transaction set (request TR3 `005010X217`, response TR3
- * `005010X216`). Both directions share one lenient HL-tree walk; the entry
- * point only records `direction` on the result. Every recoverable deviation
- * surfaces as a warning, never a throw.
+ * Review transaction set (TR3 `005010X217`, with its errata `005010X217E1`,
+ * one guide covering both the request and the response). Both directions
+ * share one lenient HL-tree walk; the entry point only records `direction` on
+ * the result. Every recoverable deviation surfaces as a warning, never a
+ * throw, and a declared guide outside that one is warned
+ * (`X12_GUIDE_NOT_IMPLEMENTED`) in either direction.
  *
  * **The certification decision is the safety-critical surface.** In a
  * response the `HCR-01` action code (certified / not-certified / pended /
@@ -22,7 +24,7 @@
  *   service-delivery, and CRC condition codes** are preserved verbatim on
  *   `tx.segments` but not destructured onto the model.
  *
- * Spec sources: WPC TR3 `005010X217` (request) / `005010X216` (response).
+ * Spec source: WPC TR3 `005010X217`, which covers both directions.
  */
 
 import { resolveHiQualifier, type X12HiCodeSystem } from "../../code-lists/hi-qualifiers.js";
@@ -34,6 +36,7 @@ import {
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
 import { unknownHiQualifier, type X12ParseWarning } from "../../parser/warnings.js";
+import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 import { decodeHl, HL_LEVEL_CODES, validateHl, type X12Hl } from "../shared/hl.js";
 import { decodeSt03 } from "../shared/st03.js";
 import type {
@@ -53,6 +56,14 @@ import type {
 const HL_LEVEL_PATIENT_EVENT = "EV";
 /** 278 service HL level code (X12 0735). @internal */
 const HL_LEVEL_SERVICE = "SS";
+
+/**
+ * The guides both 278 directions implement: the union of the request and the
+ * response rows of `X12_TR3_CONFORMANCE`, each row's `tr3` plus every
+ * `cfrAdopted` entry. One guide covers both directions, so the two readers
+ * check against the same set. @internal
+ */
+const IMPLEMENTED_GUIDES_278 = implementedGuides("278");
 
 /**
  * Per-level expected parent level for the 278 HL spine. UMO (`20`) has no
@@ -96,9 +107,12 @@ export function get278Request(
 
 /**
  * Extract a typed {@link X12ServicesReview} from a 278 **response**
- * (`005010X216`). Same lenient walk as {@link get278Request}; the `HCR`
- * decision under each event / service review is the response's
- * safety-critical addition. Returns `undefined` only on a mis-routed ST-01.
+ * (`005010X217`, the same guide as the request). Same lenient walk as
+ * {@link get278Request}; the `HCR` decision under each event / service review
+ * is the response's safety-critical addition. Returns `undefined` only on a
+ * mis-routed ST-01. A response declaring `005010X216`, which
+ * `build278Response` still writes, is read like any other and carries
+ * `X12_GUIDE_NOT_IMPLEMENTED`.
  *
  * @example
  * ```ts
@@ -128,6 +142,11 @@ function walk278(
   if (tx.st.elements[1] !== "278") return undefined;
 
   const warnings: X12ParseWarning[] = [];
+  // The declared guide (ST-03 decoded, else GS-08 decoded) against the guides
+  // this reader implements. Warned at the ST and never refused: the walk below
+  // runs the same whatever it answers, in both directions.
+  const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_278);
+  if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
 
   const hierarchies: X12Hl[] = [];
@@ -262,8 +281,9 @@ function walk278(
   // serves BOTH `get278Request` and `get278Response`, so both directions
   // publish the decoded value.
   //
-  // Nothing in this file keys on `ST-03`; it is published and never tested,
-  // which is why no lookup or gate can move here. The `""` collapse below is
+  // The only test of `ST-03` in this file is the declared-guide check at the
+  // top of the walk, which reads the decoded text and decides nothing but
+  // whether to warn; no lookup or gate keys on it. The `""` collapse below is
   // unchanged and still runs on the decoded text: decoding never empties a
   // non-empty element, because every step of `unescapeRelease` appends at
   // least one character.

@@ -32,7 +32,9 @@ import type {
 import { splitWithRelease, unescapeRelease } from "../../parser/release.js";
 import type { X12ParseWarning } from "../../parser/warnings.js";
 // `warnings` is reserved for future 999-specific Tier-2 codes; the Phase 3
-// parser is silent + fail-safe - see fail-safe fallbacks below.
+// parser is silent + fail-safe - see fail-safe fallbacks below. The one code
+// it carries today is the declared-guide check every typed reader runs.
+import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 
 import {
   IK3_SYNTAX_ERROR_CODES,
@@ -54,6 +56,13 @@ import type {
   X12Ack999SegmentNote,
   X12Ack999TransactionResponse,
 } from "./types.js";
+
+/**
+ * The guides this reader implements, derived from the 999 row of
+ * `X12_TR3_CONFORMANCE` (its `tr3` plus every `cfrAdopted` entry, of which
+ * that row has none). @internal
+ */
+const IMPLEMENTED_GUIDES_999 = implementedGuides("999");
 
 /**
  * Decode a 005010X231A1 Implementation Acknowledgment from a raw `string`
@@ -106,6 +115,10 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
   // `interchange.warnings`) and are merged at the end so consumers see
   // both sets together.
   const warnings: X12ParseWarning[] = [];
+  // The declared guide (ST-03 decoded, else GS-08 decoded) against the guides
+  // this reader implements: warned at the ST, never refused, walk unchanged.
+  const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_999);
+  if (guideWarning !== undefined) warnings.push(guideWarning);
 
   // Skip the ST segment (always at index 0) and the trailing SE segment
   // when iterating body segments. When SE is missing (truncated tx) the

@@ -150,8 +150,9 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: an inherited-key ST-03 resolves like any
       expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
       expect(sub.claims[0]?.serviceLines[0]?.units?.toString()).toBe("4");
       // The whole channel, not one code. An unrecognized ST-03 that the SVx
-      // fallback resolves has never warned, and still does not.
-      expect(channel(sub)).toEqual([]);
+      // fallback resolves raises no variant code; the one code on it is the
+      // declared-guide check, because the key is outside the implemented set.
+      expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED]);
       // The reference is still on the model, unchanged by the fix.
       expect(sub.implementationConventionReference).toBe(key);
     });
@@ -165,7 +166,7 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: an inherited-key ST-03 resolves like any
     expect(sub.variant).toBe("P");
     expect(sub.claims[0]?.serviceLines).toHaveLength(1);
     expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
-    expect(channel(sub)).toEqual([]);
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED]);
   });
 
   it("CONTROL: a recognized ST-03 still resolves from ST-03, silently", () => {
@@ -184,6 +185,7 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: with no SVx to fall back on, the variant
       const { sub } = parse837(key, claimBody(["LX*1~", "DTP*472*D8*20260601~"]));
       expect(sub.variant).toBe("unknown");
       expect(channel(sub)).toEqual([
+        WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
         WARNING_CODES.X12_837_UNKNOWN_VARIANT,
         WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
       ]);
@@ -194,6 +196,7 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: with no SVx to fall back on, the variant
     const { sub } = parse837("005010XZZZZZ", claimBody(["LX*1~", "DTP*472*D8*20260601~"]));
     expect(sub.variant).toBe("unknown");
     expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
       WARNING_CODES.X12_837_UNKNOWN_VARIANT,
       WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
     ]);
@@ -202,7 +205,10 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: with no SVx to fall back on, the variant
   it("CONTROL: an unknown variant with no LX at all raises only the variant code", () => {
     // Isolates the two codes from each other: no LX, no dropped line.
     const { sub } = parse837("005010XZZZZZ", claimBody([]));
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_UNKNOWN_VARIANT]);
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      WARNING_CODES.X12_837_UNKNOWN_VARIANT,
+    ]);
   });
 });
 
@@ -218,7 +224,10 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: the SVx fallback table is keyed by a wir
     // so the table is null-prototype anyway, and this pins the honest case.
     const { sub } = parse837("005010XZZZZZ", claimBody(["ZZ*NOT-A-SERVICE-SEGMENT~"]));
     expect(sub.variant).toBe("unknown");
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_UNKNOWN_VARIANT]);
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      WARNING_CODES.X12_837_UNKNOWN_VARIANT,
+    ]);
   });
 });
 

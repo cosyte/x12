@@ -37,6 +37,7 @@ import {
   unknownMaintenanceType,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
+import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 import type {
   X12CoordinationOfBenefits,
   X12Enrollment,
@@ -53,6 +54,22 @@ import type {
 /** Slice the ST..SE body once, dropping the ST (and SE if present). @internal */
 function enrollmentBody(tx: X12TransactionSet): readonly X12Segment[] {
   return tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
+}
+
+/**
+ * The guides this reader implements, derived from the 834 row of
+ * `X12_TR3_CONFORMANCE` (its `tr3` plus every `cfrAdopted` entry). @internal
+ */
+const IMPLEMENTED_GUIDES_834 = implementedGuides("834");
+
+/**
+ * The declared-guide warning for `tx`, as a list of zero or one, so the header
+ * and every streamed member can seed their own warnings from it. Warned at
+ * the ST and never refused. @internal
+ */
+function guideWarnings(delimiters: Delimiters, tx: X12TransactionSet): readonly X12ParseWarning[] {
+  const warning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_834);
+  return warning === undefined ? [] : [warning];
 }
 
 /**
@@ -76,7 +93,7 @@ export function get834Header(
 ): X12EnrollmentHeader | undefined {
   if (tx.st.elements[1] !== "834") return undefined;
 
-  const warnings: X12ParseWarning[] = [];
+  const warnings: X12ParseWarning[] = [...guideWarnings(delimiters, tx)];
   const references: X12EnrollmentReference[] = [];
   const dates: X12EnrollmentDate[] = [];
   let purpose = "";
@@ -163,6 +180,10 @@ export async function* get834Enrollments(
   // in-memory source. (Also satisfies the no-bare-async-generator lint.)
   await Promise.resolve();
 
+  // Every member was decoded against the same declared guide, and a consumer
+  // may read the stream without ever reading the header, so the declared-guide
+  // warning (if any) opens EVERY member's own warnings.
+  const seeded = guideWarnings(delimiters, tx);
   const body = enrollmentBody(tx);
   let current: EnrollmentAccumulator | undefined;
   let currentCoverage: HealthCoverageAccumulator | undefined;
@@ -184,7 +205,7 @@ export async function* get834Enrollments(
         flushCoverage();
         yield freezeEnrollment(current);
       }
-      current = openEnrollment(seg, delimiters, position);
+      current = openEnrollment(seg, delimiters, position, seeded);
       currentCoverage = undefined;
       continue;
     }
@@ -313,10 +334,11 @@ function openEnrollment(
   seg: X12Segment,
   delimiters: Delimiters,
   position: X12Position,
+  seeded: readonly X12ParseWarning[],
 ): EnrollmentAccumulator {
   const maintenanceTypeCode = elementValue(seg, 3, delimiters);
   const entry = maintenanceTypeCode === "" ? undefined : lookupMaintenanceType(maintenanceTypeCode);
-  const warnings: X12ParseWarning[] = [];
+  const warnings: X12ParseWarning[] = [...seeded];
   if (maintenanceTypeCode !== "" && entry === undefined) {
     warnings.push(unknownMaintenanceType(position));
   }

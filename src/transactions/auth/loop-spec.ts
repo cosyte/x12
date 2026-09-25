@@ -1,5 +1,5 @@
 /**
- * 278 TR3 `005010X217` (request) / `005010X216` (response) loop
+ * 278 TR3 `005010X217` (request and response alike) loop
  * specification - authored through the **public** {@link
  * "../../loops/define.js".defineLoopSpec} API (the dogfooding gate).
  * The built-in 278 HL hierarchy goes through the SAME factory consumers use

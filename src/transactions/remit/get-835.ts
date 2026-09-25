@@ -32,6 +32,7 @@ import {
   unknownRarc,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
+import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 import { checkClaimBalance, checkRemitTotalBalance, checkServiceLineBalance } from "./balance.js";
 import type {
   X12RemitAdjustment,
@@ -50,6 +51,12 @@ import type {
   X12RemitTrace,
   X12Remittance,
 } from "./types.js";
+
+/**
+ * The guides this reader implements, derived from the 835 row of
+ * `X12_TR3_CONFORMANCE` (its `tr3` plus every `cfrAdopted` entry). @internal
+ */
+const IMPLEMENTED_GUIDES_835 = implementedGuides("835");
 
 /**
  * Extract a typed {@link X12Remittance} from an 835 transaction set.
@@ -77,6 +84,10 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
   if (tx.st.elements[1] !== "835") return undefined;
 
   const warnings: X12ParseWarning[] = [];
+  // The declared guide (ST-03 decoded, else GS-08 decoded) against the guides
+  // this reader implements: warned at the ST, never refused, walk unchanged.
+  const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_835);
+  if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
 
   // Mutable accumulators - frozen into the returned model at the end.

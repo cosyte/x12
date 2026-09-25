@@ -145,6 +145,8 @@ const UNKNOWN_VARIANT = WARNING_CODES.X12_837_UNKNOWN_VARIANT;
 const ADDED_SINCE_0_0_13: ReadonlySet<string> = new Set<string>([
   WARNING_CODES.X12_837_AMBIGUOUS_VARIANT,
   WARNING_CODES.X12_837_SERVICE_SEGMENT_REPEATED,
+  WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+  WARNING_CODES.X12_GUIDE_NOT_DECLARED,
 ]);
 
 // ---------------------------------------------------------------------------
@@ -183,7 +185,12 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     // The whole channel. The two line codes are exactly the ones raised at
     // `0.0.13`, in the same order; the new code is ADDED ahead of them,
     // because resolution runs before the walk.
-    expect(channel(sub)).toEqual([AMBIGUOUS, WITHOUT_LX, NOT_DECODED]);
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      AMBIGUOUS,
+      WITHOUT_LX,
+      NOT_DECODED,
+    ]);
   });
 
   it("🩺 the same document read with an explicit type decodes it, and is silent", () => {
@@ -211,7 +218,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     expect(sub.claims[0]?.serviceLines[0]?.units?.toString()).toBe("4");
     // The orphan SV2 is still an orphan and still reported; the ambiguity is
     // not, because the caller settled the type.
-    expect(channel(sub)).toEqual([WITHOUT_LX]);
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, WITHOUT_LX]);
   });
 
   it("🩺 both conflicting segments inside opened Loop 2400s raise it once, at the ST", () => {
@@ -223,20 +230,20 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     expect(sub.claims[0]?.serviceLines).toHaveLength(2);
     expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     expect(sub.claims[0]?.serviceLines[1]?.charge).toBeUndefined();
-    expect(channel(sub)).toEqual([AMBIGUOUS, NOT_DECODED]);
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, AMBIGUOUS, NOT_DECODED]);
   });
 
   it("it fires in the other direction too: an SV2 first, an SV1 second", () => {
     // The code is about the conflict, not about which variant loses.
     const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV2, "LX*2~", SV1]));
     expect(sub.variant).toBe("I");
-    expect(channel(sub)).toEqual([AMBIGUOUS, NOT_DECODED]);
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, AMBIGUOUS, NOT_DECODED]);
   });
 
   it("an SV3 conflicting with an SV1 raises it (all three ids are in the table)", () => {
     const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1, "LX*2~", SV3]));
     expect(sub.variant).toBe("P");
-    expect(channel(sub)).toEqual([AMBIGUOUS, NOT_DECODED]);
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, AMBIGUOUS, NOT_DECODED]);
   });
 
   it("an ST-03 that is absent altogether reaches it the same way", () => {
@@ -253,7 +260,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     const { sub } = parse837("constructor", claimBody(["LX*1~", SV1, "LX*2~", SV2]));
     expect(typeof sub.variant).toBe("string");
     expect(sub.variant).toBe("P");
-    expect(channel(sub)).toEqual([AMBIGUOUS, NOT_DECODED]);
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, AMBIGUOUS, NOT_DECODED]);
   });
 
   it("🩺 it fires where NEITHER conflicting segment is reported at itself", () => {
@@ -282,7 +289,11 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
       "CLM*PT-ACCT-900*8500***11:B:1*Y*A*Y*Y~",
     ]);
     expect(sub.variant).toBe("P");
-    expect(channel(sub)).toEqual([AMBIGUOUS, WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      AMBIGUOUS,
+      WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
+    ]);
     expect(channel(sub)).not.toContain(WITHOUT_LX);
   });
 
@@ -290,7 +301,12 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     // It reports the RESOLUTION, and there is one of those per transaction.
     const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1, "LX*2~", SV2, "LX*3~", SV3]));
     expect(channel(sub).filter((c) => c === AMBIGUOUS)).toHaveLength(1);
-    expect(channel(sub)).toEqual([AMBIGUOUS, NOT_DECODED, NOT_DECODED]);
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      AMBIGUOUS,
+      NOT_DECODED,
+      NOT_DECODED,
+    ]);
   });
 });
 
@@ -302,7 +318,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: controls, where the fall-back was not conte
   it("CONTROL: an unresolvable ST-03 whose body names ONE variant is silent", () => {
     const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1, "LX*2~", SV1]));
     expect(sub.variant).toBe("P");
-    expect(channel(sub)).toEqual([]);
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED]);
   });
 
   it("CONTROL: a RESOLVING ST-03 with a mixed body does not raise it", () => {
@@ -321,7 +337,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: controls, where the fall-back was not conte
     expect(sub.variant).toBe("I");
     // The caller typed it Institutional, so it is the SV1 line that fails to
     // decode. Still no ambiguity: nothing was guessed.
-    expect(channel(sub)).toEqual([NOT_DECODED]);
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, NOT_DECODED]);
   });
 
   it("CONTROL: no SVx at all is X12_837_UNKNOWN_VARIANT, never this code", () => {
@@ -329,7 +345,11 @@ describe("X12-837-AMBIGUOUS-VARIANT: controls, where the fall-back was not conte
     // travel together: a conflicting body has something to fall back on.
     const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", "DTP*472*D8*20260601~"]));
     expect(sub.variant).toBe("unknown");
-    expect(channel(sub)).toEqual([UNKNOWN_VARIANT, WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
+    expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      UNKNOWN_VARIANT,
+      WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
+    ]);
   });
 
   it("CONTROL: a clean 837P on a resolving ST-03 stays completely silent", () => {
@@ -347,6 +367,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: controls, where the fall-back was not conte
     });
     expect(sub.variant).toBe("X");
     expect(channel(sub)).toEqual([
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
       WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
       WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
     ]);

@@ -23,7 +23,8 @@ export const VERSION: string = "0.0.18";
 // The package's conformance declaration: which implementation guide each
 // reader and builder implements, which identifiers 45 CFR 162.920 names for
 // that transaction, and which directions are actually implemented. Static
-// data; it changes no parse and no emit behaviour.
+// data; the typed readers derive the guides they check a declaration against
+// from it, and it changes no emit behaviour.
 export { X12_TR3_CONFORMANCE } from "./conformance/index.js";
 export type { X12Tr3Adoption, X12Tr3Conformance, X12Tr3Direction } from "./conformance/index.js";
 
@@ -53,6 +54,8 @@ export {
   duplicateHierarchyId,
   entitySegmentDiscardedAfterLx,
   groupCountMismatch,
+  guideNotDeclared,
+  guideNotImplemented,
   hierarchyCycle,
   hlParentLevelInvalid,
   hlParentMismatch,

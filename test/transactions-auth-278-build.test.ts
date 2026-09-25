@@ -234,7 +234,9 @@ describe("build278Response - verbatim certification decision", () => {
 
   it("round-trips the HCR action code verbatim", () => {
     const review = responseOf(build278Response(RESPONSE_SPEC));
-    expect(review.warnings).toHaveLength(0);
+    // AC-5: the builder still writes 005010X216, outside the 278 readers'
+    // implemented set, so the round trip carries the declared-guide code.
+    expect(review.warnings.map((w) => w.code)).toEqual(["X12_GUIDE_NOT_IMPLEMENTED"]);
     expect(review.direction).toBe("response");
     expect(review.implementationConventionReference).toBe("005010X216");
     const decision = review.reviews[0]?.decision;
@@ -414,7 +416,9 @@ describe("build278 - the review HL-03 level code (REFUSAL-MESSAGE-PHI-ECHO)", ()
     const good = readBack(honest);
     expect(good.reviews).toHaveLength(1);
     expect(good.reviews[0]?.decision?.actionCode).toBe("A1");
-    expect(good.warnings).toEqual([]);
+    // AC-5: a build278Response document declares 005010X216, so both readings
+    // carry the declared-guide code and nothing else.
+    expect(good.warnings.map((w) => w.code)).toEqual(["X12_GUIDE_NOT_IMPLEMENTED"]);
 
     // FAILS TO DECODE, and that is the precise claim. The review loop never
     // opens, so the review and its HCR-01 certification decision are absent
@@ -423,7 +427,7 @@ describe("build278 - the review HL-03 level code (REFUSAL-MESSAGE-PHI-ECHO)", ()
     const bad = readBack(lying);
     expect(bad.reviews).toEqual([]);
     expect(bad.reviews.map((r) => r.decision)).toEqual([]);
-    expect(bad.warnings).toEqual([]);
+    expect(bad.warnings.map((w) => w.code)).toEqual(["X12_GUIDE_NOT_IMPLEMENTED"]);
     const badTx = parseX12(lying).groups[0]?.transactions[0];
     expect(badTx?.segments.some((seg) => seg.id === "HCR")).toBe(true);
     // And the level itself is still visible on the HL spine, which is why this

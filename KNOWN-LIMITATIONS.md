@@ -136,6 +136,34 @@ model.
     refused before this change is refused differently by it.**
   - **No census of other builders' required elements is published here.** This change measured TA1.
 
+- **🩺 Every typed reader checks the implementation guide a transaction set declares against the
+  guides that reader implements, and WARNS rather than refuses where they differ.**
+  `X12_GUIDE_NOT_IMPLEMENTED` is raised where the declared guide is outside the reader's set and
+  `X12_GUIDE_NOT_DECLARED` where nothing is declared, both anchored at the ST. The reading is
+  decoded and returned either way, against the element positions of the guide the reader
+  implements, so on a warned document a value can sit at a position the declared guide defines
+  differently. What the check keys on, exactly:
+  - **The declaration is `ST-03` decoded, then `GS-08` decoded.** `ST-03` is read post-`?`-unescape,
+    exactly as `implementationConventionReference` is published. Only where `ST-03` is absent or
+    decodes to `""` is GS-08 of the enclosing functional group read, decoded the same way; a parsed
+    transaction set carries its group's GS header on `tx.gs` for this, and one assembled by hand
+    without it is read as GS-08 absent. Nothing is trimmed, case-folded or prefix-matched, so a
+    whitespace-only or lower-cased declaration is reported as not implemented.
+  - **🛑 `ST-03` and `GS-08` are NOT reconciled.** Where `ST-03` is non-empty it alone decides and
+    GS-08 is never read, so a document whose two declarations disagree is judged on `ST-03` and
+    nothing reports the disagreement.
+  - **The implemented set is `X12_TR3_CONFORMANCE`**, each of the reader's rows contributing its
+    `tr3` and every `cfrAdopted` entry. **The 837 reader also recognises every identifier its
+    variant table resolves**, which includes the companion-guide identifiers production claims carry,
+    so a conformant claim declaring one is not accused. A 278 declaring `005010X216` is warned on
+    both 278 readers, and so is `build278Response`'s own output, which still declares it.
+  - **What the check decides is a warning, plus one label.** A 277 whose declared guide is outside
+    `get277Status`'s set, or absent, reads `transactionType: "unrecognized-guide"`. Everything else
+    that keys on `ST-03` - the 837 variant, the choice between `claim-status` and
+    `claim-acknowledgment`, and `get277CADisposition`'s admission - still keys on the raw text and
+    did not move, so the check and those decisions can read the same `ST-03` differently where a
+    release escape is involved (see the next entry).
+
 - **🩺 `implementationConventionReference` is POST-`?`-unescape as of this release, in every typed
   reader that publishes it, and that is a behaviour change on documents whose `ST-03` carries a
   release escape.** `tx.st.elements` is the ST segment as framed:
@@ -149,8 +177,8 @@ model.
   publishes `A*B`, `A?:B` publishes `A:B`, `A?~B` publishes `A~B`, `A?^B` publishes `A^B`. Every one
   of those published the framed bytes before.
   - **🛑 What decides an outcome did NOT move, deliberately.** The 837 variant lookup, the 277 /
-    277CA `transactionType` discriminator and `get277CADisposition`'s admission gate all still key on
-    the RAW element text, so no document changes variant, discriminator or admission because of this
+    277CA `transactionType` choice between its two claim labels and `get277CADisposition`'s
+    admission gate all still key on the RAW element text, so no document changes variant, discriminator or admission because of this
     entry. That matters because the two can differ: with `componentSeparator: "X"` - a letter is an
     admissible delimiter - an `ST-03` framed as `005010?X222A1` decodes to `005010X222A1`, an
     identifier the variant table holds. Keying on the decoded text would make the declaration beat

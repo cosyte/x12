@@ -109,6 +109,8 @@ export const WARNING_CODES = {
   X12_271_AAA_UNKNOWN_CODE: "X12_271_AAA_UNKNOWN_CODE",
   X12_271_AAA_SEGMENT_MALFORMED: "X12_271_AAA_SEGMENT_MALFORMED",
   X12_271_AAA_LOOP_UNIDENTIFIED: "X12_271_AAA_LOOP_UNIDENTIFIED",
+  X12_GUIDE_NOT_IMPLEMENTED: "X12_GUIDE_NOT_IMPLEMENTED",
+  X12_GUIDE_NOT_DECLARED: "X12_GUIDE_NOT_DECLARED",
 } as const;
 
 /**
@@ -504,6 +506,10 @@ const WARNING_MESSAGES = {
     "271 AAA request validation could not be attributed to a hierarchical level at all: no level of a kind this surface names encloses the segment, either because none had opened when it arrived or because the enclosing level's HL-03 is none of them. The level part of the condition's key is left ABSENT rather than guessed, and so is the hierarchical identifier where the enclosing level states none. The occurrence index counts within the AAA segments of this document whose level is likewise unknown, in document order, so two such segments are indexed 0 and 1 and never both 0. The AAA is NOT dropped and nothing the sender sent is echoed here.",
   X12_STATED_AMOUNT_DISCARDED:
     "Stated amount discarded: the RMR or AMT at `position.segmentIndex` populated its amount element and this reader built NO row for it, for a reason that is not a failure to decode that amount. What the sender wrote reaches no part of the typed model, so an empty list of open items or amounts is not evidence the sender stated none. Read that as the only claim made here: this code does NOT assert the amount is decodable, and on the RMR route below it is raised without the bytes ever being DECODED, so they may be unreadable, blank-but-present, or a lone component separator. Two routes reach it and this code does not say which. First, an 820 RMR whose RMR-01 and RMR-02 are BOTH empty while a remittance loop is open: the open item is refused on identity before RMR-04 or RMR-05 is read at all, so a stated payment amount, a stated amount due and the payment action code beside them go together. Second, an 837 AMT arriving while a Loop 2430 line adjudication is open: AMT-02 decoded, and the v1 adjudication model carries no amount row to put it on, so the row is skipped. Compare `X12_AMOUNT_ROW_DROPPED`, which reports the other situation on the same segments: there the amount element decoded no value, so there was no row to build at all. The two can never name the same segment. Read the bound literally, as a property of the READ: this reports a segment whose amount element the sender populated, arriving while the loop that would carry its row was open. It does NOT report an AMT or ADX that reaches a reader with no such loop open, which stays silent and is recorded in KNOWN-LIMITATIONS.md. And on the RMR route it says nothing about whether that amount WOULD have decoded, because the row is refused before the decode is attempted, so no `X12_UNPARSEABLE_DECIMAL` accompanies it even where the bytes are unreadable. Nothing is fabricated to stand in. The verbatim segments are preserved on the transaction set; read them there before concluding the document stated no such amount.",
+  X12_GUIDE_NOT_IMPLEMENTED:
+    "The transaction set declares an implementation guide this reader does not implement. The declaration is ST-03, decoded of any release escape, or, where ST-03 is absent or empty, GS-08 of the functional group that framed the transaction set, decoded the same way; it is compared exactly, with nothing trimmed, case-folded or prefix-matched, against the guide identifiers this reader's rows in `X12_TR3_CONFORMANCE` name. The reading was still decoded and returned against the element positions of the guide this reader implements, and nothing was refused, dropped or re-decoded because of this code, so a value on it may sit at a position the declared guide defines differently. Nothing the sender declared is echoed here. Where the reading publishes `implementationConventionReference`, that field carries the decoded ST-03; the transaction set's `st` carries ST-03 as framed, and GS-08 is raw, framed bytes on the functional group's `gs`.",
+  X12_GUIDE_NOT_DECLARED:
+    "The transaction set declares no implementation guide: ST-03 is absent or empty, and GS-08 of the functional group that framed the transaction set is absent or empty too, or no functional group header reached the transaction set at all. The reading was still decoded and returned against the element positions of the guide this reader implements, and nothing was refused, dropped or re-decoded because of this code; that the document follows that guide is assumed here, not established. `X12_TR3_CONFORMANCE` names the guides each reader implements. Nothing is echoed here.",
 } as const;
 
 /**
@@ -2030,6 +2036,61 @@ export function aaaLoopUnidentified(
   return {
     code: WARNING_CODES.X12_271_AAA_LOOP_UNIDENTIFIED,
     message: AAA_LOOP_UNIDENTIFIED_MESSAGES[level],
+    position,
+  };
+}
+
+/**
+ * Build an `X12_GUIDE_NOT_IMPLEMENTED` warning. Raised by a typed reader when
+ * the implementation guide a transaction set declares is not one that reader
+ * implements. The declaration is ST-03, decoded of any release escape, or
+ * GS-08 of the enclosing functional group where ST-03 is absent or empty; the
+ * comparison is exact, and the guides a reader implements are the ones its
+ * rows in `X12_TR3_CONFORMANCE` name.
+ *
+ * The reading is still decoded and returned: this code refuses, drops and
+ * re-decodes nothing. It takes a position and no value, so the declared
+ * identifier never reaches the message; readers anchor it at the ST
+ * (`segmentIndex: 0`) with no `elementIndex`, because the declaration may have
+ * come from GS-08 rather than from an element of the ST.
+ *
+ * @example
+ * ```ts
+ * import { guideNotImplemented } from "@cosyte/x12";
+ * const w = guideNotImplemented({ segmentIndex: 0, transactionIndex: 0 });
+ * w.code; // "X12_GUIDE_NOT_IMPLEMENTED"
+ * ```
+ */
+export function guideNotImplemented(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+    message: WARNING_MESSAGES.X12_GUIDE_NOT_IMPLEMENTED,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_GUIDE_NOT_DECLARED` warning. Raised by a typed reader when a
+ * transaction set declares no implementation guide at all: ST-03 is absent or
+ * empty and GS-08 of the enclosing functional group is absent or empty too, or
+ * no functional group header reached the transaction set (one assembled by
+ * hand, say). A whitespace-only declaration is NOT empty and is reported as
+ * `X12_GUIDE_NOT_IMPLEMENTED` instead, because nothing is trimmed.
+ *
+ * The reading is still decoded and returned against the guide the reader
+ * implements. Readers anchor it at the ST (`segmentIndex: 0`).
+ *
+ * @example
+ * ```ts
+ * import { guideNotDeclared } from "@cosyte/x12";
+ * const w = guideNotDeclared({ segmentIndex: 0, transactionIndex: 0 });
+ * w.code; // "X12_GUIDE_NOT_DECLARED"
+ * ```
+ */
+export function guideNotDeclared(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_GUIDE_NOT_DECLARED,
+    message: WARNING_MESSAGES.X12_GUIDE_NOT_DECLARED,
     position,
   };
 }

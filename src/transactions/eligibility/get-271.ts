@@ -55,6 +55,7 @@ import {
   type X12AaaLevelContext,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
+import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 import { decodeHl, HL_LEVEL_CODES, validateHl, type X12Hl } from "../shared/hl.js";
 import { AAA_CONDITION_LEVELS } from "./types.js";
 import type {
@@ -138,6 +139,12 @@ const AAA_REJECT_REASON_ELEMENT = 3;
 const AAA_FOLLOW_UP_ACTION_ELEMENT = 4;
 
 /**
+ * The guides this reader implements, derived from the 271 row of
+ * `X12_TR3_CONFORMANCE` (its `tr3` plus every `cfrAdopted` entry). @internal
+ */
+const IMPLEMENTED_GUIDES_271 = implementedGuides("271");
+
+/**
  * Extract a typed {@link X12Eligibility} from a 271 transaction set. Pure
  * function - no I/O, no global state. Returns `undefined` only when the
  * input transaction's ST-01 is not `"271"` (mis-routed call); every other
@@ -166,6 +173,10 @@ export function get271Eligibility(
   if (tx.st.elements[1] !== "271") return undefined;
 
   const warnings: X12ParseWarning[] = [];
+  // The declared guide (ST-03, else GS-08) against the guides this reader
+  // implements: warned at the ST, never refused, and the walk is unchanged.
+  const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_271);
+  if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
 
   const hierarchies: X12Hl[] = [];

@@ -1,6 +1,7 @@
 /**
  * Typed model for the X12 278 Health Care Services Review - Request for
- * Review (TR3 `005010X217`) and Response (TR3 `005010X216`). Both directions
+ * Review and Response, both read against TR3 `005010X217` (with its errata
+ * `005010X217E1`), one guide covering both directions. Both directions
  * share one structural shape: {@link X12ServicesReview} is returned by both
  * {@link "./get-278.js".get278Request} and {@link
  * "./get-278.js".get278Response}; `direction` records which entry point
@@ -15,8 +16,8 @@
  * outcome and NEVER normalizes the code. A request echoes its `TRN` trace so
  * the response can be re-associated, exactly as 270/271 and 276/277 do.
  *
- * Spec sources: WPC TR3 `005010X217` (request) / `005010X216` (response).
- * Segment-level references in JSDoc are 1-indexed against those TR3s.
+ * Spec source: WPC TR3 `005010X217`, for both directions. Segment-level
+ * references in JSDoc are 1-indexed against it.
  */
 
 import type { X12HiCodeSystem } from "../../code-lists/hi-qualifiers.js";

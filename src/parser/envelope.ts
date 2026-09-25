@@ -469,6 +469,10 @@ export function decodeEnvelope(
       se,
       segments: Object.freeze(tx.segments.slice()),
       rawSegments: Object.freeze(tx.rawSegments.slice()),
+      // The enclosing group's header, by reference, so a typed reader handed
+      // only this transaction set can fall back to GS-08 where ST-03 is
+      // absent or empty. Raw, like every envelope element.
+      gs: group.gs,
     });
   };
 
