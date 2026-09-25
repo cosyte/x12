@@ -354,6 +354,59 @@ getSegmentValue(hi!, "01-2", ix.delimiters); // => "J45.50"
 getSegmentValue(hi!, "02-1", ix.delimiters); // => "ABF"
 ```
 
+## Binary segments: BDS and BIN
+
+Two segments carry binary data, such as an attachment: `BDS` (BDS-01 filter, BDS-02 length, BDS-03
+data) and `BIN` (BIN-01 length, BIN-02 data). Their data element can hold any octet from `0x00` to
+`0xFF`, delimiters included, so `parseX12` frames it by the **octet count its length element
+declares**, not by scanning for delimiters. The segment stays one segment, the data stays one element,
+and every segment after it frames as sent. A `?` inside the declared span is data, never an escape.
+`getSegmentValue`, `getAllSegmentValues` and `elementValue` return the data element verbatim: no
+release unescape and no split on the repetition or component separator.
+
+```ts runnable
+import { parseX12, getSegmentValue, serializeX12 } from "@cosyte/x12";
+
+// BIN-01 declares 12 octets, and the data carries a `~` and a `*`.
+const raw =
+  "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       " +
+  "*260601*1200*^*00501*000000001*0*P*:~" +
+  "GS*PI*SENDER*RECEIVER*20260601*1200*1*X*005010X210~" +
+  "ST*275*0001~" +
+  "BIN*12*PART~ONE*TWO~" +
+  "SE*3*0001~GE*1*1~IEA*1*000000001~";
+
+const ix = parseX12(raw);
+const bin = ix.groups[0]?.transactions[0]?.segments[1];
+
+bin?.id; // => "BIN"
+getSegmentValue(bin!, "02", ix.delimiters); // => "PART~ONE*TWO"
+ix.warnings.length; // => 0
+serializeX12(ix) === raw; // => true
+```
+
+Limits worth knowing before you rely on it:
+
+- **The count is in octets.** A `Buffer` is read one character per octet, so its count is exact. A
+  string is counted one UTF-16 code unit per octet, exact at or below U+00FF; a span holding anything
+  above that raises `X12_BINARY_LENGTH_UNVERIFIABLE` and is carried verbatim. Pass an interchange that
+  carries attachments as a `Buffer`.
+- **Nothing is decoded.** BDS-01's filter (`B64`, for example) is not applied, and nothing inside the
+  data is parsed.
+- **A count that cannot be honoured is reported, never corrected**, anchored at the segment:
+  `X12_BINARY_LENGTH_INVALID` where the length element is absent, empty or not 1 to 15 ASCII digits,
+  `X12_BINARY_DATA_TRUNCATED` where the input ends inside the declared span, and
+  `X12_BINARY_LENGTH_MISMATCH` where the byte after the span is not the segment terminator. On an
+  invalid length nothing is inferred: the segment is framed by its delimiters like any other, so a
+  delimiter in its data splits it. On a truncated span the data element holds only the octets
+  present. On a mismatch the data element is exactly the declared span and the bytes after it stay on
+  the segment's `raw`, so the default `serializeX12` emit still reproduces the input byte for byte.
+- **The length element is never rewritten on emit**, in either mode, even where it disagrees with the
+  data. For a segment that parsed with none of those warnings it already equals the data's octet
+  count, so the round trip above holds in `{ specClean: true, recomputeCounts: true }` too.
+
+`KNOWN-LIMITATIONS.md` carries the full account.
+
 ## Loops: the repeating sub-structures
 
 Above the segment sits the **loop**: a repeating group of segments that models a business entity (a

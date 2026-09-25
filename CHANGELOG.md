@@ -376,6 +376,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **🩺 A BDS or BIN segment's binary data is framed by the octet count its length element declares,
+  not by delimiters.** A BDS-03 or BIN-02 carrying the segment terminator used to end the segment
+  inside the data, and one carrying the element or component separator was split, so an attachment
+  came back in fragments and every segment after it was mis-framed. The data element now holds
+  exactly the declared octets whatever bytes they are, `getSegmentValue` / `getAllSegmentValues` /
+  `elementValue` return it verbatim, and `serializeX12` writes the segment back unchanged in both
+  modes. Four warning codes are added, additions only, each value-free and anchored at the segment:
+  **`X12_BINARY_DATA_TRUNCATED`**, **`X12_BINARY_LENGTH_INVALID`** (no length is inferred; the
+  segment is framed by its delimiters), **`X12_BINARY_LENGTH_MISMATCH`** (the data is the declared
+  span and the bytes after it stay on `raw`) and **`X12_BINARY_LENGTH_UNVERIFIABLE`** (a string span
+  holding a character above U+00FF; a `Buffer` never raises it). The length element is never
+  rewritten, and BDS-01's filter is not applied.
+
 - **🩺 Every typed reader now checks the guide a transaction set declares, and warns when it is not
   one that reader implements** (`X12-17`). Each reader used to admit a transaction set on ST-01
   alone, so a 277 declaring `006020X313` (a claim request for additional information) came back
