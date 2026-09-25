@@ -110,9 +110,8 @@ export function get278Request(
  * (`005010X217`, the same guide as the request). Same lenient walk as
  * {@link get278Request}; the `HCR` decision under each event / service review
  * is the response's safety-critical addition. Returns `undefined` only on a
- * mis-routed ST-01. A response declaring `005010X216`, which
- * `build278Response` still writes, is read like any other and carries
- * `X12_GUIDE_NOT_IMPLEMENTED`.
+ * mis-routed ST-01. A response declaring `005010X216`, the 278 notification
+ * guide, is read like any other and carries `X12_GUIDE_NOT_IMPLEMENTED`.
  *
  * @example
  * ```ts

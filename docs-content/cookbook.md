@@ -803,7 +803,7 @@ authorization number to put on the claim you are about to send.
 implementation guide, `005010X217`. Both are 278s, so route on the direction the model reports
 rather than on `ST-01` alone; a reader hands back `undefined` for a transaction it does not decode.
 A 278 declaring any other guide is still read, and carries `X12_GUIDE_NOT_IMPLEMENTED`; that
-includes `005010X216`, which `build278Response` still writes into ST-03 and GS-08.
+includes `005010X216`, the 278 notification guide.
 
 **The `HCR-01` certification action is the field this library places verbatim and never infers.** It
 is response-only: a request carries no decision at all, and `review.decision` is `undefined` there
