@@ -73,15 +73,20 @@ interface Declaration {
 
 type Body = (d: Delimiters) => readonly (readonly string[])[];
 
-/** A one-group, one-transaction interchange carrying `body` under `declaration`. */
+/**
+ * A one-group, one-transaction interchange carrying `body` under `declaration`.
+ * `agency` is GS-07, the responsible agency code: `X` everywhere except where
+ * `X` is itself the component separator.
+ */
 function interchange(
   st01: string,
   functionalId: string,
   declaration: Declaration,
   body: readonly (readonly string[])[],
   d: Delimiters = CONVENTIONAL,
+  agency = "X",
 ): string {
-  const gs = ["GS", functionalId, "SENDER", "RECEIVER", "20260101", "1200", "1", "X"];
+  const gs = ["GS", functionalId, "SENDER", "RECEIVER", "20260101", "1200", "1", agency];
   if (declaration.gs08 !== null) gs.push(declaration.gs08);
   const st = ["ST", st01, "0001"];
   if (declaration.st03 !== null) st.push(declaration.st03);
@@ -742,8 +747,10 @@ describe("AC-10: a prototype member name or a whitespace-only declaration is nev
 describe("AC-11: an escaped ST-03 that decodes to an implemented guide is not warned", () => {
   /**
    * `componentSeparator` is `X`, and no element other than ST-03 carries an
-   * `X`: no composite, no `XX` qualifier, and GS-08 is sent empty so the
-   * decision rests on ST-03 alone. The only service segment is `SV2`.
+   * `X` (ISA-16 aside, which is where the separator is declared): no
+   * composite, no `XX` qualifier, GS-07 sent as the other agency code `T`,
+   * and GS-08 sent empty so the decision rests on ST-03 alone. The only
+   * service segment is `SV2`.
    */
   it("AC-11: an 837P with ST-03 framed 005010?X222A1 under component X raises no guide code and keeps the SV2 fall-back", () => {
     const d: Delimiters = { ...CONVENTIONAL, component: "X" };
@@ -758,10 +765,17 @@ describe("AC-11: an escaped ST-03 that decodes to an implemented guide is not wa
       ["LX", "1"],
       ["SV2", "0300", "", "150", "UN", "1"],
     ];
-    const raw = interchange("837", "HC", { st03: "005010?X222A1", gs08: "" }, body, d);
+    const raw = interchange("837", "HC", { st03: "005010?X222A1", gs08: "" }, body, d, "T");
     const { d: parsed, tx } = firstTransaction(raw);
     expect(parsed.component).toBe("X");
     expect(tx.st.elements[3]).toBe("005010?X222A1");
+    // The separator occurs in no data element but ST-03 once the ISA is set
+    // aside (element 0 is the segment id, which `LX` spells with an `X`).
+    const elementsWithX = tx.segments
+      .flatMap((s) => s.elements.slice(1))
+      .filter((e) => e.includes("X"));
+    expect(elementsWithX).toEqual(["005010?X222A1"]);
+    expect(tx.gs?.elements.filter((e) => e.includes("X"))).toEqual([]);
     const submission = get837Claims(parsed, tx);
     expect(submission?.warnings.filter((w) => GUIDE_CODES.has(w.code))).toEqual([]);
     // The raw bytes key no variant-table entry, so the service-segment
@@ -797,6 +811,13 @@ describe("AC-11: an escaped ST-03 that decodes to an implemented guide is not wa
     const { d: parsed, tx } = firstTransaction(raw);
     expect(parsed.component).toBe("4");
     expect(tx.st.elements[3]).toBe("005010X21?4");
+    // The separator occurs in no data element but ST-03 once the ISA is set
+    // aside.
+    const elementsWith4 = tx.segments
+      .flatMap((s) => s.elements.slice(1))
+      .filter((e) => e.includes("4"));
+    expect(elementsWith4).toEqual(["005010X21?4"]);
+    expect(tx.gs?.elements.filter((e) => e.includes("4"))).toEqual([]);
     const status = get277Status(parsed, tx);
     expect(status?.warnings.filter((w) => GUIDE_CODES.has(w.code))).toEqual([]);
     expect(status?.transactionType).toBe("claim-status");
