@@ -44,9 +44,10 @@ export function normaliseDistribution(name: string): string {
 export function parseExactPin(requirement: string, oracle?: string): ExactPin {
   const match = /^([A-Za-z0-9._-]+)==([A-Za-z0-9._-]+)$/u.exec(requirement);
   if (match === null || match[1] === undefined || match[2] === undefined) {
+    const whose = oracle === undefined || oracle === requirement ? "oracle" : `${oracle} oracle`;
     throw new OracleRequirementError(
       oracle ?? requirement,
-      `The oracle requirement must pin an exact version as "<name>==<version>", got "${requirement}".`,
+      `The ${whose} requirement must pin an exact version as "<name>==<version>", got "${requirement}".`,
     );
   }
   return { name: match[1], version: match[2] };

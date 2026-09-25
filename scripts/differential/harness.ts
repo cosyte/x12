@@ -357,9 +357,7 @@ export function partitionScope(descriptions: readonly OracleDescription[]): Scop
         reason:
           `This package implements no implementation guide identifier for ${row.title}, so ` +
           `there is no version or release identifier for ` +
-          either(
-            descriptions.map((d) => `${d.package} ${d.version} (${d.bindingSource})`),
-          ) +
+          either(descriptions.map((d) => `${d.package} ${d.version} (${d.bindingSource})`)) +
           ` to bind a map or model to.`,
       });
       continue;

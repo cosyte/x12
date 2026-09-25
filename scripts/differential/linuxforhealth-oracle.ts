@@ -111,7 +111,10 @@ export function parseLinuxForHealthRequirement(
 }
 
 /** The argv that obtains and invokes the oracle, for one subcommand. */
-export function linuxforhealthInvocation(pin: LinuxForHealthPin, args: readonly string[]): string[] {
+export function linuxforhealthInvocation(
+  pin: LinuxForHealthPin,
+  args: readonly string[],
+): string[] {
   const interpreter = process.env[LINUXFORHEALTH_INTERPRETER_ENV];
   if (interpreter !== undefined && interpreter !== "") {
     return [interpreter, ORACLE_SCRIPT, ...args];
@@ -212,27 +215,33 @@ export function linuxforhealthOracle(
   icvn: string,
 ): DifferentialOracle {
   const pin = parseLinuxForHealthRequirement(requirement);
+  // Each call settles its promise, a refusal included, rather than throwing
+  // past it.
   return {
     describe(): Promise<OracleDescription> {
-      const argv = linuxforhealthInvocation(pin, ["describe", icvn]);
-      const raw = invokeOracle(pin.label, argv) as RawDescription;
-      const companions = checkInstallation(pin, raw, argv.join(" "));
-      return Promise.resolve({
-        package: raw.package,
-        version: raw.version,
-        licence: raw.licence.expression ?? raw.licence.declared ?? "unstated",
-        licenceClassifier: raw.licence.classifier,
-        bindingKind: "model",
-        bindingSource: raw.bindingSource,
-        interchangeControlVersion: raw.interchangeControlVersion,
-        python: raw.python,
-        companions,
-        bindings: raw.bindings,
+      return new Promise((resolve) => {
+        const argv = linuxforhealthInvocation(pin, ["describe", icvn]);
+        const raw = invokeOracle(pin.label, argv) as RawDescription;
+        const companions = checkInstallation(pin, raw, argv.join(" "));
+        resolve({
+          package: raw.package,
+          version: raw.version,
+          licence: raw.licence.expression ?? raw.licence.declared ?? "unstated",
+          licenceClassifier: raw.licence.classifier,
+          bindingKind: "model",
+          bindingSource: raw.bindingSource,
+          interchangeControlVersion: raw.interchangeControlVersion,
+          python: raw.python,
+          companions,
+          bindings: raw.bindings,
+        });
       });
     },
     read(document: CorpusDocument): Promise<OracleRead> {
-      const argv = linuxforhealthInvocation(pin, ["read"]);
-      return Promise.resolve(invokeOracle(pin.label, argv, document.text) as OracleRead);
+      return new Promise((resolve) => {
+        const argv = linuxforhealthInvocation(pin, ["read"]);
+        resolve(invokeOracle(pin.label, argv, document.text) as OracleRead);
+      });
     },
   };
 }

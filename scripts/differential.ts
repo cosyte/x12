@@ -70,7 +70,10 @@ import {
   type DifferentialRun,
   type LibraryProvenance,
 } from "./differential/harness.js";
-import { LINUXFORHEALTH_PACKAGE, linuxforhealthOracle } from "./differential/linuxforhealth-oracle.js";
+import {
+  LINUXFORHEALTH_PACKAGE,
+  linuxforhealthOracle,
+} from "./differential/linuxforhealth-oracle.js";
 import {
   normaliseDistribution,
   OracleRequirementError,
@@ -200,9 +203,13 @@ function differentialScriptArguments(): string[] {
   const manifest = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as {
     scripts?: Record<string, string>;
   };
-  const script = manifest.scripts?.differential ?? "";
+  const script = manifest.scripts?.["differential"] ?? "";
   const words = script.trim().split(/\s+/u);
-  if (words[0] !== "tsx" || words[1] !== "scripts/differential.ts" || /["'`$\\|;&<>]/u.test(script)) {
+  if (
+    words[0] !== "tsx" ||
+    words[1] !== "scripts/differential.ts" ||
+    /["'`$\\|;&<>]/u.test(script)
+  ) {
     throw new TypeError(
       `package.json's differential script must be "tsx scripts/differential.ts" followed by plain ` +
         `--oracle, --with and --python arguments, got ${JSON.stringify(script)}.`,
@@ -249,7 +256,7 @@ function buildOracles(oracles: readonly OracleArguments[]): DifferentialOracle[]
  */
 function comparable(report: DifferentialReport | Record<string, unknown>): string[] {
   const rest: Record<string, unknown> = { ...report };
-  delete rest.library;
+  delete rest["library"];
   return JSON.stringify(rest, null, 2).split("\n");
 }
 
