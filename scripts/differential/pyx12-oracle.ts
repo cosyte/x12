@@ -1,5 +1,5 @@
 /**
- * The real oracle: pyx12, an independent open-source X12 reader, driven out of
+ * The first oracle: pyx12, an independent open-source X12 reader, driven out of
  * process through `scripts/differential/oracle.py`.
  *
  * SECURITY: every subprocess is array-form `spawnSync`, no shell.
@@ -21,7 +21,6 @@
  * rather than producing a report about a different reader.
  */
 
-import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -33,6 +32,7 @@ import {
   type OracleDescription,
   type OracleRead,
 } from "./harness.js";
+import { invokeOracle, parseExactPin, type ExactPin } from "./oracle-process.js";
 
 const ORACLE_SCRIPT = join(dirname(fileURLToPath(import.meta.url)), "oracle.py");
 
@@ -40,14 +40,8 @@ const ORACLE_SCRIPT = join(dirname(fileURLToPath(import.meta.url)), "oracle.py")
 export const INTERPRETER_ENV = "X12_DIFFERENTIAL_PYTHON";
 
 /** Split `name==version` into its halves, refusing anything that can move. */
-export function parseRequirement(requirement: string): { name: string; version: string } {
-  const match = /^([A-Za-z0-9._-]+)==([A-Za-z0-9._-]+)$/u.exec(requirement);
-  if (match === null || match[1] === undefined || match[2] === undefined) {
-    throw new TypeError(
-      `The oracle requirement must pin an exact version as "<name>==<version>", got "${requirement}".`,
-    );
-  }
-  return { name: match[1], version: match[2] };
+export function parseRequirement(requirement: string): ExactPin {
+  return parseExactPin(requirement);
 }
 
 /** The argv that obtains and invokes the oracle, for one subcommand. */
@@ -72,34 +66,7 @@ export function oracleInvocation(requirement: string, args: readonly string[]): 
 }
 
 function invoke(requirement: string, args: readonly string[], input = ""): unknown {
-  const argv = oracleInvocation(requirement, args);
-  const [command, ...rest] = argv;
-  const printable = argv.join(" ");
-  if (command === undefined) throw new TypeError("empty oracle invocation");
-  const result = spawnSync(command, rest, {
-    encoding: "utf8",
-    input,
-    maxBuffer: 256 * 1024 * 1024,
-  });
-  if (result.error !== undefined) {
-    throw new OracleUnavailableError(requirement, printable, result.error.message);
-  }
-  if (result.status !== 0) {
-    throw new OracleUnavailableError(
-      requirement,
-      printable,
-      `exit ${String(result.status)}\n${result.stderr}`,
-    );
-  }
-  try {
-    return JSON.parse(result.stdout) as unknown;
-  } catch {
-    throw new OracleUnavailableError(
-      requirement,
-      printable,
-      `the oracle produced no JSON on stdout\n${result.stderr}`,
-    );
-  }
+  return invokeOracle(requirement, oracleInvocation(requirement, args), input);
 }
 
 interface RawDescription {
@@ -139,9 +106,25 @@ export function pyx12Oracle(requirement: string, icvn: string): DifferentialOrac
         version: raw.version,
         licence: raw.licence.expression ?? raw.licence.declared ?? "unstated",
         licenceClassifier: raw.licence.classifier,
-        mapIndex: raw.mapIndex,
+        bindingKind: "map",
+        bindingSource: raw.mapIndex,
         interchangeControlVersion: raw.interchangeControlVersion,
-        bindings: raw.bindings,
+        // pyx12's requirement pins the oracle alone: no interpreter version and
+        // no companion package is fixed by it, so none is recorded as fixed.
+        python: null,
+        companions: [],
+        // pyx12's map index binds a map by implementation guide and functional
+        // group, never by transaction set, so no binding here restricts one.
+        bindings: raw.bindings.map((binding) => ({
+          icvn: binding.icvn,
+          vriic: binding.vriic,
+          transactionSet: null,
+          fic: binding.fic,
+          tspc: binding.tspc,
+          model: binding.mapFile,
+          modelId: binding.mapTransactionId,
+          modelTitle: binding.mapTitle,
+        })),
       });
     },
     read(document: CorpusDocument): Promise<OracleRead> {
