@@ -1851,6 +1851,42 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   sender sent no inquiry without checking `ix.warnings` first.** This is long-standing shared-parse
   behaviour and the 270 work deliberately did not widen it: framing tolerance is shared by every
   transaction set, and moving it is a change to all of them rather than to one reader.
+- **A BDS or BIN segment's binary data is framed by the octet count its length element declares,
+  never by delimiters, and where that count cannot be honoured it is reported, never corrected.**
+  BDS-03 and BIN-02 are read as exactly the number of octets BDS-02 or BIN-01 declares, anywhere after
+  the ISA, so an element, repetition or component separator, a segment terminator, a `?`, a CR or an
+  LF inside the data is data: the segment is one segment, the data is one element, and the segments
+  after it frame as sent. **`?` has no effect inside the declared span**, not even immediately before
+  the terminator that follows it. `getSegmentValue`, `getAllSegmentValues` and `elementValue` return
+  the data element verbatim, with no release unescape and no split on the repetition or component
+  separator. **Nothing inside it is decoded**: BDS-01's filter (`B64`, for example) is not applied,
+  and no typed reader decodes an attachment. **The count is in octets.** A `Buffer` is read one character
+  per octet, so its count is exact; a string is counted one UTF-16 code unit per octet, which is exact
+  at or below U+00FF, and a span holding anything above that raises `X12_BINARY_LENGTH_UNVERIFIABLE`
+  and is still carried verbatim, so pass an interchange that carries attachments as a `Buffer`. The
+  three ways the count can fail, each warned at the segment:
+  - `X12_BINARY_LENGTH_INVALID`: the length element is absent, empty, or not 1 to 15 ASCII digits (a
+    sign, a decimal point or whitespace is malformed; leading zeros are not). **No length is inferred,
+    so this is the one case the count does not protect**: the segment is framed by its delimiters
+    exactly as a segment of any other id is, and a delimiter inside its data splits it and can
+    mis-frame every segment after it.
+  - `X12_BINARY_DATA_TRUNCATED`: the input ends inside the declared span. The data element holds
+    only the octets present and nothing past the end is read, and because the span runs to the end
+    of the input, the transaction, group and interchange trailers are reported missing.
+  - `X12_BINARY_LENGTH_MISMATCH`: the byte after the declared span is not the segment terminator (a
+    length shorter or longer than the data), or the segment ends before a data element begins
+    although a non-zero length was declared. The data element is exactly the declared span; the
+    bytes from its end to the next terminator stay on the segment's `raw`, so a length longer than
+    the data carries the start of the next segment into this one, and the default `serializeX12` emit
+    still reproduces the input byte for byte.
+
+  **The length element is never rewritten on emit**, in either `serializeX12` mode, including where
+  it disagrees with the data: that would be a silent correction. A span that ends exactly at the end
+  of the input is complete and raises no binary warning; its missing terminator is supplied on emit,
+  as for any unterminated final segment, so where a truncated span fell exactly one octet short, a
+  re-parse of that emit reads the supplied terminator as the last octet of the data. Where `?` is the
+  declared element separator or segment terminator, the elements before the data element are split
+  literally, as that role's splitter already does.
 
 ## Code-list validity dates
 

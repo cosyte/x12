@@ -247,3 +247,61 @@ describe("PHI: the 834 enrollment stream", () => {
     }
   });
 });
+
+describe("PHI: binary segment framing (AC-8)", () => {
+  /**
+   * Every binary framing code, each driven with a marker planted in the
+   * length element (BDS-02 / BIN-01) or the data element (BDS-03 / BIN-02).
+   * The slot table carries the four slots; this adds the two codes no slot
+   * reaches (a truncated span and a non-octet character) and the strict-mode
+   * `snippet`, which the shared runner does not read.
+   */
+  const binary = (layout: "BDS" | "BIN", length: string, data: string): string =>
+    buildInterchange({
+      functionalIdCode: "PI",
+      transactionSetId: "275",
+      versionRelease: "005010X210",
+      transactionBody: [`${layout === "BDS" ? "BDS*B64" : "BIN"}*${length}*${data}`],
+    });
+
+  const windows = (marker: string): string[] =>
+    Array.from({ length: marker.length - 3 }, (_, i) => marker.slice(i, i + 4).toLowerCase());
+
+  const cases = (layout: "BDS" | "BIN", m: string): readonly [string, string][] => [
+    [WARNING_CODES.X12_BINARY_LENGTH_INVALID, binary(layout, m, "DATA")],
+    [WARNING_CODES.X12_BINARY_LENGTH_MISMATCH, binary(layout, "4", m)],
+    [WARNING_CODES.X12_BINARY_DATA_TRUNCATED, binary(layout, "999999", m)],
+    [WARNING_CODES.X12_BINARY_LENGTH_UNVERIFIABLE, binary(layout, String(m.length + 1), `€${m}`)],
+  ];
+
+  for (const layout of ["BDS", "BIN"] as const) {
+    it(`AC-8: every ${layout} framing warning is registry-built, echoes no marker, and strict mode carries no snippet`, () => {
+      for (const marker of [PHI_MARKER_UNIT, LONG_MARKER]) {
+        for (const [code, raw] of cases(layout, marker)) {
+          const raised = parseX12(raw).warnings.filter((w) => w.code === code);
+          expect(raised.length, `${layout} ${code}`).toBeGreaterThanOrEqual(1);
+          for (const w of raised) {
+            expect(ALL_WARNING_MESSAGES.has(w.message)).toBe(true);
+            for (const window of windows(PHI_MARKER_UNIT)) {
+              expect(w.message.toLowerCase()).not.toContain(window);
+            }
+          }
+
+          let thrown: unknown;
+          try {
+            parseX12(raw, { strict: true });
+          } catch (err) {
+            thrown = err;
+          }
+          expect(thrown).toBeInstanceOf(X12ParseError);
+          const err = thrown as X12ParseError;
+          expect(err.code).toBe(code);
+          expect(err.snippet).toBe("");
+          for (const window of windows(PHI_MARKER_UNIT)) {
+            expect(err.message.toLowerCase()).not.toContain(window);
+          }
+        }
+      }
+    });
+  }
+});
