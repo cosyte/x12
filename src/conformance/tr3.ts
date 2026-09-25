@@ -10,9 +10,11 @@
  * answer moves. A sentence in a README cannot be asserted on.
  *
  * **What the `cfrAdopted` column is, and what it is not.** It is the set of
- * identifiers 45 CFR 162.920 names for that transaction, read from the
- * official Government Publishing Office XML of the 2024 annual edition of
- * title 45, retrieved 2026-08-25. It is NOT a claim that the identifier this
+ * identifiers 45 CFR 162.920 names for that transaction. The 005010 rows were
+ * read from the official Government Publishing Office XML of the 2024 annual
+ * edition of title 45, retrieved 2026-08-25; the two 006020 rows were read from
+ * the current eCFR text of part 162, as amended by 91 FR 14404, which added
+ * paragraphs (a)(19) and (a)(20). It is NOT a claim that the identifier this
  * package implements is the adopted one: where the two differ the row says so
  * in `adoption` and carries both, because replacing one with the other would
  * hide a real disagreement inside the federal corpus. Nothing here asserts
@@ -57,7 +59,7 @@ export type X12Tr3Direction = "read" | "build";
  * import { X12_TR3_CONFORMANCE, type X12Tr3Adoption } from "@cosyte/x12";
  * const strict: X12Tr3Adoption = "incorporated-by-reference";
  * X12_TR3_CONFORMANCE.filter((row) => row.adoption === strict).map((row) => row.transaction);
- * // ["277", "278", "278", "820"]
+ * // ["275", "276", "277", "277", "278", "278", "820"]
  * ```
  */
 export type X12Tr3Adoption = "incorporated-by-reference" | "errata-in-practice" | "not-adopted";
@@ -150,18 +152,33 @@ const CLAIM_STATUS_PAIR_NOTE =
   "carries a row of its own here.";
 
 /**
+ * 45 CFR 162.2002 adopts both attachments guides for a period that has not
+ * begun yet, so both 006020 rows say so in the same words. @internal
+ */
+const ATTACHMENTS_PERIOD =
+  "45 CFR 162.2002 adopts it for the period on and after May 26, 2028, beside the HL7 " +
+  "attachment guides that section also adopts.";
+
+/**
  * Which implementation guide this package implements for each transaction it
  * reads or builds, and what 45 CFR 162.920 names for that transaction.
  *
  * Frozen at every level: the list, each row, and each row's arrays. Assign to
  * any of them and the value a later reader sees is unchanged.
  *
- * The `cfrAdopted` values are read from the official Government Publishing
- * Office XML of 45 CFR 162.920, title 45 volume 2, 2024 annual edition,
- * retrieved 2026-08-25. Thirteen 005010 identifiers appear in that section and
- * no others: 005010X212, 005010X212E1, 005010X217, 005010X217E1, 005010X218,
- * 005010X220, 005010X221, 005010X222, 005010X223, 005010X223A1, 005010X224,
- * 005010X224A1 and 005010X279.
+ * The 005010 `cfrAdopted` values are read from the official Government
+ * Publishing Office XML of 45 CFR 162.920, title 45 volume 2, 2024 annual
+ * edition, retrieved 2026-08-25. Thirteen 005010 identifiers appear in that
+ * section and no others: 005010X212, 005010X212E1, 005010X217, 005010X217E1,
+ * 005010X218, 005010X220, 005010X221, 005010X222, 005010X223, 005010X223A1,
+ * 005010X224, 005010X224A1 and 005010X279.
+ *
+ * The 006020 `cfrAdopted` values are read from the current eCFR text of the
+ * same section, as amended by 91 FR 14404, which adds two paragraphs and two
+ * identifiers: (a)(19) names 006020X314 for the 275 and (a)(20) names
+ * 006020X313 for the 277 request for additional information. 45 CFR 162.2002
+ * adopts both for the period on and after May 26, 2028. No other 006020
+ * identifier appears in the section.
  *
  * @example
  * ```ts
@@ -192,6 +209,21 @@ export const X12_TR3_CONFORMANCE: readonly X12Tr3Conformance[] = Object.freeze([
     adoption: "errata-in-practice",
     cfrAdopted: ["005010X279"],
     note: ELIGIBILITY_ERRATA_NOTE,
+  }),
+  tr3Row({
+    transaction: "275",
+    variant: null,
+    title: "Additional Information to Support a Health Care Claim or Encounter",
+    tr3: "006020X314",
+    directions: READ_AND_BUILD,
+    adoption: "incorporated-by-reference",
+    cfrAdopted: ["006020X314"],
+    note:
+      "45 CFR 162.920(a)(19) names 006020X314 for the 275, and " +
+      ATTACHMENTS_PERIOD +
+      " 45 CFR 162.2002(c) prints the identifier as 06020X314, one digit short. That " +
+      "spelling is a typographical variant of this identifier and is not carried as an " +
+      "adopted one, so a 275 declaring it is warned as a guide the 275 reader does not implement.",
   }),
   tr3Row({
     transaction: "276",
@@ -225,6 +257,21 @@ export const X12_TR3_CONFORMANCE: readonly X12Tr3Conformance[] = Object.freeze([
       "45 CFR 162.920 names no identifier for the claim acknowledgment: 005010X214 appears " +
       "nowhere in that section, so it is not an adopted standard and nothing there supersedes " +
       "it. This package reads and writes it as a trading partner document.",
+  }),
+  tr3Row({
+    transaction: "277",
+    variant: "RFAI",
+    title: "Health Care Claim Request for Additional Information",
+    tr3: "006020X313",
+    directions: READ_AND_BUILD,
+    adoption: "incorporated-by-reference",
+    cfrAdopted: ["006020X313"],
+    note:
+      "45 CFR 162.920(a)(20) names 006020X313 for the 277 request for additional " +
+      "information, and " +
+      ATTACHMENTS_PERIOD +
+      " It is a different document from the 005010X212 claim status response: get277Status " +
+      "does not implement it, and get277RequestForAdditionalInformation reads nothing else.",
   }),
   tr3Row({
     transaction: "278",

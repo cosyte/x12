@@ -66,11 +66,17 @@ import type {
 const ICR_277CA = "005010X214";
 
 /**
- * The guides `get277Status` implements: the union of BOTH 277 rows of
- * `X12_TR3_CONFORMANCE` (the claim status response and the claim
- * acknowledgment), each row's `tr3` plus every `cfrAdopted` entry. @internal
+ * The guides `get277Status` implements: the union of the claim status
+ * response row and the claim acknowledgment row of `X12_TR3_CONFORMANCE`, each
+ * row's `tr3` plus every `cfrAdopted` entry. Named row by row rather than as
+ * every `277` row, because the request for additional information is also a
+ * `277` row and this reader does not implement it: a 277 declaring that guide
+ * stays `"unrecognized-guide"` here and is read by its own reader. @internal
  */
-const IMPLEMENTED_GUIDES_277 = implementedGuides("277");
+const IMPLEMENTED_GUIDES_277: ReadonlySet<string> = new Set([
+  ...implementedGuides("277", null),
+  ...implementedGuides("277", "277CA"),
+]);
 
 /**
  * The guides `get277CADisposition` implements: the claim acknowledgment row
@@ -101,8 +107,9 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Obje
  * other deviation is recoverable and surfaces on `result.warnings`.
  *
  * The declared guide (ST-03, or GS-08 where ST-03 is absent or empty) is
- * checked against the guides this reader implements, which are those of both
- * 277 rows of `X12_TR3_CONFORMANCE`. Where it is outside them, or nothing is
+ * checked against the guides this reader implements, which are those of the
+ * claim status and claim acknowledgment rows of `X12_TR3_CONFORMANCE`, and not
+ * the request for additional information row. Where it is outside them, or nothing is
  * declared, the reading is still walked and returned, carries
  * `X12_GUIDE_NOT_IMPLEMENTED` or `X12_GUIDE_NOT_DECLARED`, and its
  * `transactionType` is `"unrecognized-guide"`. Otherwise `transactionType` is

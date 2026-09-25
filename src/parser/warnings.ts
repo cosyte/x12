@@ -115,6 +115,10 @@ export const WARNING_CODES = {
   X12_BINARY_LENGTH_INVALID: "X12_BINARY_LENGTH_INVALID",
   X12_BINARY_LENGTH_MISMATCH: "X12_BINARY_LENGTH_MISMATCH",
   X12_BINARY_LENGTH_UNVERIFIABLE: "X12_BINARY_LENGTH_UNVERIFIABLE",
+  X12_277_RFAI_HEADER_ABSENT: "X12_277_RFAI_HEADER_ABSENT",
+  X12_277_RFAI_LEVEL_ABSENT: "X12_277_RFAI_LEVEL_ABSENT",
+  X12_277_RFAI_REQUEST_ABSENT: "X12_277_RFAI_REQUEST_ABSENT",
+  X12_275_ATTACHMENT_ABSENT: "X12_275_ATTACHMENT_ABSENT",
 } as const;
 
 /**
@@ -522,6 +526,14 @@ const WARNING_MESSAGES = {
     "The binary data of this BDS or BIN segment does not end where its length element (BDS-02 or BIN-01) says it does: the byte after the declared span is not the segment terminator, or the segment ends before a data element begins. Where a data element is present it holds exactly the declared span, and the bytes between that span and the next segment terminator stay on the segment's raw text, so the default `serializeX12` emit reproduces them; where none is present the segment is framed by its delimiters. Nothing is corrected, the length element is never rewritten, and nothing is echoed here.",
   X12_BINARY_LENGTH_UNVERIFIABLE:
     "The declared span of this BDS or BIN segment's binary data holds a character above U+00FF, which is not one octet, so the octet count its length element declares could not be verified against the input. This arises only for string input: the span is counted in UTF-16 code units, one per octet, and its characters are carried verbatim on the data element at `position.elementIndex`. A Buffer passed to `parseX12` is read one octet per character, where the count is exact. Nothing is echoed here.",
+  X12_277_RFAI_HEADER_ABSENT:
+    "277 request for additional information with no BHT: the transaction set carries no Beginning of Hierarchical Transaction segment, so the reading's `header` is undefined. Nothing is fabricated to stand in: no purpose code, reference, date or time is inferred, and the rest of the transaction set was read as it stands. The verbatim segments are preserved on the transaction set. Nothing is echoed here.",
+  X12_277_RFAI_LEVEL_ABSENT:
+    "277 request for additional information with no hierarchical level: the transaction set carries no HL segment, so the reading's `levels` list is empty, and no entity and no claim-level request is reachable on it, because each is read under the level it was sent in. Nothing is fabricated to stand in and no level is synthesized. The verbatim segments are preserved on the transaction set; read them there before concluding the health plan requested nothing. Nothing is echoed here.",
+  X12_277_RFAI_REQUEST_ABSENT:
+    "277 request for additional information with no claim-level request: no level on the reading carries a request, because no TRN, STC or SVC arrived under an HL. Where the transaction set carries no HL at all, `X12_277_RFAI_LEVEL_ABSENT` is raised beside this code. The reading therefore names no claim and no requested item. Nothing is fabricated to stand in. The verbatim segments are preserved on the transaction set; read them there before concluding the health plan requested nothing. Nothing is echoed here.",
+  X12_275_ATTACHMENT_ABSENT:
+    "275 with no attachment: the transaction set carries no BDS segment, so the reading's `attachments` list is empty. Nothing is fabricated to stand in. The heading and every LX line are on the reading as usual, and the verbatim segments are preserved on the transaction set, including any segment this reader does not read as an attachment. Nothing is echoed here.",
 } as const;
 
 /**
@@ -2209,6 +2221,99 @@ export function binaryLengthUnverifiable(position: X12Position): X12ParseWarning
   return {
     code: WARNING_CODES.X12_BINARY_LENGTH_UNVERIFIABLE,
     message: WARNING_MESSAGES.X12_BINARY_LENGTH_UNVERIFIABLE,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_277_RFAI_HEADER_ABSENT` warning. Raised by
+ * `get277RequestForAdditionalInformation` when the transaction set carries no
+ * BHT, so the reading's `header` is left undefined rather than filled in.
+ *
+ * The reader anchors it at the ST (`segmentIndex: 0`), because an absent
+ * segment has no position of its own. It takes a position and nothing else.
+ *
+ * @example
+ * ```ts
+ * import { rfaiHeaderAbsent } from "@cosyte/x12";
+ * const w = rfaiHeaderAbsent({ segmentIndex: 0, transactionIndex: 0 });
+ * w.code; // "X12_277_RFAI_HEADER_ABSENT"
+ * ```
+ */
+export function rfaiHeaderAbsent(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_277_RFAI_HEADER_ABSENT,
+    message: WARNING_MESSAGES.X12_277_RFAI_HEADER_ABSENT,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_277_RFAI_LEVEL_ABSENT` warning. Raised by
+ * `get277RequestForAdditionalInformation` when the transaction set carries no
+ * HL segment, so the reading's `levels` list is empty and no level is
+ * synthesized.
+ *
+ * The reader anchors it at the ST (`segmentIndex: 0`). It takes a position and
+ * nothing else.
+ *
+ * @example
+ * ```ts
+ * import { rfaiLevelAbsent } from "@cosyte/x12";
+ * const w = rfaiLevelAbsent({ segmentIndex: 0, transactionIndex: 0 });
+ * w.code; // "X12_277_RFAI_LEVEL_ABSENT"
+ * ```
+ */
+export function rfaiLevelAbsent(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_277_RFAI_LEVEL_ABSENT,
+    message: WARNING_MESSAGES.X12_277_RFAI_LEVEL_ABSENT,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_277_RFAI_REQUEST_ABSENT` warning. Raised by
+ * `get277RequestForAdditionalInformation` when no level on the reading carries
+ * a claim-level request, so the reading names no claim and no requested item.
+ *
+ * The reader anchors it at the ST (`segmentIndex: 0`). It takes a position and
+ * nothing else.
+ *
+ * @example
+ * ```ts
+ * import { rfaiRequestAbsent } from "@cosyte/x12";
+ * const w = rfaiRequestAbsent({ segmentIndex: 0, transactionIndex: 0 });
+ * w.code; // "X12_277_RFAI_REQUEST_ABSENT"
+ * ```
+ */
+export function rfaiRequestAbsent(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_277_RFAI_REQUEST_ABSENT,
+    message: WARNING_MESSAGES.X12_277_RFAI_REQUEST_ABSENT,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_275_ATTACHMENT_ABSENT` warning. Raised by `get275Attachments`
+ * when the transaction set carries no BDS segment, so the reading's
+ * `attachments` list is empty.
+ *
+ * The reader anchors it at the ST (`segmentIndex: 0`). It takes a position and
+ * nothing else, so no byte of the document reaches the message.
+ *
+ * @example
+ * ```ts
+ * import { attachmentAbsent } from "@cosyte/x12";
+ * const w = attachmentAbsent({ segmentIndex: 0, transactionIndex: 0 });
+ * w.code; // "X12_275_ATTACHMENT_ABSENT"
+ * ```
+ */
+export function attachmentAbsent(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_275_ATTACHMENT_ABSENT,
+    message: WARNING_MESSAGES.X12_275_ATTACHMENT_ABSENT,
     position,
   };
 }
