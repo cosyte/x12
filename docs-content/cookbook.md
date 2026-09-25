@@ -104,6 +104,80 @@ if (doNotPost) {
 }
 ```
 
+### Check an adjustment against the CORE Code Combinations table you supply
+
+CAQH CORE Operating Rule 360 conveys why a claim was adjusted by the combined use of a group code, a
+reason code and optionally one or more remark codes, and its CORE Code Combinations table lists the
+combinations it expects for each of four CORE-defined business scenarios.
+`checkCoreCodeCombination` answers whether one adjustment's combination is in **your** copy of that
+table for a scenario you name. It answers that one question about that one adjustment, and nothing
+about the remit as a whole.
+
+**You supply the table and name its version.** No CORE table, excerpt or default ships with this
+package. CAQH CORE revises the table several times a year and publishes it under its own notice, so
+the version your posting system follows is yours to load, and the label you give it comes back beside
+every answer.
+
+```ts runnable
+import {
+  CORE_BUSINESS_SCENARIOS,
+  checkCoreCodeCombination,
+  type CoreCodeCombinationTable,
+} from "@cosyte/x12";
+
+// YOUR table, loaded from the CORE Code Combinations version you follow. These
+// rows are invented for the example: no CORE table ships with this package.
+const table: CoreCodeCombinationTable = {
+  version: "our-transcription-2026-02",
+  rows: [
+    { scenario: "scenario-3", groupCode: "CO", reasonCode: "ZZ901" },
+    { scenario: "scenario-3", groupCode: "CO", reasonCode: "ZZ901", remarkCode: "ZZ-R1" },
+  ],
+};
+// You name the scenario; nothing here infers one.
+const scenario = CORE_BUSINESS_SCENARIOS.SERVICE_NOT_COVERED;
+
+// In the loop above these are `adj` and the remarks you pair with it.
+const adjustment = { groupCode: "CO", reasonCode: "ZZ901" };
+const remarks = [{ system: "HE", code: "ZZ-R1" }];
+
+const listed = checkCoreCodeCombination({ table, scenario, adjustment, remarks });
+listed.outcome; // => "in-table"
+listed.tableVersion; // => "our-transcription-2026-02"
+
+// A remark the table does not list with this pair.
+const unlisted = checkCoreCodeCombination({
+  table,
+  scenario,
+  adjustment,
+  remarks: [{ system: "HE", code: "ZZ-R2" }],
+});
+unlisted.outcome; // => "not-in-table"
+
+// No table at all: unevaluated, which is NOT permission to post.
+const noTable = checkCoreCodeCombination({ scenario, adjustment });
+noTable; // => { outcome: "unevaluated", reason: "no-table", tableVersion: undefined }
+```
+
+**Three answers, and `unevaluated` is not permitted.** `in-table` means the table has a row for that
+scenario, group code and reason code, and lists every remark you passed with them; with no remarks,
+a row for the pair suffices. `not-in-table` means the table has rows for the scenario and this
+combination is not among them, including a combination the table lists only under another scenario.
+`unevaluated` means the check could not decide, and `reason` says why: no table, a scenario outside
+the four, no rows for that scenario, an empty group or reason code, or a remark that is not an `HE`
+remark code (an LQ `RX` reject reason, for instance). Gate on `in-table`; a gate written as "post
+unless `not-in-table`" posts every combination the check could not judge.
+
+**What it leaves to you.** You choose the scenario. The 835 carries remarks per claim and per service
+line rather than per adjustment, so you choose which remarks accompany the adjustment. Codes are
+compared exactly as written, with no case folding and no trimming. It judges one adjustment per call,
+does not say which remark was missing from the table, does not check a code's effective dates, and
+does not evaluate a scenario a health plan defines for itself or the retail pharmacy variant that
+pairs a reason code with an NCPDP reject code. A malformed table (no version label, a row with an
+empty code or an unknown scenario) throws `CoreCodeCombinationTableError` with the code
+`X12_CORE_COMBINATION_TABLE_INVALID`, and its message names the field and the row index, never a
+value from your table.
+
 ---
 
 ## 2. Parse a 277CA and route rejections
