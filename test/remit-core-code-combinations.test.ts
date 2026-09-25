@@ -22,8 +22,9 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { beforeAll, describe, expect, it } from "vitest";
@@ -425,7 +426,7 @@ describe("AC-9: a malformed table is refused with a typed error that echoes noth
     },
     {
       name: "version not a string",
-      table: { version: 42, rows: [{ ...good, note: SENTINEL }] },
+      table: { version: [SENTINEL], rows: [{ ...good, note: SENTINEL }] },
       field: "version",
       rowIndex: undefined,
     },
@@ -480,7 +481,10 @@ describe("AC-9: a malformed table is refused with a typed error that echoes noth
     },
     {
       name: "group code not a string",
-      table: { version: SENTINEL, rows: [good, { scenario: S3, groupCode: 7, ...withSentinel }] },
+      table: {
+        version: SENTINEL,
+        rows: [good, { scenario: S3, groupCode: [SENTINEL], ...withSentinel }],
+      },
       field: "groupCode",
       rowIndex: 1,
     },
@@ -500,7 +504,7 @@ describe("AC-9: a malformed table is refused with a typed error that echoes noth
       name: "reason code not a string",
       table: {
         version: SENTINEL,
-        rows: [good, { scenario: S3, groupCode: SENTINEL, reasonCode: 7 }],
+        rows: [good, { scenario: S3, groupCode: SENTINEL, reasonCode: [SENTINEL] }],
       },
       field: "reasonCode",
       rowIndex: 1,
@@ -515,8 +519,11 @@ describe("AC-9: a malformed table is refused with a typed error that echoes noth
       rowIndex: 1,
     },
     {
-      name: "remark code a number",
-      table: { version: SENTINEL, rows: [good, { ...good, groupCode: SENTINEL, remarkCode: 5 }] },
+      name: "remark code not a string",
+      table: {
+        version: SENTINEL,
+        rows: [good, { ...good, groupCode: SENTINEL, remarkCode: [SENTINEL] }],
+      },
       field: "remarkCode",
       rowIndex: 1,
     },
@@ -610,8 +617,30 @@ describe("AC-10: the check leaves its inputs unmodified", () => {
 
 const root = join(import.meta.dirname, "..");
 const DIST = join(root, "dist");
-/** Where this suite's build lands before each file is moved into `dist/`. */
-const STAGING = join(root, "node_modules", ".cache", "remit-core-code-combinations-dist");
+/**
+ * Where this suite's build lands before each file is moved into `dist/`. Inside
+ * the checkout, so the move is a rename on one filesystem, and git-ignored.
+ */
+const STAGING = join(root, ".vitest-cache", "remit-core-code-combinations-dist");
+
+/**
+ * The `tsup` command-line entry this package's `build` script runs, resolved
+ * from the installed package and run with this `node`, so the build does not
+ * depend on which package-manager binary a test process finds first.
+ */
+function tsupCli(): string {
+  const manifestPath = createRequire(import.meta.url).resolve("tsup/package.json");
+  const manifest: unknown = JSON.parse(readFileSync(manifestPath, "utf8"));
+  const bin = isRecordValue(manifest) ? manifest["bin"] : undefined;
+  const entry = isRecordValue(bin) ? bin["tsup"] : undefined;
+  if (typeof entry !== "string") throw new Error("tsup declares no `tsup` bin entry");
+  return join(dirname(manifestPath), entry);
+}
+
+/** Whether `value` is an object whose properties can be read. */
+function isRecordValue(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === "object" && value !== null;
+}
 /** How long a read waits for `dist/` while another suite's build rewrites it. */
 const READ_DEADLINE_MS = 60_000;
 
@@ -672,7 +701,10 @@ function probe(entry: "index.mjs" | "index.cjs"): unknown {
 describe("AC-12: exported from the package root, in source and in both built entry points", () => {
   beforeAll(() => {
     rmSync(STAGING, { recursive: true, force: true });
-    execFileSync("pnpm", ["exec", "tsup", "--out-dir", STAGING], { cwd: root, stdio: "inherit" });
+    execFileSync(process.execPath, [tsupCli(), "--out-dir", STAGING], {
+      cwd: root,
+      stdio: "inherit",
+    });
     for (const name of readdirSync(STAGING)) {
       untilDeadline(() => {
         mkdirSync(DIST, { recursive: true });
