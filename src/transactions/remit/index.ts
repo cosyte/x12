@@ -48,6 +48,25 @@ export {
   REMIT_835_LOOP_2110,
 } from "./loop-spec.js";
 export { checkClaimBalance, checkRemitTotalBalance, checkServiceLineBalance } from "./balance.js";
+export {
+  CORE_BUSINESS_SCENARIOS,
+  CORE_CODE_COMBINATION_OUTCOMES,
+  CORE_CODE_COMBINATION_UNEVALUATED_REASONS,
+  checkCoreCodeCombination,
+  type CoreBusinessScenario,
+  type CoreCodeCombinationOutcome,
+  type CoreCodeCombinationQuery,
+  type CoreCodeCombinationResult,
+  type CoreCodeCombinationRow,
+  type CoreCodeCombinationTable,
+  type CoreCodeCombinationUnevaluatedReason,
+} from "./core-code-combinations.js";
+export {
+  CORE_CODE_COMBINATION_ERROR_CODES,
+  CoreCodeCombinationTableError,
+  type CoreCodeCombinationErrorCode,
+  type CoreCodeCombinationTableField,
+} from "./core-code-combination-errors.js";
 export type {
   X12RemitAdjustment,
   X12RemitAddress,

@@ -182,6 +182,10 @@ Everything ships from one entry point; there are no subpath imports.
   nothing" stay different readings.
 - **Conformance.** `X12_TR3_CONFORMANCE` states which implementation guide each transaction set
   follows and how that identifier stands against the federal incorporation by reference.
+- **CORE Code Combinations.** `checkCoreCodeCombination` answers whether an 835 adjustment's group,
+  reason and remark codes are in a CORE Code Combinations table for a CORE-defined business scenario
+  you name. You supply the table and name its version, no CORE table ships with this package, and
+  an `unevaluated` answer is never permission to post.
 
 Task-oriented recipes are in the [cookbook](./docs-content/cookbook.md), and
 [KNOWN-LIMITATIONS.md](./KNOWN-LIMITATIONS.md) is the honest do-not-over-trust list.
