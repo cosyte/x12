@@ -13,6 +13,7 @@
  * `X12Interchange.trailingBytes`.
  */
 
+import { frameBinary } from "./binary.js";
 import { ISA_MIN_LENGTH } from "./delimiters.js";
 import { RELEASE_CHAR, splitWithRelease } from "./release.js";
 import { decodeSegment, type X12Segment } from "./segment.js";
@@ -186,10 +187,41 @@ function findUnescapedTerminator(text: string, from: number, term: string): numb
 }
 
 /**
+ * Find the terminator that ends a BDS or BIN segment whose data element is
+ * framed by its count (see `./binary.ts`). The declared span is skipped whole,
+ * whatever delimiter or release bytes it holds, so a terminator byte inside the
+ * binary data never ends the segment. Returns `-1` when the span reaches the
+ * end of the input, in which case the rest of the input is this segment: when
+ * the input ends before the span does, nothing past its end is read.
+ *
+ * Where the byte after the span is not the terminator (a declared length that
+ * disagrees with the data), the segment runs to the next unescaped terminator
+ * after the span, so every byte the sender transmitted stays on the segment's
+ * raw text and the default emit reproduces it; `decodeSegment` reports the
+ * disagreement.
+ *
+ * @internal
+ */
+function findBinaryTerminator(
+  text: string,
+  frame: { readonly dataStart: number; readonly declared: number },
+  term: string,
+): number {
+  const spanEnd = frame.dataStart + frame.declared;
+  if (spanEnd >= text.length) return -1;
+  if (text.startsWith(term, spanEnd)) return spanEnd;
+  return findUnescapedTerminator(text, spanEnd, term);
+}
+
+/**
  * Yield successive segment strings (terminator-stripped) from the input,
  * starting at byte `start`. Returns the array of segment strings and the
  * byte index immediately after the last consumed segment terminator
  * (used by the caller to detect trailing garbage after IEA).
+ *
+ * Every segment is ended by its first unescaped terminator, except a BDS or
+ * BIN whose length element can be honoured: its binary data element is framed
+ * by that count instead (see {@link findBinaryTerminator}).
  *
  * @internal
  */
@@ -203,7 +235,11 @@ function splitSegments(
   let cursor = stripLeadingNewlines(text, start);
   let lastEnd = cursor;
   while (cursor < text.length) {
-    const termIdx = findUnescapedTerminator(text, cursor, term);
+    const binary = frameBinary(text, cursor, delimiters);
+    const termIdx =
+      binary?.kind === "counted"
+        ? findBinaryTerminator(text, binary, term)
+        : findUnescapedTerminator(text, cursor, term);
     if (termIdx === -1) {
       // No further terminator - the trailing bytes are an unterminated
       // segment. Preserve them as a final segment so they're visible to

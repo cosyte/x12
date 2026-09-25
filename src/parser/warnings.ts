@@ -111,6 +111,10 @@ export const WARNING_CODES = {
   X12_271_AAA_LOOP_UNIDENTIFIED: "X12_271_AAA_LOOP_UNIDENTIFIED",
   X12_GUIDE_NOT_IMPLEMENTED: "X12_GUIDE_NOT_IMPLEMENTED",
   X12_GUIDE_NOT_DECLARED: "X12_GUIDE_NOT_DECLARED",
+  X12_BINARY_DATA_TRUNCATED: "X12_BINARY_DATA_TRUNCATED",
+  X12_BINARY_LENGTH_INVALID: "X12_BINARY_LENGTH_INVALID",
+  X12_BINARY_LENGTH_MISMATCH: "X12_BINARY_LENGTH_MISMATCH",
+  X12_BINARY_LENGTH_UNVERIFIABLE: "X12_BINARY_LENGTH_UNVERIFIABLE",
 } as const;
 
 /**
@@ -510,6 +514,14 @@ const WARNING_MESSAGES = {
     "The transaction set declares an implementation guide this reader does not implement. The declaration is ST-03, decoded of any release escape, or, where ST-03 is absent or empty, GS-08 of the functional group that framed the transaction set, decoded the same way; it is compared exactly, with nothing trimmed, case-folded or prefix-matched, against the guide identifiers this reader's rows in `X12_TR3_CONFORMANCE` name. The reading was still decoded and returned against the element positions of the guide this reader implements, and nothing was refused, dropped or re-decoded because of this code, so a value on it may sit at a position the declared guide defines differently. Nothing the sender declared is echoed here. Where the reading publishes `implementationConventionReference`, that field carries the decoded ST-03; the transaction set's `st` carries ST-03 as framed, and GS-08 is raw, framed bytes on the functional group's `gs`.",
   X12_GUIDE_NOT_DECLARED:
     "The transaction set declares no implementation guide: ST-03 is absent or empty, and GS-08 of the functional group that framed the transaction set is absent or empty too, or no functional group header reached the transaction set at all. The reading was still decoded and returned against the element positions of the guide this reader implements, and nothing was refused, dropped or re-decoded because of this code; that the document follows that guide is assumed here, not established. `X12_TR3_CONFORMANCE` names the guides each reader implements. Nothing is echoed here.",
+  X12_BINARY_DATA_TRUNCATED:
+    "The input ends before the binary data of this BDS or BIN segment reaches the octet count its length element (BDS-02 or BIN-01) declares. The data element at `position.elementIndex` holds only the octets present in the input: nothing past its end is read or invented, and because the declared count runs to the end of the input, every byte after the length element belongs to this segment and no trailer after it frames. The length element is preserved verbatim and is never rewritten. Nothing is echoed here.",
+  X12_BINARY_LENGTH_INVALID:
+    "The length element of this BDS or BIN segment (BDS-02 or BIN-01, at `position.elementIndex`) is absent, empty, or not a non-negative integer written as 1 to 15 ASCII digits, so its binary data cannot be framed by a count. No length is inferred from the data or from where a terminator falls: the segment is framed by its delimiters exactly as any other segment is, so a delimiter byte inside the binary data ends an element or the segment there. The length element is preserved verbatim on the model. Nothing is echoed here.",
+  X12_BINARY_LENGTH_MISMATCH:
+    "The binary data of this BDS or BIN segment does not end where its length element (BDS-02 or BIN-01) says it does: the byte after the declared span is not the segment terminator, or the segment ends before a data element begins. Where a data element is present it holds exactly the declared span, and the bytes between that span and the next segment terminator stay on the segment's raw text, so the default `serializeX12` emit reproduces them; where none is present the segment is framed by its delimiters. Nothing is corrected, the length element is never rewritten, and nothing is echoed here.",
+  X12_BINARY_LENGTH_UNVERIFIABLE:
+    "The declared span of this BDS or BIN segment's binary data holds a character above U+00FF, which is not one octet, so the octet count its length element declares could not be verified against the input. This arises only for string input: the span is counted in UTF-16 code units, one per octet, and its characters are carried verbatim on the data element at `position.elementIndex`. A Buffer passed to `parseX12` is read one octet per character, where the count is exact. Nothing is echoed here.",
 } as const;
 
 /**
@@ -2091,6 +2103,112 @@ export function guideNotDeclared(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_GUIDE_NOT_DECLARED,
     message: WARNING_MESSAGES.X12_GUIDE_NOT_DECLARED,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_BINARY_DATA_TRUNCATED` warning. Raised where the input ends
+ * before a BDS or BIN segment's binary data reaches the octet count its length
+ * element declares. The data element holds only the octets that are present,
+ * so nothing past the end of the input is read, and the declared count is left
+ * as the sender wrote it.
+ *
+ * The parser anchors it at the BDS or BIN segment, with `elementIndex` on the
+ * data element (BDS-03 or BIN-02). It takes a position and nothing else, so no
+ * byte of the length or the data reaches the message.
+ *
+ * @example
+ * ```ts
+ * import { binaryDataTruncated } from "@cosyte/x12";
+ * const w = binaryDataTruncated({ segmentIndex: 3, transactionIndex: 0, elementIndex: 2 });
+ * w.code; // "X12_BINARY_DATA_TRUNCATED"
+ * ```
+ */
+export function binaryDataTruncated(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_BINARY_DATA_TRUNCATED,
+    message: WARNING_MESSAGES.X12_BINARY_DATA_TRUNCATED,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_BINARY_LENGTH_INVALID` warning. Raised where a BDS or BIN
+ * segment's length element (BDS-02 or BIN-01) is absent, empty, or not a
+ * non-negative integer written as 1 to 15 ASCII digits, so a sign, a decimal
+ * point or surrounding whitespace is refused and leading zeros are not. No
+ * count is inferred: the segment is framed by its delimiters, exactly as a
+ * segment of any other id is.
+ *
+ * The parser anchors it at the BDS or BIN segment, with `elementIndex` on the
+ * length element. It takes a position and nothing else.
+ *
+ * @example
+ * ```ts
+ * import { binaryLengthInvalid } from "@cosyte/x12";
+ * const w = binaryLengthInvalid({ segmentIndex: 3, transactionIndex: 0, elementIndex: 1 });
+ * w.code; // "X12_BINARY_LENGTH_INVALID"
+ * ```
+ */
+export function binaryLengthInvalid(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_BINARY_LENGTH_INVALID,
+    message: WARNING_MESSAGES.X12_BINARY_LENGTH_INVALID,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_BINARY_LENGTH_MISMATCH` warning. Raised where the byte after a
+ * BDS or BIN segment's declared span is not the segment terminator, which
+ * covers a declared length shorter than the data and one longer than it, and
+ * where the segment ends before a data element begins although a non-zero
+ * length was declared. The data element holds exactly the declared span; the
+ * bytes after it stay on the segment's raw text, so nothing the sender
+ * transmitted is lost, and the length element is never rewritten.
+ *
+ * The parser anchors it at the BDS or BIN segment, with `elementIndex` on the
+ * data element. It takes a position and nothing else.
+ *
+ * @example
+ * ```ts
+ * import { binaryLengthMismatch } from "@cosyte/x12";
+ * const w = binaryLengthMismatch({ segmentIndex: 3, transactionIndex: 0, elementIndex: 3 });
+ * w.code; // "X12_BINARY_LENGTH_MISMATCH"
+ * ```
+ */
+export function binaryLengthMismatch(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_BINARY_LENGTH_MISMATCH,
+    message: WARNING_MESSAGES.X12_BINARY_LENGTH_MISMATCH,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_BINARY_LENGTH_UNVERIFIABLE` warning. Raised where `parseX12`
+ * was handed a string and a BDS or BIN segment's declared span holds a UTF-16
+ * code unit above U+00FF. Every code unit at or below U+00FF is the latin1
+ * image of one octet, so the count is applied one code unit per octet; above
+ * that the octet count the sender meant cannot be known from a string, and this
+ * reports it rather than guessing. The span's characters are still carried
+ * verbatim. A `Buffer` input never raises it.
+ *
+ * The parser anchors it at the BDS or BIN segment, with `elementIndex` on the
+ * data element. It takes a position and nothing else.
+ *
+ * @example
+ * ```ts
+ * import { binaryLengthUnverifiable } from "@cosyte/x12";
+ * const w = binaryLengthUnverifiable({ segmentIndex: 3, transactionIndex: 0, elementIndex: 2 });
+ * w.code; // "X12_BINARY_LENGTH_UNVERIFIABLE"
+ * ```
+ */
+export function binaryLengthUnverifiable(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_BINARY_LENGTH_UNVERIFIABLE,
+    message: WARNING_MESSAGES.X12_BINARY_LENGTH_UNVERIFIABLE,
     position,
   };
 }

@@ -5,7 +5,10 @@
  * carrying its segment id, raw text, and an element array. Element values
  * are stored RAW (pre-`?`-unescape) so a byte-exact round-trip survives
  * regardless of which subset is read; the {@link getSegmentValue} dot-path
- * resolver applies {@link unescapeRelease} on read.
+ * resolver applies {@link unescapeRelease} on read. The one exception is the
+ * binary data element of a BDS or BIN segment, which is framed by the octet
+ * count its length element declares and is read back verbatim (see
+ * `./binary.ts`).
  *
  * Dot-path conventions (locked here, mirror the X12 TR3 convention):
  *
@@ -26,9 +29,18 @@
  * the dogfooding gate).
  */
 
+import { binaryLayout, frameBinary, holdsNonOctet, type BinaryFrame } from "./binary.js";
 import { RELEASE_CHAR, splitWithRelease, unescapeRelease } from "./release.js";
 import type { Delimiters, X12Position } from "./types.js";
-import { danglingReleaseChar, unparseableDecimal, type X12ParseWarning } from "./warnings.js";
+import {
+  binaryDataTruncated,
+  binaryLengthInvalid,
+  binaryLengthMismatch,
+  binaryLengthUnverifiable,
+  danglingReleaseChar,
+  unparseableDecimal,
+  type X12ParseWarning,
+} from "./warnings.js";
 
 /**
  * Immutable decoded X12 segment. `elements` is 1-indexed: `elements[0]` is
@@ -122,6 +134,18 @@ function boundSegmentId(first: string): string {
  * different call and is deliberately unchanged (see
  * {@link "./release.js".splitWithRelease}).
  *
+ * **A BDS or BIN segment's binary data element is framed by the octet count
+ * its length element declares** (BDS-02 / BIN-01), not by scanning for
+ * delimiters: the data element (BDS-03 / BIN-02) is exactly that many
+ * characters of `raw`, whatever delimiter or `?` bytes it holds, and is the
+ * last element. Where the count cannot be honoured this raises
+ * `X12_BINARY_DATA_TRUNCATED`, `X12_BINARY_LENGTH_INVALID`,
+ * `X12_BINARY_LENGTH_MISMATCH` or `X12_BINARY_LENGTH_UNVERIFIABLE`, anchored at
+ * `position` with the element it concerns. An absent, empty or malformed
+ * length element frames the segment by its delimiters, as any other segment
+ * is framed. `raw` is always the sender's bytes, so bytes after a declared
+ * span that the terminator did not follow stay on it.
+ *
  * @example
  * ```ts
  * import { decodeSegment } from "@cosyte/x12";
@@ -129,6 +153,8 @@ function boundSegmentId(first: string): string {
  * const seg = decodeSegment("NM1*IL*1*DOE*JANE", d, () => {}, { segmentIndex: 5 });
  * seg.id;          // "NM1"
  * seg.elements[3]; // "DOE"
+ * const bin = decodeSegment("BIN*5*A*B:C", d, () => {}, { segmentIndex: 6 });
+ * bin.elements[2]; // "A*B:C" (five octets, one element)
  * ```
  */
 export function decodeSegment(
@@ -137,6 +163,13 @@ export function decodeSegment(
   emit: (w: X12ParseWarning) => void,
   position: X12Position,
 ): X12Segment {
+  const binary = frameBinary(raw, 0, delimiters);
+  if (binary?.kind === "counted") return decodeCountedSegment(raw, binary, emit, position);
+  if (binary?.problem === "length-invalid") {
+    emit(binaryLengthInvalid({ ...position, elementIndex: binary.layout.lengthIndex }));
+  } else if (binary?.problem === "data-absent") {
+    emit(binaryLengthMismatch({ ...position, elementIndex: binary.layout.dataIndex }));
+  }
   // Degenerate delimiter set: when the element separator IS the release
   // character, `?` cannot also escape, so fall back to the literal split.
   // `detectDelimiters` reads the element separator positionally out of ISA
@@ -170,6 +203,44 @@ export function decodeSegment(
     }
   }
   return Object.freeze({ id: boundSegmentId(elements[0] ?? ""), raw, elements });
+}
+
+/**
+ * Decode a BDS or BIN whose length element can be honoured. The elements
+ * before the data element are the ones `frameBinary` scanned; the data element
+ * is the declared span of `raw`, clamped to its end, so a span the input ran
+ * out before is never read past. No dangling-release check runs here: a `?`
+ * inside the span is data, and the segment ends in the span or in bytes after
+ * it that are already reported.
+ *
+ * @internal
+ */
+function decodeCountedSegment(
+  raw: string,
+  frame: Extract<BinaryFrame, { kind: "counted" }>,
+  emit: (w: X12ParseWarning) => void,
+  position: X12Position,
+): X12Segment {
+  const spanEnd = frame.dataStart + frame.declared;
+  const data = raw.slice(frame.dataStart, Math.min(spanEnd, raw.length));
+  const at: X12Position = { ...position, elementIndex: frame.layout.dataIndex };
+  if (spanEnd > raw.length) emit(binaryDataTruncated(at));
+  else if (spanEnd < raw.length) emit(binaryLengthMismatch(at));
+  if (holdsNonOctet(data)) emit(binaryLengthUnverifiable(at));
+  const elements = Object.freeze([...frame.preamble, data]);
+  return Object.freeze({ id: boundSegmentId(elements[0] ?? ""), raw, elements });
+}
+
+/**
+ * Whether element `elementIndex` of `segment` is a BDS or BIN binary data
+ * element (BDS-03 / BIN-02). Such an element is one opaque run of octets: it
+ * has one repetition and one component, and nothing in it is a release
+ * sequence, so the value readers return it verbatim.
+ *
+ * @internal
+ */
+function isBinaryDataElement(segment: X12Segment, elementIndex: number): boolean {
+  return binaryLayout(segment.elements[0])?.dataIndex === elementIndex;
 }
 
 /**
@@ -275,6 +346,12 @@ function parseSegmentPath(path: string): SegmentPath {
  * Optional `emit` collects any dangling-release warnings discovered on the
  * read path; pass a no-op to silently decode.
  *
+ * **A BDS or BIN binary data element (`"03"` on a BDS, `"02"` on a BIN) is
+ * returned verbatim**: no release-character unescape and no split on the
+ * repetition or component separator, because every byte in it is data. Its
+ * only repetition is `[0]` and its only component is `-1`; any other index
+ * returns `undefined`. BDS-01's filter is not applied.
+ *
  * @example
  * ```ts
  * import { decodeSegment, getSegmentValue } from "@cosyte/x12";
@@ -299,6 +376,13 @@ export function getSegmentValue(
   const parsed = parseSegmentPath(path);
   const rawElement = segment.elements[parsed.elementIndex];
   if (rawElement === undefined) return undefined;
+  if (isBinaryDataElement(segment, parsed.elementIndex)) {
+    // BDS-03 / BIN-02: one opaque run of octets, returned verbatim. Its only
+    // repetition is `[0]` and its only component is `-1`.
+    if ((parsed.repetitionIndex ?? 0) !== 0) return undefined;
+    if (parsed.componentIndex !== undefined && parsed.componentIndex !== 1) return undefined;
+    return rawElement;
+  }
   const repetitions =
     delimiters.repetition.length === 1
       ? splitWithRelease(rawElement, delimiters.repetition)
@@ -332,7 +416,9 @@ export function getSegmentValue(
  * decoded element text. For a path with `-N` and no `[N]`, returns each
  * repetition's Nth component. With both `[N]` and `-N` specified, returns
  * a single-element array (or empty if the path doesn't resolve). Every
- * returned string is post-`?`-unescape.
+ * returned string is post-`?`-unescape, except a BDS or BIN binary data
+ * element, which comes back whole and verbatim exactly as
+ * {@link getSegmentValue} returns it.
  *
  * @example
  * ```ts
@@ -357,6 +443,13 @@ export function getAllSegmentValues(
   const parsed = parseSegmentPath(path);
   const rawElement = segment.elements[parsed.elementIndex];
   if (rawElement === undefined) return Object.freeze([]);
+  if (isBinaryDataElement(segment, parsed.elementIndex)) {
+    // BDS-03 / BIN-02, verbatim: see `getSegmentValue`.
+    const whole =
+      (parsed.repetitionIndex ?? 0) === 0 &&
+      (parsed.componentIndex === undefined || parsed.componentIndex === 1);
+    return Object.freeze(whole ? [rawElement] : []);
+  }
   const repetitions =
     delimiters.repetition.length === 1
       ? splitWithRelease(rawElement, delimiters.repetition)
