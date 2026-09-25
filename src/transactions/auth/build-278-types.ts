@@ -18,7 +18,8 @@
  * `decision`; {@link "./build-278.js".build278Response} emits the supplied
  * `actionCode` (HCR-01) VERBATIM and never infers or upgrades it.
  *
- * Spec source: WPC TR3s `005010X217` (request) + `005010X216` (response).
+ * Spec source: WPC TR3 `005010X217`, which covers both the request and the
+ * response.
  * The builder emits segments in TR3 loop order and round-trips back through
  * `get278Request` / `get278Response`, so a well-formed spec is reproduced
  * field-for-field.
@@ -26,10 +27,11 @@
 
 /**
  * Interchange + group + transaction identity for the built 278. The builder
- * fixes GS-01 to `"HI"` and ST-01 to `"278"`; ST-03 / GS-08 is the version
- * supplied by the entry point (`005010X217` for {@link
- * "./build-278.js".build278Request}, `005010X216` for {@link
- * "./build-278.js".build278Response}) so the caller never hand-codes them.
+ * fixes GS-01 to `"HI"` and ST-01 to `"278"`; ST-03 / GS-08 is `005010X217`,
+ * the one guide for both directions, written by {@link
+ * "./build-278.js".build278Request} and {@link
+ * "./build-278.js".build278Response} alike, so the caller never hand-codes
+ * them.
  *
  * @example
  * ```ts

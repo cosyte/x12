@@ -155,8 +155,8 @@ model.
   - **The implemented set is `X12_TR3_CONFORMANCE`**, each of the reader's rows contributing its
     `tr3` and every `cfrAdopted` entry. **The 837 reader also recognises every identifier its
     variant table resolves**, which includes the companion-guide identifiers production claims carry,
-    so a conformant claim declaring one is not accused. A 278 declaring `005010X216` is warned on
-    both 278 readers, and so is `build278Response`'s own output, which still declares it.
+    so a conformant claim declaring one is not accused. A 278 declaring `005010X216`, the 278
+    notification guide, is warned on both 278 readers.
   - **What the check decides is a warning, plus one label.** A 277 whose declared guide is outside
     `get277Status`'s set, or absent, reads `transactionType: "unrecognized-guide"`. Everything else
     that keys on `ST-03` - the 837 variant, the choice between `claim-status` and

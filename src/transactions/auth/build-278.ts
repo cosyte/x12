@@ -1,8 +1,8 @@
 /**
  * `build278Request` / `build278Response` - pure-function builders for a
- * 005010 278 Health Care Services Review: Request for Review (`005010X217`)
- * and Response (`005010X216`). NEVER auto-sends, NEVER opens a socket, NEVER
- * touches the filesystem. The library mechanically emits the review it is
+ * 005010 278 Health Care Services Review: Request for Review and Response,
+ * both against the one guide that covers the two directions (`005010X217`).
+ * NEVER auto-sends, NEVER opens a socket, NEVER touches the filesystem. The library mechanically emits the review it is
  * told; a spec whose UMO → requester → subscriber → (dependent) → reviews
  * tree cannot form a valid HL hierarchy is REFUSED via {@link
  * "./build-errors.js".ServicesReview278BuildError}.
@@ -31,8 +31,8 @@
  *
  * Output shape: a complete {@link X12Interchange} wrapping a single GS..GE
  * functional group (GS-01 `"HI"`) containing a single ST..SE 278 transaction
- * set (ST-03 per direction), spec-clean and round-trippable through {@link
- * parseX12}.
+ * set (GS-08 and ST-03 `005010X217` in both directions), spec-clean and
+ * round-trippable through {@link parseX12}.
  */
 
 import { AUTH_278_BUILD_ERROR_CODES, ServicesReview278BuildError } from "./build-errors.js";
@@ -83,8 +83,11 @@ const X12_278_FUNCTIONAL_ID = "HI";
 /** GS-07 standards agency code - `X` for ASC X12. @internal */
 const X12_AGENCY_CODE = "X";
 
-/** ST-03 / GS-08 version + release for each builder entry point. @internal */
-type ServicesReviewVersion = "005010X217" | "005010X216";
+/**
+ * ST-03 / GS-08 version + release. One guide covers the request and the
+ * response, so both builder entry points write the same value. @internal
+ */
+type ServicesReviewVersion = "005010X217";
 
 /** HL-03 level codes for the spine the builder computes. @internal */
 const HL_LEVEL = {
@@ -159,8 +162,9 @@ export function build278Request(spec: Build278Spec): X12Interchange {
 }
 
 /**
- * `build278Response` - assemble a 005010X216 278 Response around the supplied
- * spec. The HCR `actionCode` on each review's `decision` is emitted VERBATIM
+ * `build278Response` - assemble a 005010X217 278 Response around the supplied
+ * spec, declaring that guide in GS-08 and ST-03 exactly as {@link
+ * build278Request} does. The HCR `actionCode` on each review's `decision` is emitted VERBATIM
  * (never inferred), so the response round-trips the exact certification
  * outcome through {@link "./get-278.js".get278Response}. A review whose HL-03
  * `levelCode` is outside `EV` / `SS` is REFUSED, because that round trip is
@@ -177,11 +181,11 @@ export function build278Request(spec: Build278Spec): X12Interchange {
  *     ...base.subscriber,
  *     reviews: [{ requestCategoryCode: "HS", certificationTypeCode: "I", decision: { actionCode: "A1", reviewIdentificationNumber: "AUTH123456" } }],
  *   },
- * }); // ST-03 = 005010X216, HCR*A1*AUTH123456
+ * }); // GS-08 = ST-03 = 005010X217, HCR*A1*AUTH123456
  * ```
  */
 export function build278Response(spec: Build278Spec): X12Interchange {
-  return buildServicesReview("005010X216", "response", spec);
+  return buildServicesReview("005010X217", "response", spec);
 }
 
 /**

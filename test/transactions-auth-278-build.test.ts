@@ -1,13 +1,14 @@
 /**
- * Unit tests for the 005010X217 278 request / 005010X216 278 response emit
- * surface - `build278Request` / `build278Response`. Covers:
+ * Unit tests for the 005010X217 278 request and response emit surface -
+ * `build278Request` / `build278Response`. Covers:
  *
  * - Happy path: a built request round-trips through `get278Request`
  *   field-for-field (BHT header, UMO / requester entities, subscriber member
  *   + DMG, UM review info, TRN echo, HI diagnoses, REF / DTP / MSG, provider
  *   NM1s).
- * - Response: `build278Response` emits ST-03 005010X216 and the HCR-01
- *   action code VERBATIM; the certification outcome round-trips unchanged.
+ * - Response: `build278Response` emits GS-08 and ST-03 005010X217 and the
+ *   HCR-01 action code VERBATIM; the certification outcome round-trips
+ *   unchanged, with no guide-mismatch warning.
  * - HCR direction gate: a request review carrying a decision is refused;
  *   a response decision with an empty action code is refused.
  * - Dependent hierarchy: the 20→21→22→23→EV HL spine; the dependent HL
@@ -147,9 +148,11 @@ describe("build278 - envelope identity", () => {
     expect(tx?.st.elements[3]).toBe("005010X217");
   });
 
-  it("emits ST-03 005010X216 for a response", () => {
+  it("emits GS-08 and ST-03 005010X217 for a response", () => {
+    // AC-1: the one guide for both directions, in BOTH envelope carriers.
     const ix = build278Response(CANONICAL_SPEC);
-    expect(ix.groups[0]?.transactions[0]?.st.elements[3]).toBe("005010X216");
+    expect(ix.groups[0]?.gs.elements[8]).toBe("005010X217");
+    expect(ix.groups[0]?.transactions[0]?.st.elements[3]).toBe("005010X217");
   });
 
   it("returns a frozen interchange (pure-function discipline)", () => {
@@ -234,11 +237,12 @@ describe("build278Response - verbatim certification decision", () => {
 
   it("round-trips the HCR action code verbatim", () => {
     const review = responseOf(build278Response(RESPONSE_SPEC));
-    // AC-5: the builder still writes 005010X216, outside the 278 readers'
-    // implemented set, so the round trip carries the declared-guide code.
-    expect(review.warnings.map((w) => w.code)).toEqual(["X12_GUIDE_NOT_IMPLEMENTED"]);
+    // AC-5: the builder writes 005010X217, inside the 278 readers' implemented
+    // set, so the round trip raises no guide-mismatch warning at all and the
+    // decision comes back exactly as supplied.
+    expect(review.warnings).toEqual([]);
     expect(review.direction).toBe("response");
-    expect(review.implementationConventionReference).toBe("005010X216");
+    expect(review.implementationConventionReference).toBe("005010X217");
     const decision = review.reviews[0]?.decision;
     expect(decision?.actionCode).toBe("A1");
     expect(decision?.reviewIdentificationNumber).toBe("AUTH123456");
@@ -280,6 +284,7 @@ describe("build278 - HCR direction gate", () => {
   });
 
   it("refuses a response decision with an empty action code (INVALID_SPEC)", () => {
+    // AC-6
     const spec: Build278Spec = {
       ...CANONICAL_SPEC,
       subscriber: {
@@ -416,9 +421,9 @@ describe("build278 - the review HL-03 level code (REFUSAL-MESSAGE-PHI-ECHO)", ()
     const good = readBack(honest);
     expect(good.reviews).toHaveLength(1);
     expect(good.reviews[0]?.decision?.actionCode).toBe("A1");
-    // AC-5: a build278Response document declares 005010X216, so both readings
-    // carry the declared-guide code and nothing else.
-    expect(good.warnings.map((w) => w.code)).toEqual(["X12_GUIDE_NOT_IMPLEMENTED"]);
+    // AC-5: a build278Response document declares 005010X217, so neither
+    // reading carries a guide-mismatch code.
+    expect(good.warnings.map((w) => w.code)).toEqual([]);
 
     // FAILS TO DECODE, and that is the precise claim. The review loop never
     // opens, so the review and its HCR-01 certification decision are absent
@@ -427,7 +432,7 @@ describe("build278 - the review HL-03 level code (REFUSAL-MESSAGE-PHI-ECHO)", ()
     const bad = readBack(lying);
     expect(bad.reviews).toEqual([]);
     expect(bad.reviews.map((r) => r.decision)).toEqual([]);
-    expect(bad.warnings.map((w) => w.code)).toEqual(["X12_GUIDE_NOT_IMPLEMENTED"]);
+    expect(bad.warnings.map((w) => w.code)).toEqual([]);
     const badTx = parseX12(lying).groups[0]?.transactions[0];
     expect(badTx?.segments.some((seg) => seg.id === "HCR")).toBe(true);
     // And the level itself is still visible on the HL spine, which is why this
@@ -436,6 +441,7 @@ describe("build278 - the review HL-03 level code (REFUSAL-MESSAGE-PHI-ECHO)", ()
   });
 
   it("refuses the out-of-enum level rather than emitting it, on BOTH directions", () => {
+    // AC-6
     // Assert the MESSAGE, not the class: `toThrow(ServicesReview278BuildError)`
     // passes just as happily on an unrelated refusal, which is how four of six
     // cases went vacuous in `X12-DECIMAL-BYPASSES-THE-GUARD`.
