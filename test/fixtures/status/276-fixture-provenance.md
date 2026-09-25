@@ -60,7 +60,7 @@ COMPACT form, which is what `serializeX12` emits.
 | `276-duplicate-hl-id.edi` | two subscriber levels transmitted with the same HL-01, and a dependent naming it | `X12_276_DUPLICATE_HIERARCHY_ID` |
 | `276-short-rows.edi` | a claim carrying a REF short of REF-02, a DTP short of DTP-03 and an AMT short of AMT-02, beside one well-formed REF so the claim still asks something | `X12_276_REFERENCE_ROW_DROPPED`, `X12_276_DATE_ROW_DROPPED`, `X12_AMOUNT_ROW_DROPPED` |
 | `276-two-transactions.edi` | one interchange carrying two 276 transaction sets | none on either |
-| `276-subscriber-patient.edi` | the canonical request with the subscriber as the patient: the subscriber level carries HL-04 = `0` and no dependent level follows it, so the subscriber's own claim, service line and identifiers are the whole inquiry. Hand-authored from `276-canonical.edi` by removing the dependent level; every token is one that file already carries | no warning |
+| `276-subscriber-patient.edi` | the canonical request with the subscriber as the patient: the subscriber level carries HL-04 = `0` and no dependent level follows it, so the subscriber's own claim, service line and identifiers are the whole inquiry. It carries no subscriber `DMG`, which is situational here, as in `276-minimal.edi`. Hand-authored from `276-canonical.edi` by removing the dependent level and the subscriber `DMG`, then setting SE-01 to the 18 segments ST through SE that remain; every token is one that file already carries | no warning |
 
 The document the 276 corpus needs and that is not authored here is an
 interchange carrying NO 276 at all: `277-canonical.edi` beside this file is

@@ -11,8 +11,9 @@ Two subcommands, each writing one JSON object to stdout:
                    belongs to that interchange control version.
   read             one X12 document, read from stdin and put through the
                    transaction model for the implementation guide the document
-                   declares, then returned as the segment stream that model
-                   consumed.
+                   declares, then returned as the segment stream the oracle
+                   framed and handed that model, and only when the model kept
+                   every segment of every transaction set it was handed.
 
 Nothing here interprets an X12 rule and nothing here names a model: the models
 are enumerated from the installed package, and the model a document goes
@@ -21,6 +22,15 @@ document's own GS-08 (falling back to ST-03). A document that model refuses is
 reported as a refusal carrying the exception kind, and never as a reading,
 because comparing a document the guide model rejected on a guide-agnostic split
 would be comparing against a reader that did not read it as the guide.
+
+A model can also accept a document and set one of its segments aside: a segment
+arriving where the model has no place for it is dropped without an exception.
+Comparing that segment would count, as the oracle's agreement, a position the
+model never read. So after the model is built, the segments it kept are counted
+with the oracle's own `count_segments` (the count its SE-01 check uses), and a
+transaction set whose model kept fewer segments than the oracle framed for it,
+ST through SE, is reported as a refusal of kind `SegmentsDiscarded`, as is a
+document yielding fewer models than it carries transaction sets.
 """
 
 from __future__ import annotations
@@ -143,10 +153,34 @@ def describe(icvn: str) -> dict[str, Any]:
     }
 
 
+SEGMENTS_DISCARDED = "SegmentsDiscarded"
+
+
+def _discarded(framed: list[int], kept: list[int]) -> str | None:
+    """Why the models kept less than the oracle framed, or None when they kept it all.
+
+    `framed` holds, per transaction set in document order, the number of
+    segments ST through SE the oracle's segment reader framed; `kept` holds, per
+    model yielded, the number of segments that model holds.
+    """
+    for index, (handed, held) in enumerate(zip(framed, kept), start=1):
+        if held != handed:
+            return (
+                f"transaction set {index}: the model kept {held} of the {handed} segments, ST "
+                f"through SE, the oracle framed for it"
+            )
+    if len(kept) != len(framed):
+        return f"the document carries {len(framed)} transaction sets and the models built {len(kept)}"
+    return None
+
+
 def read(text: str) -> dict[str, Any]:
     from linuxforhealth.x12.io import X12ModelReader
+    from linuxforhealth.x12.validators import count_segments
 
     consumed: list[list[str]] = []
+    framed_counts: list[int] = []
+    kept_counts: list[int] = []
     try:
         with X12ModelReader(text) as reader:
             segment_reader = reader._x12_segment_reader
@@ -155,17 +189,30 @@ def read(text: str) -> dict[str, Any]:
             def recording() -> Iterator[tuple[str, list[str]]]:
                 # Record every segment exactly as the oracle framed it, on its
                 # way into the transaction model, so the stream returned is the
-                # one the model read and not a second, independent split.
+                # one the model read and not a second, independent split. The
+                # segments ST through SE are counted per transaction set, for
+                # the check against what each model kept.
+                open_count: int | None = None
                 for name, fields in framed():
                     consumed.append(list(fields))
+                    if name == "ST":
+                        open_count = 0
+                    if open_count is not None:
+                        open_count += 1
+                    if name == "SE" and open_count is not None:
+                        framed_counts.append(open_count)
+                        open_count = None
                     yield name, fields
 
             segment_reader.segments = recording
             delimiters = segment_reader.delimiters
-            for _model in reader.models():
-                pass
+            for model in reader.models():
+                kept_counts.append(count_segments(model.dict()))
     except Exception as err:  # noqa: BLE001 - every refusal is reported with its kind
         return {"ok": False, "refusal": {"kind": type(err).__name__, "detail": str(err)}}
+    discarded = _discarded(framed_counts, kept_counts)
+    if discarded is not None:
+        return {"ok": False, "refusal": {"kind": SEGMENTS_DISCARDED, "detail": discarded}}
     return {
         "ok": True,
         "delimiters": {
