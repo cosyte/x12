@@ -1,29 +1,150 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "library": {
     "package": "@cosyte/x12",
-    "commit": "b4663f948fe0a09643db3298041ab18ea65db592",
-    "workingTreeDirty": false
+    "commit": "4232955b458f9e16592d448a42e16772d2836b67",
+    "workingTreeDirty": true
   },
-  "oracle": {
-    "package": "pyx12",
-    "version": "4.0.0",
-    "licence": "BSD",
-    "licenceClassifier": "License :: OSI Approved :: BSD License",
-    "mapIndex": "pyx12/map/maps.xml",
-    "interchangeControlVersion": "00501"
-  },
+  "oracles": [
+    {
+      "package": "pyx12",
+      "version": "4.0.0",
+      "licence": "BSD",
+      "licenceClassifier": "License :: OSI Approved :: BSD License",
+      "bindingKind": "map",
+      "bindingSource": "pyx12/map/maps.xml",
+      "interchangeControlVersion": "00501",
+      "python": null,
+      "companions": []
+    },
+    {
+      "package": "linuxforhealth-x12",
+      "version": "0.57.0",
+      "licence": "Apache 2.0",
+      "licenceClassifier": "License :: OSI Approved :: Apache Software License",
+      "bindingKind": "model",
+      "bindingSource": "linuxforhealth.x12.v5010",
+      "interchangeControlVersion": "00501",
+      "python": "3.11.16",
+      "companions": [
+        {
+          "package": "pydantic",
+          "version": "1.10.13"
+        },
+        {
+          "package": "python-dotenv",
+          "version": "1.2.3"
+        },
+        {
+          "package": "typing-extensions",
+          "version": "4.16.0"
+        }
+      ]
+    }
+  ],
   "compared": [
+    {
+      "transaction": "270",
+      "variant": null,
+      "title": "Health Care Eligibility Benefit Inquiry",
+      "libraryTr3": "005010X279A1",
+      "oracle": "linuxforhealth-x12",
+      "oracleTr3": "005010X279A1",
+      "oracleTransactionSet": "270",
+      "oracleFunctionalIdentifierCode": null,
+      "oracleModel": "linuxforhealth.x12.v5010.x12_270_005010X279A1",
+      "oracleModelId": "EligibilityInquiry",
+      "oracleModelTitle": "The ASC X12 270 (EligibilityInquiry) transaction model.",
+      "tr3RevisionDiffers": false,
+      "documents": 5,
+      "documentIds": [
+        "test/fixtures/eligibility/270-canonical.edi",
+        "test/fixtures/eligibility/270-quirk-delimiters.edi",
+        "test/fixtures/eligibility/270-quirk-linebreaks.edi",
+        "test/fixtures/eligibility/270-two-transactions.edi",
+        "test/fixtures/golden/270.edi"
+      ],
+      "elementPositions": 514,
+      "divergences": []
+    },
+    {
+      "transaction": "271",
+      "variant": null,
+      "title": "Health Care Eligibility Benefit Response",
+      "libraryTr3": "005010X279A1",
+      "oracle": "linuxforhealth-x12",
+      "oracleTr3": "005010X279A1",
+      "oracleTransactionSet": "271",
+      "oracleFunctionalIdentifierCode": null,
+      "oracleModel": "linuxforhealth.x12.v5010.x12_271_005010X279A1",
+      "oracleModelId": "EligibilityBenefit",
+      "oracleModelTitle": "The ASC X12 271 (EligibilityBenefit) transaction model.",
+      "tr3RevisionDiffers": false,
+      "documents": 5,
+      "documentIds": [
+        "test/fixtures/eligibility/271-aaa-information-receiver.edi",
+        "test/fixtures/eligibility/271-aaa-information-source.edi",
+        "test/fixtures/eligibility/271-canonical.edi",
+        "test/fixtures/eligibility/271-no-benefits-no-aaa.edi",
+        "test/fixtures/golden/271.edi"
+      ],
+      "elementPositions": 459,
+      "divergences": []
+    },
+    {
+      "transaction": "276",
+      "variant": null,
+      "title": "Health Care Claim Status Request",
+      "libraryTr3": "005010X212",
+      "oracle": "linuxforhealth-x12",
+      "oracleTr3": "005010X212",
+      "oracleTransactionSet": "276",
+      "oracleFunctionalIdentifierCode": null,
+      "oracleModel": "linuxforhealth.x12.v5010.x12_276_005010X212",
+      "oracleModelId": "HealthCareClaimsStatusRequest",
+      "oracleModelTitle": "The Health Care Claims Status transaction model - 276",
+      "tr3RevisionDiffers": false,
+      "documents": 1,
+      "documentIds": [
+        "test/fixtures/status/276-subscriber-patient.edi"
+      ],
+      "elementPositions": 117,
+      "divergences": []
+    },
+    {
+      "transaction": "277",
+      "variant": null,
+      "title": "Health Care Claim Status Response",
+      "libraryTr3": "005010X212",
+      "oracle": "linuxforhealth-x12",
+      "oracleTr3": "005010X212",
+      "oracleTransactionSet": "277",
+      "oracleFunctionalIdentifierCode": null,
+      "oracleModel": "linuxforhealth.x12.v5010.x12_277_005010X212",
+      "oracleModelId": "HealthCareClaimsStatusResponse",
+      "oracleModelTitle": "The Health Care Claims Status Response transaction model - 277",
+      "tr3RevisionDiffers": false,
+      "documents": 3,
+      "documentIds": [
+        "test/fixtures/golden/277.edi",
+        "test/fixtures/status/277-canonical.edi",
+        "test/fixtures/status/277-unknown-status.edi"
+      ],
+      "elementPositions": 339,
+      "divergences": []
+    },
     {
       "transaction": "277",
       "variant": "277CA",
       "title": "Health Care Claim Acknowledgment",
       "libraryTr3": "005010X214",
+      "oracle": "pyx12",
       "oracleTr3": "005010X214",
+      "oracleTransactionSet": null,
       "oracleFunctionalIdentifierCode": "HN",
-      "oracleMapFile": "277.5010.X214.xml",
-      "oracleMapTransactionId": "277",
-      "oracleMapTitle": "HIPAA Health Care Claim Acknowledgement X214-277",
+      "oracleModel": "277.5010.X214.xml",
+      "oracleModelId": "277",
+      "oracleModelTitle": "HIPAA Health Care Claim Acknowledgement X214-277",
       "tr3RevisionDiffers": false,
       "documents": 3,
       "documentIds": [
@@ -39,11 +160,13 @@
       "variant": null,
       "title": "Payroll Deducted and Other Group Premium Payment for Insurance Products",
       "libraryTr3": "005010X218",
+      "oracle": "pyx12",
       "oracleTr3": "005010X218",
+      "oracleTransactionSet": null,
       "oracleFunctionalIdentifierCode": "RA",
-      "oracleMapFile": "820.5010.X218.xml",
-      "oracleMapTransactionId": "820A1",
-      "oracleMapTitle": "HIPAA Payment Order/Remittance Advice 005010X218 820A1",
+      "oracleModel": "820.5010.X218.xml",
+      "oracleModelId": "820A1",
+      "oracleModelTitle": "HIPAA Payment Order/Remittance Advice 005010X218 820A1",
       "tr3RevisionDiffers": false,
       "documents": 4,
       "documentIds": [
@@ -60,11 +183,13 @@
       "variant": null,
       "title": "Benefit Enrollment and Maintenance",
       "libraryTr3": "005010X220A1",
+      "oracle": "pyx12",
       "oracleTr3": "005010X220A1",
+      "oracleTransactionSet": null,
       "oracleFunctionalIdentifierCode": "BE",
-      "oracleMapFile": "834.5010.X220.A1.xml",
-      "oracleMapTransactionId": "834A1",
-      "oracleMapTitle": "HIPAA Benefit Enrollment and Maintenance 005010X220A1 834A1",
+      "oracleModel": "834.5010.X220.A1.xml",
+      "oracleModelId": "834A1",
+      "oracleModelTitle": "HIPAA Benefit Enrollment and Maintenance 005010X220A1 834A1",
       "tr3RevisionDiffers": false,
       "documents": 3,
       "documentIds": [
@@ -80,11 +205,13 @@
       "variant": null,
       "title": "Health Care Claim Payment/Advice",
       "libraryTr3": "005010X221A1",
+      "oracle": "pyx12",
       "oracleTr3": "005010X221A1",
+      "oracleTransactionSet": null,
       "oracleFunctionalIdentifierCode": "HP",
-      "oracleMapFile": "835.5010.X221.A1.xml",
-      "oracleMapTransactionId": "835W1",
-      "oracleMapTitle": "HIPAA Health Care Claim Payment/Advice 005010X221A1 835W1",
+      "oracleModel": "835.5010.X221.A1.xml",
+      "oracleModelId": "835W1",
+      "oracleModelTitle": "HIPAA Health Care Claim Payment/Advice 005010X221A1 835W1",
       "tr3RevisionDiffers": false,
       "documents": 7,
       "documentIds": [
@@ -104,11 +231,13 @@
       "variant": "P",
       "title": "Health Care Claim: Professional",
       "libraryTr3": "005010X222A2",
+      "oracle": "pyx12",
       "oracleTr3": "005010X222A1",
+      "oracleTransactionSet": null,
       "oracleFunctionalIdentifierCode": "HC",
-      "oracleMapFile": "837.5010.X222.A1.xml",
-      "oracleMapTransactionId": "837",
-      "oracleMapTitle": "HIPAA Health Care Claim: Professional X222A1-837",
+      "oracleModel": "837.5010.X222.A1.xml",
+      "oracleModelId": "837",
+      "oracleModelTitle": "HIPAA Health Care Claim: Professional X222A1-837",
       "tr3RevisionDiffers": true,
       "documents": 13,
       "documentIds": [
@@ -132,6 +261,7 @@
           "document": "test/fixtures/envelope/syntactic-core-body.edi",
           "transaction": "837",
           "variant": "P",
+          "otherReader": "pyx12",
           "kind": "element-count",
           "position": {
             "segmentOrdinal": 6,
@@ -145,6 +275,7 @@
           "document": "test/fixtures/envelope/syntactic-core-body.edi",
           "transaction": "837",
           "variant": "P",
+          "otherReader": "pyx12",
           "kind": "element-value",
           "position": {
             "segmentOrdinal": 6,
@@ -161,11 +292,13 @@
       "variant": "I",
       "title": "Health Care Claim: Institutional",
       "libraryTr3": "005010X223A3",
+      "oracle": "pyx12",
       "oracleTr3": "005010X223A2",
+      "oracleTransactionSet": null,
       "oracleFunctionalIdentifierCode": "HC",
-      "oracleMapFile": "837Q3.I.5010.X223.A1.xml",
-      "oracleMapTransactionId": "837Q3",
-      "oracleMapTitle": "HIPAA Health Care Claim - Institutional 005010X223A2 837Q3",
+      "oracleModel": "837Q3.I.5010.X223.A1.xml",
+      "oracleModelId": "837Q3",
+      "oracleModelTitle": "HIPAA Health Care Claim - Institutional 005010X223A2 837Q3",
       "tr3RevisionDiffers": true,
       "documents": 3,
       "documentIds": [
@@ -181,11 +314,13 @@
       "variant": null,
       "title": "Implementation Acknowledgment",
       "libraryTr3": "005010X231A1",
+      "oracle": "pyx12",
       "oracleTr3": "005010X231A1",
+      "oracleTransactionSet": null,
       "oracleFunctionalIdentifierCode": "FA",
-      "oracleMapFile": "999.5010X231.A1.xml",
-      "oracleMapTransactionId": "999",
-      "oracleMapTitle": "HIPAA Implementation Acknowledgment 999",
+      "oracleModel": "999.5010X231.A1.xml",
+      "oracleModelId": "999",
+      "oracleModelTitle": "HIPAA Implementation Acknowledgment 999",
       "tr3RevisionDiffers": false,
       "documents": 4,
       "documentIds": [
@@ -200,97 +335,286 @@
   ],
   "uncovered": [
     {
-      "transaction": "270",
-      "variant": null,
-      "title": "Health Care Eligibility Benefit Inquiry",
-      "libraryTr3": "005010X279A1",
-      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X279."
-    },
-    {
-      "transaction": "271",
-      "variant": null,
-      "title": "Health Care Eligibility Benefit Response",
-      "libraryTr3": "005010X279A1",
-      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X279."
-    },
-    {
       "transaction": "275",
       "variant": null,
       "title": "Additional Information to Support a Health Care Claim or Encounter",
       "libraryTr3": "006020X314",
-      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 006020X314."
-    },
-    {
-      "transaction": "276",
-      "variant": null,
-      "title": "Health Care Claim Status Request",
-      "libraryTr3": "005010X212",
-      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X212."
-    },
-    {
-      "transaction": "277",
-      "variant": null,
-      "title": "Health Care Claim Status Response",
-      "libraryTr3": "005010X212",
-      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X212."
+      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for transaction set 275 under implementation guide 006020X314; linuxforhealth-x12 0.57.0 binds no model in linuxforhealth.x12.v5010 at interchange control version 00501 for transaction set 275 under implementation guide 006020X314."
     },
     {
       "transaction": "277",
       "variant": "RFAI",
       "title": "Health Care Claim Request for Additional Information",
       "libraryTr3": "006020X313",
-      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 006020X313."
+      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for transaction set 277 under implementation guide 006020X313; linuxforhealth-x12 0.57.0 binds no model in linuxforhealth.x12.v5010 at interchange control version 00501 for transaction set 277 under implementation guide 006020X313."
     },
     {
       "transaction": "278",
       "variant": "request",
       "title": "Health Care Services Review: Request for Review",
       "libraryTr3": "005010X217",
-      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X217."
+      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for transaction set 278 under implementation guide 005010X217; linuxforhealth-x12 0.57.0 binds no model in linuxforhealth.x12.v5010 at interchange control version 00501 for transaction set 278 under implementation guide 005010X217."
     },
     {
       "transaction": "278",
       "variant": "response",
       "title": "Health Care Services Review: Response",
       "libraryTr3": "005010X217",
-      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X217."
+      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for transaction set 278 under implementation guide 005010X217; linuxforhealth-x12 0.57.0 binds no model in linuxforhealth.x12.v5010 at interchange control version 00501 for transaction set 278 under implementation guide 005010X217."
     },
     {
       "transaction": "837",
       "variant": "D",
       "title": "Health Care Claim: Dental",
       "libraryTr3": "005010X224A2",
-      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for implementation guide 005010X224."
+      "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for transaction set 837 under implementation guide 005010X224; linuxforhealth-x12 0.57.0 binds no model in linuxforhealth.x12.v5010 at interchange control version 00501 for transaction set 837 under implementation guide 005010X224."
     },
     {
       "transaction": "TA1",
       "variant": null,
       "title": "Interchange Acknowledgment",
       "libraryTr3": null,
-      "reason": "This package implements no implementation guide identifier for Interchange Acknowledgment, so pyx12's map index has no version or release identifier to bind a map to."
+      "reason": "This package implements no implementation guide identifier for Interchange Acknowledgment, so there is no version or release identifier for pyx12 4.0.0 (pyx12/map/maps.xml) or linuxforhealth-x12 0.57.0 (linuxforhealth.x12.v5010) to bind a map or model to."
     }
   ],
-  "unevaluated": [],
+  "unevaluated": [
+    {
+      "document": "test/fixtures/eligibility/270-dangling-parent.edi",
+      "transaction": "270",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 2 validation errors for EligibilityInquiry\n__root__\n  SE segment count 12 != actual count 11 (type=value_error)\n__root__\n  Invalid subscriber parent id 9 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/eligibility/270-dependent.edi",
+      "transaction": "270",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "TypeError",
+      "reason": "TypeError: 'NoneType' object is not subscriptable"
+    },
+    {
+      "document": "test/fixtures/eligibility/270-duplicate-hl-id.edi",
+      "transaction": "270",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "TypeError",
+      "reason": "TypeError: 'NoneType' object is not subscriptable"
+    },
+    {
+      "document": "test/fixtures/eligibility/270-hl-cycle.edi",
+      "transaction": "270",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 1 validation error for EligibilityInquiry\n__root__\n  Invalid receiver parent id 3 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/eligibility/270-minimal.edi",
+      "transaction": "270",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 4 validation errors for EligibilityInquiry\nloop_2000a -> 0 -> loop_2100a -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2100b -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2100b -> nm1_segment -> identification_code\n  field required (type=value_error.missing)\n__root__\n  SE segment count 10 != actual count 3 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/eligibility/270-missing-hierarchy.edi",
+      "transaction": "270",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 1 validation error for EligibilityInquiry\nloop_2000a\n  field required (type=value_error.missing)"
+    },
+    {
+      "document": "test/fixtures/eligibility/270-no-inquiry.edi",
+      "transaction": "270",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 1 validation error for EligibilityInquiry\n__root__\n  SE segment count 11 != actual count 10 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-before-hierarchy.edi",
+      "transaction": "271",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 1 validation error for EligibilityBenefit\n__root__\n  SE segment count 11 != actual count 9 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-dependent.edi",
+      "transaction": "271",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 2 validation errors for EligibilityBenefit\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2000d -> 0 -> loop_2100d\n  field required (type=value_error.missing)\n__root__\n  SE segment count 12 != actual count 3 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-malformed.edi",
+      "transaction": "271",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "X12ParseException",
+      "reason": "X12ParseException: Error parsing AAA segment field 5"
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-no-hierarchy-id.edi",
+      "transaction": "271",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 3 validation errors for EligibilityBenefit\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> hl_segment -> hierarchical_id_number\n  none is not an allowed value (type=type_error.none.not_allowed)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2100c -> aaa_segment -> 0 -> reject_reason_code\n  value is not a valid enumeration member; permitted: '15', '41', '43', '44', '45', '46', '47', '48', '50', '51', '79', '97', 'T4' (type=type_error.enum; enum_values=[<RejectReasonCode.REQUIRED_APPLICATION_DATA_MISSING: '15'>, <RejectReasonCode.AUTHORIZATION_ACCESS_RESTRICTIONS: '41'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_IDENTIFICATION: '43'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_NAME: '44'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_SPECIALITY: '45'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_PHONE_NUMBER: '46'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_PHONE_STATE: '47'>, <RejectReasonCode.INVALID_MISSING_REFERRING_PROVIDER_ID_NUMBER: '48'>, <RejectReasonCode.PROVIDER_INELIGIBLE_FOR_INQUIRIES: '50'>, <RejectReasonCode.PROVIDER_NOT_ON_FILE: '51'>, <RejectReasonCode.INVALID_PARTICIPANT_IDENTIFICATION: '79'>, <RejectReasonCode.INVALID_OR_MISSING_PROVIDER_ADDRESS: '97'>, <RejectReasonCode.PAYER_NAME_OR_IDENITIFER_MISSING: 'T4'>])\n__root__\n  SE segment count 10 != actual count 3 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-only-loop.edi",
+      "transaction": "271",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 2 validation errors for EligibilityBenefit\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2100c\n  field required (type=value_error.missing)\n__root__\n  SE segment count 9 != actual count 3 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-repeated.edi",
+      "transaction": "271",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 3 validation errors for EligibilityBenefit\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2100c -> aaa_segment -> 0 -> reject_reason_code\n  value is not a valid enumeration member; permitted: '15', '41', '43', '44', '45', '46', '47', '48', '50', '51', '79', '97', 'T4' (type=type_error.enum; enum_values=[<RejectReasonCode.REQUIRED_APPLICATION_DATA_MISSING: '15'>, <RejectReasonCode.AUTHORIZATION_ACCESS_RESTRICTIONS: '41'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_IDENTIFICATION: '43'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_NAME: '44'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_SPECIALITY: '45'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_PHONE_NUMBER: '46'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_PHONE_STATE: '47'>, <RejectReasonCode.INVALID_MISSING_REFERRING_PROVIDER_ID_NUMBER: '48'>, <RejectReasonCode.PROVIDER_INELIGIBLE_FOR_INQUIRIES: '50'>, <RejectReasonCode.PROVIDER_NOT_ON_FILE: '51'>, <RejectReasonCode.INVALID_PARTICIPANT_IDENTIFICATION: '79'>, <RejectReasonCode.INVALID_OR_MISSING_PROVIDER_ADDRESS: '97'>, <RejectReasonCode.PAYER_NAME_OR_IDENITIFER_MISSING: 'T4'>])\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2100c -> aaa_segment -> 1 -> reject_reason_code\n  value is not a valid enumeration member; permitted: '15', '41', '43', '44', '45', '46', '47', '48', '50', '51', '79', '97', 'T4' (type=type_error.enum; enum_values=[<RejectReasonCode.REQUIRED_APPLICATION_DATA_MISSING: '15'>, <RejectReasonCode.AUTHORIZATION_ACCESS_RESTRICTIONS: '41'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_IDENTIFICATION: '43'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_NAME: '44'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_SPECIALITY: '45'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_PHONE_NUMBER: '46'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_PHONE_STATE: '47'>, <RejectReasonCode.INVALID_MISSING_REFERRING_PROVIDER_ID_NUMBER: '48'>, <RejectReasonCode.PROVIDER_INELIGIBLE_FOR_INQUIRIES: '50'>, <RejectReasonCode.PROVIDER_NOT_ON_FILE: '51'>, <RejectReasonCode.INVALID_PARTICIPANT_IDENTIFICATION: '79'>, <RejectReasonCode.INVALID_OR_MISSING_PROVIDER_ADDRESS: '97'>, <RejectReasonCode.PAYER_NAME_OR_IDENITIFER_MISSING: 'T4'>])\n__root__\n  SE segment count 11 != actual count 3 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-subscriber.edi",
+      "transaction": "271",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 2 validation errors for EligibilityBenefit\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2100c -> aaa_segment -> 0 -> reject_reason_code\n  value is not a valid enumeration member; permitted: '15', '41', '43', '44', '45', '46', '47', '48', '50', '51', '79', '97', 'T4' (type=type_error.enum; enum_values=[<RejectReasonCode.REQUIRED_APPLICATION_DATA_MISSING: '15'>, <RejectReasonCode.AUTHORIZATION_ACCESS_RESTRICTIONS: '41'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_IDENTIFICATION: '43'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_NAME: '44'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_SPECIALITY: '45'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_PHONE_NUMBER: '46'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_PHONE_STATE: '47'>, <RejectReasonCode.INVALID_MISSING_REFERRING_PROVIDER_ID_NUMBER: '48'>, <RejectReasonCode.PROVIDER_INELIGIBLE_FOR_INQUIRIES: '50'>, <RejectReasonCode.PROVIDER_NOT_ON_FILE: '51'>, <RejectReasonCode.INVALID_PARTICIPANT_IDENTIFICATION: '79'>, <RejectReasonCode.INVALID_OR_MISSING_PROVIDER_ADDRESS: '97'>, <RejectReasonCode.PAYER_NAME_OR_IDENITIFER_MISSING: 'T4'>])\n__root__\n  SE segment count 10 != actual count 3 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-two-dependents.edi",
+      "transaction": "271",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 3 validation errors for EligibilityBenefit\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2000d -> 0 -> loop_2100d\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 1 -> loop_2000d -> 0 -> loop_2100d\n  field required (type=value_error.missing)\n__root__\n  SE segment count 17 != actual count 3 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-two-subscribers.edi",
+      "transaction": "271",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 3 validation errors for EligibilityBenefit\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2100c -> aaa_segment -> 0 -> reject_reason_code\n  value is not a valid enumeration member; permitted: '15', '41', '43', '44', '45', '46', '47', '48', '50', '51', '79', '97', 'T4' (type=type_error.enum; enum_values=[<RejectReasonCode.REQUIRED_APPLICATION_DATA_MISSING: '15'>, <RejectReasonCode.AUTHORIZATION_ACCESS_RESTRICTIONS: '41'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_IDENTIFICATION: '43'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_NAME: '44'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_SPECIALITY: '45'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_PHONE_NUMBER: '46'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_PHONE_STATE: '47'>, <RejectReasonCode.INVALID_MISSING_REFERRING_PROVIDER_ID_NUMBER: '48'>, <RejectReasonCode.PROVIDER_INELIGIBLE_FOR_INQUIRIES: '50'>, <RejectReasonCode.PROVIDER_NOT_ON_FILE: '51'>, <RejectReasonCode.INVALID_PARTICIPANT_IDENTIFICATION: '79'>, <RejectReasonCode.INVALID_OR_MISSING_PROVIDER_ADDRESS: '97'>, <RejectReasonCode.PAYER_NAME_OR_IDENITIFER_MISSING: 'T4'>])\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 1 -> loop_2100c -> aaa_segment -> 0 -> reject_reason_code\n  value is not a valid enumeration member; permitted: '15', '41', '43', '44', '45', '46', '47', '48', '50', '51', '79', '97', 'T4' (type=type_error.enum; enum_values=[<RejectReasonCode.REQUIRED_APPLICATION_DATA_MISSING: '15'>, <RejectReasonCode.AUTHORIZATION_ACCESS_RESTRICTIONS: '41'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_IDENTIFICATION: '43'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_NAME: '44'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_SPECIALITY: '45'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_PHONE_NUMBER: '46'>, <RejectReasonCode.INVALID_MISSING_PROVIDER_PHONE_STATE: '47'>, <RejectReasonCode.INVALID_MISSING_REFERRING_PROVIDER_ID_NUMBER: '48'>, <RejectReasonCode.PROVIDER_INELIGIBLE_FOR_INQUIRIES: '50'>, <RejectReasonCode.PROVIDER_NOT_ON_FILE: '51'>, <RejectReasonCode.INVALID_PARTICIPANT_IDENTIFICATION: '79'>, <RejectReasonCode.INVALID_OR_MISSING_PROVIDER_ADDRESS: '97'>, <RejectReasonCode.PAYER_NAME_OR_IDENITIFER_MISSING: 'T4'>])\n__root__\n  SE segment count 13 != actual count 3 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/eligibility/271-aaa-with-benefits.edi",
+      "transaction": "271",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 2 validation errors for EligibilityBenefit\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2100c -> loop_2110c -> 0 -> aaa_segment -> 0 -> reject_reason_code\n  value is not a valid enumeration member; permitted: '15', '33', '52', '53', '54', '55', '56', '57', '60', '61', '62', '63', '69', '70', '98', 'AA', 'AE', 'AF', 'AG', 'AO', 'CI', 'E8', 'IA', 'MA' (type=type_error.enum; enum_values=[<RejectReasonCode.REQUIRED_APPLICATION_DATA_MISSING: '15'>, <RejectReasonCode.INPUT_ERRORS: '33'>, <RejectReasonCode.SERVICE_DATES_NOT_WITHIN_PROVIDER_PLAN: '52'>, <RejectReasonCode.INQUIRED_BENEFIT_INCONSISTENT_PROVIDER_TYPE: '53'>, <RejectReasonCode.INAPPROPRIATE_PRODUCT_SERVICE_ID_QUALIFIER: '54'>, <RejectReasonCode.INAPPROPRIATE_PRODUCT_SERVICE_ID: '55'>, <RejectReasonCode.INAPPROPRIATE_DATE: '56'>, <RejectReasonCode.INVALID_MISSING_DATES_OF_SERVICE: '57'>, <RejectReasonCode.DATE_OF_BIRTH_FOLLOWS_DATE_OF_SERVICE: '60'>, <RejectReasonCode.DATE_OF_DEATH_PRECEDES_DATE_OF_SERVICE: '61'>, <RejectReasonCode.DATE_OF_SERVICE_NOT_WITHIN_ALLOWABLE_INQUIRY_PERIOD: '62'>, <RejectReasonCode.DATE_OF_SERVICE_IN_FUTURE: '63'>, <RejectReasonCode.INCONSISTENT_WITH_PATIENTS_AGE: '69'>, <RejectReasonCode.INCONSISTENT_WITH_PATIENTS_GENDER: '70'>, <RejectReasonCode.EXPERIMENTAL_SERVICE_OR_PROCEDURE: '98'>, <RejectReasonCode.AUTHORIZATION_NUMBER_NOT_FOUND: 'AA'>, <RejectReasonCode.REQUIRES_PRIMARY_CARE_PHYSICIAN_AUTHORIZATION: 'AE'>, <RejectReasonCode.INVALID_MISSING_DIAGNOSIS_CODES: 'AF'>, <RejectReasonCode.INVALID_MISSING_PROCEDURE_CODES: 'AG'>, <RejectReasonCode.ADDITIONAL_PATIENT_CONDITION_INFORMATION_REQUIRED: 'AO'>, <RejectReasonCode.CERTIFICATION_INFORMATION_DOES_NOT_MATCH_PATIENT: 'CI'>, <RejectReasonCode.REQUIRES_MEDICAL_REVIEW: 'E8'>, <RejectReasonCode.INVALID_AUTHORIZATION_NUMBER_FORMAT: 'IA'>, <RejectReasonCode.MISSING_AUTHORIZATION_NUMBER: 'MA'>])\n__root__\n  SE segment count 12 != actual count 3 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/eligibility/271-dependent.edi",
+      "transaction": "271",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "KeyError",
+      "reason": "KeyError: <TransactionLoops.DEPENDENT_NAME: 'loop_2100d'>"
+    },
+    {
+      "document": "test/fixtures/golden/276.edi",
+      "transaction": "276",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "AttributeError",
+      "reason": "AttributeError: 'NoneType' object has no attribute 'get'"
+    },
+    {
+      "document": "test/fixtures/status/276-canonical.edi",
+      "transaction": "276",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "AttributeError",
+      "reason": "AttributeError: 'NoneType' object has no attribute 'get'"
+    },
+    {
+      "document": "test/fixtures/status/276-dangling-parent.edi",
+      "transaction": "276",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "LookupError",
+      "reason": "LookupError: Service Provider ID 9 not found"
+    },
+    {
+      "document": "test/fixtures/status/276-duplicate-hl-id.edi",
+      "transaction": "276",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "AttributeError",
+      "reason": "AttributeError: 'NoneType' object has no attribute 'get'"
+    },
+    {
+      "document": "test/fixtures/status/276-hl-cycle.edi",
+      "transaction": "276",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 5 validation errors for HealthCareClaimsStatusRequest\nloop_2000a -> 0 -> loop_2100a -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2100b -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2100c -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2000d -> 0 -> loop_2100d -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\n__root__\n  SE segment count 13 != actual count 3 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/status/276-minimal.edi",
+      "transaction": "276",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 5 validation errors for HealthCareClaimsStatusRequest\nloop_2000a -> 0 -> loop_2100a -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2100b -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2100c -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2000d -> 0 -> loop_2100d -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\n__root__\n  SE segment count 13 != actual count 3 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/status/276-short-rows.edi",
+      "transaction": "276",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 8 validation errors for HealthCareClaimsStatusRequest\nloop_2000a -> 0 -> loop_2100a -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2100b -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2100c -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2000d -> 0 -> loop_2100d -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2000d -> 0 -> loop_2200d -> 0 -> ref_segment -> 0 -> reference_identification\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2000d -> 0 -> loop_2200d -> 0 -> amt_segment -> monetary_amount\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2000d -> 0 -> loop_2200d -> 0 -> dtp_segment -> date_time_period\n  field required (type=value_error.missing)\n__root__\n  SE segment count 16 != actual count 3 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/status/276-two-transactions.edi",
+      "transaction": "276",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "ValidationError",
+      "reason": "ValidationError: 5 validation errors for HealthCareClaimsStatusRequest\nloop_2000a -> 0 -> loop_2100a -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2100b -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2100c -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\nloop_2000a -> 0 -> loop_2000b -> 0 -> loop_2000c -> 0 -> loop_2000d -> 0 -> loop_2100d -> nm1_segment -> identification_code_qualifier\n  field required (type=value_error.missing)\n__root__\n  SE segment count 13 != actual count 3 (type=value_error)"
+    },
+    {
+      "document": "test/fixtures/status/276-wrong-kind-parent.edi",
+      "transaction": "276",
+      "variant": null,
+      "refusedBy": "linuxforhealth-x12",
+      "refusalKind": "LookupError",
+      "reason": "LookupError: Service Provider ID 2 not found"
+    }
+  ],
   "skipped": [
     {
       "document": "test/fixtures/ack/ta1-accept-with-errors.edi",
       "assigned": [],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
     },
     {
       "document": "test/fixtures/ack/ta1-accept.edi",
       "assigned": [],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
     },
     {
       "document": "test/fixtures/ack/ta1-reject-control-mismatch.edi",
       "assigned": [],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
     },
     {
       "document": "test/fixtures/auth/278-comprehensive.edi",
       "assigned": [],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
     },
     {
       "document": "test/fixtures/auth/278-edge.edi",
@@ -298,7 +622,7 @@
         "278/request",
         "278/response"
       ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
     },
     {
       "document": "test/fixtures/auth/278-request.edi",
@@ -306,234 +630,24 @@
         "278/request",
         "278/response"
       ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
     },
     {
       "document": "test/fixtures/auth/278-response.edi",
       "assigned": [],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
     },
     {
       "document": "test/fixtures/claim/837d-canonical.edi",
       "assigned": [
         "837/D"
       ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
     },
     {
       "document": "test/fixtures/claim/837p-unknown-variant.edi",
       "assigned": [],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/270-canonical.edi",
-      "assigned": [
-        "270/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/270-dangling-parent.edi",
-      "assigned": [
-        "270/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/270-dependent.edi",
-      "assigned": [
-        "270/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/270-duplicate-hl-id.edi",
-      "assigned": [
-        "270/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/270-hl-cycle.edi",
-      "assigned": [
-        "270/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/270-minimal.edi",
-      "assigned": [
-        "270/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/270-missing-hierarchy.edi",
-      "assigned": [
-        "270/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/270-no-inquiry.edi",
-      "assigned": [
-        "270/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/270-quirk-delimiters.edi",
-      "assigned": [
-        "270/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/270-quirk-linebreaks.edi",
-      "assigned": [
-        "270/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/270-two-transactions.edi",
-      "assigned": [
-        "270/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-aaa-before-hierarchy.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-aaa-dependent.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-aaa-information-receiver.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-aaa-information-source.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-aaa-malformed.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-aaa-no-hierarchy-id.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-aaa-only-loop.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-aaa-repeated.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-aaa-subscriber.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-aaa-two-dependents.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-aaa-two-subscribers.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-aaa-with-benefits.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-canonical.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-dependent.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/eligibility/271-no-benefits-no-aaa.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/golden/270.edi",
-      "assigned": [
-        "270/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/golden/271.edi",
-      "assigned": [
-        "271/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/golden/276.edi",
-      "assigned": [
-        "276/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/golden/277.edi",
-      "assigned": [
-        "277/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
     },
     {
       "document": "test/fixtures/golden/278-request.edi",
@@ -541,94 +655,24 @@
         "278/request",
         "278/response"
       ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
     },
     {
       "document": "test/fixtures/golden/278-response.edi",
       "assigned": [],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
     },
     {
       "document": "test/fixtures/golden/837d.edi",
       "assigned": [
         "837/D"
       ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
     },
     {
       "document": "test/fixtures/golden/ta1.edi",
       "assigned": [],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/status/276-canonical.edi",
-      "assigned": [
-        "276/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/status/276-dangling-parent.edi",
-      "assigned": [
-        "276/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/status/276-duplicate-hl-id.edi",
-      "assigned": [
-        "276/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/status/276-hl-cycle.edi",
-      "assigned": [
-        "276/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/status/276-minimal.edi",
-      "assigned": [
-        "276/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/status/276-short-rows.edi",
-      "assigned": [
-        "276/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/status/276-two-transactions.edi",
-      "assigned": [
-        "276/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/status/276-wrong-kind-parent.edi",
-      "assigned": [
-        "276/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/status/277-canonical.edi",
-      "assigned": [
-        "277/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
-    },
-    {
-      "document": "test/fixtures/status/277-unknown-status.edi",
-      "assigned": [
-        "277/"
-      ],
-      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 maps at interchange control version 00501."
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
     }
   ]
 }
