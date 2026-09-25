@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "library": {
     "package": "@cosyte/x12",
-    "commit": "4679dcc66e29411ffb3d9c3aa23f204219f2c8a2",
+    "commit": "2cf4c3b804efb9ae73af3275418ed4051cd7a188",
     "workingTreeDirty": false
   },
   "oracles": [
@@ -108,7 +108,7 @@
       "documentIds": [
         "test/fixtures/status/276-subscriber-patient.edi"
       ],
-      "elementPositions": 117,
+      "elementPositions": 114,
       "divergences": []
     },
     {

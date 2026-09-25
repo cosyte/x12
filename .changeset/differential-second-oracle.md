@@ -13,8 +13,10 @@ transaction is compared against the first oracle that maps it and against no oth
 transaction pyx12 compared before is still compared against pyx12 alone, with the same documents,
 positions and divergences. The second oracle reads each document through its own transaction model
 for the implementation guide the document declares, and a document that model refuses is recorded as
-unevaluated with the oracle and its refusal kind, never counted as agreement; a transaction that no
-document reaches both readers for still fails the run. Its requirement pins the oracle, every package
+unevaluated with the oracle and its refusal kind, never counted as agreement. So is a document the
+model accepts after setting one of its segments aside: a transaction set is compared only when its
+model kept every segment the oracle framed for it, ST through SE. A transaction that no document
+reaches both readers for still fails the run. Its requirement pins the oracle, every package
 it runs on (Pydantic included, which its own metadata leaves free) and the Python version exactly,
 and the harness refuses to run, writing no report, when any of those is not what the running oracle
 reports or when the requirement leaves one free.
@@ -34,9 +36,12 @@ runs that one command.
 
 **What it does not prove.** Agreement with either reader is not conformance to a Technical Report Type
 3 and it is not a compliance statement, and the second oracle's model refuses a good part of the
-synthetic corpus, so its comparisons cover only the documents it accepted. `KNOWN-LIMITATIONS.md` is
-rewritten in the same change to say which reader compares what and where each stops. A synthetic 276
-whose subscriber is the patient is added to the corpus, because the second oracle's 276 model refuses
-every 276 fixture that carries a dependent level beside the subscriber's own claim.
+synthetic corpus, so its comparisons cover only the documents it accepted whole. `KNOWN-LIMITATIONS.md`
+is rewritten in the same change to say which reader compares what and where each stops. A synthetic
+276 whose subscriber is the patient is added to the corpus, because the second oracle's 276 model
+refuses every 276 fixture that carries a dependent level beside the subscriber's own claim. It carries
+no subscriber demographics segment, because that model reads the subscriber's DMG ahead of the
+subscriber's name, where this library reads it after, and sets aside one sent where this library
+puts it.
 
 Implements S0382-x12-21.

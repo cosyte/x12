@@ -1767,10 +1767,18 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   documents here that it refuses are the ones that deliberately break the hierarchy or a row, 271
   documents whose AAA rejection reasons fall outside the codes it enumerates for that loop, the 270
   and 271 documents carrying a dependent level, and the 276 documents whose subscriber carries a
-  dependent level beside a claim of its own, as the canonical 276 fixture does. Agreement on the
+  dependent level beside a claim of its own, as the canonical 276 fixture does. A model can also
+  accept a document and set one of its segments aside without raising, so a document is compared only
+  when the model kept every segment of every transaction set, ST through SE, that the oracle framed
+  for it; one whose model kept fewer is recorded as unevaluated with its own refusal kind, and none of
+  its positions is counted as agreement. The two readers place the 276 subscriber's demographics
+  segment (DMG) differently: that model reads it ahead of the subscriber's name and this library
+  after it, and a document carrying one where this library puts it loses it to that model, which then
+  refuses the document. So the one 276 compared against it carries no subscriber DMG. Agreement on the
   270, the 271, the 276 and the 277 claim status response is agreement over the documents that model
-  accepted, which the report lists by name, and nothing wider: in particular no document compared
-  against it carries a dependent level, so that comparison says nothing about one.
+  accepted whole, which the report lists by name, and nothing wider: in particular no document
+  compared against it carries a dependent level, and no 276 compared against it carries a DMG, so that
+  comparison says nothing about either.
 - **🩺 This library and pyx12 disagree about the release character, and the report records the
   disagreement rather than settling it.** One synthetic document escapes the element separator with
   `?` inside a transaction set body. This library reads `?` as a release character there, as it has
