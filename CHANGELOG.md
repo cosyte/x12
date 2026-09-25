@@ -73,6 +73,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`build278Response` declares `005010X217` in GS-08 and ST-03, where it declared `005010X216`.**
+  This changes what goes on the wire: a trading partner that routed a built 278 response on either
+  element sees the new value. `005010X217` is the one guide 45 CFR 162.920 names for the 278 in both
+  directions and the one `build278Request` already wrote; `005010X216` is the 278 notification
+  guide, so a receiver routing on it could file a prior authorization decision as an admission or
+  discharge notification. Only those two identifiers move: the 278 body is unchanged, and so is the
+  read side, where a 278 declaring `005010X216` still carries `X12_GUIDE_NOT_IMPLEMENTED` on both
+  278 readers. The builder's own output now reads back through `get278Response` with no
+  guide-mismatch warning, and the 278 response row of `X12_TR3_CONFORMANCE` records no divergence:
+  its `note` is `null`, like the request row's.
+
 - **`WARNING_MESSAGES.X12_PRE_005010` stops asserting what ISA-12 declares.** The message a consumer
   reads off `w.message` said _"ISA-12 declares a version other than the HIPAA baseline `00501`, so
   the input may diverge from 005010 semantics. The declared version is preserved verbatim on the
