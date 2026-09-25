@@ -107,6 +107,7 @@ import {
   nonConventionalDelimiter,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
+import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 import { HL_LEVEL_CODES, decodeHl, validateHl, type X12Hl } from "../shared/hl.js";
 
 import type {
@@ -128,6 +129,12 @@ import type {
 
 /** ST-01 of the transaction set this reader claims. @internal */
 const INQUIRY_270 = "270";
+
+/**
+ * The guides this reader implements, derived from the 270 row of
+ * `X12_TR3_CONFORMANCE` (its `tr3` plus every `cfrAdopted` entry). @internal
+ */
+const IMPLEMENTED_GUIDES_270 = implementedGuides(INQUIRY_270);
 
 /**
  * Per-level expected parent level for the 270 HL tree, identical in shape to
@@ -318,6 +325,11 @@ function decodeInquiry(
   if (!sameDelimiters(delimiters, CONVENTIONAL_DELIMITERS)) {
     warnings.push(nonConventionalDelimiter(ISA_POSITION));
   }
+  // The declared guide (ST-03, else GS-08) against the guides this reader
+  // implements. Warned at the ST and never refused: the walk below runs the
+  // same whatever it answers. Both entry points reach it through this decode.
+  const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_270);
+  if (guideWarning !== undefined) warnings.push(guideWarning);
 
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
   const levels: LevelAccumulator[] = [];

@@ -47,7 +47,17 @@ import type { X12Hl } from "../shared/hl.js";
  * ```
  */
 export interface X12ClaimStatusResponse {
-  readonly transactionType: "claim-status" | "claim-acknowledgment";
+  /**
+   * Which document this reading is. `"claim-status"` or
+   * `"claim-acknowledgment"` where the transaction set declares a guide the
+   * reader implements (ST-03 as framed reading `005010X214` is the
+   * acknowledgment); `"unrecognized-guide"` where it declares a guide outside
+   * that set, or none, in which case the reading also carries
+   * `X12_GUIDE_NOT_IMPLEMENTED` or `X12_GUIDE_NOT_DECLARED`. The reading is
+   * walked and returned either way, and ST-03 stays readable, decoded, on
+   * `implementationConventionReference`.
+   */
+  readonly transactionType: "claim-status" | "claim-acknowledgment" | "unrecognized-guide";
   readonly implementationConventionReference: string | undefined;
   readonly claims: readonly X12ClaimStatus[];
   readonly hierarchies: readonly X12Hl[];

@@ -25,6 +25,7 @@ import {
   statedAmountDiscarded,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
+import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 import type {
   X12PremiumAddress,
   X12PremiumAdjustment,
@@ -39,6 +40,12 @@ import type {
   X12PremiumRemittance,
   X12PremiumTrace,
 } from "./types.js";
+
+/**
+ * The guides this reader implements, derived from the 820 row of
+ * `X12_TR3_CONFORMANCE` (its `tr3` plus every `cfrAdopted` entry). @internal
+ */
+const IMPLEMENTED_GUIDES_820 = implementedGuides("820");
 
 /**
  * Extract a typed {@link X12PremiumPayments} from an 820 transaction set.
@@ -68,6 +75,10 @@ export function get820Payments(
   if (tx.st.elements[1] !== "820") return undefined;
 
   const warnings: X12ParseWarning[] = [];
+  // The declared guide (ST-03 decoded, else GS-08 decoded) against the guides
+  // this reader implements: warned at the ST, never refused, walk unchanged.
+  const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_820);
+  if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
 
   let payment: X12PremiumPaymentHeader = EMPTY_HEADER;

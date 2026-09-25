@@ -294,6 +294,19 @@ export interface X12TransactionSet {
   readonly se: { readonly raw: string; readonly elements: readonly string[] } | undefined;
   readonly segments: readonly X12Segment[];
   readonly rawSegments: readonly string[];
+  /**
+   * The GS header of the functional group the envelope walker framed this
+   * transaction set in, the same object as that group's `gs`. It is carried
+   * here so a typed reader called with `(delimiters, tx)` can read GS-08 where
+   * ST-03 is absent or empty. **Element values are stored RAW,
+   * pre-`?`-unescape**, like every envelope element, so an element is the
+   * framed byte text of its slot and not necessarily the value the sender
+   * stated.
+   *
+   * Optional: a transaction set assembled by hand may carry none, and every
+   * typed reader treats that exactly as a group whose GS-08 is absent.
+   */
+  readonly gs?: GsSegment;
 }
 
 /**

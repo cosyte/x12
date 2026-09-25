@@ -93,6 +93,7 @@ import {
   statusInquiryReferenceRowDropped,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
+import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 import { HL_LEVEL_CODES, decodeHl, validateHl, type X12Hl } from "../shared/hl.js";
 
 import type {
@@ -115,6 +116,12 @@ import type {
 
 /** ST-01 of the transaction set this reader claims. @internal */
 const STATUS_INQUIRY_276 = "276";
+
+/**
+ * The guides this reader implements, derived from the 276 row of
+ * `X12_TR3_CONFORMANCE` (its `tr3` plus every `cfrAdopted` entry). @internal
+ */
+const IMPLEMENTED_GUIDES_276 = implementedGuides(STATUS_INQUIRY_276);
 
 /**
  * Per-level expected parent level for the 276 HL tree, identical in shape to
@@ -246,6 +253,11 @@ interface ServiceLineAccumulator {
 /** Decode one 276 transaction set. @internal */
 function decodeStatusInquiry(delimiters: Delimiters, tx: X12TransactionSet): X12StatusInquiry {
   const warnings: X12ParseWarning[] = [];
+  // The declared guide (ST-03, else GS-08) against the guides this reader
+  // implements. Warned at the ST and never refused; both entry points reach
+  // it through this decode, and the walk below runs the same either way.
+  const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_276);
+  if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
   const levels: LevelAccumulator[] = [];
   let header: X12StatusInquiryHeader | undefined;

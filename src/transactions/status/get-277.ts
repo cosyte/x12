@@ -5,7 +5,10 @@
  * Both transactions carry `ST-01 = "277"`; they share the HL spine + STC
  * composite and are disambiguated by `ST-03`. A single internal walker
  * serves both; the two public entry points differ only in which `ST-03`
- * they accept.
+ * they accept and in which guides they check the declared one against. A 277
+ * declaring any other guide (a request for additional information, say) is
+ * still walked by `get277Status`, warned, and labelled `"unrecognized-guide"`
+ * rather than either of the two.
  *
  * Lenient on parse: every recoverable deviation surfaces as a warning,
  * never a throw. Monetary fields decode as
@@ -43,6 +46,7 @@ import {
   unknownClaimStatusCategory,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
+import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 import { decodeHl, HL_LEVEL_CODES, validateHl, type X12Hl } from "../shared/hl.js";
 import { decodeSt03 } from "../shared/st03.js";
 import type {
@@ -62,6 +66,21 @@ import type {
 const ICR_277CA = "005010X214";
 
 /**
+ * The guides `get277Status` implements: the union of BOTH 277 rows of
+ * `X12_TR3_CONFORMANCE` (the claim status response and the claim
+ * acknowledgment), each row's `tr3` plus every `cfrAdopted` entry. @internal
+ */
+const IMPLEMENTED_GUIDES_277 = implementedGuides("277");
+
+/**
+ * The guides `get277CADisposition` implements: the claim acknowledgment row
+ * alone. Its admission gate is unchanged and admits only a raw ST-03 equal to
+ * `ICR_277CA`, which decodes to itself, so this set never warns on a
+ * transaction it admits. @internal
+ */
+const IMPLEMENTED_GUIDES_277CA = implementedGuides("277", "277CA");
+
+/**
  * Per-level expected parent for the 277 / 277CA HL spine. Source (`20`) has
  * no parent; receiver (`21`) → source; service provider (`19`) → receiver;
  * subscriber (`22`) → provider; dependent (`23`) → subscriber. Violations
@@ -79,9 +98,16 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Obje
  * Extract a typed {@link X12ClaimStatusResponse} from a 277 / 277CA
  * transaction set. Pure function - no I/O, no global state. Returns
  * `undefined` only when `ST-01` is not `"277"` (mis-routed call); every
- * other deviation is recoverable and surfaces on `result.warnings`. The
- * `transactionType` discriminator is derived from `ST-03`
- * (`005010X214` → `"claim-acknowledgment"`, otherwise `"claim-status"`).
+ * other deviation is recoverable and surfaces on `result.warnings`.
+ *
+ * The declared guide (ST-03, or GS-08 where ST-03 is absent or empty) is
+ * checked against the guides this reader implements, which are those of both
+ * 277 rows of `X12_TR3_CONFORMANCE`. Where it is outside them, or nothing is
+ * declared, the reading is still walked and returned, carries
+ * `X12_GUIDE_NOT_IMPLEMENTED` or `X12_GUIDE_NOT_DECLARED`, and its
+ * `transactionType` is `"unrecognized-guide"`. Otherwise `transactionType` is
+ * derived from ST-03 as framed: `"claim-acknowledgment"` where it reads
+ * `005010X214`, and `"claim-status"` for every other implemented declaration.
  *
  * @example
  * ```ts
@@ -104,7 +130,7 @@ export function get277Status(
   tx: X12TransactionSet,
 ): X12ClaimStatusResponse | undefined {
   if (tx.st.elements[1] !== "277") return undefined;
-  return walk277(delimiters, tx);
+  return walk277(delimiters, tx, IMPLEMENTED_GUIDES_277);
 }
 
 /**
@@ -129,16 +155,26 @@ export function get277CADisposition(
 ): X12ClaimStatusResponse | undefined {
   if (tx.st.elements[1] !== "277") return undefined;
   if (tx.st.elements[3] !== ICR_277CA) return undefined;
-  return walk277(delimiters, tx);
+  return walk277(delimiters, tx, IMPLEMENTED_GUIDES_277CA);
 }
 
 /**
  * Shared 277 / 277CA walk. The HL spine + STC machinery is identical; the
  * caller's `ST-03` gate decides which public surface admits the
- * transaction. @internal
+ * transaction, and `implemented` is the set of guides that surface checks the
+ * declared guide against. @internal
  */
-function walk277(delimiters: Delimiters, tx: X12TransactionSet): X12ClaimStatusResponse {
+function walk277(
+  delimiters: Delimiters,
+  tx: X12TransactionSet,
+  implemented: ReadonlySet<string>,
+): X12ClaimStatusResponse {
   const warnings: X12ParseWarning[] = [];
+  // The declared guide (ST-03 decoded, else GS-08 decoded) against the guides
+  // this surface implements. Warned at the ST and never refused: the walk
+  // below runs the same whatever it answers.
+  const guideWarning = declaredGuideWarning(delimiters, tx, implemented);
+  if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
   // ST-03 is read TWICE on purpose, and the two reads are different values.
   // `tx.st.elements` is the ST segment as framed - post-element-split, PRE-`?`-
@@ -164,14 +200,26 @@ function walk277(delimiters: Delimiters, tx: X12TransactionSet): X12ClaimStatusR
   // `claim-status` and `get277CADisposition` returns `undefined`, with nothing
   // warning about the divergence. Through `0.0.15` the published value WAS the
   // keyed value, so the model could not disagree with itself.
+  //
+  // The guide check above is the one exception to the raw key, and it only
+  // ever REPLACES the discriminator, never moves it between the two claim
+  // labels: where the declared guide is outside `implemented` (or nothing is
+  // declared) the reading is `"unrecognized-guide"`, because calling it a
+  // claim status or a claim acknowledgment would label a document this reader
+  // does not implement as one it does. Every implemented declaration keeps the
+  // raw-keyed derivation below exactly as it was.
   const implementationConventionReferenceRaw = tx.st.elements[3];
   const implementationConventionReference = decodeSt03(
     implementationConventionReferenceRaw,
     delimiters,
     { segmentIndex: 0, transactionIndex: 0 },
   );
-  const transactionType =
-    implementationConventionReferenceRaw === ICR_277CA ? "claim-acknowledgment" : "claim-status";
+  const transactionType: X12ClaimStatusResponse["transactionType"] =
+    guideWarning !== undefined
+      ? "unrecognized-guide"
+      : implementationConventionReferenceRaw === ICR_277CA
+        ? "claim-acknowledgment"
+        : "claim-status";
 
   const hierarchies: X12Hl[] = [];
   const hlIndex: Map<string, X12Hl> = new Map();
