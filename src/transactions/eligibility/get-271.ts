@@ -57,6 +57,7 @@ import {
 } from "../../parser/warnings.js";
 import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 import { decodeHl, HL_LEVEL_CODES, validateHl, type X12Hl } from "../shared/hl.js";
+import { decodeProcedure } from "../shared/procedure.js";
 import { AAA_CONDITION_LEVELS } from "./types.js";
 import type {
   X12AaaCode,
@@ -68,6 +69,7 @@ import type {
   X12EligibilityDependent,
   X12EligibilityEntity,
   X12EligibilityMember,
+  X12EligibilityProcedure,
   X12EligibilityReference,
   X12EligibilityServiceType,
   X12EligibilitySubscriber,
@@ -538,6 +540,7 @@ interface BenefitAccumulator {
   readonly quantity: X12Decimal | undefined;
   readonly authorizationRequired: string | undefined;
   readonly inPlanNetwork: string | undefined;
+  readonly procedure: X12EligibilityProcedure | undefined;
   readonly references: X12EligibilityReference[];
   readonly dates: X12EligibilityDate[];
   readonly messages: string[];
@@ -676,6 +679,7 @@ function openBenefit(
     quantity: elementDecimal(seg, 10, delimiters, sink),
     authorizationRequired: elementOptional(seg, 11, delimiters),
     inPlanNetwork: elementOptional(seg, 12, delimiters),
+    procedure: decodeProcedure(seg, 13, delimiters),
     references: [],
     dates: [],
     messages: [],
@@ -733,6 +737,7 @@ function freezeBenefit(acc: BenefitAccumulator): X12EligibilityBenefit {
     quantity: acc.quantity,
     authorizationRequired: acc.authorizationRequired,
     inPlanNetwork: acc.inPlanNetwork,
+    procedure: acc.procedure,
     references: Object.freeze(acc.references.slice()),
     dates: Object.freeze(acc.dates.slice()),
     messages: Object.freeze(acc.messages.slice()),

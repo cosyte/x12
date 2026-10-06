@@ -286,6 +286,10 @@ describe("builder element escaping: the source gate", () => {
   });
 
   it("pins the invocation count, because the first draft published a line count", () => {
+    // 573 invocations on 535 lines, counted comment-stripped on this tree with
+    // `ctx.esc(...)` included. The 271 EB-13 procedure composite added the
+    // difference from 570 on 532: its qualifier, its code and its modifiers.
+    //
     // 570 invocations on 532 lines, counted comment-stripped on this tree with
     // `ctx.esc(...)` included. The two attachments builders (AC-12, AC-15) added
     // the difference from 487 on 452, across their envelopes, BHT, BGN, names,
@@ -325,8 +329,8 @@ describe("builder element escaping: the source gate", () => {
           .filter((l) => /\besc\(/u.test(l)).length,
       0,
     );
-    expect(invocations).toBe(570);
-    expect(lines).toBe(532);
+    expect(invocations).toBe(573);
+    expect(lines).toBe(535);
     expect(invocations).toBeGreaterThan(lines);
   });
 

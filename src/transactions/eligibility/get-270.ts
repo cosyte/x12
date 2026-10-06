@@ -109,6 +109,7 @@ import {
 } from "../../parser/warnings.js";
 import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 import { HL_LEVEL_CODES, decodeHl, validateHl, type X12Hl } from "../shared/hl.js";
+import { decodeProcedure } from "../shared/procedure.js";
 
 import type {
   X12Inquiry,
@@ -772,35 +773,13 @@ function openInquiry(seg: X12Segment, delimiters: Delimiters): InquiryAccumulato
   }
   return {
     serviceTypeCodes,
-    procedure: decodeProcedure(seg, delimiters),
+    procedure: decodeProcedure(seg, 2, delimiters),
     coverageLevelCode: elementOptional(seg, 3, delimiters),
     insuranceTypeCode: elementOptional(seg, 4, delimiters),
     diagnosisCodePointers,
     references: [],
     dates: [],
   };
-}
-
-/**
- * EQ-02, as its separated components. Absent when the element carries no
- * qualifier: a composite with no first component states no procedure, and
- * inventing one would be this reader asserting a request the sender did not
- * make. @internal
- */
-function decodeProcedure(seg: X12Segment, delimiters: Delimiters): X12InquiryProcedure | undefined {
-  const qualifier = componentOptional(seg, 2, 1, delimiters);
-  if (qualifier === undefined) return undefined;
-  const modifiers: string[] = [];
-  for (let p = 3; p <= 6; p += 1) {
-    const modifier = componentOptional(seg, 2, p, delimiters);
-    if (modifier !== undefined) modifiers.push(modifier);
-  }
-  return Object.freeze({
-    qualifier,
-    code: componentOptional(seg, 2, 2, delimiters),
-    modifiers: Object.freeze(modifiers),
-    description: componentOptional(seg, 2, 7, delimiters),
-  });
 }
 
 // ---------------------------------------------------------------------------

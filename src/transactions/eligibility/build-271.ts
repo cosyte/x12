@@ -38,6 +38,7 @@ import type {
   Build271InformationReceiverSpec,
   Build271InformationSourceSpec,
   Build271MemberSpec,
+  Build271ProcedureSpec,
   Build271ReferenceSpec,
   Build271Spec,
   Build271SubscriberSpec,
@@ -96,6 +97,9 @@ const X12_AGENCY_CODE = "X";
 
 /** HL-03 level codes for the spine the builder computes. @internal */
 const HL_LEVEL = { SOURCE: "20", RECEIVER: "21", SUBSCRIBER: "22", DEPENDENT: "23" } as const;
+
+/** EB-13 procedure modifier positions: C003-03 through C003-06. @internal */
+const MAX_PROCEDURE_MODIFIERS = 4;
 
 /**
  * `build271` - assemble a 005010X279A1 271 around the supplied spec.
@@ -158,7 +162,7 @@ export function build271(spec: Build271Spec): X12Interchange {
     return parts.slice(0, end).join(elementSeparator) + segmentTerminator;
   };
 
-  const ctx: EmitContext = { seg, esc, repetitionSeparator };
+  const ctx: EmitContext = { seg, esc, repetitionSeparator, componentSeparator };
 
   // ---- ISA envelope -----------------------------------------------------
 
@@ -337,6 +341,7 @@ interface EmitContext {
   readonly seg: (parts: readonly string[]) => string;
   readonly esc: (value: string) => string;
   readonly repetitionSeparator: string;
+  readonly componentSeparator: string;
 }
 
 interface HlCounter {
@@ -487,9 +492,10 @@ function emitAddress(address: Build271AddressSpec, body: string[], ctx: EmitCont
 
 /**
  * Emit a Loop 2110 EB benefit line + its nested benefit-related entities,
- * REF / DTP, and MSG. EB-03 is a repeating simple element: each Service
- * Type Code is escaped and joined with the raw repetition separator, then
- * passed into `seg` ALREADY-FORMED (never re-escaped). @internal
+ * REF / DTP, and MSG. EB-03 is a repeating simple element and EB-13 a
+ * composite: each Service Type Code or component is escaped and joined with
+ * the raw separator, then passed into `seg` ALREADY-FORMED (never
+ * re-escaped). @internal
  */
 function emitBenefit(benefit: Build271BenefitSpec, body: string[], ctx: EmitContext): void {
   const serviceTypeElement = (benefit.serviceTypeCodes ?? [])
@@ -510,6 +516,7 @@ function emitBenefit(benefit: Build271BenefitSpec, body: string[], ctx: EmitCont
       benefit.quantity === undefined ? "" : escDec(benefit.quantity, ctx.esc),
       ctx.esc(benefit.authorizationRequired ?? ""),
       ctx.esc(benefit.inPlanNetwork ?? ""),
+      benefit.procedure === undefined ? "" : procedureElement(benefit.procedure, ctx),
     ]),
   );
 
@@ -519,6 +526,42 @@ function emitBenefit(benefit: Build271BenefitSpec, body: string[], ctx: EmitCont
   for (const message of benefit.messages ?? []) {
     body.push(ctx.seg(["MSG", ctx.esc(message)]));
   }
+}
+
+/**
+ * The EB-13 composite, already formed. Qualifier and code are required
+ * because a C003 without either names no procedure. A modifier past the
+ * fourth would occupy C003-07, and an empty modifier between two present
+ * ones would shift a later modifier into an earlier position on read, so
+ * both are refused. @internal
+ */
+function procedureElement(procedure: Build271ProcedureSpec, ctx: EmitContext): string {
+  const qualifier = ctx.esc(procedure.qualifier);
+  const code = ctx.esc(procedure.code);
+  if (qualifier === "" || code === "") {
+    refuseSpec("build271: a benefit procedure (EB-13) requires a non-empty qualifier and code.");
+  }
+  const modifiers = requireCallerArray(
+    procedure.modifiers,
+    "build271: benefit procedure (EB-13) modifiers",
+    refuseSpec,
+  );
+  if (modifiers.length > MAX_PROCEDURE_MODIFIERS) {
+    refuseSpec(
+      `build271: a benefit procedure (EB-13) carries at most ${String(MAX_PROCEDURE_MODIFIERS)} modifiers; got ${String(modifiers.length)}.`,
+    );
+  }
+  const escapedModifiers: string[] = [];
+  for (let i = 0; i < modifiers.length; i += 1) {
+    const modifier = ctx.esc(modifiers[i] ?? "");
+    if (modifier === "") {
+      refuseSpec(
+        `build271: benefit procedure (EB-13) modifier at index ${String(i)} is empty.`,
+      );
+    }
+    escapedModifiers.push(modifier);
+  }
+  return [qualifier, code, ...escapedModifiers].join(ctx.componentSeparator);
 }
 
 /** @internal */

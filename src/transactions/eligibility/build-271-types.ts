@@ -247,11 +247,38 @@ export interface Build271ServiceTypeSpec {
 }
 
 /**
+ * The EB-13 composite medical procedure identifier, supplied as its separated
+ * components. The builder joins them with the declared component separator, so
+ * a caller never hand-codes a delimiter. Mirrors
+ * {@link "./types.js".X12EligibilityProcedure} minus the description, which the
+ * builder does not emit.
+ *
+ * Refused via `X12_271_BUILD_INVALID_SPEC`: an empty `qualifier` or `code`, an
+ * empty modifier, or more than four modifiers (C003 has four modifier
+ * positions, and a fifth would land in the description position).
+ *
+ * @example
+ * ```ts
+ * import type { Build271ProcedureSpec } from "@cosyte/x12";
+ * const p: Build271ProcedureSpec = { qualifier: "AD", code: "D2150" };
+ * ```
+ */
+export interface Build271ProcedureSpec {
+  /** EB-13-1 - product or service id qualifier (`AD` for CDT, `HC` for HCPCS, ...). */
+  readonly qualifier: string;
+  /** EB-13-2 - the procedure code. */
+  readonly code: string;
+  /** EB-13-3 through EB-13-6 - up to four procedure modifiers, in order. */
+  readonly modifiers?: readonly string[];
+}
+
+/**
  * One eligibility-or-benefit line (EB, Loop 2110C/2110D). EB-01 is the
  * eligibility code; EB-03 carries one-or-more Service Type Codes (emitted
  * as a repeating simple element). Monetary + percent + quantity are
  * {@link X12Decimal}. Mirrors {@link "./types.js".X12EligibilityBenefit}
- * minus each service type's derived `description`.
+ * minus each service type's derived `description` and the procedure's
+ * `description`.
  *
  * @example
  * ```ts
@@ -289,6 +316,8 @@ export interface Build271BenefitSpec {
   readonly authorizationRequired?: string;
   /** EB-12 - in-plan-network indicator (`Y` / `N` / `U` / `W`). */
   readonly inPlanNetwork?: string;
+  /** EB-13 - the procedure this benefit line applies to. */
+  readonly procedure?: Build271ProcedureSpec;
   /** Loop 2120 benefit-related REF identifiers. */
   readonly references?: readonly Build271ReferenceSpec[];
   /** Loop 2120 benefit-related DTP dates. */
