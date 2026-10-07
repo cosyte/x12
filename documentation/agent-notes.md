@@ -3424,7 +3424,7 @@ opts?)` reconstructs an `X12Interchange` back to bytes from the
 
 ## Phase E: shared engineering standard
 
-- On the shared cosyte engineering standard (migrated Phase E): toolchain inherited from the
+- On the shared Cosyte engineering standard (migrated Phase E): toolchain inherited from the
   published `@cosyte/*` config packages, CI/release are thin callers of `cosyte/.github`. Per-directory
   ≥90 coverage gate armed on `src/parser/`.
 
