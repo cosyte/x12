@@ -295,7 +295,7 @@ must be synthetic: never open a pull request carrying a real patient's data.
 
 ## Trademarks
 
-Availity and Blue Cross Blue Shield are trademarks of their respective owners. cosyte is not
+Availity and Blue Cross Blue Shield are trademarks of their respective owners. Cosyte is not
 affiliated with, endorsed by, or sponsored by any of them. The names identify the trading partners
 whose companion-guide deviations the built-in profiles accommodate. See
 [TRADEMARKS.md](./TRADEMARKS.md).

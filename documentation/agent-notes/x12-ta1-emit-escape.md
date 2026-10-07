@@ -122,7 +122,7 @@ byte that is not a delimiter where the segment lands, and the value comes back c
 a silent corruption of a reassociation key that was correct before. Escaping the element separator
 alone would have left the `~` row above open; escaping the archetype set unconditionally would have
 minted that corruption for every non-archetype caller. Stating the set is the only option that does
-neither. **The defaults are still the cosyte archetype and the function cannot verify them** - that
+neither. **The defaults are still the Cosyte archetype and the function cannot verify them** - that
 is unchanged in kind from before it escaped anything, but it now has a byte-level consequence, so it
 is pinned rather than claimed away.
 

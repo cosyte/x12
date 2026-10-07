@@ -672,7 +672,7 @@ model.
     nothing else - `buildTA1` still emits no terminator. Escaping against a guessed set is a value
     corruption rather than a safe default: `unescapeRelease` preserves `?X` verbatim for any `X`
     outside the declared set, so a value released against the wrong delimiter comes back carrying a
-    stray `?`. **The defaults are the cosyte archetype and this function cannot verify them** - if
+    stray `?`. **The defaults are the Cosyte archetype and this function cannot verify them** - if
     you embed a TA1 in an envelope that declares different separators, state them.
   - **A non-string element now REFUSES** with `AckBuildError` / `X12_ACK_INVALID_SPEC`, and that is a
     prerequisite rather than a bonus. Releasing a value means routing it through the escape helper,
@@ -1555,7 +1555,7 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   2. **Whether an `X12Decimal` carries the SCALE you meant.** `fromString("0.3")` and
      `fromString("0.30")` are both accepted and both emit verbatim. That choice is yours.
   3. **The delimiter set `buildTA1` releases against**, per the paragraph above. It defaults to the
-     cosyte archetype and the function cannot verify it; state the separators on `BuildTA1Options`
+     Cosyte archetype and the function cannot verify it; state the separators on `BuildTA1Options`
      if you embed a TA1 in an envelope that declares different ones.
   4. **`build835`'s balance-equation amounts, which refuse UNTYPED.** `build835` runs its balance
      guard before it builds the escape helper, and that guard calls `X12Decimal` methods on your

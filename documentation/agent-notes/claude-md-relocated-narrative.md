@@ -66,7 +66,7 @@ for them, so the copy here was always a duplicate. **The fourth discipline staye
 one this repo owns: an incident's narrative goes into `documentation/agent-notes*`, and only its
 imperative goes back to `CLAUDE.md`.
 
-> These three bind every change in this repo (mirrored from the cosyte meta-repo's
+> These three bind every change in this repo (mirrored from the Cosyte meta-repo's
 > `documentation/conventions.md`):
 >
 > 1. **Documentation follows code.** A public-surface / stack / status change isn't done until its

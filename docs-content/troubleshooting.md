@@ -219,7 +219,7 @@ numeric or `undefined` `interchangeControlNumber` now refuses instead of emittin
 element. An **empty** element refuses too, at all five slots; a whitespace-only one does not, and
 that residual is in [KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md). What it cannot verify is the
 envelope you will embed the segment in. The separators default
-to the cosyte archetype, so state them on `BuildTA1Options` if yours differ, or a value carrying a
+to the Cosyte archetype, so state them on `BuildTA1Options` if yours differ, or a value carrying a
 byte that is a delimiter here and not there comes back with a stray `?`.
 
 On the read side, **`parseTA1`'s five decoded fields are post-`?`-unescape**, so a released

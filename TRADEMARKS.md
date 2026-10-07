@@ -1,6 +1,6 @@
 # Trademarks
 
-`@cosyte/x12` is an independent open-source project. cosyte is **not affiliated with, endorsed by,
+`@cosyte/x12` is an independent open-source project. Cosyte is **not affiliated with, endorsed by,
 or sponsored by** any company named in this repository or its documentation.
 
 ## Why these names appear

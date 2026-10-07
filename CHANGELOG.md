@@ -1952,7 +1952,7 @@ required control number and this builder never invents one, so nothing is emitte
   composite. Escaping against a guessed delimiter set is a value corruption rather than a safe
   default: `unescapeRelease` preserves `?X` verbatim for any `X` outside the reader's declared set,
   so a value released against the wrong delimiter comes back carrying a stray `?`. The defaults are
-  unchanged and are the cosyte archetype, which this function cannot verify, so state the separators
+  unchanged and are the Cosyte archetype, which this function cannot verify, so state the separators
   if you embed a TA1 in an envelope that declares different ones.
 
   **A non-string element now refuses** with `AckBuildError` and the existing `X12_ACK_INVALID_SPEC`
@@ -3043,7 +3043,7 @@ string, …` - which `esc` cannot, being unary.
 
 - **Em-dash brand gate in CI (`scripts/check-no-emdash.sh`, `pnpm check:no-emdash`,
   `.github/workflows/no-emdash.yml`; `EMDASH-CONFORMANCE`).** The founder directive of 2026-07-24
-  (`knowledgebase/06-brand/voice-and-tone.md`) bans `U+2014` outright across every cosyte surface
+  (`knowledgebase/06-brand/voice-and-tone.md`) bans `U+2014` outright across every Cosyte surface
   and names commit messages explicitly, and the meta-repo's `documentation/conventions.md` has
   described the rule as CI-gated; x12 was one of the repos where it was not. This ports
   `knowledgebase`'s scanner (the text-only variant, correct here because x12 tracks no binaries:
@@ -3138,7 +3138,7 @@ string, …` - which `esc` cannot, being unary.
 ### Added
 
 - **Trademark notice (`TRADEMARKS.md`).** This package names third-party systems to describe what it
-  interoperates with; the notice records that cosyte is not affiliated with, endorsed by, or
+  interoperates with; the notice records that Cosyte is not affiliated with, endorsed by, or
   sponsored by any of them, that every reference is descriptive, and that the built-in profiles are
   authored from public sources only. Added to `files` so it ships inside the published tarball, not
   just on GitHub. Documentation only, no runtime or API change.
@@ -3980,7 +3980,7 @@ refresh:code-lists` arrives in Phase 10); no per-payer profile
 
 - **Phase 3: 999 + TA1 acknowledgments (TR3 005010X231A1).** Two
   pure-function ack surfaces ship side-by-side; neither auto-sends, opens
-  a socket, or touches the filesystem. The cosyte ack archetype: the
+  a socket, or touches the filesystem. The Cosyte ack archetype: the
   library MECHANICALLY builds the disposition it is told and REFUSES to
   fabricate an Accept against a non-empty error list. Mirrors hl7's
   upcoming `buildAck` boundary and mllp's commit-contract pattern.
@@ -4165,7 +4165,7 @@ safety` test blocks assert no SSN / ISO-date / long-digit-run
 
 ### Changed
 
-- Migrated onto the shared cosyte engineering standard (Phase E). The toolchain
+- Migrated onto the shared Cosyte engineering standard (Phase E). The toolchain
   is now inherited from the published `@cosyte/*` config packages instead of
   per-repo copies: `tsup.config.ts` uses `cosyteTsup`, `vitest.config.ts` uses
   `cosyteVitest`, and `eslint.config.js` is the three-line `cosyte` wrapper.
