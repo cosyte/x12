@@ -126,9 +126,7 @@ function refusalOf(spec: Build271Spec): Eligibility271BuildError {
 
 describe("build271 - EB-13 emit bytes", () => {
   it("writes the issue's dental line byte for byte", () => {
-    expect(ebSegmentOf(build271(specWith(DENTAL_BENEFIT)))).toBe(
-      "EB*A*******0.20****W*AD:D2150~",
-    );
+    expect(ebSegmentOf(build271(specWith(DENTAL_BENEFIT)))).toBe("EB*A*******0.20****W*AD:D2150~");
   });
 
   it("joins with the declared component separator, not an assumed ':'", () => {
@@ -226,7 +224,9 @@ describe("build271 - EB-13 refusals", () => {
   });
 
   it("refuses an empty code", () => {
-    const err = refusalOf(specWith({ ...DENTAL_BENEFIT, procedure: { qualifier: "AD", code: "" } }));
+    const err = refusalOf(
+      specWith({ ...DENTAL_BENEFIT, procedure: { qualifier: "AD", code: "" } }),
+    );
     expect(err.code).toBe(INVALID_SPEC);
   });
 

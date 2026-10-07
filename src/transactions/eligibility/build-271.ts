@@ -555,9 +555,7 @@ function procedureElement(procedure: Build271ProcedureSpec, ctx: EmitContext): s
   for (let i = 0; i < modifiers.length; i += 1) {
     const modifier = ctx.esc(modifiers[i] ?? "");
     if (modifier === "") {
-      refuseSpec(
-        `build271: benefit procedure (EB-13) modifier at index ${String(i)} is empty.`,
-      );
+      refuseSpec(`build271: benefit procedure (EB-13) modifier at index ${String(i)} is empty.`);
     }
     escapedModifiers.push(modifier);
   }
