@@ -11,9 +11,10 @@ healthcare interchange and read fields out of it without first reading the X12 s
 implementation guide. `@cosyte/x12` is the payer-side sibling of [`@cosyte/hl7`](https://github.com/cosyte/hl7):
 the API shape, profile system, and lenient-parser philosophy are deliberately mirrored.
 
-> **Status:** published on npm and public, still pre-alpha on the `0.0.x`-until-first-alpha
-> ladder. `npm view @cosyte/x12 version` is the source of truth for the current version; this page
-> does not restate it. The **shipped** surface is the HIPAA 005010 read side for 270, 271, 276,
+> **Status:** `0.1`, published on npm and public. The exported readers, builders, types and warning
+> codes are the surface we keep stable, and below 1.0 a breaking change bumps the minor version and
+> is called out in the changelog with its migration. `npm view @cosyte/x12 version` is the source of
+> truth for the current version. The **shipped** surface is the HIPAA 005010 read side for 270, 271, 276,
 > 277/277CA, 278, 820, 834, 835, 837P/I/D, 999, and TA1, the emit
 > side (`serializeX12` + `buildInterchange` and a domain builder for each of those sets),
 > and the descriptive trading-partner profile system. This documentation is gated to that surface:

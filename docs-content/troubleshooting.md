@@ -372,10 +372,10 @@ third party.
   (`X12_PRE_005010`), not decoded to older field maps.
 - **No transport.** AS2, SFTP, and MLLP-style delivery are out of scope. This is a parser/serializer,
   not a communications stack.
-- **Published, still pre-alpha.** The package is published on npm as `@cosyte/x12` from a public
-  repo, but it stays on the `0.0.x`-until-first-alpha ladder. `npm view @cosyte/x12 version` is the
-  only source of truth for the current version, so this page does not restate one. Treat the API as
-  pre-alpha and pin the exact version until the first alpha.
+- **Below 1.0.** The package is published on npm as `@cosyte/x12` from a public repo, at `0.1`. Its
+  exported readers, builders, types and warning codes are the surface we keep stable, and below 1.0
+  a breaking change bumps the minor version and is called out in the changelog with its migration.
+  `npm view @cosyte/x12 version` is the only source of truth for the current version.
 - **A 276 hierarchical level whose declared parent does not resolve is left off the returned tree.**
   The 276 reader attaches a level by its own HL-02 and by nothing else, so a dangling pointer, a
   pointer naming a level of the wrong kind, and a parent chain that returns to itself each leave that
