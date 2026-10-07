@@ -23,11 +23,10 @@ The read side is only half of `@cosyte/x12`. The emit side ships too, and it is 
 ## The asymmetry: liberal on read, conservative on emit
 
 The parser is lenient. The builders are not, and that is deliberate (Postel's Law). Where the parser
-meets a structure it cannot decode it **preserves the bytes and warns**; where a builder meets a spec
-it cannot emit conformantly it **refuses with a typed error rather than silently corrupting the
+meets a structure it cannot decode it **preserves the bytes and warns**; where a builder meets one of
+the specs listed below it **refuses with a typed error rather than silently corrupting the
 document**. Nothing is ever quietly corrected on the way out. A wrong element position on a claim is
-a wrong payment, so emitting something plausible and wrong is the one outcome the emit side is built
-to make impossible.
+a wrong payment.
 
 Concretely, a builder refuses rather than guesses when:
 

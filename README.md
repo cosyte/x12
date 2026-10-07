@@ -179,8 +179,7 @@ Everything ships from one entry point; there are no subpath imports.
   transaction set into a typed one (`get835`, `get837Claims`, `get270Inquiry`, `get271Eligibility`,
   `get276StatusInquiry`, `parse999`, `parseTA1`, and the rest).
 - **Emit.** `serializeX12` and `buildInterchange` are the general path, and every transaction set
-  with a reader also has a domain builder (`build835`, `build837P`, `build271`, and the rest) that
-  layers that guide's own invariants on top.
+  with a reader also has a domain builder (`build835`, `build837P`, `build271`, and the rest).
 - **Errors and warnings.** Parsing is lenient, and only **four** structural failures are ever fatal
   (`X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`, `X12_INVALID_DELIMITERS`, `X12_EMPTY_INPUT`).
   Everything else arrives on `ix.warnings` as a stable code with positional context, so a tolerated

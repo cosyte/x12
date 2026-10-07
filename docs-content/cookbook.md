@@ -1170,8 +1170,8 @@ for (const w of ix.warnings) {
 ```
 
 **Escalate when you want strictness.** Pass `{ strict: true }` to turn every tolerated deviation into
-a thrown `X12ParseError` carrying the same warning code, useful for a spec-conformance gate on a
-trusted trading partner.
+a thrown `X12ParseError` carrying the same warning code, useful as a gate on a trusted trading
+partner.
 
 **The four fatal codes.** These are unrecoverable structural corruption and always throw an
 `X12ParseError` regardless of `strict`:

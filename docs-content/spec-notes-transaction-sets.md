@@ -10,7 +10,7 @@ sidebar_position: 5
 X12 defines hundreds of transaction sets; HIPAA mandates a small handful for healthcare, and a smaller
 handful again carry the overwhelming majority of real integration traffic. `@cosyte/x12` covers the
 HIPAA **005010** healthcare sets and nothing else. Every set in the map below ships a lenient
-**reader** and a spec-clean domain **builder**. This page is the map: what each set is, which
+**reader** and a domain **builder**. This page is the map: what each set is, which
 function reads it, which builds it, and the one field each one preserves _verbatim_ because getting
 it wrong causes harm.
 
