@@ -24,7 +24,7 @@ the API shape, profile system, and lenient-parser philosophy are deliberately mi
 ## The transaction sets it covers
 
 The HIPAA **005010** healthcare transaction sets. Every set listed below ships both a lenient reader
-and a spec-clean domain builder:
+and a domain builder:
 
 - **270**: eligibility inquiry
 - **271**: eligibility response
@@ -79,8 +79,8 @@ result.
 ## The archetype in one line
 
 The parser is **lenient by default** (vendor deviations become Tier-2 `warnings` carrying a stable
-code and positional context, not failures) while the builders emit spec-clean X12 and **refuse**
-(never silently corrupt) a structurally impossible spec (Postel's Law). Only four unrecoverable
+code and positional context, not failures) while the builders **refuse** (never silently corrupt) a
+structurally impossible spec (Postel's Law). Only four unrecoverable
 Tier-3 structural errors ever throw. Money is decimal-exact end to end (`X12Decimal`, BigInt-backed,
 **never `parseFloat` an EDI amount**). See [Core Concepts](./spec-notes-envelope) for the mental
 model.

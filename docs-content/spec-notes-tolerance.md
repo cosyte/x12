@@ -15,7 +15,7 @@ the library throwing your pipeline off the rails on a vendor quirk.
 
 ## The three tiers
 
-- **Tier 1: spec-clean.** Parses with no warnings.
+- **Tier 1: no deviation flagged.** Parses with no warnings.
 - **Tier 2: tolerated deviation.** A miscount, a dangling release character, an unknown CARC/RARC/HI
   code, an HL parent mismatch, a balance mismatch, a pre-005010 version. The parser **keeps going**,
   preserves the verbatim value, and emits a warning. This is the overwhelming majority of real-world
@@ -97,8 +97,8 @@ parseX12(""); // throws X12ParseError (X12_EMPTY_INPUT)
 
 For a trusted trading partner where any deviation should be a hard failure, pass `{ strict: true }`.
 Every Tier-2 deviation then throws an `X12ParseError` **carrying the same warning code** it would
-otherwise have recorded, so a strict run is a spec-conformance gate, and a lenient run is production
-tolerance, with one code vocabulary across both:
+otherwise have recorded, so a strict run fails on every deviation the parser flags, and a lenient
+run is production tolerance, with one code vocabulary across both:
 
 ```ts runnable throws
 import { parseX12 } from "@cosyte/x12";
