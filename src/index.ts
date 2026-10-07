@@ -18,7 +18,7 @@
  * console.log(VERSION);
  * ```
  */
-export const VERSION: string = "0.1.0";
+export const VERSION: string = "0.1.1";
 
 // The package's conformance declaration: which implementation guide each
 // reader and builder implements, which identifiers 45 CFR 162.920 names for
