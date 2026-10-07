@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-07
+
+**What 0.1.1 means for you.** The 271 now reads and builds the procedure a benefit line applies to
+(EB-13), which dental payers use for per-procedure coinsurance, frequency, age and maximum limits.
+If you build an `X12EligibilityBenefit` object literal yourself, such as a test double, add
+`procedure: undefined` to it. Code that reads benefits from `get271` needs no change.
+
+### Added
+
+- **271 EB-13 read.** Each benefit's `procedure` carries the qualifier (EB-13-1), the code
+  (EB-13-2), up to four modifiers in transmitted order (EB-13-3 to EB-13-6) and the description
+  (EB-13-7) when the sender sent one, and is `undefined` when EB-13 is absent or has no qualifier.
+  Components are split on the component separator the interchange declares in ISA-16. New
+  package-root type export: `X12EligibilityProcedure`.
+- **271 EB-13 emit.** A 271 benefit takes an optional `procedure` (`Build271ProcedureSpec`, a new
+  package-root type export) with a qualifier, a code and modifiers, written as one composite. The
+  builder refuses an empty qualifier or code, an empty modifier, and more than four modifiers: a
+  fifth would land in the description position, and an empty one would shift later modifiers on
+  read. The description is not written.
+- The 270 reader's EQ-02 procedure decodes exactly as before and now shares its decoder with the 271.
+
+## [0.1.0] - 2026-09-25
+
 **What 0.1 means for you.** This release is the first whose public API we treat as settled: the
 exported readers, builders, types and warning codes are the surface we keep stable, and the warning
 registry only ever gains codes. It covers typed read and typed emit for 270, 271, 276, 277 and
