@@ -320,6 +320,7 @@ export interface X12EligibilityTrace {
  * b.serviceTypeCodes[0]?.code; // "30"
  * b.inPlanNetwork;            // "Y"
  * b.monetaryAmount?.toString(); // "1000.00"
+ * b.procedure?.code;          // "D2150" (EB-13-2, when the line is procedure-specific)
  * ```
  */
 export interface X12EligibilityBenefit {
@@ -335,10 +336,37 @@ export interface X12EligibilityBenefit {
   readonly quantity: X12Decimal | undefined;
   readonly authorizationRequired: string | undefined;
   readonly inPlanNetwork: string | undefined;
+  /** EB-13 - the procedure this line applies to; `undefined` when EB-13 is absent or has no qualifier. */
+  readonly procedure: X12EligibilityProcedure | undefined;
   readonly references: readonly X12EligibilityReference[];
   readonly dates: readonly X12EligibilityDate[];
   readonly messages: readonly string[];
   readonly relatedEntities: readonly X12EligibilityEntity[];
+}
+
+/**
+ * The EB-13 composite medical procedure identifier (C003), as its separated
+ * components, split on the component separator the interchange declares.
+ * C003-08 (range end) is not read.
+ *
+ * @example
+ * ```ts
+ * import type { X12EligibilityProcedure } from "@cosyte/x12";
+ * declare const p: X12EligibilityProcedure;
+ * p.qualifier;    // "AD" (EB-13-1, product/service id qualifier)
+ * p.code;         // "D2150" (EB-13-2)
+ * p.modifiers[0]; // "26" (EB-13-3 onward)
+ * ```
+ */
+export interface X12EligibilityProcedure {
+  /** EB-13-1 - product or service id qualifier. */
+  readonly qualifier: string;
+  /** EB-13-2 - the procedure code. */
+  readonly code: string | undefined;
+  /** EB-13-3 through EB-13-6 - procedure modifiers, in transmitted order. */
+  readonly modifiers: readonly string[];
+  /** EB-13-7 - procedure description, when the sender transmitted one. */
+  readonly description: string | undefined;
 }
 
 /**

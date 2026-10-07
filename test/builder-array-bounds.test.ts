@@ -236,7 +236,11 @@ describe("builder loop bounds: the source gate", () => {
   const bounds = modules.flatMap(loopBounds);
 
   it("finds every indexed loop bound in the builder modules", () => {
-    // Re-derived on this tree: FORTY-SIX indexed loops across NINE modules take
+    // Re-derived on this tree: FORTY-SEVEN indexed loops across NINE modules
+    // take their bound from a list. The forty-seventh is the 271's EB-13
+    // procedure modifiers, in a module already counted below.
+    //
+    // Before it: FORTY-SIX indexed loops across NINE modules take
     // their bound from a list. Thirty-two of them, across seven modules, read a
     // caller-supplied `.length` at base commit `55ebc66`; SIX more, in the
     // eighth module, arrived with the 270 domain builder, which walks its
@@ -246,7 +250,7 @@ describe("builder loop bounds: the source gate", () => {
     // receivers, service providers, subscribers, dependents) plus its claims and
     // service lines. Pinned so a module that stops being scanned is a failure
     // rather than a silently smaller sweep.
-    expect(bounds.length).toBe(46);
+    expect(bounds.length).toBe(47);
     expect(new Set(bounds.map((b) => b.file)).size).toBe(9);
   });
 
