@@ -55,7 +55,7 @@ const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
  * sentence around it happens to use: a case count, a spawn count and a wall
  * clock all move with the next slice, and a census here went stale exactly once
  * before anyone noticed. The
- * rule is `CLAUDE.md`'s: derive a count, never recall one. What survives as a
+ * rule: derive a count, never recall one. What survives as a
  * RULE is the last paragraph, and the equivalence case is what enforces it.
  *
  * Counted at runtime with a `spawnSync` shim on BOTH trees, because the two

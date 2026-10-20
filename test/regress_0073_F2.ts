@@ -41,7 +41,7 @@
  *
  * ## This is the repository's own named trap
  *
- * `X12-VARIANT-LOOKUP-PROTOTYPE` in the repo `CLAUDE.md`: "a table literal
+ * `X12-VARIANT-LOOKUP-PROTOTYPE` in `documentation/agent-notes/x12-variant-lookup-prototype.md`: "a table literal
  * inherits `Object.prototype` so EVERY OWN PROPERTY of it resolved TRUTHY,
  * `Object.freeze` DOES NOT HELP, `in` IS NOT THE SAFE FORM". Both neighbouring
  * call sites are already hardened: `validateHl` reads its level-code map behind
