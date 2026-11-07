@@ -1,8 +1,10 @@
 name: Release
 
-# Thin caller of the shared release pipeline: Changesets -> npm publish (provenance auto-enables when
-# this repo is public) -> docs artifacts -> GitHub release -> repository_dispatch to cosyte/docs.
-# Requires the NPM_TOKEN and DOCS_REPO_DISPATCH_TOKEN secrets (passed via `secrets: inherit`).
+# Thin caller of the shared release pipeline: Changesets -> npm publish through trusted publishing
+# (OIDC, with provenance) -> docs artifacts -> GitHub release -> repository_dispatch to cosyte/docs.
+# No npm token exists: the package's trusted publisher on npmjs.com names this repository and this
+# file, and npm exchanges the job's `id-token: write` grant for a short-lived publish token.
+# `secrets: inherit` passes DOCS_REPO_DISPATCH_TOKEN, and RELEASE_PR_TOKEN when one is set.
 #
 # ▶ A RUN OF THIS WORKFLOW SITTING AT `waiting` IS NOT A FAILURE. IT IS THE GATE WORKING, AND THE
 #   ONLY THING THAT MOVES IT IS A HUMAN.

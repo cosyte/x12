@@ -23,8 +23,14 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: development
+    # Wait a day after a release before proposing it, the same 24 hours pnpm-workspace.yaml's
+    # minimumReleaseAge holds every install to. Security updates are not delayed.
+    cooldown:
+      default-days: 1
   # keep GitHub Actions references current
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 1
