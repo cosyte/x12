@@ -1,6 +1,7 @@
 ---
 id: spec-notes-money
 title: Decimal-exact money
+description: "Why every amount decodes as an exact X12Decimal and never a JavaScript number, and how to use one."
 sidebar_label: Decimal-exact money
 sidebar_position: 7
 ---
@@ -28,7 +29,7 @@ the difference is the money-handling analog of mis-reading a dose.
 > `X12Decimal` methods on your value, so any amount it reads as a term of one of the three TR3
 > X221A1 §1.10.2 invariants throws a plain `TypeError` with no `code`: `payment.totalActualPayment`,
 > `claim.totalChargeAmount`, `claim.totalPaymentAmount`, every `adjustments[].amount`,
-> `serviceLine.chargeAmount`, `serviceLine.paymentAmount` and `providerAdjustments[].amount`. It
+> `serviceLine.chargeAmount`, `serviceLine.paymentAmount`, and `providerAdjustments[].amount`. It
 > still refuses; it just refuses untyped. Every other `X12Decimal` field refuses typed. See
 > `KNOWN-LIMITATIONS.md`.
 
@@ -115,8 +116,8 @@ Three things to hold onto:
   submission resolved to, leaves `charge` and `units` `undefined` and is announced by its own
   warning, **`X12_837_SERVICE_LINE_NOT_DECODED`**, anchored at the `LX` that opened the line. **Do
   not read that as the only one, and do not gate on that code alone**: a Loop 2400 carrying a SECOND
-  `SV1` / `SV2` / `SV3` reaches the same `charge: undefined` by a different route - the repeat writes
-  its own absent element over the amount the first one stated - and on that line a service segment
+  `SV1` / `SV2` / `SV3` reaches the same `charge: undefined` by a different route (the repeat writes
+  its own absent element over the amount the first one stated), and on that line a service segment
   DID decode, so `X12_837_SERVICE_LINE_NOT_DECODED` does not fire.
   **`X12_837_SERVICE_SEGMENT_REPEATED`**, anchored at the repeated segment, is what announces it.
   No census of never-read slots is published here, on purpose: the rule is what holds.
@@ -139,7 +140,7 @@ gives you the same distinction in-band, as `{ value, status }` with `status` one
 `AMT` and `ADX` are not slots on a bigger record: each one _is_ a record, carrying an amount plus the
 thing the amount is about. So when the amount does not decode there is no row to put on the model at
 all, and AMT-01's qualifier or ADX-02's adjustment reason code goes with it. Through `0.0.12` that
-happened in complete silence - `AMT*B6~` gave `claim.amounts: []` and `warnings: []`, which reads
+happened in complete silence: `AMT*B6~` gave `claim.amounts: []` and `warnings: []`, which reads
 exactly like a document that never carried the segment.
 
 **`X12_AMOUNT_ROW_DROPPED` reports it**, anchored at the `AMT` / `ADX` itself and carrying **no**
@@ -214,7 +215,7 @@ see the last bound below.
 
 - An **820 `RMR`** under an open remittance loop whose RMR-01 and RMR-02 are **both empty** while
   RMR-04 or RMR-05 is populated. The open item is refused on identity before either amount element
-  is read, so a stated payment, a stated amount due and RMR-03's payment action code leave together.
+  is read, so a stated payment, a stated amount due, and RMR-03's payment action code leave together.
 - An **837 `AMT`** arriving while a Loop 2430 line adjudication (`SVD`) is open. `AMT-02` decoded,
   and the v1 adjudication model has no amount row to carry it, so the row is skipped rather than
   attached to this submission's own service line, which is not whose amount it is.

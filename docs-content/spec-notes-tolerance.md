@@ -1,11 +1,12 @@
 ---
 id: spec-notes-tolerance
-title: Tolerance tiers & warning codes
+title: Tolerance tiers and warning codes
+description: "How the lenient parser tolerates deviations, records each as a stable-coded warning, and keeps the raw value."
 sidebar_label: Tolerance tiers
 sidebar_position: 6
 ---
 
-# Tolerance tiers & warning codes
+# Tolerance tiers and warning codes
 
 `@cosyte/x12` follows Postel's Law: **liberal on input, conservative on output.** Real payer and
 clearinghouse traffic is full of deviations that a strict validator would reject and a production
@@ -35,7 +36,7 @@ that `serializeX12(parseX12(file))` returns the compact form rather than your or
 It is not, however, the only thing the round trip does not reproduce. A **segment outside a
 transaction** is a Tier-2 deviation (`X12_UNEXPECTED_SEGMENT`): it is warned about, kept verbatim on
 `ix.orphanSegments`, and re-emitted at the structural `anchor` recorded with it, so both the value and
-the warning do survive the round trip. What it is not is **decoded** - no `get*` reader will see it,
+the warning do survive the round trip. What it is not is **decoded**: no `get*` reader will see it,
 because retention and placement are not promotion into the typed tree. See
 [Line endings between segments](./spec-notes-envelope) for the full list of what the emit does not
 reproduce, and

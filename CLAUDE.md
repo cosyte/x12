@@ -2,6 +2,8 @@
 
 `@cosyte/x12` is our ASC X12 EDI parser and utility library for Node.js and TypeScript, published to npm under MIT. It is the payer-side sibling of `@cosyte/hl7` and mirrors its API: it reads the 005010 healthcare transaction sets (eligibility, claim status, claims, remittance, enrollment, acknowledgments) leniently, a warning rather than a throw for anything short of structural corruption, and emits them through a builder per transaction that refuses what it cannot write exactly. It has zero runtime dependencies, and this repository is public.
 
+@AGENTS.md
+
 ## Gate
 
 From the repo root, in this order, with pnpm 10.34.5 (the `packageManager` pin). pnpm 12 ignores `pnpm.overrides` and refuses the frozen install, and tests shell out to bare `pnpm`, so where `pnpm --version` prints another version put the pinned one first on PATH: `mkdir -p ~/.pnpm10 && corepack enable --install-directory ~/.pnpm10 pnpm && export PATH="$HOME/.pnpm10:$PATH"`.

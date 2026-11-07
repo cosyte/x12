@@ -1,6 +1,7 @@
 ---
 id: installation
 title: Installation
+description: "Install @cosyte/x12, meet the Node.js prerequisite, and confirm the package resolves from ESM or CommonJS."
 sidebar_position: 2
 ---
 
@@ -10,13 +11,13 @@ sidebar_position: 2
 per-condition type declarations, so it works from either module system without configuration, and it
 has **zero runtime dependencies**: Node stdlib only.
 
-> **Status:** `0.1`, published on npm and public. The `npm install` below is live. Below 1.0 a
+> **Status:** the 0.1 line, published on npm and public. The `npm install` below is live. Below 1.0 a
 > breaking change bumps the minor version and is called out in the changelog with its migration.
 > Run `npm view @cosyte/x12 version` for the current version: it is the source of truth.
 
 ## Prerequisites
 
-- **Node.js >= 22.** The whole `@cosyte/*` suite targets ES2023 / Node 22+.
+- **Node.js 22 or later, tested on 22 and 24.** The whole `@cosyte/*` suite targets ES2023.
 - A package manager: `pnpm`, `npm`, or `yarn`.
 - **No runtime dependencies.** The parser, serializer, builders, and bundled HIPAA code-list
   snapshots are all Node stdlib only. The zero-dep rule is a release gate, not a preference. A new
