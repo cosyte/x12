@@ -49,7 +49,7 @@ export interface X12Remittance {
  * Decoded BPR - Financial Information / payment header. The PAYMENT
  * MOVEMENT primitive: actual payment amount, credit/debit flag, method
  * (`ACH`/`CHK`/`NON`/`BOP`/`FWT`), payment date. **`totalActualPayment`
- * is the sum the bank actually moved** - `BPR-02 === Σ(claim CLP-04) -
+ * is the sum the bank actually moved**, and `BPR-02 === Σ(claim CLP-04) -
  * Σ(PLB amounts)` is the top-level balance invariant, with each PLB amount
  * in its raw EDI sign (a positive amount is a take-back).
  *
@@ -493,9 +493,11 @@ export interface X12RemitServiceLine {
  * the wire states them, so a positive PLB lowers BPR-02 and a negative one
  * raises it.
  *
- * `reasonCode` is the **composite** PLB reason code (the qualifier +
- * optional reference together, e.g. `WO:123456` for "withholding for
- * claim 123456"); `subCode` carries the optional second component.
+ * `reasonCode` is the adjustment reason code, the first component of the
+ * PLB composite (e.g. `WO`, withholding); `subCode` is its optional second
+ * component, the reference identifier (e.g. `123456`, the claim the
+ * withholding relates to). A composite sent as `WO:123456` reads as
+ * `reasonCode: "WO"` and `subCode: "123456"`.
  *
  * @example
  * ```ts
