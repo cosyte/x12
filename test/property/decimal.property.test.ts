@@ -22,8 +22,8 @@ const X12_DECIMAL_LEXICAL_RE = /^([+-])?(\d*)(?:\.(\d*))?$/u;
 
 /**
  * Generate a spec-shaped X12 R-type decimal string that the parser will
- * accept. Combines an optional sign, an integer body (0–10 digits), and
- * an optional fractional body (0–6 digits). Excludes strings that lack
+ * accept. Combines an optional sign, an integer body (0 to 10 digits), and
+ * an optional fractional body (0 to 6 digits). Excludes strings that lack
  * any digit (covered by negative-case tests elsewhere).
  */
 const arbitraryDecimalString: fc.Arbitrary<string> = fc

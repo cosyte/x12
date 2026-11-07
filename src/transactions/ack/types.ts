@@ -361,7 +361,7 @@ export interface Build999FunctionalGroupSpec {
  *   BCBS some shapes use `\\`).
  * - `interchangeControlNumber` is the 9-character ISA-13 value (zero-
  *   padded if needed). `groupControlNumber` is the GS-06 numeric string
- *   (1–9 digits). `transactionSetControlNumber` is the ST-02 string (4–9
+ *   (1 to 9 digits). `transactionSetControlNumber` is the ST-02 string (4 to 9
  *   digits per X12 .5).
  */
 export interface Build999EnvelopeSpec {

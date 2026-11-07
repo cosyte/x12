@@ -38,8 +38,8 @@ const isaControlNumberArb = fc
   .map((n) => String(n).padStart(9, "0"));
 
 /**
- * Generate a 4–9-digit ST control-number string. ST-02 / SE-02 must be
- * 4–9 digits per ASC X12 .5; we draw exactly 4 here for determinism.
+ * Generate a 4- to 9-digit ST control-number string. ST-02 / SE-02 must be
+ * 4 to 9 digits per ASC X12 .5; we draw exactly 4 here for determinism.
  *
  * @internal
  */
