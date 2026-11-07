@@ -49,8 +49,9 @@ export interface X12Remittance {
  * Decoded BPR - Financial Information / payment header. The PAYMENT
  * MOVEMENT primitive: actual payment amount, credit/debit flag, method
  * (`ACH`/`CHK`/`NON`/`BOP`/`FWT`), payment date. **`totalActualPayment`
- * is the sum the bank actually moved** - `Σ(claim CLP-04) + Σ(PLB
- * adjustments) === BPR-02` is the top-level balance invariant.
+ * is the sum the bank actually moved**, and `BPR-02 === Σ(claim CLP-04) -
+ * Σ(PLB amounts)` is the top-level balance invariant, with each PLB amount
+ * in its raw EDI sign (a positive amount is a take-back).
  *
  * @example
  * ```ts
@@ -405,9 +406,10 @@ export interface X12RemitRemark {
 
 /**
  * Decoded Loop 2110 - Service Payment Information. One per service line
- * adjudicated. Line-level CAS adjustments roll up into the claim-level
- * balance invariant (`Σ(SVC paid) + Σ(line CAS) === CLP-04`); a mismatch
- * fires `X12_835_REMIT_BALANCE_MISMATCH` on the parent claim.
+ * adjudicated. Line-level CAS adjustments enter two balance invariants:
+ * this line's own `SVC-02 === SVC-03 + Σ(line CAS)`, and the parent claim's
+ * `CLP-03 === CLP-04 + Σ(claim CAS + line CAS)`. A mismatch in either fires
+ * `X12_835_REMIT_BALANCE_MISMATCH`.
  *
  * `productServiceIdQualifier` is the SVC-01-1 procedure-code system
  * (`HC` HCPCS/CPT, `AD` ADA dental, `N4` NDC, `WK` Advanced Billing
@@ -487,12 +489,15 @@ export interface X12RemitServiceLine {
  * **Sign convention:** a POSITIVE PLB amount REDUCES the provider's
  * payment (recoupment / take-back); a NEGATIVE PLB amount ADDS to the
  * payment (interest / advance payment). The 835 balance invariant
- * `Σ(claim CLP-04) + Σ(PLB amounts) === BPR-02` works because PLB
- * amounts already carry the correct sign.
+ * `BPR-02 === Σ(claim CLP-04) - Σ(PLB amounts)` subtracts the amounts as
+ * the wire states them, so a positive PLB lowers BPR-02 and a negative one
+ * raises it.
  *
- * `reasonCode` is the **composite** PLB reason code (the qualifier +
- * optional reference together, e.g. `WO:123456` for "withholding for
- * claim 123456"); `subCode` carries the optional second component.
+ * `reasonCode` is the adjustment reason code, the first component of the
+ * PLB composite (e.g. `WO`, withholding); `subCode` is its optional second
+ * component, the reference identifier (e.g. `123456`, the claim the
+ * withholding relates to). A composite sent as `WO:123456` reads as
+ * `reasonCode: "WO"` and `subCode: "123456"`.
  *
  * @example
  * ```ts

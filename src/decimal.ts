@@ -5,8 +5,9 @@
  * an 835 claim, a dropped decimal is the wrong dollar amount in someone's
  * cash post. `X12Decimal` preserves the inbound lexical form verbatim for
  * byte-exact round-trip and exposes exact `BigInt`-backed arithmetic for
- * balance invariants (CLP-04 + CLP-05 + ΣCAS = CLP-03;
- * ΣSVC paid + ΣCAS = CLP-04; Σclaim CLP-04 + PLB = BPR-02).
+ * the 835 balance invariants (`SVC-02 == SVC-03 + Σ(line CAS)`;
+ * `CLP-03 == CLP-04 + Σ(claim CAS + line CAS)`;
+ * `BPR-02 == Σ(CLP-04) - Σ(PLB amounts)`, each PLB amount in its raw EDI sign).
  *
  * Internal representation:
  *

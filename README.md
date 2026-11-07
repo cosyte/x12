@@ -247,10 +247,10 @@ than the JavaScript `Date` 0 to 11, so `Object.keys()` of the result tells you t
 `DateTime.fromObject` with no renaming. Neither library is a dependency here; this package still has
 zero of those.
 
-`parseDocumentDate`, which reads the document date for the date-aware code-list queries, keeps its
-own contract and still THROWS on input it refuses. That divergence is deliberate: it answers a
-caller who asked a validity question and could not state the day, while these three read a document
-that was already parsed leniently.
+The date-aware code-list queries, `checkCarcValidity` and `checkRarcValidity`, keep their own
+contract and still THROW an `X12CodeListError` on a document date they refuse. That divergence is
+deliberate: they answer a caller who asked a validity question and could not state the day, while
+these three read a document that was already parsed leniently.
 
 #### Using two @cosyte parsers in one file
 
