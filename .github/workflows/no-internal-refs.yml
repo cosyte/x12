@@ -3,9 +3,9 @@ name: Public-surface gate
 # Founder directive 2026-07-27: no internal project bookkeeping on any surface a consumer
 # reads. Item identifiers, phase and wave language, ADR numbers, meta-repo paths and
 # process commentary belong in the changeset, CHANGELOG.md, the commit, the PR and the
-# roadmap, never in README.md, KNOWN-LIMITATIONS.md, docs-content/, the npm description, or
-# the JSDoc that compiles into `dist/`. The rule is written out in the meta-repo's
-# `documentation/conventions.md`; `scripts/check-no-internal-refs.sh` is what enforces it.
+# umbrella's plans/, never in README.md, KNOWN-LIMITATIONS.md, docs-content/, the npm
+# description, or the JSDoc that compiles into `dist/`. `scripts/check-no-internal-refs.sh` is
+# what enforces it, and the umbrella's `plans/standards.md` (ST34) records where the gate goes.
 #
 # WHY A GATE AND NOT A NOTE. The founder, on the sweep that removed these across the
 # ecosystem: "it needs to not just be a memory note, but something that is addressed in the

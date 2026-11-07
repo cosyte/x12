@@ -96,8 +96,8 @@ Relocated out of `CLAUDE.md` on 2026-08-06, alongside the v1 scope list below, t
 for the `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` trap. **The two load-bearing halves stayed
 behind in `CLAUDE.md`**: the toolchain is inherited by depending on the published
 `@cosyte/*` config packages rather than by copying files, and the `attw` script is
-`scripts/attw.mjs` and never the bare CLI. The meta-repo's `documentation/conventions.md`
-is the source of truth for all of it; this was always a summary.
+`scripts/attw.mjs` and never the bare CLI. The org-wide standards now live in the umbrella's
+`plans/standards.md`; this was always a summary.
 
 - **Language:** TypeScript (strict, full rigor set incl. `noUncheckedIndexedAccess`) via
   `@cosyte/tsconfig`. **Target ES2023**. The shared base sets `verbatimModuleSyntax: false`.
@@ -1824,7 +1824,8 @@ packaging gate.**
   closed** - every line, every charge, silently); an `LX` / `SVx` arriving before any `CLM` is
   dropped whole with `claims: []` and `warnings: []`; and an absent required `SV1-02` still reading
   a confident `0`, which the deferred `X12Decimal | undefined` slice is where it closes.
-  `operations/roadmaps/x12.md` also carries no `Provenance:` field where sibling roadmaps do.
+  The x12 roadmap of the time, since replaced by the umbrella's `plans/`, also carried no
+  `Provenance:` field where sibling roadmaps did.
 
 - **Three stale `SV3-05` comments were corrected to the code in this slice, not left.** Two in
   `build-837.ts` and one in this file said `units` sits at `SV3-05`; both the emit and `decodeSv3`
@@ -3440,8 +3441,8 @@ opts?)` reconstructs an `X12Interchange` back to bytes from the
   same allow-list model as DICOM's binary `.dcm`); a whole-file
   bypass needs `--allow-fixture` **and** an audit entry in
   `phi-scan-overrides.md`. Runs at pre-commit (`simple-git-hooks
---staged`) and in CI (`run-phi-scan: true`); the `verify.sh` summary
-  now shows `phi-scan ✓`.
+--staged`) and in CI (`run-phi-scan: true`); the umbrella's old `verify.sh`
+  summary showed `phi-scan ✓`.
 
 ## Published scope: the 270 and 276 inquiry directions
 
