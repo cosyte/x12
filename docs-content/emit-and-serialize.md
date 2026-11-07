@@ -1,6 +1,7 @@
 ---
 id: emit-and-serialize
 title: Building and serializing X12
+description: "How the emit side works: serializeX12 turns any interchange back into bytes, and the builders compose one from nothing."
 sidebar_label: Building and serializing
 sidebar_position: 8
 ---
@@ -123,7 +124,7 @@ unemittable, not that any other set is safe.
 ## Byte fidelity, and its two silent limits
 
 `serializeX12` is **byte-faithful for the segments on the model**. Each comes back verbatim,
-including element padding, composite structure and `?`-release escapes, in the order the model holds
+including element padding, composite structure, and `?`-release escapes, in the order the model holds
 it. Anything the parser never recorded does not come back, so **`serialize(parse(s)) === s` is not
 guaranteed**, and a file with no line breaks is not thereby safe.
 

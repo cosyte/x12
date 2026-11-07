@@ -1,11 +1,12 @@
 ---
 id: spec-notes-envelope
-title: The envelope & loop model
-sidebar_label: Envelope & loop model
+title: The envelope and loop model
+description: "The nested envelopes and the loop structure inside a transaction, which every reader in this library follows."
+sidebar_label: Envelope and loop model
 sidebar_position: 4
 ---
 
-# The envelope & loop model
+# The envelope and loop model
 
 Every X12 interchange is a set of **nested envelopes**. Understanding the four levels (and the loop
 structure inside a transaction) is the whole mental model; once you have it, every reader in this
@@ -67,11 +68,11 @@ it, so a partner who ships `|` elements and `\` components parses with no specia
 Detection verifies the element separator at all 16 fixed ISA positions, which makes 17 the **floor**
 on how many parts the header splits into, not the count. An ISA element value carrying that same byte
 splits again: that element comes back a prefix and everything after it is displaced, so the control
-number, the usage indicator and the version can each answer some other element's value. **How far is
-not derivable from `isa.elements`** - more than one element can carry an extra separator, and one
-sitting between two of them is displaced less than one sitting after both - so `isa.raw` plus the
+number, the usage indicator, and the version can each answer some other element's value. **How far is
+not derivable from `isa.elements`**: more than one element can carry an extra separator, and one
+sitting between two of them is displaced less than one sitting after both, so `isa.raw` plus the
 fixed widths is the only route back. `@cosyte/x12` reports this as
-`X12_ISA_EXTRA_ELEMENT_SEPARATOR` and **re-frames nothing** - the byte is both
+`X12_ISA_EXTRA_ELEMENT_SEPARATOR` and **re-frames nothing**: the byte is both
 content under the ISA's fixed widths and the separator the segment declares in-band, the
 interchange is not 005010-conformant either way, and nothing settles which reading is right. All 106
 bytes stay on `isa.raw`, so the transmitted span of any element is recoverable if you decide it should
@@ -99,8 +100,8 @@ terminator, which the terminator scan still reads as an escape, so that segment 
 after it and you get `X12_MISSING_SE`.
 
 **🩺 On the emit side a `?` in ANY of the four roles is REFUSED, and that is the asymmetry: lenient
-on parse, strict on emit.** Every builder - `buildInterchange`, the seven per-TR3 domain builders,
-`build999` and `buildTA1` - refuses such a set with its own existing typed error, naming the role.
+on parse, strict on emit.** Every builder (`buildInterchange`, the seven per-TR3 domain builders,
+`build999`, and `buildTA1`) refuses such a set with its own existing typed error, naming the role.
 The reason is that one byte cannot both separate and escape on the way out either, and there is
 nothing a caller can do about it at the value level:
 
@@ -108,7 +109,7 @@ nothing a caller can do about it at the value level:
   protection is emitted as structure.
 - A **composite or a repetition** is joined with the separator you declared, so where that separator
   is `?` the library's own structural join is emitted as an escape. **This one needs no value of
-  yours at all** - an 837 with a `?` component separator emitted `SV1-01-2` (the procedure code) and
+  yours at all**: an 837 with a `?` component separator emitted `SV1-01-2` (the procedure code) and
   `HI-01-2` (the diagnosis code) fused into the preceding component on every document, silently.
 
 If you must exchange with a partner who declares `?` as structure, you can still **read** their
@@ -119,11 +120,11 @@ read-side bounds above are unchanged by the refusal.
 property of the SET you declare, never as a guarantee about the documents this library can compose.
 
 **A second refusal sits beside it: a delimiter must be SHAPED like one.** Each of the four roles must
-be a string of exactly one visible character, and the four must be mutually distinct - the same
+be a string of exactly one visible character, and the four must be mutually distinct, the same
 predicate `parseX12` applies to an inbound ISA, where failing it is the fatal
 `X12_INVALID_DELIMITERS`. So `segmentTerminator: "~~"`, an empty or whitespace delimiter, a numeric
 one, and a set that uses one character in two roles are all refused on emit. Some of those used to
-build with `warnings: []`, including `segmentTerminator: "~\r\n"` - if you were declaring that to get
+build with `warnings: []`, including `segmentTerminator: "~\r\n"`. If you were declaring that to get
 line-broken output, it never produced any: line breaks between segments are tolerated on READ, so the
 model recorded `~` and `serializeX12` emitted none.
 
@@ -185,7 +186,7 @@ to make it hold. Six constructs are known not to survive:
 5. **TA1 position.** A TA1 that appeared **after** a functional group is collected onto
    `ix.ta1Segments` and emitted immediately after the ISA, so the emit **reorders** it. Silent, and
    unlike the others nothing is lost: the model and the warning stream both round-trip identically.
-   It is also the only construct that moves something _else_ - a segment outside a transaction is
+   It is also the only construct that moves something _else_: a segment outside a transaction is
    placed correctly relative to the groups but not relative to a TA1 hoisted past it. This library
    takes no position on where ASC X12 requires a TA1 to sit.
 6. **A segment whose first element is empty (`*A*B~`), outside a transaction.** It has no id for the
@@ -195,7 +196,7 @@ to make it hold. Six constructs are known not to survive:
    re-emitted normally.
 
 **A segment outside a transaction is not on that list.** It is kept on `ix.orphanSegments` and
-re-emitted at its structural anchor, so the segment, its value and its `X12_UNEXPECTED_SEGMENT`
+re-emitted at its structural anchor, so the segment, its value, and its `X12_UNEXPECTED_SEGMENT`
 warning all survive the round trip. See
 [Segments outside a transaction](#segments-outside-a-transaction) below.
 
@@ -229,11 +230,11 @@ and a `TA1` inside an open group.
 
 That last one is the exception to this section's title. `TA1` is envelope-level by spec, so a `TA1`
 inside an open group lands on `ix.orphanSegments` even when it arrived **between an `ST` and its
-`SE`** - and it is lifted out of that transaction's `segments` and `rawSegments`. For a document
-containing such a `TA1`, `ix.groups` is not the whole typed model. That is long-standing behaviour;
+`SE`**, and it is lifted out of that transaction's `segments` and `rawSegments`. For a document
+containing such a `TA1`, `ix.groups` is not the whole typed model. That is long-standing behavior;
 what changed is that the segment is retained and re-emitted rather than discarded. It is also the one
 orphan that is anchored _inside_ a transaction, so it is the case any re-emission design has to get
-right - see the second example below.
+right (see the second example below).
 
 Each raises `X12_UNEXPECTED_SEGMENT`, is retained verbatim on `ix.orphanSegments`, and is re-emitted
 at the structural `anchor` recorded alongside it:
@@ -283,7 +284,7 @@ splices it into whatever occupies that slot in the output. Measured on a two-gro
 `TA1` after the first group, that put a stray segment **inside** an 835's `ST..SE` body between `CLP`
 and `SE`, where re-parsing raised no warning at all and `get835` would have walked it as claim
 content; a stray `SE` closed the transaction early and corrupted SE-01. An `anchor` names a slot in
-the typed tree instead - which group, which transaction, which offset inside it - and a slot in the
+the typed tree instead (which group, which transaction, which offset inside it), and a slot in the
 tree is invariant under both reorderings, because it does not mention bytes. Use `segmentIndex` to
 join an orphan to its warning; never use it to place one.
 
@@ -361,7 +362,7 @@ data) and `BIN` (BIN-01 length, BIN-02 data). Their data element can hold any oc
 `0xFF`, delimiters included, so `parseX12` frames it by the **octet count its length element
 declares**, not by scanning for delimiters. The segment stays one segment, the data stays one element,
 and every segment after it frames as sent. A `?` inside the declared span is data, never an escape.
-`getSegmentValue`, `getAllSegmentValues` and `elementValue` return the data element verbatim: no
+`getSegmentValue`, `getAllSegmentValues`, and `elementValue` return the data element verbatim: no
 release unescape and no split on the repetition or component separator.
 
 ```ts runnable
@@ -393,8 +394,8 @@ Limits worth knowing before you rely on it:
   carries attachments as a `Buffer`.
 - **Nothing is decoded.** BDS-01's filter (`B64`, for example) is not applied, and nothing inside the
   data is parsed.
-- **A count that cannot be honoured is reported, never corrected**, anchored at the segment:
-  `X12_BINARY_LENGTH_INVALID` where the length element is absent, empty or not 1 to 15 ASCII digits,
+- **A count that cannot be honored is reported, never corrected**, anchored at the segment:
+  `X12_BINARY_LENGTH_INVALID` where the length element is absent, empty, or not 1 to 15 ASCII digits,
   `X12_BINARY_DATA_TRUNCATED` where the input ends inside the declared span, and
   `X12_BINARY_LENGTH_MISMATCH` where the byte after the span is not the segment terminator. On an
   invalid length nothing is inferred: the segment is framed by its delimiters like any other, so a

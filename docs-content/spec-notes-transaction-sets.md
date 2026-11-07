@@ -1,6 +1,7 @@
 ---
 id: spec-notes-transaction-sets
 title: The 80/20 transaction sets
+description: "The map of the 005010 transaction sets this package covers, with the reader and the builder for each."
 sidebar_label: The transaction sets
 sidebar_position: 5
 ---
@@ -21,7 +22,7 @@ it wrong causes harm.
 
 > **Depth tracks the code.** Every function named below is a shipped export. Where a set has a
 > read-side limitation (e.g. 837 claim-/line-level provider addresses), it is called out in
-> [Troubleshooting & known limitations](./troubleshooting), not glossed over.
+> [Troubleshooting and known limitations](./troubleshooting), not glossed over.
 
 ## The map
 
@@ -34,7 +35,7 @@ it wrong causes harm.
 | **277CA**              | Claim acknowledgment                         | `get277CADisposition`                             | `build277CA`                            | per-claim accept/reject disposition + your submitted trace                                                     |
 | **278**                | Services review request / response           | `get278Request` / `get278Response`                | `build278Request` / `build278Response`  | the `HCR-01` certification action (response), never inferred                                                   |
 | **820**                | Premium payment                              | `get820Payments`                                  | `build820`                              | monetary amounts (emitted as-is; no balance equation)                                                          |
-| **834**                | Benefit enrollment & maintenance             | `get834Header` / `get834Enrollments`              | `build834`                              | the `INS-03` / `HD-01` maintenance-type code (X12 0875)                                                        |
+| **834**                | Benefit enrollment and maintenance           | `get834Header` / `get834Enrollments`              | `build834`                              | the `INS-03` / `HD-01` maintenance-type code (X12 0875)                                                        |
 | **835**                | Claim payment / advice (ERA)                 | `get835`                                          | `build835`                              | every monetary field; the balance is checked, never rebalanced                                                 |
 | **837P / 837I / 837D** | Professional / institutional / dental claims | `get837Claims`                                    | `build837P` / `build837I` / `build837D` | the HL hierarchy; HI diagnosis qualifier → code system                                                         |
 | **999**                | Implementation acknowledgment                | `parse999`                                        | `build999`                              | per-segment / per-element syntax error notes                                                                   |
@@ -85,11 +86,11 @@ they **refuse** a structurally impossible spec with a typed error rather than em
 
 **One place that symmetry is enforced by a value check rather than by construction: the 278's review
 level.** Every HL-03 in the library is a library constant chosen by tree position, with a single
-exception - `Build278ReviewSpec.levelCode`, which you supply and which the TR3s limit to `EV` (patient
+exception, `Build278ReviewSpec.levelCode`, which you supply and which the TR3s limit to `EV` (patient
 event) and `SS` (service). A level outside those two emits a perfectly well-formed document, but the
 review loop it opens is one no reader opens, so `get278Response` returns the review **and its `HCR-01`
-certification decision** as absent, with no warning. Nothing is mis-read - no decision comes back as a
-different decision, and the bytes stay on `tx.segments` - but the certification action is the field
+certification decision** as absent, with no warning. Nothing is misread (no decision comes back as a
+different decision, and the bytes stay on `tx.segments`), but the certification action is the field
 this library places verbatim and never infers, so `build278Request` / `build278Response` **refuse** an
 out-of-enum level (`X12_278_BUILD_INVALID_SPEC`) rather than emit a document that loses it. An omitted
 `levelCode` still defaults to `EV`.
@@ -102,4 +103,4 @@ out-of-enum level (`X12_278_BUILD_INVALID_SPEC`) rather than emit a document tha
 - **Pre-005010 field maps.** Pre-005010 input is _tolerated and flagged_ (`X12_PRE_005010`), not
   decoded against those older guides.
 
-See [Troubleshooting & known limitations](./troubleshooting) for the full non-goals list.
+See [Troubleshooting and known limitations](./troubleshooting) for the full non-goals list.

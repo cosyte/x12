@@ -7,11 +7,11 @@
 
 # @cosyte/x12
 
-> Read the money out of an 835, an 837 or a 271 without a TR3 open on your desk.
+> Read the money out of an 835, an 837, or a 271 without a TR3 open on your desk.
 
 [![npm version](https://img.shields.io/npm/v/@cosyte/x12.svg)](https://www.npmjs.com/package/@cosyte/x12)
 [![CI](https://img.shields.io/github/actions/workflow/status/cosyte/x12/ci.yml?branch=main&label=CI)](https://github.com/cosyte/x12/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cosyte/x12/blob/main/LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
 
 Developer-focused ASC X12 healthcare EDI parser, serializer, and builder for Node.js and TypeScript: lenient on parse, spec-clean on emit.
@@ -20,7 +20,7 @@ Developer-focused ASC X12 healthcare EDI parser, serializer, and builder for Nod
 
 Reading an X12 healthcare transaction correctly normally means buying the TR3 implementation guide
 for it and then hand-mapping element positions that no compiler will ever check. This library
-removes that step for the engineer who has one 835 to post, one 271 to answer or one 837 to send,
+removes that step for the engineer who has one 835 to post, one 271 to answer, or one 837 to send,
 and who needs the amounts to be exactly right rather than approximately right. The nearest
 alternatives are a general-purpose EDI translator, which frames segments correctly but knows nothing
 about what CLP-04 means, and a hand-rolled split on the segment terminator, which works until the
@@ -31,12 +31,12 @@ a stable code instead of failing or guessing.
 
 ## Status
 
-**Version 0.1.2**, published on npm from a public repository.
+**The 0.1 line**, published on npm from a public repository.
 
-From `0.1.0` the public API is settled and safe to depend on: the exported readers, builders,
+On the 0.1 line the public API is settled and safe to depend on: the exported readers, builders,
 types and warning codes are the surface we keep stable, and the warning registry only ever gains
 codes. Below 1.0 a breaking change bumps the minor version and is called out in the changelog with
-its migration. On a `0.0.x` version, pin an exact version rather than a range. Typed read and typed
+its migration. On an older 0.0 release, pin an exact version rather than a range. Typed read and typed
 emit both ship for every transaction set
 this package covers: 270, 271, 276, 277 and 277CA, 278 request and response, 820, 834, 835, 837P,
 837I and 837D, 999 and TA1, each with a reader and a matching domain builder, and the two claims
@@ -60,7 +60,8 @@ pnpm add @cosyte/x12
 
 `npm install @cosyte/x12` and `yarn add @cosyte/x12` work the same way.
 
-Node `>=22.0.0` is the engine floor, and there are zero runtime dependencies. The package ships
+Node.js 22 or later, tested on 22 and 24: the engine floor is `>=22.0.0`, and there are zero
+runtime dependencies. The package ships
 dual ESM and CJS builds with type declarations for both conditions, so `import` and `require` each
 resolve to the artifact meant for them.
 
@@ -68,7 +69,7 @@ resolve to the artifact meant for them.
 
 Parse an 835 remittance advice and read the money: the payment total, the claim's
 charge/paid/patient-responsibility split, and the adjustment reason behind the difference. The
-interchange below is synthetic, with a fabricated payer, provider, patient and amounts.
+interchange below is synthetic, with a fabricated payer, provider, patient, and amounts.
 
 ```ts runnable
 import { parseX12, get835 } from "@cosyte/x12";
@@ -159,11 +160,11 @@ copy of the start of the input, so on real traffic it can carry PHI, and it is n
 `err.code` and `err.position` instead, or redact at your call site.
 
 **An attachment refuses to print.** The data of each BDS a 275 carries is read into
-`X12AttachmentData`, whose string, JSON and `util.inspect` forms state its octet count and nothing
+`X12AttachmentData`, whose string, JSON, and `util.inspect` forms state its octet count and nothing
 else; `readOctets()` is the one route to the octets.
 
 **Builder refusals are a weaker surface, deliberately.** A `build*` refusal names the control
-number, count or code you passed in, so that you can see what was refused. The rendered fragment is
+number, count, or code you passed in, so that you can see what was refused. The rendered fragment is
 bounded by an exported constant, but it is bounded rather than redacted. The two attachments
 builders are the exception and name no value at all. Log `err.code`, not `err.message`, from a
 builder.
@@ -184,7 +185,7 @@ Everything ships from one entry point; there are no subpath imports.
   (`X12_NO_ISA_HEADER`, `X12_ISA_TOO_SHORT`, `X12_INVALID_DELIMITERS`, `X12_EMPTY_INPUT`).
   Everything else arrives on `ix.warnings` as a stable code with positional context, so a tolerated
   deviation is visible rather than silent.
-- **Money.** Every monetary, percent and quantity field decodes as `X12Decimal`, which is
+- **Money.** Every monetary, percent, and quantity field decodes as `X12Decimal`, which is
   string-backed with BigInt arithmetic, and this library never **`parseFloat`s** an EDI amount. A
   slot the sender left empty reads `undefined` rather than zero, so "stated zero" and "stated
   nothing" stay different readings.
@@ -201,7 +202,7 @@ Task-oriented recipes are in the [cookbook](./docs-content/cookbook.md), and
 ### Dates and times
 
 Every typed reader surfaces its dates verbatim, as the qualifier the sender used plus the bytes it
-carried. `toObject`, `toISO` and `toDate` are the three ways to read one, and every `@cosyte/*`
+carried. `toObject`, `toISO`, and `toDate` are the three ways to read one, and every `@cosyte/*`
 parser exports the same three names with the same shapes and the same timezone rule.
 
 ```ts
@@ -269,13 +270,13 @@ A namespace import works too: `import * as x12 from "@cosyte/x12"`, then `x12.to
 ## Compatibility
 
 - **005010 HIPAA transaction sets**, with hooks for the errata revisions the industry actually
-  exchanges. Non-healthcare sets such as 850, 856, 810 and 204, plus EDIFACT, AS2 and SFTP
+  exchanges. Non-healthcare sets such as 850, 856, 810, and 204, plus EDIFACT, AS2, and SFTP
   transport, and pre-005010 revisions, are out of scope.
 - **Vendor deviations become warnings, not exceptions.** Built-in profiles record whose
   companion-guide deviation they accommodate; selecting one never changes an otherwise correct
   parse, and profiles are authored through the same public `defineProfile()` API you have.
 - **Round trips are not byte-exact in general.** `serializeX12` reproduces the segments on the model
-  verbatim, including element padding, composites and `?`-release escapes, but
+  verbatim, including element padding, composites, and `?`-release escapes, but
   **`serialize(parse(s)) === s` is not guaranteed in general**. Line breaks between segments are the
   common case: any run of CR or LF between segments is absorbed at parse, so a pretty-printed file
   emits compact. Most of the constructs that break a round trip are silent, so "my file has no line
@@ -284,10 +285,12 @@ A namespace import works too: `import * as x12 from "@cosyte/x12"`, then `x12.to
 
 ## Contributing
 
-Questions, bug reports and trading-partner quirks all belong in
+Questions, bug reports, and trading-partner quirks all belong in
 [GitHub issues](https://github.com/cosyte/x12/issues).
 
-Pull requests are welcome. A contribution must clear `pnpm typecheck`, `pnpm lint` and `pnpm test`,
+Pull requests are welcome. The organization's
+[contributing guide](https://github.com/cosyte/.github/blob/main/CONTRIBUTING.md) and
+[code of conduct](https://github.com/cosyte/.github/blob/main/CODE_OF_CONDUCT.md) apply here. A contribution must clear `pnpm typecheck`, `pnpm lint`, and `pnpm test`,
 hold the per-directory coverage floors, pass the PHI commit gate (`pnpm phi-scan`) and the prose
 gates (`pnpm check:no-emdash`, `pnpm check:no-internal-refs`), and carry a changeset. Every fixture
 must be synthetic: never open a pull request carrying a real patient's data.
@@ -297,10 +300,10 @@ must be synthetic: never open a pull request carrying a real patient's data.
 Availity and Blue Cross Blue Shield are trademarks of their respective owners. Cosyte is not
 affiliated with, endorsed by, or sponsored by any of them. The names identify the trading partners
 whose companion-guide deviations the built-in profiles accommodate. See
-[TRADEMARKS.md](./TRADEMARKS.md).
+[TRADEMARKS.md](https://github.com/cosyte/x12/blob/main/TRADEMARKS.md).
 
 ## License
 
-MIT, copyright Cosyte. See [LICENSE](./LICENSE).
+MIT, Copyright (c) 2026 Cosyte LLC. See [LICENSE](https://github.com/cosyte/x12/blob/main/LICENSE).
 
 Built by [Cosyte](https://cosyte.com).

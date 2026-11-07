@@ -252,9 +252,11 @@ function isAtLeast010(version: string): boolean {
 const SETTLED_CLAIM = "settled and safe to depend on";
 
 /**
- * The `## Status` problem, if any. The section must name the version `package.json` declares, say
- * what that version claims about API stability, and name at least one surface still moving or not
- * covered. At `0.1.0` and later the stability claim has a required wording.
+ * The `## Status` problem, if any. The section must name the release line of the version
+ * `package.json` declares ("the 0.1 line", by house standard rather than an exact version that a
+ * patch release would make wrong), say what that line claims about API stability, and name at least
+ * one surface still moving or not covered. At `0.1.0` and later the stability claim has a required
+ * wording.
  *
  * @param body - The `## Status` body.
  * @param version - `package.json` `version`.
@@ -262,8 +264,9 @@ const SETTLED_CLAIM = "settled and safe to depend on";
  */
 function statusProblem(body: string, version: string): string | undefined {
   const flat = flatten(body);
-  const stated = /\b\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\b/.exec(flat)?.[0];
-  const drift = driftProblem("version", stated, version);
+  const stated = /\bthe (\d+\.\d+) line\b/i.exec(flat)?.[1];
+  const [major = "", minor = ""] = version.split(".");
+  const drift = driftProblem("release line", stated, `${major}.${minor}`);
   if (drift !== undefined) return drift;
   if (!/\bAPI\b/.test(flat)) {
     return '"## Status" says nothing about API stability: name what this version claims';
@@ -566,34 +569,40 @@ describe("CONTROL: each README rule reports what it exists to catch", () => {
     expect(driftProblem("description", "an old sentence.", "a new sentence.")).toBe(
       'description drift: README.md says "an old sentence.", package.json says "a new sentence."',
     );
-    expect(driftProblem("version", undefined, "9.9.9")).toBe(
-      'README.md states no version; package.json says "9.9.9"',
+    expect(driftProblem("release line", undefined, "9.9")).toBe(
+      'README.md states no release line; package.json says "9.9"',
     );
-    expect(driftProblem("version", "9.9.9", "9.9.9")).toBeUndefined();
+    expect(driftProblem("release line", "9.9", "9.9")).toBeUndefined();
   });
 
-  it("a version that has drifted from package.json is reported", () => {
-    expect(statusProblem("Version 0.0.1. The API may still move.", "0.0.2")).toBe(
-      'version drift: README.md says "0.0.1", package.json says "0.0.2"',
+  it("a release line that has drifted from package.json is reported, and a patch release is not drift", () => {
+    expect(statusProblem("The 0.0 line. The API may still move.", "0.1.0")).toBe(
+      'release line drift: README.md says "0.0", package.json says "0.1"',
     );
+    expect(
+      statusProblem(
+        `The 0.1 line. The public API is ${SETTLED_CLAIM}. The rest may still move.`,
+        "0.1.7",
+      ),
+    ).toBeUndefined();
   });
 
   it("a status with no stability claim, and one with no uncovered surface, are both reported", () => {
-    expect(statusProblem("Version 1.2.3. Pre-launch.", "1.2.3")).toMatch(/says nothing about API/);
-    expect(statusProblem("Version 1.2.3. The API is frozen.", "1.2.3")).toMatch(
+    expect(statusProblem("The 1.2 line. Pre-launch.", "1.2.3")).toMatch(/says nothing about API/);
+    expect(statusProblem("The 1.2 line. The API is frozen.", "1.2.3")).toMatch(
       /names no surface still moving/,
     );
   });
 
   it("at 0.1.0 the required stability wording is enforced, and below it is not", () => {
     expect(
-      statusProblem("Version 0.1.0. The public API is stable. Nothing is out of scope.", "0.1.0"),
+      statusProblem("The 0.1 line. The public API is stable. Nothing is out of scope.", "0.1.0"),
     ).toBe(
       `"## Status" at 0.1.0 must state that the public API is "${SETTLED_CLAIM}", in those words`,
     );
     expect(
       statusProblem(
-        `Version 0.1.0. The public API is ${SETTLED_CLAIM}. The rest is out of scope.`,
+        `The 0.1 line. The public API is ${SETTLED_CLAIM}. The rest is out of scope.`,
         "0.1.0",
       ),
     ).toBeUndefined();

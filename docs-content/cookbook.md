@@ -1,6 +1,7 @@
 ---
 id: cookbook
 title: Cookbook
+description: "Task-oriented recipes for the X12 transactions you get handed, each with the code and what comes back."
 sidebar_position: 10
 ---
 
@@ -113,7 +114,7 @@ combinations it expects for each of four CORE-defined business scenarios.
 table for a scenario you name. It answers that one question about that one adjustment, and nothing
 about the remit as a whole.
 
-**You supply the table and name its version.** No CORE table, excerpt or default ships with this
+**You supply the table and name its version.** No CORE table, excerpt, or default ships with this
 package. CAQH CORE revises the table several times a year and publishes it under its own notice, so
 the version your posting system follows is yours to load, and the label you give it comes back beside
 every answer.
@@ -160,7 +161,7 @@ noTable; // => { outcome: "unevaluated", reason: "no-table", tableVersion: undef
 ```
 
 **Three answers, and `unevaluated` is not permitted.** `in-table` means the table has a row for that
-scenario, group code and reason code, and lists every remark you passed with them; with no remarks,
+scenario, group code, and reason code, and lists every remark you passed with them; with no remarks,
 a row for the pair suffices. `not-in-table` means the table has rows for the scenario and this
 combination is not among them, including a combination the table lists only under another scenario.
 `unevaluated` means the check could not decide, and `reason` says why: no table, a scenario outside
@@ -381,9 +382,9 @@ does not look. Each entry names the level the payer rejected at, the loop occurr
 and the payer's own reject reason and follow-up action codes, echoed **verbatim**.
 
 The bundled description snapshots for those two code lists ship **empty**: their maintaining
-organisation requires permission for the use of its work products and none has been obtained, so this
+organization requires permission for the use of its work products and none has been obtained, so this
 package ships the code and no description rather than a description nobody recorded terms for. The
-code is never lost, and every unrecognised one raises `X12_271_AAA_UNKNOWN_CODE` beside it.
+code is never lost, and every unrecognized one raises `X12_271_AAA_UNKNOWN_CODE` beside it.
 
 ```ts runnable
 import { parseX12, get271Eligibility } from "@cosyte/x12";
@@ -601,20 +602,20 @@ implementation-convention reference (an `X222` guide → P, `X223` → I, `X224`
 fallback; an unresolvable one raises `X12_837_UNKNOWN_VARIANT`.
 
 **🩺 Which references resolve changed in this release, and it changes how some already-published files
-decode.** Through `0.0.13` the reader recognised exactly three: `005010X222A2`, `005010X223A3` and
+decode.** Through `0.0.13` the reader recognized exactly three: `005010X222A2`, `005010X223A3` and
 `005010X224A2`. That set contained **none** of the identifiers HIPAA adopts at 45 CFR 162.1102, and
 it was missing `005010X222A1` and `005010X223A2`, which are what CMS and state Medicaid companion
 guides require in ST-03 on production professional and institutional claims. So a conformant 837P
 declaring `005010X222A1` resolved to nothing and fell through to the SVx fallback, where one stray
-`SV2` re-typed the whole submission. The reader now recognises each base guide and each of its
+`SV2` re-typed the whole submission. The reader now recognizes each base guide and each of its
 published errata. **If you read 837 files on `0.0.13` or earlier, re-check any routing you drove off
 `submission.variant`, and any predicate you wrote on `X12_837_UNKNOWN_VARIANT` or
-`X12_837_AMBIGUOUS_VARIANT`:** on a file whose ST-03 is now recognised, the variant can differ,
+`X12_837_AMBIGUOUS_VARIANT`:** on a file whose ST-03 is now recognized, the variant can differ,
 neither code fires any more, and **a service line whose `SVx` kind disagrees with the declaration is
-no longer decoded** - its `charge` and `units` read `undefined`, the rest of the service segment is
+no longer decoded**: its `charge` and `units` read `undefined`, the rest of the service segment is
 undecoded, and `X12_837_SERVICE_LINE_NOT_DECODED` is raised at that line's `LX`, on a document that
 may have been silent before. **Gate on the warning, not on a slot:** an undecoded line SEEDS its
-identity fields, so `procedureCode` is `""` on a P or D line and `revenueCode` is `""` on an I one. Read all of that as **one property and not a closed list**: where ST-03 is recognised,
+identity fields, so `procedureCode` is `""` on a P or D line and `revenueCode` is `""` on an I one. Read all of that as **one property and not a closed list**: where ST-03 is recognized,
 the document's own declaration decides the variant instead of its first service segment. The set is a list of cited identifiers, never a pattern: a reference
 outside it, in a different case, or padded still falls through exactly as before.
 
@@ -636,14 +637,14 @@ line would mis-read the charge), so its `charge` and `units` read `undefined` an
 `X12_837_SERVICE_LINE_NOT_DECODED` is raised against the `LX` that opened it. Gate on that warning
 before you post a line amount, alongside `X12_837_SERVICE_SEGMENT_REPEATED` (a **second** service
 segment inside one Loop 2400: the line carries only the last matching one, so a charge and a
-procedure code the sender also sent are not on the model - see below), `X12_UNPARSEABLE_DECIMAL` (the
+procedure code the sender also sent are not on the model; see below), `X12_UNPARSEABLE_DECIMAL` (the
 `SVx` decoded but the amount
 itself did not) and `X12_AMOUNT_ROW_DROPPED` (an `AMT` whose own amount decoded nothing, so the
-whole supplemental-amount row is off the model - off the **line** where one is open, and off the
+whole supplemental-amount row is off the model: off the **line** where one is open, and off the
 claim otherwise). Gate on `X12_STATED_AMOUNT_DISCARDED` beside it: an `AMT` arriving while a Loop
 2430 adjudication is open decodes fine and is discarded anyway, so that row is off the model even
 though nothing failed to read. That is specific to this route: read the code's own bounds before
-generalising it, because its other route reports rows whose bytes may not decode at all. The two are disjoint and never name the same
+generalizing it, because its other route reports rows whose bytes may not decode at all. The two are disjoint and never name the same
 segment. None of them is a complete account of every way an
 amount can fail to reach the model, and
 [Decimal-exact money](./spec-notes-money) states the guarantee in the only direction it holds.
@@ -651,7 +652,7 @@ amount can fail to reach the model, and
 A third code covers one more way a line goes missing: `X12_837_SERVICE_LINE_DROPPED`, raised at an
 `LX` that opened no Loop 2400, either because no `CLM` was open or because the variant is not one of
 `P` / `I` / `D`. **An empty `serviceLines` is therefore not on its own evidence that the claim had
-none** - check the warning channel before concluding it. Read that code's scope literally: it is
+none**: check the warning channel before concluding it. Read that code's scope literally: it is
 anchored at the `LX`, so an `SVx` arriving with **no Loop 2400 open** is reported by a fourth code,
 `X12_837_SERVICE_SEGMENT_WITHOUT_LX`, anchored at the service segment itself (through `0.0.9` that
 case was dropped silently). It does
@@ -680,7 +681,7 @@ and every decoder writes all of the slots its kind writes: `SV1*HC:99213*8500*�
 `undefined` over the amount the first one stated, and `X12_837_SERVICE_LINE_NOT_DECODED` does **not**
 fire there, because a service segment did decode. A repeat whose kind does not match the resolved
 variant is read into nothing and overwrites nothing, and is reported the same way. **Which of them the
-sender meant is not decided** - this reader cannot tell a stray service segment from a conformant one -
+sender meant is not decided**: this reader cannot tell a stray service segment from a conformant one,
 and the decode is byte-for-byte what it was at `0.0.13`, so gate on the code and read the segments off
 `tx.segments` rather than expecting the model to reconcile them. It never names the same segment as
 `X12_837_SERVICE_SEGMENT_WITHOUT_LX`, which requires that **no** Loop 2400 be open where this one
@@ -733,7 +734,7 @@ const unknownHi = sub.warnings.some((w) => w.code === WARNING_CODES.X12_UNKNOWN_
 ### 🩺 Building one: declare the guide your partner asked for
 
 `build837P` / `build837I` / `build837D` default ST-03 and GS-08 to `005010X222A2` / `005010X223A3` /
-`005010X224A2`. **Those defaults are not what every partner accepts** - CMS and several state
+`005010X224A2`. **Those defaults are not what every partner accepts**: CMS and several state
 Medicaid companion guides require `005010X222A1` on professional and `005010X223A2` on institutional
 claims, and a partner on one of those rejects a file declaring the default. Which published guide
 identifier a partner accepts is a **partner fact rather than a spec fact**, so this library will not
@@ -839,8 +840,8 @@ readBack?.claims[0]?.serviceLines[0]?.charge?.toString(); // => "150.00"
 **What it refuses of its own**, all `Claim837BuildError` with code `X12_837_BUILD_INVALID_SPEC`, and
 no refusal message echoes the value you passed: an **empty** reference (a trailing empty element is
 not emitted, so it would delete ST-03 and GS-08 rather than send them empty); one carrying an
-**active delimiter or the release character** (this library's own reader would now carry it - the
-envelope splitter honours the release escape in current releases - but a
+**active delimiter or the release character** (this library's own reader would now carry it, since the
+envelope splitter honors the release escape in current releases, but a
 trading partner's parser is not obliged to, and a guide identifier has no legitimate use for a
 delimiter, so the refusal is kept); and one this library's own reader resolves to a **different 837 variant**, such as
 `005010X223A2` handed to `build837P`, which would emit a file declaring one variant and carrying
@@ -849,20 +850,20 @@ builder already has, which refuses a non-string with the same code, so read the 
 field adds rather than as everything that can refuse.
 
 **Anything else is emitted as given.** The set of published errata is not provably exhaustive, so an
-identifier this library does not recognise is your call, not an error - with one honest cost: on
+identifier this library does not recognize is your call, not an error, with one honest cost: on
 reading such a file back, this library falls through to the `SVx` scan for the variant, exactly as it
-does for any unrecognised ST-03. The **length** is not bounded either, and the two elements' maxima
+does for any unrecognized ST-03. The **length** is not bounded either, and the two elements' maxima
 differ: GS-08 is data element 480 (`AN 1/12`), ST-03 is element 1705 (`AN 1/35`).
 
 **🩺 A guard on this element still cannot make the element trustworthy, but the reason narrowed.**
 An active delimiter in a _different_ envelope field (a control number, an application sender code)
 used to split its own segment and shift every element after it, so ST-03 and GS-08 were read out of
-a neighbour's slot, mostly with nothing warned. A **release-escaped** one no longer does: the
-envelope splitter honours the escape, so a sender who escapes correctly is now read correctly. An
+a neighbor's slot, mostly with nothing warned. A **release-escaped** one no longer does: the
+envelope splitter honors the escape, so a sender who escapes correctly is now read correctly. An
 **unescaped** one still ends its element, because that is what a delimiter is, and no refusal here
 can reach it. **And that change is symmetric**: an envelope element ending in a **literal `?`** now
 merges with its successor, which can destroy ST-03 outright and send the document to the `SVx`
-variant fallback. The full behaviour change on already-published decoding, both directions, is
+variant fallback. The full behavior change on already-published decoding, both directions, is
 measured in `KNOWN-LIMITATIONS.md`.
 
 ---
@@ -1028,7 +1029,7 @@ terminated?.maintenanceTypeDescription; // => "Cancellation or Termination"
 terminated?.healthCoverages[0]?.insuranceLineCode; // => "DEN"
 ```
 
-**Never infer an action for a maintenance-type code this library does not recognise.** An unknown
+**Never infer an action for a maintenance-type code this library does not recognize.** An unknown
 `INS-03` or `HD-01` keeps its verbatim code, gets **no** description, and raises
 `X12_834_UNKNOWN_MAINTENANCE_TYPE` on **that member's own** `warnings` rather than on the
 interchange's. Terminating coverage because a code did not resolve is the harm this rule exists to
@@ -1042,7 +1043,7 @@ member.
 
 ---
 
-## 8. Parse a 999 acknowledgment: disposition + segment errors
+## 8. Parse a 999 acknowledgment: disposition and segment errors
 
 **The problem:** you submitted an 837 and got a 999 back. Was the batch accepted? If not, which
 segments and elements failed, and where?
@@ -1203,12 +1204,12 @@ warning you triage, not an exception you catch.
 
 ## 10. Read a date off any typed reader
 
-**The problem:** you have a service date, a statement period or an eligibility date on a parsed
-model, and you need it as a `Date`, an ISO string or a set of calendar fields. Every reader surfaces
+**The problem:** you have a service date, a statement period, or an eligibility date on a parsed
+model, and you need it as a `Date`, an ISO string, or a set of calendar fields. Every reader surfaces
 its dates verbatim, as the qualifier the sender used plus the bytes it carried, so that nothing is
 normalized behind your back.
 
-`toObject`, `toISO` and `toDate` are the three ways to read one. Every `@cosyte/*` parser exports
+`toObject`, `toISO`, and `toDate` are the three ways to read one. Every `@cosyte/*` parser exports
 the same three names with the same return shapes and the same timezone rule, so an application
 holding both an X12 date and an HL7 timestamp reads them the same way.
 

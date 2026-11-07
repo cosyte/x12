@@ -1,6 +1,7 @@
 ---
 id: intro
 title: Getting started
+description: "Parse real-world healthcare X12 and read fields out of it without first reading the standard or a TR3."
 sidebar_position: 1
 ---
 
@@ -11,7 +12,7 @@ healthcare interchange and read fields out of it without first reading the X12 s
 implementation guide. `@cosyte/x12` is the payer-side sibling of [`@cosyte/hl7`](https://github.com/cosyte/hl7):
 the API shape, profile system, and lenient-parser philosophy are deliberately mirrored.
 
-> **Status:** `0.1`, published on npm and public. The exported readers, builders, types and warning
+> **Status:** the 0.1 line, published on npm and public. The exported readers, builders, types, and warning
 > codes are the surface we keep stable, and below 1.0 a breaking change bumps the minor version and
 > is called out in the changelog with its migration. `npm view @cosyte/x12 version` is the source of
 > truth for the current version. The **shipped** surface is the HIPAA 005010 read side for 270, 271, 276,
@@ -20,7 +21,7 @@ the API shape, profile system, and lenient-parser philosophy are deliberately mi
 > and the descriptive trading-partner profile system. This documentation is gated to that surface:
 > where the parser does not yet do a thing, this site says so rather than promising it. Non-healthcare
 > sets, EDIFACT, transport (AS2/SFTP/MLLP), and pre-005010 field maps are explicit v1 non-goals; see
-> [Troubleshooting & known limitations](./troubleshooting).
+> [Troubleshooting and known limitations](./troubleshooting).
 
 ## The transaction sets it covers
 
@@ -83,20 +84,20 @@ The parser is **lenient by default** (vendor deviations become Tier-2 `warnings`
 code and positional context, not failures) while the builders **refuse** (never silently corrupt) a
 structurally impossible spec (Postel's Law). Only four unrecoverable
 Tier-3 structural errors ever throw. Money is decimal-exact end to end (`X12Decimal`, BigInt-backed,
-**never `parseFloat` an EDI amount**). See [Core Concepts](./spec-notes-envelope) for the mental
+**never `parseFloat` an EDI amount**). See [Core concepts](./spec-notes-envelope) for the mental
 model.
 
 ## Next
 
 - [Installation](./installation): prerequisites, module systems, and the PHI discipline.
 - [Quickstart](./quickstart): parse an 835 remittance and post the cash in a few lines.
-- [Core Concepts](./spec-notes-envelope): the envelope/loop model, the transaction sets, the
+- [Core concepts](./spec-notes-envelope): the envelope/loop model, the transaction sets, the
   tolerance tiers, and decimal-exact money.
 - [Building and serializing X12](./emit-and-serialize): the emit half, `serializeX12` and
   `buildInterchange`, and what a round trip does and does not reproduce.
 - [Trading-partner profiles](./profiles): describing what a partner actually sends, as
   fixture-grounded data rather than silent leniency.
 - [Cookbook](./cookbook): task-oriented recipes for the transactions you actually get handed.
-- [Troubleshooting & known limitations](./troubleshooting): fatal codes, the fail-safe rules, and
+- [Troubleshooting and known limitations](./troubleshooting): fatal codes, the fail-safe rules, and
   what v1 does not do.
 - **API reference**: every export, generated from source.

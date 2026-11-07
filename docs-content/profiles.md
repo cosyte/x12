@@ -1,6 +1,7 @@
 ---
 id: profiles
 title: Trading-partner profiles
+description: "How a trading-partner profile records a sender's deviations as typed, fixture-grounded data instead of silent leniency."
 sidebar_label: Trading-partner profiles
 sidebar_position: 9
 ---
@@ -34,8 +35,8 @@ Two consequences worth being blunt about:
 - **A profile is not validation.** It never asserts that an interchange conforms to the partner's
   guide, and a document that contradicts every quirk in the profile parses identically with it and
   without it.
-- **A profile is not permission.** Each quirk optionally records a judgement of whether a partner may
-  lawfully _require_ the deviation, under 45 CFR 162.915. That judgement is a human reading of the
+- **A profile is not permission.** Each quirk optionally records a judgment of whether a partner may
+  lawfully _require_ the deviation, under 45 CFR 162.915. That judgment is a human reading of the
   rule that somebody wrote down, never a check this library performed, and its fail-safe default is
   `"undetermined"`. Read that as "no claim was made", never as "permitted".
 
@@ -52,7 +53,7 @@ compose: lineage and quirks merge), and a list of **quirks**. Each quirk is:
 | `fixture`          | A real corpus file, relative to `test/fixtures/`, that demonstrates the deviation. |
 | `sourceCategory`   | Where the deviation was observed (which companion guide, which corpus).            |
 | `expectedWarnings` | The warning codes this deviation leads you to expect. Often empty.                 |
-| `conformance`      | The optional 45 CFR 162.915 judgement above. Absent means `"undetermined"`.        |
+| `conformance`      | The optional 45 CFR 162.915 judgment above. Absent means `"undetermined"`.         |
 
 **`fixture` is required at the type level, and that is the hard rule of the whole subsystem: there
 are no invented quirks.** A quirk with no file demonstrating it does not compile, and the repo's own
@@ -141,7 +142,7 @@ profile explicitly and clean up in teardown if you do register one.
 
 ## Separating the warnings you expect from the ones you do not
 
-The one behavioural hook a profile carries is `partitionWarnings()`. It splits a parse's warnings
+The one behavioral hook a profile carries is `partitionWarnings()`. It splits a parse's warnings
 against the union of every quirk's `expectedWarnings`, so an integration can alert on the genuinely
 unexpected instead of on a partner's known convention. It is a pure function: it never mutates the
 warnings, never removes one, and both halves together are always the whole input.
@@ -188,8 +189,8 @@ too: it usually means the convention you documented did not appear in this file.
 
 ## Where to go next
 
-- [Tolerance tiers & warning codes](./spec-notes-tolerance): what the parser tolerates before a
+- [Tolerance tiers and warning codes](./spec-notes-tolerance): what the parser tolerates before a
   profile is involved at all, and the codes `expectedWarnings` names.
 - [Building and serializing X12](./emit-and-serialize): the emit side, which profiles do not touch.
-- [Troubleshooting & known limitations](./troubleshooting): the bounds on the conformance judgement,
+- [Troubleshooting and known limitations](./troubleshooting): the bounds on the conformance judgment,
   and what a refusal message may and may not contain.
