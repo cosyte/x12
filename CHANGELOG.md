@@ -3792,7 +3792,7 @@ EV/SS`), and HL-04 has-child flag from the nested input tree, so an
     helper). The `X12ClaimNote` JSDoc explicitly flags NTE-02 as
     PHI-bearing (provider-supplied free text). Every Phase 5 fixture
     is synthetic (test names `TEST PATIENT` / `SUB LAST` / `PATIENT
-CHILD`; sequential member IDs `MEMBER001`–`MEMBER011` etc.; NPI-
+CHILD`; sequential member IDs `MEMBER001` to `MEMBER011` etc.; NPI-
     shaped sequential numbers; obvious test addresses) and matches
     the established 835 fixture conventions.
   - **Known limitations after this phase** (deliberate v1 scope; none
@@ -4001,7 +4001,7 @@ refresh:code-lists` arrives in Phase 10); no per-payer profile
     a TA1 inside an open functional group is still flagged as unexpected
     (non-spec). `parseTA1(interchange)` returns the typed `X12AckTA1`
     for the first captured TA1 (or `undefined`). `buildTA1(spec)` emits
-    a fixed-position 5-element `Ta1Segment` (`TA101`–`TA105`). Caller
+    a fixed-position 5-element `Ta1Segment` (`TA101` to `TA105`). Caller
     wraps it in their preferred envelope. Both standalone TA1-only
     interchanges (ISA → TA1 → IEA, no GS) and embedded TA1s round-trip.
   - **Safety guards (refused via `AckBuildError`):** `build999` refuses
@@ -4020,7 +4020,7 @@ refresh:code-lists` arrives in Phase 10); no per-payer profile
     `IK3_SYNTAX_ERROR_CODES` (code list 716, 13 codes),
     `IK4_SYNTAX_ERROR_CODES` (code list 723, 18 codes),
     `TA1_ACK_CODES` (code list I13: `A`/`E`/`R`),
-    `TA1_NOTE_CODES` (code list I18: `000`–`028`). String-literal
+    `TA1_NOTE_CODES` (code list I18: `000` to `028`). String-literal
     unions are exported for exhaustive narrowing. The helper
     `isAcceptDisposition(code)` returns true for `A`/`E`/`P` and false
     for the four reject codes.

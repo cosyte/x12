@@ -337,8 +337,8 @@ function padControl(value: string, width: number): string {
 }
 
 /**
- * Expand a 6-digit YYMMDD into CCYYMMDD for GS-04. Years `00`–`49` are 21st
- * century, `50`–`99` are 20th - the conventional X12 century window. A value
+ * Expand a 6-digit YYMMDD into CCYYMMDD for GS-04. Years `00` to `49` are 21st
+ * century, `50` to `99` are 20th - the conventional X12 century window. A value
  * already in CCYYMMDD form passes through unchanged.
  *
  * @internal

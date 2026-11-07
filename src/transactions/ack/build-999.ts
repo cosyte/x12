@@ -574,8 +574,8 @@ function padControl(value: string, width: number): string {
 
 /**
  * Expand a 6-digit YYMMDD into CCYYMMDD. GS-04 carries the 4-digit year
- * form even when ISA-09 carries the 2-digit form. Years `00`–`49` are
- * 21st century (e.g. `25` → `2025`); `50`–`99` are 20th century - the
+ * form even when ISA-09 carries the 2-digit form. Years `00` to `49` are
+ * 21st century (e.g. `25` → `2025`); `50` to `99` are 20th century - the
  * conventional X12 century-expansion window.
  *
  * @internal

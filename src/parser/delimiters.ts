@@ -86,7 +86,7 @@ export const DELIMITER_POSITIONS = {
  */
 export function isVisibleDelimiterChar(c: string): boolean {
   const code = c.charCodeAt(0);
-  // Reject ASCII control chars (0x00–0x1F) and DEL (0x7F).
+  // Reject ASCII control chars (0x00 to 0x1F) and DEL (0x7F).
   if (code < 0x20 || code === 0x7f) return false;
   // Reject any whitespace per Unicode property.
   if (/\s/u.test(c)) return false;
