@@ -1262,7 +1262,8 @@ than the JavaScript `Date` 0 to 11, the names are singular, and there is no `pre
 what is left is accepted by `Temporal.PlainDateTime.from` and by luxon's `DateTime.fromObject` with
 no renaming. Neither library is a dependency here.
 
-`parseDocumentDate`, behind the date-aware code-list queries, keeps its own contract and still throws
-on input it refuses. That divergence is deliberate: it answers a caller who asked a validity question
-and could not state the day, while these three read a document that was already parsed leniently,
-where a warning has already been raised.
+The date-aware code-list queries, `checkCarcValidity` and `checkRarcValidity`, keep their own
+contract and still throw an `X12CodeListError` on a document date they refuse. That divergence is
+deliberate: they answer a caller who asked a validity question and could not state the day, while
+these three read a document that was already parsed leniently, where a warning has already been
+raised.
