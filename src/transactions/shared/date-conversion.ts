@@ -10,8 +10,9 @@
  * the host machine's zone would make the answer depend on where the code ran.
  * So `toDate` returns `undefined` unless the caller states the offset, and
  * nothing here ever reads `Intl`, `getTimezoneOffset` or the local zone. That
- * is the same stance `parseDocumentDate` already takes for the date-aware
- * code-list queries, and this module does not soften it.
+ * is the same stance the date-aware code-list queries, `checkCarcValidity` and
+ * `checkRarcValidity`, already take for a document date, and this module does
+ * not soften it.
  *
  * **What it decodes is exactly what this package already parses or builds.**
  * DTP-02 is the date/time period format qualifier, and the readers and
@@ -29,12 +30,12 @@
  * **None of the three ever throws.** An undecodable carrier, a value whose
  * digits do not match the format its own qualifier declares, a calendar-invalid
  * day, `null` and `undefined` all answer `undefined`. That is the deliberate
- * divergence from {@link "../../code-lists/document-date.js".parseDocumentDate},
- * which THROWS on its own invalid input and keeps that contract unchanged: it
- * answers a caller who asked a validity question and cannot state the day,
- * while these three answer a caller reading a document that has already been
- * parsed leniently, where a warning has already been raised and an exception
- * would be a second, worse report of the same thing.
+ * divergence from `checkCarcValidity` and `checkRarcValidity`, which THROW an
+ * `X12CodeListError` on a document date they refuse and keep that contract
+ * unchanged: they answer a caller who asked a validity question and cannot
+ * state the day, while these three answer a caller reading a document that
+ * has already been parsed leniently, where a warning has already been raised
+ * and an exception would be a second, worse report of the same thing.
  */
 
 import { parseDocumentDate } from "../../code-lists/document-date.js";
