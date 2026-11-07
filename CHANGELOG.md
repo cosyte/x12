@@ -1,11 +1,25 @@
 # Changelog
 
-All notable changes to `@cosyte/x12` will be documented in this file.
+## 0.1.2
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+### Patch Changes
 
-## [Unreleased]
+- Doc comments now write number ranges with "to" instead of an en dash.
+
+## Released before this file was generated
+
+Every release section above this heading is written by
+[Changesets](https://github.com/changesets/changesets) from the changesets in `.changeset/`, newest
+release first. The release writes its own version heading, so nothing above this line is maintained
+by hand, and a change is recorded by adding a changeset rather than by editing this file. The 0.1.2
+section was filled in from that release's GitHub release notes when generation was turned on, since
+0.1.2 shipped while this file was still kept by hand and it was never written here.
+
+Everything below this heading was maintained by hand, in the
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format, and is left as it was written. Two
+things were dropped: the preamble above it, which said the file was kept by hand, and an empty
+`[Unreleased]` heading. The `[0.1.0]` section holds every entry written before the first 0.1
+release, the `0.0.x` releases included, which the file never recorded one by one.
 
 ## [0.1.1] - 2026-10-07
 

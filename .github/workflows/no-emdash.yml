@@ -1,9 +1,9 @@
 name: Em-dash gate
 
-# The brand rule (founder directive 2026-07-24, knowledgebase 06-brand/voice-and-tone.md)
-# bans U+2014 outright across every cosyte surface, and names commit messages
-# explicitly. The meta-repo's `documentation/conventions.md` has claimed the rule is
-# CI-gated since it was written; x12 was one of the repos where it was not. x12 was
+# The brand rule (founder directive 2026-07-24, knowledgebase 06-brand/voice-and-tone.md,
+# widened on 2026-11-07) bans the em dash (U+2014) and the en dash (U+2013) outright
+# across every Cosyte surface, and names commit messages explicitly. The rule was meant
+# to be CI-gated from the start; x12 was one of the repos where it was not. x12 was
 # already clean when this landed (0 of 21 markdown files, 0 of 264 tracked files, and
 # every tracked file decodes as us-ascii or utf-8 with no NUL byte), so this gate exists
 # purely to keep it that way. A green run on a clean tree proves nothing on its own,

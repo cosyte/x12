@@ -19,23 +19,23 @@ importers:
         specifier: 2.31.0
         version: 2.31.0(@types/node@22.20.0)
       '@cosyte/eslint-config':
-        specifier: ^0.0.3
-        version: 0.0.3(eslint@10.5.0)(typescript@5.9.3)
+        specifier: ^0.1
+        version: 0.1.1(eslint@10.5.0)(typescript@5.9.3)
       '@cosyte/prettier-config':
-        specifier: ^0.0.2
-        version: 0.0.2
+        specifier: ^0.1
+        version: 0.1.1
       '@cosyte/test-utils':
-        specifier: ^0.0.2
-        version: 0.0.2(fast-check@3.23.2)
+        specifier: ^0.1
+        version: 0.1.1(fast-check@3.23.2)
       '@cosyte/tsconfig':
-        specifier: ^0.0.2
-        version: 0.0.2
+        specifier: ^0.1
+        version: 0.1.1
       '@cosyte/tsup-config':
-        specifier: ^0.0.1
-        version: 0.0.1(tsup@8.5.1(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3))
+        specifier: ^0.1
+        version: 0.1.1(tsup@8.5.1(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3))
       '@cosyte/vitest-config':
-        specifier: ^0.0.2
-        version: 0.0.2(@vitest/coverage-v8@4.1.4)(vite@7.3.6(@types/node@22.20.0)(lightningcss@1.32.0)(tsx@4.21.0))(vitest@4.1.4)
+        specifier: ^0.1
+        version: 0.1.1(@vitest/coverage-v8@4.1.4)(vite@7.3.6(@types/node@22.20.0)(lightningcss@1.32.0)(tsx@4.21.0))(vitest@4.1.4)
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.0
@@ -171,31 +171,31 @@ packages:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
 
-  '@cosyte/eslint-config@0.0.3':
-    resolution: {integrity: sha512-AcH7JED37/XrXtfvM2z/gCugwYGqQxbmxZAsyx6hSFmsT9sCa6ddcqgvguhc0uE2HtlY9QMGz1Xpbv2QZlk7xQ==}
+  '@cosyte/eslint-config@0.1.1':
+    resolution: {integrity: sha512-EoUBFlkJJrVL/eNYIhLRfuWvEIha0PA+LyUZfx6ERmpXGB2RfzCJbzaXXcB5Lv7VdbWX3ph3NQGWR+4tGdGrOw==}
     peerDependencies:
       eslint: ^9.0.0 || ^10.0.0
       typescript: '>=5.0.0'
 
-  '@cosyte/prettier-config@0.0.2':
-    resolution: {integrity: sha512-nmplXQKNq5DZ+Su/tCUF6m9UJ9MOArhw5NG0X9yqi6B5zvxmVXtKMAX1N2bKkqpKhZqyQOR9ALGYVpTx022R/g==}
+  '@cosyte/prettier-config@0.1.1':
+    resolution: {integrity: sha512-77ZIoqYZC3urWkOy6TuD0Wyqt3VPv10Z9B32HGXOlswI77qUk4Yqkr1WU8HXkHvdYjZbdP08Bh2DMHgxfK1TuA==}
 
-  '@cosyte/test-utils@0.0.2':
-    resolution: {integrity: sha512-sBH+Z/YnOX/vLEsJMc2EpP7EHpLvh0/CuL1+5sBtoy/oppIsvL/0AiZMa0dwv2P6lfxvHwja59qTbHHANixslQ==}
+  '@cosyte/test-utils@0.1.1':
+    resolution: {integrity: sha512-TNWOGbWcCAZSEmnwDg4NkLKcH1AOSqtThvdUmGVConTcnhTGuKk5ZOQuMKmynFp9nSvEbLLKdEspQGr3ZeOusA==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       fast-check: ^3.0.0
 
-  '@cosyte/tsconfig@0.0.2':
-    resolution: {integrity: sha512-+V3F04HIlvQskPMz/YuGr40IT89mZ/T/2S5fe5PAxIE3MER3v4fMBdh0/IYRtqqwGEX5g3DNDj61x68Xr8f/9Q==}
+  '@cosyte/tsconfig@0.1.1':
+    resolution: {integrity: sha512-pxO/vd1l+PYUpCjkmM0fI5cRdL7E2YkO3ar7db1MhfwhMeBt5nNiOFbgTAf3cVF9V5OfAQhrowhKtll+/YjL6w==}
 
-  '@cosyte/tsup-config@0.0.1':
-    resolution: {integrity: sha512-i15Pa7lLx+E7niBVXiFB8DOSeDNl46PEf3JYzeobqDhU4Yvvczf5l7CrA1o7ikoaIlF9hYF4EBs3AGKZFnKh8A==}
+  '@cosyte/tsup-config@0.1.1':
+    resolution: {integrity: sha512-WzAQjSq6YJJHHH7I9HF25NcEfk0AVhFN95MMPBEHj7QNEFiAMB/JT72oI6sz1tDRsvBM9QVBQQ9FYMsaET+aFQ==}
     peerDependencies:
       tsup: ^8.0.0
 
-  '@cosyte/vitest-config@0.0.2':
-    resolution: {integrity: sha512-2LzDFAXlwjHGVhB1eE5zYyNsGITyGZqenuhZSFIuZ33BEjfIpQtZnpObGr1gXKkrvbtEM36f6Vz0Y3zhEUm7sA==}
+  '@cosyte/vitest-config@0.1.1':
+    resolution: {integrity: sha512-2SgOunKJcZ6d9ttH4QOBMNAvUYcO78/X2kQ22s1ugUkIoPTGNMs7dzcZ7cXBxxfPzY9HHZd8o5gEsgJT7aOM+A==}
     peerDependencies:
       '@vitest/coverage-v8': ^4.0.0
       vite: ^6.0.0 || ^7.0.0 || ^8.0.0
@@ -2075,7 +2075,7 @@ snapshots:
   '@colors/colors@1.5.0':
     optional: true
 
-  '@cosyte/eslint-config@0.0.3(eslint@10.5.0)(typescript@5.9.3)':
+  '@cosyte/eslint-config@0.1.1(eslint@10.5.0)(typescript@5.9.3)':
     dependencies:
       '@eslint/js': 10.0.1(eslint@10.5.0)
       eslint: 10.5.0
@@ -2086,19 +2086,19 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@cosyte/prettier-config@0.0.2': {}
+  '@cosyte/prettier-config@0.1.1': {}
 
-  '@cosyte/test-utils@0.0.2(fast-check@3.23.2)':
+  '@cosyte/test-utils@0.1.1(fast-check@3.23.2)':
     dependencies:
       fast-check: 3.23.2
 
-  '@cosyte/tsconfig@0.0.2': {}
+  '@cosyte/tsconfig@0.1.1': {}
 
-  '@cosyte/tsup-config@0.0.1(tsup@8.5.1(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3))':
+  '@cosyte/tsup-config@0.1.1(tsup@8.5.1(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3))':
     dependencies:
       tsup: 8.5.1(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)
 
-  '@cosyte/vitest-config@0.0.2(@vitest/coverage-v8@4.1.4)(vite@7.3.6(@types/node@22.20.0)(lightningcss@1.32.0)(tsx@4.21.0))(vitest@4.1.4)':
+  '@cosyte/vitest-config@0.1.1(@vitest/coverage-v8@4.1.4)(vite@7.3.6(@types/node@22.20.0)(lightningcss@1.32.0)(tsx@4.21.0))(vitest@4.1.4)':
     dependencies:
       '@vitest/coverage-v8': 4.1.4(vitest@4.1.4)
       vite: 7.3.6(@types/node@22.20.0)(lightningcss@1.32.0)(tsx@4.21.0)
@@ -2465,7 +2465,7 @@ snapshots:
       '@typescript-eslint/visitor-keys': 8.62.0
       debug: 4.4.3
       minimatch: 10.2.5
-      semver: 7.8.0
+      semver: 7.8.5
       tinyglobby: 0.2.16
       ts-api-utils: 2.5.0(typescript@5.9.3)
       typescript: 5.9.3

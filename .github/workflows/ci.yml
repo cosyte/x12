@@ -43,15 +43,16 @@ jobs:
   #   2. `npm pack --dry-run` asserts the publishable tarball actually assembles with the right file
   #      set + built `dist/`, independent of what's already on npm (`publish --dry-run` skips an
   #      already-published version; `pack` never does). A red in either step means a real release
-  #      would fail. The real provenance publish stays gated on the public flip (PUB-FLIP / X12-PUB).
+  #      would fail. The real publish runs in release.yml, through npm trusted publishing.
   release-dry-run:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: "22"
           cache: pnpm
@@ -97,18 +98,18 @@ jobs:
   # own throwaway virtual environment, so neither's packages can satisfy the other's.
   differential:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: "22"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # actions/setup-python v7.0.0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         id: python
         with:
           python-version: "3.11.16"
@@ -132,19 +133,16 @@ jobs:
   # `@cosyte/x12` by name, which resolves through package.json `exports` to the BUILT dist/, so the
   # build runs first. Each example asserts its own output, so `pnpm examples` goes red when one
   # drifts from the package. The PHI scan's default walk (src/ and test/) does not reach examples/,
-  # so the example files are named to it here. Actions are pinned to the commits the tags this
-  # file's other jobs use resolve to.
+  # so the example files are named to it here.
   examples:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
-      # actions/checkout v7.0.1
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      # pnpm/action-setup v6.0.10
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
-      # actions/setup-node v6.5.0
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: "22"
           cache: pnpm
