@@ -115,7 +115,12 @@
   "pnpm": {
     "overrides": {
       "esbuild@>=0.27.3 <0.28.1": "0.28.1",
-      "js-yaml@>=4.0.0 <4.3.0": "4.3.0"
+      "js-yaml@>=3.0.0 <3.15.2": "3.15.2",
+      "js-yaml@>=4.0.0 <4.3.2": "4.3.2",
+      "minimatch@>=7.0.0 <11.0.1": "11.0.1",
+      "brace-expansion@>=3.0.0 <5.0.12": "5.0.12",
+      "postcss@<8.5.23": "8.5.23",
+      "source-map-js@>=1.0.0 <1.2.2": "1.2.2"
     }
   },
   "devDependencies": {
@@ -129,7 +134,7 @@
     "@cosyte/tsup-config": "^0.1",
     "@cosyte/vitest-config": "^0.1",
     "@types/node": "^22.0.0",
-    "@vitest/coverage-v8": "4.1.4",
+    "@vitest/coverage-v8": "4.1.12",
     "eslint": "10.5.0",
     "fast-check": "3.23.2",
     "prettier": "3.8.3",
@@ -137,8 +142,8 @@
     "tsup": "8.5.1",
     "tsx": "4.23.15",
     "typescript": "5.9.3",
-    "vite": "7.3.6",
-    "vitest": "4.1.4"
+    "vite": "7.3.7",
+    "vitest": "4.1.12"
   },
   "dependencies": {}
 }
