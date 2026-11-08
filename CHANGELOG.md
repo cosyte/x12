@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.9
+
+### Patch Changes
+
+- 8f9226d: The type declarations now list the package's type-only exports in their own `export type` statement, which the newer build tool writes; the exported names, their kinds and the JavaScript are unchanged.
+
 ## 0.1.8
 
 ### Patch Changes
