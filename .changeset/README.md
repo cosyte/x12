@@ -13,14 +13,10 @@ Add a changeset for every meaningful change:
 pnpm changeset
 ```
 
-The package is on the `0.1.x` line. Pick the bump from what the change does to the published
-package:
-
-- **minor** for anything a consumer gains (a new export, option, transaction set or warning code),
-  and for a break. Below `1.0.0` a break ships as a minor, and the summary has to spell it out with
-  its migration, because the number alone tells a consumer on a `0.x` release nothing.
-- **patch** for a fix, for documentation of a surface that already ships, and for a change nobody
-  installing the package can observe.
-- **major** only with a deliberate decision to declare `1.0.0`.
+The package is on the `0.1.x` line, and **every changeset is a `patch`**: the operator's rule of
+2026-11-07 is patch versions only (D56 in the umbrella's `plans/decisions.md`), and a minor or a
+major waits for the operator's okay in their own words. A patch that adds something a consumer can
+call says so in its summary, and a break, which needs that okay first, spells out its migration,
+because the version number no longer says which kind of change it is.
 
 The standards every Cosyte repository follows are in `plans/standards.md` in the umbrella repository.

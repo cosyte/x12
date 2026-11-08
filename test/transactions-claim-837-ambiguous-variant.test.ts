@@ -72,7 +72,7 @@ const SV3 = "SV3*AD:D1110*6100**11*1*1~";
  * require in ST-03 on a production 837P, so the fall-back below was the
  * NORMAL path on real professional traffic rather than the exception. It
  * resolves now. Sources:
- * `documentation/agent-notes/x12-variant-icr-ungrounded.md`.
+ * `documentation/agent-notes.md#x12---grounding-variant_by_icr-x12-variant-icr-ungrounded-2026-08-08`.
  */
 const UNRESOLVED_ICR = "004010X098A1";
 

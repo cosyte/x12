@@ -9,7 +9,7 @@
  * INLINE ST/SE types on `X12TransactionSet` declare only `raw` and `elements`,
  * so passing any one of them is `TS2345`. `#110` measured THREE of the seven
  * with the compiler; all seven are measured here, and the prose carriers are
- * gridded in `agent-notes/x12-envelope-value-routes.md`. No figure is quoted
+ * gridded in `documentation/agent-notes.md#x12-envelope-value-routes---what-a-caller-actually-does-to-read-an-envelope-element`. No figure is quoted
  * here: a draft published one that its own grid contradicted.
  *
  * ## Why the signature was NOT widened, which was the decision
