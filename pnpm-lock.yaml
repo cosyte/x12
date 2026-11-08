@@ -30,8 +30,8 @@ importers:
         specifier: ^0.1
         version: 0.1.2
       '@cosyte/script-utils':
-        specifier: ^0.1.5
-        version: 0.1.5
+        specifier: ^0.1.7
+        version: 0.1.7
       '@cosyte/test-utils':
         specifier: ^0.1
         version: 0.1.2(fast-check@3.23.2)
@@ -188,8 +188,8 @@ packages:
   '@cosyte/prettier-config@0.1.2':
     resolution: {integrity: sha512-bpcOjNAU+IBscFxZk7CBODgd7VRwOirg8LlffJLAQUTobI1JunbvAZa98u1BNv+/m5ILMGVNFopGW9HPNA2H5Q==}
 
-  '@cosyte/script-utils@0.1.5':
-    resolution: {integrity: sha512-8hawTg97Fn8zQ7cm+Rcg1MjDQyM3GzOYVnS2GMNSNusMZ+nq0h+qcWQpylFaaBTkicJcHiLeb40FzfTqvPkNSQ==}
+  '@cosyte/script-utils@0.1.7':
+    resolution: {integrity: sha512-Fzykeed4W73DWlvBJrdFCeJXCXQNeBjaIaCyTLuCj7pw2ZrtbSTT5gibZy6xW1BE+DtFLWCKWdTBHJVJo3ilhg==}
     engines: {node: '>=22.14'}
     hasBin: true
 
@@ -2098,7 +2098,7 @@ snapshots:
 
   '@cosyte/prettier-config@0.1.2': {}
 
-  '@cosyte/script-utils@0.1.5': {}
+  '@cosyte/script-utils@0.1.7': {}
 
   '@cosyte/test-utils@0.1.2(fast-check@3.23.2)':
     dependencies:

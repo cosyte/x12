@@ -4,9 +4,11 @@ name: Public-surface gate
 # language, ADR numbers, internal repository paths and traceability markers belong in the
 # changeset, the commit, the pull request and the umbrella's plans, never in README.md,
 # TRADEMARKS.md, LICENSE, KNOWN-LIMITATIONS.md, docs-content/, the npm description and keywords, or
-# the `src/` doc comments that compile into `dist/*.d.ts`. The gate is the shared implementation
-# in @cosyte/script-utils (ST34), and this repository keeps only its axes, in
-# scripts/internal-refs.json. X12 is both the standard and our own item prefix, so it is a project
+# the `src/` doc comments that compile into `dist/*.d.ts` and the `src/` string literals a consumer
+# reads as warning, error and code-list text. The gate is the shared implementation in
+# @cosyte/script-utils (ST34), and this repository keeps only its axes, in
+# scripts/internal-refs.json, with one rule of its own: a bare umbrella work-item id (`S` and four
+# digits, then a hyphen). X12 is both the standard and our own item prefix, so it is a project
 # prefix there and no X12 designation is excluded: the sibling repos' exclusion matched 141 of our
 # identifiers (#120).
 #

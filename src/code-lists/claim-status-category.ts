@@ -44,7 +44,7 @@ export const CLAIM_STATUS_CATEGORY_CODES: CodeListSnapshot = Object.freeze({
       "ASC X12 / WPC Claim Status Category Codes (Code Source 507); referenced by TR3 005010X212 + 005010X214",
     publishedDate: "2023-11-01",
     snapshotDate: "2026-06-27",
-    note: "Common A/P/F/D/E-family subset; WPC-maintained list refreshed on the Phase 10 release cadence, never at runtime.",
+    note: "Common A/P/F/D/E-family subset; WPC-maintained list refreshed with a package release, never at runtime.",
     maintainingOrganization: "ASC X12",
     redistribution: CLAIM_STATUS_REDISTRIBUTION,
     completeness: "cited-subset",

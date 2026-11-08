@@ -83,7 +83,7 @@ export const CARC: DatedCodeListSnapshot = Object.freeze({
     snapshotDate: "2026-06-27",
     datesSource: "https://x12.org/codes/claim-adjustment-reason-codes",
     datesCapturedAt: "2026-08-28",
-    note: "Pre-launch initial subset (~30 most commonly observed codes). Phase 10 ships a full-regen script.",
+    note: "Initial subset (~30 most commonly observed codes), not the full list; refreshed with a package release, never at runtime.",
     maintainingOrganization: "ASC X12",
     redistribution: CARC_REDISTRIBUTION,
     completeness: "cited-subset",

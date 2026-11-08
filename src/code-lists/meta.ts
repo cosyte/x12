@@ -131,8 +131,8 @@ export interface CodeListEntryDates {
  * value is echoed verbatim (so a caller that branches on `entry.code` is
  * comparing exactly the bytes that came in, never a normalized form);
  * `description` is the bundled human-readable text from the snapshot.
- * Future fields (`isObsolete`, `replacedBy`) are tracked by the roadmap;
- * v0.0.x snapshots ship code + description only.
+ * Snapshots ship the code and description only; fields such as `isObsolete`
+ * and `replacedBy` are not carried.
  *
  * `dates` is present only on the snapshots that carry per-code dates (CARC and
  * RARC today) and only for a code that HAS one there, so an entry from a

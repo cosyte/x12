@@ -42,7 +42,7 @@ export const CLAIM_STATUS_CODES: CodeListSnapshot = Object.freeze({
       "ASC X12 / WPC Claim Status Codes (Code Source 508); referenced by TR3 005010X212 + 005010X214",
     publishedDate: "2023-11-01",
     snapshotDate: "2026-06-27",
-    note: "Common subset; WPC-maintained list (~800 codes) refreshed on the Phase 10 release cadence, never at runtime.",
+    note: "Common subset; WPC-maintained list (~800 codes) refreshed with a package release, never at runtime.",
     maintainingOrganization: "ASC X12",
     redistribution: CLAIM_STATUS_REDISTRIBUTION,
     completeness: "cited-subset",
