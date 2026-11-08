@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.6
+
+### Patch Changes
+
+- e196c68: The `note` on the CARC, RARC, claim status, claim status category and service type code-list snapshots now says each is refreshed with a package release, never at runtime, and the code-list, profile and remittance balance doc comments no longer cite a roadmap.
+
 ## 0.1.5
 
 ### Patch Changes
