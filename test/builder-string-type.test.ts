@@ -103,13 +103,12 @@
  *    - it holds the whole segment, so it derives `"HL-03"` from `parts[0]` and
  *    the index - which is why the two guards are worth having side by side.
  * 2. **The ISA/GS fixed-width slots are NOT covered and are NOT fixed here.**
- *    They go through each module's `pad` / `padControl`, not `esc`. Measured at
- *    base and unchanged at head: `pad(1, 15)` throws an untyped `TypeError`
- *    (`value.slice is not a function`) and `padControl(1, 9)` throws the
- *    module's typed refusal with the **misleading** text "exceeds the 9-char
- *    spec limit". Both are wrong in their own way; neither is silent, so
- *    neither is this defect. Pinned below so they cannot quietly become silent,
- *    and disclosed in `KNOWN-LIMITATIONS.md`.
+ *    They go through each module's `pad` / `padControl`, not `esc`. `pad(1, 15)`
+ *    throws an untyped `TypeError` (`value.slice is not a function`); it is not
+ *    silent, so it is not this defect. A numeric control number never reaches
+ *    `padControl`: `requireControlNumber` refuses it first. Both pinned below
+ *    so they cannot quietly become silent, and disclosed in
+ *    `KNOWN-LIMITATIONS.md`.
  * 3. **`buildTA1` was the one builder with no `esc` at all, and
  *    `X12-TA1-EMIT-NOT-RELEASE-AWARE` brought it inside.** The justification
  *    this limit used to carry - "every TA1 element is fixed-width and goes

@@ -60,6 +60,7 @@ import { describe, expect, it } from "vitest";
 import {
   build999,
   buildInterchange,
+  buildTA1,
   X12BuildError,
   X12_BUILD_ERROR_CODES,
   ACK_BUILD_ERROR_CODES,
@@ -404,6 +405,43 @@ describe("X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED: what it does not cover", ()
     );
     expect(() => buildInterchange({ ...IX_SPEC, interchangeControlNumber: "0000000001" })).toThrow(
       /exceeds the 9-char spec limit/u,
+    );
+  });
+
+  it("🩺 a NUMBER never reaches the length refusal: the type refusal comes first (#104)", () => {
+    // `padControl(7, 9)` used to fall through to the over-long branch and tell
+    // a one-digit number it "exceeds the 9-char spec limit". The guard runs
+    // ahead of `padControl`, so a number draws the type refusal instead.
+    let thrown: unknown;
+    try {
+      buildInterchange({ ...IX_SPEC, interchangeControlNumber: 7 as unknown as string });
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown).toBeInstanceOf(X12BuildError);
+    expect((thrown as X12BuildError).code).toBe(X12_BUILD_ERROR_CODES.X12_BUILD_INVALID_SPEC);
+    expect((thrown as Error).message).toContain(
+      "buildInterchange: interchangeControlNumber must be a string, but received a number.",
+    );
+    expect((thrown as Error).message).not.toContain("exceeds");
+  });
+
+  it("🩺 padding belongs to ISA-13: a SHORT TA1-01 is emitted as supplied (#105)", () => {
+    // `buildTA1` imports no `pad`, so "a SHORT control number still zero-pads"
+    // is true at ISA-13 / IEA-02 only. TA1-01 goes out verbatim, short or
+    // whitespace-only, and a boxed string is refused as at ISA-13.
+    const ta1 = {
+      interchangeDate: "260601",
+      interchangeTime: "1200",
+      ackCode: "A",
+      noteCode: "000",
+    } as const;
+    expect(buildTA1({ ...ta1, interchangeControlNumber: "1" }).raw).toBe("TA1*1*260601*1200*A*000");
+    expect(buildTA1({ ...ta1, interchangeControlNumber: " " }).raw).toBe("TA1* *260601*1200*A*000");
+    expect(() =>
+      buildTA1({ ...ta1, interchangeControlNumber: new String(" ") as unknown as string }),
+    ).toThrow(
+      /buildTA1: interchangeControlNumber must be a string, but received an object\. TA1-01 is a required control number/u,
     );
   });
 

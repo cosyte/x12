@@ -38,6 +38,7 @@ document bytes out of errors, warnings and logs.
   bounds what it names: warnings rendered control numbers (#46), a refusal its claim id (#75).
 - Never fabricate a value: absent stays undefined and warns; a builder refuses an empty one: an
   absent SV1-02 read as a 0 charge (#83), an empty control number emitted `000000000` (#101).
+- Type-check a control number, never trim it, pad only at the ISA: `[]` became `000000000` (#105).
 - A repeated or contested segment never resolves in silence: a second `SVx` replaced the first
   (#88), and a contested 837 variant was picked with no warning (#87).
 - Builders refuse what they cannot emit exactly: never coerce, round or drop (#60, #63).
@@ -45,8 +46,7 @@ document bytes out of errors, warnings and logs.
   (#96, #97, #99).
 - Tables keyed by document bytes resolve through `wireLookup` or `Object.hasOwn`, never `in` (#69).
 - Check element maps against the guide and literal bytes, never this repo's reader (#64).
-- Envelope `raw` and `elements[n]` are raw text; no doc promises a value from them
-  (#110, #116, #119).
+- Envelope `raw` and `elements[n]` are raw text, never a promised value (#110, #116, #119).
 - Derive what is read and emitted from `X12_TR3_CONFORMANCE`, never from memory (#127).
 - Orphan segments re-emit at their `anchor` (#48, #49); bound loops over caller values (#53, #58).
 - `scripts/phi-scan.ts` keeps its `--staged` argv and takes no exemption: a rename passed it

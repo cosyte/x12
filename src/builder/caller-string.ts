@@ -176,10 +176,10 @@
  * - **The ISA fixed-width slots go through `pad` / `padControl`, not `esc`, and
  *   not through the segment join either** - every builder assembles ISA with a
  *   direct `.join()`. `pad(1, 15)` throws an untyped `TypeError` (`value.slice
- *   is not a function`) and `padControl(1, 9)` throws the module's typed
- *   refusal with the **misleading** text "exceeds the 9-char spec limit". Those
- *   two terminate, which is better than emitting silently, and neither is
- *   improved here. **`buildTA1` had no `esc` at all and no segment joiner
+ *   is not a function`), which terminates, which is better than emitting
+ *   silently, and is not improved here. The control number is guarded ahead of
+ *   `padControl` by {@link "./caller-control-number.js".requireControlNumber}.
+ *   **`buildTA1` had no `esc` at all and no segment joiner
  *   either, and a later release gave it the escaper** - it
  *   still emits its five caller-supplied elements with a direct `.join()`, so
  *   the joiner half of that sentence stands and the type check now comes from

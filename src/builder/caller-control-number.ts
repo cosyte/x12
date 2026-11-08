@@ -149,9 +149,11 @@
  *   nothing here states one, so it stays open. **Do not read the type test as
  *   having narrowed what an accepted control number may CONTAIN** - it narrows
  *   only what it may BE.
- * - **It does not bound the length either way.** A SHORT control number still
- *   zero-pads (`"1"` -> `"000000001"`), and one longer than the slot still draws
- *   `padControl`'s own "exceeds the N-char spec limit" refusal, unchanged.
+ * - **It does not bound the length either way.** At ISA-13 / IEA-02 a SHORT
+ *   control number still zero-pads (`"1"` -> `"000000001"`), and one longer
+ *   than the slot still draws `padControl`'s own "exceeds the N-char spec
+ *   limit" refusal, unchanged. Padding is that slot's, not this guard's:
+ *   `buildTA1` pads nothing, so a TA1-01 of `"1"` goes out as `TA1*1*…`.
  * - **It publishes no census of the slots it guards, and none of the ones it
  *   does not.** Which slots route through here is held by
  *   `test/builder-control-number-empty.test.ts` and
