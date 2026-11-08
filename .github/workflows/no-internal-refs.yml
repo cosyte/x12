@@ -1,65 +1,21 @@
 name: Public-surface gate
 
-# Founder directive 2026-07-27: no internal project bookkeeping on any surface a consumer
-# reads. Item identifiers, phase and wave language, ADR numbers, meta-repo paths and
-# process commentary belong in the changeset, CHANGELOG.md, the commit, the PR and the
-# umbrella's plans/, never in README.md, KNOWN-LIMITATIONS.md, docs-content/, the npm
-# description, or the JSDoc that compiles into `dist/`. `scripts/check-no-internal-refs.sh` is
-# what enforces it, and the umbrella's `plans/standards.md` (ST34) records where the gate goes.
+# No internal project bookkeeping on a surface a consumer reads: item identifiers, phase and wave
+# language, ADR numbers, internal repository paths and traceability markers belong in the
+# changeset, the commit, the pull request and the umbrella's plans, never in README.md,
+# TRADEMARKS.md, LICENSE, KNOWN-LIMITATIONS.md, docs-content/, the npm description and keywords, or
+# the `src/` doc comments that compile into `dist/*.d.ts`. The gate is the shared implementation
+# in @cosyte/script-utils (ST34), and this repository keeps only its axes, in
+# scripts/internal-refs.json. X12 is both the standard and our own item prefix, so it is a project
+# prefix there and no X12 designation is excluded: the sibling repos' exclusion matched 141 of our
+# identifiers (#120).
 #
-# WHY A GATE AND NOT A NOTE. The founder, on the sweep that removed these across the
-# ecosystem: "it needs to not just be a memory note, but something that is addressed in the
-# workflow accordingly. This needs to not happen again." A sweep regresses the first time
-# someone writes an item identifier into a README; a job that reds does not. In this repo
-# that argument is not abstract: every accuracy finding in this package's recent review
-# history has been a claim defect in a prose carrier, and until this landed no test in the
-# suite could fail on one.
+# THE JOB ID IS LOAD-BEARING: it publishes `no-internal-refs / public-surface`, which a ruleset may
+# require. There is no `edited` trigger, because nothing here reads pull request text, which is
+# where an identifier belongs. The workflow installs from the lockfile first, because the gate
+# lives in node_modules.
 #
-# WHAT ACTUALLY SCANS, AND WHERE THE RULE LIVES. `pnpm check:no-internal-refs`, which is
-# this repository's own `scripts/check-no-internal-refs.sh`. The job below delegates the
-# plumbing (checkout, pnpm, Node) to the shared gate workflow, which carries no pattern, no
-# allow-list and no file selection of its own: it prepares the tree, runs the command, and
-# lets the command's exit status decide the job. The rule set stays here, which matters in
-# this repository more than most: `X12` is both a standards designator and our own item
-# prefix, and only a per-repo rule set can tell the two apart.
-#
-# THE JOB ID IS LOAD-BEARING. A called job's check run is named
-# `<caller job id> / <inner job id>`, so the job id `no-internal-refs` below publishes
-# `no-internal-refs / public-surface`. A branch ruleset binds to that exact string, and
-# renaming the job detaches the requirement with no error anywhere.
-#
-# WHY A SEPARATE WORKFLOW, and not a job in ci.yml. Same reasoning as the em-dash gate next
-# door, and the first half is the deciding one:
-#
-#   The shared ci pipeline is not an option. x12's `ci` job calls
-#   cosyte/.github/.github/workflows/ci.yml, which runs a fixed ladder and no arbitrary
-#   repo script, so there is nowhere in it to hang this. Adding a step there would land the
-#   gate on every caller at once, and remediating each is its own deliberate piece of work.
-#   A shared pipeline is the wrong place to land a rule most of its callers cannot yet
-#   satisfy.
-#
-#   Within x12, keeping it out of ci.yml also keeps it cheap: this job is a checkout and a
-#   handful of greps over 14 public-surface files and 108 source files, while ci.yml drives
-#   the full Node 22, 24 and 26 matrix plus the release dry run.
-#
-# WHAT THIS DOES NOT CHECK, deliberately: the PR title, the PR body, and commit messages.
-# The em-dash gate scans all three because the brand rule names commit messages explicitly.
-# THIS rule says the opposite: identifiers BELONG in the commit, the PR and the changeset,
-# so a PR-text half here would red on correct work. That is also why there is no `edited`
-# trigger: nothing here reads PR text, so retitling a PR cannot change the result.
-#
-# WHAT THIS GATE CANNOT DO, stated so a green run is not over-read. It reads `src/` doc
-# comments, which are the SOURCE of the published declarations, not `dist/` itself: `dist/`
-# is untracked build output and this script does not build. The proxy holds only because
-# the dts build copies doc text verbatim.
-#
-# NOT A REQUIRED CHECK YET (checked 2026-11-08). The rulesets on this repo do not require
-# `no-internal-refs / public-surface`, so a PR carrying an internal reference reds this check
-# VISIBLY but is still mergeable. Making it required is a ruleset change, outside this repo's
-# files. Until then the gate informs a human; it does not stop one. Re-derive that rather
-# than trusting this line.
-#
-# Run it locally with `pnpm check:no-internal-refs`.
+# Run it locally with `pnpm check:no-internal-refs` after `git add`: the gate reads `git ls-files`.
 
 on:
   push:
@@ -71,16 +27,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
-  # The check-run context prefix. See the note above before touching this id.
   no-internal-refs:
-    # Pinned to the 40 character commit, not to the tag beside it: a tag can be moved
-    # or deleted by anyone who gains write access to the workflow's repository, so a
-    # tag is not an immutable reference and is not a pin. The trailing comment is the
-    # published reference that commit was released as, so the release note stays
-    # findable from here.
-    uses: cosyte/.github/.github/workflows/gate-no-internal-refs.yml@498c7c13c8869bf11b67fa8324684ec2dc691ec6 # workflows-2026-11-07-498c7c13c886
-    # No more than the scan needs. A called workflow's GITHUB_TOKEN can only be
-    # downgraded by its caller, and this gate reads the tree and nothing else.
+    uses: cosyte/.github/.github/workflows/gate-no-internal-refs-install.yml@498c7c13c8869bf11b67fa8324684ec2dc691ec6 # workflows-2026-11-07-498c7c13c886
     permissions:
       contents: read
