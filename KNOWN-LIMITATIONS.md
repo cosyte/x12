@@ -253,8 +253,9 @@ model.
     empty-required-element guard this one mirrors (`patientControlNumber`, `claimId`,
     `maintenanceTypeCode`, `requestCategoryCode`, the 277's `categoryCode`) is byte-strict for the
     same reason. **Validate at your own boundary if your partner can send you blanks.**
-  - **A SHORT control number still zero-pads.** The guard is not "ISA-13 must be nine characters":
+  - **A SHORT ISA-13 still zero-pads.** The guard is not "ISA-13 must be nine characters":
     `interchangeControlNumber: "1"` still emits `000000001`, which is what `padControl` is for.
+    `buildTA1` pads nothing, so a TA1-01 of `"1"` goes out as `TA1*1*…`.
   - **🛑 Every guard sits at the envelope-assembly site, so every guard that runs BEFORE it keeps its
     precedence, and that is the whole claim.** `build835`'s balance equation, `build999`'s AK9
     counts, `buildTA1`'s accept-must-mean-accept check, the 837's and 277's hierarchy checks and
@@ -655,11 +656,9 @@ model.
     open) regresses on both kinds of surface: `"00000001??"` in, `TA1*00000001????*…` out, and
     `getSegmentValue` answering `"00000001??"` where it answered `"00000001?"`. The framing and the
     disposition stay correct, but **drop the hand-rolled escape.**
-  - **An EMPTY control number was not refused by this change, and is refused by the NEXT one.**
-    `escapeRelease` early-returns on `""` and `buildTA1` carried no required-field guard, so
-    `interchangeControlNumber: ""` emitted `TA1**260601*1200*A*000` with `warnings: []`, here and at
-    every earlier release. A later release closed it across every builder; see
-    the entry at the top of this file, including the whitespace-only residual it leaves open.
+  - **An EMPTY control number was not refused by this change; a later release refuses it** across
+    every builder. See the entry at the top of this file, including the whitespace-only residual it
+    leaves open.
   - **🩺 The READ half did not move IN THIS CHANGE, and a later release is the one that moved
     it** - see the entry at the top of this file. A control number of `"00000001?"` read back as
     `"00000001?*260601"` before the EMIT half moved and as `"00000001??"` after it; the clause that stood
@@ -1540,8 +1539,7 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   its five elements at all, and a numeric or `undefined` `interchangeControlNumber` was emitted
   silently (`TA1**250101*1200*A*000`); a later release closed that by routing them
   through the escape helper, which type-checks first and refuses with `AckBuildError` /
-  `X12_ACK_INVALID_SPEC`. What being outside the segment guard still costs is the **slot** in the
-  refusal message: it names `buildTA1`, never `TA1-01`.
+  `X12_ACK_INVALID_SPEC`.
 
   The monetary slots got their own guard on top of it: a slot typed `X12Decimal` refuses anything that
   is not one, rather than rendering `number.toString()` into the document.
@@ -1594,10 +1592,10 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   3. **The fixed-width ISA slots** (`senderId`, `receiverId`, `interchangeControlNumber`, …) go
      through padding rather than escaping, and **are still not covered** - they do not pass through
      the segment join either. A number there throws an untyped `TypeError` with no `code`
-     (`value.slice is not a function`), and a numeric `interchangeControlNumber` throws the builder's
-     typed refusal with the **misleading** text "exceeds the 9-char spec limit". Both terminate
-     rather than emitting silently, which is why they were the smaller hazard and why they are left
-     alone. GS-04 and GS-05 were the counter-example that made this distinction worth stating - they
+     (`value.slice is not a function`). That terminates rather than emitting silently, which is why
+     it was the smaller hazard and why it is left alone. `interchangeControlNumber` is the exception:
+     a number there draws the builder's typed refusal, saying it must be a string.
+     GS-04 and GS-05 were the counter-example that made this distinction worth stating - they
      are envelope elements and they WERE silent. They are covered now; ISA still is not.
 
   **One other change, and it is a behaviour change:** the exported `escapeRelease(value, delimiters)`

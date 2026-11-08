@@ -50,27 +50,13 @@
  *   slots by routing them through `esc` in that same change, and this module
  *   would not have caught it. Type and delimiter safety are separate
  *   properties and only one of them is structural.
- * - **`buildTA1` is outside it**, per the paragraph above. TA1-01 is data
- *   element I12, the interchange control number echoed from ISA-13 and the
- *   reassociation key back to the acknowledged interchange, so a silently empty
- *   one is not a small thing. **A NON-STRING one refuses now**, because that
- *   builder's `esc` type-checks first - **but an EMPTY STRING still builds
- *   silently**: `escapeRelease` early-returns on `""` and `buildTA1` carries no
- *   required-field guard, unlike `build835`, which refuses
- *   `patientControlNumber === ""` by name. `buildTA1({
- *   interchangeControlNumber: "", … })` emits `TA1**260601*1200*A*000` with
- *   `warnings: []`, here and at every earlier release. **Do not write the
- *   unqualified "a silently empty TA1-01 is no longer possible" form** - a
- *   draft of this bullet did and was refuted. The other thing still missing is
- *   this module's slot naming: the refusal says `buildTA1`, never `TA1-01`.
- *   Widening this guard into a public builder remains its own graded slice, and
- *   so does giving that builder a required-field guard.
+ * - **`buildTA1` is outside it**, per the paragraph above. What guards its
+ *   elements instead is in `src/transactions/ack/build-ta1.ts`, and is not
+ *   restated here.
  * - **The fixed-width ISA line is outside it.** Every builder assembles ISA by
  *   `[...].join(elementSeparator)` directly, not through `seg`, because its
  *   elements are `pad`ed to width rather than escaped. Those slots remain as
- *   `caller-string.ts` discloses them: `pad(1, 15)` throws an untyped
- *   `TypeError` and `padControl(1, 9)` throws a typed but misleadingly-worded
- *   refusal. Both terminate, neither is silent, and neither is improved here.
+ *   `caller-string.ts` discloses them.
  *
  * ## It names the element position, which `esc` cannot
  *
@@ -93,8 +79,8 @@
  * the value in front of them is as likely to be `CLP-01` (the patient-account
  * number) or `NM1-09` (the member id) as a control number. **A guard that
  * cannot tell which slot it is on cannot decide that echoing is safe**, so none
- * of the three echoes now. What is left is the type - and, **in THIS guard
- * only**, the slot beside it. `esc` and `escDec` name the BUILDER, so do not
+ * of the three echoes now. What is left is the type, and here the slot beside
+ * it. `esc` and `escDec` name the BUILDER, so do not
  * write "the type and the slot" over the family; a refuter measured four
  * consumer surfaces doing exactly that. The values that still reach a refusal message are the ones
  * a builder's own template names by field - control numbers, X12 control codes,

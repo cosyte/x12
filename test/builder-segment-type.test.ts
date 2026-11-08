@@ -38,10 +38,8 @@
  *    structural; delimiter safety is per-slot.
  * 2. **The fixed-width ISA line is outside it.** Every builder assembles ISA by
  *    `[...].join(elementSeparator)` directly, because its elements are `pad`ed
- *    rather than escaped. Those slots stay as `caller-string.ts` discloses them:
- *    `pad(1, 15)` throws an untyped `TypeError`, `padControl(1, 9)` throws a
- *    typed but misleadingly-worded refusal. Both terminate, neither is silent.
- *    Pinned below so they cannot quietly become silent.
+ *    rather than escaped. Those slots stay as `caller-string.ts` discloses them,
+ *    and are pinned in `test/builder-string-type.test.ts`.
  * 3. **The scan is syntactic**, keyed on the `const seg = ` / `function joinSeg`
  *    shapes this library uses in all nine joining modules. A builder that joined inline
  *    would not be seen. A strong tripwire for the shape this library uses, not
@@ -158,9 +156,7 @@ describe("builder segment joining: the source gate", () => {
     // **`X12-TA1-EMIT-NOT-RELEASE-AWARE` changed what the exclusion COSTS, and
     // not the exclusion.** The reason used to be that nothing checked those
     // five elements at all; it now is that `buildTA1` type-checks and releases
-    // them through `makeCallerEscaper` instead, which is the other guard. What
-    // it still does not get from `requireCallerSegment` is the SLOT in the
-    // refusal message: a wrong-typed TA1-01 names the builder, not `TA1-01`.
+    // them through `makeCallerEscaper` instead, which is the other guard.
     // Widening the joiner into it is still its own slice.
     //
     // THIRTEEN with the two attachments builders (AC-12, AC-15),

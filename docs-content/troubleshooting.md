@@ -209,12 +209,12 @@ for you: choosing between `0.30` and `0.3` is a decision about your money.
 **Four things are still worth validating at your own boundary.** First, a `string` carrying an active
 delimiter: the type check passes it, and only slots routed through the escape helper release it
 (`"1*BOGUS"` emits as `1?*BOGUS`). Second, **the fixed-width ISA slots**, which go through padding
-and not through the segment joiner at all. A number there throws an untyped `TypeError`, or for
-`interchangeControlNumber` a typed refusal whose text misleadingly says "exceeds the 9-char spec
-limit". Both terminate, which is why they are the smaller hazard.
+and not through the segment joiner at all. A number there throws an untyped `TypeError`, which
+terminates, which is why they are the smaller hazard. `interchangeControlNumber` is the exception: a
+number there draws a typed refusal saying it must be a string.
 
-Third, **the delimiter set `buildTA1` releases against.** It uses no segment joiner, so its refusal
-names the builder rather than `TA1-01`, but its five elements do go through the escape helper: a
+Third, **the delimiter set `buildTA1` releases against.** It uses no segment joiner, but its five
+elements do go through the escape helper: a
 numeric or `undefined` `interchangeControlNumber` now refuses instead of emitting
 `TA1**250101*1200*A*000`, and an active delimiter is released instead of shifting the disposition
 element. An **empty** element refuses too, at all five slots; a whitespace-only one does not, and
@@ -287,8 +287,8 @@ instead. `build999` with an empty `interchangeControlNumber` and six AK9 syntax 
 whitespace-only control number is still accepted and still padded, so `" "` emits ISA-13 as
 `00000000 `; `buildTA1` does no padding at all and emits whatever whitespace you hand it, verbatim.
 Trimming would be a normalization rule and nothing this library can cite says to. A **short** control
-number is not affected and never was: `"1"` still pads to `000000001`, which is what the padding is
-for.
+number is not affected and never was: at ISA-13, `"1"` still pads to `000000001`, which is what the
+padding is for, and `buildTA1` pads nothing, so a TA1-01 of `"1"` goes out as `TA1*1*…`.
 
 One other behavior change: the exported `escapeRelease` now throws `TypeError` on a non-string
 instead of returning `""`, and a boxed `new String("…")` is refused where it built at `0.0.8`. See
