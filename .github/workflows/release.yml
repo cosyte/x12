@@ -33,6 +33,10 @@ on:
   push:
     branches: [main]
 
+# Read-only by default: the release job below grants itself the writes the shared pipeline needs.
+permissions:
+  contents: read
+
 jobs:
   release:
     # Required. The repo default for GITHUB_TOKEN is `contents: read`, and a called workflow can only
