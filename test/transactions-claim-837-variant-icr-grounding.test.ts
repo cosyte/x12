@@ -16,7 +16,7 @@
  * document that was not non-conformant.
  *
  * **▶ The sources every key came from are named in
- * `documentation/agent-notes/x12-variant-icr-ungrounded.md` and beside the
+ * `documentation/agent-notes.md#x12---grounding-variant_by_icr-x12-variant-icr-ungrounded-2026-08-08` and beside the
  * table in `src/transactions/claim/get-837.ts`.** Checking an identifier
  * against this repo's own fixtures would only prove the two agree, which is
  * how the 835 SVC element map stayed wrong; every one below is grounded

@@ -12,7 +12,7 @@
 [![npm version](https://img.shields.io/npm/v/@cosyte/x12.svg)](https://www.npmjs.com/package/@cosyte/x12)
 [![CI](https://img.shields.io/github/actions/workflow/status/cosyte/x12/ci.yml?branch=main&label=CI)](https://github.com/cosyte/x12/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cosyte/x12/blob/main/LICENSE)
-[![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen.svg)](https://nodejs.org)
 
 Developer-focused ASC X12 healthcare EDI parser, serializer, and builder for Node.js and TypeScript: lenient on parse, spec-clean on emit.
 
@@ -36,12 +36,13 @@ a stable code instead of failing or guessing.
 On the 0.1 line the public API is settled and safe to depend on: the exported readers, builders,
 types and warning codes are the surface we keep stable, and the warning registry only ever gains
 codes. Below 1.0 a breaking change bumps the minor version and is called out in the changelog with
-its migration. On an older 0.0 release, pin an exact version rather than a range. Typed read and typed
-emit both ship for every transaction set
-this package covers: 270, 271, 276, 277 and 277CA, 278 request and response, 820, 834, 835, 837P,
-837I and 837D, 999 and TA1, each with a reader and a matching domain builder, and the two claims
-attachments guides 45 CFR 162.2002 adopts for the period on and after 26 May 2028: the 277 request
-for additional information (`006020X313`) and the 275 that answers it (`006020X314`). For those two the base X12 006020
+its migration. On an older 0.0 release, pin an exact version rather than a range.
+
+Typed read and typed emit both ship for every transaction set this package covers: 270, 271, 276,
+277 and 277CA, 278 request and response, 820, 834, 835, 837P, 837I and 837D, 999 and TA1, each
+with a reader and a matching domain builder, and the two claims attachments guides 45 CFR 162.2002
+adopts for the period on and after May 26, 2028: the 277 request for additional information
+(`006020X313`) and the 275 that answers it (`006020X314`). For those two the base X12 006020
 structure is typed and no implementation-guide usage is checked, so a qualifier or segment the
 guide requires is carried as sent and never validated; `KNOWN-LIMITATIONS.md` lists what else
 they leave open. `X12_TR3_CONFORMANCE` is the machine-readable answer to which implementation
@@ -60,10 +61,9 @@ pnpm add @cosyte/x12
 
 `npm install @cosyte/x12` and `yarn add @cosyte/x12` work the same way.
 
-Node.js 22 or later, tested on 22 and 24: the engine floor is `>=22.0.0`, and there are zero
-runtime dependencies. The package ships
-dual ESM and CJS builds with type declarations for both conditions, so `import` and `require` each
-resolve to the artifact meant for them.
+Node.js 22 or later, tested on 22, 24, and 26: the engine floor is `>=22.0.0`, and there are zero
+runtime dependencies. The package ships dual ESM and CJS builds with type declarations for both
+conditions, so `import` and `require` each resolve to the artifact meant for them.
 
 ## Usage
 
@@ -139,38 +139,6 @@ warnings 0
 
 The `groupCode` is what tells you who owes the money (`PR` patient responsibility, `CO` contractual
 obligation, and so on). Read it; never infer it.
-
-## PHI and safety
-
-X12 healthcare transactions carry protected health information, so treat every interchange you hand
-this library as PHI.
-
-**What it does with your document.** It decodes it in memory and nothing else. No socket is opened,
-nothing is written to disk, and nothing is fetched at run time: the bundled code lists are versioned
-data snapshots, so updating one is a release rather than a network call. The acknowledgment builders
-are pure functions and never auto-send.
-
-**What it keeps out of diagnostics.** A warning `message` is a lookup into a frozen registry rather
-than something built from your document, and no warning factory in this library takes a value
-parameter, so no element of yours can reach a diagnostic. The code and the `position` say what and
-where; the bytes stay on the model. `ALL_WARNING_MESSAGES` is exported so you can assert that.
-
-**The one deliberate exception.** `X12ParseError.snippet` on the four structural fatals is a bounded
-copy of the start of the input, so on real traffic it can carry PHI, and it is not redacted. Log
-`err.code` and `err.position` instead, or redact at your call site.
-
-**An attachment refuses to print.** The data of each BDS a 275 carries is read into
-`X12AttachmentData`, whose string, JSON, and `util.inspect` forms state its octet count and nothing
-else; `readOctets()` is the one route to the octets.
-
-**Builder refusals are a weaker surface, deliberately.** A `build*` refusal names the control
-number, count, or code you passed in, so that you can see what was refused. The rendered fragment is
-bounded by an exported constant, but it is bounded rather than redacted. The two attachments
-builders are the exception and name no value at all. Log `err.code`, not `err.message`, from a
-builder.
-
-**What you still own.** Transport, storage, retention, access control, audit logging, and every log
-line your own code writes. This library makes no HIPAA compliance claim on your behalf.
 
 ## API
 
@@ -283,17 +251,83 @@ A namespace import works too: `import * as x12 from "@cosyte/x12"`, then `x12.to
   breaks" is not sufficient either. [KNOWN-LIMITATIONS.md](./KNOWN-LIMITATIONS.md) is the canonical
   list.
 
+## Documentation
+
+The full documentation lives at [docs.cosyte.com/x12](https://docs.cosyte.com/x12), built from this
+repository's [`docs-content/`](https://github.com/cosyte/x12/tree/main/docs-content). Start with
+these pages:
+
+- [Quickstart](https://github.com/cosyte/x12/blob/main/docs-content/quickstart.md): read an 835
+  and pull out the payment, each claim's money, and the adjustment reasons.
+- [The 80/20 transaction sets](https://github.com/cosyte/x12/blob/main/docs-content/spec-notes-transaction-sets.md):
+  every transaction set this package covers, with its reader and its builder.
+- [Decimal-exact money](https://github.com/cosyte/x12/blob/main/docs-content/spec-notes-money.md):
+  why every amount is an `X12Decimal` and never a JavaScript number.
+- [Building and serializing X12](https://github.com/cosyte/x12/blob/main/docs-content/emit-and-serialize.md):
+  the emit side, from `serializeX12` to the domain builders.
+- [Cookbook](https://github.com/cosyte/x12/blob/main/docs-content/cookbook.md): recipes for the
+  transactions you get handed, each with the code and what comes back.
+- [Troubleshooting](https://github.com/cosyte/x12/blob/main/docs-content/troubleshooting.md): the
+  error model, the common symptoms, and the boundaries this package states on purpose.
+
+## Support
+
+Questions and ideas go to [Discussions](https://github.com/cosyte/.github/discussions), which
+covers every Cosyte repository. Bug reports and trading-partner quirks go to the
+[issue tracker](https://github.com/cosyte/x12/issues), with a synthetic reproduction and never a
+real interchange. The organization's
+[support guide](https://github.com/cosyte/.github/blob/main/SUPPORT.md) has the rest.
+
+## Security
+
+Report a vulnerability privately, as the
+[security policy](https://github.com/cosyte/.github/blob/main/SECURITY.md) describes, never in a
+public issue.
+
+## PHI and safety
+
+X12 healthcare transactions carry protected health information, so treat every interchange you hand
+this library as PHI.
+
+**What it does with your document.** It decodes it in memory and nothing else. No socket is opened,
+nothing is written to disk, and nothing is fetched at run time: the bundled code lists are versioned
+data snapshots, so updating one is a release rather than a network call. The acknowledgment builders
+are pure functions and never auto-send.
+
+**What it keeps out of diagnostics.** A warning `message` is a lookup into a frozen registry rather
+than something built from your document, and no warning factory in this library takes a value
+parameter, so no element of yours can reach a diagnostic. The code and the `position` say what and
+where; the bytes stay on the model. `ALL_WARNING_MESSAGES` is exported so you can assert that.
+
+**The one deliberate exception.** `X12ParseError.snippet` on the four structural fatals is a bounded
+copy of the start of the input, so on real traffic it can carry PHI, and it is not redacted. Log
+`err.code` and `err.position` instead, or redact at your call site.
+
+**An attachment refuses to print.** The data of each BDS a 275 carries is read into
+`X12AttachmentData`, whose string, JSON, and `util.inspect` forms state its octet count and nothing
+else; `readOctets()` is the one route to the octets.
+
+**Builder refusals are a weaker surface, deliberately.** A `build*` refusal names the control
+number, count, or code you passed in, so that you can see what was refused. The rendered fragment is
+bounded by an exported constant, but it is bounded rather than redacted. The two attachments
+builders are the exception and name no value at all. Log `err.code`, not `err.message`, from a
+builder.
+
+**What you still own.** Transport, storage, retention, access control, audit logging, and every log
+line your own code writes. This library makes no HIPAA compliance claim on your behalf.
+
 ## Contributing
 
-Questions, bug reports, and trading-partner quirks all belong in
-[GitHub issues](https://github.com/cosyte/x12/issues).
+Bug reports and trading-partner quirks belong in
+[GitHub issues](https://github.com/cosyte/x12/issues), as Support says above.
 
 Pull requests are welcome. The organization's
 [contributing guide](https://github.com/cosyte/.github/blob/main/CONTRIBUTING.md) and
-[code of conduct](https://github.com/cosyte/.github/blob/main/CODE_OF_CONDUCT.md) apply here. A contribution must clear `pnpm typecheck`, `pnpm lint`, and `pnpm test`,
-hold the per-directory coverage floors, pass the PHI commit gate (`pnpm phi-scan`) and the prose
-gates (`pnpm check:no-emdash`, `pnpm check:no-internal-refs`), and carry a changeset. Every fixture
-must be synthetic: never open a pull request carrying a real patient's data.
+[code of conduct](https://github.com/cosyte/.github/blob/main/CODE_OF_CONDUCT.md) apply here. A
+contribution must clear `pnpm typecheck`, `pnpm lint`, and `pnpm test`, hold the per-directory
+coverage floors, pass the PHI commit gate (`pnpm phi-scan`) and the prose gates
+(`pnpm check:no-emdash`, `pnpm check:no-internal-refs`), and carry a changeset. Every fixture must
+be synthetic: never open a pull request carrying a real patient's data.
 
 ## Trademarks
 
