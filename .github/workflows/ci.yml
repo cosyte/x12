@@ -155,9 +155,8 @@ jobs:
       - run: pnpm phi-scan:examples
 
   # The repository's documents, each held by the shared checker in @cosyte/script-utils: the README
-  # against the house skeleton and npm's size limit, the CLAUDE.md card against its spec, the agent
-  # notes and every pointer into them (the checker reads `git ls-files`, so this job checks out the
-  # repository), and the package.json description against the catalog of our libraries.
+  # against the house skeleton and npm's size limit, the CLAUDE.md card against its spec, and the
+  # package.json description against the catalog of our libraries.
   documents:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -175,5 +174,4 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:readme
       - run: pnpm check:claude-card
-      - run: pnpm check:agent-notes
       - run: pnpm check:catalog

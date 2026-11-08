@@ -71,8 +71,8 @@ const SV3 = "SV3*AD:D1110*6100**11*1*1~";
  * is the June 2010 errata that CMS and state Medicaid companion guides
  * require in ST-03 on a production 837P, so the fall-back below was the
  * NORMAL path on real professional traffic rather than the exception. It
- * resolves now. Sources:
- * `documentation/agent-notes.md#x12---grounding-variant_by_icr-x12-variant-icr-ungrounded-2026-08-08`.
+ * resolves now. Sources: the comment above `VARIANT_BY_ICR` in
+ * `src/transactions/claim/get-837.ts`.
  */
 const UNRESOLVED_ICR = "004010X098A1";
 

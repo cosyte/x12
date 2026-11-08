@@ -109,8 +109,7 @@ import type {
  * from a source outside this repository. Checking one against this
  * library's own fixtures would only prove the two agree, which is how the
  * 835 SVC element map stayed wrong, so
- * the sources are named here and recorded in
- * `documentation/agent-notes.md#x12---grounding-variant_by_icr-x12-variant-icr-ungrounded-2026-08-08`:
+ * the sources are named here:
  *
  * - The base guide identifiers and the October 2007 Type 1 errata are the
  *   ones HIPAA adopts for the current compliance window, verbatim, at
