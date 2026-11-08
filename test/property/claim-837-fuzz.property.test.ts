@@ -19,7 +19,7 @@ import { describe, it } from "vitest";
 
 import { FATAL_CODES, X12ParseError, get837Claims, parseX12 } from "../../src/index.js";
 
-import { fuzzRuns } from "./_fuzz-config.js";
+import { amplified, fuzzTimeout, withinBudget } from "./_fuzz-config.js";
 
 const FIXTURE_DIR = join(__dirname, "..", "fixtures", "claim");
 const fixtures = readdirSync(FIXTURE_DIR).filter((f) => f.endsWith(".edi"));
@@ -28,33 +28,40 @@ const ALLOWED_FATAL_CODES = new Set<string>(Object.values(FATAL_CODES));
 
 describe("get837Claims byte-flip fuzz (300 runs per fixture)", () => {
   for (const name of fixtures) {
-    it(`never throws outside the 4 Tier-3 fatals on ${name}`, () => {
-      const raw = readFileSync(join(FIXTURE_DIR, name), "utf8");
-      const buf = Buffer.from(raw, "utf8");
-      fc.assert(
-        fc.property(
-          fc.integer({ min: 0, max: Math.max(buf.length - 1, 0) }),
-          fc.integer({ min: 0, max: 255 }),
-          (position, byte) => {
-            const mutated = Buffer.from(buf);
-            mutated[position] = byte;
-            try {
-              const ix = parseX12(mutated.toString("utf8"));
-              for (const grp of ix.groups) {
-                for (const tx of grp.transactions) {
-                  get837Claims(ix.delimiters, tx);
+    it(
+      `never throws outside the 4 Tier-3 fatals on ${name}`,
+      { timeout: fuzzTimeout(10_000, fixtures.length) },
+      () => {
+        const raw = readFileSync(join(FIXTURE_DIR, name), "utf8");
+        const buf = Buffer.from(raw, "utf8");
+        fc.assert(
+          fc.property(
+            fc.integer({ min: 0, max: Math.max(buf.length - 1, 0) }),
+            fc.integer({ min: 0, max: 255 }),
+            (position, byte) => {
+              const mutated = Buffer.from(buf);
+              mutated[position] = byte;
+              const text = mutated.toString("utf8");
+              withinBudget(text, () => {
+                try {
+                  const ix = parseX12(text);
+                  for (const grp of ix.groups) {
+                    for (const tx of grp.transactions) {
+                      get837Claims(ix.delimiters, tx);
+                    }
+                  }
+                } catch (err) {
+                  // Only Tier-3 envelope fatals are permitted; anything else
+                  // is a lenient-parse violation.
+                  if (err instanceof X12ParseError && ALLOWED_FATAL_CODES.has(err.code)) return;
+                  throw err;
                 }
-              }
-            } catch (err) {
-              // Only Tier-3 envelope fatals are permitted; anything else
-              // is a lenient-parse violation.
-              if (err instanceof X12ParseError && ALLOWED_FATAL_CODES.has(err.code)) return;
-              throw err;
-            }
-          },
-        ),
-        { numRuns: fuzzRuns(300) },
-      );
-    });
+              });
+            },
+          ),
+          amplified(300, fixtures.length),
+        );
+      },
+    );
   }
 });

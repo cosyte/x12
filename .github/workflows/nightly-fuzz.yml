@@ -1,0 +1,101 @@
+name: Nightly fuzz
+
+# Continuous byte-flip and never-throw fuzzing of the parser and the per-transaction walkers. Every
+# night, and on demand, this calls the shared nightly-fuzz.yml at the published reference the other
+# callers here name, and that workflow runs `pnpm fuzz`: the whole property layer under
+# test/property/. Its fuzz targets (flipped interchanges through the envelope parser, hostile bytes
+# and flips through the 270 reader, and a byte flipped anywhere in every committed 835, 837, 271,
+# and 277 fixture through its walker) generate hostile inputs for a time budget instead of their
+# committed run counts; the fixture families share one budget per family. The seed changes with
+# every run, for the round-trip properties too, so each night explores a different slice of the
+# input space.
+#
+# The pull-request smoke run is `pnpm test`: the shared CI job runs the same targets on every pull
+# request at their base counts against the pinned seed in test/setup.fast-check.ts. This run is
+# the deep search that would make a pull request slow.
+#
+# A throw outside the 4 Tier-3 fatals, a walker throw, a hang, or a runaway allocation fails the
+# run. The log prints the counterexample, the seed, and the path. The seed is this run's id:
+# `X12_FUZZ_SEED=<run id> pnpm fuzz` replays it, and test/property/_fuzz-config.ts says how to step
+# straight to the shrunk case. A failure opens or updates one sticky issue, so a regression
+# notifies instead of scrolling past in the Actions log; the next green run closes it.
+#
+# A job that calls a reusable workflow cannot set its own timeout. The shared job stops at 60
+# minutes; the command bounds itself tighter, and `timeout` fails a run that hangs, which is the
+# one failure the per-case budget cannot see (a synchronous loop that never returns to it).
+#
+# Schedule and dispatch only: never a required check.
+
+on:
+  schedule:
+    # 06:07 UTC daily. An odd minute: GitHub delays scheduled runs at the start of every hour.
+    - cron: "7 6 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    uses: cosyte/.github/.github/workflows/nightly-fuzz.yml@c0db8d8e5927269820de4401b3b5ad6141854b76 # workflows-2026-11-08-c0db8d8e5927
+    with:
+      fuzz-cmd: X12_FUZZ_SEED="$GITHUB_RUN_ID" X12_FUZZ_SECONDS=120 timeout --kill-after=1m 40m pnpm fuzz
+
+  # Open or refresh a sticky issue on failure; close it on the next green run. Built-in token only.
+  notify-failure:
+    needs: fuzz
+    if: failure()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    env:
+      GH_REPO: ${{ github.repository }}
+      ISSUE_MARKER: "<!-- cosyte-x12-fuzz-failure-v1 -->"
+      GH_TOKEN: ${{ github.token }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Open or update the sticky fuzz-failure issue
+        run: |
+          existing="$(gh issue list --state open --search "$ISSUE_MARKER in:body" --json number --jq '.[0].number // ""')"
+          body="$ISSUE_MARKER
+          The **nightly fuzz** run failed: a byte-flipped or hostile input tripped an unsanctioned throw,
+          a walker invariant, or the per-case time or memory budget. The lenient parser must never throw
+          outside the 4 Tier-3 fatals, and the per-transaction walkers must never throw on lenient-parsed
+          input.
+
+          - Failing run: $RUN_URL
+          - Reproduce locally: the log prints the fast-check counterexample and the seed; re-run with
+            \`X12_FUZZ_SEED=$GITHUB_RUN_ID pnpm fuzz\`.
+
+          This issue closes on the next green nightly fuzz run."
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "Nightly fuzz failure" --body "$body" --label "fuzz" 2>/dev/null \
+              || gh issue create --title "Nightly fuzz failure" --body "$body"
+          fi
+
+  close-failure-alert:
+    needs: fuzz
+    if: success()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    env:
+      GH_REPO: ${{ github.repository }}
+      ISSUE_MARKER: "<!-- cosyte-x12-fuzz-failure-v1 -->"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Close any open fuzz-failure issue
+        run: |
+          existing="$(gh issue list --state open --search "$ISSUE_MARKER in:body" --json number --jq '.[0].number // ""')"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Nightly fuzz is green again ($GITHUB_RUN_ID), closing."
+            gh issue close "$existing"
+          fi

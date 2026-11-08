@@ -20,24 +20,30 @@ import fc from "fast-check";
 import { FATAL_CODES, parseX12, X12ParseError } from "../../src/index.js";
 
 import { bitFlippedInterchange } from "./_arbitraries.js";
-import { fuzzRuns } from "./_fuzz-config.js";
+import { amplified, fuzzTimeout, withinBudget } from "./_fuzz-config.js";
 
 const FATAL_CODE_SET: ReadonlySet<string> = new Set(Object.values(FATAL_CODES));
 
 describe("envelope fuzz: byte-flipped interchanges never throw unsanctioned errors", () => {
-  it("every flipped input either parses leniently or throws one of the 4 Tier-3 fatals", () => {
-    fc.assert(
-      fc.property(bitFlippedInterchange, (raw) => {
-        try {
-          parseX12(raw);
-        } catch (err) {
-          expect(err).toBeInstanceOf(X12ParseError);
-          if (err instanceof X12ParseError) {
-            expect(FATAL_CODE_SET.has(err.code)).toBe(true);
-          }
-        }
-      }),
-      { numRuns: fuzzRuns(500) },
-    );
-  });
+  it(
+    "every flipped input either parses leniently or throws one of the 4 Tier-3 fatals",
+    { timeout: fuzzTimeout(10_000) },
+    () => {
+      fc.assert(
+        fc.property(bitFlippedInterchange, (raw) => {
+          withinBudget(raw, () => {
+            try {
+              parseX12(raw);
+            } catch (err) {
+              expect(err).toBeInstanceOf(X12ParseError);
+              if (err instanceof X12ParseError) {
+                expect(FATAL_CODE_SET.has(err.code)).toBe(true);
+              }
+            }
+          });
+        }),
+        amplified(500),
+      );
+    },
+  );
 });

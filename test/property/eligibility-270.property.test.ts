@@ -81,7 +81,7 @@ import type {
   X12InquiryTrace,
 } from "../../src/index.js";
 
-import { fuzzRuns } from "./_fuzz-config.js";
+import { amplified, fuzzTimeout } from "./_fuzz-config.js";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
 
@@ -560,21 +560,25 @@ describe("270 read: truncation falls under exactly one rule", () => {
 // ---------------------------------------------------------------------------
 
 describe("270 read: hostile bytes", () => {
-  it("raises nothing outside the structural fatal set the package already defines", () => {
-    fc.assert(
-      fc.property(fc.string({ minLength: 0, maxLength: 400 }), (noise) => {
-        for (const input of [noise, `ISA${noise}`]) {
-          try {
-            parse270Inquiries(input);
-          } catch (err) {
-            expect(err).toBeInstanceOf(X12ParseError);
-            expect(Object.values(FATAL_CODES)).toContain((err as X12ParseError).code);
+  it(
+    "raises nothing outside the structural fatal set the package already defines",
+    () => {
+      fc.assert(
+        fc.property(fc.string({ minLength: 0, maxLength: 400 }), (noise) => {
+          for (const input of [noise, `ISA${noise}`]) {
+            try {
+              parse270Inquiries(input);
+            } catch (err) {
+              expect(err).toBeInstanceOf(X12ParseError);
+              expect(Object.values(FATAL_CODES)).toContain((err as X12ParseError).code);
+            }
           }
-        }
-      }),
-      { numRuns: fuzzRuns(500) },
-    );
-  });
+        }),
+        amplified(500),
+      );
+    },
+    fuzzTimeout(10_000),
+  );
 
   it("adds no fatal code and removes none", () => {
     expect(Object.keys(FATAL_CODES).sort((a, b) => a.localeCompare(b))).toEqual([
@@ -585,32 +589,36 @@ describe("270 read: hostile bytes", () => {
     ]);
   });
 
-  it("survives a byte flipped anywhere in a valid 270", () => {
-    const canonical = readFileSync(
-      join(FIXTURES, "eligibility", "270-canonical.edi"),
-      "utf8",
-    ).trimEnd();
-    fc.assert(
-      fc.property(
-        fc.integer({ min: 0, max: canonical.length - 1 }),
-        fc.constantFrom("X", "0", "!", "?", "~", "*", ":", "^"),
-        (position, byte) => {
-          const flipped = canonical.slice(0, position) + byte + canonical.slice(position + 1);
-          try {
-            for (const model of parse270Inquiries(flipped)) {
-              for (const w of model.warnings) {
-                expect(ALL_WARNING_MESSAGES.has(w.message)).toBe(true);
+  it(
+    "survives a byte flipped anywhere in a valid 270",
+    () => {
+      const canonical = readFileSync(
+        join(FIXTURES, "eligibility", "270-canonical.edi"),
+        "utf8",
+      ).trimEnd();
+      fc.assert(
+        fc.property(
+          fc.integer({ min: 0, max: canonical.length - 1 }),
+          fc.constantFrom("X", "0", "!", "?", "~", "*", ":", "^"),
+          (position, byte) => {
+            const flipped = canonical.slice(0, position) + byte + canonical.slice(position + 1);
+            try {
+              for (const model of parse270Inquiries(flipped)) {
+                for (const w of model.warnings) {
+                  expect(ALL_WARNING_MESSAGES.has(w.message)).toBe(true);
+                }
               }
+            } catch (err) {
+              expect(err).toBeInstanceOf(X12ParseError);
+              expect(Object.values(FATAL_CODES)).toContain((err as X12ParseError).code);
             }
-          } catch (err) {
-            expect(err).toBeInstanceOf(X12ParseError);
-            expect(Object.values(FATAL_CODES)).toContain((err as X12ParseError).code);
-          }
-        },
-      ),
-      { numRuns: fuzzRuns(500) },
-    );
-  });
+          },
+        ),
+        amplified(500),
+      );
+    },
+    fuzzTimeout(10_000),
+  );
 });
 
 // ---------------------------------------------------------------------------

@@ -25,7 +25,7 @@ import {
   parseX12,
 } from "../../src/index.js";
 
-import { fuzzRuns } from "./_fuzz-config.js";
+import { amplified, fuzzTimeout, withinBudget } from "./_fuzz-config.js";
 
 const ALLOWED_FATAL_CODES = new Set<string>(Object.values(FATAL_CODES));
 
@@ -45,12 +45,20 @@ function walkAll(raw: string): void {
   }
 }
 
+/** Every fixture both walkers are fuzzed over, so the family shares one time budget. */
+const ALL_FIXTURES = CASES.flatMap(({ dir }) => {
+  const fixtureDir = join(__dirname, "..", "fixtures", dir);
+  return readdirSync(fixtureDir)
+    .filter((f) => f.endsWith(".edi"))
+    .map((name) => ({ dir, fixtureDir, name }));
+});
+
 describe("Phase 6 walkers byte-flip fuzz (300 runs per fixture)", () => {
-  for (const { dir } of CASES) {
-    const fixtureDir = join(__dirname, "..", "fixtures", dir);
-    const fixtures = readdirSync(fixtureDir).filter((f) => f.endsWith(".edi"));
-    for (const name of fixtures) {
-      it(`never throws outside the 4 Tier-3 fatals on ${dir}/${name}`, () => {
+  for (const { dir, fixtureDir, name } of ALL_FIXTURES) {
+    it(
+      `never throws outside the 4 Tier-3 fatals on ${dir}/${name}`,
+      { timeout: fuzzTimeout(10_000, ALL_FIXTURES.length) },
+      () => {
         const buf = Buffer.from(readFileSync(join(fixtureDir, name), "utf8"), "utf8");
         fc.assert(
           fc.property(
@@ -59,17 +67,20 @@ describe("Phase 6 walkers byte-flip fuzz (300 runs per fixture)", () => {
             (position, byte) => {
               const mutated = Buffer.from(buf);
               mutated[position] = byte;
-              try {
-                walkAll(mutated.toString("utf8"));
-              } catch (err) {
-                if (err instanceof X12ParseError && ALLOWED_FATAL_CODES.has(err.code)) return;
-                throw err;
-              }
+              const text = mutated.toString("utf8");
+              withinBudget(text, () => {
+                try {
+                  walkAll(text);
+                } catch (err) {
+                  if (err instanceof X12ParseError && ALLOWED_FATAL_CODES.has(err.code)) return;
+                  throw err;
+                }
+              });
             },
           ),
-          { numRuns: fuzzRuns(300) },
+          amplified(300, ALL_FIXTURES.length),
         );
-      });
-    }
+      },
+    );
   }
 });

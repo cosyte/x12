@@ -11,7 +11,7 @@ import fc from "fast-check";
 
 /**
  * Default to a pinned seed for reproducible per-commit coverage. The
- * nightly fuzz workflow (`fuzz.yml`) sets `X12_FUZZ_SEED` to a rotating
+ * nightly fuzz workflow (`nightly-fuzz.yml`) sets `X12_FUZZ_SEED` to a rotating
  * value so each run explores a different slice of the input space; a
  * non-numeric override is ignored (falls back to the pinned seed) so a
  * malformed env var can never silently unpin the coverage-critical run.
