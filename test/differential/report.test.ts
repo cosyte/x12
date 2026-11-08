@@ -283,12 +283,10 @@ describe("differential report, second oracle", () => {
       companions: [{ package: `${name}-companion`, version: "1.2.3" }],
       bindings: [],
     });
-    const oracles = ["reader-a", "reader-b"].map(
-      (name): DifferentialOracle => ({
-        describe: () => Promise.resolve(described(name)),
-        read: () => Promise.reject(new Error("unreachable: the corpus is empty")),
-      }),
-    );
+    const oracles = ["reader-a", "reader-b"].map((name): DifferentialOracle => ({
+      describe: () => Promise.resolve(described(name)),
+      read: () => Promise.reject(new Error("unreachable: the corpus is empty")),
+    }));
     const run = await runDifferential({
       oracles,
       corpus: [],

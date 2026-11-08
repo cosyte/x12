@@ -212,22 +212,20 @@ function specFromModel(model: X12Inquiry, envelope: Build270Spec["envelope"]): B
       receivers: source.receivers.map((receiver) => ({
         name: nameSpec(receiver.name),
         references: receiver.references.map(referenceSpec),
-        subscribers: receiver.subscribers.map(
-          (subscriber): Build270SubscriberSpec => ({
-            traces: subscriber.traces.map(traceSpec),
-            name: nameSpec(subscriber.name),
-            references: subscriber.references.map(referenceSpec),
-            dates: subscriber.dates.map(dateSpec),
-            inquiries: subscriber.inquiries.map(inquirySpec),
-            dependents: subscriber.dependents.map((dependent) => ({
-              traces: dependent.traces.map(traceSpec),
-              name: nameSpec(dependent.name),
-              references: dependent.references.map(referenceSpec),
-              dates: dependent.dates.map(dateSpec),
-              inquiries: dependent.inquiries.map(inquirySpec),
-            })),
-          }),
-        ),
+        subscribers: receiver.subscribers.map((subscriber): Build270SubscriberSpec => ({
+          traces: subscriber.traces.map(traceSpec),
+          name: nameSpec(subscriber.name),
+          references: subscriber.references.map(referenceSpec),
+          dates: subscriber.dates.map(dateSpec),
+          inquiries: subscriber.inquiries.map(inquirySpec),
+          dependents: subscriber.dependents.map((dependent) => ({
+            traces: dependent.traces.map(traceSpec),
+            name: nameSpec(dependent.name),
+            references: dependent.references.map(referenceSpec),
+            dates: dependent.dates.map(dateSpec),
+            inquiries: dependent.inquiries.map(inquirySpec),
+          })),
+        })),
       })),
     })),
   };

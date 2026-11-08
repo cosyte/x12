@@ -466,9 +466,7 @@ export interface X12Claim {
  * ```
  */
 export type X12_837ServiceLine =
-  | X12_837ServiceLineProfessional
-  | X12_837ServiceLineInstitutional
-  | X12_837ServiceLineDental;
+  X12_837ServiceLineProfessional | X12_837ServiceLineInstitutional | X12_837ServiceLineDental;
 
 /** Fields shared across every service-line variant. @internal */
 export interface X12_837ServiceLineBase {
