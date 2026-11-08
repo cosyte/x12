@@ -78,8 +78,8 @@ const SV3_FOREIGN = "SV3*AD:D1110*6100**11*1*1~";
  * what decides. The ASC X12N **4010** addenda reference for professional
  * claims, named at 45 CFR 162.1102(a)(3); this library's v1 scope is 005010
  * only. Through `0.0.13` this case used `005010X222A1`, which is the errata
- * production 837Ps actually carry in ST-03 and which now RESOLVES - see
- * `documentation/agent-notes.md#x12---grounding-variant_by_icr-x12-variant-icr-ungrounded-2026-08-08`.
+ * production 837Ps actually carry in ST-03 and which now RESOLVES (sources:
+ * the comment above `VARIANT_BY_ICR` in `src/transactions/claim/get-837.ts`).
  */
 const UNRESOLVED_ICR = "004010X098A1";
 

@@ -8,9 +8,8 @@
  * `IsaSegment`, `IeaSegment`, `GsSegment`, `GeSegment`, `Ta1Segment` and the
  * INLINE ST/SE types on `X12TransactionSet` declare only `raw` and `elements`,
  * so passing any one of them is `TS2345`. `#110` measured THREE of the seven
- * with the compiler; all seven are measured here, and the prose carriers are
- * gridded in `documentation/agent-notes.md#x12-envelope-value-routes---what-a-caller-actually-does-to-read-an-envelope-element`. No figure is quoted
- * here: a draft published one that its own grid contradicted.
+ * with the compiler; all seven are measured here. No figure is quoted here: a
+ * draft published one that its own grid contradicted.
  *
  * ## Why the signature was NOT widened, which was the decision
  *

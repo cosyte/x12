@@ -23,7 +23,7 @@ pnpm differential:check
 ```
 
 The shared `ci` job runs lines 1 to 3 on Node 22, 24 and 26 and the rest are jobs of their own;
-`differential:check` needs `uv` and the network (documentation/agent-notes.md#the-gate-in-full).
+`differential:check` fetches its two pinned Python oracles through `uv`, so it needs the network.
 
 ## Hazard
 
@@ -34,13 +34,12 @@ document bytes out of errors, warnings and logs.
 
 ## Rules
 
-Each names its failure; the full text: documentation/agent-notes.md#the-rules-in-full.
-
 - Warnings carry no value: `message` comes from `ALL_WARNING_MESSAGES`, and a `build*` refusal
-  bounds what it names (#46, #75).
-- Never fabricate a value: absent stays undefined and warns; a builder refuses an empty one
-  (#66, #83, #101).
-- A repeated or contested segment never resolves in silence (#87, #88).
+  bounds what it names: warnings rendered control numbers (#46), a refusal its claim id (#75).
+- Never fabricate a value: absent stays undefined and warns; a builder refuses an empty one: an
+  absent SV1-02 read as a 0 charge (#83), an empty control number emitted `000000000` (#101).
+- A repeated or contested segment never resolves in silence: a second `SVx` replaced the first
+  (#88), and a contested 837 variant was picked with no warning (#87).
 - Builders refuse what they cannot emit exactly: never coerce, round or drop (#60, #63).
 - Escape caller values with the release character on emit, and split release-aware on read
   (#96, #97, #99).
@@ -50,11 +49,12 @@ Each names its failure; the full text: documentation/agent-notes.md#the-rules-in
   (#110, #116, #119).
 - Derive what is read and emitted from `X12_TR3_CONFORMANCE`, never from memory (#127).
 - Orphan segments re-emit at their `anchor` (#48, #49); bound loops over caller values (#53, #58).
-- `scripts/phi-scan.ts` keeps its `--staged` argv and takes no exemption (#76, #77, #90).
+- `scripts/phi-scan.ts` keeps its `--staged` argv and takes no exemption: a rename passed it
+  unseen (#76), and it reported clean over files it never opened (#77, #90).
 - `pnpm attw` is the shared gate: bare `attw` exits 0 on a tarball with no types (#55).
 - No internal ids or phase words in `README.md`, `KNOWN-LIMITATIONS.md`, `docs-content/` or `src/`
   doc comments; translate, never delete. X12 stays a prefix in `scripts/internal-refs.json` (#120).
-- Changesets are patches (D56, 2026-11-07), first sentence for a consumer (#93, #114). Never
-  hand-edit `CHANGELOG.md`.
+- Changesets are patches (D56, 2026-11-07) with no internal id, first sentence for a consumer: the
+  release refused 0.0.14 and 0.0.16 over one (#93, #114). Never hand-edit `CHANGELOG.md`.
 - `release.yml` grants every scope the shared release pipeline declares (#27, #129, #133).
 - In `docs-content/`, link outside files by GitHub URL and keep the sidebar spine (#125, #159).

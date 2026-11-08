@@ -275,8 +275,7 @@ model.
   single stray `SV2` anywhere in the body re-typed the whole submission, and
   `X12_837_UNKNOWN_VARIANT` accused a document that was not non-conformant. The reader now recognises
   each base guide and each of its published errata. Sources for every key are named beside the table
-  in `src/transactions/claim/get-837.ts` and in
-  `documentation/agent-notes.md#x12---grounding-variant_by_icr-x12-variant-icr-ungrounded-2026-08-08`.
+  in `src/transactions/claim/get-837.ts`.
   - **🛑 What this changes for a consumer, and it is a behaviour change on already-published
     decoding.** On a file whose `ST-03` is now recognised: `submission.variant` can differ from what
     `0.0.13` read, where the first `SVx` in the body disagreed with the declaration; and
