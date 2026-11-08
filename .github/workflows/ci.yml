@@ -29,7 +29,7 @@ jobs:
   # commit with the reference in the comment, and they move together: name a newer release from
   # https://github.com/cosyte/.github/releases in all of them at once.
   ci:
-    uses: cosyte/.github/.github/workflows/ci.yml@498c7c13c8869bf11b67fa8324684ec2dc691ec6 # workflows-2026-11-07-498c7c13c886
+    uses: cosyte/.github/.github/workflows/ci.yml@c0db8d8e5927269820de4401b3b5ad6141854b76 # workflows-2026-11-08-c0db8d8e5927
     with:
       run-phi-scan: true
 
