@@ -1,16 +1,19 @@
 import { cosyteVitest } from "@cosyte/vitest-config";
 
 /**
- * Vitest config for @cosyte/x12 from the shared @cosyte/vitest-config standard.
+ * Vitest config for @cosyte/x12 from the shared @cosyte/vitest-config standard, which owns the
+ * coverage provider, reporters, include and exclude sets and the 90% gate. What follows is only what
+ * this repository adds.
  *
- * Per-directory coverage gates (≥ 90 lines/branches/functions/statements):
- *   - `parser/` - envelope + segment + release-char (Phases 1 + 2)
- *   - `loops/` - defineLoopSpec (Phase 2)
- *   - `transactions/` - ack 999/TA1 (Phase 3) + remit 835 (Phase 4)
- *   - `code-lists/` - bundled WPC + X12-internal snapshots (Phase 4)
- *   - `serialize/` - spec-clean serializer (Phase 8)
- *   - `builder/` - general-purpose interchange builder (Phase 8)
- *   - `profiles/` - trading-partner profile system (Phase 9)
+ * `coverageDirs` holds each of these `src/` directories to the 90% gate (lines, branches, functions,
+ * statements) on its own, so a well-covered directory cannot carry a poorly covered one:
+ *   - `parser/` - envelope, segment and release-character reading
+ *   - `loops/` - defineLoopSpec
+ *   - `transactions/` - the per-transaction readers and builders
+ *   - `code-lists/` - the bundled WPC and X12-internal snapshots
+ *   - `serialize/` - the spec-clean serializer
+ *   - `builder/` - the general-purpose interchange builder
+ *   - `profiles/` - the trading-partner profile system
  */
 export default cosyteVitest({
   coverageDirs: [
@@ -23,10 +26,13 @@ export default cosyteVitest({
     "profiles",
   ],
   test: {
-    globals: false,
-    environment: "node",
+    // Pins fast-check's seed for every property suite, so coverage is reproducible and a failure
+    // replays; the nightly fuzz run swaps in a rotating seed through it.
     setupFiles: ["test/setup.fast-check.ts"],
+    // Only `*.test.ts` is collected: the `regress_*.ts` files under test/ are standalone regression
+    // scripts run with tsx, deliberately left out of the suite.
     include: ["test/**/*.test.ts", "src/**/*.test.ts"],
+    // The fixture corpus under test/fixtures/ is data and is never collected, nor is a build output.
     exclude: ["node_modules", "dist", "coverage", "test/fixtures/**"],
     /**
      * A GLOBAL FLOOR FOR ORDINARY TESTS. IT IS NOT WHERE SLOW WORK GETS ITS ROOM,

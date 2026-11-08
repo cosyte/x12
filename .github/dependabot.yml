@@ -38,6 +38,11 @@ updates:
       # on the 22 line. A newer major type-checks calls that Node 22 does not have.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # @cosyte/process owns the vitest and typescript versions; this repository declares them
+      # directly only because test files import vitest and the compiler API, pinned to exactly the
+      # versions process runs. They move when process does, never on their own.
+      - dependency-name: "vitest"
+      - dependency-name: "typescript"
   # keep GitHub Actions references current
   - package-ecosystem: github-actions
     directory: "/"

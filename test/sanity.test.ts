@@ -19,7 +19,7 @@ function manifestVersion(manifest: unknown): string {
 describe("@cosyte/x12 scaffold", () => {
   it("package exports VERSION matching package.json", () => {
     // Compared against package.json, never a hardcoded literal. `changeset version` bumps
-    // package.json alone, so a release that skipped `scripts/sync-version.mjs` (wired into the
+    // package.json alone, so a release that skipped `cosyte-process sync-version` (wired into the
     // `version` script) would otherwise publish a VERSION export that lies about the release.
     // The previous assertion - `expect(VERSION).toBe("0.0.0")` - was the inverse of a guard: it
     // stayed green through exactly that drift, and would have gone red on a *correct* bump.
