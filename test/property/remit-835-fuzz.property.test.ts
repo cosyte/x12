@@ -17,7 +17,7 @@ import fc from "fast-check";
 
 import { FATAL_CODES, X12ParseError, get835, parseX12 } from "../../src/index.js";
 
-import { fuzzRuns } from "./_fuzz-config.js";
+import { amplified, fuzzTimeout, withinBudget } from "./_fuzz-config.js";
 
 const FATAL_CODE_SET: ReadonlySet<string> = new Set(Object.values(FATAL_CODES));
 const FIXTURE_DIR = join(__dirname, "..", "fixtures", "remit");
@@ -27,7 +27,7 @@ const FLIP_CHARS = ["X", "Z", "0", "9", "!", "?", "@", "#", "$", "%", "~", "*"] 
 describe("835 fuzz: byte-flipped fixtures never throw outside the 4 Tier-3 fatals", () => {
   const fixtures = readdirSync(FIXTURE_DIR).filter((f) => f.endsWith(".edi"));
   for (const fixture of fixtures) {
-    it(`${fixture}: 300 byte-flips`, () => {
+    it(`${fixture}: 300 byte-flips`, { timeout: fuzzTimeout(10_000, fixtures.length) }, () => {
       const raw = readFileSync(join(FIXTURE_DIR, fixture), "utf8").trimEnd();
       fc.assert(
         fc.property(
@@ -35,22 +35,24 @@ describe("835 fuzz: byte-flipped fixtures never throw outside the 4 Tier-3 fatal
           fc.constantFrom(...FLIP_CHARS),
           (pos, ch) => {
             const flipped = raw.slice(0, pos) + ch + raw.slice(pos + 1);
-            try {
-              const ix = parseX12(flipped);
-              const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "835");
-              if (tx !== undefined) {
-                // get835 must NEVER throw on lenient-parsed input.
-                get835(ix.delimiters, tx);
+            withinBudget(flipped, () => {
+              try {
+                const ix = parseX12(flipped);
+                const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "835");
+                if (tx !== undefined) {
+                  // get835 must NEVER throw on lenient-parsed input.
+                  get835(ix.delimiters, tx);
+                }
+              } catch (err) {
+                expect(err).toBeInstanceOf(X12ParseError);
+                if (err instanceof X12ParseError) {
+                  expect(FATAL_CODE_SET.has(err.code)).toBe(true);
+                }
               }
-            } catch (err) {
-              expect(err).toBeInstanceOf(X12ParseError);
-              if (err instanceof X12ParseError) {
-                expect(FATAL_CODE_SET.has(err.code)).toBe(true);
-              }
-            }
+            });
           },
         ),
-        { numRuns: fuzzRuns(300) },
+        amplified(300, fixtures.length),
       );
     });
   }
