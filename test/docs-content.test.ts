@@ -73,8 +73,9 @@ docSnippetSuite({
 // deliberately-broken seeded bundles (which must produce one, naming the
 // offender). A checker that can no longer see is the failure mode a green
 // suite hides, so each one is proven to still red before its verdict on the
-// real tree is believed - the same bargain `scripts/check-no-internal-refs.sh`
-// makes with its own self-tests.
+// real tree is believed - the same bargain the shared public-surface gate
+// (`pnpm check:no-internal-refs`, from `@cosyte/script-utils`) makes with its
+// own self-tests.
 // ---------------------------------------------------------------------------
 
 /** One markdown page of the bundle, parsed into frontmatter and body. */
@@ -137,9 +138,9 @@ const TRANSACTION_SET_EXPORTS: ReadonlyMap<string, readonly string[]> = new Map(
 /**
  * An umbrella work-item identifier: an `S` followed by four digits and a
  * hyphen. Internal project bookkeeping never appears on a published surface
- * (`scripts/check-no-internal-refs.sh` states the directive and scans this same
- * directory); that gate keys on the ecosystem's own project prefixes, which
- * does not include the umbrella's item shape, so this half is asserted here.
+ * (`pnpm check:no-internal-refs` scans this same directory); that gate keys on
+ * the ecosystem's own project prefixes, which do not include the umbrella's
+ * item shape, so this half is asserted here.
  */
 const UMBRELLA_ITEM_ID = /S\d{4}-/;
 

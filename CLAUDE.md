@@ -18,12 +18,12 @@ pnpm typecheck && pnpm lint && pnpm format:check && pnpm phi-scan
 pnpm test && pnpm test:coverage && pnpm build && pnpm attw
 pnpm typecheck:examples && pnpm lint:examples && pnpm examples && pnpm phi-scan:examples
 pnpm check:no-emdash && pnpm check:no-internal-refs
+pnpm check:documents
 pnpm differential:check
 ```
 
-The shared `ci` job runs lines 1 to 3 on Node 22, 24 and 26; the rest are jobs of their own.
-`differential:check` needs `uv` on PATH and the network. Detail:
-documentation/agent-notes.md#the-gate-in-full.
+The shared `ci` job runs lines 1 to 3 on Node 22, 24 and 26 and the rest are jobs of their own;
+`differential:check` needs `uv` and the network (documentation/agent-notes.md#the-gate-in-full).
 
 ## Hazard
 
@@ -51,9 +51,9 @@ Each names its failure; the full text: documentation/agent-notes.md#the-rules-in
 - Derive what is read and emitted from `X12_TR3_CONFORMANCE`, never from memory (#127).
 - Orphan segments re-emit at their `anchor` (#48, #49); bound loops over caller values (#53, #58).
 - `scripts/phi-scan.ts` keeps its `--staged` argv and takes no exemption (#76, #77, #90).
-- `pnpm attw` stays `node scripts/attw.mjs`: bare `attw` exits 0 on a tarball with no types (#55).
-- No internal identifiers or phase words in `README.md`, `KNOWN-LIMITATIONS.md`, `docs-content/`
-  or `src/` doc comments: translate, never delete; `X12-` is also our item prefix (#120).
+- `pnpm attw` is the shared gate: bare `attw` exits 0 on a tarball with no types (#55).
+- No internal ids or phase words in `README.md`, `KNOWN-LIMITATIONS.md`, `docs-content/` or `src/`
+  doc comments; translate, never delete. X12 stays a prefix in `scripts/internal-refs.json` (#120).
 - Changesets are patches (D56, 2026-11-07), first sentence for a consumer (#93, #114). Never
   hand-edit `CHANGELOG.md`.
 - `release.yml` grants every scope the shared release pipeline declares (#27, #129, #133).

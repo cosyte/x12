@@ -39,11 +39,13 @@ export default cosyteVitest({
      * as the third argument to `it`, and NEVER by raising this number. Raising the
      * global to fit the slowest test trades a false red for a false green: it hands
      * the same leash to all 1,100-odd tests, so a test that starts genuinely hanging
-     * looks slow instead of broken. Three suites already carry their own, and they
-     * are the three slowest things here:
+     * looks slow instead of broken. Two suites carry their own, and they are among
+     * the slowest things here:
      *   - `test/transactions-enrollment-834.test.ts` 120 s, the 10 MB+ stream
-     *   - `test/scripts/attw-gate.test.ts`           60 s per case, each a real `npm pack`
      *   - `test/phi-diagnostic-surface.test.ts`      120 s, the 81-slot PHI sweep
+     * A third, `test/scripts/attw-gate.test.ts` (60 s per case), went with this
+     * repository's own attw gate on 2026-11-08: the gate is `@cosyte/script-utils`'
+     * now, and its tests run in cosyte/config. The measurements below predate that.
      *
      * THE 834 STREAM IS THE PROOF THAT THIS NUMBER IS THE WRONG PLACE TO PUT ROOM,
      * AND IT IS NOT A HYPOTHETICAL. Under `pnpm test:coverage` on this box (12-CPU

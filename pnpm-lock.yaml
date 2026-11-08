@@ -20,22 +20,25 @@ importers:
         version: 2.31.0(@types/node@22.20.0)
       '@cosyte/eslint-config':
         specifier: ^0.1
-        version: 0.1.1(eslint@10.5.0)(typescript@5.9.3)
+        version: 0.1.2(eslint@10.5.0)(typescript@5.9.3)
       '@cosyte/prettier-config':
         specifier: ^0.1
-        version: 0.1.1
+        version: 0.1.2
+      '@cosyte/script-utils':
+        specifier: ^0.1.4
+        version: 0.1.4
       '@cosyte/test-utils':
         specifier: ^0.1
-        version: 0.1.1(fast-check@3.23.2)
+        version: 0.1.2(fast-check@3.23.2)
       '@cosyte/tsconfig':
         specifier: ^0.1
-        version: 0.1.1
+        version: 0.1.2
       '@cosyte/tsup-config':
         specifier: ^0.1
-        version: 0.1.1(tsup@8.5.1(postcss@8.5.14)(tsx@4.23.15)(typescript@5.9.3))
+        version: 0.1.2(tsup@8.5.1(postcss@8.5.14)(tsx@4.23.15)(typescript@5.9.3))
       '@cosyte/vitest-config':
         specifier: ^0.1
-        version: 0.1.1(@vitest/coverage-v8@4.1.4)(vite@7.3.6(@types/node@22.20.0)(lightningcss@1.32.0)(tsx@4.23.15))(vitest@4.1.4)
+        version: 0.1.2(@vitest/coverage-v8@4.1.4)(vite@7.3.6(@types/node@22.20.0)(lightningcss@1.32.0)(tsx@4.23.15))(vitest@4.1.4)
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.0
@@ -171,35 +174,40 @@ packages:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
 
-  '@cosyte/eslint-config@0.1.1':
-    resolution: {integrity: sha512-EoUBFlkJJrVL/eNYIhLRfuWvEIha0PA+LyUZfx6ERmpXGB2RfzCJbzaXXcB5Lv7VdbWX3ph3NQGWR+4tGdGrOw==}
+  '@cosyte/eslint-config@0.1.2':
+    resolution: {integrity: sha512-4u5sd7iwD4vhfTrCamGcVPxvt6hCDBn/OAZS+XJVriWtfdIILJy99JH4uYS5socLVHMxmmgO3ZfvMKeE+ewRzQ==}
     peerDependencies:
       eslint: ^9.0.0 || ^10.0.0
       typescript: '>=5.0.0'
 
-  '@cosyte/prettier-config@0.1.1':
-    resolution: {integrity: sha512-77ZIoqYZC3urWkOy6TuD0Wyqt3VPv10Z9B32HGXOlswI77qUk4Yqkr1WU8HXkHvdYjZbdP08Bh2DMHgxfK1TuA==}
+  '@cosyte/prettier-config@0.1.2':
+    resolution: {integrity: sha512-bpcOjNAU+IBscFxZk7CBODgd7VRwOirg8LlffJLAQUTobI1JunbvAZa98u1BNv+/m5ILMGVNFopGW9HPNA2H5Q==}
 
-  '@cosyte/test-utils@0.1.1':
-    resolution: {integrity: sha512-TNWOGbWcCAZSEmnwDg4NkLKcH1AOSqtThvdUmGVConTcnhTGuKk5ZOQuMKmynFp9nSvEbLLKdEspQGr3ZeOusA==}
+  '@cosyte/script-utils@0.1.4':
+    resolution: {integrity: sha512-o+4G9E20+9w2r+c817lg6C5Mhtvmhpq1SZSpUXSvURPqcSGL5xX6z6dL4hA2+LQrtaPX1lg6Wk1saJDOFL0BPA==}
+    engines: {node: '>=22.14'}
+    hasBin: true
+
+  '@cosyte/test-utils@0.1.2':
+    resolution: {integrity: sha512-8dwILprEXINOGi9oqpSYsBYfA6a/p+/QKWRdqR2SgzOXYSYnJOubh3oU+ZPM/KX/3cUUavZw8/g3Yjo7OpPqMA==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       fast-check: ^3.0.0
 
-  '@cosyte/tsconfig@0.1.1':
-    resolution: {integrity: sha512-pxO/vd1l+PYUpCjkmM0fI5cRdL7E2YkO3ar7db1MhfwhMeBt5nNiOFbgTAf3cVF9V5OfAQhrowhKtll+/YjL6w==}
+  '@cosyte/tsconfig@0.1.2':
+    resolution: {integrity: sha512-ZTWC9cgdccJwL+EWTEWCtJr/a87TTZWlegTZWHpN7LGW3rALE1glnffOFMVraj4XSUam+DuHVOdGmKF8BhJPlA==}
 
-  '@cosyte/tsup-config@0.1.1':
-    resolution: {integrity: sha512-WzAQjSq6YJJHHH7I9HF25NcEfk0AVhFN95MMPBEHj7QNEFiAMB/JT72oI6sz1tDRsvBM9QVBQQ9FYMsaET+aFQ==}
+  '@cosyte/tsup-config@0.1.2':
+    resolution: {integrity: sha512-WxIVTSSjWSBPAxE3VOQGcbNLkQ9WHB9KXeiKeEikUhbD5/2vTAGg/kb8RoR5TPGVQ+1Xzl+akInSjRxsxSYFQQ==}
     peerDependencies:
       tsup: ^8.0.0
 
-  '@cosyte/vitest-config@0.1.1':
-    resolution: {integrity: sha512-2SgOunKJcZ6d9ttH4QOBMNAvUYcO78/X2kQ22s1ugUkIoPTGNMs7dzcZ7cXBxxfPzY9HHZd8o5gEsgJT7aOM+A==}
+  '@cosyte/vitest-config@0.1.2':
+    resolution: {integrity: sha512-CpyJqlQ/YxQDox7gRTB/6kQgAKZko5sWNcD0F9cvrJyQVUMfYkyFVaDZFR14vCRYnOwUxKv6gU70KnwR5QDXhA==}
     peerDependencies:
-      '@vitest/coverage-v8': ^4.0.0
+      '@vitest/coverage-v8': ^4.0.0 || ^5.0.0
       vite: ^6.0.0 || ^7.0.0 || ^8.0.0
-      vitest: ^4.0.0
+      vitest: ^4.0.0 || ^5.0.0
 
   '@es-joy/jsdoccomment@0.87.0':
     resolution: {integrity: sha512-mFXZloZMzuJZXSHUmAFu/pXTk0ZJTJBluuAkrvbzidpTN8W6F2bpRFuedSH+85kbdlRLJqc+gfN+kD3JOLJK5g==}
@@ -2069,7 +2077,7 @@ snapshots:
   '@colors/colors@1.5.0':
     optional: true
 
-  '@cosyte/eslint-config@0.1.1(eslint@10.5.0)(typescript@5.9.3)':
+  '@cosyte/eslint-config@0.1.2(eslint@10.5.0)(typescript@5.9.3)':
     dependencies:
       '@eslint/js': 10.0.1(eslint@10.5.0)
       eslint: 10.5.0
@@ -2080,19 +2088,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@cosyte/prettier-config@0.1.1': {}
+  '@cosyte/prettier-config@0.1.2': {}
 
-  '@cosyte/test-utils@0.1.1(fast-check@3.23.2)':
+  '@cosyte/script-utils@0.1.4': {}
+
+  '@cosyte/test-utils@0.1.2(fast-check@3.23.2)':
     dependencies:
       fast-check: 3.23.2
 
-  '@cosyte/tsconfig@0.1.1': {}
+  '@cosyte/tsconfig@0.1.2': {}
 
-  '@cosyte/tsup-config@0.1.1(tsup@8.5.1(postcss@8.5.14)(tsx@4.23.15)(typescript@5.9.3))':
+  '@cosyte/tsup-config@0.1.2(tsup@8.5.1(postcss@8.5.14)(tsx@4.23.15)(typescript@5.9.3))':
     dependencies:
       tsup: 8.5.1(postcss@8.5.14)(tsx@4.23.15)(typescript@5.9.3)
 
-  '@cosyte/vitest-config@0.1.1(@vitest/coverage-v8@4.1.4)(vite@7.3.6(@types/node@22.20.0)(lightningcss@1.32.0)(tsx@4.23.15))(vitest@4.1.4)':
+  '@cosyte/vitest-config@0.1.2(@vitest/coverage-v8@4.1.4)(vite@7.3.6(@types/node@22.20.0)(lightningcss@1.32.0)(tsx@4.23.15))(vitest@4.1.4)':
     dependencies:
       '@vitest/coverage-v8': 4.1.4(vitest@4.1.4)
       vite: 7.3.6(@types/node@22.20.0)(lightningcss@1.32.0)(tsx@4.23.15)
