@@ -23,11 +23,11 @@
 # package description, a site page) describes what the software does and what changed.
 # It must never carry our internal bookkeeping: item identifiers (`HL7-N`, `CCDA-P7`),
 # "Phase U" / "roadmap Phase K", sweep and programme names, ADR numbers, internal repo
-# paths, or process commentary about how the artifact came to exist. Source of truth:
-# the meta-repo's `documentation/conventions.md`, "No internal project bookkeeping on a
-# public surface". The founder's words: "The releases should also not speak on anything
-# regarding phases, etc. That has no relevance to the user consuming it. This goes for
-# readmes and documentation as well."
+# paths, or process commentary about how the artifact came to exist. Where the rule is
+# written: this repository's CLAUDE.md, under Rules, and the shared gate's own README
+# (`@cosyte/script-utils`, "runInternalRefsScan"). The founder's words: "The releases
+# should also not speak on anything regarding phases, etc. That has no relevance to the
+# user consuming it. This goes for readmes and documentation as well."
 #
 # WHY THIS IS A GATE AND NOT A MEMORY NOTE. Founder, same day: "it needs to not just be
 # a memory note, but something that is addressed in the workflow accordingly. This needs
@@ -763,8 +763,8 @@ fail_with_hits() {
   echo "       When you strip an identifier off the FRONT of a line, repair the head too:" >&2
   echo "       drop a leading orphan parenthetical, strip leading punctuation, recapitalise." >&2
   echo "       Leaving the fragment behind is worse than the text it replaced." >&2
-  echo "       Rule: documentation/conventions.md, 'No internal project bookkeeping on a" >&2
-  echo "       public surface'." >&2
+  echo "       Rule: CLAUDE.md in this repository, under Rules (no internal identifiers or" >&2
+  echo "       phase language on a public surface)." >&2
   exit 1
 }
 

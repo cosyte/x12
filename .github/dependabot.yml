@@ -27,6 +27,12 @@ updates:
     # minimumReleaseAge holds every install to. Security updates are not delayed.
     cooldown:
       default-days: 1
+    # The commit message, and so the pull request title, is `chore(deps): bump ...` or
+    # `chore(deps-dev): bump ...`: Conventional Commits, which pr-title.yml checks on every pull
+    # request. Without a prefix Dependabot guesses one from the history.
+    commit-message:
+      prefix: chore
+      include: scope
   # keep GitHub Actions references current
   - package-ecosystem: github-actions
     directory: "/"
@@ -34,3 +40,11 @@ updates:
       interval: weekly
     cooldown:
       default-days: 1
+    commit-message:
+      prefix: chore
+      include: scope
+    ignore:
+      # From v1.75.0 this action installs actionlint by piping a script from a fork to bash. The
+      # shared CI runs the official rhysd/actionlint release, checked by its SHA-256, instead, and
+      # no workflow here uses the action; this keeps an update from proposing it again.
+      - dependency-name: "reviewdog/action-actionlint"

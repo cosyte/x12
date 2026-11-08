@@ -10,13 +10,9 @@ name: Em-dash gate
 # which is why the script it calls refuses to print OK from a scan that did not read
 # everything it was given.
 #
-# WHAT THIS DOES NOT DO YET, checked rather than assumed (2026-07-27). The org ruleset
-# `parser-ci-required-checks` requires exactly three contexts on this repo:
-# `ci / verify (22, ubuntu-latest)`, `ci / verify (24, ubuntu-latest)`, and `ci / actionlint`.
-# `Em-dash gate / no-emdash` is NOT among them, so a PR carrying an em dash reds this check
-# VISIBLY but is still mergeable. Making it required is an org-level ruleset change, outside
-# this repo and outside this unit. Until that happens the gate informs a human; it does not
-# stop one.
+# WHAT BLOCKS A MERGE, checked rather than assumed (2026-11-08). The repository ruleset
+# `emdash-required-check` requires `no-emdash / tracked-files`, so a tracked file carrying an
+# em or en dash blocks the merge. `no-emdash / messages` is not required, for the reason below.
 #
 # WHAT ACTUALLY SCANS, AND WHERE THE RULE LIVES. `pnpm check:no-emdash`, which is this
 # repository's own `scripts/check-no-emdash.sh`. The jobs below delegate the plumbing
@@ -40,7 +36,7 @@ name: Em-dash gate
 # WHY A SEPARATE WORKFLOW, and not a job in ci.yml:
 #
 #   The shared ci pipeline is not an option. x12's `ci` job calls
-#   cosyte/.github/.github/workflows/ci.yml@main, which runs a fixed ladder and no arbitrary
+#   cosyte/.github/.github/workflows/ci.yml, which runs a fixed ladder and no arbitrary
 #   repo script, so there is nowhere in it to hang this. Adding a step to it is an org-repo
 #   change that lands the gate on all 13 callers at once, and six of them violate the ban
 #   wholesale today (counted 2026-07-27, tracked files carrying U+2014 or an encoded form:
@@ -56,7 +52,7 @@ name: Em-dash gate
 #   `edited` activity type, which is not a default: without it, a title or body edited
 #   after the last push is never re-checked, and since this repo squash-merges, the PR
 #   title and body ARE the commit message that lands on main. But ci.yml's triggers drive
-#   the full Node 22 + 24 matrix (typecheck, lint, format, PHI scan, test, coverage,
+#   the full Node 22, 24 and 26 matrix (typecheck, lint, format, PHI scan, test, coverage,
 #   build, attw, dual ESM/CJS smoke, actionlint) plus the `release-dry-run` job (a pnpm
 #   install, a build, a publish dry run, and a pack-integrity check). Re-running all of
 #   that every time someone fixes a typo in a PR description is a large cost for no extra
@@ -88,7 +84,7 @@ jobs:
     # tag is not an immutable reference and is not a pin. The trailing comment is the
     # published reference that commit was released as, so the release note stays
     # findable from here.
-    uses: cosyte/.github/.github/workflows/gate-no-emdash.yml@84ecccd771cbc9c1ece003a3f8ff61415360395b # workflows-2026-09-18-84ecccd771cb
+    uses: cosyte/.github/.github/workflows/gate-no-emdash.yml@498c7c13c8869bf11b67fa8324684ec2dc691ec6 # workflows-2026-11-07-498c7c13c886
     # No more than the scan needs. A called workflow's GITHUB_TOKEN can only be
     # downgraded by its caller, and this gate reads the tree and nothing else.
     permissions:

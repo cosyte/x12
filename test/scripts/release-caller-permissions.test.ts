@@ -272,8 +272,19 @@ describe("the human release gate stays where it is", () => {
     .filter((line) => !line.trim().startsWith("#"))
     .join("\n");
 
-  it("still calls the shared release pipeline at @main", () => {
-    expect(keys).toContain(`uses: ${SHARED_RELEASE_WORKFLOW}@main`);
+  it("still calls the shared release pipeline at a published reference, pinned by its commit", () => {
+    // Every workflow here that calls cosyte/.github names one published reference by its full
+    // commit, with the reference in the trailing comment, and the reference's suffix is the first
+    // 12 characters of that commit. A branch such as `@main` would move the release pipeline on
+    // the callee's clock, reviewed by nobody here.
+    const workflow = SHARED_RELEASE_WORKFLOW.replaceAll(".", String.raw`\.`);
+    const call = new RegExp(
+      String.raw`^\s*uses: ${workflow}@([0-9a-f]{40}) # workflows-\d{4}-\d{2}-\d{2}-([0-9a-f]{12})$`,
+      "mu",
+    );
+    const match = call.exec(keys);
+    expect(match).not.toBeNull();
+    expect(match?.[1]?.slice(0, 12)).toBe(match?.[2]);
   });
 
   it("still passes secrets: inherit", () => {

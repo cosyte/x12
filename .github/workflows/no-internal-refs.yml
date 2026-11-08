@@ -40,7 +40,7 @@ name: Public-surface gate
 #
 #   Within x12, keeping it out of ci.yml also keeps it cheap: this job is a checkout and a
 #   handful of greps over 14 public-surface files and 108 source files, while ci.yml drives
-#   the full Node 22 + 24 matrix plus the release dry run.
+#   the full Node 22, 24 and 26 matrix plus the release dry run.
 #
 # WHAT THIS DOES NOT CHECK, deliberately: the PR title, the PR body, and commit messages.
 # The em-dash gate scans all three because the brand rule names commit messages explicitly.
@@ -53,11 +53,11 @@ name: Public-surface gate
 # is untracked build output and this script does not build. The proxy holds only because
 # the dts build copies doc text verbatim.
 #
-# NOT A REQUIRED CHECK YET. The org ruleset pins the required contexts for this repo and
-# `Public-surface gate / no-internal-refs` is not among them, so a PR carrying an internal
-# reference reds this check VISIBLY but is still mergeable. Making it required is an
-# org-level ruleset change, outside this repo. Until then the gate informs a human; it does
-# not stop one. Re-derive that rather than trusting this line.
+# NOT A REQUIRED CHECK YET (checked 2026-11-08). The rulesets on this repo do not require
+# `no-internal-refs / public-surface`, so a PR carrying an internal reference reds this check
+# VISIBLY but is still mergeable. Making it required is a ruleset change, outside this repo's
+# files. Until then the gate informs a human; it does not stop one. Re-derive that rather
+# than trusting this line.
 #
 # Run it locally with `pnpm check:no-internal-refs`.
 
@@ -79,7 +79,7 @@ jobs:
     # tag is not an immutable reference and is not a pin. The trailing comment is the
     # published reference that commit was released as, so the release note stays
     # findable from here.
-    uses: cosyte/.github/.github/workflows/gate-no-internal-refs.yml@84ecccd771cbc9c1ece003a3f8ff61415360395b # workflows-2026-09-18-84ecccd771cb
+    uses: cosyte/.github/.github/workflows/gate-no-internal-refs.yml@498c7c13c8869bf11b67fa8324684ec2dc691ec6 # workflows-2026-11-07-498c7c13c886
     # No more than the scan needs. A called workflow's GITHUB_TOKEN can only be
     # downgraded by its caller, and this gate reads the tree and nothing else.
     permissions:

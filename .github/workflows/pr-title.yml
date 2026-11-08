@@ -1,0 +1,25 @@
+name: PR title
+
+# A squash merge makes the pull request title the commit that lands on main, so the title follows
+# Conventional Commits (`<type>(<scope>)!: <description>`). The rule lives in the shared workflow,
+# which takes no input and checks nothing out; its one context is `pr-title / conventional-commits`.
+# Dependabot's titles pass because .github/dependabot.yml sets its commit-message prefix to `chore`.
+
+on:
+  pull_request:
+    branches: [main]
+    # `edited` is load-bearing: a title changed after the last push is the title that lands.
+    types: [opened, synchronize, reopened, edited]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pr-title:
+    permissions:
+      contents: read
+    uses: cosyte/.github/.github/workflows/pr-title.yml@498c7c13c8869bf11b67fa8324684ec2dc691ec6 # workflows-2026-11-07-498c7c13c886
