@@ -1520,9 +1520,7 @@ interface ClaimAccumulator {
 }
 
 type ServiceLineAccumulator =
-  | ServiceLinePAccumulator
-  | ServiceLineIAccumulator
-  | ServiceLineDAccumulator;
+  ServiceLinePAccumulator | ServiceLineIAccumulator | ServiceLineDAccumulator;
 
 interface ServiceLineBaseAccumulator {
   readonly lineNumber: string;

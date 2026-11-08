@@ -124,7 +124,7 @@
     }
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "0.18.4",
+    "@arethetypeswrong/cli": "0.18.5",
     "@changesets/cli": "2.31.0",
     "@cosyte/eslint-config": "^0.1",
     "@cosyte/prettier-config": "^0.1",
@@ -135,14 +135,14 @@
     "@cosyte/vitest-config": "^0.1",
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "4.1.12",
-    "eslint": "10.5.0",
-    "fast-check": "3.23.2",
-    "prettier": "3.8.3",
-    "simple-git-hooks": "2.13.0",
+    "eslint": "10.14.0",
+    "fast-check": "4.10.2",
+    "prettier": "3.9.10",
+    "simple-git-hooks": "2.14.0",
     "tsup": "8.5.1",
     "tsx": "4.23.15",
     "typescript": "5.9.3",
-    "vite": "7.3.7",
+    "vite": "8.3.6",
     "vitest": "4.1.12"
   },
   "dependencies": {}

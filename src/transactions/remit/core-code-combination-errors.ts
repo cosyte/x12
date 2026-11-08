@@ -76,14 +76,7 @@ export type CoreCodeCombinationErrorCode =
  * ```
  */
 export type CoreCodeCombinationTableField =
-  | "table"
-  | "version"
-  | "rows"
-  | "row"
-  | "scenario"
-  | "groupCode"
-  | "reasonCode"
-  | "remarkCode";
+  "table" | "version" | "rows" | "row" | "scenario" | "groupCode" | "reasonCode" | "remarkCode";
 
 /**
  * Thrown by {@link "./core-code-combinations.js".checkCoreCodeCombination} when

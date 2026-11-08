@@ -191,16 +191,15 @@ export function get275Attachments(
     entities: Object.freeze(entities.slice()),
     lines: Object.freeze(frozenLines),
     attachments: Object.freeze(
-      attachments.map(
-        (a): X12Attachment =>
-          Object.freeze({
-            filterCode: a.filterCode,
-            declaredLength: a.declaredLength,
-            data: a.data,
-            lengthVerified: a.lengthVerified,
-            line: a.lineIndex === undefined ? undefined : frozenLines[a.lineIndex],
-            segmentIndex: a.segmentIndex,
-          }),
+      attachments.map((a): X12Attachment =>
+        Object.freeze({
+          filterCode: a.filterCode,
+          declaredLength: a.declaredLength,
+          data: a.data,
+          lengthVerified: a.lengthVerified,
+          line: a.lineIndex === undefined ? undefined : frozenLines[a.lineIndex],
+          segmentIndex: a.segmentIndex,
+        }),
       ),
     ),
     warnings: Object.freeze([...leading, ...warnings]),
