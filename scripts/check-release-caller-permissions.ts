@@ -7,12 +7,12 @@
  * WHY THIS EXISTS, AND WHY IT IS A REPO-OWNED CHECK RATHER THAN A COMMENT.
  *
  * `.github/workflows/release.yml` here is a thin caller of
- * `cosyte/.github/.github/workflows/release.yml@main`. A called workflow's token can only be
- * EQUAL TO OR MORE RESTRICTIVE THAN its caller's, never wider. So a calling job that pins a
- * `permissions:` block granting three of the four scopes the shared pipeline declares is
- * granting the fourth as `none`, the callee's request for it is an ELEVATION, and GitHub
- * refuses the WHOLE workflow at startup: no jobs, no steps, no logs, and no refusal printed
- * anywhere. The run just reads `startup_failure` after about a second.
+ * `cosyte/.github/.github/workflows/release.yml`, at a published reference. A called workflow's
+ * token can only be EQUAL TO OR MORE RESTRICTIVE THAN its caller's, never wider. So a calling
+ * job that pins a `permissions:` block granting three of the four scopes the shared pipeline
+ * declares is granting the fourth as `none`, the callee's request for it is an ELEVATION, and
+ * GitHub refuses the WHOLE workflow at startup: no jobs, no steps, no logs, and no refusal
+ * printed anywhere. The run just reads `startup_failure` after about a second.
  *
  * That is the failure this file reds on, and the point is that it reds HERE, on a pull
  * request, in a check that says which scope is missing, instead of silently on the next push
@@ -45,9 +45,9 @@ export const RELEASE_CALLER_PATH = ".github/workflows/release.yml";
 /**
  * The shared reusable workflow, WITHOUT its git ref.
  *
- * Matched ref-blind on purpose. Every caller in the org pins `@main`, that is the org's
- * chosen distribution model, and hard-coding the ref here would turn a deliberate ref change
- * into "no job calls the shared pipeline" rather than into a permissions answer.
+ * Matched ref-blind on purpose. Callers move together from one published reference to the
+ * next, and hard-coding the ref here would turn a deliberate ref change into "no job calls the
+ * shared pipeline" rather than into a permissions answer.
  */
 export const SHARED_RELEASE_WORKFLOW = "cosyte/.github/.github/workflows/release.yml";
 
