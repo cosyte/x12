@@ -1,5 +1,5 @@
 {
-  "$comment": "The public-surface gate's axes for @cosyte/x12, read by the shared gate in @cosyte/script-utils (`pnpm check:no-internal-refs`). X12 is both the standard and our own item prefix, so it is a project prefix here and no X12 designation is listed: the sibling repos' X12-\\d{3} exclusion matched 141 of our identifiers and no standards designation (#120).",
+  "$comment": "The public-surface gate's axes for @cosyte/x12, read by the shared gate in @cosyte/script-utils (`pnpm check:no-internal-refs`). X12 is both the standard and our own item prefix, so it is a project prefix here and no X12 designation is listed: the sibling repos' X12-\\d{3} exclusion matched 141 of our identifiers and no standards designation (#120). The umbrella-item-id rule is the bare `S` and four digits then a hyphen that x12's docs-content test used to assert; the canonical identifier rule needs a lower-case slug after the hyphen, so this keeps the wider form, on every surface the gate reads.",
   "projectPrefixes": [
     "PARSERS-PUBLIC",
     "DOCS-CONTENT",
@@ -54,5 +54,25 @@
   "sourceDocComments": {
     "enabled": true,
     "paths": ["src/*.ts", "src/**/*.ts"]
-  }
+  },
+  "sourceStringLiterals": {
+    "enabled": true,
+    "paths": ["src/*.ts", "src/**/*.ts"]
+  },
+  "extraRules": [
+    {
+      "id": "umbrella-item-id",
+      "name": "umbrella work-item identifier",
+      "pattern": "S\\d{4}-",
+      "positives": [
+        "seeded S0042-example here",
+        "Tracked as S0228-github-profile-ci-drift",
+        "see S1234-X"
+      ],
+      "negatives": [
+        "HCPCS S9083 and S0630 are billing codes, and S0228 alone is one too",
+        "ICD-10-CM P00-P96, NM1-03 name, SV1-02 charge, 835 remittance, segment S, 2000-2300 loops"
+      ]
+    }
+  ]
 }

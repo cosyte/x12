@@ -29,8 +29,7 @@ import type { X12WarningCode } from "../parser/warnings.js";
 
 /**
  * The bucket a quirk falls into when rendered by {@link X12Profile.describe}.
- * Mirrors the roadmap's "what this profile relaxes / adds / requires"
- * framing.
+ * A profile states what it relaxes, what it adds and what it requires.
  *
  * - `relaxes` - the partner tolerates / emits a structural variation the
  *   strict 005010 baseline would flag (e.g. an alternate component

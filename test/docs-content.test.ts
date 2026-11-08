@@ -64,8 +64,9 @@ docSnippetSuite({
 
 // ---------------------------------------------------------------------------
 // The bundle contract: frontmatter shape, sidebar bijection, link integrity,
-// imported-symbol integrity, transaction-set coverage, and no umbrella
-// bookkeeping on a public surface.
+// imported-symbol integrity, and transaction-set coverage. Umbrella work-item
+// ids (`S` and four digits, then a hyphen) are the shared internal-refs gate's,
+// through the `umbrella-item-id` rule in `scripts/internal-refs.json`.
 //
 // Every check below is a PURE FUNCTION from an in-memory bundle to a list of
 // human-readable findings. That shape is the whole design: the same function
@@ -134,15 +135,6 @@ const TRANSACTION_SET_EXPORTS: ReadonlyMap<string, readonly string[]> = new Map(
   ["999", ["parse999", "build999"]],
   ["TA1", ["parseTA1", "buildTA1"]],
 ]);
-
-/**
- * An umbrella work-item identifier: an `S` followed by four digits and a
- * hyphen. Internal project bookkeeping never appears on a published surface
- * (`pnpm check:no-internal-refs` scans this same directory); that gate keys on
- * the ecosystem's own project prefixes, which do not include the umbrella's
- * item shape, so this half is asserted here.
- */
-const UMBRELLA_ITEM_ID = /S\d{4}-/;
 
 /**
  * Split a markdown source into its fenced code blocks, in document order.
@@ -515,25 +507,6 @@ function checkTransactionSetCoverage(
 }
 
 /**
- * No umbrella work-item identifier appears anywhere in the bundle.
- *
- * @param files - Every file of the bundle, name and contents.
- * @returns One finding per offending file, naming the identifier.
- */
-function checkNoUmbrellaItemIds(files: ReadonlyMap<string, string>): string[] {
-  const findings: string[] = [];
-  for (const [name, text] of files) {
-    const hit = UMBRELLA_ITEM_ID.exec(text);
-    if (hit !== null) {
-      findings.push(
-        `docs-content/${name} carries an umbrella item identifier ("${hit[0]}"), which is internal bookkeeping and never belongs on a published surface`,
-      );
-    }
-  }
-  return findings;
-}
-
-/**
  * The bundle is shaped the way `scripts/build-docs-artifacts.sh` requires: a
  * non-empty page set, plus the two files the docs site validates.
  *
@@ -613,10 +586,6 @@ describe("docs-content bundle contract", () => {
 
   it("carries a worked example for every transaction set the library claims", () => {
     expect(checkTransactionSetCoverage(BUNDLE_PAGES, TRANSACTION_SET_EXPORTS)).toEqual([]);
-  });
-
-  it("carries no umbrella item identifier anywhere", () => {
-    expect(checkNoUmbrellaItemIds(BUNDLE_FILES)).toEqual([]);
   });
 });
 
@@ -713,7 +682,6 @@ describe("the bundle-contract checkers still see", () => {
     expect(checkSidebarPositions(pages, order)).toEqual([]);
     expect(checkRelativeLinks(pages)).toEqual([]);
     expect(checkImportedSymbols(pages, new Set(["parseX12"]))).toEqual([]);
-    expect(checkNoUmbrellaItemIds(files)).toEqual([]);
   });
 
   it("fails, naming the id, when sidebars.json names a document with no file", () => {
@@ -835,13 +803,6 @@ describe("the bundle-contract checkers still see", () => {
     expect(checkSidebarPositions(pages, ["intro", "b"]).join("\n")).toContain(
       "sidebar_position 1 is used by more than one page: b.md, intro.md",
     );
-  });
-
-  it("fails, naming the file, on an umbrella item identifier", () => {
-    const findings = checkNoUmbrellaItemIds(new Map([["intro.md", "seeded S0042-example here"]]));
-    expect(findings).toHaveLength(1);
-    expect(findings[0]).toContain("intro.md");
-    expect(findings[0]).toContain("S0042-");
   });
 
   it("fails, naming the set, when a transaction set has no worked example", () => {

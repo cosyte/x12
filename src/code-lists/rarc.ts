@@ -70,7 +70,7 @@ export const RARC: DatedCodeListSnapshot = Object.freeze({
     snapshotDate: "2026-06-27",
     datesSource: "https://x12.org/codes/remittance-advice-remark-codes",
     datesCapturedAt: "2026-08-28",
-    note: "Pre-launch initial subset (~15 most commonly observed codes). Phase 10 ships a full-regen script.",
+    note: "Initial subset (~15 most commonly observed codes), not the full list; refreshed with a package release, never at runtime.",
     maintainingOrganization: "CMS",
     redistribution: RARC_REDISTRIBUTION,
     completeness: "cited-subset",

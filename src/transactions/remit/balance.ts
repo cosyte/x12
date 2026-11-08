@@ -30,11 +30,8 @@
  *    (reduces BPR-02), negative PLB = credit to provider (increases
  *    BPR-02). So subtraction is what makes the equation balance.
  *
- * > Implementation note: an early internal sketch of these invariants was a
- * > simplification. The implementation here matches the **X12 005010X221A1
- * > TR3 §1.10.2 spec text** directly; the roadmap is updated in the same
- * > slice with a forward-pointer to this module so the contract stays
- * > consistent.
+ * > Implementation note: the implementation here matches the **X12
+ * > 005010X221A1 TR3 §1.10.2 spec text** directly.
  *
  * **A term that did not decode makes the equation UNEVALUABLE, and that is a
  * third outcome, not a failure.** Every amount these three checks read is
