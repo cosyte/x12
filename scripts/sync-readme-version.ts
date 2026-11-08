@@ -9,7 +9,7 @@
  * `package.json` declares, and the release pipeline runs `pnpm test` on the "Version Packages"
  * commit before it publishes. Changesets rewrites `package.json` only, so without this step the
  * commit that opens a new line fails its own test and the publish stops. The `version` script runs
- * this after `changeset version` and `sync-version.mjs`, so the bump and the README line land in the
+ * this after `changeset version` and `cosyte-process sync-version`, so the bump and the README line land in the
  * same commit, the same way the `VERSION` constant does.
  *
  * It rewrites exactly one thing: the `**The X.Y line**` marker in the `## Status` section. It is

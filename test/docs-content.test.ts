@@ -47,7 +47,7 @@ const root = join(import.meta.dirname, "..");
 /** Map the published entry point to its built ESM artifact. */
 const ENTRY = join(root, "dist", "index.mjs");
 
-/** The narrative bundle `scripts/build-docs-artifacts.sh` tars for the docs site. */
+/** The narrative bundle `pnpm pack:docs` (`cosyte-process pack-docs`) tars for the docs site. */
 const DOCS_DIR = join(root, "docs-content");
 
 /** The public entry point whose exports a fenced example is allowed to import. */
@@ -507,7 +507,7 @@ function checkTransactionSetCoverage(
 }
 
 /**
- * The bundle is shaped the way `scripts/build-docs-artifacts.sh` requires: a
+ * The bundle is shaped the way `pnpm pack:docs` requires: a
  * non-empty page set, plus the two files the docs site validates.
  *
  * @param files - Every file of the bundle, name and contents.

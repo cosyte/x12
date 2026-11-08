@@ -22,11 +22,11 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { resolveToolBin } from "@cosyte/process";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -624,23 +624,15 @@ const DIST = join(root, "dist");
 const STAGING = join(root, ".vitest-cache", "remit-core-code-combinations-dist");
 
 /**
- * The `tsup` command-line entry this package's `build` script runs, resolved
- * from the installed package and run with this `node`, so the build does not
- * depend on which package-manager binary a test process finds first.
+ * The `tsup` command-line entry this package's `build` script runs: the one
+ * `@cosyte/process` resolves for `cosyte-process build`, run with this `node`,
+ * so the build does not depend on which package-manager binary a test process
+ * finds first.
  */
 function tsupCli(): string {
-  const manifestPath = createRequire(import.meta.url).resolve("tsup/package.json");
-  const manifest: unknown = JSON.parse(readFileSync(manifestPath, "utf8"));
-  const bin = isRecordValue(manifest) ? manifest["bin"] : undefined;
-  const entry = isRecordValue(bin) ? bin["tsup"] : undefined;
-  if (typeof entry !== "string") throw new Error("tsup declares no `tsup` bin entry");
-  return join(dirname(manifestPath), entry);
+  return resolveToolBin("tsup");
 }
 
-/** Whether `value` is an object whose properties can be read. */
-function isRecordValue(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === "object" && value !== null;
-}
 /** How long a read waits for `dist/` while another suite's build rewrites it. */
 const READ_DEADLINE_MS = 60_000;
 

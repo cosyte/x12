@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "nod
 import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { resolveToolBin } from "@cosyte/process";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -55,7 +56,11 @@ const ENTRY = join(root, OUT_DIR, "index.mjs");
 const TMP_DIR = join(root, ".cosyte-readme-snippets");
 
 beforeAll(() => {
-  execFileSync("pnpm", ["exec", "tsup", "--out-dir", OUT_DIR], { cwd: root, stdio: "inherit" });
+  // The tsup `pnpm build` runs, resolved through `@cosyte/process`, which owns it.
+  execFileSync(process.execPath, [resolveToolBin("tsup"), "--out-dir", OUT_DIR], {
+    cwd: root,
+    stdio: "inherit",
+  });
 }, 120_000);
 
 const readme = readFileSync(README, "utf8");

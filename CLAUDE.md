@@ -18,7 +18,7 @@ pnpm typecheck && pnpm lint && pnpm format:check && pnpm phi-scan
 pnpm test && pnpm test:coverage && pnpm build && pnpm attw
 pnpm typecheck:examples && pnpm lint:examples && pnpm examples && pnpm phi-scan:examples
 pnpm check:no-emdash && pnpm check:no-internal-refs
-pnpm check:documents
+pnpm check:documents && pnpm check:process
 pnpm differential:check
 ```
 

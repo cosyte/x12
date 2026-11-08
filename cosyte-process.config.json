@@ -1,0 +1,13 @@
+{
+  "format": {
+    "flags": ["--no-error-on-unmatched-pattern"],
+    "globs": [
+      "src/**/*.{ts,md}",
+      "scripts/**/*.{ts,mjs}",
+      "test/**/*.ts",
+      "docs-content/**/*.{md,json}",
+      "examples/**/*.{ts,js,json,md}",
+      "*.{json,md,yml,yaml}"
+    ]
+  }
+}

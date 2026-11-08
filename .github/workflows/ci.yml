@@ -156,7 +156,9 @@ jobs:
 
   # The repository's documents, each held by the shared checker in @cosyte/script-utils: the README
   # against the house skeleton and npm's size limit, the CLAUDE.md card against its spec, and the
-  # package.json description against the catalog of our libraries.
+  # package.json description against the catalog of our libraries. It also runs
+  # `cosyte-process check`, which holds the build, test, lint, typecheck and format scripts to the
+  # exact `cosyte-process` delegations and validates cosyte-process.config.json.
   documents:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -175,3 +177,4 @@ jobs:
       - run: pnpm check:readme
       - run: pnpm check:claude-card
       - run: pnpm check:catalog
+      - run: pnpm check:process
