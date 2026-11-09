@@ -278,6 +278,9 @@ covers every Cosyte repository. Bug reports and trading-partner quirks go to the
 real interchange. The organization's
 [support guide](https://github.com/cosyte/.github/blob/main/SUPPORT.md) has the rest.
 
+Need an X12 integration built, or hosted and run for you? See our
+[integration services](https://cosyte.com/integration-services).
+
 ## Security
 
 Report a vulnerability privately, as the
