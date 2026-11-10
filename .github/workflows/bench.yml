@@ -1,0 +1,116 @@
+name: Bench
+
+# A reading of this build on a GitHub-hosted runner: throughput, latency p50/p95/p99, allocations
+# per operation, peak heap, a long run for leaks, and the cold import with every file it loads and
+# its gzip size, for every case of bench/x12.bench.mjs, the large sizes included. Then a CPU and a
+# sampled heap profile of the hottest paths (bench/profile.mjs).
+#
+# On demand, and on a pull request that changes the suite or this file, so a change to what is
+# measured is measured where it will be read. ADVISORY: it fails only when it cannot measure (a
+# suite that does not load, a process that dies, a results file that does not match the schema),
+# never on a number, and it is never a required check. The numbers are kept as artifacts and shown
+# in each job's summary.
+#
+# One job per shape, side by side, so the reading finishes inside a pull request's wait: each job
+# runs its shape's three benchmarks (parse, read, build) at every size. Jobs on different runners
+# are not compared with each other; each reading names the machine it ran on.
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    branches: [main]
+    paths:
+      - "bench/**"
+      - ".github/workflows/bench.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  reading:
+    name: reading (${{ matrix.shape }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shape: ["835", "837P", "837I", "270", "271", "999", "275"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Read ${{ matrix.shape }}
+        env:
+          SHAPE: ${{ matrix.shape }}
+          COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p bench-results
+          status=0
+          pnpm bench:reading --commit "${COMMIT}" \
+            --only "${SHAPE}: parseX12" \
+            --only "${SHAPE}: parseX12, then read" \
+            --only "${SHAPE}: build, then serializeX12" \
+            --out "bench-results/reading-${SHAPE}.json" \
+            --summary "bench-results/reading-${SHAPE}.md" || status=$?
+          if [ -f "bench-results/reading-${SHAPE}.md" ]; then
+            cat "bench-results/reading-${SHAPE}.md" >> "${GITHUB_STEP_SUMMARY}"
+          fi
+          # Exit 2 with a results file is a measure the reading skipped, named in it with its typed
+          # reason (a warmup that did not settle, an allocation window that always collected): a
+          # skip is reported, never read as a number. Anything else is a reading that failed.
+          if [ "${status}" -eq 2 ] && [ -f "bench-results/reading-${SHAPE}.json" ]; then
+            echo "::notice::bench reading ${SHAPE}: a measure was skipped; its reason is in the results"
+          elif [ "${status}" -ne 0 ]; then
+            exit "${status}"
+          fi
+          pnpm exec cosyte-bench check "bench-results/reading-${SHAPE}.json"
+      - name: Keep the reading
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bench-reading-${{ matrix.shape }}
+          path: bench-results/
+          if-no-files-found: warn
+          retention-days: 30
+
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Profile the hottest paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm bench:profile --out bench-results/profile
+          cat bench-results/profile/profile.md >> "${GITHUB_STEP_SUMMARY}"
+      - name: Keep the profiles
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bench-profile
+          path: bench-results/profile/
+          if-no-files-found: warn
+          retention-days: 30

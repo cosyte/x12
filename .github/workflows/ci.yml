@@ -28,10 +28,22 @@ jobs:
   # commit. Every workflow here that calls cosyte/.github names the same reference, pinned by its
   # commit with the reference in the comment, and they move together: name a newer release from
   # https://github.com/cosyte/.github/releases in all of them at once.
+  #
+  # The performance standard's two jobs run beside `verify`, never after it, so a pull request waits
+  # for the slowest job rather than their sum:
+  # - `scaling-gate`: `pnpm test:perf`, the scaling gate on `parseX12` and on the 835 reader, and
+  #   its self-check, never under coverage. A skipped job satisfies a required check, so require
+  #   `ci / scaling-gate` only while its input below stays on.
+  # - `bench-compare` (pull requests only): bench/x12.bench.mjs timed on the base build and the head
+  #   build, interleaved on one runner, at the sizes that run in milliseconds. Advisory: it never
+  #   fails, so never require it. The large sizes are measured by bench.yml's reading instead.
   ci:
-    uses: cosyte/.github/.github/workflows/ci.yml@c0db8d8e5927269820de4401b3b5ad6141854b76 # workflows-2026-11-08-c0db8d8e5927
+    uses: cosyte/.github/.github/workflows/ci.yml@0be6757a773885cbd5165dbfa0f93772d907b3e8 # workflows-2026-11-10-0be6757a7738
     with:
       run-phi-scan: true
+      run-scaling-gate: true
+      run-bench-compare: true
+      bench-suites: bench/x12.bench.mjs
 
   # Prove the publish pipeline on every push/PR WITHOUT burning a version or needing registry auth
   # (X12-10, mirroring config's REL-PIPE). Two auth-free proofs:

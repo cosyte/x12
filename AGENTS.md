@@ -28,6 +28,7 @@ pnpm format:check
 pnpm phi-scan
 pnpm test
 pnpm test:coverage
+pnpm test:perf
 pnpm build
 pnpm attw
 pnpm typecheck:examples
@@ -40,6 +41,29 @@ pnpm check:documents
 pnpm check:process
 pnpm differential:check
 ```
+
+`pnpm test:perf` is the scaling gate (`test/perf/scaling-gate.perf.ts`): it fails when parsing or
+reading an 835 grows faster than its input. It runs apart from `pnpm test` and never under coverage.
+
+## Benchmarks
+
+`bench/x12.bench.mjs` measures the built package on synthetic documents in the shapes real traffic
+has (an 835 remittance, 837P and 837I batches, a 270 and its 271, a 999, and a 275 attachment),
+each parsed, read and built, from the small document a feed carries all day to several megabytes.
+`bench/corpus.mjs` builds every document in code; `test/perf/bench-corpus.test.ts` holds that each
+reads with no warning.
+
+```sh
+pnpm build
+pnpm bench:reading --out bench-results/reading.json --summary bench-results/reading.md
+pnpm bench:compare --base <base checkout>/dist/index.mjs --head dist/index.mjs
+pnpm bench:profile --out bench-results/profile
+```
+
+A reading reports throughput, latency p50/p95/p99, allocations, peak heap, a long run for leaks,
+and the cold import with its gzip size. On a pull request CI compares the base build with the head
+at the small sizes, and `.github/workflows/bench.yml` takes a reading and a profile on a hosted
+runner when `bench/` changes. Both are advisory.
 
 ## Rules
 

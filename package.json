@@ -100,6 +100,10 @@
     "test": "cosyte-process test",
     "test:watch": "cosyte-process test --watch",
     "test:coverage": "cosyte-process test --coverage",
+    "test:perf": "vitest run --config vitest.perf.config.ts",
+    "bench:reading": "cosyte-bench run --suite bench/x12.bench.mjs --target dist/index.mjs",
+    "bench:compare": "cosyte-bench compare --suite bench/x12.bench.mjs",
+    "bench:profile": "node bench/profile.mjs",
     "fuzz": "vitest run test/property",
     "examples": "tsx scripts/run-examples.ts",
     "typecheck:examples": "tsc -p examples/tsconfig.json",
@@ -144,6 +148,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
     "@changesets/cli": "2.31.0",
+    "@cosyte/bench": "^0.1.1",
     "@cosyte/eslint-config": "^0.1.4",
     "@cosyte/prettier-config": "^0.1.2",
     "@cosyte/process": "^0.1.7",

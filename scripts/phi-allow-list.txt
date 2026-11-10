@@ -111,3 +111,6 @@ EMAILDOMAIN example.test
 EMAILDOMAIN example.com
 EMAILDOMAIN example.org
 EMAILDOMAIN example.net
+
+# --- Our own domain: the package author address, never patient data (operator, 2026-11-10) ---
+EMAILDOMAIN cosyte.com

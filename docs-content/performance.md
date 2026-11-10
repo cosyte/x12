@@ -16,8 +16,21 @@ The numbers for the current release are in [Current numbers](#current-numbers) b
 
 ## What runs today
 
-This package has no benchmark script of its own yet. What runs on every pull request are guards
-that fail on a class of slowdown rather than numbers that describe speed:
+A benchmark suite measures the built package on synthetic documents in the shapes real traffic has:
+an 835 remittance, 837P and 837I claim batches, a 270 and the 271 that answers it, a 999, and a 275
+attachment with one large payload. Each is parsed with `parseX12`, read with its typed reader (which
+checks the loops, the balances and the code lists), and built with its builder, from the small
+document a feed carries all day up to several megabytes. A reading reports throughput, latency
+p50/p95/p99, allocations per operation, peak heap, whether the heap stays flat over a long run, and
+the cold import with its gzipped size. On a pull request, CI times the base build against the head
+build at the small sizes, interleaved on one runner; that comparison is advisory and fails nothing.
+
+Beside it, a scaling gate fails a pull request when parsing or reading an 835 starts to cost more
+than its input grows: four times the documents, or documents with four times the claims, must cost
+close to four times as long. A self-check proves the gate's fixtures are large enough to catch a
+quadratic path.
+
+The other guards fail on a class of slowdown rather than describe speed:
 
 - **A time and memory budget on every fuzz case.** Each hostile input the fuzz targets generate
   must finish within a CPU-time budget that grows linearly with its length (250 ms plus 1 ms per 64
@@ -32,13 +45,13 @@ that fail on a class of slowdown rather than numbers that describe speed:
   members), and the test checks that it yields every member once, in order, and that a consumer can
   stop after the first few without draining the rest.
 
-These catch a super-linear path, a hang and a runaway allocation. None of them measures
-throughput, latency, peak memory, import time or bundle size.
+These catch a super-linear path, a hang and a runaway allocation; the benchmark suite is what
+measures throughput, latency, peak memory, import time and bundle size.
 
 ## What these are not
 
-- **Not a guarantee for every input.** Very large interchanges and adversarial nesting are not
-  characterized here.
+- **Not a guarantee for every input.** The benchmarks cover the shapes above, up to about 3 MiB of
+  claims and a 4 MiB attachment; adversarial nesting is not characterized here.
 - **Not a byte-streaming reader.** `get834Enrollments` yields one member at a time from an
   interchange `parseX12` has already parsed whole, so the memory saved is on the result side, not
   the input side.
@@ -51,6 +64,9 @@ pnpm install --frozen-lockfile
 pnpm fuzz                                        # the property and fuzz layer, with the case budgets
 X12_FUZZ_SEED=12345 X12_FUZZ_SECONDS=60 pnpm fuzz  # a longer search with a seed of your choosing
 pnpm test test/transactions-enrollment-834.test.ts
+pnpm test:perf                                   # the scaling gate and its self-check
+pnpm build && pnpm bench:reading                 # a reading of every benchmark, on this machine
+pnpm build && pnpm bench:profile                 # a CPU and heap profile of the hottest paths
 ```
 
 ## Current numbers
