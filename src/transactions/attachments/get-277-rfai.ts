@@ -187,7 +187,10 @@ function walk(delimiters: Delimiters, tx: X12TransactionSet): X12AdditionalInfor
     return request;
   };
 
-  for (const [i, seg] of body.entries()) {
+  for (const [i, seg] of (body as readonly (X12Segment | null | undefined)[]).entries()) {
+    // A transaction set a caller built can have a hole in `segments`, or a
+    // `null` where a JSON round trip left one: skip either.
+    if (seg === undefined || seg === null) continue;
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
     const sink: X12DecimalWarningSink = { warnings, position };
     switch (seg.id) {

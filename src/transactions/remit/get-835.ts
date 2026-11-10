@@ -133,8 +133,9 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
 
   for (let i = 0; i < body.length; i += 1) {
     const seg = body[i];
-    // A transaction set a caller built can have a hole in `segments`: skip it.
-    if (seg === undefined) continue;
+    // A transaction set a caller built can have a hole in `segments`, or a
+    // `null` where a JSON round trip left one: skip either.
+    if (seg === undefined || seg === null) continue;
     // 1-based segment position inside the body for warning positional context.
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
     // Every decimal read below routes its `X12_UNPARSEABLE_DECIMAL` here; the

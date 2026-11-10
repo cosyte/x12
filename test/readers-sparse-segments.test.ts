@@ -5,7 +5,8 @@
  * an `X12TransactionSet` straight from its caller, so each one is driven here
  * with both: a hole is skipped and the rest of the set reads exactly as the
  * dense set does, and a warning's position still indexes the caller's own
- * `segments`. Every byte here is synthetic.
+ * `segments`. A `null` in the list, the shape a JSON round trip gives a hole,
+ * is skipped the same way. Every byte here is synthetic.
  */
 
 import { readFileSync } from "node:fs";
@@ -15,15 +16,20 @@ import { describe, expect, it } from "vitest";
 
 import {
   WARNING_CODES,
+  build275,
+  build277RequestForAdditionalInformation,
   get270Inquiry,
   get271Eligibility,
   get276StatusInquiry,
+  get275Attachments,
   get277CADisposition,
+  get277RequestForAdditionalInformation,
   get277Status,
   get278Request,
   get278Response,
   get820Payments,
   get834Enrollments,
+  get834Header,
   get835,
   get837Claims,
   parseX12,
@@ -46,34 +52,140 @@ function withHoleAt(tx: X12TransactionSet, index: number): X12TransactionSet {
   return { ...tx, segments };
 }
 
+/** The same set with a `null` at `index` of its `segments`, as a JSON round trip leaves a hole. */
+function withNullAt(tx: X12TransactionSet, index: number): X12TransactionSet {
+  const segments: unknown[] = [...tx.segments.slice(0, index), null, ...tx.segments.slice(index)];
+  return { ...tx, segments: segments as X12TransactionSet["segments"] };
+}
+
+/**
+ * What the dense reading becomes once a slot opens at `index`: every
+ * `segmentIndex` at or past it moves one along, because a position indexes
+ * the caller's own `segments`. A reading that carries no position is
+ * returned as it is.
+ */
+function shifted(value: unknown, index: number): unknown {
+  if (Array.isArray(value)) return value.map((entry: unknown) => shifted(entry, index));
+  if (typeof value !== "object" || value === null) return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [
+      key,
+      key === "segmentIndex" && typeof entry === "number" && entry >= index
+        ? entry + 1
+        : shifted(entry, index),
+    ]),
+  );
+}
+
+/** A set read off an interchange a builder wrote, for the readers with no fixture file. */
+function readBuilt(ix: ReturnType<typeof parseX12>): {
+  delimiters: Delimiters;
+  tx: X12TransactionSet;
+} {
+  const tx = ix.groups[0]?.transactions[0];
+  if (tx === undefined) throw new Error("the built interchange has no transaction set");
+  return { delimiters: ix.delimiters, tx };
+}
+
+const ENVELOPE = {
+  senderId: "SENDER",
+  receiverId: "RECEIVER",
+  interchangeDate: "260601",
+  interchangeTime: "1200",
+  interchangeControlNumber: "000000001",
+  groupControlNumber: "1",
+  transactionSetControlNumber: "0001",
+} as const;
+
+const BUILT_275 = () =>
+  readBuilt(
+    build275({
+      envelope: ENVELOPE,
+      beginning: { transactionSetPurposeCode: "02", referenceId: "ATTACH-0001" },
+      entities: [
+        { entityIdentifierCode: "PR", entityTypeQualifier: "2", lastOrOrganizationName: "P" },
+      ],
+      lines: [
+        {
+          trace: { traceTypeCode: "2", referenceId: "TRACE-0001" },
+          references: [{ qualifier: "1K", value: "PCN0001" }],
+          attachments: [{ filterCode: "B64", data: "U1lOVEhFVElD" }],
+        },
+      ],
+    }),
+  );
+
+const BUILT_RFAI = () =>
+  readBuilt(
+    build277RequestForAdditionalInformation({
+      envelope: ENVELOPE,
+      header: { hierarchicalStructureCode: "0010", transactionSetPurposeCode: "08" },
+      levels: [
+        {
+          levelCode: "20",
+          entities: [{ entityIdentifierCode: "PR", entityTypeQualifier: "2" }],
+          children: [
+            {
+              levelCode: "22",
+              requests: [
+                {
+                  trace: { traceTypeCode: "1", referenceId: "TRACE-0001" },
+                  statuses: [{ codes: [{ categoryCode: "R4", statusCode: "18842-5" }] }],
+                  references: [{ qualifier: "1K", value: "PCN0001" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }),
+  );
+
 /** Body positions to open a hole at: right after the ST, the middle, right before the SE. */
 function holePositions(tx: X12TransactionSet): readonly number[] {
   return [1, Math.floor(tx.segments.length / 2), tx.segments.length - 1];
 }
 
 type Reader = (delimiters: Delimiters, tx: X12TransactionSet) => unknown;
+type Source = () => { delimiters: Delimiters; tx: X12TransactionSet };
 
-const READERS: readonly (readonly [string, string, Reader])[] = [
-  ["get278Request", "auth/278-request.edi", get278Request],
-  ["get278Response", "auth/278-response.edi", get278Response],
-  ["get837Claims", "claim/837p-canonical.edi", (d, tx) => get837Claims(d, tx)],
-  ["get270Inquiry", "eligibility/270-canonical.edi", get270Inquiry],
-  ["get271Eligibility", "eligibility/271-canonical.edi", get271Eligibility],
-  ["get820Payments", "premium/820-canonical.edi", get820Payments],
-  ["get835", "remit/835-medicare-canonical.edi", get835],
-  ["get276StatusInquiry", "status/276-canonical.edi", get276StatusInquiry],
-  ["get277Status", "status/277-canonical.edi", get277Status],
-  ["get277CADisposition", "status/277ca-canonical.edi", get277CADisposition],
+const fixture =
+  (path: string): Source =>
+  () =>
+    readFixture(path);
+
+const READERS: readonly (readonly [string, Source, Reader])[] = [
+  ["get278Request", fixture("auth/278-request.edi"), get278Request],
+  ["get278Response", fixture("auth/278-response.edi"), get278Response],
+  ["get837Claims", fixture("claim/837p-canonical.edi"), (d, tx) => get837Claims(d, tx)],
+  ["get270Inquiry", fixture("eligibility/270-canonical.edi"), get270Inquiry],
+  ["get271Eligibility", fixture("eligibility/271-canonical.edi"), get271Eligibility],
+  ["get820Payments", fixture("premium/820-canonical.edi"), get820Payments],
+  ["get835", fixture("remit/835-medicare-canonical.edi"), get835],
+  ["get276StatusInquiry", fixture("status/276-canonical.edi"), get276StatusInquiry],
+  ["get277Status", fixture("status/277-canonical.edi"), get277Status],
+  ["get277CADisposition", fixture("status/277ca-canonical.edi"), get277CADisposition],
+  ["get834Header", fixture("enrollment/834-canonical.edi"), get834Header],
+  ["get275Attachments", BUILT_275, get275Attachments],
+  ["get277RequestForAdditionalInformation", BUILT_RFAI, get277RequestForAdditionalInformation],
 ];
 
 describe("typed readers: a hole in a caller-built segments list is skipped", () => {
-  for (const [name, fixture, read] of READERS) {
+  for (const [name, source, read] of READERS) {
     it(`${name} reads the rest of the set exactly as it reads the dense set`, () => {
-      const { delimiters, tx } = readFixture(fixture);
+      const { delimiters, tx } = source();
       const dense = read(delimiters, tx);
       expect(dense).toBeDefined();
       for (const index of holePositions(tx)) {
-        expect(read(delimiters, withHoleAt(tx, index))).toEqual(dense);
+        expect(read(delimiters, withHoleAt(tx, index))).toEqual(shifted(dense, index));
+      }
+    });
+
+    it(`${name} skips a null in the list the same way`, () => {
+      const { delimiters, tx } = source();
+      const dense = read(delimiters, tx);
+      for (const index of holePositions(tx)) {
+        expect(read(delimiters, withNullAt(tx, index))).toEqual(shifted(dense, index));
       }
     });
   }
@@ -89,6 +201,7 @@ describe("typed readers: a hole in a caller-built segments list is skipped", () 
     expect(dense.length).toBeGreaterThan(0);
     for (const index of holePositions(tx)) {
       expect(await collect(withHoleAt(tx, index))).toEqual(dense);
+      expect(await collect(withNullAt(tx, index))).toEqual(dense);
     }
   });
 

@@ -104,7 +104,10 @@ export function get834Header(
   let sponsor: X12EnrollmentParty | undefined;
   let payer: X12EnrollmentParty | undefined;
 
-  for (const seg of enrollmentBody(tx)) {
+  for (const seg of enrollmentBody(tx) as readonly (X12Segment | null | undefined)[]) {
+    // A transaction set a caller built can have a hole in `segments`, or a
+    // `null` where a JSON round trip left one: skip either.
+    if (seg === undefined || seg === null) continue;
     if (seg.id === "INS") break; // member-level detail begins - header is done.
     switch (seg.id) {
       case "BGN": {
@@ -197,8 +200,9 @@ export async function* get834Enrollments(
 
   for (let i = 0; i < body.length; i += 1) {
     const seg = body[i];
-    // A transaction set a caller built can have a hole in `segments`: skip it.
-    if (seg === undefined) continue;
+    // A transaction set a caller built can have a hole in `segments`, or a
+    // `null` where a JSON round trip left one: skip either.
+    if (seg === undefined || seg === null) continue;
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
 
     if (seg.id === "INS") {
