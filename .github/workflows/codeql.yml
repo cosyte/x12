@@ -21,4 +21,4 @@ jobs:
       security-events: write # upload the SARIF to the Security tab
       contents: read
       actions: read
-    uses: cosyte/.github/.github/workflows/codeql.yml@c0db8d8e5927269820de4401b3b5ad6141854b76 # workflows-2026-11-08-c0db8d8e5927
+    uses: cosyte/.github/.github/workflows/codeql.yml@0be6757a773885cbd5165dbfa0f93772d907b3e8 # workflows-2026-11-10-0be6757a7738
