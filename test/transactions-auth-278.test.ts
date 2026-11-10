@@ -244,3 +244,33 @@ describe("get278 - guards + dogfooded specs", () => {
     expect(AUTH_278_LOOP_2000F.id).toBe("2000F");
   });
 });
+
+describe("get278Request - residual branches of the walk", () => {
+  const raw = readFileSync(join(FIXTURE_DIR, "278-request.edi"), "utf8");
+
+  it("reads a 278 with no BHT with an empty header rather than refusing it", () => {
+    const { delimiters, tx } = load278(raw.replace(/BHT\*[^~]*~\s*/u, ""));
+    const req = get278Request(delimiters, tx);
+    expect(req?.header.referenceId).toBeUndefined();
+    expect(req?.header.date).toBeUndefined();
+    expect(req?.utilizationManagementOrganization?.entityIdentifierCode).toBe("X3");
+  });
+
+  it("leaves a segment it does not type on the transaction set and keeps walking", () => {
+    const { delimiters, tx } = load278(raw.replace("UM*HS*I*1~", "UM*HS*I*1~K3*SYNTHETIC~"));
+    const req = get278Request(delimiters, tx);
+    expect(tx.segments.some((s) => s.id === "K3")).toBe(true);
+    expect(req?.reviews[0]?.requestCategoryCode).toBe("HS");
+  });
+
+  it("reads an HI composite missing its qualifier or its code as an empty string, never a guess", () => {
+    const { delimiters, tx } = load278(raw.replace("HI*ABK:E1165~", "HI*:E1165*ABF~"));
+    const req = get278Request(delimiters, tx);
+    const diagnoses = req?.reviews[0]?.diagnoses ?? [];
+    expect(diagnoses.map((d) => [d.qualifier, d.code])).toEqual([
+      ["", "E1165"],
+      ["ABF", ""],
+    ]);
+    expect(diagnoses[0]?.codeSystem).toBe("unknown");
+  });
+});
