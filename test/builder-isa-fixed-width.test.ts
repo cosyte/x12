@@ -503,9 +503,10 @@ const FIELDS: readonly (readonly [field: string, element: number, width: number]
   ["receiverId", 8, 15],
   ["interchangeDate", 9, 6],
   ["interchangeTime", 10, 4],
+  ["usageIndicator", 15, 1],
 ];
 
-/** Fields for one builder: the shared six, plus ISA-12 where the builder takes it. */
+/** Fields for one builder: the shared seven, plus ISA-12 where the builder takes it. */
 function fieldsOf(b: (typeof BUILDERS)[number]): readonly (readonly [string, number, number])[] {
   return b.version === undefined ? FIELDS : [...FIELDS, [b.version, 12, 5]];
 }
@@ -558,6 +559,35 @@ describe("the fixed-width ISA elements refuse an over-long value", () => {
         const err = refusal(() => b.build({ senderId: 1 }));
         expect(err.code).toBe(b.code);
         expect(err.message).toContain("senderId must be a string");
+      });
+
+      // ISA-15 was written as given: an over-long one shifted ISA-16 and the
+      // builder's own re-read refused it as `X12_INVALID_DELIMITERS`, which
+      // named neither the field nor the builder, and an empty one did the same.
+      it("refuses an over-long usageIndicator by name, not as a delimiter error", () => {
+        const err = refusal(() => b.build({ usageIndicator: "PT" }));
+        expect(err.code).toBe(b.code);
+        expect(err.message).toContain(`${b.name}: usageIndicator`);
+        expect(err.message).toContain("ISA-15");
+        expect(err.message).not.toContain("PT");
+      });
+
+      it("refuses an empty usageIndicator rather than padding it to a space", () => {
+        const err = refusal(() => b.build({ usageIndicator: "" }));
+        expect(err.code).toBe(b.code);
+        expect(err.message).toContain(`${b.name}: usageIndicator is empty`);
+        expect(err.message).toContain("ISA-15");
+      });
+
+      it("refuses a usageIndicator that is not a string with a typed refusal", () => {
+        const err = refusal(() => b.build({ usageIndicator: 1 }));
+        expect(err.code).toBe(b.code);
+        expect(err.message).toContain("usageIndicator must be a string");
+      });
+
+      it("writes P when usageIndicator is left out, and T when it is given", () => {
+        expect(b.build({}).isa.elements[15]).toBe("P");
+        expect(b.build({ usageIndicator: "T" }).isa.elements[15]).toBe("T");
       });
     });
   }

@@ -31,7 +31,7 @@ import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
 import { requireCallerEntries } from "../../builder/caller-array.js";
-import { padIsaElement } from "../../builder/caller-isa.js";
+import { padIsaElement, padIsaUsageIndicator } from "../../builder/caller-isa.js";
 
 /**
  * Refuse with this module's typed error, for {@link makeCallerEscaper}. A
@@ -212,7 +212,7 @@ export function build999(spec: Build999Spec): X12Interchange {
       "00501", // ISA-12 - interchange version
       interchangeControlNumber, // ISA-13
       "0", // ISA-14 - ack requested (0 = no inbound TA1)
-      usageIndicator, // ISA-15
+      padIsaUsageIndicator(usageIndicator, "build999", refuseSpec), // ISA-15
       componentSeparator, // ISA-16 - component separator
     ].join(elementSeparator) + segmentTerminator;
 

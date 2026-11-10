@@ -38,7 +38,7 @@
 
 import { requireCallerArray } from "../../builder/caller-array.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
-import { padIsaElement } from "../../builder/caller-isa.js";
+import { padIsaElement, padIsaUsageIndicator } from "../../builder/caller-isa.js";
 import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
@@ -372,7 +372,7 @@ export function build276(spec: Build276Spec): X12Interchange {
       "00501",
       interchangeControlNumber,
       "0",
-      usageIndicator,
+      padIsaUsageIndicator(usageIndicator, "build276", refuseSpec), // ISA-15
       componentSeparator,
     ].join(elementSeparator) + segmentTerminator;
 

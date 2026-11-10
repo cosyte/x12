@@ -28,7 +28,7 @@
 
 import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
-import { padIsaElement } from "../../builder/caller-isa.js";
+import { padIsaElement, padIsaUsageIndicator } from "../../builder/caller-isa.js";
 import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
@@ -201,7 +201,7 @@ export function build277RequestForAdditionalInformation(spec: Build277RfaiSpec):
       ),
       interchangeControlNumber,
       "0",
-      envelope.usageIndicator ?? "P",
+      padIsaUsageIndicator(envelope.usageIndicator ?? "P", AT, refuseSpec), // ISA-15
       componentSeparator,
     ].join(elementSeparator) + segmentTerminator;
 

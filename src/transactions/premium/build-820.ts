@@ -45,7 +45,7 @@ import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
-import { padIsaElement } from "../../builder/caller-isa.js";
+import { padIsaElement, padIsaUsageIndicator } from "../../builder/caller-isa.js";
 
 /**
  * Refuse with this module's typed error, for {@link requireCallerArray}. A
@@ -222,7 +222,7 @@ export function build820(spec: Build820Spec): X12Interchange {
       "00501", // ISA-12
       interchangeControlNumber, // ISA-13
       "0", // ISA-14
-      usageIndicator, // ISA-15
+      padIsaUsageIndicator(usageIndicator, "build820", refuseSpec), // ISA-15
       componentSeparator, // ISA-16
     ].join(elementSeparator) + segmentTerminator;
 

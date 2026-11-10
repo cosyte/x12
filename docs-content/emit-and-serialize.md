@@ -39,7 +39,8 @@ Concretely, a builder refuses rather than guesses when:
   sent;
 - a **fixed-width ISA value is longer than its slot** (`senderId` over 15 characters,
   `interchangeDate` over 6), which used to be cut to fit, so the interchange named a sender or a date
-  you never gave. A short value still pads with spaces;
+  you never gave. A short value still pads with spaces, except `usageIndicator` (ISA-15), which must
+  be exactly one character;
 - a slot typed `X12Decimal` is handed a raw `number`, which is how `0.1 + 0.2` used to reach a
   monetary element as `0.30000000000000004`.
 

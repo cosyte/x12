@@ -26,7 +26,7 @@ import { renderCallerValue } from "./caller-value.js";
 import { makeCallerEscaper } from "./caller-string.js";
 import { requireControlNumber } from "./caller-control-number.js";
 import { requireCallerEntries } from "./caller-array.js";
-import { padIsaElement } from "./caller-isa.js";
+import { padIsaElement, padIsaUsageIndicator } from "./caller-isa.js";
 
 /**
  * Refuse with this module's typed error, for {@link makeCallerEscaper}. A
@@ -143,7 +143,7 @@ export function buildInterchange(spec: InterchangeSpec): X12Interchange {
       padIsaElement(version, 5, "ISA-12", "version", "buildInterchange", refuseSpec), // ISA-12
       interchangeControlNumber, // ISA-13
       "0", // ISA-14 - ack requested (0 = no inbound TA1)
-      usageIndicator, // ISA-15
+      padIsaUsageIndicator(usageIndicator, "buildInterchange", refuseSpec), // ISA-15
       componentSeparator, // ISA-16
     ].join(elementSeparator) + segmentTerminator;
 
