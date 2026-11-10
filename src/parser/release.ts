@@ -70,6 +70,53 @@ export function unescapeRelease(
   emit: (w: X12ParseWarning) => void,
   position: X12Position,
 ): string {
+  if (typeof input !== "string") return unescapeNonString(input, delimiters, emit, position);
+  let release = input.indexOf(RELEASE_CHAR);
+  if (release === -1) return input;
+  // Built a run at a time: the text between two release sequences is sliced
+  // whole, never appended a character at a time, so a long value costs one
+  // copy rather than one intermediate string per character.
+  let out = "";
+  let start = 0;
+  while (release !== -1) {
+    if (release + 1 === input.length) {
+      emit(danglingReleaseChar(position));
+      break;
+    }
+    const next = input.charAt(release + 1);
+    if (
+      next === delimiters.element ||
+      next === delimiters.repetition ||
+      next === delimiters.component ||
+      next === delimiters.segment ||
+      next === RELEASE_CHAR
+    ) {
+      // Drop the `?` and keep the byte it releases.
+      out += input.slice(start, release);
+      start = release + 1;
+      release = input.indexOf(RELEASE_CHAR, release + 2);
+    } else {
+      // A `?` before anything else is kept verbatim, and the byte after it is
+      // read on its own, so `??` after it still pairs.
+      release = input.indexOf(RELEASE_CHAR, release + 1);
+    }
+  }
+  return out + input.slice(start);
+}
+
+/**
+ * {@link unescapeRelease} of a value that is not a string, which a JavaScript
+ * caller can pass: read a character at a time, as every value was read before
+ * the run-based reading above, so it answers or throws exactly as it did.
+ *
+ * @internal
+ */
+function unescapeNonString(
+  input: string,
+  delimiters: Delimiters,
+  emit: (w: X12ParseWarning) => void,
+  position: X12Position,
+): string {
   if (!input.includes(RELEASE_CHAR)) return input;
   let out = "";
   let i = 0;
@@ -208,6 +255,39 @@ export function splitWithRelease(input: string, sep: string): string[] {
   if (input.length === 0) return [""];
   if (sep.length !== 1) return input.split(sep);
   if (!input.includes(sep)) return [input];
+  if (typeof input !== "string") return splitNonString(input, sep);
+  if (!input.includes(RELEASE_CHAR)) return input.split(sep);
+  const out: string[] = [];
+  let start = 0;
+  let i = 0;
+  const sepCode = sep.charCodeAt(0);
+  const end = input.length;
+  // Each token is sliced between separators, release sequences kept inside
+  // it, rather than built a character at a time.
+  while (i < end) {
+    const code = input.charCodeAt(i);
+    if (code === RELEASE_CODE && i + 1 < end) {
+      i += 2;
+      continue;
+    }
+    if (code === sepCode) {
+      out.push(input.slice(start, i));
+      start = i + 1;
+    }
+    i += 1;
+  }
+  out.push(input.slice(start));
+  return out;
+}
+
+/**
+ * {@link splitWithRelease} of a value that is not a string, built a character
+ * at a time as every value was before the run-based split, so it answers or
+ * throws exactly as it did.
+ *
+ * @internal
+ */
+function splitNonString(input: string, sep: string): string[] {
   const out: string[] = [];
   let buf = "";
   let i = 0;
@@ -229,4 +309,52 @@ export function splitWithRelease(input: string, sep: string): string[] {
   }
   out.push(buf);
   return out;
+}
+
+/** The UTF-16 code unit of {@link RELEASE_CHAR}. @internal */
+export const RELEASE_CODE = 0x3f;
+
+/**
+ * Where part `index` (0-based) of `text.slice(from, to)` lies when that range is
+ * split on the one-character separator `sep` exactly as
+ * {@link splitWithRelease} splits it: a `?` releases the character after it
+ * when one follows inside the range. The bounds are written to `bounds` and the
+ * answer is whether the part exists; nothing is allocated, so a reader can take
+ * one component of one repetition without splitting the element into arrays.
+ *
+ * @internal
+ */
+export function findPart(
+  text: string,
+  from: number,
+  to: number,
+  sep: string,
+  index: number,
+  bounds: { start: number; end: number },
+): boolean {
+  const sepCode = sep.charCodeAt(0);
+  let part = 0;
+  let start = from;
+  let i = from;
+  while (i < to) {
+    const code = text.charCodeAt(i);
+    if (code === RELEASE_CODE && i + 1 < to) {
+      i += 2;
+      continue;
+    }
+    if (code === sepCode) {
+      if (part === index) {
+        bounds.start = start;
+        bounds.end = i;
+        return true;
+      }
+      part += 1;
+      start = i + 1;
+    }
+    i += 1;
+  }
+  if (part !== index) return false;
+  bounds.start = start;
+  bounds.end = to;
+  return true;
 }

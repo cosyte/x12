@@ -17,6 +17,8 @@ import { pathToFileURL } from "node:url";
 
 import {
   attachment275Text,
+  claim837ISpec,
+  claim837IText,
   claim837PSpec,
   claim837PText,
   remit835Spec,
@@ -51,9 +53,11 @@ function read(getter) {
 
 const remit = remit835Text(0, 10_000);
 const claims = claim837PText(0, 10_000);
+const institutional = claim837IText(0, 10_000);
 const attachment = attachment275Text(0, 4 * 1024 * 1024);
 const remitSpec = remit835Spec(dec, 0, 10_000);
 const claimSpec = claim837PSpec(dec, 0, 10_000);
+const institutionalSpec = claim837ISpec(dec, 0, 10_000);
 
 /** The hottest paths: the largest dense documents read and built, and the large opaque one. */
 const PATHS = [
@@ -78,7 +82,22 @@ const PATHS = [
     what: "837P, 10,000 claims: build837P, then serializeX12",
     run: () => x12.serializeX12(x12.build837P(claimSpec)),
   },
+  {
+    name: "837i-read",
+    what: "837I, 10,000 claims: parseX12, then get837Claims",
+    run: () => read("get837Claims")(institutional),
+  },
+  {
+    name: "837i-build",
+    what: "837I, 10,000 claims: build837I, then serializeX12",
+    run: () => x12.serializeX12(x12.build837I(institutionalSpec)),
+  },
   { name: "275-parse", what: "275, 4 MiB payload: parseX12", run: () => x12.parseX12(attachment) },
+  {
+    name: "275-read",
+    what: "275, 4 MiB payload: parseX12, then get275Attachments",
+    run: () => read("get275Attachments")(attachment),
+  },
 ];
 
 /** Run `fn` until `minMs` have passed, at least three times; return the calls made. */

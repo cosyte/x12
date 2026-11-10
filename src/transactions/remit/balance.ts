@@ -89,7 +89,7 @@
  * position-independent.
  */
 
-import { X12Decimal } from "../../decimal.js";
+import { sumDecimals, type X12Decimal } from "../../decimal.js";
 import {
   BALANCE_INVARIANTS,
   balanceNotEvaluable,
@@ -224,10 +224,7 @@ function sumAmounts(adjustments: readonly X12RemitAdjustment[]): X12Decimal | un
  * @internal
  */
 function sumOptional(terms: readonly (X12Decimal | undefined)[]): X12Decimal | undefined {
-  let acc = X12Decimal.ZERO;
-  for (const term of terms) {
-    if (term === undefined) return undefined;
-    acc = acc.add(term);
-  }
-  return acc;
+  // The partial sums are never seen, so they are kept as one integer rather
+  // than an `X12Decimal` each.
+  return sumDecimals(terms);
 }
