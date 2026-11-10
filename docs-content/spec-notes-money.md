@@ -3,7 +3,6 @@ id: spec-notes-money
 title: Decimal-exact money
 description: "Why every amount decodes as an exact X12Decimal and never a JavaScript number, and how to use one."
 sidebar_label: Decimal-exact money
-sidebar_position: 7
 ---
 
 # Decimal-exact money
@@ -31,7 +30,7 @@ the difference is the money-handling analog of mis-reading a dose.
 > `claim.totalChargeAmount`, `claim.totalPaymentAmount`, every `adjustments[].amount`,
 > `serviceLine.chargeAmount`, `serviceLine.paymentAmount`, and `providerAdjustments[].amount`. It
 > still refuses; it just refuses untyped. Every other `X12Decimal` field refuses typed. See
-> `KNOWN-LIMITATIONS.md`.
+> [KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md).
 
 ## What `X12Decimal` is
 
@@ -262,7 +261,7 @@ Bounds worth reading literally:
 - **It reports a segment that arrived while the loop that would carry its row was open.** An `AMT`
   or `ADX` that reaches a reader with no such loop open is a different loss and is still silent: the
   834's `AMT` with no `HD` open, the 820's `ADX` with no remittance open, and the 835's and 837's
-  `AMT` before any claim or service line. `KNOWN-LIMITATIONS.md` records those.
+  `AMT` before any claim or service line. [KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md) records those.
 - **🩺 It says nothing about whether the amount would have decoded, and this is the bound to read
   literally.** On the `RMR` route the row is refused before the decode is attempted, so the code is
   raised on `RMR****1,234.56~` exactly as on `RMR****150.00*150.00~`, with no
@@ -310,8 +309,8 @@ is exact rather than float-approximate:
 On a mismatch the reader emits `X12_835_REMIT_BALANCE_MISMATCH` and **preserves the inbound values
 verbatim**. It never rebalances. The `build835` builder reuses those same authoritative validators
 and **refuses** to emit an out-of-balance remit (`Remit835BuildError`), so the read guard and the emit
-guard share one source of truth. See [Tolerance tiers](./spec-notes-tolerance) for the warn-never-fix
-rule, and the [Cookbook](./cookbook) for the full posting recipe.
+guard share one source of truth. See [Tolerance tiers](./spec-notes-tolerance.md) for the warn-never-fix
+rule, and [Post an 835 remittance](./post-a-remittance.md) for the full posting recipe.
 
 ## Sign discipline
 

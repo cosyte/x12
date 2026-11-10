@@ -13,24 +13,45 @@
     },
     {
       "type": "category",
-      "label": "Core concepts",
-      "collapsed": false,
+      "label": "How-to guides",
       "items": [
-        "spec-notes-envelope",
-        "spec-notes-transaction-sets",
-        "spec-notes-tolerance",
-        "spec-notes-money"
+        "post-a-remittance",
+        "route-claim-status-responses",
+        "answer-an-eligibility-inquiry",
+        "read-inquiries",
+        "read-and-build-claims",
+        "read-a-services-review",
+        "read-an-enrollment-roster",
+        "read-acknowledgments",
+        "answer-an-attachment-request",
+        "emit-and-serialize",
+        "profiles",
+        "handle-warnings",
+        "read-dates"
       ]
     },
     {
       "type": "category",
-      "label": "Guides",
-      "items": ["emit-and-serialize", "profiles", "cookbook"]
+      "label": "Explanation",
+      "items": [
+        "spec-notes-envelope",
+        "spec-notes-transaction-sets",
+        "spec-notes-tolerance",
+        "spec-notes-money",
+        "keeping-phi-out-of-logs"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Reference",
+      "items": ["warning-and-error-codes"]
     },
     {
       "type": "category",
       "label": "Troubleshooting",
       "items": ["troubleshooting"]
-    }
+    },
+    "testing-and-quality",
+    "performance"
   ]
 }

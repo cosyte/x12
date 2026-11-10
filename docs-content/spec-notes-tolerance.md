@@ -3,7 +3,6 @@ id: spec-notes-tolerance
 title: Tolerance tiers and warning codes
 description: "How the lenient parser tolerates deviations, records each as a stable-coded warning, and keeps the raw value."
 sidebar_label: Tolerance tiers
-sidebar_position: 6
 ---
 
 # Tolerance tiers and warning codes
@@ -38,7 +37,7 @@ transaction** is a Tier-2 deviation (`X12_UNEXPECTED_SEGMENT`): it is warned abo
 `ix.orphanSegments`, and re-emitted at the structural `anchor` recorded with it, so both the value and
 the warning do survive the round trip. What it is not is **decoded**: no `get*` reader will see it,
 because retention and placement are not promotion into the typed tree. See
-[Line endings between segments](./spec-notes-envelope) for the full list of what the emit does not
+[Line endings between segments](./spec-notes-envelope.md#line-endings-between-segments) for the full list of what the emit does not
 reproduce, and
 [KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md) for the canonical
 statement of the boundary.
@@ -49,7 +48,7 @@ Every warning lands on the returned model's `.warnings` array (`ix.warnings`, `r
 `sub.warnings`, …), each carrying a stable `code` (from `WARNING_CODES`), a `message` that is a
 **lookup into a frozen registry** rather than anything built from your document, and a `position`.
 No warning factory takes a value parameter, so no element can reach a `message`; the values stay on
-the model. See [Keeping PHI out of logs](./troubleshooting). You can also stream them live via
+the model. See [Keeping PHI out of logs](./keeping-phi-out-of-logs.md). You can also stream them live via
 the `onWarning` callback:
 
 ```ts runnable
@@ -118,5 +117,5 @@ parseX12(raw, { strict: true }); // throws X12ParseError (X12_PRE_005010)
 The 835 balance invariants, the 837 HL parent-pointer integrity, and the serializer's envelope-count
 reconciliation all follow the same rule: on a mismatch they **surface a warning and preserve the
 inbound values verbatim**. The library will not "fix" a payer artifact for you. Gate your own
-posting/adjudication on the warning. See [Decimal-exact money](./spec-notes-money) for the 835 balance
-equations, and [Troubleshooting](./troubleshooting) for the full symptom → cause table.
+posting/adjudication on the warning. See [Decimal-exact money](./spec-notes-money.md) for the 835 balance
+equations, and [Troubleshooting](./troubleshooting.md) for the full symptom → cause table.

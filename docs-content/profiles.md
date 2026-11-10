@@ -1,12 +1,11 @@
 ---
 id: profiles
-title: Trading-partner profiles
+title: Describe a trading partner with a profile
 description: "How a trading-partner profile records a sender's deviations as typed, fixture-grounded data instead of silent leniency."
-sidebar_label: Trading-partner profiles
-sidebar_position: 9
+sidebar_label: Describe a partner with a profile
 ---
 
-# Trading-partner profiles
+# Describe a trading partner with a profile
 
 Two senders can both be conformant and still hand you different bytes. A clearinghouse adds a `REF`
 the base guide never mentions; a plan declares a backslash where everyone else declares a colon; a
@@ -14,7 +13,7 @@ payer mandates an element the implementation guide calls situational. A **profil
 `@cosyte/x12` writes that down: as typed, fixture-grounded data you can read, rather than as silent
 leniency buried in the parser.
 
-> Every interchange below is **synthetic**: fabricated names, obviously-fake ids, pre-2024 control
+> Every interchange below is **synthetic**: fabricated names, invented ids, made-up control
 > numbers. X12 healthcare data is PHI; a fixture must never hold a real one.
 
 ## Descriptive, not prescriptive
@@ -140,7 +139,7 @@ none, and `getDefaultProfile()` reads it back. That default is the only mutable 
 it is not shared across worker threads and is not reset between test files, so prefer passing the
 profile explicitly and clean up in teardown if you do register one.
 
-## Separating the warnings you expect from the ones you do not
+## Separate the warnings you expect from the ones you do not
 
 The one behavioral hook a profile carries is `partitionWarnings()`. It splits a parse's warnings
 against the union of every quirk's `expectedWarnings`, so an integration can alert on the genuinely
@@ -189,8 +188,8 @@ too: it usually means the convention you documented did not appear in this file.
 
 ## Where to go next
 
-- [Tolerance tiers and warning codes](./spec-notes-tolerance): what the parser tolerates before a
+- [Tolerance tiers and warning codes](./spec-notes-tolerance.md): what the parser tolerates before a
   profile is involved at all, and the codes `expectedWarnings` names.
-- [Building and serializing X12](./emit-and-serialize): the emit side, which profiles do not touch.
-- [Troubleshooting and known limitations](./troubleshooting): the bounds on the conformance judgment,
+- [Build and serialize X12](./emit-and-serialize.md): the emit side, which profiles do not touch.
+- [Troubleshooting and known limitations](./troubleshooting.md): the bounds on the conformance judgment,
   and what a refusal message may and may not contain.

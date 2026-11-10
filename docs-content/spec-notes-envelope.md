@@ -3,7 +3,6 @@ id: spec-notes-envelope
 title: The envelope and loop model
 description: "The nested envelopes and the loop structure inside a transaction, which every reader in this library follows."
 sidebar_label: Envelope and loop model
-sidebar_position: 4
 ---
 
 # The envelope and loop model
@@ -44,7 +43,7 @@ const raw =
 
 const ix = parseX12(raw);
 
-ix.isa.elements[6].trim(); // => "MEDPAY"
+ix.isa.elements[6]?.trim(); // => "MEDPAY"
 ix.groups[0]?.gs.elements[1]; // => "HP"
 ix.groups[0]?.transactions[0]?.st.elements[1]; // => "835"
 ```
@@ -100,7 +99,7 @@ terminator, which the terminator scan still reads as an escape, so that segment 
 after it and you get `X12_MISSING_SE`.
 
 **🩺 On the emit side a `?` in ANY of the four roles is REFUSED, and that is the asymmetry: lenient
-on parse, strict on emit.** Every builder (`buildInterchange`, the seven per-TR3 domain builders,
+on parse, strict on emit.** Every builder (`buildInterchange`, each domain builder,
 `build999`, and `buildTA1`) refuses such a set with its own existing typed error, naming the role.
 The reason is that one byte cannot both separate and escape on the way out either, and there is
 nothing a caller can do about it at the value level:
@@ -131,7 +130,7 @@ model recorded `~` and `serializeX12` emitted none.
 **It counts UTF-16 code units, not bytes**, so a single-code-unit character that is several bytes on
 the wire (`"\u00a7"`, or the smart quote `"\u2019"` a companion-guide PDF gives you instead of `'`)
 still builds and still displaces every ISA position after it. Declare delimiters from the basic
-single-byte set. All of it is recorded in `KNOWN-LIMITATIONS.md`.
+single-byte set. All of it is recorded in [KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md).
 
 ## Line endings between segments
 
@@ -216,7 +215,7 @@ independent witness. That is why the six cases are enumerated here rather than l
 
 So for a file whose only irregularity is pretty-printing, the round trip is safe to build on for data
 and not for a byte-level diff, and diffing your emit against `serializeX12(parseX12(source))` is the
-way to ignore the line-break noise. [Building and serializing X12](./emit-and-serialize) covers the
+way to ignore the line-break noise. [Build and serialize X12](./emit-and-serialize.md) covers the
 emit side as a whole: composing an interchange from nothing, what a builder refuses, and the
 `{ specClean: true }` reconciliation.
 
@@ -355,6 +354,40 @@ getSegmentValue(hi!, "01-2", ix.delimiters); // => "J45.50"
 getSegmentValue(hi!, "02-1", ix.delimiters); // => "ABF"
 ```
 
+### Values a reader publishes unescaped
+
+The typed readers publish a value after reversing its release escapes, while the segment's
+`elements` and `raw` stay the verbatim framed surface. Two of those are worth knowing by name.
+
+**`parseTA1`'s five decoded fields are post-`?`-unescape**, so a released
+reassociation key comes back as the value rather than the bytes; `ta1.raw.elements` is still the
+verbatim byte surface. If you were applying `unescapeRelease` to those fields yourself, drop it.
+
+The same correction reaches `ST-03`. **`implementationConventionReference` is post-`?`-unescape in
+every typed reader that publishes it** (`get837Claims`, `get277Status`, `get277CADisposition`,
+`get278Request`, and `get278Response`), so an `ST-03` framed as `A?*B` now publishes `A*B` where it
+used to publish the escape. `tx.st.elements` is unchanged and is still the verbatim framed surface.
+**What DECIDES an outcome did not move:** the 837 variant lookup, the `transactionType` choice
+between `claim-status` and `claim-acknowledgment`, and `get277CADisposition`'s admission gate all
+still key on the raw element text, so
+no document changes variant or admission because of this. The two can differ only where the sender
+escaped a byte the ISA declared as a delimiter, and the difference is one-way: nothing that
+resolved or was admitted before stops doing so. Nothing is trimmed or case-folded, and a dangling
+`?` in `ST-03` still raises no warning on these readers.
+
+**So the published reference can name a guide the reader did not resolve to, and nothing warns about
+the divergence.** With `componentSeparator: "X"` and an `ST-03` framed `005010?X222A1`,
+`submission.implementationConventionReference` reads `005010X222A1` while `submission.variant` came
+from the `SVx` fallback. **"Nothing warns" is not the boundary of it:** on the same delimiters a body
+with no `SVx` publishes that same reference with `variant: "unknown"` and raises
+`X12_837_UNKNOWN_VARIANT`, and a body naming more than one variant raises
+`X12_837_AMBIGUOUS_VARIANT`. Each time, the code that fired says `ST-03` named no identifier this
+reader recognizes while the model field holds one it does. **`X12_837_UNKNOWN_VARIANT` therefore no
+longer tells you to read the reference off the model.** On a 277 the model can publish
+`005010X214` while `transactionType` is `claim-status` and `get277CADisposition` returns
+`undefined`. Through `0.0.15` the published value WAS the keyed value, so the model could not
+disagree with itself. **Gate on `variant` / `transactionType`, never on the published reference.**
+
 ## Binary segments: BDS and BIN
 
 Two segments carry binary data, such as an attachment: `BDS` (BDS-01 filter, BDS-02 length, BDS-03
@@ -406,7 +439,7 @@ Limits worth knowing before you rely on it:
   data. For a segment that parsed with none of those warnings it already equals the data's octet
   count, so the round trip above holds in `{ specClean: true, recomputeCounts: true }` too.
 
-`KNOWN-LIMITATIONS.md` carries the full account.
+[KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md) carries the full account.
 
 ## Loops: the repeating sub-structures
 
@@ -440,4 +473,4 @@ Loop2300.id; // => "2300"
 Many claims transactions (837, 271, 277, 278) also nest an **HL hierarchy**: an explicit
 parent-pointer tree (`HL` segments) layered on top of the loops. The readers validate those pointers
 for integrity and **never silently re-number** a broken one; see
-[The tolerance tiers](./spec-notes-tolerance).
+[The tolerance tiers](./spec-notes-tolerance.md).
