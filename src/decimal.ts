@@ -68,6 +68,12 @@
  */
 const X12_DECIMAL_RE = /^([+-])?(\d*)(?:\.(\d*))?$/u;
 
+/**
+ * The body `sumDecimals` runs, set by the class's static block (declared here,
+ * before the class, so the block can assign it). @internal
+ */
+let sumBody: (terms: readonly (X12Decimal | undefined)[]) => X12Decimal | undefined;
+
 /** The message every method throws for an object that is not an `X12Decimal`. @internal */
 const TAMPERED = "X12Decimal instance has no internal state - was it tampered with?";
 
@@ -426,6 +432,43 @@ export class X12Decimal {
     const magnitude = pad === 0 ? d.#scaled : d.#scaled * powTen(pad);
     return d.#signum === -1 ? -magnitude : magnitude;
   }
+
+  static {
+    // The body of `sumDecimals`, inside the class so it can read the private
+    // fields, and kept off the class itself so it adds nothing to the public
+    // surface.
+    sumBody = (terms) => {
+      if (terms.length === 0) return X12Decimal.ZERO;
+      let total = 0n;
+      let scale = 0;
+      for (let i = 0; i < terms.length; i += 1) {
+        const term = terms[i];
+        if (term === undefined) return undefined;
+        const d = X12Decimal.#checked(term);
+        if (d.#scale > scale) {
+          total *= powTen(d.#scale - scale);
+          scale = d.#scale;
+        }
+        total += X12Decimal.#signedAt(d, scale);
+      }
+      return X12Decimal.fromBigInt(total, scale);
+    };
+  }
+}
+
+/**
+ * `terms` added in order, starting from `X12Decimal.ZERO`, or `undefined` the
+ * moment one of them is `undefined`: exactly
+ * `terms.reduce((acc, t) => acc.add(t), X12Decimal.ZERO)` with that early
+ * return, the same value, scale and text and the same `TypeError` for a term
+ * that is not an `X12Decimal`, but without a new instance and a rendered text
+ * for every partial sum. An empty list answers `X12Decimal.ZERO` itself.
+ *
+ * Not exported from the package: the balance checks are its only caller.
+ * @internal
+ */
+export function sumDecimals(terms: readonly (X12Decimal | undefined)[]): X12Decimal | undefined {
+  return sumBody(terms);
 }
 
 /** `10n ** BigInt(n)` for non-negative `n`. @internal */

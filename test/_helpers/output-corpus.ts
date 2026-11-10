@@ -907,6 +907,24 @@ function writtenInputs(): CorpusInput[] {
     wrap(["SVC*HC:99213:25:59:XU:GT:desc?:x*100.00*80.00**1", "CAS*CO*45*10.00*1*253*2.00*1"]),
   );
   add("release:repeats", wrap(["HI*ABK:J45^ABF:I10^ABF:E11?^9*BK:1", "HI*^^", "HI*:^:"]));
+  // The 835 balance sums: terms of mixed scale, lower first, and a term that does not decode.
+  const bpr =
+    "BPR*I*300.50*C*ACH*CCP*01*999999999*DA*123456*1512345678**01*999999999*DA*123456*20260601";
+  const remit = (cas: string, svcCas: string): string[] => [
+    bpr,
+    "TRN*1*12345*1512345678",
+    "N1*PR*PAYER ONE",
+    "N1*PE*CLINIC ONE*XX*1234567893",
+    "LX*1",
+    "CLP*PCN1*1*160.50*150*0*12*ICN1",
+    cas,
+    "SVC*HC:99213*160.50*150",
+    svcCas,
+    "CLP*PCN2*1*150.5*150.50*0*12*ICN2",
+    "PLB*1234567893*20261231*WO:1*0",
+  ];
+  add("remit:mixed-scales", wrap(remit("CAS*CO*45*10**253*0.50", "CAS*CO*45*10**253*.5")));
+  add("remit:undecodable-term", wrap(remit("CAS*CO*45*1O**253*0.50", "CAS*CO*45*10**253*X")));
   // Degenerate delimiter sets: a role that is the release character.
   add(
     "degenerate:element",

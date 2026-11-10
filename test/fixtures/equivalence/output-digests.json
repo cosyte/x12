@@ -218,6 +218,8 @@
   "input:written:release:empties": "2a1be736f3a2438a15707facd873fc1e53dae50a5e8ddbe1a4cf424cdd76c7d9:65",
   "input:written:release:composites": "43dedd3c7f97b448f71377c79e1cf78062034a3baeda066d3683b909b8ea2770:57",
   "input:written:release:repeats": "5c077e9b75e7375c4965a73941a1eb50bea281ba5eaf9d3dfbddea7961202660:52",
+  "input:written:remit:mixed-scales": "dfdbd3531261e4219b724a7f297cef6d885245de07077b383f5873053932c158:131",
+  "input:written:remit:undecodable-term": "5c5bc0c21869769f5cc98133fae0d6764ec72ad49dc1fa3f8e30f9ce27e632d6:131",
   "input:written:degenerate:element": "98e4223e01d6e80d5a2c447888f5d8091756a842d5bcc227d1e4b0a7aca2d966:55",
   "input:written:degenerate:component": "edd2e361e7a34474075f116957d2c90b8b2d9183123d3ef6c21e2e23cd3d8628:48",
   "input:written:degenerate:repetition": "91e36327ca50207b67ed9ce32346b80e1d5e7a5be66731230e92fc73e80a26b2:49",
