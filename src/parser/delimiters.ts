@@ -48,8 +48,6 @@ export const ISA_MIN_LENGTH = 106;
  * // The element separator is always the 4th byte of a well-formed ISA:
  * raw.charAt(DELIMITER_POSITIONS.element); // e.g. "*"
  * ```
- *
- * @internal
  */
 export const DELIMITER_POSITIONS = {
   element: 3,

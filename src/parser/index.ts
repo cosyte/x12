@@ -57,7 +57,7 @@ import type { X12Interchange, X12ParseOptions } from "./types.js";
  */
 export function parseX12(raw: string | Buffer): X12Interchange;
 export function parseX12(raw: string | Buffer, options: X12ParseOptions): X12Interchange;
-/** @internal - implementation signature; overload signatures above carry the public JSDoc + @example. */
+// The implementation signature; the overload signatures above carry the public JSDoc and @example.
 export function parseX12(raw: string | Buffer, options: X12ParseOptions = {}): X12Interchange {
   // Step 1: Buffer → string (latin1 preserves bytes 1:1; ISA envelope is
   // ASCII-only by spec, so this is byte-faithful through the parser).

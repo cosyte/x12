@@ -119,9 +119,17 @@ export function aaaProvenanceIsComplete(meta: AaaCodeListMeta): boolean {
  * Bundle `codes` under `meta`, DROPPING every description unless the
  * four-part record is complete and permits it. The refusal is the whole
  * point: a description cannot reach a consumer on the strength of terms
- * nobody recorded, however it got into the source table.
+ * nobody recorded, however it got into the source table. The package builds
+ * its two bundled snapshots, {@link AAA_REJECT_REASON_CODES} and
+ * {@link AAA_FOLLOW_UP_ACTION_CODES}, through this function.
  *
- * @internal - exported for the two snapshots below and their tests.
+ * @example
+ * ```ts
+ * import { AAA_REJECT_REASON_CODES, bundleAaaCodes } from "@cosyte/x12";
+ * // The bundled record does not permit descriptions, so every one is dropped.
+ * const snapshot = bundleAaaCodes(AAA_REJECT_REASON_CODES.meta, { ZZ: "An invented description" });
+ * Object.keys(snapshot.codes).length; // 0
+ * ```
  */
 export function bundleAaaCodes(
   meta: AaaCodeListMeta,
