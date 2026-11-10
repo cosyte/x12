@@ -2901,6 +2901,63 @@ ISA-15 - usage indicator (`P` production, `T` test). Default `"P"`.
 
 ***
 
+### Build271HeaderSpec
+
+The BHT Beginning of Hierarchical Transaction header, which 005010X279A1
+requires right after the ST of every 271. Every element but BHT-03 has a
+builder default, so a caller with nothing to say about the header can omit
+it; the defaults are library constants or values already on the envelope.
+
+BHT-03 has no default, because the only right value is one the caller
+holds: the BHT-03 of the 270 being answered. Omitted, it is written empty
+and nothing is invented in its place.
+
+Refused via `X12_271_BUILD_INVALID_SPEC`: an empty BHT-01, BHT-02, BHT-04 or
+BHT-05, whether given as `""` or reached through an empty default (an empty
+`groupDate` or `groupTime` on the envelope). Codes are written as given and
+not checked against the guide's code lists.
+
+#### Example
+
+```ts
+import type { Build271HeaderSpec } from "@cosyte/x12";
+const h: Build271HeaderSpec = { referenceId: "REQ-0001" };
+```
+
+#### Properties
+
+##### date?
+
+> `readonly` `optional` **date?**: `string`
+
+BHT-04 - creation date CCYYMMDD. Default: the group date (GS-04).
+
+##### hierarchicalStructureCode?
+
+> `readonly` `optional` **hierarchicalStructureCode?**: `string`
+
+BHT-01 - hierarchical structure code. Default `"0022"`.
+
+##### purposeCode?
+
+> `readonly` `optional` **purposeCode?**: `string`
+
+BHT-02 - transaction set purpose code. Default `"11"` (response); `"06"` is confirmation.
+
+##### referenceId?
+
+> `readonly` `optional` **referenceId?**: `string`
+
+BHT-03 - submitter transaction identifier, the BHT-03 of the 270 being answered. No default.
+
+##### time?
+
+> `readonly` `optional` **time?**: `string`
+
+BHT-05 - creation time HHMM. Default: the group time (GS-05).
+
+***
+
 ### Build271InformationReceiverSpec
 
 One information receiver (Loop 2000B / 2100B) - the provider that
@@ -3151,8 +3208,8 @@ EB-03 - a single Service Type Code.
 
 ### Build271Spec
 
-The complete spec for "./build-271.js".build271: the envelope plus
-the nested informationSources → receivers → subscribers → (dependents)
+The complete spec for "./build-271.js".build271: the envelope, the
+optional BHT header, and the nested informationSources → receivers → subscribers → (dependents)
 tree the builder walks depth-first to compute the HL spine.
 
 #### Example
@@ -3188,6 +3245,12 @@ const ix = build271(spec);
 > `readonly` **envelope**: [`Build271EnvelopeSpec`](#build271envelopespec)
 
 Interchange + group + transaction identity.
+
+##### header?
+
+> `readonly` `optional` **header?**: [`Build271HeaderSpec`](#build271headerspec)
+
+The BHT header. Every element but BHT-03 defaults; the whole object may be omitted.
 
 ##### informationSources
 
@@ -26611,6 +26674,10 @@ string comparisons for consumers.
 
 > `readonly` **X12\_271\_AAA\_UNKNOWN\_CODE**: `"X12_271_AAA_UNKNOWN_CODE"` = `"X12_271_AAA_UNKNOWN_CODE"`
 
+##### X12\_271\_HEADER\_ABSENT
+
+> `readonly` **X12\_271\_HEADER\_ABSENT**: `"X12_271_HEADER_ABSENT"` = `"X12_271_HEADER_ABSENT"`
+
 ##### X12\_275\_ATTACHMENT\_ABSENT
 
 > `readonly` **X12\_275\_ATTACHMENT\_ABSENT**: `"X12_275_ATTACHMENT_ABSENT"` = `"X12_275_ATTACHMENT_ABSENT"`
@@ -27732,6 +27799,10 @@ Refused via "./build-errors.js".Eligibility271BuildError:
   no subscribers → `X12_271_BUILD_INVALID_HIERARCHY`.
 - An over-long (\>9 char) interchange control number →
   `X12_271_BUILD_INVALID_SPEC`.
+- An empty BHT-01, BHT-02, BHT-04 or BHT-05, given or defaulted →
+  `X12_271_BUILD_INVALID_SPEC`.
+
+The BHT comes from `spec.header`; see "./build-271-types.js".Build271HeaderSpec for its defaults.
 
 #### Parameters
 
@@ -29350,6 +29421,37 @@ import { decodeSegment, elementValue } from "@cosyte/x12";
 declare const seg: ReturnType<typeof decodeSegment>;
 declare const delim: import("./types.js").Delimiters;
 elementValue(seg, 3, delim); // verbatim text of element 3, or "".
+```
+
+***
+
+### eligibility271HeaderAbsent()
+
+> **eligibility271HeaderAbsent**(`position`): [`X12ParseWarning`](#x12parsewarning)
+
+Build an `X12_271_HEADER_ABSENT` warning. Raised by `get271Eligibility` when
+the transaction set carries no BHT, which 005010X279A1 requires after the ST
+of every 271. Nothing stands in for it on the reading.
+
+The reader anchors it at the ST (`segmentIndex: 0`), because an absent
+segment has no position of its own. It takes a position and nothing else.
+
+#### Parameters
+
+##### position
+
+[`X12Position`](#x12position)
+
+#### Returns
+
+[`X12ParseWarning`](#x12parsewarning)
+
+#### Example
+
+```ts
+import { eligibility271HeaderAbsent } from "@cosyte/x12";
+const w = eligibility271HeaderAbsent({ segmentIndex: 0, transactionIndex: 0 });
+w.code; // "X12_271_HEADER_ABSENT"
 ```
 
 ***

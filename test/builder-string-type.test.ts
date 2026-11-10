@@ -285,6 +285,11 @@ describe("builder element escaping: the source gate", () => {
   });
 
   it("pins the invocation count, because the first draft published a line count", () => {
+    // 576 invocations on 538 lines, counted comment-stripped on this tree with
+    // `ctx.esc(...)` included. The 271 BHT added the difference from 574 on
+    // 536: its BHT-03, and the one helper every required BHT element goes
+    // through.
+    //
     // 574 invocations on 536 lines, counted comment-stripped on this tree with
     // `ctx.esc(...)` included. The 837 composite joiner added the difference
     // from 573 on 535: it calls `esc` through `Array.from` rather than handing
@@ -333,8 +338,8 @@ describe("builder element escaping: the source gate", () => {
           .filter((l) => /\besc\(/u.test(l)).length,
       0,
     );
-    expect(invocations).toBe(574);
-    expect(lines).toBe(536);
+    expect(invocations).toBe(576);
+    expect(lines).toBe(538);
     expect(invocations).toBeGreaterThan(lines);
   });
 

@@ -23,6 +23,11 @@
  * have a recorded source; an element past them warns and is never assigned a
  * meaning. The segments stay on `tx.segments` verbatim exactly as before.
  *
+ * **The BHT header is checked for, not decoded.** 005010X279A1 requires one
+ * after the ST of every 271; a transaction set with none raises
+ * `X12_271_HEADER_ABSENT` at the ST. A BHT that is present stays on
+ * `tx.segments` verbatim.
+ *
  * Known limitations (documented in CHANGELOG):
  * - **HSD health-service-delivery** detail inside Loop 2110 is not
  *   destructured (the EB benefit line carries the headline fields).
@@ -52,6 +57,7 @@ import {
   aaaRejectReasonAbsent,
   aaaSegmentMalformed,
   aaaUnknownCode,
+  eligibility271HeaderAbsent,
   type X12AaaLevelContext,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
@@ -146,6 +152,9 @@ const AAA_FOLLOW_UP_ACTION_ELEMENT = 4;
  */
 const IMPLEMENTED_GUIDES_271 = implementedGuides("271");
 
+/** Where a warning about the transaction set as a whole is anchored: its ST. @internal */
+const ST_POSITION: X12Position = Object.freeze({ segmentIndex: 0, transactionIndex: 0 });
+
 /**
  * Extract a typed {@link X12Eligibility} from a 271 transaction set. Pure
  * function - no I/O, no global state. Returns `undefined` only when the
@@ -180,6 +189,13 @@ export function get271Eligibility(
   const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_271);
   if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
+  // 005010X279A1 requires a BHT after the ST of every 271. One that is absent
+  // is warned at the ST and nothing stands in for it. A BHT sent anywhere in
+  // the body counts, even with empty elements: those are the sender's.
+  const segments = body as readonly (X12Segment | null | undefined)[];
+  if (!segments.some((seg) => seg?.id === "BHT")) {
+    warnings.push(eligibility271HeaderAbsent(ST_POSITION));
+  }
 
   const hierarchies: X12Hl[] = [];
   const hlIndex: Map<string, X12Hl> = new Map();

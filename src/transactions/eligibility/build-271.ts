@@ -23,7 +23,8 @@
  *
  * Output shape: a complete {@link X12Interchange} wrapping a single GS..GE
  * functional group (GS-01 `"HB"`) containing a single ST..SE 271
- * transaction set (ST-03 `005010X279A1`), spec-clean and round-trippable
+ * transaction set (ST-03 `005010X279A1`) that opens with the BHT the guide
+ * requires after the ST, spec-clean and round-trippable
  * through {@link parseX12}. The builder emits segments in TR3 loop order so
  * a well-formed spec round-trips through `get271Eligibility`
  * field-for-field.
@@ -96,6 +97,12 @@ const X12_271_FUNCTIONAL_ID = "HB";
 /** GS-07 standards agency code - `X` for ASC X12. @internal */
 const X12_AGENCY_CODE = "X";
 
+/** BHT-01 default: the 271's hierarchical structure code. @internal */
+const BHT_STRUCTURE_CODE = "0022";
+
+/** BHT-02 default: `11` is Response, which is what a 271 is (`06`, Confirmation, is the other). @internal */
+const BHT_PURPOSE_RESPONSE = "11";
+
 /** HL-03 level codes for the spine the builder computes. @internal */
 const HL_LEVEL = { SOURCE: "20", RECEIVER: "21", SUBSCRIBER: "22", DEPENDENT: "23" } as const;
 
@@ -110,6 +117,11 @@ const MAX_PROCEDURE_MODIFIERS = 4;
  *   no subscribers → `X12_271_BUILD_INVALID_HIERARCHY`.
  * - An over-long (>9 char) interchange control number →
  *   `X12_271_BUILD_INVALID_SPEC`.
+ * - An empty BHT-01, BHT-02, BHT-04 or BHT-05, given or defaulted →
+ *   `X12_271_BUILD_INVALID_SPEC`.
+ *
+ * The BHT comes from `spec.header`; see {@link
+ * "./build-271-types.js".Build271HeaderSpec} for its defaults.
  *
  * @example
  * ```ts
@@ -251,7 +263,7 @@ export function build271(spec: Build271Spec): X12Interchange {
       componentSeparator,
     ].join(elementSeparator) + segmentTerminator;
 
-  // ---- GS / ST ----------------------------------------------------------
+  // ---- GS / ST / BHT ----------------------------------------------------
 
   const groupDate = envelope.groupDate ?? expandYY(envelope.interchangeDate);
   const groupTime = envelope.groupTime ?? envelope.interchangeTime;
@@ -273,9 +285,25 @@ export function build271(spec: Build271Spec): X12Interchange {
   const stControlNumber = envelope.transactionSetControlNumber;
   const st = seg(["ST", "271", esc(stControlNumber), X279A1_VERSION_RELEASE]);
 
+  const header = spec.header ?? {};
+  const bht = seg([
+    "BHT",
+    requiredBhtElement(
+      header.hierarchicalStructureCode,
+      BHT_STRUCTURE_CODE,
+      "BHT-01",
+      "hierarchicalStructureCode",
+      esc,
+    ),
+    requiredBhtElement(header.purposeCode, BHT_PURPOSE_RESPONSE, "BHT-02", "purposeCode", esc),
+    esc(header.referenceId ?? ""),
+    requiredBhtElement(header.date, groupDate, "BHT-04", "date", esc),
+    requiredBhtElement(header.time, groupTime, "BHT-05", "time", esc),
+  ]);
+
   // ---- Body segments - emit the computed HL spine depth-first -----------
 
-  const body: string[] = [];
+  const body: string[] = [bht];
   const hlCounter: HlCounter = { next: 1 };
   for (const source of spec.informationSources) {
     emitSource(source, body, ctx, hlCounter);
@@ -686,6 +714,29 @@ function emitDate(
   body.push(
     ctx.seg(["DTP", ctx.esc(date.qualifier), ctx.esc(date.formatQualifier), ctx.esc(date.value)]),
   );
+}
+
+/**
+ * One BHT element the guide requires, escaped: the caller's value, else the
+ * default. An empty result is refused rather than written, because a blank
+ * required element is a header no trading partner accepts, and an explicit
+ * `""` most likely meant "use the default". The message names the element and
+ * the field, never the value. @internal
+ */
+function requiredBhtElement(
+  value: string | undefined,
+  fallback: string,
+  element: string,
+  field: string,
+  esc: (value: string) => string,
+): string {
+  const escaped = esc(value ?? fallback);
+  if (escaped === "") {
+    refuseSpec(
+      `build271: ${element} (header.${field}) is empty; give it a value or leave it out for the default.`,
+    );
+  }
+  return escaped;
 }
 
 // ---------------------------------------------------------------------------

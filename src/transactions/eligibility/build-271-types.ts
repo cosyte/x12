@@ -77,6 +77,40 @@ export interface Build271EnvelopeSpec {
 }
 
 /**
+ * The BHT Beginning of Hierarchical Transaction header, which 005010X279A1
+ * requires right after the ST of every 271. Every element but BHT-03 has a
+ * builder default, so a caller with nothing to say about the header can omit
+ * it; the defaults are library constants or values already on the envelope.
+ *
+ * BHT-03 has no default, because the only right value is one the caller
+ * holds: the BHT-03 of the 270 being answered. Omitted, it is written empty
+ * and nothing is invented in its place.
+ *
+ * Refused via `X12_271_BUILD_INVALID_SPEC`: an empty BHT-01, BHT-02, BHT-04 or
+ * BHT-05, whether given as `""` or reached through an empty default (an empty
+ * `groupDate` or `groupTime` on the envelope). Codes are written as given and
+ * not checked against the guide's code lists.
+ *
+ * @example
+ * ```ts
+ * import type { Build271HeaderSpec } from "@cosyte/x12";
+ * const h: Build271HeaderSpec = { referenceId: "REQ-0001" };
+ * ```
+ */
+export interface Build271HeaderSpec {
+  /** BHT-01 - hierarchical structure code. Default `"0022"`. */
+  readonly hierarchicalStructureCode?: string;
+  /** BHT-02 - transaction set purpose code. Default `"11"` (response); `"06"` is confirmation. */
+  readonly purposeCode?: string;
+  /** BHT-03 - submitter transaction identifier, the BHT-03 of the 270 being answered. No default. */
+  readonly referenceId?: string;
+  /** BHT-04 - creation date CCYYMMDD. Default: the group date (GS-04). */
+  readonly date?: string;
+  /** BHT-05 - creation time HHMM. Default: the group time (GS-05). */
+  readonly time?: string;
+}
+
+/**
  * A non-person entity (NM1) - the information-source payer (Loop 2100A) or
  * information-receiver provider (Loop 2100B), or a benefit-related entity
  * (Loop 2120C). Mirrors {@link "./types.js".X12EligibilityEntity}.
@@ -428,8 +462,8 @@ export interface Build271InformationSourceSpec {
 }
 
 /**
- * The complete spec for {@link "./build-271.js".build271}: the envelope plus
- * the nested informationSources → receivers → subscribers → (dependents)
+ * The complete spec for {@link "./build-271.js".build271}: the envelope, the
+ * optional BHT header, and the nested informationSources → receivers → subscribers → (dependents)
  * tree the builder walks depth-first to compute the HL spine.
  *
  * @example
@@ -460,6 +494,8 @@ export interface Build271InformationSourceSpec {
 export interface Build271Spec {
   /** Interchange + group + transaction identity. */
   readonly envelope: Build271EnvelopeSpec;
+  /** The BHT header. Every element but BHT-03 defaults; the whole object may be omitted. */
+  readonly header?: Build271HeaderSpec;
   /** Loop 2000A information sources (at least one required). */
   readonly informationSources: readonly Build271InformationSourceSpec[];
 }
