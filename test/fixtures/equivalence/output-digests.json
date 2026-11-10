@@ -218,7 +218,7 @@
   "input:written:release:empties": "2a1be736f3a2438a15707facd873fc1e53dae50a5e8ddbe1a4cf424cdd76c7d9:65",
   "input:written:release:composites": "43dedd3c7f97b448f71377c79e1cf78062034a3baeda066d3683b909b8ea2770:57",
   "input:written:release:repeats": "5c077e9b75e7375c4965a73941a1eb50bea281ba5eaf9d3dfbddea7961202660:52",
-  "input:written:degenerate:element": "1260da2da2691c6448a0d3873cbac996b19f7d9495eaae93c94a4eec6be73470:49",
+  "input:written:degenerate:element": "98e4223e01d6e80d5a2c447888f5d8091756a842d5bcc227d1e4b0a7aca2d966:55",
   "input:written:degenerate:component": "edd2e361e7a34474075f116957d2c90b8b2d9183123d3ef6c21e2e23cd3d8628:48",
   "input:written:degenerate:repetition": "91e36327ca50207b67ed9ce32346b80e1d5e7a5be66731230e92fc73e80a26b2:49",
   "input:written:degenerate:terminator": "a75b8441e40a4d0aa71d64fc3813fd61a1842ec078bfea706747ebfd058aa112:50",
@@ -928,6 +928,6 @@
   "build:drawn:interchange:57": "39e681c1a7032bfb9904c69b4a78ea2d51e3898242a8940acc819678d47bc3b7:38",
   "build:drawn:interchange:58": "cd6a30acb159d8e63f256cea5c7e8e9df11de5a2e8643ec0a08ef47a00b726f1:55",
   "build:drawn:interchange:59": "6461796b5e958ae555ab5bbaeb1ed68a2d0e818d48050f1813917c1ec63b717a:55",
-  "decimal": "b49ada09915f126101a14f4af12d4e250b4d33661a6cfaf002c52823739422b0:368",
-  "odd-values": "9cd1c0630e1aa76d53782741c62d4a838db0766238d1e0b20da97f197b582478:86"
+  "decimal": "c2df7bc2dcd6ac47018e3eff20eb176a759aae76af56eb14feecdf0b354c3d02:372",
+  "odd-values": "e948f9b15cb2b09d8b78a4e3ceb87778092dfe4fee4c703eb7c20d84e06bcb02:110"
 }

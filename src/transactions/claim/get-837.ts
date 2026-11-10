@@ -1123,8 +1123,8 @@ export function get837Claims(
       // A SECOND service segment inside an already-open Loop 2400 is the
       // other silence on this segment, and it is a worse one: the line IS
       // open, so the repeat decodes, and every decoder writes all of the
-      // slots its kind writes. `SV1*HC:99213*8500*…` followed by
-      // `SV1*HC:99999*12*…` left ONE line reading `charge` 12 and
+      // slots its kind writes. `SV1*HC:99213*8500*...` followed by
+      // `SV1*HC:99999*12*...` left ONE line reading `charge` 12 and
       // `procedureCode` 99999 through `0.0.13`, with `warnings: []` - money
       // and a CPT code replaced on the model, on no channel at all.
       // `noteServiceSegment` reports that, at the repeat itself, and changes

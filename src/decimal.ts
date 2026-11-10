@@ -347,9 +347,11 @@ export class X12Decimal {
   public add(other: X12Decimal): X12Decimal {
     const a = X12Decimal.#checked(this);
     const b = X12Decimal.#checked(other);
-    const [aligned, scale] = X12Decimal.#align(a, b);
-    const sum = aligned.aSigned + aligned.bSigned;
-    return X12Decimal.fromBigInt(sum, scale);
+    const scale = Math.max(a.#scale, b.#scale);
+    return X12Decimal.fromBigInt(
+      X12Decimal.#signedAt(a, scale) + X12Decimal.#signedAt(b, scale),
+      scale,
+    );
   }
 
   /**
@@ -366,9 +368,11 @@ export class X12Decimal {
   public subtract(other: X12Decimal): X12Decimal {
     const a = X12Decimal.#checked(this);
     const b = X12Decimal.#checked(other);
-    const [aligned, scale] = X12Decimal.#align(a, b);
-    const diff = aligned.aSigned - aligned.bSigned;
-    return X12Decimal.fromBigInt(diff, scale);
+    const scale = Math.max(a.#scale, b.#scale);
+    return X12Decimal.fromBigInt(
+      X12Decimal.#signedAt(a, scale) - X12Decimal.#signedAt(b, scale),
+      scale,
+    );
   }
 
   /**
@@ -403,24 +407,24 @@ export class X12Decimal {
     const b = X12Decimal.#checked(other);
     if (a.#signum !== b.#signum) return a.#signum < b.#signum ? -1 : 1;
     if (a.#signum === 0) return 0;
-    const [aligned] = X12Decimal.#align(a, b);
-    if (aligned.aSigned === aligned.bSigned) return 0;
-    return aligned.aSigned < aligned.bSigned ? -1 : 1;
+    const scale = Math.max(a.#scale, b.#scale);
+    const aSigned = X12Decimal.#signedAt(a, scale);
+    const bSigned = X12Decimal.#signedAt(b, scale);
+    if (aSigned === bSigned) return 0;
+    return aSigned < bSigned ? -1 : 1;
   }
 
   /**
-   * Align two scales for arithmetic: pad the lower-scale operand with zeros
-   * (multiply by `10^delta`) so both become integers at the higher scale,
-   * then signed by `signum`. Returns the signed `BigInt` operands + the
-   * shared scale. @internal
+   * The signed value of `d` as an integer at `scale` (no smaller than its
+   * own): the lower-scale operand of an operation is padded with zeros
+   * (multiplied by `10^delta`) so both become integers at the higher scale,
+   * then signed by `signum`. A value already at `scale` is not multiplied.
+   * @internal
    */
-  static #align(a: X12Decimal, b: X12Decimal): [{ aSigned: bigint; bSigned: bigint }, number] {
-    const scale = Math.max(a.#scale, b.#scale);
-    const aScaled = a.#scaled * powTen(scale - a.#scale);
-    const bScaled = b.#scaled * powTen(scale - b.#scale);
-    const aSigned = a.#signum === -1 ? -aScaled : aScaled;
-    const bSigned = b.#signum === -1 ? -bScaled : bScaled;
-    return [{ aSigned, bSigned }, scale];
+  static #signedAt(d: X12Decimal, scale: number): bigint {
+    const pad = scale - d.#scale;
+    const magnitude = pad === 0 ? d.#scaled : d.#scaled * powTen(pad);
+    return d.#signum === -1 ? -magnitude : magnitude;
   }
 }
 

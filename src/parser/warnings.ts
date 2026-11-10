@@ -231,11 +231,14 @@ export type X12UnexpectedSegmentContext =
  * ```
  */
 export const BALANCE_INVARIANTS = {
-  /** `CLP-04 + Σ(claim CAS + line CAS) == CLP-03`. */
+  // These comments are ASCII on purpose: the bundler keeps comments inside an
+  // object literal, and one byte outside ASCII makes the whole built entry a
+  // two-byte source that takes longer to read and compile on every import.
+  /** `CLP-04 + sum(claim CAS + line CAS) == CLP-03`. */
   CLAIM: "claim",
-  /** `SVC-03 + Σ(line CAS) == SVC-02`. */
+  /** `SVC-03 + sum(line CAS) == SVC-02`. */
   SERVICE_LINE: "service-line",
-  /** `Σ(CLP-04) - Σ(PLB amounts) == BPR-02`. */
+  /** `sum(CLP-04) - sum(PLB amounts) == BPR-02`. */
   REMIT_TOTAL: "remit-total",
 } as const;
 

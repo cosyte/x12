@@ -587,6 +587,10 @@ export function observeDecimals(): string {
     ["7"],
     { length: 0 },
     new String("1.5"),
+    new String(".5"),
+    new String("."),
+    new String("-"),
+    new String("+7."),
   ];
   for (const [i, v] of strange.entries()) {
     const read = attempt(() => X12Decimal.fromString(v as unknown as string));
@@ -698,7 +702,24 @@ export function observeDecimals(): string {
 export function observeOddValues(): string {
   const obs = new Observation();
   const d: Delimiters = { element: "*", repetition: "^", component: ":", segment: "~" };
-  const odd: unknown[] = [5, 0, ["?"], ["a"], ["a*b"], ["*"], ["?", "x"], null, {}, true, "A^B:C?"];
+  const odd: unknown[] = [
+    5,
+    0,
+    ["?"],
+    ["a"],
+    ["a*b"],
+    ["*"],
+    ["?", "x"],
+    null,
+    {},
+    true,
+    "A^B:C?",
+    // String objects read like strings, all the way through the character-at-a-time readers.
+    new String("a?*b?Xc??d?"),
+    new String("a?*b*c^d?^e:f?:g"),
+    new String("BIN*3*A?B"),
+    new String("x?"),
+  ];
   for (const [i, v] of odd.entries()) {
     const warned: X12ParseWarning[] = [];
     const at = { segmentIndex: 2 };
@@ -738,7 +759,8 @@ export function observeOddValues(): string {
         decodeSegment(raw, delims, (w) => emitted.push(w), { segmentIndex: 1 }),
       );
       obs.add(`${name}:${raw}`, `${seg}|${record(emitted)}`);
-      const built = { id: "X", raw, elements: ["X", raw, "A::B", "1^2^^3", "a?:b:c"] };
+      const wrapped = new String("p^^q::r") as unknown as string;
+      const built = { id: "X", raw, elements: ["X", raw, "A::B", "1^2^^3", "a?:b:c", wrapped] };
       const reads: string[] = [];
       for (const path of [
         "01",
@@ -750,11 +772,15 @@ export function observeOddValues(): string {
         "03[2]",
         "04-2",
         "04[0]-3",
+        "05",
+        "05[1]",
+        "05-2",
+        "05[0]-1",
       ]) {
         reads.push(attempt(() => getSegmentValue(built, path, delims)));
         reads.push(attempt(() => getAllSegmentValues(built, path, delims)));
       }
-      for (const n of [1, 2, 3, 4]) {
+      for (const n of [1, 2, 3, 4, 5]) {
         reads.push(attempt(() => elementOptional(built, n, delims)));
         reads.push(attempt(() => componentOptional(built, n, 2, delims)));
       }
@@ -882,7 +908,10 @@ function writtenInputs(): CorpusInput[] {
   );
   add("release:repeats", wrap(["HI*ABK:J45^ABF:I10^ABF:E11?^9*BK:1", "HI*^^", "HI*:^:"]));
   // Degenerate delimiter sets: a role that is the release character.
-  add("degenerate:element", wrap(["NM1?QC?1?DOE?JANE", "REF?EA?A?"], "?", "^", ":", "~"));
+  add(
+    "degenerate:element",
+    wrap(["NM1?QC?1?DOE?JANE", "REF?EA?A?", "LX", "SE"], "?", "^", ":", "~"),
+  );
   add("degenerate:component", wrap(["SVC*HC?99213?25*100.00", "HI*A??B"], "*", "^", "?", "~"));
   add("degenerate:repetition", wrap(["EB*1**30?1?35", "REF*A??B"], "*", "?", ":", "~"));
   add("degenerate:terminator", wrap(["REF*EA*X", "NM1*QC*1*DOE"], "*", "^", ":", "?"));
