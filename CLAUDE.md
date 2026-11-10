@@ -20,7 +20,6 @@ pnpm typecheck:examples && pnpm lint:examples && pnpm examples && pnpm phi-scan:
 pnpm check:no-emdash && pnpm check:no-internal-refs
 pnpm check:documents && pnpm check:process
 pnpm differential:check
-pnpm test:perf
 ```
 
 The shared `ci` job runs lines 1 to 3 on Node 22, 24 and 26 and the rest are jobs of their own;
