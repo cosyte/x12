@@ -221,10 +221,10 @@ export interface X12Ack999Ak9 {
  * parsed envelope (so byte-exact round-trip is reachable through
  * `interchange.isa.raw`).
  *
- * `warnings` collects both envelope-level warnings (from `parseX12`) AND
- * any 999-specific warnings (e.g. an unknown disposition code, an AK9
- * count mismatch). The set is additive - never throws on a real-world
- * 999.
+ * `warnings` carries the 999-specific warnings: the declared-guide check,
+ * and `X12_999_IK5_ABSENT` / `X12_999_AK9_ABSENT` where the reader filled in
+ * a reject for a response with no IK5 or a group with no AK9. Envelope-level
+ * warnings stay on `interchange.warnings`. Never throws on a real-world 999.
  */
 export interface X12Ack999 {
   readonly interchange: X12Interchange;

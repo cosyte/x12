@@ -119,6 +119,8 @@ export const WARNING_CODES = {
   X12_277_RFAI_LEVEL_ABSENT: "X12_277_RFAI_LEVEL_ABSENT",
   X12_277_RFAI_REQUEST_ABSENT: "X12_277_RFAI_REQUEST_ABSENT",
   X12_275_ATTACHMENT_ABSENT: "X12_275_ATTACHMENT_ABSENT",
+  X12_999_IK5_ABSENT: "X12_999_IK5_ABSENT",
+  X12_999_AK9_ABSENT: "X12_999_AK9_ABSENT",
 } as const;
 
 /**
@@ -534,6 +536,10 @@ const WARNING_MESSAGES = {
     "277 request for additional information with no claim-level request: no level on the reading carries a request, because no TRN, STC or SVC arrived under an HL. Where the transaction set carries no HL at all, `X12_277_RFAI_LEVEL_ABSENT` is raised beside this code. The reading therefore names no claim and no requested item. Nothing is fabricated to stand in. The verbatim segments are preserved on the transaction set; read them there before concluding the health plan requested nothing. Nothing is echoed here.",
   X12_275_ATTACHMENT_ABSENT:
     "275 with no attachment: the transaction set carries no BDS segment, so the reading's `attachments` list is empty. Nothing is fabricated to stand in. The heading and every LX line are on the reading as usual, and the verbatim segments are preserved on the transaction set, including any segment this reader does not read as an attachment. Nothing is echoed here.",
+  X12_999_IK5_ABSENT:
+    "999 transaction set response with no IK5: the AK2 at `position.segmentIndex` was closed by the next AK2, by the AK9 or by the end of the transaction set before its IK5 arrived, so the sender stated no disposition for that response. The reading fills one in, fail-safe: `ik5.disposition` reads `R` (rejected) and `ik5.syntaxErrorCodes` is empty. Treat that reject as the reader's, not the sender's. The verbatim segments are preserved on the transaction set. Nothing is echoed here.",
+  X12_999_AK9_ABSENT:
+    "999 with no AK9: the transaction set ends without a functional group response trailer, so the sender stated no disposition and no counts for the group. The reading fills them in, fail-safe: `ak9.disposition` reads `R` (rejected), the three transaction set counts read 0 and `ak9.syntaxErrorCodes` is empty. Treat that reject and those counts as the reader's, not the sender's. The verbatim segments are preserved on the transaction set. Nothing is echoed here.",
 } as const;
 
 /**
@@ -2314,6 +2320,53 @@ export function attachmentAbsent(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_275_ATTACHMENT_ABSENT,
     message: WARNING_MESSAGES.X12_275_ATTACHMENT_ABSENT,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_999_IK5_ABSENT` warning. Raised by `parse999` when an AK2
+ * transaction set response is closed (by the next AK2, by the AK9 or by the
+ * end of the transaction set) before its IK5 arrives, and the reading fills
+ * in a reject for it.
+ *
+ * The reader anchors it at that AK2. It takes a position and nothing else, so
+ * no byte of the document reaches the message.
+ *
+ * @example
+ * ```ts
+ * import { ack999Ik5Absent } from "@cosyte/x12";
+ * const w = ack999Ik5Absent({ segmentIndex: 2, transactionIndex: 0 });
+ * w.code; // "X12_999_IK5_ABSENT"
+ * ```
+ */
+export function ack999Ik5Absent(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_999_IK5_ABSENT,
+    message: WARNING_MESSAGES.X12_999_IK5_ABSENT,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_999_AK9_ABSENT` warning. Raised by `parse999` when the
+ * transaction set carries no AK9, and the reading fills in a reject and zero
+ * counts for the functional group.
+ *
+ * The reader anchors it at the ST (`segmentIndex: 0`). It takes a position and
+ * nothing else, so no byte of the document reaches the message.
+ *
+ * @example
+ * ```ts
+ * import { ack999Ak9Absent } from "@cosyte/x12";
+ * const w = ack999Ak9Absent({ segmentIndex: 0, transactionIndex: 0 });
+ * w.code; // "X12_999_AK9_ABSENT"
+ * ```
+ */
+export function ack999Ak9Absent(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_999_AK9_ABSENT,
+    message: WARNING_MESSAGES.X12_999_AK9_ABSENT,
     position,
   };
 }

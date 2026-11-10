@@ -30,10 +30,11 @@ import type {
   X12TransactionSet,
 } from "../../parser/types.js";
 import { splitWithRelease, unescapeRelease } from "../../parser/release.js";
-import type { X12ParseWarning } from "../../parser/warnings.js";
-// `warnings` is reserved for future 999-specific Tier-2 codes; the Phase 3
-// parser is silent + fail-safe - see fail-safe fallbacks below. The one code
-// it carries today is the declared-guide check every typed reader runs.
+import { ack999Ak9Absent, ack999Ik5Absent, type X12ParseWarning } from "../../parser/warnings.js";
+// The reader is fail-safe: a missing IK5 or AK9 reads as a reject. Each
+// fill-in carries its own warning (`X12_999_IK5_ABSENT`,
+// `X12_999_AK9_ABSENT`), beside the declared-guide check every typed reader
+// runs.
 import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 
 import {
@@ -134,6 +135,8 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
   let currentResponse:
     | {
         ak2: X12Ack999Ak2;
+        /** The AK2's index on `tx.segments`, where a missing IK5 is reported. */
+        segmentIndex: number;
         segmentNotes: X12Ack999SegmentNote[];
       }
     | undefined;
@@ -187,12 +190,18 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
    * AK9 closes the last AK2..IK5 block, or a stray AK2 opens a new one.
    *
    * Caller is responsible for supplying the closing IK5 (every AK2 needs
-   * one); if it's missing this fallback synthesizes a placeholder so the
-   * typed model still resolves and the caller can decide via the warning.
+   * one); if it's missing this fallback synthesizes a reject placeholder so
+   * the typed model still resolves, and warns at the AK2 so the caller can
+   * tell the reader's reject from the sender's.
    */
   const flushResponse = (ik5: X12Ack999Ik5 | undefined): void => {
     flushSegmentNote();
     if (currentResponse !== undefined) {
+      if (ik5 === undefined) {
+        warnings.push(
+          ack999Ik5Absent({ segmentIndex: currentResponse.segmentIndex, transactionIndex: 0 }),
+        );
+      }
       transactionResponses.push({
         ak2: currentResponse.ak2,
         segmentNotes: Object.freeze(currentResponse.segmentNotes.slice()),
@@ -205,7 +214,7 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
     currentResponse = undefined;
   };
 
-  for (const seg of body) {
+  for (const [b, seg] of body.entries()) {
     // Lenient-accept of legacy AK3/AK4/AK5 (standard 999 / pre-X231A1
     // converters): normalize onto the X231A1 IK3/IK4/IK5 names so the
     // walker has one shape to switch on. The verbatim raw text is still
@@ -232,6 +241,8 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
             transactionSetControlNumber: getElement(seg, 2, delimiters),
             implementationConventionReference: getOptionalElement(seg, 3, delimiters),
           },
+          // `body` starts after the ST, which is `tx.segments[0]`.
+          segmentIndex: b + 1,
           segmentNotes: [],
         };
         break;
@@ -325,6 +336,7 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
   // EOF without AK9 → synthesize a placeholder + warn so the typed model
   // resolves but the caller can detect the truncation.
   if (currentResponse !== undefined) flushResponse(undefined);
+  if (ak9 === undefined) warnings.push(ack999Ak9Absent({ segmentIndex: 0, transactionIndex: 0 }));
   const finalAk1: X12Ack999Ak1 = ak1 ?? {
     functionalIdCode: "",
     groupControlNumber: "",

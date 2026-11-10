@@ -45,6 +45,8 @@ export {
   aaaRejectReasonAbsent,
   aaaSegmentMalformed,
   aaaUnknownCode,
+  ack999Ak9Absent,
+  ack999Ik5Absent,
   ambiguous837Variant,
   amountRowDropped,
   attachmentAbsent,

@@ -1086,6 +1086,16 @@ export const PHI_SLOTS: readonly DiagnosticSlot<string>[] = [
       withGroupCountMismatch(swap(G_999, "~IK5*A~", `~IK3*NM1*7*2000B*8~IK4*3**7*${m}~IK5*A~`)),
     expectCode: WARNING_CODES.X12_GROUP_COUNT_MISMATCH,
   },
+  {
+    name: "AK2-02 on a 999 whose AK2 has no IK5",
+    plant: (m) => swap(G_999, "~AK2*837*0001*005010X222A2~IK5*A~", `~AK2*837*${m}*005010X222A2~`),
+    expectCode: WARNING_CODES.X12_999_IK5_ABSENT,
+  },
+  {
+    name: "AK1-02 on a 999 with no AK9",
+    plant: (m) => swap(swap(G_999, "~AK1*HC*1*", `~AK1*HC*${m}*`), "~AK9*A*1*1*1~", "~"),
+    expectCode: WARNING_CODES.X12_999_AK9_ABSENT,
+  },
 
   // ---- TA1 interchange acknowledgment -------------------------------------
   {
