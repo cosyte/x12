@@ -646,6 +646,13 @@ describe("AC-14: the builder refuses what cannot carry a true BDS-02, and return
 
 describe("build275: a spec that is not shaped like one is refused before a byte is written", () => {
   const forged = <T>(value: unknown): T => value as T;
+  /** A list of `holes` empty slots, then `entry` when one is given. */
+  const sparse = (holes: number, entry?: unknown): unknown[] => {
+    const list: unknown[] = [];
+    list.length = holes;
+    if (entry !== undefined) list.push(entry);
+    return list;
+  };
   const line = SPEC.lines[0];
   if (line === undefined) throw new Error("SPEC has no line");
 
@@ -676,6 +683,19 @@ describe("build275: a spec that is not shaped like one is refused before a byte 
     [
       "attachment",
       { ...SPEC, lines: [{ ...line, attachments: forged(["B64"]) }] },
+      /the attachment at lines\[0\]\.attachments\[0\] must be an object/u,
+    ],
+    [
+      "attachment list with a hole",
+      {
+        ...SPEC,
+        lines: [{ ...line, attachments: forged(sparse(1, { filterCode: "B64", data: DATA_ONE })) }],
+      },
+      /the attachment at lines\[0\]\.attachments\[0\] must be an object/u,
+    ],
+    [
+      "attachment list that is only a hole",
+      { ...SPEC, lines: [{ ...line, attachments: forged(sparse(1)) }] },
       /the attachment at lines\[0\]\.attachments\[0\] must be an object/u,
     ],
     [

@@ -281,7 +281,10 @@ function enforceLine(line: Build275LineSpec, locator: string): readonly string[]
     `build275: ${locator}.attachments`,
     refuseSpec,
   );
-  return attachments.map((attachment, a) =>
+  // `Array.from`, not `map`: `map` skips a hole in a sparse list, which then
+  // reached the emit as an `undefined` attachment and threw an untyped
+  // TypeError. Every slot is checked, so a hole is refused like a `null`.
+  return Array.from(attachments, (attachment, a) =>
     enforceAttachment(attachment, `${locator}.attachments[${String(a)}]`),
   );
 }
