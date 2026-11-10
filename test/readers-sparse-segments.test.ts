@@ -232,3 +232,53 @@ describe("get837Claims: a caller-built set with `se` unset that still ends in it
     expect(unset?.warnings).toEqual([]);
   });
 });
+
+describe("get837Claims: a hole or null where the variant comes from the service segments", () => {
+  /**
+   * A canonical 837 with its ST-03 and GS-08 taken off, so neither declares a
+   * guide and the variant falls back to the scan of the service segments.
+   */
+  function withoutDeclaredGuide(path: string): { delimiters: Delimiters; tx: X12TransactionSet } {
+    const text = readFileSync(join(__dirname, "fixtures", path), "utf8")
+      .trimEnd()
+      .replace(/^(GS(?:\*[^*~]*){7})\*[^*~]*~/m, "$1*~")
+      .replace(/^(ST\*837\*[^*~]*)\*[^*~]*~/m, "$1~");
+    const ix = parseX12(text);
+    const tx = ix.groups[0]?.transactions[0];
+    if (tx === undefined) throw new Error(`${path} has no transaction set`);
+    expect(tx.st.elements[3]).toBeUndefined();
+    return { delimiters: ix.delimiters, tx };
+  }
+
+  const SOURCES: readonly (readonly [string, Source, string])[] = [
+    ["837p-unknown-variant.edi", fixture("claim/837p-unknown-variant.edi"), "unknown"],
+    ["envelope/medicare-canonical.edi", fixture("envelope/medicare-canonical.edi"), "unknown"],
+    [
+      "837p-canonical.edi with no ST-03",
+      () => withoutDeclaredGuide("claim/837p-canonical.edi"),
+      "P",
+    ],
+    [
+      "837i-canonical.edi with no ST-03",
+      () => withoutDeclaredGuide("claim/837i-canonical.edi"),
+      "I",
+    ],
+    [
+      "837d-canonical.edi with no ST-03",
+      () => withoutDeclaredGuide("claim/837d-canonical.edi"),
+      "D",
+    ],
+  ];
+
+  for (const [name, source, variant] of SOURCES) {
+    it(`${name}: a hole or a null at any index from 1 on is skipped`, () => {
+      const { delimiters, tx } = source();
+      const dense = get837Claims(delimiters, tx);
+      expect(dense?.variant).toBe(variant);
+      for (let index = 1; index < tx.segments.length; index += 1) {
+        expect(get837Claims(delimiters, withHoleAt(tx, index))).toEqual(shifted(dense, index));
+        expect(get837Claims(delimiters, withNullAt(tx, index))).toEqual(shifted(dense, index));
+      }
+    });
+  }
+});

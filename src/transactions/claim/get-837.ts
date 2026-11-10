@@ -375,6 +375,9 @@ export function get837Claims(
   // work is bounded by the distance to it.
   if (explicitType === undefined && variantFromIcr === undefined) {
     for (const seg of body) {
+      // The same skip as the walk below: a hole, or a `null` where a JSON
+      // round trip left one, in a caller-built `segments` list.
+      if (seg === undefined || seg === null) continue;
       const fromSv = VARIANT_BY_SV_SEGMENT[seg.id];
       if (fromSv === undefined) continue;
       if (variantFromSegment === undefined) {
