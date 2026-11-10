@@ -18,6 +18,11 @@ inquiries](./read-inquiries.md) shows how to read the 270 the trace comes from.
 **refuses** a structurally impossible hierarchy with an `Eligibility271BuildError`. It returns a
 frozen `X12Interchange`, and it never sends anything, opens a socket, or touches the filesystem.
 
+The transaction set opens with the `BHT` the implementation guide requires right after the `ST`.
+Give `header.referenceId` the 270's `BHT-03` so the provider sees its own identifier come back; the
+rest defaults to `0022`, purpose code `11` (response), and the group date and time. An empty
+required `BHT` element, given or defaulted, is refused rather than written.
+
 ```ts runnable
 import {
   build271,
@@ -28,6 +33,7 @@ import {
 } from "@cosyte/x12";
 
 const traceFromThe270 = "ELIG20220627001"; // pulled from the inbound 270's TRN-02
+const referenceFromThe270 = "REQ-0001"; // pulled from the inbound 270's BHT-03
 
 const spec: Build271Spec = {
   envelope: {
@@ -39,6 +45,7 @@ const spec: Build271Spec = {
     groupControlNumber: "1",
     transactionSetControlNumber: "0001",
   },
+  header: { referenceId: referenceFromThe270 }, // the rest of the BHT defaults
   informationSources: [
     {
       entity: {
@@ -95,10 +102,19 @@ elig?.subscribers[0]?.traces[0]?.referenceId === traceFromThe270; // => true
 elig?.subscribers[0]?.name?.lastName; // => "DOE"
 elig?.subscribers[0]?.benefits[0]?.eligibilityCode; // => "1"
 elig?.subscribers[0]?.benefits[0]?.monetaryAmount?.toString(); // => "1000.00"
+elig?.warnings.length; // => 0
 
 // serializeX12 gives you the bytes to send.
 serializeX12(ix).includes(`TRN*2*${traceFromThe270}~`); // => true
+
+// The BHT comes right after the ST, carrying the 270's reference.
+const bht = tx?.segments[1];
+bht?.id; // => "BHT"
+bht?.elements.slice(1); // => ["0022", "11", "REQ-0001", "20220601", "1200"]
 ```
+
+Reading a payer's 271 that carries no `BHT`, `get271Eligibility` raises `X12_271_HEADER_ABSENT` at
+the `ST` and reads the rest as it stands.
 
 `build277` and `build277CA` follow the same pattern for claim status responses, echoing the 276's
 trace.
@@ -170,4 +186,5 @@ list one you can report as "no benefits of that kind". The `AAA` segments also s
 - [Build and serialize X12](./emit-and-serialize.md): what every builder refuses.
 - Reference: [`build271`](./api/README.md#build271),
   [`get271Eligibility`](./api/README.md#get271eligibility),
-  [`Build271Spec`](./api/README.md#build271spec).
+  [`Build271Spec`](./api/README.md#build271spec),
+  [`Build271HeaderSpec`](./api/README.md#build271headerspec).
