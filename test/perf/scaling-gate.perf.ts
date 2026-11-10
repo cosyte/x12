@@ -106,3 +106,27 @@ describe("the scaling gate: parseX12, then get835", () => {
     expect(report.margin).toBeGreaterThan(1);
   });
 });
+
+/**
+ * `parseX12` on long documents. The gates above read 150-claim remittances, where a cost that
+ * grows with the square of the input is still small beside the linear work, and one got past them:
+ * the segment splitter searched for the next release character from each segment to the end of an
+ * input that held none, so a 10,000-claim remittance took 2 s to parse instead of 150 ms while the
+ * 150-claim gate read under its ceiling. At 800 claims the same search reads above the ceiling, and
+ * the linear parse stays well inside it.
+ */
+const longParseOptions: ScalingGateOptions<string, X12Interchange> = {
+  name: "@cosyte/x12 parseX12, long documents",
+  parse: (raw) => parseX12(raw),
+  weigh: (ix) => ix.groups.length,
+  count: { n: 200, generate: (i) => remit835Text(i, 4) },
+  size: { inputs: 4, size: 800, generate: (i, claims) => remit835Text(i, claims) },
+};
+
+describe("the scaling gate: parseX12 on long documents", () => {
+  it("has not acquired a complexity regression on either axis", () => {
+    const report = scalingGate(longParseOptions);
+    expect(report.count.status, report.count.diagnostic).toBe("measured");
+    expect(report.size.status, report.size.diagnostic).toBe("measured");
+  });
+});

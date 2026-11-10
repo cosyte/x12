@@ -168,7 +168,12 @@ function stripLeadingNewlines(text: string, start: number): number {
  *
  * @internal
  */
-function findUnescapedTerminator(text: string, from: number, term: string): number {
+function findUnescapedTerminator(
+  text: string,
+  from: number,
+  term: string,
+  release: ReleaseCursor,
+): number {
   // When the terminator IS the release character (a degenerate delimiter
   // set), `?` cannot also escape - fall back to a literal scan so a `?`
   // terminator still splits, matching the historical behaviour.
@@ -176,17 +181,40 @@ function findUnescapedTerminator(text: string, from: number, term: string): numb
   // Jump between candidates with `indexOf` rather than reading every byte: a
   // terminator is the answer unless a release character comes before it, and
   // a release character consumes the byte after it, which may be that
-  // terminator. Each search starts where the last stopped, so this is linear.
+  // terminator. Every search starts where the last stopped, the release
+  // character's included (see `ReleaseCursor`), so a whole split is linear.
   let candidate = text.indexOf(term, from);
   let i = from;
   while (candidate !== -1) {
-    const release = text.indexOf(RELEASE_CHAR, i);
-    if (release === -1 || release > candidate) return candidate;
-    // `release + 1` exists: the candidate terminator is at or after it.
-    i = release + 2;
+    const at = nextRelease(text, i, release);
+    if (at === -1 || at > candidate) return candidate;
+    // `at + 1` exists: the candidate terminator is at or after it.
+    i = at + 2;
     if (i > candidate) candidate = text.indexOf(term, i);
   }
   return -1;
+}
+
+/**
+ * Where the next release character is, remembered across the searches of one
+ * split. A split asks from positions that only move forward, so the answer to
+ * the last question still holds while it is at or after the new position, and
+ * `-1` (none left) holds for good. Without it each segment's search for a `?`
+ * ran to the end of an input that has none, which made splitting a long input
+ * quadratic.
+ *
+ * @internal
+ */
+interface ReleaseCursor {
+  /** The next release character at or after the last search's start; `-1` for none; `-2` before any search. */
+  at: number;
+}
+
+/** The release character at or after `from`, or `-1`. @internal */
+function nextRelease(text: string, from: number, cursor: ReleaseCursor): number {
+  if (cursor.at === -1 || cursor.at >= from) return cursor.at;
+  cursor.at = text.indexOf(RELEASE_CHAR, from);
+  return cursor.at;
 }
 
 /**
@@ -209,11 +237,12 @@ function findBinaryTerminator(
   text: string,
   frame: { readonly dataStart: number; readonly declared: number },
   term: string,
+  release: ReleaseCursor,
 ): number {
   const spanEnd = frame.dataStart + frame.declared;
   if (spanEnd >= text.length) return -1;
   if (text.startsWith(term, spanEnd)) return spanEnd;
-  return findUnescapedTerminator(text, spanEnd, term);
+  return findUnescapedTerminator(text, spanEnd, term, release);
 }
 
 /**
@@ -251,14 +280,15 @@ function splitSegments(
 ): { segments: string[]; endIndex: number } {
   const segments: string[] = [];
   const term = delimiters.segment;
+  const release: ReleaseCursor = { at: -2 };
   let cursor = stripLeadingNewlines(text, start);
   let lastEnd = cursor;
   while (cursor < text.length) {
     const binary = frameBinary(text, cursor, delimiters);
     const termIdx =
       binary?.kind === "counted"
-        ? findBinaryTerminator(text, binary, term)
-        : findUnescapedTerminator(text, cursor, term);
+        ? findBinaryTerminator(text, binary, term, release)
+        : findUnescapedTerminator(text, cursor, term, release);
     if (termIdx === -1) {
       // No further terminator - the trailing bytes are an unterminated
       // segment. Preserve them as a final segment so they're visible to
@@ -372,15 +402,19 @@ function segmentName(segment: string, delimiters: Delimiters): string {
     }
   }
   if (end === 0) return "";
-  if (end > 3) return BODY_SEGMENT;
-  for (const name of ENVELOPE_NAMES) {
-    if (name.length === end && segment.startsWith(name)) return name;
+  // Compared in place, with no iterator over the names: this runs once for
+  // every segment of the input.
+  if (end === 2) {
+    if (segment.startsWith("GS")) return "GS";
+    if (segment.startsWith("GE")) return "GE";
+    if (segment.startsWith("ST")) return "ST";
+    if (segment.startsWith("SE")) return "SE";
+  } else if (end === 3) {
+    if (segment.startsWith("IEA")) return "IEA";
+    if (segment.startsWith("TA1")) return "TA1";
   }
   return BODY_SEGMENT;
 }
-
-/** The names {@link segmentName} answers with themselves. @internal */
-const ENVELOPE_NAMES: readonly string[] = Object.freeze(["GS", "GE", "ST", "SE", "IEA", "TA1"]);
 
 /**
  * What {@link segmentName} answers for a segment whose name is neither empty
@@ -388,6 +422,9 @@ const ENVELOPE_NAMES: readonly string[] = Object.freeze(["GS", "GE", "ST", "SE",
  * match no case of the walker's switch. @internal
  */
 const BODY_SEGMENT = "(body)";
+
+/** The names {@link segmentName} answers with themselves. @internal */
+const ENVELOPE_NAMES: readonly string[] = Object.freeze(["GS", "GE", "ST", "SE", "IEA", "TA1"]);
 
 /** {@link segmentName} of a name already split out. @internal */
 /* v8 ignore next 3 -- reached only through the branch above */
