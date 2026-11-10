@@ -85,6 +85,17 @@ function refuseSpec(message: string): never {
 }
 
 /**
+ * Refuse a list entry that is not an object: a hole in a sparse array, or a
+ * `null` from a JSON spec. The `locator` is a structural path, never a value.
+ * @internal
+ */
+function requireEntryObject<T>(entry: T | undefined, locator: string): asserts entry is T & object {
+  if (typeof entry !== "object" || entry === null) {
+    refuseSpec(`build837: ${locator} must be an object.`);
+  }
+}
+
+/**
  * The lexical form of a caller-supplied `X12Decimal`, refusing anything that is
  * not one. Exposed alongside {@link escDec}
  * because this builder is the only one with slots that want the value
@@ -503,7 +514,9 @@ function enforceStructuralSpec(variant: "P" | "I" | "D", spec: Build837Spec): vo
   }
   for (let b = 0; b < billingProviders.length; b += 1) {
     const billing = billingProviders[b];
-    if (billing === undefined) continue;
+    // A hole in a sparse list, or a `null` from a JSON spec, used to be skipped
+    // here and then read by the emitter, which threw an untyped TypeError.
+    requireEntryObject(billing, `spec.billingProviders[${String(b)}]`);
     const subscribers = requireCallerArray(
       billing.subscribers,
       `build837: spec.billingProviders[${String(b)}].subscribers`,
@@ -517,8 +530,8 @@ function enforceStructuralSpec(variant: "P" | "I" | "D", spec: Build837Spec): vo
     }
     for (let s = 0; s < subscribers.length; s += 1) {
       const subscriber = subscribers[s];
-      if (subscriber === undefined) continue;
       const locator = `spec.billingProviders[${String(b)}].subscribers[${String(s)}]`;
+      requireEntryObject(subscriber, locator);
       const directClaims = requireCallerArray(
         subscriber.claims,
         `build837: ${locator}.claims`,
@@ -536,18 +549,15 @@ function enforceStructuralSpec(variant: "P" | "I" | "D", spec: Build837Spec): vo
         );
       }
       for (let c = 0; c < directClaims.length; c += 1) {
-        const claim = directClaims[c];
-        if (claim !== undefined) {
-          enforceClaim(
-            variant,
-            claim,
-            `billing[${String(b)}].subscriber[${String(s)}].claim[${String(c)}]`,
-          );
-        }
+        enforceClaim(
+          variant,
+          directClaims[c],
+          `billing[${String(b)}].subscriber[${String(s)}].claim[${String(c)}]`,
+        );
       }
       for (let p = 0; p < patients.length; p += 1) {
         const patient = patients[p];
-        if (patient === undefined) continue;
+        requireEntryObject(patient, `${locator}.patients[${String(p)}]`);
         const patientClaims = requireCallerArray(
           patient.claims,
           `build837: ${locator}.patients[${String(p)}].claims`,
@@ -560,14 +570,11 @@ function enforceStructuralSpec(variant: "P" | "I" | "D", spec: Build837Spec): vo
           );
         }
         for (let c = 0; c < patientClaims.length; c += 1) {
-          const claim = patientClaims[c];
-          if (claim !== undefined) {
-            enforceClaim(
-              variant,
-              claim,
-              `billing[${String(b)}].subscriber[${String(s)}].patient[${String(p)}].claim[${String(c)}]`,
-            );
-          }
+          enforceClaim(
+            variant,
+            patientClaims[c],
+            `billing[${String(b)}].subscriber[${String(s)}].patient[${String(p)}].claim[${String(c)}]`,
+          );
         }
       }
     }
@@ -580,7 +587,12 @@ function enforceStructuralSpec(variant: "P" | "I" | "D", spec: Build837Spec): vo
  * the message NEVER echoes the `claimId`, which is the provider's
  * patient-account number (PHI-adjacent). @internal
  */
-function enforceClaim(variant: "P" | "I" | "D", claim: Build837ClaimSpec, locator: string): void {
+function enforceClaim(
+  variant: "P" | "I" | "D",
+  claim: Build837ClaimSpec | undefined,
+  locator: string,
+): void {
+  requireEntryObject(claim, `claim at ${locator}`);
   if (claim.claimId === "") {
     throw new Claim837BuildError(
       CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_SPEC,
@@ -600,7 +612,7 @@ function enforceClaim(variant: "P" | "I" | "D", claim: Build837ClaimSpec, locato
   }
   for (let l = 0; l < serviceLines.length; l += 1) {
     const line = serviceLines[l];
-    if (line === undefined) continue;
+    requireEntryObject(line, `claim at ${locator}: serviceLines[${String(l)}]`);
     if (line.variant !== variant) {
       throw new Claim837BuildError(
         CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_SPEC,

@@ -279,3 +279,137 @@ describe("get837Claims - variant fallback", () => {
     expect(sub.claims[0]?.serviceLines).toHaveLength(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Residual branches, each driven by a small edit to a canonical fixture.
+// ---------------------------------------------------------------------------
+
+function readEdited(name: string, edit: (raw: string) => string): X12_837Submission {
+  const raw = edit(readFileSync(join(FIXTURE_DIR, name), "utf8").trimEnd());
+  if (!raw.includes("~")) throw new Error("edit produced no document");
+  const ix = parseX12(raw);
+  const tx = ix.groups[0]?.transactions[0];
+  if (tx === undefined) throw new Error(`Fixture ${name} has no 837 transaction set`);
+  const sub = get837Claims(ix.delimiters, tx);
+  if (sub === undefined) throw new Error(`get837Claims returned undefined for ${name}`);
+  return sub;
+}
+
+/** Insert `segments` right after the first occurrence of `anchor` (a whole segment, `~` included). */
+function after(anchor: string, segments: string): (raw: string) => string {
+  return (raw) => {
+    if (!raw.includes(anchor)) throw new Error(`anchor not found: ${anchor}`);
+    return raw.replace(anchor, anchor + segments);
+  };
+}
+
+describe("get837Claims - residual branches", () => {
+  it("attaches N3 and N4 to the Loop 2330A other subscriber and the Loop 2330B other payer", () => {
+    const sub = readEdited(
+      "837p-canonical.edi",
+      after(
+        "HI*ABK:J20.9~",
+        "SBR*S*01*GRP2******CI~NM1*IL*1*OTHER*SUBSCRIBER****MI*OTHER001~N3*1 OTHER ST~N4*AKRON*OH*44301~" +
+          "NM1*PR*2*OTHER PAYER*****PI*OP001~N3*2 PAYER RD~N4*DAYTON*OH*45402~",
+      ),
+    );
+    const other = sub.claims[0]?.otherSubscribers[0];
+    expect(other?.otherSubscriber?.address?.lines).toEqual(["1 OTHER ST"]);
+    expect(other?.otherSubscriber?.address?.city).toBe("AKRON");
+    expect(other?.otherPayer?.address?.lines).toEqual(["2 PAYER RD"]);
+    expect(other?.otherPayer?.address?.city).toBe("DAYTON");
+  });
+
+  it("drops an N3 or N4 that follows a Loop 2320 SBR before any 2330 name", () => {
+    const sub = readEdited(
+      "837p-canonical.edi",
+      after("HI*ABK:J20.9~", "SBR*S*01*GRP2******CI~N3*1 STRAY ST~N4*AKRON*OH*44301~"),
+    );
+    const other = sub.claims[0]?.otherSubscribers[0];
+    expect(other?.payerResponsibilityCode).toBe("S");
+    expect(other?.otherSubscriber).toBeUndefined();
+    expect(other?.otherPayer).toBeUndefined();
+  });
+
+  it("keeps a line provider's N3 and N4 off the typed provider", () => {
+    const sub = readEdited(
+      "837p-canonical.edi",
+      after(
+        "DTP*472*D8*20260601~",
+        "NM1*82*1*RENDERING*DOCTOR****XX*1112223330~N3*9 LINE ST~N4*CANTON*OH*44702~",
+      ),
+    );
+    const provider = sub.claims[0]?.serviceLines[0]?.providers[0];
+    expect(provider?.entityIdentifierCode).toBe("82");
+    expect(provider?.address).toBeUndefined();
+  });
+
+  it("attaches a REF to the Loop 2010CA patient", () => {
+    const sub = readEdited("837p-canonical.edi", (raw) =>
+      after(
+        "N4*COLUMBUS*OH*43215~",
+        "HL*3*2*23*0~PAT*19~NM1*QC*1*TEST*CHILD~REF*Y4*PROPCAS001~",
+      )(raw.replace("HL*2*1*22*0~", "HL*2*1*22*1~")),
+    );
+    const claim = sub.claims[0];
+    expect(claim?.patient?.entity.references.map((r) => [r.qualifier, r.value])).toEqual([
+      ["Y4", "PROPCAS001"],
+    ]);
+    expect(claim?.patient?.info.individualRelationshipCode).toBe("19");
+  });
+
+  it("keeps the SBR-02 relationship when a Loop 2000B PAT leaves PAT-01 empty", () => {
+    const sub = readEdited("837p-canonical.edi", after("SBR*P*18*GROUP123******MB~", "PAT~"));
+    expect(sub.claims[0]?.subscriber?.info.individualRelationshipCode).toBe("18");
+  });
+
+  it("reads an HI composite with no qualifier as an empty qualifier of unknown system", () => {
+    const sub = readEdited("837p-canonical.edi", (raw) =>
+      raw.replace("HI*ABK:J20.9~", "HI*:J20.9~"),
+    );
+    const dx = [...(sub.claims[0]?.diagnoses ?? []), ...(sub.claims[0]?.otherHi ?? [])][0];
+    expect(dx?.qualifier).toBe("");
+    expect(dx?.code).toBe("J20.9");
+    expect(dx?.codeSystem).toBe("unknown");
+    expect(sub.warnings.map((w) => w.code)).not.toContain(WARNING_CODES.X12_UNKNOWN_HI_QUALIFIER);
+  });
+
+  it("reads a CAS triple with an amount but no reason code without looking one up", () => {
+    const sub = readEdited(
+      "837p-canonical.edi",
+      after("REF*6R*LINE-CTRL-001~", "SVD*PAYER02*100*HC:99213**1~CAS*CO**50~"),
+    );
+    const adjustment = sub.claims[0]?.serviceLines[0]?.adjudications[0]?.adjustments[0];
+    expect(adjustment?.groupCode).toBe("CO");
+    expect(adjustment?.reasonCode).toBe("");
+    expect(adjustment?.amount?.toString()).toBe("50");
+    expect(sub.warnings.map((w) => w.code)).not.toContain(WARNING_CODES.X12_UNKNOWN_CARC);
+  });
+
+  it("reads an SV1 with no procedure qualifier as an empty one", () => {
+    const sub = readEdited("837p-canonical.edi", (raw) =>
+      raw.replace("SV1*HC:99213:25*150", "SV1*:99213:25*150"),
+    );
+    const line = sub.claims[0]?.serviceLines[0];
+    expect(line?.procedureQualifier).toBe("");
+    expect(line?.procedureCode).toBe("99213");
+    expect(line?.modifiers).toEqual(["25"]);
+  });
+
+  it("reads the SV2-02 modifiers on an institutional line", () => {
+    const sub = readEdited("837i-canonical.edi", (raw) =>
+      raw.replace("SV2*0120*HC:99221*", "SV2*0120*HC:99221:25:59*"),
+    );
+    expect(sub.claims[0]?.serviceLines[0]?.modifiers).toEqual(["25", "59"]);
+  });
+
+  it("reads an SV3 with no procedure qualifier or code as empty ones, and its modifiers", () => {
+    const sub = readEdited("837d-canonical.edi", (raw) =>
+      raw.replace("SV3*AD:D2391**", "SV3*::AA:BB**"),
+    );
+    const line = sub.claims[0]?.serviceLines[0];
+    expect(line?.procedureQualifier).toBe("");
+    expect(line?.procedureCode).toBe("");
+    expect(line?.modifiers).toEqual(["AA", "BB"]);
+  });
+});

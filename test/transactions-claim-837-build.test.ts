@@ -31,6 +31,8 @@ import {
   Claim837BuildError,
   get837Claims,
   X12Decimal,
+  serializeX12,
+  type Build837AdjustmentSpec,
   type Build837BillingProviderSpec,
   type Build837ClaimSpec,
   type Build837ServiceLineProfessionalSpec,
@@ -1001,5 +1003,266 @@ describe("build837P - X12-EMIT-DEGENERATE-RELEASE-DELIMITER", () => {
 
   it("the same spec on the conventional set still builds (the red control)", () => {
     expect(build837P(P_SPEC).warnings).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Residual branches: list entries that are not objects, optional elements
+// written empty, and the GS-04 century window.
+// ---------------------------------------------------------------------------
+
+describe("build837 - a list entry that is not an object is refused", () => {
+  const forged = <T>(value: unknown): T => value as T;
+  const PATIENT = {
+    patient: { entityIdentifierCode: "QC", entityTypeQualifier: "1", name: "PATIENT" },
+    claims: [P_CLAIM],
+  };
+  // A hole in a sparse array, or a `null` from a JSON spec, passed the
+  // structural check and then threw an untyped TypeError while emitting.
+  /* eslint-disable no-sparse-arrays -- each hole is the input under test */
+  const cases: readonly (readonly [string, Build837Spec, RegExp])[] = [
+    [
+      "a billing provider",
+      { ...P_SPEC, billingProviders: forged([, P_BILLING]) },
+      /spec\.billingProviders\[0\] must be an object/u,
+    ],
+    [
+      "a subscriber",
+      { ...P_SPEC, billingProviders: [{ ...P_BILLING, subscribers: forged([null]) }] },
+      /spec\.billingProviders\[0\]\.subscribers\[0\] must be an object/u,
+    ],
+    [
+      "a claim",
+      pSpecWithSubscriber({ ...P_SUBSCRIBER, claims: forged([, P_CLAIM]) }),
+      /claim at billing\[0\]\.subscriber\[0\]\.claim\[0\] must be an object/u,
+    ],
+    [
+      "a dependent patient",
+      pSpecWithSubscriber({ ...P_SUBSCRIBER, claims: [], patients: forged([, PATIENT]) }),
+      /subscribers\[0\]\.patients\[0\] must be an object/u,
+    ],
+    [
+      "a dependent patient's claim",
+      pSpecWithSubscriber({
+        ...P_SUBSCRIBER,
+        claims: [],
+        patients: [{ ...PATIENT, claims: forged([, P_CLAIM]) }],
+      }),
+      /claim at billing\[0\]\.subscriber\[0\]\.patient\[0\]\.claim\[0\] must be an object/u,
+    ],
+    [
+      "a service line",
+      pSpecWithClaim({ ...P_CLAIM, serviceLines: forged([, P_LINE]) }),
+      /serviceLines\[0\] must be an object/u,
+    ],
+  ];
+  /* eslint-enable no-sparse-arrays */
+
+  for (const [name, spec, message] of cases) {
+    it(`refuses ${name} with X12_837_BUILD_INVALID_SPEC`, () => {
+      let caught: unknown;
+      try {
+        build837P(spec);
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toBeInstanceOf(Claim837BuildError);
+      expect((caught as Claim837BuildError).code).toBe(
+        CLAIM_837_BUILD_ERROR_CODES.X12_837_BUILD_INVALID_SPEC,
+      );
+      expect((caught as Error).message).toMatch(message);
+    });
+  }
+});
+
+describe("build837 - optional elements are written empty, never invented", () => {
+  const text = (spec: Build837Spec, build = build837P): string => serializeX12(build(spec));
+
+  it("writes SBR without SBR-09, and a dependent patient HL with no PAT, when neither is given", () => {
+    const out = text(
+      pSpecWithSubscriber({
+        ...P_SUBSCRIBER,
+        info: { payerResponsibilityCode: "P", individualRelationshipCode: "18" },
+        claims: [],
+        patients: [
+          {
+            patient: { entityIdentifierCode: "QC", entityTypeQualifier: "1", name: "PATIENT" },
+            claims: [P_CLAIM],
+          },
+        ],
+      }),
+    );
+    expect(out).toContain("~SBR*P*18~");
+    expect(out).toMatch(/~HL\*3\*2\*23\*0~NM1\*QC\*1\*PATIENT~/u);
+    expect(out).not.toContain("~PAT*");
+  });
+
+  it("writes a Loop 2320 SBR alone when it carries no relationship, filing code or names", () => {
+    const out = text(
+      pSpecWithClaim({ ...P_CLAIM, otherSubscribers: [{ payerResponsibilityCode: "S" }] }),
+    );
+    expect(out).toContain("~SBR*S~LX*1~");
+  });
+
+  it("writes SV1 without a unit of measure or diagnosis pointers, and a drug with no CTP", () => {
+    const out = text(
+      pSpecWithClaim({
+        ...P_CLAIM,
+        serviceLines: [
+          {
+            variant: "P",
+            procedureQualifier: "HC",
+            procedureCode: "99213",
+            charge: dec("150.00"),
+            units: dec("1"),
+            drug: { qualifier: "N4", code: "00000000000" },
+          },
+        ],
+      }),
+    );
+    expect(out).toContain("~SV1*HC:99213*150.00**1~");
+    expect(out).toContain("~LIN**N4*00000000000~");
+    expect(out).not.toContain("~CTP*");
+  });
+
+  it("writes CTP with a unit of measure and no quantity", () => {
+    const out = text(
+      pSpecWithClaim({
+        ...P_CLAIM,
+        serviceLines: [
+          { ...P_LINE, drug: { qualifier: "N4", code: "00000000000", unitOfMeasure: "UN" } },
+        ],
+      }),
+    );
+    expect(out).toContain("~CTP*****UN~");
+  });
+
+  it("writes CTP with a quantity and no unit of measure", () => {
+    const out = text(
+      pSpecWithClaim({
+        ...P_CLAIM,
+        serviceLines: [
+          { ...P_LINE, drug: { qualifier: "N4", code: "00000000000", quantity: dec("2") } },
+        ],
+      }),
+    );
+    expect(out).toContain("~CTP****2~");
+  });
+
+  it("writes SV2 without a unit of measure on an institutional line", () => {
+    const out = text(
+      pSpecWithClaim({
+        ...P_CLAIM,
+        serviceLines: [
+          { variant: "I", revenueCode: "0450", charge: dec("150.00"), units: dec("1") },
+        ],
+      }),
+      build837I,
+    );
+    expect(out).toContain("~SV2*0450**150.00**1~");
+  });
+
+  it("writes a TOO with no surfaces on a dental line", () => {
+    const out = text(
+      pSpecWithClaim({
+        ...P_CLAIM,
+        serviceLines: [
+          {
+            variant: "D",
+            procedureQualifier: "AD",
+            procedureCode: "D2391",
+            charge: dec("150.00"),
+            units: dec("1"),
+            toothInformation: [{ qualifier: "JP", toothCode: "8" }],
+          },
+        ],
+      }),
+      build837D,
+    );
+    expect(out).toContain("~TOO*JP*8~");
+  });
+
+  it("writes an SVD with no procedure or paid units, and no DTP*573 without a date", () => {
+    const out = text(
+      pSpecWithClaim({
+        ...P_CLAIM,
+        serviceLines: [
+          { ...P_LINE, adjudications: [{ otherPayerId: "PAYER02", amountPaid: dec("100.00") }] },
+        ],
+      }),
+    );
+    expect(out).toContain("~SVD*PAYER02*100.00~");
+    expect(out).not.toContain("~DTP*573*");
+  });
+
+  it("skips a hole in an adjustment list and still packs the CAS triples around it", () => {
+    const adjustments = [
+      { groupCode: "CO", reasonCode: "45", amount: dec("50.00") },
+      undefined,
+      { groupCode: "CO", reasonCode: "253", amount: dec("2.00") },
+    ] as unknown as readonly Build837AdjustmentSpec[];
+    const out = text(
+      pSpecWithClaim({
+        ...P_CLAIM,
+        serviceLines: [
+          {
+            ...P_LINE,
+            adjudications: [{ otherPayerId: "PAYER02", amountPaid: dec("98.00"), adjustments }],
+          },
+        ],
+      }),
+    );
+    expect(out).toContain("~CAS*CO*45*50.00~CAS*CO*253*2.00~");
+  });
+
+  it("writes an N4 with only a postal code, and a PER with only its function code", () => {
+    const out = text({
+      ...P_SPEC,
+      billingProviders: [
+        {
+          ...P_BILLING,
+          provider: {
+            ...P_BILLING.provider,
+            address: { lines: ["123 BILLING WAY"], postalCode: "44113" },
+            contacts: [{ contactFunctionCode: "IC" }],
+          },
+        },
+      ],
+    });
+    expect(out).toContain("~N3*123 BILLING WAY~N4***44113~");
+    expect(out).toContain("~PER*IC~");
+  });
+
+  it("writes an N4 with only a city", () => {
+    const out = text({
+      ...P_SPEC,
+      billingProviders: [
+        {
+          ...P_BILLING,
+          provider: { ...P_BILLING.provider, address: { lines: ["1 WAY"], city: "CLEVELAND" } },
+        },
+      ],
+    });
+    expect(out).toContain("~N3*1 WAY~N4*CLEVELAND~");
+  });
+
+  it("writes an HI quantity in component 6", () => {
+    const out = text(
+      pSpecWithClaim({
+        ...P_CLAIM,
+        otherHi: [{ qualifier: "BE", code: "A1", monetaryAmount: dec("500"), quantity: dec("1") }],
+      }),
+    );
+    expect(out).toContain("HI*BE:A1:::500:1~");
+  });
+
+  it("expands GS-04 through the century window and passes other shapes through", () => {
+    const gs04 = (interchangeDate: string): string | undefined =>
+      build837P({ ...P_SPEC, envelope: { ...ENVELOPE, interchangeDate } }).groups[0]?.gs
+        .elements[4];
+    expect(gs04("990601")).toBe("19990601");
+    expect(gs04("260601")).toBe("20260601");
+    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("AB0601")).toBe("AB0601");
   });
 });
