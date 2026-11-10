@@ -214,6 +214,22 @@ function findBinaryTerminator(
 }
 
 /**
+ * Whether a segment terminator written right after `segment` would end it, so that reading
+ * `segment + terminator` gives back `segment` and nothing else. It would not after a dangling
+ * release character (`REF*EA*A?`, where the `?` releases the terminator) or after a BDS or BIN
+ * whose declared octet count runs past the segment's end (the terminator becomes data). Either
+ * can only be the last segment of an input that ended without its final terminator, and an emit
+ * that supplies one there writes a different segment from the one it read. Decided by the same
+ * framing the reader uses, so the two cannot disagree.
+ *
+ * @internal
+ */
+export function endsAtTerminator(segment: string, delimiters: Delimiters): boolean {
+  const { segments } = splitSegments(segment + delimiters.segment, 0, delimiters);
+  return segments.length === 1 && segments[0] === segment;
+}
+
+/**
  * Yield successive segment strings (terminator-stripped) from the input,
  * starting at byte `start`. Returns the array of segment strings and the
  * byte index immediately after the last consumed segment terminator
@@ -763,7 +779,12 @@ export function decodeEnvelope(
         // raw second-interchange bytes should re-tokenize.
         const tail = segments.slice(i + 1).join(delimiters.segment);
         if (tail.length > 0) {
-          const joined = tail + delimiters.segment;
+          // The last trailing segment takes a terminator only where one would end it: after a
+          // dangling release character it would be read as data, and every later parse of the
+          // emit would add another.
+          const joined = endsAtTerminator(el(segments, segments.length - 1), delimiters)
+            ? tail + delimiters.segment
+            : tail;
           trailingBytes = joined;
           warnings.push(trailingGarbage({ segmentIndex: segIdx + 1, interchangeIndex: 0 }));
         }

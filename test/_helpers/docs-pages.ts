@@ -1,5 +1,5 @@
 import { closeSync, constants, fstatSync, openSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import ts from "typescript";
 
@@ -155,7 +155,11 @@ export function sampleCompileErrors(
   const options: ts.CompilerOptions = {
     ...SAMPLE_OPTIONS,
     typeRoots: [join(root, "node_modules", "@types")],
-    paths: { [pkg]: [entry] },
+    // The package's optional `/arbitraries` subpath sits beside its entry point, as in `src/`.
+    paths: {
+      [pkg]: [entry],
+      [`${pkg}/arbitraries`]: [join(dirname(entry), "arbitraries", "index.ts")],
+    },
   };
   const files = new Map<string, SampleSource>();
   samples.forEach((sample, i) => files.set(join(root, `docs-sample-${String(i)}.mts`), sample));

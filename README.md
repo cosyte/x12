@@ -63,7 +63,10 @@ pnpm add @cosyte/x12
 
 Node.js 22 or later, tested on 22, 24, and 26: the engine floor is `>=22.0.0`, and there are zero
 runtime dependencies. The package ships dual ESM and CJS builds with type declarations for both
-conditions, so `import` and `require` each resolve to the artifact meant for them.
+conditions, so `import` and `require` each resolve to the artifact meant for them. The optional
+`@cosyte/x12/arbitraries` entry point, fast-check generators for
+[property-testing your own code](https://github.com/cosyte/x12/blob/main/docs-content/property-test-your-code.md),
+needs `fast-check` installed beside it; the main entry point never loads it.
 
 ## Usage
 

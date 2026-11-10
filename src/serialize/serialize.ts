@@ -21,7 +21,14 @@
  *   2. **A doubled segment terminator** outside a transaction. It delimits a
  *      zero-length segment carrying no elements, so there is nothing to
  *      retain. Silent.
- *   3. **A missing final terminator**, which the emit supplies. Silent.
+ *   3. **A missing final terminator**, which the emit supplies. Silent. The
+ *      one exception is a last segment no terminator could end: one closing
+ *      on a dangling release character (`REF*EA*A?`, where a terminator
+ *      written after it would be released), or a BDS or BIN whose declared
+ *      octet count runs past its end (a terminator would be taken as data).
+ *      That segment is emitted as it was read, unterminated, so a re-read
+ *      gives the same segment and a second emit the same bytes. Post-IEA
+ *      `trailingBytes` follow the same rule.
  *   4. **Post-IEA `trailingBytes`**, re-joined from segment slices rather than
  *      preserved verbatim.
  *   5. **TA1 position.** A TA1 that appeared AFTER a functional group is
@@ -99,6 +106,7 @@
  * diagnostic.
  */
 
+import { endsAtTerminator } from "../parser/envelope.js";
 import type {
   OnWarningCallback,
   X12Interchange,
@@ -183,6 +191,15 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
   // other raw is terminator-stripped, so they are joined with `term`.
   let out = interchange.isa.raw;
 
+  // Every segment after the ISA is written by `put`, which supplies its terminator and keeps the
+  // last one written: an input that ended without its final terminator may end on a segment no
+  // terminator can end (see the end of this function).
+  let last = "";
+  const put = (segment: string): void => {
+    out += segment + term;
+    last = segment;
+  };
+
   // Running global segment index for warning positions. ISA occupies index 0.
   let segIdx = 0;
 
@@ -226,7 +243,7 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
       if (placed.has(i)) continue;
       if (!slot(orphan.anchor)) continue;
       placed.add(i);
-      out += orphan.raw + term;
+      put(orphan.raw);
       segIdx++;
       written++;
     }
@@ -234,14 +251,14 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
   };
 
   for (const ta1 of interchange.ta1Segments) {
-    out += ta1.raw + term;
+    put(ta1.raw);
     segIdx++;
   }
 
   for (const [g, group] of interchange.groups.entries()) {
     flushOrphans((a) => a?.kind === "interchange" && a.groupIndex === g);
     const gsSegIdx = ++segIdx;
-    out += group.gs.raw + term;
+    put(group.gs.raw);
 
     for (const [t, tx] of group.transactions.entries()) {
       flushOrphans((a) => a?.kind === "group" && a.groupIndex === g && a.transactionIndex === t);
@@ -279,9 +296,9 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
         // orphan inside the range has been flushed by now: the `k === lastIdx`
         // flush above runs before this write.
         if (recompute && tx.se !== undefined && k === lastIdx) {
-          out += substituteElement(tx.se.elements, 1, String(segCount), elementSep) + term;
+          put(substituteElement(tx.se.elements, 1, String(segCount), elementSep));
         } else {
-          out += raw + term;
+          put(raw);
         }
       }
 
@@ -344,9 +361,9 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
       const txCount = group.transactions.length;
       segIdx++;
       if (recompute) {
-        out += substituteElement(group.ge.elements, 1, String(txCount), elementSep) + term;
+        put(substituteElement(group.ge.elements, 1, String(txCount), elementSep));
       } else {
-        out += group.ge.raw + term;
+        put(group.ge.raw);
       }
       if (specClean) {
         const declaredGe = elementAt(group.ge.elements, 1);
@@ -390,9 +407,9 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
     const groupCount = interchange.groups.length;
     segIdx++;
     if (recompute) {
-      out += substituteElement(interchange.iea.elements, 1, String(groupCount), elementSep) + term;
+      put(substituteElement(interchange.iea.elements, 1, String(groupCount), elementSep));
     } else {
-      out += interchange.iea.raw + term;
+      put(interchange.iea.raw);
     }
     if (specClean) {
       const declaredIea = elementAt(interchange.iea.elements, 1);
@@ -414,6 +431,12 @@ export function serializeX12(interchange: X12Interchange, opts: SerializeOptions
 
   if (interchange.trailingBytes !== undefined) {
     out += interchange.trailingBytes;
+  } else if (!endsAtTerminator(last, interchange.delimiters)) {
+    // The terminator supplied after the last segment would not end it: a dangling release
+    // character would release it, and a binary segment whose declared count runs past its end
+    // would take it as data. Read back, the segment would change, and each emit of that read
+    // would add a terminator. Leaving it off writes the segment as it was read.
+    out = out.slice(0, out.length - term.length);
   }
 
   return out;

@@ -60,8 +60,15 @@ const DOCS_DIR = join(root, "docs-content");
 /** The public entry point whose exports a sample is allowed to import. */
 const PUBLIC_ENTRY_SOURCE = join(root, "src", "index.ts");
 
+/** Map the generators' subpath to its built ESM artifact. */
+const ARBITRARIES = join(root, "dist", "arbitraries.mjs");
+
 const resolveEntry = (specifier: string): string | undefined =>
-  specifier === "@cosyte/x12" ? ENTRY : undefined;
+  specifier === "@cosyte/x12"
+    ? ENTRY
+    : specifier === "@cosyte/x12/arbitraries"
+      ? ARBITRARIES
+      : undefined;
 
 beforeAll(() => {
   execFileSync("pnpm", ["build"], { cwd: root, stdio: "inherit" });

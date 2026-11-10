@@ -180,7 +180,11 @@ to make it hold. Six constructs are known not to survive:
 1. **Line breaks between segments**, as above. Silent.
 2. **A doubled segment terminator** outside a transaction. It delimits a zero-length segment carrying
    no elements, so there is nothing to retain. Silent.
-3. **A missing final terminator**, which the emit supplies. Silent.
+3. **A missing final terminator**, which the emit supplies. Silent. The one exception is a last
+   segment no terminator could end: one closing on a dangling release character (`REF*EA*A?`, where
+   a terminator written after it would be released) or a BDS or BIN whose declared octet count runs
+   past its end (a terminator would be read as data). That segment is emitted as it was read,
+   unterminated, so it reads back the same and a second emit writes the same bytes.
 4. **Post-IEA `trailingBytes`**, re-joined from segment slices rather than preserved verbatim.
 5. **TA1 position.** A TA1 that appeared **after** a functional group is collected onto
    `ix.ta1Segments` and emitted immediately after the ISA, so the emit **reorders** it. Silent, and
