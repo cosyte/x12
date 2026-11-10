@@ -46,7 +46,7 @@ import type {
 } from "./build-278-types.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
-import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
@@ -598,7 +598,7 @@ function emitReview(
   const levelCode = review.levelCode ?? DEFAULT_REVIEW_LEVEL;
   body.push(ctx.seg(["HL", hlId, parentHlId, ctx.esc(levelCode), hasChild]));
 
-  for (const trace of review.traces ?? []) {
+  for (const trace of requireCallerEntries(review.traces, "build278: review.traces", refuseSpec)) {
     body.push(
       ctx.seg([
         "TRN",
@@ -634,19 +634,27 @@ function emitReview(
     );
   }
 
-  for (const ref of review.references ?? []) {
+  for (const ref of requireCallerEntries(
+    review.references,
+    "build278: review.references",
+    refuseSpec,
+  )) {
     body.push(
       ctx.seg(["REF", ctx.esc(ref.qualifier), ctx.esc(ref.value), ctx.esc(ref.description ?? "")]),
     );
   }
 
-  for (const date of review.dates ?? []) {
+  for (const date of requireCallerEntries(review.dates, "build278: review.dates", refuseSpec)) {
     body.push(
       ctx.seg(["DTP", ctx.esc(date.qualifier), ctx.esc(date.formatQualifier), ctx.esc(date.value)]),
     );
   }
 
-  const diagnoses = review.diagnoses ?? [];
+  const diagnoses = requireCallerEntries(
+    review.diagnoses,
+    "build278: review.diagnoses",
+    refuseSpec,
+  );
   if (diagnoses.length > 0) {
     body.push(ctx.seg(["HI", ...diagnoses.map((dx) => ctx.comp([dx.qualifier, dx.code]))]));
   }
@@ -655,7 +663,12 @@ function emitReview(
     body.push(ctx.seg(["MSG", ctx.esc(message)]));
   }
 
-  for (const provider of review.providers ?? []) emitEntity(provider, body, ctx);
+  for (const provider of requireCallerEntries(
+    review.providers,
+    "build278: review.providers",
+    refuseSpec,
+  ))
+    emitEntity(provider, body, ctx);
 
   for (const child of nested) {
     emitReview(child, hlId, direction, body, ctx, counter);

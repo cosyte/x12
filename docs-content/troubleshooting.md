@@ -165,16 +165,17 @@ own typed refusal. Before this, the length coerced to `Infinity` and the builder
 instead of refusing** (measured over the entry-point probes the suite shipped at that base: most hung,
 and each of them refuses cleanly now). No probe count is quoted here; the suite re-derives it. A list
 you send as `null` is still treated as absent, exactly as before. The places a builder reads a
-caller array with `for…of` are not covered:
-`buildInterchange`'s `spec.groups`, `build999`'s `functionalGroup.transactionResponses` and the
-optional leaf arrays such as `claim.dates` throw `TypeError: … is not iterable`, which terminates but
-carries **no `code`**. Validate the shape at your own boundary if the spec comes from JSON.
-`build270` is the exception: every list slot on its spec, spine and leaf alike, goes through the
-checked-array chokepoint, so a forged array-like anywhere in a 270 spec draws the typed
-`Eligibility270BuildError`. The same slots are checked for HOLES there, because an array with
-`undefined` or `null` in a slot IS an array and clears the chokepoint: that is what a JSON payload
-with a dropped record looks like, and on the other builders it still reaches whatever dereferences
-it. On a 270 it refuses, naming the slot.
+caller array with `for…of` (`buildInterchange`'s `spec.groups`, `build999`'s
+`functionalGroup.transactionResponses` and the optional leaf arrays such as `claim.dates`) go
+through the same chokepoint, so a forged value there refuses with the typed code too.
+
+**A hole or a `null` inside a list refuses, in every builder.** An array with `undefined` or `null`
+in a slot IS an array and clears the chokepoint: that is what a JSON payload with a dropped record
+looks like. Every builder checks each slot of the lists it reads, at any depth, and refuses with its
+`INVALID_SPEC` code. In a list of objects the refusal names the slot with a structural locator such
+as `subscriber.benefits[0]`, never a value.
+`build270` and `build276` refuse a hole in their hierarchy spine on their `INVALID_HIERARCHY` code,
+as they did before.
 
 **A separate, long-standing hazard on the same JSON-caller path, FIXED in `0.0.9`: passing a builder a
 number where the types say string used to emit an EMPTY element, with no warning and no refusal.** On

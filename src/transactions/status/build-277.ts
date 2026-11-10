@@ -55,7 +55,7 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import type { X12Decimal } from "../../decimal.js";
-import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
@@ -544,7 +544,11 @@ function requireEntryObject<T>(entry: T | undefined, locator: string): asserts e
 /** @internal */
 function enforceStatus(status: Build277StatusSpec | undefined, locator: string): void {
   requireEntryObject(status, `status at ${locator}`);
-  const first = status.statuses[0];
+  const first = requireCallerEntries(
+    status.statuses,
+    `build277: status at ${locator}: statuses`,
+    refuseSpec,
+  )[0];
   if (first === undefined || first.categoryCode === "") {
     throw new ClaimStatus277BuildError(
       CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_SPEC,
@@ -677,8 +681,14 @@ function emitClaim(claim: Build277ClaimSpec, body: string[], ctx: EmitContext): 
     );
   }
   for (const status of claim.statuses ?? []) emitStatus(status, body, ctx);
-  for (const ref of claim.references ?? []) body.push(emitRef(ref, ctx));
-  for (const date of claim.dates ?? []) emitDate(date, body, ctx);
+  for (const ref of requireCallerEntries(
+    claim.references,
+    "build277: claim.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, ctx));
+  for (const date of requireCallerEntries(claim.dates, "build277: claim.dates", refuseSpec))
+    emitDate(date, body, ctx);
   for (const line of claim.serviceLines ?? []) emitServiceLine(line, body, ctx);
 }
 
@@ -710,8 +720,10 @@ function emitServiceLine(line: Build277ServiceLineSpec, body: string[], ctx: Emi
     ]),
   );
   for (const status of line.statuses ?? []) emitStatus(status, body, ctx);
-  for (const ref of line.references ?? []) body.push(emitRef(ref, ctx));
-  for (const date of line.dates ?? []) emitDate(date, body, ctx);
+  for (const ref of requireCallerEntries(line.references, "build277: line.references", refuseSpec))
+    body.push(emitRef(ref, ctx));
+  for (const date of requireCallerEntries(line.dates, "build277: line.dates", refuseSpec))
+    emitDate(date, body, ctx);
 }
 
 /**

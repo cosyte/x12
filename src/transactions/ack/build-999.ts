@@ -30,6 +30,7 @@ import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
+import { requireCallerEntries } from "../../builder/caller-array.js";
 import { padIsaElement } from "../../builder/caller-isa.js";
 
 /**
@@ -273,9 +274,17 @@ export function build999(spec: Build999Spec): X12Interchange {
   );
 
   const responseSegments: string[] = [];
-  for (const response of functionalGroup.transactionResponses) {
+  for (const response of requireCallerEntries(
+    functionalGroup.transactionResponses,
+    "build999: functionalGroup.transactionResponses",
+    refuseSpec,
+  )) {
     responseSegments.push(buildAk2(response, esc, elementSeparator, segmentTerminator));
-    for (const segError of response.segmentErrors ?? []) {
+    for (const segError of requireCallerEntries(
+      response.segmentErrors,
+      "build999: response.segmentErrors",
+      refuseSpec,
+    )) {
       responseSegments.push(
         ...buildIk3WithChildren(
           segError,
@@ -346,7 +355,11 @@ function enforceAcceptIsClean(group: Build999FunctionalGroupSpec): void {
       )} syntax error code(s). Use 'E' (Accept, with errors noted) or a reject disposition instead.`,
     );
   }
-  for (const response of group.transactionResponses) {
+  for (const response of requireCallerEntries(
+    group.transactionResponses,
+    "build999: functionalGroup.transactionResponses",
+    refuseSpec,
+  )) {
     const responseIsAccept = response.disposition === X12_ACK_DISPOSITION_CODES.A;
     const responseHasErrors = responseHasAnyError(response);
     if (responseIsAccept && responseHasErrors) {
@@ -470,7 +483,11 @@ function buildIk3WithChildren(
   for (const ctxValue of segError.contexts ?? []) {
     out.push(joinSeg(["CTX", esc(ctxValue)], elementSeparator, segmentTerminator));
   }
-  for (const elemError of segError.elementErrors ?? []) {
+  for (const elemError of requireCallerEntries(
+    segError.elementErrors,
+    "build999: segError.elementErrors",
+    refuseSpec,
+  )) {
     out.push(buildIk4(elemError, esc, componentSeparator, elementSeparator, segmentTerminator));
     for (const ctxValue of elemError.contexts ?? []) {
       out.push(joinSeg(["CTX", esc(ctxValue)], elementSeparator, segmentTerminator));

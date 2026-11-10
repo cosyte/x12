@@ -29,7 +29,7 @@
  * exactly what `get275Attachments` reads back.
  */
 
-import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
 import { padIsaElement } from "../../builder/caller-isa.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
@@ -258,7 +258,7 @@ function enforceStructure(spec: Build275Spec): readonly (readonly string[])[] {
   ) {
     refuseSpec("build275: spec.beginning must be an object where given.");
   }
-  requireCallerArray(spec.entities, "build275: spec.entities", refuseSpec);
+  requireCallerEntries(spec.entities, "build275: spec.entities", refuseSpec);
   const lines = requireCallerArray(spec.lines, "build275: spec.lines", refuseSpec);
   const octetsByLine: (readonly string[])[] = [];
   let count = 0;
@@ -286,7 +286,7 @@ function enforceLine(line: Build275LineSpec, locator: string): readonly string[]
     if (typeof line.status !== "object" || line.status === null) {
       refuseSpec(`build275: the status at ${locator} must be an object where given.`);
     }
-    const codes = requireCallerArray(
+    const codes = requireCallerEntries(
       line.status.codes,
       `build275: ${locator}.status.codes`,
       refuseSpec,
@@ -297,7 +297,7 @@ function enforceLine(line: Build275LineSpec, locator: string): readonly string[]
       );
     }
   }
-  requireCallerArray(line.references, `build275: ${locator}.references`, refuseSpec);
+  requireCallerEntries(line.references, `build275: ${locator}.references`, refuseSpec);
   const attachments = requireCallerArray(
     line.attachments,
     `build275: ${locator}.attachments`,

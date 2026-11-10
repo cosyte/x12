@@ -55,7 +55,7 @@ import { VARIANT_BY_ICR } from "./get-837.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import type { X12Decimal } from "../../decimal.js";
-import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
@@ -340,7 +340,10 @@ function buildClaim837(variant: "P" | "I" | "D", spec: Build837Spec): X12Interch
   };
 
   const comp = (components: readonly string[]): string => {
-    const escaped = components.map(esc);
+    // `Array.from`, not `map`: `map` skips a hole, and `join` then writes the
+    // skipped slot as an empty component. `Array.from` hands the hole to `esc`
+    // as `undefined`, which refuses it with the typed code.
+    const escaped = Array.from(components, (value) => esc(value));
     let end = escaped.length;
     while (end > 0 && escaped[end - 1] === "") end -= 1;
     return escaped.slice(0, end).join(componentSeparator);
@@ -785,15 +788,36 @@ function emitClaim(
     ]),
   );
 
-  for (const date of claim.dates ?? []) emitDate(date, body, ctx);
-  for (const hi of claim.diagnoses ?? []) emitHi(hi, body, ctx);
-  for (const hi of claim.procedures ?? []) emitHi(hi, body, ctx);
-  for (const hi of claim.otherHi ?? []) emitHi(hi, body, ctx);
-  for (const note of claim.notes ?? []) emitNote(note, body, ctx);
-  for (const amt of claim.amounts ?? []) emitAmount(amt, body, ctx);
-  for (const ref of claim.references ?? []) body.push(emitRef(ref, ctx));
-  for (const provider of claim.providers ?? []) emitEntity(provider, body, ctx);
-  for (const other of claim.otherSubscribers ?? []) emitOtherSubscriber(other, body, ctx);
+  for (const date of requireCallerEntries(claim.dates, "build837: claim.dates", refuseSpec))
+    emitDate(date, body, ctx);
+  for (const hi of requireCallerEntries(claim.diagnoses, "build837: claim.diagnoses", refuseSpec))
+    emitHi(hi, body, ctx);
+  for (const hi of requireCallerEntries(claim.procedures, "build837: claim.procedures", refuseSpec))
+    emitHi(hi, body, ctx);
+  for (const hi of requireCallerEntries(claim.otherHi, "build837: claim.otherHi", refuseSpec))
+    emitHi(hi, body, ctx);
+  for (const note of requireCallerEntries(claim.notes, "build837: claim.notes", refuseSpec))
+    emitNote(note, body, ctx);
+  for (const amt of requireCallerEntries(claim.amounts, "build837: claim.amounts", refuseSpec))
+    emitAmount(amt, body, ctx);
+  for (const ref of requireCallerEntries(
+    claim.references,
+    "build837: claim.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, ctx));
+  for (const provider of requireCallerEntries(
+    claim.providers,
+    "build837: claim.providers",
+    refuseSpec,
+  ))
+    emitEntity(provider, body, ctx);
+  for (const other of requireCallerEntries(
+    claim.otherSubscribers,
+    "build837: claim.otherSubscribers",
+    refuseSpec,
+  ))
+    emitOtherSubscriber(other, body, ctx);
 
   let lineNumber = 0;
   for (const line of claim.serviceLines) {
@@ -902,7 +926,8 @@ function emitServiceLine(
     );
   }
 
-  for (const date of line.dates ?? []) emitDate(date, body, ctx);
+  for (const date of requireCallerEntries(line.dates, "build837: line.dates", refuseSpec))
+    emitDate(date, body, ctx);
 
   if (line.variant === "P" && line.drug !== undefined) {
     const drug = line.drug;
@@ -922,7 +947,11 @@ function emitServiceLine(
   }
 
   if (line.variant === "D") {
-    for (const tooth of line.toothInformation ?? []) {
+    for (const tooth of requireCallerEntries(
+      line.toothInformation,
+      "build837: line.toothInformation",
+      refuseSpec,
+    )) {
       body.push(
         ctx.seg([
           "TOO",
@@ -934,11 +963,24 @@ function emitServiceLine(
     }
   }
 
-  for (const note of line.notes ?? []) emitNote(note, body, ctx);
-  for (const amt of line.amounts ?? []) emitAmount(amt, body, ctx);
-  for (const ref of line.references ?? []) body.push(emitRef(ref, ctx));
-  for (const provider of line.providers ?? []) emitEntity(provider, body, ctx);
-  for (const adj of line.adjudications ?? []) emitAdjudication(adj, body, ctx);
+  for (const note of requireCallerEntries(line.notes, "build837: line.notes", refuseSpec))
+    emitNote(note, body, ctx);
+  for (const amt of requireCallerEntries(line.amounts, "build837: line.amounts", refuseSpec))
+    emitAmount(amt, body, ctx);
+  for (const ref of requireCallerEntries(line.references, "build837: line.references", refuseSpec))
+    body.push(emitRef(ref, ctx));
+  for (const provider of requireCallerEntries(
+    line.providers,
+    "build837: line.providers",
+    refuseSpec,
+  ))
+    emitEntity(provider, body, ctx);
+  for (const adj of requireCallerEntries(
+    line.adjudications,
+    "build837: line.adjudications",
+    refuseSpec,
+  ))
+    emitAdjudication(adj, body, ctx);
 }
 
 /** Emit a Loop 2430 line adjudication (SVD + CAS* + DTP*573). @internal */
@@ -970,30 +1012,26 @@ function emitCasGroup(
   body: string[],
   ctx: EmitContext,
 ): void {
-  const adjustments = requireCallerArray(raw, at, refuseSpec);
-  let i = 0;
-  while (i < adjustments.length) {
-    const first = adjustments[i];
-    if (first === undefined) {
-      i += 1;
-      continue;
+  // Every slot is checked first: a hole used to be skipped here in silence,
+  // so an adjustment the caller sent never reached the CAS.
+  let parts: string[] | undefined;
+  let groupCode = "";
+  let triples = 0;
+  for (const adj of requireCallerEntries(raw, at, refuseSpec)) {
+    if (parts === undefined || adj.groupCode !== groupCode || triples === 6) {
+      if (parts !== undefined) body.push(ctx.seg(parts));
+      groupCode = adj.groupCode;
+      parts = ["CAS", ctx.esc(groupCode)];
+      triples = 0;
     }
-    const groupCode = first.groupCode;
-    const parts: string[] = ["CAS", ctx.esc(groupCode)];
-    let triples = 0;
-    while (i < adjustments.length && triples < 6) {
-      const adj = adjustments[i];
-      if (adj === undefined || adj.groupCode !== groupCode) break;
-      parts.push(
-        ctx.esc(adj.reasonCode),
-        escDec(adj.amount, ctx.esc),
-        adj.quantity === undefined ? "" : escDec(adj.quantity, ctx.esc),
-      );
-      triples += 1;
-      i += 1;
-    }
-    body.push(ctx.seg(parts));
+    parts.push(
+      ctx.esc(adj.reasonCode),
+      escDec(adj.amount, ctx.esc),
+      adj.quantity === undefined ? "" : escDec(adj.quantity, ctx.esc),
+    );
+    triples += 1;
   }
+  if (parts !== undefined) body.push(ctx.seg(parts));
 }
 
 // ---------------------------------------------------------------------------
@@ -1017,8 +1055,18 @@ function emitEntity(entity: Build837EntitySpec, body: string[], ctx: EmitContext
     ]),
   );
   if (entity.address !== undefined) emitAddress(entity.address, body, ctx);
-  for (const contact of entity.contacts ?? []) body.push(emitContact(contact, ctx));
-  for (const ref of entity.references ?? []) body.push(emitRef(ref, ctx));
+  for (const contact of requireCallerEntries(
+    entity.contacts,
+    "build837: entity.contacts",
+    refuseSpec,
+  ))
+    body.push(emitContact(contact, ctx));
+  for (const ref of requireCallerEntries(
+    entity.references,
+    "build837: entity.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, ctx));
 }
 
 /** Emit N3 + N4 for an address block. @internal */
@@ -1046,7 +1094,11 @@ function emitContact(contact: Build837ContactSpec, ctx: EmitContext): string {
     ctx.esc(contact.contactFunctionCode),
     ctx.esc(contact.name ?? ""),
   ];
-  for (const comm of contact.communications ?? []) {
+  for (const comm of requireCallerEntries(
+    contact.communications,
+    "build837: contact.communications",
+    refuseSpec,
+  )) {
     parts.push(ctx.esc(comm.qualifier), ctx.esc(comm.value));
   }
   return ctx.seg(parts);

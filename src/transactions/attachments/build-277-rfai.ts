@@ -26,7 +26,7 @@
  * exactly what `get277RequestForAdditionalInformation` reads back.
  */
 
-import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
 import { padIsaElement } from "../../builder/caller-isa.js";
 import { requireCallerDecimal } from "../../builder/caller-decimal.js";
@@ -288,7 +288,7 @@ function enforceLevel(level: Build277RfaiLevelSpec, locator: string): number {
       `build277RequestForAdditionalInformation:the level at ${locator} must be an object.`,
     );
   }
-  requireCallerArray(
+  requireCallerEntries(
     level.entities,
     `build277RequestForAdditionalInformation:${locator}.entities`,
     refuseSpec,
@@ -333,22 +333,22 @@ function enforceRequest(request: Build277RfaiRequestSpec, locator: string): void
   );
   for (const [s, status] of statuses.entries())
     enforceStatus(status, `${locator}.statuses[${String(s)}]`);
-  requireCallerArray(
+  requireCallerEntries(
     request.references,
     `build277RequestForAdditionalInformation:${locator}.references`,
     refuseSpec,
   );
-  requireCallerArray(
+  requireCallerEntries(
     request.dates,
     `build277RequestForAdditionalInformation:${locator}.dates`,
     refuseSpec,
   );
-  requireCallerArray(
+  requireCallerEntries(
     request.quantities,
     `build277RequestForAdditionalInformation:${locator}.quantities`,
     refuseSpec,
   );
-  requireCallerArray(
+  requireCallerEntries(
     request.amounts,
     `build277RequestForAdditionalInformation:${locator}.amounts`,
     refuseSpec,
@@ -392,12 +392,12 @@ function enforceServiceLine(line: Build277RfaiServiceLineSpec, locator: string):
   );
   for (const [s, status] of statuses.entries())
     enforceStatus(status, `${locator}.statuses[${String(s)}]`);
-  requireCallerArray(
+  requireCallerEntries(
     line.references,
     `build277RequestForAdditionalInformation:${locator}.references`,
     refuseSpec,
   );
-  requireCallerArray(
+  requireCallerEntries(
     line.dates,
     `build277RequestForAdditionalInformation:${locator}.dates`,
     refuseSpec,
@@ -414,7 +414,7 @@ function enforceStatus(status: Build277RfaiStatusSpec, locator: string): void {
       `build277RequestForAdditionalInformation:the status at ${locator} must be an object.`,
     );
   }
-  const codes = requireCallerArray(
+  const codes = requireCallerEntries(
     status.codes,
     `build277RequestForAdditionalInformation:${locator}.codes`,
     refuseSpec,

@@ -1195,24 +1195,27 @@ describe("build837 - optional elements are written empty, never invented", () =>
     expect(out).not.toContain("~DTP*573*");
   });
 
-  it("skips a hole in an adjustment list and still packs the CAS triples around it", () => {
+  it("refuses a hole in an adjustment list rather than skipping it", () => {
+    // The hole used to be skipped in silence, so the CAS went out without an
+    // adjustment the caller's list had a slot for.
     const adjustments = [
       { groupCode: "CO", reasonCode: "45", amount: dec("50.00") },
       undefined,
       { groupCode: "CO", reasonCode: "253", amount: dec("2.00") },
     ] as unknown as readonly Build837AdjustmentSpec[];
-    const out = text(
-      pSpecWithClaim({
-        ...P_CLAIM,
-        serviceLines: [
-          {
-            ...P_LINE,
-            adjudications: [{ otherPayerId: "PAYER02", amountPaid: dec("98.00"), adjustments }],
-          },
-        ],
-      }),
-    );
-    expect(out).toContain("~CAS*CO*45*50.00~CAS*CO*253*2.00~");
+    expect(() =>
+      text(
+        pSpecWithClaim({
+          ...P_CLAIM,
+          serviceLines: [
+            {
+              ...P_LINE,
+              adjudications: [{ otherPayerId: "PAYER02", amountPaid: dec("98.00"), adjustments }],
+            },
+          ],
+        }),
+      ),
+    ).toThrow(/build837: adjudication\.adjustments\[1\] is an empty list slot/);
   });
 
   it("writes an N4 with only a postal code, and a PER with only its function code", () => {

@@ -25,6 +25,7 @@ import { requireCallerSegment } from "./caller-segment.js";
 import { renderCallerValue } from "./caller-value.js";
 import { makeCallerEscaper } from "./caller-string.js";
 import { requireControlNumber } from "./caller-control-number.js";
+import { requireCallerEntries } from "./caller-array.js";
 import { padIsaElement } from "./caller-isa.js";
 
 /**
@@ -147,7 +148,11 @@ export function buildInterchange(spec: InterchangeSpec): X12Interchange {
     ].join(elementSeparator) + segmentTerminator;
 
   let body = "";
-  for (const group of spec.groups) {
+  for (const group of requireCallerEntries(
+    spec.groups,
+    "buildInterchange: spec.groups",
+    refuseSpec,
+  )) {
     body += buildGroup(group, spec, esc, elementSeparator, segmentTerminator);
   }
 
@@ -254,7 +259,11 @@ function buildGroup(
   );
 
   let transactions = "";
-  for (const tx of group.transactions) {
+  for (const tx of requireCallerEntries(
+    group.transactions,
+    "buildInterchange: group.transactions",
+    refuseSpec,
+  )) {
     transactions += buildTransaction(tx, esc, elementSeparator, segmentTerminator);
   }
 
@@ -292,7 +301,11 @@ function buildTransaction(
   const st = joinSeg(stParts, elementSeparator, segmentTerminator);
 
   let bodySegments = "";
-  for (const segment of tx.segments) {
+  for (const segment of requireCallerEntries(
+    tx.segments,
+    "buildInterchange: transaction.segments",
+    refuseSpec,
+  )) {
     if (segment.length === 0 || (segment[0] ?? "") === "") {
       throw new X12BuildError(
         X12_BUILD_ERROR_CODES.X12_BUILD_INVALID_SPEC,

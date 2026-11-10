@@ -38,7 +38,7 @@ import { lookupMaintenanceType } from "../../code-lists/maintenance-type.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import type { X12Decimal } from "../../decimal.js";
-import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
@@ -363,8 +363,14 @@ function emitHeader(
   );
   if (header.sponsor !== undefined) body.push(emitParty(header.sponsor, seg, esc));
   if (header.payer !== undefined) body.push(emitParty(header.payer, seg, esc));
-  for (const ref of header.references ?? []) body.push(emitRef(ref, seg, esc));
-  for (const date of header.dates ?? []) body.push(emitDate(date, seg, esc));
+  for (const ref of requireCallerEntries(
+    header.references,
+    "build834: header.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, seg, esc));
+  for (const date of requireCallerEntries(header.dates, "build834: header.dates", refuseSpec))
+    body.push(emitDate(date, seg, esc));
 }
 
 /** Emit a Loop 1000 party (N1). @internal */
@@ -410,9 +416,19 @@ function emitMember(
   );
 
   if (member.member !== undefined) emitMemberName(member.member, body, seg, esc);
-  for (const ref of member.references ?? []) body.push(emitRef(ref, seg, esc));
-  for (const date of member.dates ?? []) body.push(emitDate(date, seg, esc));
-  for (const cob of member.coordinationOfBenefits ?? []) {
+  for (const ref of requireCallerEntries(
+    member.references,
+    "build834: member.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, seg, esc));
+  for (const date of requireCallerEntries(member.dates, "build834: member.dates", refuseSpec))
+    body.push(emitDate(date, seg, esc));
+  for (const cob of requireCallerEntries(
+    member.coordinationOfBenefits,
+    "build834: member.coordinationOfBenefits",
+    refuseSpec,
+  )) {
     body.push(
       seg([
         "COB",
@@ -422,7 +438,12 @@ function emitMember(
       ]),
     );
   }
-  for (const coverage of member.healthCoverages ?? []) emitCoverage(coverage, body, seg, esc);
+  for (const coverage of requireCallerEntries(
+    member.healthCoverages,
+    "build834: member.healthCoverages",
+    refuseSpec,
+  ))
+    emitCoverage(coverage, body, seg, esc);
 }
 
 /** Emit the member name - NM1*IL + DMG (when dob/gender present) + N3/N4. @internal */
@@ -498,8 +519,13 @@ function emitCoverage(
       esc(coverage.coverageLevelCode ?? ""),
     ]),
   );
-  for (const date of coverage.dates ?? []) body.push(emitDate(date, seg, esc));
-  for (const amount of coverage.amounts ?? []) {
+  for (const date of requireCallerEntries(coverage.dates, "build834: coverage.dates", refuseSpec))
+    body.push(emitDate(date, seg, esc));
+  for (const amount of requireCallerEntries(
+    coverage.amounts,
+    "build834: coverage.amounts",
+    refuseSpec,
+  )) {
     body.push(seg(["AMT", esc(amount.qualifier), escDec(amount.amount, esc)]));
   }
 }

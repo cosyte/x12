@@ -39,7 +39,7 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import type { X12Decimal } from "../../decimal.js";
-import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
@@ -323,7 +323,7 @@ export function build820(spec: Build820Spec): X12Interchange {
  * carry indices + counts, never a member id / name. @internal
  */
 function enforceStructuralSpec(spec: Build820Spec): void {
-  const traces = requireCallerArray(spec.traces, "build820: spec.traces", refuseSpec);
+  const traces = requireCallerEntries(spec.traces, "build820: spec.traces", refuseSpec);
   if (traces.length === 0) {
     throw new Premium820BuildError(
       PREMIUM_820_BUILD_ERROR_CODES.X12_820_BUILD_INVALID_SPEC,
@@ -404,7 +404,12 @@ function emitParty(
     ]),
   );
   emitAddress(party.address, body, seg, esc);
-  for (const ref of party.references ?? []) body.push(emitRef(ref, seg, esc));
+  for (const ref of requireCallerEntries(
+    party.references,
+    "build820: party.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, seg, esc));
 }
 
 /** Emit N3 + N4 for an address block, only the present lines / fields. @internal */
@@ -463,12 +468,25 @@ function emitRemittance(
   if (remittance.individual !== undefined) {
     body.push(emitPerson(remittance.individual, seg, esc));
   }
-  for (const ref of remittance.references ?? []) body.push(emitRef(ref, seg, esc));
-  for (const date of remittance.dates ?? []) {
+  for (const ref of requireCallerEntries(
+    remittance.references,
+    "build820: remittance.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, seg, esc));
+  for (const date of requireCallerEntries(
+    remittance.dates,
+    "build820: remittance.dates",
+    refuseSpec,
+  )) {
     body.push(seg(["DTM", esc(date.qualifier), esc(date.value)]));
   }
   for (const item of remittance.openItems) body.push(emitOpenItem(item, seg, esc));
-  for (const adjustment of remittance.adjustments ?? []) {
+  for (const adjustment of requireCallerEntries(
+    remittance.adjustments,
+    "build820: remittance.adjustments",
+    refuseSpec,
+  )) {
     body.push(
       seg([
         "ADX",

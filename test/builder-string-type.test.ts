@@ -285,6 +285,11 @@ describe("builder element escaping: the source gate", () => {
   });
 
   it("pins the invocation count, because the first draft published a line count", () => {
+    // 574 invocations on 536 lines, counted comment-stripped on this tree with
+    // `ctx.esc(...)` included. The 837 composite joiner added the difference
+    // from 573 on 535: it calls `esc` through `Array.from` rather than handing
+    // it to `map`, so a hole in a caller list reaches the type check.
+    //
     // 573 invocations on 535 lines, counted comment-stripped on this tree with
     // `ctx.esc(...)` included. The 271 EB-13 procedure composite added the
     // difference from 570 on 532: its qualifier, its code and its modifiers.
@@ -328,8 +333,8 @@ describe("builder element escaping: the source gate", () => {
           .filter((l) => /\besc\(/u.test(l)).length,
       0,
     );
-    expect(invocations).toBe(573);
-    expect(lines).toBe(535);
+    expect(invocations).toBe(574);
+    expect(lines).toBe(536);
     expect(invocations).toBeGreaterThan(lines);
   });
 

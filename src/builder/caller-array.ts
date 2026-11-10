@@ -42,22 +42,17 @@
  * immediately. That is **not** a typed, code-tagged refusal - it carries no
  * `code`, so a consumer branching on `err.code` sees `undefined` - but it
  * terminates, so it is a different defect from the one this module closes.
- * Measured on this tree, at base and unchanged at head: `buildInterchange`
- * (`spec.groups`) and `build999` (`functionalGroup.transactionResponses`) have
- * no indexed loop over their top-level arrays at all and throw that untyped
- * `TypeError`, as do the optional leaf arrays (`claim.dates`,
- * `line.references`, …) of the domain builders.
- * **`test/builder-array-bounds.test.ts` pins that behaviour so it cannot
- * quietly become a hang**, and it is disclosed in `KNOWN-LIMITATIONS.md`
- * rather than fixed here.
+ * The builders' `for…of` reads go through {@link requireCallerEntries}, which
+ * runs this guard first and then checks every slot for a hole or a `null`, so
+ * `buildInterchange` (`spec.groups`), `build999`
+ * (`functionalGroup.transactionResponses`) and the leaf lists of the domain
+ * builders (`claim.dates`, `line.references`, …) refuse with their typed error
+ * too. `test/builder-array-bounds.test.ts` pins the forged shape on those, and
+ * `test/builder-list-entry-holes.test.ts` the holes.
  *
- * **`build270` is the exception and it is deliberate.** It routes every list
- * slot on its spec through this chokepoint at the point the list is read, leaf
- * lists included, so a forged array-like anywhere in a 270 spec draws its typed
- * error rather than the untyped `TypeError`. Read the sentence above as a
- * statement about the builders that predate it, not as a rule this module
- * enforces: the chokepoint is available to every leaf list, and the reason the
- * others do not use it is history, not design.
+ * `build270` and `build276` route their lists through this chokepoint with
+ * a hole check of their own, which predates {@link requireCallerEntries} and
+ * names the slot with a full structural path.
  *
  * @see `test/builder-array-bounds.test.ts` - the source gate that requires
  * every indexed loop in a builder module to take its bound from a real array.
@@ -182,4 +177,47 @@ export function requireCallerArray<T>(
  */
 function isRealArray<T>(value: readonly T[]): value is readonly T[] {
   return Array.isArray(value);
+}
+
+/**
+ * Require a caller-supplied list to be a real array with no hole and no `null`
+ * in it, and refuse with the calling builder's own typed error if it is not.
+ *
+ * {@link requireCallerArray} answers whether the LIST is a list. It says
+ * nothing about the entries, and a real array with a gap in it clears it:
+ * `[, entry]` from a sparse literal, or `[null]` from a JSON payload that
+ * dropped a record. Left unguarded, that slot reached an emitter, which
+ * dereferenced it and threw an untyped `TypeError` with no `code` a consumer
+ * can branch on. An absent LIST is still absent (`null` or `undefined` answers
+ * the frozen empty array, exactly as {@link requireCallerArray} does), but a
+ * list that exists and has a gap in it is a spec its author did not mean to
+ * send, and no builder invents an entry to fill one.
+ *
+ * Entries are read with `entries()`, which visits a hole as `undefined`, so a
+ * hole and an explicit `undefined` refuse alike. The loop is bounded by the
+ * length of a checked real array.
+ *
+ * @param value the caller-supplied field, typed as an array and not trusted to
+ * be one
+ * @param at a library-owned structural locator naming the list, e.g.
+ * `"build271: subscriber.benefits"`. Never caller text.
+ * @param refuse throws the calling module's typed refusal
+ *
+ * @internal
+ */
+export function requireCallerEntries<T>(
+  value: readonly T[] | null | undefined,
+  at: string,
+  refuse: (message: string) => never,
+): readonly T[] {
+  const items = requireCallerArray(value, at, refuse);
+  for (const [i, item] of items.entries()) {
+    if (item === undefined || item === null) {
+      refuse(
+        `${at}[${String(i)}] is an empty list slot. Received ${item === null ? "null" : "undefined"}, ` +
+          `and this builder invents nothing to fill a hole in a list.`,
+      );
+    }
+  }
+  return items;
 }

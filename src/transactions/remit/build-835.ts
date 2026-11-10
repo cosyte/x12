@@ -45,7 +45,7 @@ import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange, X12Position } from "../../parser/types.js";
 import { WARNING_CODES, type X12ParseWarning } from "../../parser/warnings.js";
 import type { X12Decimal } from "../../decimal.js";
-import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
@@ -392,7 +392,7 @@ export function build835(spec: Build835Spec): X12Interchange {
  * would otherwise emit a malformed 835. @internal
  */
 function enforceStructuralSpec(spec: Build835Spec): void {
-  const traces = requireCallerArray(spec.traces, "build835: spec.traces", refuseSpec);
+  const traces = requireCallerEntries(spec.traces, "build835: spec.traces", refuseSpec);
   if (traces.length === 0) {
     throw new Remit835BuildError(
       REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_INVALID_SPEC,
@@ -488,7 +488,11 @@ function enforceBalance(spec: Build835Spec): void {
   const totalWarn = checkRemitTotalBalance(
     spec.payment.totalActualPayment,
     claims,
-    (spec.providerAdjustments ?? []).map(materializeProviderAdjustment),
+    requireCallerEntries(
+      spec.providerAdjustments,
+      "build835: spec.providerAdjustments",
+      refuseSpec,
+    ).map(materializeProviderAdjustment),
     position,
   );
   if (totalWarn !== undefined) {
@@ -547,7 +551,11 @@ function materializeServiceLine(spec: Build835ServiceLineSpec): X12RemitServiceL
     originalServiceIdQualifier: spec.originalServiceIdQualifier,
     serviceDateStart: spec.serviceDateStart,
     serviceDateEnd: spec.serviceDateEnd,
-    adjustments: (spec.adjustments ?? []).map(materializeAdjustment),
+    adjustments: requireCallerEntries(
+      spec.adjustments,
+      "build835: line.adjustments",
+      refuseSpec,
+    ).map(materializeAdjustment),
     references: [],
     amounts: [],
     remarks: [],
@@ -567,7 +575,11 @@ function materializeClaim(spec: Build835ClaimSpec): X12RemitClaim {
     payerClaimControlNumber: spec.payerClaimControlNumber,
     facilityTypeCode: spec.facilityTypeCode,
     claimFrequencyCode: spec.claimFrequencyCode,
-    adjustments: (spec.adjustments ?? []).map(materializeAdjustment),
+    adjustments: requireCallerEntries(
+      spec.adjustments,
+      "build835: claim.adjustments",
+      refuseSpec,
+    ).map(materializeAdjustment),
     patient: undefined,
     subscriber: undefined,
     correctedPatient: undefined,
@@ -578,7 +590,11 @@ function materializeClaim(spec: Build835ClaimSpec): X12RemitClaim {
     references: [],
     amounts: [],
     remarks: [],
-    serviceLines: (spec.serviceLines ?? []).map(materializeServiceLine),
+    serviceLines: requireCallerEntries(
+      spec.serviceLines,
+      "build835: claim.serviceLines",
+      refuseSpec,
+    ).map(materializeServiceLine),
   };
 }
 
@@ -638,10 +654,18 @@ function emitParty(
       );
     }
   }
-  for (const ref of party.additionalIdentifiers ?? []) {
+  for (const ref of requireCallerEntries(
+    party.additionalIdentifiers,
+    "build835: party.additionalIdentifiers",
+    refuseSpec,
+  )) {
     body.push(emitRef(ref, seg, esc));
   }
-  for (const contact of party.contacts ?? []) {
+  for (const contact of requireCallerEntries(
+    party.contacts,
+    "build835: party.contacts",
+    refuseSpec,
+  )) {
     body.push(emitContact(contact, seg, esc));
   }
 }
@@ -662,7 +686,11 @@ function emitContact(
   esc: (value: string) => string,
 ): string {
   const parts: string[] = ["PER", esc(contact.contactFunctionCode), esc(contact.name ?? "")];
-  for (const comm of contact.communications ?? []) {
+  for (const comm of requireCallerEntries(
+    contact.communications,
+    "build835: contact.communications",
+    refuseSpec,
+  )) {
     parts.push(esc(comm.qualifier), esc(comm.value));
   }
   return seg(parts);
@@ -707,15 +735,24 @@ function emitClaim(
     body.push(seg(["DTM", "233", esc(claim.servicePeriodEnd)]));
   }
 
-  for (const ref of claim.references ?? []) body.push(emitRef(ref, seg, esc));
-  for (const amt of claim.amounts ?? []) {
+  for (const ref of requireCallerEntries(
+    claim.references,
+    "build835: claim.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, seg, esc));
+  for (const amt of requireCallerEntries(claim.amounts, "build835: claim.amounts", refuseSpec)) {
     body.push(seg(["AMT", esc(amt.qualifier), escDec(amt.amount, esc)]));
   }
-  for (const remark of claim.remarks ?? []) {
+  for (const remark of requireCallerEntries(claim.remarks, "build835: claim.remarks", refuseSpec)) {
     body.push(seg(["LQ", esc(remark.system), esc(remark.code)]));
   }
 
-  for (const line of claim.serviceLines ?? []) {
+  for (const line of requireCallerEntries(
+    claim.serviceLines,
+    "build835: claim.serviceLines",
+    refuseSpec,
+  )) {
     emitServiceLine(line, body, seg, esc, comp);
   }
 }
@@ -754,11 +791,12 @@ function emitServiceLine(
 
   emitServiceLineDtm(line, body, seg, esc);
   emitCasGroup(line.adjustments, "build835: serviceLine.adjustments", body, seg, esc);
-  for (const ref of line.references ?? []) body.push(emitRef(ref, seg, esc));
-  for (const amt of line.amounts ?? []) {
+  for (const ref of requireCallerEntries(line.references, "build835: line.references", refuseSpec))
+    body.push(emitRef(ref, seg, esc));
+  for (const amt of requireCallerEntries(line.amounts, "build835: line.amounts", refuseSpec)) {
     body.push(seg(["AMT", esc(amt.qualifier), escDec(amt.amount, esc)]));
   }
-  for (const remark of line.remarks ?? []) {
+  for (const remark of requireCallerEntries(line.remarks, "build835: line.remarks", refuseSpec)) {
     body.push(seg(["LQ", esc(remark.system), esc(remark.code)]));
   }
 }
@@ -799,7 +837,7 @@ function emitCasGroup(
   let i = 0;
   while (i < adjustments.length) {
     const first = adjustments[i];
-    /* v8 ignore next -- a hole sums to no amount, so `enforceBalance` has already refused it as not evaluable */
+    /* v8 ignore next -- `enforceBalance` materializes every list through `requireCallerEntries` first, so a hole has already been refused */
     if (first === undefined) {
       i += 1;
       continue;
@@ -879,7 +917,7 @@ function emitProviderAdjustments(
   let i = 0;
   while (i < adjustments.length) {
     const first = adjustments[i];
-    /* v8 ignore next -- a hole sums to no amount, so `enforceBalance` has already refused it as not evaluable */
+    /* v8 ignore next -- `enforceBalance` materializes every list through `requireCallerEntries` first, so a hole has already been refused */
     if (first === undefined) {
       i += 1;
       continue;
