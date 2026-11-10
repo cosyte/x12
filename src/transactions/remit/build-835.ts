@@ -399,6 +399,15 @@ function enforceStructuralSpec(spec: Build835Spec): void {
       "build835: at least one TRN trace is required (TR3 005010X221A1 Loop header).",
     );
   }
+  // `claims` is required, and unlike the other builders' required lists it may
+  // be empty: that is a remit with no claim payments. So a list left out or
+  // sent as `null` cannot fall through as an absent list to an "at least one"
+  // check, and is refused here. It used to pass as empty and then throw an
+  // untyped TypeError where `enforceBalance` reads `spec.claims.map`.
+  const rawClaims: unknown = spec.claims;
+  if (rawClaims === undefined || rawClaims === null) {
+    refuseSpec("build835: spec.claims is required. Pass [] for a remit with no claim payments.");
+  }
   const claims = requireCallerArray(spec.claims, "build835: spec.claims", refuseSpec);
   for (let i = 0; i < claims.length; i += 1) {
     const claim = claims[i];
