@@ -82,6 +82,7 @@ export type {
   Build271DependentSpec,
   Build271EntitySpec,
   Build271EnvelopeSpec,
+  Build271HeaderSpec,
   Build271InformationReceiverSpec,
   Build271InformationSourceSpec,
   Build271MemberSpec,

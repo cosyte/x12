@@ -1049,6 +1049,16 @@ export const PHI_SLOTS: readonly DiagnosticSlot<string>[] = [
     plant: (m) => withGroupCountMismatch(swap(G_271, "***MI*MBR0001~", `***MI*${m}~`)),
     expectCode: WARNING_CODES.X12_GROUP_COUNT_MISMATCH,
   },
+  {
+    name: "NM1-09 member id on a 271 with no BHT",
+    plant: (m) =>
+      swap(
+        swap(G_271, "~BHT*0022*11*TXN-REF-001*20260601*1200~", "~"),
+        "***MI*MBR0001~",
+        `***MI*${m}~`,
+      ),
+    expectCode: WARNING_CODES.X12_271_HEADER_ABSENT,
+  },
 
   // ---- 278 services review ------------------------------------------------
   {

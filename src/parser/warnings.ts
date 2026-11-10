@@ -124,6 +124,7 @@ export const WARNING_CODES = {
   X12_999_AK1_ABSENT: "X12_999_AK1_ABSENT",
   X12_999_IK5_DISPOSITION_UNKNOWN: "X12_999_IK5_DISPOSITION_UNKNOWN",
   X12_999_AK9_DISPOSITION_UNKNOWN: "X12_999_AK9_DISPOSITION_UNKNOWN",
+  X12_271_HEADER_ABSENT: "X12_271_HEADER_ABSENT",
 } as const;
 
 /**
@@ -549,6 +550,8 @@ const WARNING_MESSAGES = {
     "999 transaction set response disposition the reader could not read: IK5-01 (or AK5-01 on a legacy segment) at `position.segmentIndex` is absent, empty or not one of the seven codes of code list 715 (`A`, `E`, `P`, `R`, `M`, `W`, `X`, compared exactly). The reading falls back, fail-safe: `ik5.disposition` reads `R` (rejected), and the syntax error codes after it are read as sent. Treat that reject as the reader's, not the sender's. Compare `X12_999_IK5_ABSENT`, where the response has no IK5 at all. The verbatim segment is preserved on the transaction set. Nothing is echoed here.",
   X12_999_AK9_DISPOSITION_UNKNOWN:
     "999 functional group disposition the reader could not read: AK9-01 at `position.segmentIndex` is absent, empty or not one of the seven codes of code list 715 (`A`, `E`, `P`, `R`, `M`, `W`, `X`, compared exactly). The reading falls back, fail-safe: `ak9.disposition` reads `R` (rejected), and the counts and syntax error codes after it are read as sent. Treat that reject as the reader's, not the sender's. Compare `X12_999_AK9_ABSENT`, where the 999 has no AK9 at all. The verbatim segment is preserved on the transaction set. Nothing is echoed here.",
+  X12_271_HEADER_ABSENT:
+    "271 with no BHT: the transaction set carries no Beginning of Hierarchical Transaction segment, which the implementation guide requires right after the ST of every 271, so a trading partner checking against the guide can reject it. Nothing is fabricated to stand in: no purpose code, reference, date or time is inferred, and the rest of the transaction set was read as it stands. The verbatim segments are preserved on the transaction set. Nothing is echoed here.",
 } as const;
 
 /**
@@ -2446,6 +2449,29 @@ export function ack999Ak9DispositionUnknown(position: X12Position): X12ParseWarn
   return {
     code: WARNING_CODES.X12_999_AK9_DISPOSITION_UNKNOWN,
     message: WARNING_MESSAGES.X12_999_AK9_DISPOSITION_UNKNOWN,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_271_HEADER_ABSENT` warning. Raised by `get271Eligibility` when
+ * the transaction set carries no BHT, which 005010X279A1 requires after the ST
+ * of every 271. Nothing stands in for it on the reading.
+ *
+ * The reader anchors it at the ST (`segmentIndex: 0`), because an absent
+ * segment has no position of its own. It takes a position and nothing else.
+ *
+ * @example
+ * ```ts
+ * import { eligibility271HeaderAbsent } from "@cosyte/x12";
+ * const w = eligibility271HeaderAbsent({ segmentIndex: 0, transactionIndex: 0 });
+ * w.code; // "X12_271_HEADER_ABSENT"
+ * ```
+ */
+export function eligibility271HeaderAbsent(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_271_HEADER_ABSENT,
+    message: WARNING_MESSAGES.X12_271_HEADER_ABSENT,
     position,
   };
 }

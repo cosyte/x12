@@ -11,7 +11,7 @@ Every code `@cosyte/x12` can hand you, in three groups:
 
 - **Fatal codes** (4): `parseX12` throws an `X12ParseError` carrying one when the input is not
   recoverable as X12 at all.
-- **Warning codes** (64): a deviation a reader tolerated, recorded on the model's `warnings`
+- **Warning codes** (65): a deviation a reader tolerated, recorded on the model's `warnings`
   array with a position, while the value stays on the model.
 - **Refusal codes** (15 registries): a builder or a checker refused what it was given and threw
   a typed error carrying one.
@@ -328,6 +328,10 @@ The declared span of this BDS or BIN segment's binary data holds a character abo
 ### X12_999_AK9_DISPOSITION_UNKNOWN
 
 999 functional group disposition the reader could not read: AK9-01 at `position.segmentIndex` is absent, empty or not one of the seven codes of code list 715 (`A`, `E`, `P`, `R`, `M`, `W`, `X`, compared exactly). The reading falls back, fail-safe: `ak9.disposition` reads `R` (rejected), and the counts and syntax error codes after it are read as sent. Treat that reject as the reader's, not the sender's. Compare `X12_999_AK9_ABSENT`, where the 999 has no AK9 at all. The verbatim segment is preserved on the transaction set. Nothing is echoed here.
+
+### X12_271_HEADER_ABSENT
+
+271 with no BHT: the transaction set carries no Beginning of Hierarchical Transaction segment, which the implementation guide requires right after the ST of every 271, so a trading partner checking against the guide can reject it. Nothing is fabricated to stand in: no purpose code, reference, date or time is inferred, and the rest of the transaction set was read as it stands. The verbatim segments are preserved on the transaction set. Nothing is echoed here.
 
 ## Refusal codes
 
