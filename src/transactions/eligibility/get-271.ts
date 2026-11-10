@@ -235,6 +235,7 @@ export function get271Eligibility(
 
   for (let i = 0; i < body.length; i += 1) {
     const seg = body[i];
+    /* v8 ignore next -- `i` is bounded by `body.length`, so `body[i]` is defined */
     if (seg === undefined) continue;
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
     // Every decimal read below routes its `X12_UNPARSEABLE_DECIMAL` here; the
@@ -440,6 +441,7 @@ function decodeAaa(
     warnings.push(aaaRejectReasonAbsent(at(AAA_REJECT_REASON_ELEMENT), level));
   } else {
     const description = lookupAaaRejectReason(rejectRaw)?.description;
+    /* v8 ignore else -- the bundled AAA-03 snapshot ships empty, so no code has a description yet */
     if (description === undefined) {
       warnings.push(aaaUnknownCode(at(AAA_REJECT_REASON_ELEMENT), level));
     }
@@ -456,6 +458,7 @@ function decodeAaa(
     }
   } else {
     const description = lookupAaaFollowUpAction(followRaw)?.description;
+    /* v8 ignore else -- the bundled AAA-04 snapshot ships empty, so no code has a description yet */
     if (description === undefined) {
       warnings.push(aaaUnknownCode(at(AAA_FOLLOW_UP_ACTION_ELEMENT), level));
     }
