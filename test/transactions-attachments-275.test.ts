@@ -638,3 +638,150 @@ describe("AC-14: the builder refuses what cannot carry a true BDS-02, and return
     expect(serializeX12(ix)).toContain("~BDS*ASC*1*ÿ~");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Residual branches: spec shape refusals, optional elements and the GS-04
+// century window on emit, and the heading-only and end-of-input reads.
+// ---------------------------------------------------------------------------
+
+describe("build275: a spec that is not shaped like one is refused before a byte is written", () => {
+  const forged = <T>(value: unknown): T => value as T;
+  /** A list of `holes` empty slots, then `entry` when one is given. */
+  const sparse = (holes: number, entry?: unknown): unknown[] => {
+    const list: unknown[] = [];
+    list.length = holes;
+    if (entry !== undefined) list.push(entry);
+    return list;
+  };
+  const line = SPEC.lines[0];
+  if (line === undefined) throw new Error("SPEC has no line");
+
+  const cases: readonly (readonly [string, Build275Spec, RegExp])[] = [
+    ["envelope", { ...SPEC, envelope: forged(null) }, /spec\.envelope must be an object/u],
+    ["beginning", { ...SPEC, beginning: forged("02") }, /spec\.beginning must be an object/u],
+    ["line", { ...SPEC, lines: forged([7]) }, /the line at lines\[0\] must be an object/u],
+    [
+      "status",
+      { ...SPEC, lines: [{ ...line, status: forged("R0") }] },
+      /the status at lines\[0\] must be an object/u,
+    ],
+    [
+      "status codes",
+      {
+        ...SPEC,
+        lines: [
+          {
+            ...line,
+            status: {
+              codes: [1, 2, 3, 4].map(() => ({ categoryCode: "R0", statusCode: "20" })),
+            },
+          },
+        ],
+      },
+      /more than three composites/u,
+    ],
+    [
+      "attachment",
+      { ...SPEC, lines: [{ ...line, attachments: forged(["B64"]) }] },
+      /the attachment at lines\[0\]\.attachments\[0\] must be an object/u,
+    ],
+    [
+      "attachment list with a hole",
+      {
+        ...SPEC,
+        lines: [{ ...line, attachments: forged(sparse(1, { filterCode: "B64", data: DATA_ONE })) }],
+      },
+      /the attachment at lines\[0\]\.attachments\[0\] must be an object/u,
+    ],
+    [
+      "attachment list that is only a hole",
+      { ...SPEC, lines: [{ ...line, attachments: forged(sparse(1)) }] },
+      /the attachment at lines\[0\]\.attachments\[0\] must be an object/u,
+    ],
+    [
+      "filter code",
+      { ...SPEC, lines: [{ ...line, attachments: forged([{ filterCode: 64, data: "AA" }]) }] },
+      /the filter code of the attachment at lines\[0\]\.attachments\[0\] must be a string/u,
+    ],
+  ];
+
+  for (const [name, spec, message] of cases) {
+    it(`refuses a forged ${name} with X12_275_BUILD_INVALID_SPEC`, () => {
+      let caught: unknown;
+      try {
+        build275(spec);
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toBeInstanceOf(Attachment275BuildError);
+      expect((caught as Attachment275BuildError).code).toBe(
+        ATTACHMENT_275_BUILD_ERROR_CODES.X12_275_BUILD_INVALID_SPEC,
+      );
+      expect((caught as Error).message).toMatch(message);
+    });
+  }
+});
+
+describe("build275: optional elements are written empty and trailing empties are trimmed", () => {
+  it("writes a BGN, an NM1 and an STC composite carrying only their required parts", () => {
+    const text = serializeX12(
+      build275({
+        envelope: ENVELOPE,
+        beginning: { transactionSetPurposeCode: "02" },
+        entities: [{ entityIdentifierCode: "PR", entityTypeQualifier: "2" }],
+        lines: [
+          {
+            status: { codes: [{ categoryCode: "R0", statusCode: "20" }] },
+            attachments: [{ filterCode: "B64", data: DATA_ONE }],
+          },
+        ],
+      }),
+    );
+    expect(text).toContain("~BGN*02~");
+    expect(text).toContain("~NM1*PR*2~");
+    expect(text).toContain("~STC*R0:20~");
+  });
+
+  it("writes a line with no attachments as an LX alone when another line carries one", () => {
+    const text = serializeX12(
+      build275({
+        envelope: ENVELOPE,
+        lines: [
+          { references: [{ qualifier: "1K", value: "PCN0001" }] },
+          { attachments: [{ filterCode: "B64", data: DATA_ONE }] },
+        ],
+      }),
+    );
+    expect(text).toContain("~LX*1~REF*1K*PCN0001~LX*2~BDS*B64*");
+    expect(text.match(/~BDS\*/gu)).toHaveLength(1);
+  });
+
+  it("expands GS-04 through the century window and passes other shapes through", () => {
+    const gs04 = (interchangeDate: string): string | undefined =>
+      build275({ ...SPEC, envelope: { ...ENVELOPE, interchangeDate } }).groups[0]?.gs.elements[4];
+    expect(gs04("990601")).toBe("19990601");
+    expect(gs04("260601")).toBe("20260601");
+    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("AB0601")).toBe("AB0601");
+  });
+});
+
+describe("get275Attachments: heading-only names and a BDS cut off at the end of the input", () => {
+  it("types an NM1 only in the heading, leaving one inside a line on the transaction set", () => {
+    const reading = read([
+      ["NM1", "PR", "2", "PAYER ONE"],
+      ["LX", "1"],
+      ["NM1", "41", "2", "CLINIC ONE"],
+      bds(DATA_ONE),
+    ]);
+    expect(reading.entities.map((e) => e.lastOrOrganizationName)).toEqual(["PAYER ONE"]);
+  });
+
+  it("reports only the framing warning for a BDS that ends inside BDS-01, and keeps BDS-01 as sent", () => {
+    const reading = readRaw(interchange([["LX", "1"]], undefined, "BDS*B6?"));
+    expect(reading.warnings.map((w) => w.code)).toEqual([WARNING_CODES.X12_BINARY_LENGTH_INVALID]);
+    expect(reading.attachments[0]?.filterCode).toBe("B6?");
+    expect(reading.attachments[0]?.declaredLength).toBeUndefined();
+    expect(reading.attachments[0]?.lengthVerified).toBe(false);
+  });
+});

@@ -375,3 +375,92 @@ describe("get835 - the remit-total warning is anchored at the BPR (X12-BUILDER-B
     expect(tx.segments[total?.position.segmentIndex ?? -1]?.id).toBe("BPR");
   });
 });
+
+describe("get835 - residual branches of the walk", () => {
+  function readEdited(edit: (raw: string) => string): X12Remittance {
+    // One segment per line on disk; joined so an edit can span segments.
+    const raw = readFileSync(join(FIXTURE_DIR, "835-medicare-canonical.edi"), "utf8")
+      .trimEnd()
+      .replace(/~\r?\n/gu, "~");
+    const ix = parseX12(edit(raw));
+    const tx = ix.groups[0]?.transactions[0];
+    if (tx === undefined) throw new Error("no transaction");
+    const remit = get835(ix.delimiters, tx);
+    if (remit === undefined) throw new Error("no reading");
+    return remit;
+  }
+
+  it("files a PER after the payee N1 on the payee", () => {
+    const remit = readEdited((raw) =>
+      raw.replace("REF*TJ*123456789~", "REF*TJ*123456789~PER*IC*TEST CONTACT*TE*5550000000~"),
+    );
+    expect(remit.payee?.contacts.map((c) => c.contactFunctionCode)).toEqual(["IC"]);
+    expect(remit.payer?.contacts.map((c) => c.contactFunctionCode)).toEqual(["BL"]);
+  });
+
+  it("files no N3, N4 or PER inside a claim on the payer or payee", () => {
+    const remit = readEdited((raw) =>
+      raw.replace(
+        "DTM*232*20260501~",
+        "N3*9 STRAY ST~N4*AKRON*OH*44301~PER*IC*TEST CONTACT~DTM*232*20260501~",
+      ),
+    );
+    expect(remit.payee?.address?.city).toBe("CLEVELAND");
+    expect(remit.payee?.contacts).toEqual([]);
+    expect(remit.payer?.address?.city).toBe("BALTIMORE");
+  });
+
+  it("drops a CAS, MIA, MOA or LQ that arrives before any claim, and leaves QTY on the segments", () => {
+    const remit = readEdited((raw) =>
+      raw.replace("LX*1~", "CAS*CO*45*10.00~MIA*0****MA01~MOA***MA02~LQ*HE*N4~QTY*CA*1~LX*1~"),
+    );
+    const claim = remit.claims[0];
+    expect(claim?.adjustments).toEqual([]);
+    expect(claim?.remarks).toEqual([]);
+    expect(claim?.serviceLines[0]?.adjustments.map((a) => a.reasonCode)).toEqual(["1"]);
+  });
+
+  it("reads MIA-05 and a claim-level LQ onto the claim's remarks", () => {
+    const remit = readEdited((raw) =>
+      raw.replace("DTM*232*20260501~", "MIA*0****MA01~LQ*HE*N4~DTM*232*20260501~"),
+    );
+    expect(remit.claims[0]?.remarks.map((r) => [r.system, r.code])).toEqual([
+      ["HE", "MA01"],
+      ["HE", "N4"],
+    ]);
+  });
+
+  it("reads a CAS triple with an amount and no reason code without looking one up", () => {
+    const remit = readEdited((raw) => raw.replace("CAS*PR*1*50.00~", "CAS*PR**50.00~"));
+    const adjustment = remit.claims[0]?.serviceLines[0]?.adjustments[0];
+    expect(adjustment?.reasonCode).toBe("");
+    expect(adjustment?.amount?.toString()).toBe("50.00");
+    expect(remit.warnings.map((w) => w.code)).not.toContain(WARNING_CODES.X12_UNKNOWN_CARC);
+  });
+
+  it("reads an SVC with no qualifier as an empty one", () => {
+    const remit = readEdited((raw) => raw.replace("SVC*HC:99213*", "SVC*:99213*"));
+    const line = remit.claims[0]?.serviceLines[0];
+    expect(line?.productServiceIdQualifier).toBe("");
+    expect(line?.productServiceId).toBe("99213");
+  });
+
+  it("ignores a DTM with no date, and reads a line date from DTM-04 when DTM-02 is empty", () => {
+    const remit = readEdited((raw) =>
+      raw
+        .replace("DTM*232*20260501~", "DTM*232~DTM*232*20260502~")
+        .replace("DTM*472*20260501~", "DTM*150~DTM*472**D8*20260503~"),
+    );
+    const claim = remit.claims[0];
+    expect(claim?.servicePeriodStart).toBe("20260502");
+    expect(claim?.serviceLines[0]?.serviceDateStart).toBe("20260503");
+    expect(claim?.serviceLines[0]?.serviceDateEnd).toBe("20260503");
+  });
+
+  it("reads a PLB pair with an amount and no reason code as an empty reason", () => {
+    const remit = readEdited((raw) =>
+      raw.replace("SE*23*0001~", "PLB*1234567890*20261231*:REF1*-10.00~SE*24*0001~"),
+    );
+    expect(remit.providerAdjustments.map((p) => [p.reasonCode, p.subCode])).toEqual([["", "REF1"]]);
+  });
+});

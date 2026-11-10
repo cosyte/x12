@@ -25,6 +25,7 @@
  * Synthetic-only fixtures: names `DOE` / `JANE` / `JUNIOR`, fake member ids
  * `MBR0001`, fake auth ids `AUTH123456`, fake trace `AUTHREQ-202606-0001`.
  */
+/* eslint-disable no-sparse-arrays -- a hole in a caller's list is the input several tests here drive */
 
 import { describe, expect, it } from "vitest";
 
@@ -827,5 +828,127 @@ describe("build278Request - X12-EMIT-DEGENERATE-RELEASE-DELIMITER", () => {
 
   it("the same spec on the conventional set still builds (the red control)", () => {
     expect(build278Request(CANONICAL_SPEC).warnings).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Residual branches: forged review lists, a subscriber or dependent with no
+// member, a partial DMG, an HI composite with an empty trailing component, and
+// the GS-04 century window.
+// ---------------------------------------------------------------------------
+
+describe("build278 - a review list entry that is not an object is refused", () => {
+  const forged = <T>(value: unknown): T => value as T;
+  const review = CANONICAL_SPEC.subscriber.reviews?.[0];
+  if (review === undefined) throw new Error("CANONICAL_SPEC has no review");
+
+  // A hole in a sparse array, or a `null` from a JSON spec, passed the
+  // structural check and then threw an untyped TypeError while emitting.
+  const cases: readonly (readonly [string, Build278Spec])[] = [
+    [
+      "a hole in subscriber.reviews",
+      {
+        ...CANONICAL_SPEC,
+        subscriber: { ...CANONICAL_SPEC.subscriber, reviews: forged([, review]) },
+      },
+    ],
+    [
+      "null in subscriber.reviews",
+      { ...CANONICAL_SPEC, subscriber: { ...CANONICAL_SPEC.subscriber, reviews: forged([null]) } },
+    ],
+    [
+      "a hole in dependent.reviews",
+      {
+        ...CANONICAL_SPEC,
+        subscriber: {
+          reviews: [],
+          dependent: { reviews: forged([, review]) },
+        },
+      },
+    ],
+    [
+      "a hole in a nested review list",
+      {
+        ...CANONICAL_SPEC,
+        subscriber: {
+          ...CANONICAL_SPEC.subscriber,
+          reviews: [{ ...review, reviews: forged([, { ...review, levelCode: "SS" }]) }],
+        },
+      },
+    ],
+  ];
+
+  for (const [name, spec] of cases) {
+    it(`refuses ${name} with X12_278_BUILD_INVALID_SPEC`, () => {
+      let caught: unknown;
+      try {
+        build278Request(spec);
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toBeInstanceOf(ServicesReview278BuildError);
+      expect((caught as ServicesReview278BuildError).code).toBe(
+        AUTH_278_BUILD_ERROR_CODES.X12_278_BUILD_INVALID_SPEC,
+      );
+      expect((caught as Error).message).toMatch(/review at .*review\[\d\] must be an object/u);
+    });
+  }
+});
+
+describe("build278 - optional member, DMG and HI parts", () => {
+  const review = CANONICAL_SPEC.subscriber.reviews?.[0];
+  if (review === undefined) throw new Error("CANONICAL_SPEC has no review");
+
+  it("emits a subscriber and a dependent HL with no NM1 when neither carries a member", () => {
+    const text = serializeX12(
+      build278Request({
+        ...CANONICAL_SPEC,
+        subscriber: { reviews: [], dependent: { reviews: [review] } },
+      }),
+    );
+    expect(text).toContain("~HL*3*2*22*1~HL*4*3*23*1~HL*5*4*EV*0~");
+  });
+
+  it("writes a DMG with only the date of birth, or only the gender code", () => {
+    const member = CANONICAL_SPEC.subscriber.member;
+    if (member === undefined) throw new Error("CANONICAL_SPEC has no member");
+    const { dateOfBirth: _dob, genderCode: _gender, ...bare } = member;
+    const dobOnly = serializeX12(
+      build278Request({
+        ...CANONICAL_SPEC,
+        subscriber: { ...CANONICAL_SPEC.subscriber, member: { ...bare, dateOfBirth: "19850515" } },
+      }),
+    );
+    expect(dobOnly).toContain("~DMG*D8*19850515~");
+    const genderOnly = serializeX12(
+      build278Request({
+        ...CANONICAL_SPEC,
+        subscriber: { ...CANONICAL_SPEC.subscriber, member: { ...bare, genderCode: "F" } },
+      }),
+    );
+    expect(genderOnly).toContain("~DMG*D8**F~");
+  });
+
+  it("trims an empty trailing HI component rather than writing a bare separator", () => {
+    const text = serializeX12(
+      build278Request({
+        ...CANONICAL_SPEC,
+        subscriber: {
+          ...CANONICAL_SPEC.subscriber,
+          reviews: [{ ...review, diagnoses: [{ qualifier: "ABK", code: "" }] }],
+        },
+      }),
+    );
+    expect(text).toContain("~HI*ABK~");
+  });
+
+  it("expands GS-04 through the century window and passes other shapes through", () => {
+    const gs04 = (interchangeDate: string): string | undefined =>
+      build278Request({ ...CANONICAL_SPEC, envelope: { ...ENVELOPE, interchangeDate } }).groups[0]
+        ?.gs.elements[4];
+    expect(gs04("990601")).toBe("19990601");
+    expect(gs04("260601")).toBe("20260601");
+    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("AB0601")).toBe("AB0601");
   });
 });

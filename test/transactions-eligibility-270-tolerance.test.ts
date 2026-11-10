@@ -41,6 +41,7 @@
  * `test/property/eligibility-270.property.test.ts`.
  */
 
+import { Buffer } from "node:buffer";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -241,5 +242,40 @@ describe("the two classes are closed", () => {
     expect(ix.warnings.map((w) => w.code)).toContain(WARNING_CODES.X12_GROUP_COUNT_MISMATCH);
     const inquiry = parse270Inquiries(raw)[0];
     expect(inquiry?.warnings).toEqual([]);
+  });
+});
+
+describe("parse270Inquiries and get270Inquiry: residual branches", () => {
+  const subscriberOf = (inquiry: X12Inquiry | undefined) =>
+    inquiry?.informationSources[0]?.receivers[0]?.subscribers[0];
+
+  it("reads bytes handed over as a Buffer exactly as it reads the same text", () => {
+    const raw = fixture("270-canonical.edi");
+    const fromBuffer = parse270Inquiries(Buffer.from(raw, "utf8"));
+    expect(fromBuffer.map(data)).toEqual(parse270Inquiries(raw).map(data));
+  });
+
+  it("still reports a line break between segments when the terminator is the release character", () => {
+    const raw = fixture("270-canonical.edi");
+    const withBreaks = parse270Inquiries(raw.replaceAll("~", "?\n"))[0];
+    expect(withBreaks?.warnings.map((w) => w.code)).toContain(
+      WARNING_CODES.X12_270_INTER_SEGMENT_LINE_BREAK,
+    );
+    const withoutBreaks = parse270Inquiries(raw.replaceAll("~", "?"))[0];
+    expect(withoutBreaks?.warnings.map((w) => w.code)).not.toContain(
+      WARNING_CODES.X12_270_INTER_SEGMENT_LINE_BREAK,
+    );
+    expect(data(withBreaks)).toBe(data(withoutBreaks));
+  });
+
+  it("files a DTP after an EQ on that inquiry, and reads the EQ-05 diagnosis pointers", () => {
+    const raw = fixture("270-canonical.edi").replace(
+      "EQ*30^35*HC:99213:25*IND~",
+      "EQ*30**IND**1:2~DTP*472*D8*20260601~",
+    );
+    const subscriber = subscriberOf(parse270Inquiries(raw)[0]);
+    expect(subscriber?.dates.map((d) => d.qualifier)).toEqual(["291"]);
+    expect(subscriber?.inquiries[0]?.dates.map((d) => d.qualifier)).toEqual(["472"]);
+    expect(subscriber?.inquiries[0]?.diagnosisCodePointers).toEqual(["1", "2"]);
   });
 });

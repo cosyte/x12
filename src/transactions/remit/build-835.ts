@@ -387,7 +387,11 @@ function enforceStructuralSpec(spec: Build835Spec): void {
   const claims = requireCallerArray(spec.claims, "build835: spec.claims", refuseSpec);
   for (let i = 0; i < claims.length; i += 1) {
     const claim = claims[i];
-    if (claim === undefined) continue;
+    // A hole in a sparse list, or a `null` from a JSON spec, used to be skipped
+    // here and then read by the balance check, which threw an untyped TypeError.
+    if (typeof claim !== "object" || claim === null) {
+      refuseSpec(`build835: spec.claims[${String(i)}] must be an object.`);
+    }
     if (claim.patientControlNumber === "") {
       throw new Remit835BuildError(
         REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_INVALID_SPEC,
@@ -780,6 +784,7 @@ function emitCasGroup(
   let i = 0;
   while (i < adjustments.length) {
     const first = adjustments[i];
+    /* v8 ignore next -- a hole sums to no amount, so `enforceBalance` has already refused it as not evaluable */
     if (first === undefined) {
       i += 1;
       continue;
@@ -859,6 +864,7 @@ function emitProviderAdjustments(
   let i = 0;
   while (i < adjustments.length) {
     const first = adjustments[i];
+    /* v8 ignore next -- a hole sums to no amount, so `enforceBalance` has already refused it as not evaluable */
     if (first === undefined) {
       i += 1;
       continue;

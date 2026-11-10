@@ -18,6 +18,7 @@
  * Synthetic-only fixtures: names `DOE` / `JANE` / `JUNIOR`, obviously-fake
  * member ids `MBR0001` / `MBR0002`.
  */
+/* eslint-disable no-sparse-arrays -- a hole in a caller's list is the input several tests here drive */
 
 import { describe, expect, it } from "vitest";
 
@@ -627,5 +628,125 @@ describe("build271 - X12-EMIT-DEGENERATE-RELEASE-DELIMITER", () => {
 
   it("the same spec on the conventional set still builds (the red control)", () => {
     expect(build271(CANONICAL_SPEC).warnings).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Residual branches: list entries that are not objects, the dependent and
+// benefit REF and DTP, a partial DMG, an address with no N4 field, a hole in
+// EB-13's modifiers and the GS-04 century window.
+// ---------------------------------------------------------------------------
+
+describe("build271 - residual branches", () => {
+  const forged = <T>(value: unknown): T => value as T;
+  const SOURCE = CANONICAL_SPEC.informationSources[0];
+  const RECEIVER = SOURCE?.receivers[0];
+  const SUBSCRIBER = RECEIVER?.subscribers[0];
+  if (SOURCE === undefined || RECEIVER === undefined || SUBSCRIBER === undefined) {
+    throw new Error("CANONICAL_SPEC shape");
+  }
+  const withSubscriber = (subscriber: typeof SUBSCRIBER): Build271Spec => ({
+    ...CANONICAL_SPEC,
+    informationSources: [{ ...SOURCE, receivers: [{ ...RECEIVER, subscribers: [subscriber] }] }],
+  });
+  const tx = (spec: Build271Spec) => build271(spec).groups[0]?.transactions[0];
+  const segmentsOf = (spec: Build271Spec): string[] => (tx(spec)?.segments ?? []).map((s) => s.raw);
+
+  function refusal(spec: Build271Spec): Eligibility271BuildError {
+    try {
+      build271(spec);
+    } catch (err) {
+      if (err instanceof Eligibility271BuildError) return err;
+      throw err;
+    }
+    throw new Error("build271 did not refuse");
+  }
+
+  // A hole in a sparse array, or a `null` from a JSON spec, passed the
+  // structural check and then threw an untyped TypeError while emitting.
+  it("refuses an information source or receiver entry that is not an object", () => {
+    const source = refusal({ ...CANONICAL_SPEC, informationSources: forged([, SOURCE]) });
+    expect(source.code).toBe(ELIGIBILITY_271_BUILD_ERROR_CODES.X12_271_BUILD_INVALID_SPEC);
+    expect(source.message).toContain("spec.informationSources[0] must be an object");
+    const receiver = refusal({
+      ...CANONICAL_SPEC,
+      informationSources: [{ ...SOURCE, receivers: forged([null]) }],
+    });
+    expect(receiver.code).toBe(ELIGIBILITY_271_BUILD_ERROR_CODES.X12_271_BUILD_INVALID_SPEC);
+    expect(receiver.message).toContain("spec.informationSources[0].receivers[0] must be an object");
+  });
+
+  it("writes a dependent's TRN, REF and DTP, and a benefit's REF and DTP, in loop order", () => {
+    const segments = segmentsOf(
+      withSubscriber({
+        ...SUBSCRIBER,
+        dependents: [
+          {
+            traces: [{ traceTypeCode: "2", referenceId: "DEPTRACE01" }],
+            name: { entityIdentifierCode: "03", entityTypeQualifier: "1", lastName: "DOE" },
+            references: [{ qualifier: "EJ", value: "ACCT0001" }],
+            dates: [{ qualifier: "307", formatQualifier: "D8", value: "20260101" }],
+            benefits: [
+              {
+                eligibilityCode: "1",
+                references: [{ qualifier: "6P", value: "GRP0002" }],
+                dates: [{ qualifier: "346", formatQualifier: "D8", value: "20260201" }],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    const from = segments.findIndex((s) => s.startsWith("HL*4*"));
+    expect(segments.slice(from + 1, from + 8)).toEqual([
+      "TRN*2*DEPTRACE01",
+      "NM1*03*1*DOE",
+      "REF*EJ*ACCT0001",
+      "DTP*307*D8*20260101",
+      "EB*1",
+      "REF*6P*GRP0002",
+      "DTP*346*D8*20260201",
+    ]);
+  });
+
+  it("writes a DMG with only the date of birth, and no N4 for an address of street lines only", () => {
+    const name = SUBSCRIBER.name;
+    if (name === undefined) throw new Error("CANONICAL_SPEC shape");
+    const { genderCode: _gender, ...noGender } = name;
+    const segments = segmentsOf(
+      withSubscriber({
+        ...SUBSCRIBER,
+        name: { ...noGender, address: { lines: ["123 MAIN ST"] } },
+      }),
+    );
+    expect(segments).toContain("DMG*D8*19800101");
+    expect(segments).toContain("N3*123 MAIN ST");
+    expect(segments.some((s) => s.startsWith("N4"))).toBe(false);
+  });
+
+  it("refuses a hole in the EB-13 modifiers as an empty modifier", () => {
+    const err = refusal(
+      withSubscriber({
+        ...SUBSCRIBER,
+        benefits: [
+          {
+            eligibilityCode: "1",
+            procedure: { qualifier: "HC", code: "99213", modifiers: forged([, "25"]) },
+          },
+        ],
+      }),
+    );
+    expect(err.code).toBe(ELIGIBILITY_271_BUILD_ERROR_CODES.X12_271_BUILD_INVALID_SPEC);
+    expect(err.message).toContain("modifier at index 0 is empty");
+  });
+
+  it("expands GS-04 through the century window and passes other shapes through", () => {
+    const gs04 = (interchangeDate: string): string | undefined =>
+      build271({ ...CANONICAL_SPEC, envelope: { ...ENVELOPE, interchangeDate } }).groups[0]?.gs
+        .elements[4];
+    expect(gs04("990601")).toBe("19990601");
+    expect(gs04("260601")).toBe("20260601");
+    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("AB0601")).toBe("AB0601");
   });
 });

@@ -303,7 +303,11 @@ function enforceStructuralSpec(spec: Build271Spec): void {
   }
   for (let s = 0; s < sources.length; s += 1) {
     const source = sources[s];
-    if (source === undefined) continue;
+    // A hole in a sparse list, or a `null` from a JSON spec, used to be skipped
+    // here and then read by the emitter, which threw an untyped TypeError.
+    if (typeof source !== "object" || source === null) {
+      refuseSpec(`build271: spec.informationSources[${String(s)}] must be an object.`);
+    }
     const receivers = requireCallerArray(
       source.receivers,
       `build271: spec.informationSources[${String(s)}].receivers`,
@@ -317,7 +321,11 @@ function enforceStructuralSpec(spec: Build271Spec): void {
     }
     for (let r = 0; r < receivers.length; r += 1) {
       const receiver = receivers[r];
-      if (receiver === undefined) continue;
+      if (typeof receiver !== "object" || receiver === null) {
+        refuseSpec(
+          `build271: spec.informationSources[${String(s)}].receivers[${String(r)}] must be an object.`,
+        );
+      }
       const subscribers = requireCallerArray(
         receiver.subscribers,
         `build271: spec.informationSources[${String(s)}].receivers[${String(r)}].subscribers`,
@@ -553,6 +561,7 @@ function procedureElement(procedure: Build271ProcedureSpec, ctx: EmitContext): s
   }
   const escapedModifiers: string[] = [];
   for (let i = 0; i < modifiers.length; i += 1) {
+    // A hole reads as `undefined`, and `?? ""` sends it to the empty-modifier refusal below.
     const modifier = ctx.esc(modifiers[i] ?? "");
     if (modifier === "") {
       refuseSpec(`build271: benefit procedure (EB-13) modifier at index ${String(i)} is empty.`);

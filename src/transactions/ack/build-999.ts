@@ -326,6 +326,7 @@ function enforceAcceptIsClean(group: Build999FunctionalGroupSpec): void {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_ACCEPT_WITH_ERRORS,
       `build999: AK9-01 was 'A' (Accept) but AK9-05..AK9-09 carried ${renderCallerValue(
+        /* v8 ignore next -- only reached when `syntaxErrorCodes` is non-empty, so `?? []` never runs */
         (group.syntaxErrorCodes ?? []).length,
       )} syntax error code(s). Use 'E' (Accept, with errors noted) or a reject disposition instead.`,
     );

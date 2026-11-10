@@ -17,6 +17,7 @@
  * - PHI safety: a thrown structural error's message carries indices /
  *   counts only - no member id / name.
  */
+/* eslint-disable no-sparse-arrays -- a hole in a caller's list is the input several tests here drive */
 
 import { describe, expect, it } from "vitest";
 
@@ -461,5 +462,85 @@ describe("build820 - X12-EMIT-DEGENERATE-RELEASE-DELIMITER", () => {
 
   it("the same spec on the conventional set still builds (the red control)", () => {
     expect(build820(CANONICAL_SPEC).warnings).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Residual branches: list entries that are not objects, optional N1, ENT, ADX
+// and NM1 elements written empty, one-field N4s, and the GS-04 window.
+// ---------------------------------------------------------------------------
+
+describe("build820 - residual branches", () => {
+  const forged = <T>(value: unknown): T => value as T;
+  const FIRST = CANONICAL_SPEC.remittances[0];
+  if (FIRST === undefined) throw new Error("CANONICAL_SPEC shape");
+  const segmentsOf = (spec: Build820Spec): string[] =>
+    (build820(spec).groups[0]?.transactions[0]?.segments ?? []).map((s) => s.raw);
+
+  function refusal(spec: Build820Spec): Premium820BuildError {
+    try {
+      build820(spec);
+    } catch (err) {
+      if (err instanceof Premium820BuildError) return err;
+      throw err;
+    }
+    throw new Error("build820 did not refuse");
+  }
+
+  // A hole in a sparse array, or a `null` from a JSON spec, passed the
+  // structural check and then threw an untyped TypeError while emitting.
+  it("refuses a remittance or open item entry that is not an object", () => {
+    const remittance = refusal({ ...CANONICAL_SPEC, remittances: forged([, FIRST]) });
+    expect(remittance.code).toBe(PREMIUM_820_BUILD_ERROR_CODES.X12_820_BUILD_INVALID_SPEC);
+    expect(remittance.message).toContain("spec.remittances[0] must be an object");
+    const item = refusal({
+      ...CANONICAL_SPEC,
+      remittances: [{ ...FIRST, openItems: forged([null]) }],
+    });
+    expect(item.code).toBe(PREMIUM_820_BUILD_ERROR_CODES.X12_820_BUILD_INVALID_SPEC);
+    expect(item.message).toContain("spec.remittances[0].openItems[0] must be an object");
+  });
+
+  it("writes N1, ENT, NM1 and ADX with their optional elements empty", () => {
+    const segments = segmentsOf({
+      ...CANONICAL_SPEC,
+      receiver: { entityIdentifierCode: "PE", name: "MEDPAY INSURANCE" },
+      remittances: [
+        {
+          entity: { assignedNumber: "1" },
+          individual: { entityIdentifierCode: "IL", firstName: "JANE" },
+          openItems: [{ qualifier: "AZ", referenceId: "POL-0001", amountPaid: dec("12500.00") }],
+          adjustments: [{ amount: dec("0.00"), reasonCode: "53" }],
+        },
+      ],
+    });
+    expect(segments).toContain("N1*PE*MEDPAY INSURANCE");
+    expect(segments).toContain("ENT*1");
+    expect(segments).toContain("NM1*IL*1**JANE");
+    expect(segments).toContain("ADX*0.00*53");
+  });
+
+  it("writes only the N3 or only the N4 a party address carries, one field at a time", () => {
+    const addressed = (address: { lines: string[] } & Record<string, unknown>): string[] =>
+      segmentsOf({
+        ...CANONICAL_SPEC,
+        receiver: { entityIdentifierCode: "PE", name: "MEDPAY INSURANCE", address },
+      });
+    expect(addressed({ lines: [], state: "OH" })).toContain("N4**OH");
+    expect(addressed({ lines: [], postalCode: "43004" })).toContain("N4***43004");
+    expect(addressed({ lines: [], countryCode: "CA" })).toContain("N4****CA");
+    const linesOnly = addressed({ lines: ["1 INSURER WAY"] });
+    expect(linesOnly).toContain("N3*1 INSURER WAY");
+    expect(linesOnly.filter((s) => s.startsWith("N4"))).toEqual(["N4*DUBLIN*OH*43017"]);
+  });
+
+  it("expands GS-04 through the century window and passes other shapes through", () => {
+    const gs04 = (interchangeDate: string): string | undefined =>
+      build820({ ...CANONICAL_SPEC, envelope: { ...ENVELOPE, interchangeDate } }).groups[0]?.gs
+        .elements[4];
+    expect(gs04("990601")).toBe("19990601");
+    expect(gs04("260601")).toBe("20260601");
+    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("AB0601")).toBe("AB0601");
   });
 });

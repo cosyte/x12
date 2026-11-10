@@ -16,6 +16,7 @@
  * - PHI safety: a thrown balance error's message carries numeric totals
  *   only - no patient-control number / member id.
  */
+/* eslint-disable no-sparse-arrays -- a hole in a caller's list is the input several tests here drive */
 
 import { describe, expect, it } from "vitest";
 
@@ -876,5 +877,107 @@ describe("build835 - X12-EMIT-DEGENERATE-RELEASE-DELIMITER", () => {
 
   it("the same spec on the conventional set still builds (the red control)", () => {
     expect(build835(BALANCED_SPEC).warnings).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Residual branches: a claim entry that is not an object, the service-line and
+// remit-total refusals, partial N4 and PER, and the GS-04 century window.
+// ---------------------------------------------------------------------------
+
+describe("build835 - residual branches", () => {
+  const forged = <T>(value: unknown): T => value as T;
+  const segmentsOf = (spec: Build835Spec): string[] =>
+    (build835(spec).groups[0]?.transactions[0]?.segments ?? []).map((s) => s.raw);
+
+  function refusal(spec: Build835Spec): Remit835BuildError {
+    try {
+      build835(spec);
+    } catch (err) {
+      if (err instanceof Remit835BuildError) return err;
+      throw err;
+    }
+    throw new Error("build835 did not refuse");
+  }
+
+  // A hole in a sparse array, or a `null` from a JSON spec, passed the
+  // structural check and then threw an untyped TypeError in the balance check.
+  it("refuses a claim entry that is not an object", () => {
+    for (const claims of [
+      forged<Build835Spec["claims"]>([, BASE_CLAIM]),
+      forged<Build835Spec["claims"]>([null, BASE_CLAIM]),
+    ]) {
+      const err = refusal({ ...BALANCED_SPEC, claims });
+      expect(err.code).toBe(REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_INVALID_SPEC);
+      expect(err.message).toContain("spec.claims[0] must be an object");
+    }
+  });
+
+  it("refuses a service line out of balance inside a claim that balances", () => {
+    const err = refusal({
+      ...BALANCED_SPEC,
+      claims: [
+        {
+          ...BASE_CLAIM,
+          adjustments: [{ groupCode: "PR", reasonCode: "1", amount: dec("50.00") }],
+          serviceLines: [{ ...BASE_SERVICE_LINE, adjustments: [] }],
+        },
+      ],
+    });
+    expect(err.code).toBe(REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_BALANCE_MISMATCH);
+    expect(err.message).toContain("out-of-balance service line");
+  });
+
+  it("refuses a service line whose balance cannot be checked", () => {
+    const err = refusal({
+      ...BALANCED_SPEC,
+      claims: [
+        {
+          ...BASE_CLAIM,
+          serviceLines: [{ ...BASE_SERVICE_LINE, chargeAmount: forged<X12Decimal>(undefined) }],
+        },
+      ],
+    });
+    expect(err.code).toBe(REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_INVALID_SPEC);
+    expect(err.message).toContain("service line whose balance cannot be checked");
+  });
+
+  it("refuses a remit whose total cannot be checked", () => {
+    const err = refusal({
+      ...BALANCED_SPEC,
+      payment: { ...BALANCED_SPEC.payment, totalActualPayment: forged<X12Decimal>(undefined) },
+    });
+    expect(err.code).toBe(REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_INVALID_SPEC);
+    expect(err.message).toContain("remit whose balance cannot be checked");
+  });
+
+  it("writes N4 with one field and PER with only its function code", () => {
+    const segments = segmentsOf({
+      ...BALANCED_SPEC,
+      payer: {
+        entityIdentifierCode: "PR",
+        name: "MEDICARE PART A",
+        address: { lines: ["123 PAYER WAY"], postalCode: "21244" },
+        contacts: [{ contactFunctionCode: "BL" }],
+      },
+      payee: {
+        entityIdentifierCode: "PE",
+        name: "RENDERING CLINIC",
+        address: { lines: ["1 CLINIC PLZ"], city: "COLUMBUS" },
+      },
+    });
+    expect(segments).toContain("N4***21244");
+    expect(segments).toContain("PER*BL");
+    expect(segments).toContain("N4*COLUMBUS");
+  });
+
+  it("expands GS-04 through the century window and passes other shapes through", () => {
+    const gs04 = (interchangeDate: string): string | undefined =>
+      build835({ ...BALANCED_SPEC, envelope: { ...ENVELOPE, interchangeDate } }).groups[0]?.gs
+        .elements[4];
+    expect(gs04("990601")).toBe("19990601");
+    expect(gs04("260601")).toBe("20260601");
+    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("AB0601")).toBe("AB0601");
   });
 });

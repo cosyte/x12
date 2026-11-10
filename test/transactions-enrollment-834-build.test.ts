@@ -17,6 +17,7 @@
  * - PHI safety: a thrown error's message carries indices / counts (and the
  *   non-PHI maintenance control code) only - no member id / name.
  */
+/* eslint-disable no-sparse-arrays -- a hole in a caller's list is the input several tests here drive */
 
 import { describe, expect, it } from "vitest";
 
@@ -509,5 +510,101 @@ describe("build834 - X12-EMIT-DEGENERATE-RELEASE-DELIMITER", () => {
 
   it("the same spec on the conventional set still builds (the red control)", () => {
     expect(build834(CANONICAL_SPEC).warnings).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Residual branches: list entries that are not objects, a member with no name,
+// a bare COB and HD, partial NM1, DMG and N4, and the GS-04 century window.
+// ---------------------------------------------------------------------------
+
+describe("build834 - residual branches", () => {
+  const forged = <T>(value: unknown): T => value as T;
+  const FIRST = CANONICAL_SPEC.members[0];
+  if (FIRST === undefined) throw new Error("CANONICAL_SPEC shape");
+  const withMember = (member: typeof FIRST): Build834Spec => ({
+    ...CANONICAL_SPEC,
+    members: [member],
+  });
+  const segmentsOf = (spec: Build834Spec): string[] =>
+    (build834(spec).groups[0]?.transactions[0]?.segments ?? []).map((s) => s.raw);
+
+  function refusal(spec: Build834Spec): Enrollment834BuildError {
+    try {
+      build834(spec);
+    } catch (err) {
+      if (err instanceof Enrollment834BuildError) return err;
+      throw err;
+    }
+    throw new Error("build834 did not refuse");
+  }
+
+  // A hole in a sparse array, or a `null` from a JSON spec, passed the
+  // structural check and then threw an untyped TypeError while emitting.
+  it("refuses a member or coverage entry that is not an object", () => {
+    const member = refusal({ ...CANONICAL_SPEC, members: forged([, FIRST]) });
+    expect(member.code).toBe(ENROLLMENT_834_BUILD_ERROR_CODES.X12_834_BUILD_INVALID_SPEC);
+    expect(member.message).toContain("spec.members[0] must be an object");
+    const coverage = refusal(withMember({ ...FIRST, healthCoverages: forged([null]) }));
+    expect(coverage.code).toBe(ENROLLMENT_834_BUILD_ERROR_CODES.X12_834_BUILD_INVALID_SPEC);
+    expect(coverage.message).toContain("spec.members[0].healthCoverages[0] must be an object");
+  });
+
+  it("writes a member with no name, a bare COB and a bare HD without inventing values", () => {
+    const segments = segmentsOf(
+      withMember({
+        subscriberIndicator: "Y",
+        relationshipCode: "18",
+        maintenanceTypeCode: "021",
+        coordinationOfBenefits: [{}],
+        healthCoverages: [{ coverageLevelCode: "IND" }],
+      }),
+    );
+    expect(segments.some((s) => s.startsWith("NM1*IL"))).toBe(false);
+    expect(segments).toContain("COB");
+    expect(segments).toContain("HD*****IND");
+  });
+
+  it("writes NM1 with no last name, and a DMG with only the date of birth or only the gender", () => {
+    const dobOnly = segmentsOf(
+      withMember({
+        ...FIRST,
+        member: {
+          firstName: "JANE",
+          idQualifier: "MI",
+          idCode: "MBR0001",
+          dateOfBirth: "19850515",
+        },
+      }),
+    );
+    expect(dobOnly).toContain("NM1*IL*1**JANE****MI*MBR0001");
+    expect(dobOnly).toContain("DMG*D8*19850515");
+    const genderOnly = segmentsOf(
+      withMember({ ...FIRST, member: { lastName: "DOE", genderCode: "F" } }),
+    );
+    expect(genderOnly).toContain("DMG*D8**F");
+  });
+
+  it("writes only the N3 or only the N4 a member address carries, one field at a time", () => {
+    const addressed = (address: { lines: string[] } & Record<string, unknown>): string[] =>
+      segmentsOf(withMember({ ...FIRST, member: { lastName: "DOE", address } }));
+    expect(addressed({ lines: [], state: "OH" })).toContain("N4**OH");
+    expect(addressed({ lines: [], postalCode: "43004" })).toContain("N4***43004");
+    expect(addressed({ lines: [], countryCode: "CA" })).toContain("N4****CA");
+    const linesOnly = addressed({ lines: ["100 MAIN ST"] });
+    expect(linesOnly).toContain("N3*100 MAIN ST");
+    expect(linesOnly.some((s) => s.startsWith("N4"))).toBe(false);
+    const empty = addressed({ lines: [] });
+    expect(empty.some((s) => s.startsWith("N3") || s.startsWith("N4"))).toBe(false);
+  });
+
+  it("expands GS-04 through the century window and passes other shapes through", () => {
+    const gs04 = (interchangeDate: string): string | undefined =>
+      build834({ ...CANONICAL_SPEC, envelope: { ...ENVELOPE, interchangeDate } }).groups[0]?.gs
+        .elements[4];
+    expect(gs04("990601")).toBe("19990601");
+    expect(gs04("260601")).toBe("20260601");
+    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("AB0601")).toBe("AB0601");
   });
 });

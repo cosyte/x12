@@ -234,3 +234,47 @@ describe("get820Payments - guards + dogfooded specs", () => {
     expect(PREMIUM_820_LOOP_2310A.trigger).toBe("ADX");
   });
 });
+
+describe("get820Payments - residual branches of the header walk", () => {
+  function readEdited(edit: (raw: string) => string): X12PremiumPayments {
+    // One segment per line on disk; joined so an edit can span segments.
+    const raw = readFileSync(join(FIXTURE_DIR, "820-canonical.edi"), "utf8")
+      .trimEnd()
+      .replace(/~\r?\n/gu, "~");
+    const ix = parseX12(edit(raw));
+    const tx = ix.groups[0]?.transactions[0];
+    if (tx === undefined) throw new Error("no transaction");
+    const prem = get820Payments(ix.delimiters, tx);
+    if (prem === undefined) throw new Error("no reading");
+    return prem;
+  }
+
+  it("reads an N4 with no N3 before it onto the receiver and onto the remitter", () => {
+    const prem = readEdited((raw) =>
+      raw
+        .replace(
+          "N1*PE*MEDPAY INSURANCE*FI*111223333~",
+          "N1*PE*MEDPAY INSURANCE*FI*111223333~N4*DUBLIN*OH*43017~",
+        )
+        .replace("N3*500 CORPORATE BLVD~", ""),
+    );
+    expect(prem.receiver?.address?.lines).toEqual([]);
+    expect(prem.receiver?.address?.city).toBe("DUBLIN");
+    expect(prem.remitter?.address?.lines).toEqual([]);
+    expect(prem.remitter?.address?.city).toBe("COLUMBUS");
+  });
+
+  it("attaches no N3, N4 or REF that follows an N1 of another role, and no DTM before any loop", () => {
+    const prem = readEdited((raw) =>
+      raw.replace(
+        "N1*PR*EMPLOYER CO*FI*444556666~N3*500 CORPORATE BLVD~N4*COLUMBUS*OH*43215~",
+        "N1*PR*EMPLOYER CO*FI*444556666~N1*BE*OTHER PARTY~N3*1 OTHER ST~N4*AKRON*OH*44301~REF*38*POL-OTHER~" +
+          "DTM*582*20260601~K3*SYNTHETIC~",
+      ),
+    );
+    expect(prem.remitter?.address).toBeUndefined();
+    expect(prem.remitter?.references).toEqual([]);
+    expect(prem.receiver?.address).toBeUndefined();
+    expect(prem.remittances[0]?.dates.map((d) => d.qualifier)).toEqual(["582"]);
+  });
+});

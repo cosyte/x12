@@ -279,7 +279,11 @@ function enforceStructuralSpec(spec: Build834Spec): void {
   }
   for (let m = 0; m < members.length; m += 1) {
     const member = members[m];
-    if (member === undefined) continue;
+    // A hole in a sparse list, or a `null` from a JSON spec, used to be skipped
+    // here and then read by the emitter, which threw an untyped TypeError.
+    if (typeof member !== "object" || member === null) {
+      refuseSpec(`build834: spec.members[${String(m)}] must be an object.`);
+    }
     if (member.maintenanceTypeCode === "") {
       throw new Enrollment834BuildError(
         ENROLLMENT_834_BUILD_ERROR_CODES.X12_834_BUILD_INVALID_SPEC,
@@ -299,7 +303,11 @@ function enforceStructuralSpec(spec: Build834Spec): void {
     );
     for (let c = 0; c < coverages.length; c += 1) {
       const coverage = coverages[c];
-      if (coverage === undefined) continue;
+      if (typeof coverage !== "object" || coverage === null) {
+        refuseSpec(
+          `build834: spec.members[${String(m)}].healthCoverages[${String(c)}] must be an object.`,
+        );
+      }
       const hd01 = coverage.maintenanceTypeCode;
       if (hd01 !== undefined && hd01 !== "" && lookupMaintenanceType(hd01) === undefined) {
         throw new Enrollment834BuildError(

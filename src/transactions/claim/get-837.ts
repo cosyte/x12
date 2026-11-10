@@ -687,6 +687,7 @@ export function get837Claims(
 
   for (let i = 0; i < body.length; i += 1) {
     const seg = body[i];
+    // A transaction set a caller built can have a hole in `segments`: skip it.
     if (seg === undefined) continue;
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
     // Every decimal read below routes its `X12_UNPARSEABLE_DECIMAL` here; the
@@ -1197,6 +1198,8 @@ export function get837Claims(
         }
         break;
       }
+      // A parsed set never has its SE in `body`, but a caller-built one with
+      // `se` unset can end in one: it closes the set and is read as nothing.
       case "SE": {
         break;
       }

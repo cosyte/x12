@@ -328,7 +328,11 @@ function enforceStructuralSpec(spec: Build820Spec): void {
   }
   for (let r = 0; r < remittances.length; r += 1) {
     const remittance = remittances[r];
-    if (remittance === undefined) continue;
+    // A hole in a sparse list, or a `null` from a JSON spec, used to be skipped
+    // here and then read by the emitter, which threw an untyped TypeError.
+    if (typeof remittance !== "object" || remittance === null) {
+      refuseSpec(`build820: spec.remittances[${String(r)}] must be an object.`);
+    }
     if (remittance.entity === undefined && remittance.individual === undefined) {
       throw new Premium820BuildError(
         PREMIUM_820_BUILD_ERROR_CODES.X12_820_BUILD_INVALID_SPEC,
@@ -348,7 +352,11 @@ function enforceStructuralSpec(spec: Build820Spec): void {
     }
     for (let o = 0; o < openItems.length; o += 1) {
       const item = openItems[o];
-      if (item === undefined) continue;
+      if (typeof item !== "object" || item === null) {
+        refuseSpec(
+          `build820: spec.remittances[${String(r)}].openItems[${String(o)}] must be an object.`,
+        );
+      }
       if (item.qualifier === "" && item.referenceId === "") {
         throw new Premium820BuildError(
           PREMIUM_820_BUILD_ERROR_CODES.X12_820_BUILD_INVALID_SPEC,

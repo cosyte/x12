@@ -830,3 +830,197 @@ describe("AC-16: the builder refuses exactly the absences the base 006020 277 ma
     expect(ix.groups[0]?.transactions[0]?.st.elements[3]).toBe(X313);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Residual branches: spec shape refusals, the optional SVC and STC amounts and
+// the GS-04 century window on emit, and the lenient corners of the read walk.
+// ---------------------------------------------------------------------------
+
+describe("build277RequestForAdditionalInformation: a spec not shaped like one is refused", () => {
+  const top = SPEC.levels[0];
+  const child = top?.children?.[0];
+  const request = child?.requests?.[0];
+  const line = request?.serviceLines?.[0];
+  if (top === undefined || child === undefined || request === undefined || line === undefined) {
+    throw new Error("SPEC shape");
+  }
+  /** SPEC with the subscriber level's first request replaced. */
+  const withRequest = (replacement: unknown): Build277RfaiSpec => ({
+    ...SPEC,
+    levels: [{ ...top, children: [{ ...child, requests: asJsCaller([replacement]) }] }],
+  });
+  const withLine = (replacement: unknown): Build277RfaiSpec =>
+    withRequest({ ...request, serviceLines: asJsCaller([replacement]) });
+
+  const cases: readonly (readonly [string, Build277RfaiSpec, RegExp])[] = [
+    ["envelope", { ...SPEC, envelope: asJsCaller(null) }, /spec\.envelope must be an object/u],
+    ["header", { ...SPEC, header: asJsCaller("0010") }, /spec\.header must be an object/u],
+    [
+      "level",
+      { ...SPEC, levels: asJsCaller([null]) },
+      /the level at levels\[0\] must be an object/u,
+    ],
+    [
+      "request",
+      withRequest(5),
+      /the request at levels\[0\]\.children\[0\]\.requests\[0\] must be an object/u,
+    ],
+    ["service line", withLine("SVC"), /the service line at .*serviceLines\[0\] must be an object/u],
+    [
+      "five modifiers",
+      withLine({
+        ...line,
+        service: { ...line.service, modifiers: ["25", "59", "76", "77", "91"] },
+      }),
+      /carries more than four modifiers/u,
+    ],
+    [
+      "status",
+      withRequest({ ...request, statuses: asJsCaller([true]) }),
+      /the status at .*statuses\[0\] must be an object/u,
+    ],
+    [
+      "four status composites",
+      withRequest({
+        ...request,
+        statuses: [{ codes: [1, 2, 3, 4].map(() => ({ categoryCode: "R0", statusCode: "20" })) }],
+      }),
+      /carries more than three composites/u,
+    ],
+  ];
+
+  for (const [name, spec, message] of cases) {
+    it(`refuses a forged ${name} with X12_277_RFAI_BUILD_INVALID_SPEC`, () => {
+      let caught: unknown;
+      try {
+        build277RequestForAdditionalInformation(spec);
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toBeInstanceOf(Rfai277BuildError);
+      expect((caught as Rfai277BuildError).code).toBe(
+        RFAI_277_BUILD_ERROR_CODES.X12_277_RFAI_BUILD_INVALID_SPEC,
+      );
+      expect((caught as Error).message).toMatch(message);
+    });
+  }
+});
+
+describe("build277RequestForAdditionalInformation: optional amounts and the GS-04 century window", () => {
+  const top = SPEC.levels[0];
+  const child = top?.children?.[0];
+  const request = child?.requests?.[0];
+  const line = request?.serviceLines?.[0];
+  if (top === undefined || child === undefined || request === undefined || line === undefined) {
+    throw new Error("SPEC shape");
+  }
+
+  it("writes SVC-03 and SVC-05 and STC-05 where they are given", () => {
+    const spec: Build277RfaiSpec = {
+      ...SPEC,
+      levels: [
+        {
+          ...top,
+          children: [
+            {
+              ...child,
+              requests: [
+                {
+                  ...request,
+                  statuses: [
+                    {
+                      codes: [{ categoryCode: "R0", statusCode: "20" }],
+                      paymentAmount: dec("75.50"),
+                    },
+                  ],
+                  serviceLines: [
+                    {
+                      ...line,
+                      service: {
+                        ...line.service,
+                        linePaymentAmount: dec("120.00"),
+                        quantity: dec("3"),
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const text = serializeX12(build277RequestForAdditionalInformation(spec));
+    expect(text).toContain("~STC*R0:20****75.50~");
+    expect(text).toContain("~SVC*HC:99213:25*150.00*120.00**3**1~");
+  });
+
+  it("expands GS-04 through the century window and passes other shapes through", () => {
+    const gs04 = (interchangeDate: string): string | undefined =>
+      build277RequestForAdditionalInformation({
+        ...SPEC,
+        envelope: { ...ENVELOPE, interchangeDate },
+      }).groups[0]?.gs.elements[4];
+    expect(gs04("990601")).toBe("19990601");
+    expect(gs04("260601")).toBe("20260601");
+    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("AB0601")).toBe("AB0601");
+  });
+});
+
+describe("get277RequestForAdditionalInformation: lenient corners of the walk", () => {
+  it("reads a transaction set cut off before its SE", () => {
+    const head = interchange("277", RFAI_BODY).split("SE*")[0] ?? "";
+    const { d, tx } = firstTransaction(head);
+    const reading = get277RequestForAdditionalInformation(d, tx);
+    expect(reading?.levels.map((l) => l.levelCode)).toEqual(["20", "21", "19", "22"]);
+    expect(reading?.levels[3]?.requests.map((r) => r.traces[0]?.referenceId)).toEqual([
+      "TRACE-0001",
+      "TRACE-0002",
+    ]);
+  });
+
+  it("types an NM1 only before the level's first request, and ignores an STC or SVC before any HL", () => {
+    const reading = readDefined([
+      ["BHT", "0010", "08", "RFAI-0001", "20260601", "1200", "DG"],
+      ["STC", comp("R0", "20")],
+      ["SVC", comp("HC", "99213"), "150.00"],
+      ["HL", "1", "", "22", "0"],
+      ["NM1", "QC", "1", "DOE", "JANE"],
+      ["TRN", "1", "TRACE-0001"],
+      ["NM1", "82", "1", "LATE", "NAME"],
+      ["STC", comp("R0", "20")],
+    ]);
+    const level = reading.levels[0];
+    expect(level?.entities.map((e) => e.entityIdentifierCode)).toEqual(["QC"]);
+    expect(level?.requests).toHaveLength(1);
+    expect(level?.requests[0]?.statuses).toHaveLength(1);
+    expect(level?.requests[0]?.serviceLines).toEqual([]);
+  });
+
+  it("leaves a segment it does not type on the transaction set without disturbing the walk", () => {
+    const reading = readDefined([
+      ["BHT", "0010", "08", "RFAI-0001", "20260601", "1200", "DG"],
+      ["HL", "1", "", "22", "0"],
+      ["TRN", "1", "TRACE-0001"],
+      ["PER", "IC", "SYNTH"],
+      ["REF", "1K", "PCN0001"],
+    ]);
+    expect(reading.levels[0]?.requests[0]?.references.map((r) => r.value)).toEqual(["PCN0001"]);
+  });
+
+  it("reads a status composite with no category code without describing or warning one", () => {
+    const reading = readDefined([
+      ["BHT", "0010", "08", "RFAI-0001", "20260601", "1200", "DG"],
+      ["HL", "1", "", "22", "0"],
+      ["TRN", "1", "TRACE-0001"],
+      ["STC", comp("", "18842-5", "", "LOI")],
+    ]);
+    const code = reading.levels[0]?.requests[0]?.statuses[0]?.codes[0];
+    expect(code?.categoryCode).toBeUndefined();
+    expect(code?.statusCode).toBe("18842-5");
+    expect(reading.warnings.map((w) => w.code)).not.toContain(
+      WARNING_CODES.X12_UNKNOWN_CLAIM_STATUS_CATEGORY,
+    );
+  });
+});

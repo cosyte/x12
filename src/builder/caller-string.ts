@@ -405,6 +405,7 @@ function requireEscapableDelimiters(
     ([, name]) => name,
   );
   if (degenerate.length === 0) return;
+  /* v8 ignore next -- `degenerate` is non-empty here, so both indexed reads are defined and `?? ""` never runs */
   const roles =
     degenerate.length === 1
       ? `the ${degenerate[0] ?? ""}`

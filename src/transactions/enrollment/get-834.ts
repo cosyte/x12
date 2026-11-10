@@ -197,6 +197,7 @@ export async function* get834Enrollments(
 
   for (let i = 0; i < body.length; i += 1) {
     const seg = body[i];
+    // A transaction set a caller built can have a hole in `segments`: skip it.
     if (seg === undefined) continue;
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
 

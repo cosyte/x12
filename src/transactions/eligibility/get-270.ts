@@ -276,6 +276,7 @@ function hasInterSegmentLineBreak(text: string, delimiters: Delimiters): boolean
   const pieces =
     term.length === 1 && term !== RELEASE_CHAR ? splitWithRelease(body, term) : body.split(term);
   for (let i = 0; i < pieces.length - 1; i += 1) {
+    /* v8 ignore next -- `i` stays below `pieces.length`, so `pieces[i]` is defined */
     const code = (pieces[i] ?? "").charCodeAt(0);
     if (code === 0x0d || code === 0x0a) return true;
   }
@@ -340,6 +341,7 @@ function decodeInquiry(
 
   for (let i = 0; i < body.length; i += 1) {
     const seg = body[i];
+    // A transaction set a caller built can have a hole in `segments`: skip it.
     if (seg === undefined) continue;
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
     switch (seg.id) {

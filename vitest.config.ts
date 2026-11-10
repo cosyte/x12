@@ -2,10 +2,15 @@ import { cosyteVitest } from "@cosyte/vitest-config";
 
 /**
  * Vitest config for @cosyte/x12 from the shared @cosyte/vitest-config standard, which owns the
- * coverage provider, reporters, include and exclude sets and the 90% gate. What follows is only what
+ * coverage provider, reporters, include and exclude sets and a 90% gate. What follows is only what
  * this repository adds.
  *
- * `coverageDirs` holds each of these `src/` directories to the 90% gate (lines, branches, functions,
+ * This repository is at 100% lines, branches, functions and statements, so `coverageThresholds`
+ * raises the shared 90% gate to 100 for the whole of `src/` and for each directory below. A floor
+ * only rises: a line no input can reach takes an inline `v8 ignore` comment naming its reason, never
+ * a lower number here.
+ *
+ * `coverageDirs` holds each of these `src/` directories to that gate (lines, branches, functions,
  * statements) on its own, so a well-covered directory cannot carry a poorly covered one:
  *   - `parser/` - envelope, segment and release-character reading
  *   - `loops/` - defineLoopSpec
@@ -15,16 +20,25 @@ import { cosyteVitest } from "@cosyte/vitest-config";
  *   - `builder/` - the general-purpose interchange builder
  *   - `profiles/` - the trading-partner profile system
  */
+const COVERAGE_DIRS = [
+  "parser",
+  "loops",
+  "transactions",
+  "code-lists",
+  "serialize",
+  "builder",
+  "profiles",
+];
+
+/** The floor for every metric, globally and per directory. */
+const FLOOR = { lines: 100, branches: 100, functions: 100, statements: 100 };
+
 export default cosyteVitest({
-  coverageDirs: [
-    "parser",
-    "loops",
-    "transactions",
-    "code-lists",
-    "serialize",
-    "builder",
-    "profiles",
-  ],
+  coverageDirs: COVERAGE_DIRS,
+  coverageThresholds: {
+    ...FLOOR,
+    ...Object.fromEntries(COVERAGE_DIRS.map((dir) => [`src/${dir}/**`, { ...FLOOR }])),
+  },
   test: {
     // Pins fast-check's seed for every property suite, so coverage is reproducible and a failure
     // replays; the nightly fuzz run swaps in a rotating seed through it.

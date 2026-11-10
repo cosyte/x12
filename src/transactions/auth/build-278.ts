@@ -400,8 +400,7 @@ function enforceStructuralSpec(spec: Build278Spec, direction: "request" | "respo
     );
   }
   for (let r = 0; r < subscriberReviews.length; r += 1) {
-    const review = subscriberReviews[r];
-    if (review !== undefined) enforceReview(review, `subscriber.review[${String(r)}]`, direction);
+    enforceReview(subscriberReviews[r], `subscriber.review[${String(r)}]`, direction);
   }
   const dependent = subscriber.dependent;
   if (dependent !== undefined) {
@@ -417,8 +416,7 @@ function enforceStructuralSpec(spec: Build278Spec, direction: "request" | "respo
       );
     }
     for (let r = 0; r < dependentReviews.length; r += 1) {
-      const review = dependentReviews[r];
-      if (review !== undefined) enforceReview(review, `dependent.review[${String(r)}]`, direction);
+      enforceReview(dependentReviews[r], `dependent.review[${String(r)}]`, direction);
     }
   }
 }
@@ -451,10 +449,15 @@ function enforceStructuralSpec(spec: Build278Spec, direction: "request" | "respo
  * all. An ABSENT `levelCode` still defaults to `EV` and is untouched. @internal
  */
 function enforceReview(
-  review: Build278ReviewSpec,
+  review: Build278ReviewSpec | undefined,
   locator: string,
   direction: "request" | "response",
-): void {
+): asserts review is Build278ReviewSpec {
+  // A hole in a sparse list, or a `null` from a JSON spec, used to be skipped
+  // here and then read by the emitter, which threw an untyped TypeError.
+  if (typeof review !== "object" || review === null) {
+    refuseSpec(`build278: review at ${locator} must be an object.`);
+  }
   // Resolved through the SAME `?? DEFAULT_REVIEW_LEVEL` expression `emitReview`
   // uses, deliberately, rather than testing `review.levelCode !== undefined`.
   // `null` is what a `JSON.parse`d spec carries for an absent optional, and
@@ -498,8 +501,7 @@ function enforceReview(
     refuseHierarchy,
   );
   for (let r = 0; r < nested.length; r += 1) {
-    const child = nested[r];
-    if (child !== undefined) enforceReview(child, `${locator}.review[${String(r)}]`, direction);
+    enforceReview(nested[r], `${locator}.review[${String(r)}]`, direction);
   }
 }
 

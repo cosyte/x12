@@ -1133,3 +1133,80 @@ describe("the reader is lenient where the builder refuses, and that is the split
     expect(err.message).toContain("asks nothing");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Residual branches: a partial DMG, N4 with one field, an EQ-02 procedure with
+// no code, ISA-13 padding and the GS-04 century window.
+// ---------------------------------------------------------------------------
+
+describe("build270 - optional elements and envelope helpers", () => {
+  const SOURCE = CANONICAL_SPEC.informationSources[0];
+  const RECEIVER = SOURCE?.receivers?.[0];
+  const SUBSCRIBER = RECEIVER?.subscribers?.[0];
+  if (SOURCE === undefined || RECEIVER === undefined || SUBSCRIBER === undefined) {
+    throw new Error("CANONICAL_SPEC shape");
+  }
+  const withSubscriber = (subscriber: typeof SUBSCRIBER): Build270Spec => ({
+    ...CANONICAL_SPEC,
+    informationSources: [{ ...SOURCE, receivers: [{ ...RECEIVER, subscribers: [subscriber] }] }],
+  });
+  const text = (spec: Build270Spec): string => serializeX12(build270(spec));
+  const {
+    address: _address,
+    dateOfBirth: _dob,
+    genderCode: _gender,
+    ...bareName
+  } = SUBSCRIBER.name ?? OK_SUBSCRIBER.name;
+
+  it("writes a DMG with only the date of birth, or only the gender code", () => {
+    expect(
+      text(withSubscriber({ ...SUBSCRIBER, name: { ...bareName, dateOfBirth: "19850515" } })),
+    ).toContain("~DMG*D8*19850515~");
+    expect(
+      text(withSubscriber({ ...SUBSCRIBER, name: { ...bareName, genderCode: "F" } })),
+    ).toContain("~DMG*D8**F~");
+  });
+
+  it("writes an N4 for each single address field, leaving the others empty", () => {
+    const n4 = (address: Record<string, string>): string =>
+      text(
+        withSubscriber({
+          ...SUBSCRIBER,
+          name: { ...bareName, address: { lines: ["1 MAIN ST"], ...address } },
+        }),
+      );
+    expect(n4({ state: "OH" })).toContain("~N3*1 MAIN ST~N4**OH~");
+    expect(n4({ postalCode: "43215" })).toContain("~N3*1 MAIN ST~N4***43215~");
+    expect(n4({ countryCode: "CA" })).toContain("~N3*1 MAIN ST~N4****CA~");
+    expect(n4({})).toMatch(/~N3\*1 MAIN ST~(?!N4)/u);
+  });
+
+  it("writes an EQ-02 procedure with a qualifier and no code", () => {
+    const out = text(
+      withSubscriber({
+        ...SUBSCRIBER,
+        inquiries: [{ serviceTypeCodes: [{ code: "30" }], procedure: { qualifier: "HC" } }],
+      }),
+    );
+    expect(out).toContain("~EQ*30*HC~");
+  });
+
+  it("zero-pads a short interchange control number to nine digits", () => {
+    const ix = build270({
+      ...CANONICAL_SPEC,
+      envelope: { ...ENVELOPE, interchangeControlNumber: "7" },
+    });
+    expect(ix.isa.elements[13]).toBe("000000007");
+    expect(ix.iea?.elements[2]).toBe("000000007");
+  });
+
+  it("expands GS-04 through the century window and passes other shapes through", () => {
+    const gs04 = (interchangeDate: string): string | undefined =>
+      build270({ ...CANONICAL_SPEC, envelope: { ...ENVELOPE, interchangeDate } }).groups[0]?.gs
+        .elements[4];
+    expect(gs04("990601")).toBe("19990601");
+    expect(gs04("260601")).toBe("20260601");
+    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("AB0601")).toBe("AB0601");
+  });
+});

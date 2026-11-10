@@ -300,3 +300,33 @@ describe("get834 - guards + dogfooded specs", () => {
     expect(ENROLLMENT_834_LOOP_2320.trigger).toBe("COB");
   });
 });
+
+describe("get834Enrollments - residual branches", () => {
+  const raw = readFileSync(join(FIXTURE_DIR, "834-canonical.edi"), "utf8");
+
+  it("yields no member from an 834 with no INS loop", async () => {
+    const headerOnly = raw.replace(/INS\*Y[\s\S]*?(?=SE\*)/u, "");
+    expect(headerOnly).not.toContain("INS*");
+    expect(await collect834(headerOnly)).toEqual([]);
+  });
+
+  it("reads an N4 with no N3 before it, and keeps the N4 postal code absent when it is not sent", async () => {
+    const members = await collect834(
+      raw.replace("N3*100 MAIN ST~", "").replace("N4*COLUMBUS*OH*43215~", "N4*COLUMBUS*OH~"),
+    );
+    const address = members[0]?.member?.address;
+    expect(address?.lines).toEqual([]);
+    expect(address?.city).toBe("COLUMBUS");
+    expect(address?.postalCode).toBeUndefined();
+  });
+
+  it("reads an HD with no HD-01 as a coverage with no maintenance type and no warning", async () => {
+    const members = await collect834(
+      raw.replace("HD*021**HLT*GOLD PPO*FAM~", "HD***HLT*GOLD PPO*FAM~"),
+    );
+    const coverage = members[0]?.healthCoverages[0];
+    expect(coverage?.maintenanceTypeCode).toBeUndefined();
+    expect(coverage?.insuranceLineCode).toBe("HLT");
+    expect(members[0]?.warnings).toEqual([]);
+  });
+});

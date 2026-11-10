@@ -191,6 +191,7 @@ export function frameBinary(
     preamble.push(text.slice(cursor + 1, end));
     cursor = end;
   }
+  /* v8 ignore next -- the loop above pushed every element up to `lengthIndex`, so the read is defined */
   const lengthText = preamble[layout.lengthIndex] ?? "";
   if (!LENGTH_SHAPE_RE.test(lengthText)) {
     return { kind: "delimited", layout, problem: "length-invalid" };

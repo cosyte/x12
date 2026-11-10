@@ -195,3 +195,46 @@ describe("get277Status - guards + dogfooded specs", () => {
     expect(STATUS_277_LOOP_2220.trigger).toBe("SVC");
   });
 });
+
+describe("get277Status - residual branches of the walk", () => {
+  function readEdited(edit: (raw: string) => string): X12ClaimStatusResponse {
+    // One segment per line on disk; joined so an edit can span segments.
+    const raw = readFileSync(join(FIXTURE_DIR, "277-canonical.edi"), "utf8")
+      .trimEnd()
+      .replace(/~\r?\n/gu, "~");
+    const ix = parseX12(edit(raw));
+    const tx = ix.groups[0]?.transactions[0];
+    if (tx === undefined) throw new Error("no transaction");
+    const result = get277Status(ix.delimiters, tx);
+    if (result === undefined) throw new Error("no reading");
+    return result;
+  }
+
+  it("opens a claim for an SVC that arrives before any TRN, so the line is not dropped", () => {
+    const r = readEdited((raw) => raw.replace(/TRN\*2\*ECHO-276-TRACE-001~[\s\S]*?(?=SVC\*)/u, ""));
+    expect(r.claims).toHaveLength(1);
+    expect(r.claims[0]?.serviceLines[0]?.references.map((ref) => ref.value)).toEqual(["LINE001"]);
+  });
+
+  it("drops a REF or DTP that arrives before any claim", () => {
+    const r = readEdited((raw) =>
+      raw.replace(
+        "TRN*2*ECHO-276-TRACE-001~",
+        "REF*1K*EARLYREF~DTP*472*D8*20260101~TRN*2*ECHO-276-TRACE-001~",
+      ),
+    );
+    expect(r.claims[0]?.references.map((ref) => ref.value)).toEqual(["PCN0001"]);
+    expect(r.claims[0]?.dates).toHaveLength(1);
+  });
+
+  it("reads a status composite with no category code as an empty one, without a category warning", () => {
+    const r = readEdited((raw) => raw.replace("STC*A2:20:PR*", "STC*:20:PR*"));
+    const code = r.claims[0]?.statuses[0]?.statuses[0];
+    expect(code?.categoryCode).toBe("");
+    expect(code?.categoryDescription).toBeUndefined();
+    expect(code?.statusCode).toBe("20");
+    expect(r.warnings.map((w) => w.code)).not.toContain(
+      WARNING_CODES.X12_UNKNOWN_CLAIM_STATUS_CATEGORY,
+    );
+  });
+});

@@ -249,6 +249,7 @@ function splitSegments(
       // simply become an unknown trailing segment that downstream
       // walking ignores.
       const tail = text.slice(cursor);
+      /* v8 ignore else -- the loop runs only while `cursor < text.length`, so the tail is never empty */
       if (tail.length > 0) {
         segments.push(tail);
         lastEnd = text.length;

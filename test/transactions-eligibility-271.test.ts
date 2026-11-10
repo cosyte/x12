@@ -140,3 +140,50 @@ describe("get271Eligibility - guards + dogfooded specs", () => {
     expect(ELIGIBILITY_271_LOOP_2000D.children[0]?.children[0]?.trigger).toBe("EB");
   });
 });
+
+describe("get271Eligibility - routing of REF, DTP and MSG", () => {
+  /** The single-subscriber AAA fixture with its AAA swapped for `body`. */
+  function readWith(body: string, edit: (raw: string) => string = (raw) => raw): X12Eligibility {
+    const raw = readFileSync(join(FIXTURE_DIR, "271-aaa-subscriber.edi"), "utf8").trimEnd();
+    if (!raw.includes("AAA*N**72*C~")) throw new Error("fixture changed");
+    const ix = parseX12(edit(raw.replace("AAA*N**72*C~", body)));
+    const tx = ix.groups[0]?.transactions[0];
+    if (tx === undefined) throw new Error("no transaction");
+    const elig = get271Eligibility(ix.delimiters, tx);
+    if (elig === undefined) throw new Error("no reading");
+    return elig;
+  }
+
+  it("files a REF, a DTP and MSG text on the open benefit, and drops a DTP or MSG with no value", () => {
+    const elig = readWith(
+      "MSG*BEFORE ANY BENEFIT~EB*1*IND*30~REF*6P*GRP0001~DTP*307*D8*20260101~DTP*307*D8~" +
+        "MSG*SYNTHETIC NOTE~MSG~",
+    );
+    const subscriber = elig.subscribers[0];
+    const benefit = subscriber?.benefits[0];
+    expect(benefit?.references.map((r) => r.value)).toEqual(["GRP0001"]);
+    expect(benefit?.dates.map((d) => d.value)).toEqual(["20260101"]);
+    expect(benefit?.messages).toEqual(["SYNTHETIC NOTE"]);
+    expect(subscriber?.references).toEqual([]);
+    expect(subscriber?.dates).toEqual([]);
+  });
+
+  it("files a REF and a DTP on the open dependent before any benefit", () => {
+    const elig = readWith(
+      "HL*4*3*23*0~NM1*03*1*DOE*CHILD~REF*EJ*ACCT0001~DTP*307*D8*20260101~",
+      (raw) => raw.replace("HL*3*2*22*0~", "HL*3*2*22*1~"),
+    );
+    const dependent = elig.subscribers[0]?.dependents[0];
+    expect(dependent?.references.map((r) => r.value)).toEqual(["ACCT0001"]);
+    expect(dependent?.dates.map((d) => d.value)).toEqual(["20260101"]);
+    expect(elig.subscribers[0]?.references).toEqual([]);
+  });
+
+  it("files a REF or DTP that arrives before any subscriber on nothing", () => {
+    const elig = readWith("", (raw) =>
+      raw.replace("HL*2*1*21*1~", "REF*EJ*ACCT0001~DTP*307*D8*20260101~HL*2*1*21*1~"),
+    );
+    expect(elig.subscribers[0]?.references).toEqual([]);
+    expect(elig.subscribers[0]?.dates).toEqual([]);
+  });
+});
