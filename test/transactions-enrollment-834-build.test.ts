@@ -17,6 +17,7 @@
  * - PHI safety: a thrown error's message carries indices / counts (and the
  *   non-PHI maintenance control code) only - no member id / name.
  */
+/* eslint-disable no-sparse-arrays -- a hole in a caller's list is the input several tests here drive */
 
 import { describe, expect, it } from "vitest";
 
@@ -541,7 +542,6 @@ describe("build834 - residual branches", () => {
   // A hole in a sparse array, or a `null` from a JSON spec, passed the
   // structural check and then threw an untyped TypeError while emitting.
   it("refuses a member or coverage entry that is not an object", () => {
-    // eslint-disable-next-line no-sparse-arrays -- the hole is the input under test
     const member = refusal({ ...CANONICAL_SPEC, members: forged([, FIRST]) });
     expect(member.code).toBe(ENROLLMENT_834_BUILD_ERROR_CODES.X12_834_BUILD_INVALID_SPEC);
     expect(member.message).toContain("spec.members[0] must be an object");

@@ -5,6 +5,7 @@
  * relies on at that branch: the value read or written, the warning raised or
  * withheld, or the refusal thrown. Every byte here is synthetic.
  */
+/* eslint-disable no-sparse-arrays -- a hole in a caller's list is the input several tests here drive */
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -126,7 +127,6 @@ describe("defineLoopSpec: segment fields", () => {
   });
 
   it("skips a hole in a sparse segments array rather than reading it as a segment", () => {
-    // eslint-disable-next-line no-sparse-arrays -- the hole is the input under test
     const segments = [
       { id: "SVC", usage: "required", max: 1 },
       ,
@@ -284,7 +284,6 @@ describe("implementedGuides: a conformance row with no TR3", () => {
 
 describe("checkServiceLineBalance: a sparse service line list", () => {
   it("skips a hole and still evaluates the lines around it", () => {
-    // eslint-disable-next-line no-sparse-arrays -- the hole is the input under test
     const serviceLines = [, { adjustments: [] }] as unknown as X12RemitClaim["serviceLines"];
     const claim = { serviceLines } as unknown as X12RemitClaim;
     const warnings = checkServiceLineBalance(claim, { segmentIndex: 10 });

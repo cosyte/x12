@@ -16,6 +16,7 @@
  * - PHI safety: a thrown balance error's message carries numeric totals
  *   only - no patient-control number / member id.
  */
+/* eslint-disable no-sparse-arrays -- a hole in a caller's list is the input several tests here drive */
 
 import { describe, expect, it } from "vitest";
 
@@ -903,7 +904,6 @@ describe("build835 - residual branches", () => {
   // structural check and then threw an untyped TypeError in the balance check.
   it("refuses a claim entry that is not an object", () => {
     for (const claims of [
-      // eslint-disable-next-line no-sparse-arrays -- the hole is the input under test
       forged<Build835Spec["claims"]>([, BASE_CLAIM]),
       forged<Build835Spec["claims"]>([null, BASE_CLAIM]),
     ]) {

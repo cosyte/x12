@@ -17,6 +17,7 @@
  * - PHI safety: a thrown structural error's message carries indices /
  *   counts only - no member id / name.
  */
+/* eslint-disable no-sparse-arrays -- a hole in a caller's list is the input several tests here drive */
 
 import { describe, expect, it } from "vitest";
 
@@ -489,7 +490,6 @@ describe("build820 - residual branches", () => {
   // A hole in a sparse array, or a `null` from a JSON spec, passed the
   // structural check and then threw an untyped TypeError while emitting.
   it("refuses a remittance or open item entry that is not an object", () => {
-    // eslint-disable-next-line no-sparse-arrays -- the hole is the input under test
     const remittance = refusal({ ...CANONICAL_SPEC, remittances: forged([, FIRST]) });
     expect(remittance.code).toBe(PREMIUM_820_BUILD_ERROR_CODES.X12_820_BUILD_INVALID_SPEC);
     expect(remittance.message).toContain("spec.remittances[0] must be an object");

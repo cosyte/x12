@@ -25,6 +25,7 @@
  * Synthetic-only fixtures: names `DOE` / `JANE` / `JUNIOR`, fake member ids
  * `MBR0001`, fake auth ids `AUTH123456`, fake trace `AUTHREQ-202606-0001`.
  */
+/* eslint-disable no-sparse-arrays -- a hole in a caller's list is the input several tests here drive */
 
 import { describe, expect, it } from "vitest";
 
@@ -846,7 +847,6 @@ describe("build278 - a review list entry that is not an object is refused", () =
   const cases: readonly (readonly [string, Build278Spec])[] = [
     [
       "a hole in subscriber.reviews",
-      // eslint-disable-next-line no-sparse-arrays -- the hole is the input under test
       {
         ...CANONICAL_SPEC,
         subscriber: { ...CANONICAL_SPEC.subscriber, reviews: forged([, review]) },
@@ -862,7 +862,6 @@ describe("build278 - a review list entry that is not an object is refused", () =
         ...CANONICAL_SPEC,
         subscriber: {
           reviews: [],
-          // eslint-disable-next-line no-sparse-arrays -- the hole is the input under test
           dependent: { reviews: forged([, review]) },
         },
       },
@@ -873,7 +872,6 @@ describe("build278 - a review list entry that is not an object is refused", () =
         ...CANONICAL_SPEC,
         subscriber: {
           ...CANONICAL_SPEC.subscriber,
-          // eslint-disable-next-line no-sparse-arrays -- the hole is the input under test
           reviews: [{ ...review, reviews: forged([, { ...review, levelCode: "SS" }]) }],
         },
       },

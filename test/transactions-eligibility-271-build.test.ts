@@ -18,6 +18,7 @@
  * Synthetic-only fixtures: names `DOE` / `JANE` / `JUNIOR`, obviously-fake
  * member ids `MBR0001` / `MBR0002`.
  */
+/* eslint-disable no-sparse-arrays -- a hole in a caller's list is the input several tests here drive */
 
 import { describe, expect, it } from "vitest";
 
@@ -664,7 +665,6 @@ describe("build271 - residual branches", () => {
   // A hole in a sparse array, or a `null` from a JSON spec, passed the
   // structural check and then threw an untyped TypeError while emitting.
   it("refuses an information source or receiver entry that is not an object", () => {
-    // eslint-disable-next-line no-sparse-arrays -- the hole is the input under test
     const source = refusal({ ...CANONICAL_SPEC, informationSources: forged([, SOURCE]) });
     expect(source.code).toBe(ELIGIBILITY_271_BUILD_ERROR_CODES.X12_271_BUILD_INVALID_SPEC);
     expect(source.message).toContain("spec.informationSources[0] must be an object");
@@ -731,7 +731,6 @@ describe("build271 - residual branches", () => {
         benefits: [
           {
             eligibilityCode: "1",
-            // eslint-disable-next-line no-sparse-arrays -- the hole is the input under test
             procedure: { qualifier: "HC", code: "99213", modifiers: forged([, "25"]) },
           },
         ],

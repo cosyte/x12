@@ -19,6 +19,7 @@
  * - Pure-function discipline: returns a frozen interchange; the spec is not
  *   mutated.
  */
+/* eslint-disable no-sparse-arrays -- a hole in a caller's list is the input several tests here drive */
 
 import { describe, expect, it } from "vitest";
 
@@ -1019,7 +1020,6 @@ describe("build837 - a list entry that is not an object is refused", () => {
   };
   // A hole in a sparse array, or a `null` from a JSON spec, passed the
   // structural check and then threw an untyped TypeError while emitting.
-  /* eslint-disable no-sparse-arrays -- each hole is the input under test */
   const cases: readonly (readonly [string, Build837Spec, RegExp])[] = [
     [
       "a billing provider",
@@ -1056,7 +1056,6 @@ describe("build837 - a list entry that is not an object is refused", () => {
       /serviceLines\[0\] must be an object/u,
     ],
   ];
-  /* eslint-enable no-sparse-arrays */
 
   for (const [name, spec, message] of cases) {
     it(`refuses ${name} with X12_837_BUILD_INVALID_SPEC`, () => {

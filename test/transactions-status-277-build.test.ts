@@ -23,6 +23,7 @@
  * Synthetic-only fixtures: names `DOE` / `JANE` / `JUNIOR`, fake claim ids
  * `CLAIM001` / `CLAIM002`, fake member ids `MBR0001`.
  */
+/* eslint-disable no-sparse-arrays -- a hole in a caller's list is the input several tests here drive */
 
 import { describe, expect, it } from "vitest";
 
@@ -978,7 +979,6 @@ describe("build277 - residual branches", () => {
 
   // A hole in a sparse array, or a `null` from a JSON spec, passed the
   // structural check and then threw an untyped TypeError while emitting.
-  /* eslint-disable no-sparse-arrays -- each hole is the input under test */
   const cases: readonly (readonly [string, Build277Spec, string])[] = [
     [
       "an information source",
@@ -1035,7 +1035,6 @@ describe("build277 - residual branches", () => {
     ],
     ["a claim status", withClaim({ ...CLAIM, statuses: [null] }), ".status[0] must be an object"],
   ];
-  /* eslint-enable no-sparse-arrays */
 
   for (const [name, spec, message] of cases) {
     it(`refuses ${name} entry that is not an object with X12_277_BUILD_INVALID_SPEC`, () => {
