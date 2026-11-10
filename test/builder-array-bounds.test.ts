@@ -356,14 +356,13 @@ describe("requireCallerArray", () => {
     expect((thrown as Error).message).toContain("at least one member loop");
   });
 
-  it("gives five of the six required lists a typed refusal for null, and pins the sixth", () => {
-    // The first remedy claimed this for required lists generally. It is true of
-    // five of the six, and `build835`'s `claims` is the measured exception:
-    // `enforceBalance` reads `spec.claims.map` directly rather than the checked
-    // binding, so null still lands as an untyped TypeError there. It is no
-    // worse than base, which threw a TypeError for all six, and it is pinned
-    // here rather than papered over - stating the rule without the exception is
-    // the same claim-width error this whole item exists to correct.
+  it("gives all six required lists a typed refusal for null", () => {
+    // The first remedy claimed this for required lists generally. It was true
+    // of five of the six, and `build835`'s `claims` was the measured exception,
+    // pinned here as one: `enforceBalance` read `spec.claims.map` directly, so
+    // null landed as an untyped TypeError. Base threw a TypeError for all six.
+    // `build835` now refuses a null `claims` itself, because an empty list is a
+    // valid 835 and so cannot answer it with "at least one".
     const env = ENVELOPE;
     const typed: readonly (readonly [() => unknown, new () => Error])[] = [
       [
@@ -390,6 +389,18 @@ describe("requireCallerArray", () => {
         () => build277(asJsCaller({ envelope: env, header: {}, informationSources: null })),
         ClaimStatus277BuildError as unknown as new () => Error,
       ],
+      [
+        () =>
+          build835(
+            asJsCaller({
+              envelope: env,
+              payment: {},
+              traces: [{ referenceId: "T" }],
+              claims: null,
+            }),
+          ),
+        Remit835BuildError as unknown as new () => Error,
+      ],
     ];
     for (const [run, expected] of typed) {
       let thrown: unknown;
@@ -401,18 +412,6 @@ describe("requireCallerArray", () => {
       expect(thrown).toBeInstanceOf(expected);
       expect(typeof (thrown as { code?: unknown }).code).toBe("string");
     }
-
-    // The exception, asserted as an exception.
-    let thrown: unknown;
-    try {
-      build835(
-        asJsCaller({ envelope: env, payment: {}, traces: [{ referenceId: "T" }], claims: null }),
-      );
-    } catch (err) {
-      thrown = err;
-    }
-    expect(thrown).toBeInstanceOf(TypeError);
-    expect(thrown).not.toBeInstanceOf(Remit835BuildError);
   });
 
   it("bounds what it says about the forged value", () => {

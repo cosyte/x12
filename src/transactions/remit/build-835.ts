@@ -51,7 +51,7 @@ import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
-import { padIsaElement } from "../../builder/caller-isa.js";
+import { padIsaElement, padIsaUsageIndicator } from "../../builder/caller-isa.js";
 
 /**
  * Refuse with this module's typed error, for {@link requireCallerArray}. A
@@ -275,7 +275,7 @@ export function build835(spec: Build835Spec): X12Interchange {
       "00501", // ISA-12
       interchangeControlNumber, // ISA-13
       "0", // ISA-14
-      usageIndicator, // ISA-15
+      padIsaUsageIndicator(usageIndicator, "build835", refuseSpec), // ISA-15
       componentSeparator, // ISA-16
     ].join(elementSeparator) + segmentTerminator;
 
@@ -398,6 +398,15 @@ function enforceStructuralSpec(spec: Build835Spec): void {
       REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_INVALID_SPEC,
       "build835: at least one TRN trace is required (TR3 005010X221A1 Loop header).",
     );
+  }
+  // `claims` is required, and unlike the other builders' required lists it may
+  // be empty: that is a remit with no claim payments. So a list left out or
+  // sent as `null` cannot fall through as an absent list to an "at least one"
+  // check, and is refused here. It used to pass as empty and then throw an
+  // untyped TypeError where `enforceBalance` reads `spec.claims.map`.
+  const rawClaims: unknown = spec.claims;
+  if (rawClaims === undefined || rawClaims === null) {
+    refuseSpec("build835: spec.claims is required. Pass [] for a remit with no claim payments.");
   }
   const claims = requireCallerArray(spec.claims, "build835: spec.claims", refuseSpec);
   for (let i = 0; i < claims.length; i += 1) {

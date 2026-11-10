@@ -1095,8 +1095,12 @@ for (const response of ack.transactionResponses) {
 A 999 that stops short still reads, fail-safe. A response whose `IK5` never arrived reads
 `ik5.disposition` as `R`, and a 999 with no `AK9` reads `ak9.disposition` as `R` with all three
 counts at 0. That reject is ours, not the sender's, and `ack.warnings` says so: `X12_999_IK5_ABSENT`
-at the `AK2` whose `IK5` is missing, and `X12_999_AK9_ABSENT` at the `ST`. Check for them before you
-resubmit on a reject.
+at the `AK2` whose `IK5` is missing, and `X12_999_AK9_ABSENT` at the `ST`. A disposition the reader
+cannot read (absent, empty, or not one of `A`, `E`, `P`, `R`, `M`, `W`, `X`) reads as `R` too, with
+`X12_999_IK5_DISPOSITION_UNKNOWN` or `X12_999_AK9_DISPOSITION_UNKNOWN` at that segment. Check for
+them before you resubmit on a reject. A 999 with no `AK1` reads `ak1.functionalIdCode` and `ak1.groupControlNumber`
+as empty strings, and `X12_999_AK1_ABSENT` at the `ST` says the 999 named no group: do not match it to
+one of yours by those empty values.
 
 ### The TA1 interchange acknowledgment sits one envelope out
 

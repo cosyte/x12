@@ -914,6 +914,30 @@ describe("build835 - residual branches", () => {
     }
   });
 
+  // The required claims list itself sent as `null` (or left out) passed the
+  // structural check as an absent list and then threw an untyped TypeError
+  // where the balance check read `spec.claims.map`.
+  it("refuses a claims list that is null or absent", () => {
+    for (const claims of [
+      forged<Build835Spec["claims"]>(null),
+      forged<Build835Spec["claims"]>(undefined),
+    ]) {
+      const err = refusal({ ...BALANCED_SPEC, claims });
+      expect(err.code).toBe(REMIT_835_BUILD_ERROR_CODES.X12_835_BUILD_INVALID_SPEC);
+      expect(err.message).toContain("build835: spec.claims is required");
+    }
+  });
+
+  it("still builds an empty claims list, which is a remit with no claim payments", () => {
+    const ix = build835({
+      ...BALANCED_SPEC,
+      payment: { ...BALANCED_SPEC.payment, totalActualPayment: dec("0.00") },
+      claims: [],
+    });
+    expect(ix.warnings).toEqual([]);
+    expect(remitOf(ix).claims).toEqual([]);
+  });
+
   it("refuses a service line out of balance inside a claim that balances", () => {
     const err = refusal({
       ...BALANCED_SPEC,

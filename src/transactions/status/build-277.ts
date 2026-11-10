@@ -61,7 +61,7 @@ import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
-import { padIsaElement } from "../../builder/caller-isa.js";
+import { padIsaElement, padIsaUsageIndicator } from "../../builder/caller-isa.js";
 
 /**
  * Refuse with this module's typed error, for {@link requireCallerArray} on the
@@ -288,7 +288,7 @@ function buildClaimStatus(version: ClaimStatusVersion, spec: Build277Spec): X12I
       "00501",
       interchangeControlNumber,
       "0",
-      usageIndicator,
+      padIsaUsageIndicator(usageIndicator, "build277", refuseSpec), // ISA-15
       componentSeparator,
     ].join(elementSeparator) + segmentTerminator;
 

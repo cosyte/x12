@@ -142,11 +142,11 @@ function describeShape(value: unknown): string {
  * required" refusal rather than the untyped `TypeError` base threw, for five of
  * the six required lists: `build834`'s `members`, `build820`'s `remittances`,
  * `build837`'s `billingProviders`, and `build271`'s / `build277`'s
- * `informationSources`. **`build835`'s `claims` is the measured exception** and
- * still throws an untyped `TypeError`, because `enforceBalance` reads
- * `spec.claims.map` directly rather than the checked binding. No worse than
- * base, which threw a `TypeError` there too, and pinned by a test so the
- * exception is on the record rather than a gap in a claim.
+ * `informationSources`. **`build835`'s `claims` is the sixth and is answered
+ * at its own site**: an empty list is a valid 835, so there is no "at least
+ * one" refusal for `null` to fall through to, and `build835` refuses a `null`
+ * or absent `claims` before calling this. It used to throw an untyped
+ * `TypeError` from `enforceBalance`, as base did.
  *
  * @param value the caller-supplied field, typed as an array and not trusted to
  * be one

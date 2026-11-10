@@ -70,3 +70,38 @@ export function padIsaElement(
   }
   return value + " ".repeat(width - value.length);
 }
+
+/**
+ * Route a caller's ISA-15 usage indicator through {@link padIsaElement},
+ * refusing an empty one first.
+ *
+ * ISA-15 is a one-character code (`P` production, `T` test). It used to be
+ * written as given: an over-long value pushed ISA-16 off its fixed byte, and
+ * the builder's own re-read refused the result as `X12_INVALID_DELIMITERS`,
+ * which named neither the field nor the builder; an empty one did the same.
+ * Through the shared guard an over-long or non-string value refuses with the
+ * builder's own typed error, naming the field. An empty value refuses here
+ * rather than padding to a space, because a blank ISA-15 is a usage code
+ * nobody sent, unlike a short sender id, which ASC X12 .5 pads by design.
+ * The code itself is not checked against `P` and `T`.
+ *
+ * @param value the caller's usage indicator, after the builder's `P` default
+ * @param at a library-owned locator naming the builder, e.g. `"build837"`
+ * @param refuse throws the calling module's typed refusal
+ *
+ * @internal
+ */
+export function padIsaUsageIndicator(
+  value: string,
+  at: string,
+  refuse: (message: string) => never,
+): string {
+  if (value === "") {
+    refuse(
+      `${at}: usageIndicator is empty, and ISA-15 holds a one-character usage code. This ` +
+        `builder never pads a code to a space, so nothing is emitted. Leave usageIndicator out ` +
+        `for P, or set it at the call site.`,
+    );
+  }
+  return padIsaElement(value, 1, "ISA-15", "usageIndicator", at, refuse);
+}

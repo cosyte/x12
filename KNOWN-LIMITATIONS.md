@@ -1595,8 +1595,12 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
      builder's typed refusal naming the field. Through `0.1.9` a number there threw an untyped
      `TypeError`, and an over-long value was cut to the slot's width with no warning, so an
      `interchangeDate` of `"20250101"` went out as ISA-09 `202501`. A short value still pads with
-     spaces. What the guard does not check is content: a value carrying the element separator still
-     reaches the wire as that byte, as described above.
+     spaces. `usageIndicator` (ISA-15) goes through the same guard, and an empty one refuses too
+     rather than padding to a space; through `0.1.9` it was written as given, so an over-long or
+     empty one drew `X12_INVALID_DELIMITERS` from the builder's own re-read instead of a refusal
+     naming the field. What the guard does not check is content: a value carrying the element
+     separator still reaches the wire as that byte, as described above, and `usageIndicator` is not
+     checked against `P` and `T`.
 
   **One other change, and it is a behaviour change:** the exported `escapeRelease(value, delimiters)`
   now **throws `TypeError` on a non-string** rather than returning `""`. If you call it directly, it
@@ -1618,8 +1622,9 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   **`null` is treated as absent, not forged**, exactly as the `?? []` this replaced did, so an
   optional list you send as `null` still builds. On a required list `null` draws that builder's own
   "at least one X is required" refusal instead of an untyped `TypeError` for five of the six:
-  `build834`, `build820`, `build837`, `build271` and `build277`. **`build835`'s `claims` is the
-  exception** and still throws an untyped `TypeError`, as it did at base.
+  `build834`, `build820`, `build837`, `build271` and `build277`. The sixth, `build835`'s `claims`,
+  may be empty, so it has no "at least one" refusal: a `null` or absent `claims` is refused on its
+  own with `X12_835_BUILD_INVALID_SPEC`. Through `0.1.9` it threw an untyped `TypeError`.
 
   The places a builder reads a caller array with `for…of` - `buildInterchange`'s `spec.groups`,
   `build999`'s `functionalGroup.transactionResponses`, and the optional leaf arrays such as

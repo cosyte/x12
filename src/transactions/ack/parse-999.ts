@@ -27,14 +27,24 @@ import type {
   Delimiters,
   X12Interchange,
   X12ParseOptions,
+  X12Position,
   X12TransactionSet,
 } from "../../parser/types.js";
 import { splitWithRelease, unescapeRelease } from "../../parser/release.js";
-import { ack999Ak9Absent, ack999Ik5Absent, type X12ParseWarning } from "../../parser/warnings.js";
-// The reader is fail-safe: a missing IK5 or AK9 reads as a reject. Each
-// fill-in carries its own warning (`X12_999_IK5_ABSENT`,
-// `X12_999_AK9_ABSENT`), beside the declared-guide check every typed reader
-// runs.
+import {
+  ack999Ak1Absent,
+  ack999Ak9Absent,
+  ack999Ak9DispositionUnknown,
+  ack999Ik5Absent,
+  ack999Ik5DispositionUnknown,
+  type X12ParseWarning,
+} from "../../parser/warnings.js";
+// The reader is fail-safe: a missing IK5 or AK9 reads as a reject, a missing
+// AK1 reads as an empty one, and a disposition it cannot read reads as a
+// reject. Each fill-in carries its own warning (`X12_999_IK5_ABSENT`,
+// `X12_999_AK9_ABSENT`, `X12_999_AK1_ABSENT`,
+// `X12_999_IK5_DISPOSITION_UNKNOWN`, `X12_999_AK9_DISPOSITION_UNKNOWN`),
+// beside the declared-guide check every typed reader runs.
 import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 
 import {
@@ -214,6 +224,18 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
     currentResponse = undefined;
   };
 
+  /**
+   * Warn that the disposition at element 1 of the segment at `segmentIndex`
+   * could not be read, and answer the fail-safe reject that stands in for it.
+   */
+  const fallBackToReject = (
+    warn: (position: X12Position) => X12ParseWarning,
+    segmentIndex: number,
+  ): X12AckDispositionCode => {
+    warnings.push(warn({ segmentIndex, transactionIndex: 0, elementIndex: 1 }));
+    return X12_ACK_DISPOSITION_CODES.R;
+  };
+
   for (const [b, seg] of body.entries()) {
     // Lenient-accept of legacy AK3/AK4/AK5 (standard 999 / pre-X231A1
     // converters): normalize onto the X231A1 IK3/IK4/IK5 names so the
@@ -297,12 +319,13 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
         break;
       }
       case "IK5": {
-        // Lenient fail-safe: an unknown disposition (anything past code
-        // list 715) collapses to typed reject. The raw IK5/AK5 bytes
-        // remain reachable on `interchange.groups[*].transactions[*].rawSegments`
-        // for forensic review without polluting the warning registry.
+        // Lenient fail-safe: an absent, empty or unknown disposition (anything
+        // outside code list 715) reads as a typed reject and warns at IK5-01,
+        // so the caller can tell the reader's reject from the sender's. The
+        // raw IK5/AK5 bytes stay on the transaction set for forensic review.
         const disposition =
-          narrowDispositionCode(getElement(seg, 1, delimiters)) ?? X12_ACK_DISPOSITION_CODES.R;
+          narrowDispositionCode(getElement(seg, 1, delimiters)) ??
+          fallBackToReject(ack999Ik5DispositionUnknown, b + 1);
         const ik5: X12Ack999Ik5 = {
           disposition,
           syntaxErrorCodes: collectErrorCodes(seg, 2, 6, delimiters),
@@ -314,7 +337,8 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
         // AK9 is the last 999 body segment. Close any straggler.
         if (currentResponse !== undefined) flushResponse(undefined);
         const disposition =
-          narrowDispositionCode(getElement(seg, 1, delimiters)) ?? X12_ACK_DISPOSITION_CODES.R;
+          narrowDispositionCode(getElement(seg, 1, delimiters)) ??
+          fallBackToReject(ack999Ak9DispositionUnknown, b + 1);
         const errorCodes = collectErrorCodes(seg, 5, 9, delimiters);
         ak9 = {
           disposition,
@@ -333,9 +357,11 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
     }
   }
 
-  // EOF without AK9 → synthesize a placeholder + warn so the typed model
-  // resolves but the caller can detect the truncation.
+  // EOF without AK1 or AK9 → synthesize a placeholder + warn so the typed
+  // model resolves but the caller can tell the reader's fill-in from the
+  // sender's segment. Both anchor at the ST, AK1 first in segment order.
   if (currentResponse !== undefined) flushResponse(undefined);
+  if (ak1 === undefined) warnings.push(ack999Ak1Absent({ segmentIndex: 0, transactionIndex: 0 }));
   if (ak9 === undefined) warnings.push(ack999Ak9Absent({ segmentIndex: 0, transactionIndex: 0 }));
   const finalAk1: X12Ack999Ak1 = ak1 ?? {
     functionalIdCode: "",
@@ -430,7 +456,8 @@ function parseNonNegativeInteger(value: string): number {
  * Narrow an inbound IK5/AK5/AK9 disposition string to {@link
  * X12AckDispositionCode}, or `undefined` when the value is not one of the
  * seven known codes. Used by the lenient parse path so unknown
- * dispositions fall back to a typed reject (fail-safe) AND warn.
+ * dispositions fall back to a typed reject (fail-safe) AND warn, through
+ * `fallBackToReject` in the walk.
  *
  * @internal
  */
