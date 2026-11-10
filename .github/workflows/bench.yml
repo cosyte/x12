@@ -58,13 +58,24 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p bench-results
+          status=0
           pnpm bench:reading --commit "${COMMIT}" \
             --only "${SHAPE}: parseX12" \
             --only "${SHAPE}: parseX12, then read" \
             --only "${SHAPE}: build, then serializeX12" \
             --out "bench-results/reading-${SHAPE}.json" \
-            --summary "bench-results/reading-${SHAPE}.md"
-          cat "bench-results/reading-${SHAPE}.md" >> "${GITHUB_STEP_SUMMARY}"
+            --summary "bench-results/reading-${SHAPE}.md" || status=$?
+          if [ -f "bench-results/reading-${SHAPE}.md" ]; then
+            cat "bench-results/reading-${SHAPE}.md" >> "${GITHUB_STEP_SUMMARY}"
+          fi
+          # Exit 2 with a results file is a measure the reading skipped, named in it with its typed
+          # reason (a warmup that did not settle, an allocation window that always collected): a
+          # skip is reported, never read as a number. Anything else is a reading that failed.
+          if [ "${status}" -eq 2 ] && [ -f "bench-results/reading-${SHAPE}.json" ]; then
+            echo "::notice::bench reading ${SHAPE}: a measure was skipped; its reason is in the results"
+          elif [ "${status}" -ne 0 ]; then
+            exit "${status}"
+          fi
           pnpm exec cosyte-bench check "bench-results/reading-${SHAPE}.json"
       - name: Keep the reading
         if: ${{ !cancelled() }}
