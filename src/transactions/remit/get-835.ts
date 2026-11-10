@@ -133,6 +133,7 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
 
   for (let i = 0; i < body.length; i += 1) {
     const seg = body[i];
+    /* v8 ignore next -- `i` is bounded by `body.length`, so `body[i]` is defined */
     if (seg === undefined) continue;
     // 1-based segment position inside the body for warning positional context.
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
@@ -333,8 +334,12 @@ export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remitt
         if (currentClaim === undefined && currentServiceLine === undefined) break;
         const remark = decodeLq(seg, delimiters, warnings, position);
         if (remark === undefined) break;
-        if (currentServiceLine !== undefined) currentServiceLine.remarks.push(remark);
-        else if (currentClaim !== undefined) currentClaim.remarks.push(remark);
+        if (currentServiceLine !== undefined) {
+          currentServiceLine.remarks.push(remark);
+        } else {
+          /* v8 ignore else -- the guard above returned unless a claim or a line is open */
+          if (currentClaim !== undefined) currentClaim.remarks.push(remark);
+        }
         break;
       }
       case "SVC": {
