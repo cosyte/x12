@@ -202,6 +202,7 @@ export function decodeSegment(
       emit(danglingReleaseChar({ ...position, elementIndex: elements.length - 1 }));
     }
   }
+  /* v8 ignore next -- a split always yields at least one element, so `elements[0]` is defined */
   return Object.freeze({ id: boundSegmentId(elements[0] ?? ""), raw, elements });
 }
 
@@ -228,6 +229,7 @@ function decodeCountedSegment(
   else if (spanEnd < raw.length) emit(binaryLengthMismatch(at));
   if (holdsNonOctet(data)) emit(binaryLengthUnverifiable(at));
   const elements = Object.freeze([...frame.preamble, data]);
+  /* v8 ignore next -- the preamble always starts with the segment id, so `elements[0]` is defined */
   return Object.freeze({ id: boundSegmentId(elements[0] ?? ""), raw, elements });
 }
 
@@ -454,6 +456,7 @@ export function getAllSegmentValues(
     delimiters.repetition.length === 1
       ? splitWithRelease(rawElement, delimiters.repetition)
       : [rawElement];
+  /* v8 ignore next -- the inner `?? ""` is dead: the arm before it returned `[]` for an undefined repetition */
   const reps =
     parsed.repetitionIndex !== undefined
       ? repetitions[parsed.repetitionIndex] === undefined

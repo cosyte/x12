@@ -207,6 +207,7 @@ export function build275(spec: Build275Spec): X12Interchange {
   }
   for (const entity of spec.entities ?? []) body.push(emitEntity(entity, seg, esc));
   for (const [l, line] of spec.lines.entries()) {
+    /* v8 ignore next -- `enforceStructure` pushed one entry per line, so `octetsByLine[l]` is defined */
     emitLine(line, String(l + 1), octetsByLine[l] ?? [], body, seg, esc, comp);
   }
 
@@ -242,6 +243,7 @@ function enforceStructure(spec: Build275Spec): readonly (readonly string[])[] {
   for (const [l, line] of lines.entries()) {
     const locator = `lines[${String(l)}]`;
     octetsByLine.push(enforceLine(line, locator));
+    /* v8 ignore next -- the entry for `l` was pushed on the line above */
     count += octetsByLine[l]?.length ?? 0;
   }
   if (count === 0) {
@@ -422,6 +424,7 @@ function emitLine(
     body.push(seg(["REF", esc(ref.qualifier), esc(ref.value), esc(ref.description ?? "")]));
   }
   for (const [a, attachment] of (line.attachments ?? []).entries()) {
+    /* v8 ignore next -- `enforceLine` answered one entry per attachment, so `octets[a]` is defined */
     const data = octets[a] ?? "";
     body.push(seg(["BDS", esc(attachment.filterCode), String(data.length), data]));
   }

@@ -447,7 +447,7 @@ function narrowDispositionCode(value: string): X12AckDispositionCode | undefined
  */
 function narrowIk304Code(value: string | undefined): Ik304Code | undefined {
   if (value === undefined) return undefined;
-  if (value in IK3_SYNTAX_ERROR_CODES) {
+  if (Object.hasOwn(IK3_SYNTAX_ERROR_CODES, value)) {
     return value as Ik304Code;
   }
   return undefined;
@@ -461,7 +461,7 @@ function narrowIk304Code(value: string | undefined): Ik304Code | undefined {
  */
 function narrowIk403Code(value: string | undefined): Ik403Code | undefined {
   if (value === undefined) return undefined;
-  if (value in IK4_SYNTAX_ERROR_CODES) {
+  if (Object.hasOwn(IK4_SYNTAX_ERROR_CODES, value)) {
     return value as Ik403Code;
   }
   return undefined;
@@ -480,6 +480,7 @@ function parseIk4Position(
   delimiters: Delimiters,
 ): { element: number; component: number | undefined; repetition: number | undefined } {
   const parts = splitWithRelease(raw, delimiters.component);
+  /* v8 ignore next -- a split always yields at least one part, so `parts[0]` is defined */
   const elementText = unescapeRelease(parts[0] ?? "", delimiters, noop, { segmentIndex: 0 });
   const componentText =
     parts[1] === undefined
@@ -502,7 +503,15 @@ function parseIk4Position(
   };
 }
 
-/** @internal */
+/**
+ * The sink for the IK4-01 unescapes above. It is never called: IK4-01 is the
+ * first element, so a trailing `?` in it would release the separator after it,
+ * and an IK4 cut off inside IK4-01 has no IK4-03 and is dropped before its
+ * position is read.
+ *
+ * @internal
+ */
+/* v8 ignore next -- see above: no IK4-01 that reaches the decoder can end in a dangling `?` */
 const noop = (_w: X12ParseWarning): void => {
   /* intentionally empty */
 };

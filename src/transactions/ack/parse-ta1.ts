@@ -127,7 +127,7 @@ function narrowAckCode(value: string): Ta1AckCode | undefined {
 
 /** @internal */
 function narrowNoteCode(value: string): Ta1NoteCode | undefined {
-  if (value in TA1_NOTE_CODES) {
+  if (Object.hasOwn(TA1_NOTE_CODES, value)) {
     return value as Ta1NoteCode;
   }
   return undefined;

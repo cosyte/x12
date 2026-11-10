@@ -110,6 +110,7 @@ export class X12Decimal {
     const m = X12_DECIMAL_RE.exec(raw);
     if (m === null) return undefined;
     const signChar = m[1];
+    /* v8 ignore next -- `(\d*)` always participates in the match, so group 2 is never undefined */
     const intPart = m[2] ?? "";
     const fracPart = m[3] ?? "";
     // Require at least one digit across the integer + fractional groups
@@ -117,7 +118,10 @@ export class X12Decimal {
     if (intPart.length === 0 && fracPart.length === 0) return undefined;
     const scale = fracPart.length;
     const digits = intPart + fracPart;
-    const magnitude = digits.length === 0 ? 0n : BigInt(digits);
+    const magnitude =
+      digits.length === 0
+        ? /* v8 ignore next -- the guard above already returned when both digit groups are empty */ 0n
+        : BigInt(digits);
     const signum: -1 | 0 | 1 = magnitude === 0n ? 0 : signChar === "-" ? -1 : 1;
     return new X12Decimal({ raw, scaled: magnitude, scale, signum });
   }

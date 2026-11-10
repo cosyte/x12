@@ -271,6 +271,7 @@ export function makeLookup(
     // with a null prototype the way `src/parser/lookup.ts` does.
     if (!Object.hasOwn(snapshot.codes, code)) return undefined;
     const description = snapshot.codes[code];
+    /* v8 ignore next -- `hasOwn` passed and every bundled snapshot maps a code to a string */
     if (description === undefined) return undefined;
     const dates = readOwnDates(snapshot.dates, code);
     if (dates === undefined) return Object.freeze({ code, description });
