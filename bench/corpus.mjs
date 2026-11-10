@@ -108,7 +108,7 @@ export function remit835Text(i, claims) {
     "N1*PR*SAMPLE PAYER",
     "N3*1 PAYER PLAZA",
     "N4*ANYTOWN*OH*44101",
-    "PER*BL*CLAIMS DESK*TE*5550100000",
+    "PER*BL*PAYER CONTACT*TE*5550100000",
     "N1*PE*SAMPLE CLINIC*XX*1234567893",
     "N3*22 PROVIDER WAY",
     "N4*ANYTOWN*OH*44101",
@@ -187,7 +187,7 @@ export function remit835Spec(dec, i, claims) {
       contacts: [
         {
           contactFunctionCode: "BL",
-          name: "CLAIMS DESK",
+          name: "PAYER CONTACT",
           communications: [{ qualifier: "TE", value: "5550100000" }],
         },
       ],
