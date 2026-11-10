@@ -23,6 +23,9 @@ importers:
       '@changesets/cli':
         specifier: 2.31.0
         version: 2.31.0(@types/node@22.20.0)
+      '@cosyte/bench':
+        specifier: ^0.1.1
+        version: 0.1.1
       '@cosyte/eslint-config':
         specifier: ^0.1.4
         version: 0.1.4(eslint@10.14.0)(typescript@5.9.3)
@@ -175,6 +178,11 @@ packages:
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
+
+  '@cosyte/bench@0.1.1':
+    resolution: {integrity: sha512-wHd1lwEI0fao8w9ToJQSKIy28nbzYUumZ1+mkgXyIFjRHuwZFDA1O1DdjxmqIhxjQHzgDPNVDzeQPpkrGRAi1A==}
+    engines: {node: '>=22.15.0'}
+    hasBin: true
 
   '@cosyte/eslint-config@0.1.4':
     resolution: {integrity: sha512-o3qNe5RY+iRtA//OD3pokJmZ6lyQnr2FBZeWy6hhc9z39IpW3wINE5WHyqUuWfpzZOOy61s2zR5nIh4+ld061w==}
@@ -2231,6 +2239,8 @@ snapshots:
 
   '@colors/colors@1.5.0':
     optional: true
+
+  '@cosyte/bench@0.1.1': {}
 
   '@cosyte/eslint-config@0.1.4(eslint@10.14.0)(typescript@5.9.3)':
     dependencies:
