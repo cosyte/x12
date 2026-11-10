@@ -122,6 +122,8 @@ export const WARNING_CODES = {
   X12_999_IK5_ABSENT: "X12_999_IK5_ABSENT",
   X12_999_AK9_ABSENT: "X12_999_AK9_ABSENT",
   X12_999_AK1_ABSENT: "X12_999_AK1_ABSENT",
+  X12_999_IK5_DISPOSITION_UNKNOWN: "X12_999_IK5_DISPOSITION_UNKNOWN",
+  X12_999_AK9_DISPOSITION_UNKNOWN: "X12_999_AK9_DISPOSITION_UNKNOWN",
 } as const;
 
 /**
@@ -543,6 +545,10 @@ const WARNING_MESSAGES = {
     "999 with no AK9: the transaction set ends without a functional group response trailer, so the sender stated no disposition and no counts for the group. The reading fills them in, fail-safe: `ak9.disposition` reads `R` (rejected), the three transaction set counts read 0 and `ak9.syntaxErrorCodes` is empty. Treat that reject and those counts as the reader's, not the sender's. The verbatim segments are preserved on the transaction set. Nothing is echoed here.",
   X12_999_AK1_ABSENT:
     "999 with no AK1: the transaction set carries no functional group response header, so the sender named no functional group this 999 answers. The reading fills one in: `ak1.functionalIdCode` and `ak1.groupControlNumber` read as empty strings and `ak1.versionRelease` is undefined. Treat them as the reader's, not the sender's: nothing on this 999 ties it to a functional group you sent, so do not match it to one by those empty values. The verbatim segments are preserved on the transaction set. Nothing is echoed here.",
+  X12_999_IK5_DISPOSITION_UNKNOWN:
+    "999 transaction set response disposition the reader could not read: IK5-01 (or AK5-01 on a legacy segment) at `position.segmentIndex` is absent, empty or not one of the seven codes of code list 715 (`A`, `E`, `P`, `R`, `M`, `W`, `X`, compared exactly). The reading falls back, fail-safe: `ik5.disposition` reads `R` (rejected), and the syntax error codes after it are read as sent. Treat that reject as the reader's, not the sender's. Compare `X12_999_IK5_ABSENT`, where the response has no IK5 at all. The verbatim segment is preserved on the transaction set. Nothing is echoed here.",
+  X12_999_AK9_DISPOSITION_UNKNOWN:
+    "999 functional group disposition the reader could not read: AK9-01 at `position.segmentIndex` is absent, empty or not one of the seven codes of code list 715 (`A`, `E`, `P`, `R`, `M`, `W`, `X`, compared exactly). The reading falls back, fail-safe: `ak9.disposition` reads `R` (rejected), and the counts and syntax error codes after it are read as sent. Treat that reject as the reader's, not the sender's. Compare `X12_999_AK9_ABSENT`, where the 999 has no AK9 at all. The verbatim segment is preserved on the transaction set. Nothing is echoed here.",
 } as const;
 
 /**
@@ -2393,6 +2399,53 @@ export function ack999Ak1Absent(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_999_AK1_ABSENT,
     message: WARNING_MESSAGES.X12_999_AK1_ABSENT,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_999_IK5_DISPOSITION_UNKNOWN` warning. Raised by `parse999`
+ * when IK5-01 (or AK5-01 on a legacy segment) is absent, empty or not one of
+ * the seven dispositions of code list 715, and the reading falls back to a
+ * reject for that response.
+ *
+ * The reader anchors it at that IK5, element 1. It takes a position and
+ * nothing else, so no byte of the document reaches the message.
+ *
+ * @example
+ * ```ts
+ * import { ack999Ik5DispositionUnknown } from "@cosyte/x12";
+ * const w = ack999Ik5DispositionUnknown({ segmentIndex: 3, transactionIndex: 0, elementIndex: 1 });
+ * w.code; // "X12_999_IK5_DISPOSITION_UNKNOWN"
+ * ```
+ */
+export function ack999Ik5DispositionUnknown(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_999_IK5_DISPOSITION_UNKNOWN,
+    message: WARNING_MESSAGES.X12_999_IK5_DISPOSITION_UNKNOWN,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_999_AK9_DISPOSITION_UNKNOWN` warning. Raised by `parse999`
+ * when AK9-01 is absent, empty or not one of the seven dispositions of code
+ * list 715, and the reading falls back to a reject for the functional group.
+ *
+ * The reader anchors it at that AK9, element 1. It takes a position and
+ * nothing else, so no byte of the document reaches the message.
+ *
+ * @example
+ * ```ts
+ * import { ack999Ak9DispositionUnknown } from "@cosyte/x12";
+ * const w = ack999Ak9DispositionUnknown({ segmentIndex: 4, transactionIndex: 0, elementIndex: 1 });
+ * w.code; // "X12_999_AK9_DISPOSITION_UNKNOWN"
+ * ```
+ */
+export function ack999Ak9DispositionUnknown(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_999_AK9_DISPOSITION_UNKNOWN,
+    message: WARNING_MESSAGES.X12_999_AK9_DISPOSITION_UNKNOWN,
     position,
   };
 }

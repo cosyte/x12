@@ -223,7 +223,9 @@ export interface X12Ack999Ak9 {
  *
  * `warnings` carries the 999-specific warnings: the declared-guide check,
  * `X12_999_IK5_ABSENT` / `X12_999_AK9_ABSENT` where the reader filled in a
- * reject for a response with no IK5 or a group with no AK9, and
+ * reject for a response with no IK5 or a group with no AK9,
+ * `X12_999_IK5_DISPOSITION_UNKNOWN` / `X12_999_AK9_DISPOSITION_UNKNOWN` where
+ * it read a reject for a disposition outside code list 715, and
  * `X12_999_AK1_ABSENT` where it filled in an empty AK1 for a 999 with none.
  * Envelope-level warnings stay on `interchange.warnings`. Never throws on a
  * real-world 999.

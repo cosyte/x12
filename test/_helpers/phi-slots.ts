@@ -1101,6 +1101,16 @@ export const PHI_SLOTS: readonly DiagnosticSlot<string>[] = [
     plant: (m) => swap(G_999, "~AK1*HC*1*005010X222A2~AK2*837*0001*", `~AK2*837*${m}*`),
     expectCode: WARNING_CODES.X12_999_AK1_ABSENT,
   },
+  {
+    name: "IK5-01 disposition on a 999",
+    plant: (m) => swap(G_999, "~IK5*A~", `~IK5*${m}~`),
+    expectCode: WARNING_CODES.X12_999_IK5_DISPOSITION_UNKNOWN,
+  },
+  {
+    name: "AK9-01 disposition on a 999",
+    plant: (m) => swap(G_999, "~AK9*A*", `~AK9*${m}*`),
+    expectCode: WARNING_CODES.X12_999_AK9_DISPOSITION_UNKNOWN,
+  },
 
   // ---- TA1 interchange acknowledgment -------------------------------------
   {
