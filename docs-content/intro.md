@@ -1,52 +1,54 @@
 ---
 id: intro
 title: Getting started
+sidebar_label: Overview
 description: "Parse real-world healthcare X12 and read fields out of it without first reading the standard or a TR3."
-sidebar_position: 1
 ---
 
 # @cosyte/x12
 
-A developer-focused ASC X12 EDI parser for Node.js and TypeScript. Parse a real-world, vendor-quirky
-healthcare interchange and read fields out of it without first reading the X12 standard or a TR3
-implementation guide. `@cosyte/x12` is the payer-side sibling of [`@cosyte/hl7`](https://github.com/cosyte/hl7):
-the API shape, profile system, and lenient-parser philosophy are deliberately mirrored.
+An ASC X12 EDI parser, serializer and builder for Node.js and TypeScript, published on npm under
+MIT with zero runtime dependencies. It reads a real-world, vendor-quirky healthcare interchange into
+typed models, so you can read the money out of an 835, an 837 or a 271 without first reading the X12
+standard or a TR3 implementation guide, and it builds each of those transaction sets through a
+builder that refuses what it cannot write exactly. Its API shape, profile system and lenient parsing
+mirror [`@cosyte/hl7`](https://docs.cosyte.com/hl7).
 
-> **Status:** the 0.1 line, published on npm and public. The exported readers, builders, types, and warning
-> codes are the surface we keep stable, and below 1.0 a breaking change bumps the minor version and
-> is called out in the changelog with its migration. `npm view @cosyte/x12 version` is the source of
-> truth for the current version. The **shipped** surface is the HIPAA 005010 read side for 270, 271, 276,
-> 277/277CA, 278, 820, 834, 835, 837P/I/D, 999, and TA1, the emit
-> side (`serializeX12` + `buildInterchange` and a domain builder for each of those sets),
-> and the descriptive trading-partner profile system. This documentation is gated to that surface:
-> where the parser does not yet do a thing, this site says so rather than promising it. Non-healthcare
-> sets, EDIFACT, transport (AS2/SFTP/MLLP), and pre-005010 field maps are explicit v1 non-goals; see
-> [Troubleshooting and known limitations](./troubleshooting).
+**Who it is for:** the engineer with one 835 to post, one 271 to answer, or one 837 to send, who
+needs the amounts to be exactly right rather than approximately right.
+
+**What it is not:** a translator for non-healthcare transaction sets, an EDIFACT parser, a transport
+(no AS2, SFTP or MLLP), or a validator that proves conformance to an implementation guide. The
+[non-goals](./troubleshooting.md#scope-non-goals-for-v1) are listed with the known limitations.
+
+> **Status:** the 0.1 line, published on npm and public. The exported readers, builders, types and
+> warning codes are the surface we keep stable, and below 1.0 a breaking change is called out in the
+> changelog with its migration. `npm view @cosyte/x12 version` is the source of truth for the
+> current version.
 
 ## The transaction sets it covers
 
-The HIPAA **005010** healthcare transaction sets. Every set listed below ships both a lenient reader
-and a domain builder:
+The HIPAA **005010** healthcare transaction sets, each with a lenient reader and a domain builder:
 
 - **270**: eligibility inquiry
 - **271**: eligibility response
 - **276**: claim status request
-- **277**: claim status response (incl. **277CA** claim acknowledgment)
-- **278**: services review (request and response)
+- **277**: claim status response, and **277CA** claim acknowledgment
+- **278**: services review, request and response
 - **820**: premium payment
 - **834**: benefit enrollment and maintenance
-- **835**: healthcare claim payment / advice (remittance / ERA)
-- **837P / 837I / 837D**: professional, institutional, and dental claims
+- **835**: claim payment and advice (remittance, ERA)
+- **837P / 837I / 837D**: professional, institutional and dental claims
 - **999 / TA1**: implementation and interchange acknowledgments
 
-The two **inquiry** directions used to be absent from that list and no longer are. The 270
-eligibility inquiry has a reader (`get270Inquiry` / `parse270Inquiries`) and a builder (`build270`);
-the 276 claim status request has a reader (`get276StatusInquiry` / `parse276StatusInquiries`) and a
-builder (`build276`). Write "270" and "276" separately when you describe scope: one paired label over
-two halves is how this page was wrong about them once already.
+And the two claims attachments guides 45 CFR 162.2002 adopts for the period on and after May 26,
+2028, also read and built: the **277 request for additional information** (`006020X313`) and the
+**275** that answers it (`006020X314`). For those two the base X12 006020 structure is typed and no
+implementation-guide usage is checked.
 
-See [The 80/20 transaction sets](./spec-notes-transaction-sets) for the exact reader/builder pair each
-one ships and the safety-critical field each preserves verbatim.
+[The 80/20 transaction sets](./spec-notes-transaction-sets.md) maps each set to its reader, its
+builder and the field it preserves verbatim, and `X12_TR3_CONFORMANCE` is the machine-readable
+answer to which implementation guide each one follows.
 
 ## Install and smoke-test
 
@@ -69,35 +71,46 @@ const raw =
 
 const ix = parseX12(raw);
 
-ix.isa.elements[6].trim(); // => "SENDER"
+ix.isa.elements[6]?.trim(); // => "SENDER"
 ix.delimiters.element; // => "*"
-Array.isArray(ix.warnings); // => true
+ix.warnings; // => []
 ```
 
-If that resolves and returns, the install is good. Head to the [Installation](./installation) page
-for prerequisites and module-system notes, then the [Quickstart](./quickstart) for a first useful
+If that resolves and returns, the install is good. [Installation](./installation.md) has the
+prerequisites and module-system notes, and the [Quickstart](./quickstart.md) gets you a first useful
 result.
 
-## The archetype in one line
+## The model in one paragraph
 
-The parser is **lenient by default** (vendor deviations become Tier-2 `warnings` carrying a stable
-code and positional context, not failures) while the builders **refuse** (never silently corrupt) a
-structurally impossible spec (Postel's Law). Only four unrecoverable
-Tier-3 structural errors ever throw. Money is decimal-exact end to end (`X12Decimal`, BigInt-backed,
-**never `parseFloat` an EDI amount**). See [Core concepts](./spec-notes-envelope) for the mental
-model.
+The parser is **lenient by default**: a vendor deviation becomes a warning carrying a stable code
+and its position, not a failure, and only four unrecoverable structural errors ever throw. The
+builders are the opposite: they **refuse** a spec they cannot emit exactly rather than silently
+corrupt it. Money is decimal-exact end to end (`X12Decimal`, BigInt-backed): **never `parseFloat`
+an EDI amount**. [The envelope and loop model](./spec-notes-envelope.md) and
+[Tolerance tiers and warning codes](./spec-notes-tolerance.md) explain the rest.
 
-## Next
+## Where to go next
 
-- [Installation](./installation): prerequisites, module systems, and the PHI discipline.
-- [Quickstart](./quickstart): parse an 835 remittance and post the cash in a few lines.
-- [Core concepts](./spec-notes-envelope): the envelope/loop model, the transaction sets, the
-  tolerance tiers, and decimal-exact money.
-- [Building and serializing X12](./emit-and-serialize): the emit half, `serializeX12` and
-  `buildInterchange`, and what a round trip does and does not reproduce.
-- [Trading-partner profiles](./profiles): describing what a partner actually sends, as
-  fixture-grounded data rather than silent leniency.
-- [Cookbook](./cookbook): task-oriented recipes for the transactions you actually get handed.
-- [Troubleshooting and known limitations](./troubleshooting): fatal codes, the fail-safe rules, and
-  what v1 does not do.
-- **API reference**: every export, generated from source.
+- [Quickstart](./quickstart.md): parse an 835 remittance and read the money in a few lines.
+- **How-to guides**, one task each: [post an 835](./post-a-remittance.md),
+  [route 277CA and 277 responses](./route-claim-status-responses.md),
+  [answer a 270 with a 271](./answer-an-eligibility-inquiry.md),
+  [read 270 and 276 inquiries](./read-inquiries.md),
+  [read and build 837 claims](./read-and-build-claims.md),
+  [read a 278 decision](./read-a-services-review.md),
+  [read an 834 roster](./read-an-enrollment-roster.md),
+  [read 999 and TA1 acknowledgments](./read-acknowledgments.md),
+  [answer an attachment request](./answer-an-attachment-request.md),
+  [build and serialize X12](./emit-and-serialize.md),
+  [describe a partner with a profile](./profiles.md), [handle warnings](./handle-warnings.md), and
+  [read dates](./read-dates.md).
+- **Explanation**: [the envelope and loop model](./spec-notes-envelope.md),
+  [the transaction sets](./spec-notes-transaction-sets.md),
+  [tolerance tiers](./spec-notes-tolerance.md), [decimal-exact money](./spec-notes-money.md), and
+  [keeping PHI out of logs](./keeping-phi-out-of-logs.md).
+- **Reference**: [warning and error codes](./warning-and-error-codes.md), and the
+  [API reference](./api/README.md), generated from the source for every export.
+- [Troubleshooting and known limitations](./troubleshooting.md): the common symptoms, and what this
+  package does not do.
+- [Testing and quality](./testing-and-quality.md) and [Performance](./performance.md): how we test
+  it and what we measure.

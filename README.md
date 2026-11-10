@@ -164,7 +164,7 @@ Everything ships from one entry point; there are no subpath imports.
   you name. You supply the table and name its version, no CORE table ships with this package, and
   an `unevaluated` answer is never permission to post.
 
-Task-oriented recipes are in the [cookbook](./docs-content/cookbook.md), and
+Task-oriented how-to guides are in [`docs-content/`](./docs-content/intro.md), and
 [KNOWN-LIMITATIONS.md](./KNOWN-LIMITATIONS.md) is the honest do-not-over-trust list.
 
 ### Dates and times
@@ -263,10 +263,10 @@ these pages:
   every transaction set this package covers, with its reader and its builder.
 - [Decimal-exact money](https://github.com/cosyte/x12/blob/main/docs-content/spec-notes-money.md):
   why every amount is an `X12Decimal` and never a JavaScript number.
-- [Building and serializing X12](https://github.com/cosyte/x12/blob/main/docs-content/emit-and-serialize.md):
+- [Build and serialize X12](https://github.com/cosyte/x12/blob/main/docs-content/emit-and-serialize.md):
   the emit side, from `serializeX12` to the domain builders.
-- [Cookbook](https://github.com/cosyte/x12/blob/main/docs-content/cookbook.md): recipes for the
-  transactions you get handed, each with the code and what comes back.
+- [Post an 835 remittance](https://github.com/cosyte/x12/blob/main/docs-content/post-a-remittance.md):
+  the first of the how-to guides, one task each, for the transactions you get handed.
 - [Troubleshooting](https://github.com/cosyte/x12/blob/main/docs-content/troubleshooting.md): the
   error model, the common symptoms, and the boundaries this package states on purpose.
 

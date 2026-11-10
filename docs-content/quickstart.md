@@ -1,21 +1,21 @@
 ---
 id: quickstart
 title: Quickstart
+sidebar_label: Quickstart
 description: "Read an 835 remittance advice and pull out the payment, each claim's money, and the adjustment reasons in a few lines."
-sidebar_position: 3
 ---
 
 # Quickstart
 
 This page gives you a first useful result: read an **835** remittance advice (the electronic EOB) and
 pull out the money (the payment header, each claim's charge/paid/patient-responsibility split, and the
-CARC adjustment reasons) in a few lines. The 835 is the #1 thing an integration consultant is handed,
-so it is the fastest way to see the library earn its keep.
+CARC adjustment reasons) in a few lines. The 835 is the document an integration is most often handed
+first, so it is the quickest way to see what the library does.
 
 The reader is **lenient** (vendor quirks become stable-coded `warnings`, never silent failures) and
 money is decimal-exact throughout (`X12Decimal`, BigInt-backed; **never `parseFloat` an EDI amount**).
 
-> Every interchange below is **synthetic**: fabricated names, obviously-fake IDs, pre-2024 control
+> Every interchange below is **synthetic**: fabricated names, invented ids, made-up control
 > numbers. X12 healthcare data is PHI; a fixture must never hold a real one.
 
 ## Parse an 835 and read the money
@@ -88,10 +88,10 @@ and raises `X12_UNKNOWN_CARC` (the value is never dropped).
 
 ## Respect the balance warning
 
-The walker runs the TR3 X221A1 §1.10.2 balance invariants and emits `X12_835_REMIT_BALANCE_MISMATCH`
-on a mismatch. It **never silently rebalances**. **Gate on two codes, not one:** where a term of an
+The reader runs the 835 implementation guide's balance equations (`005010X221A1`, section 1.10.2)
+and emits `X12_835_REMIT_BALANCE_MISMATCH` on a mismatch. It **never silently rebalances**. **Gate on two codes, not one:** where a term of an
 equation is `undefined` the equation cannot be run at all and you get
-`X12_835_BALANCE_NOT_EVALUABLE` instead, which is a document you must not auto-post either. Through
+`X12_835_BALANCE_NOT_EVALUABLE` instead, which is a document you must not post automatically either. Through
 `0.0.12` that case collapsed to zero and raised the mismatch, so a gate written against the mismatch
 alone stops firing on it when you upgrade.
 
@@ -146,19 +146,22 @@ parseX12("this is not an X12 interchange"); // throws X12ParseError (X12_NO_ISA_
 
 ## Next
 
-- [Cookbook](./cookbook): recipes for the 277CA and 277 status answers, the 271 TRN-echo round-trip,
-  the 270 and 276 inquiry side, the 837 claim walk, the 278 certification decision, the 834 roster,
-  the 999 and TA1 acknowledgments, and warning triage.
-- [Core concepts](./spec-notes-envelope): the envelope/loop model, the transaction sets, the
-  tolerance tiers, and decimal-exact money.
-- [Building and serializing X12](./emit-and-serialize): the emit half, and what a round trip does
-  and does not reproduce.
-- [Trading-partner profiles](./profiles): documenting a partner's conventions without changing the
-  parse.
-- [Troubleshooting and known limitations](./troubleshooting): fatal codes, the fail-safe rules, and
-  what v1 does not do.
+- [Post an 835 remittance](./post-a-remittance.md): every claim and line, the remark codes, the
+  balance gate, and the CORE code combination check.
+- The other how-to guides, one task each:
+  [route 277CA and 277 responses](./route-claim-status-responses.md),
+  [answer a 270 with a 271](./answer-an-eligibility-inquiry.md),
+  [read 270 and 276 inquiries](./read-inquiries.md),
+  [read and build 837 claims](./read-and-build-claims.md),
+  [read a 278 decision](./read-a-services-review.md),
+  [read an 834 roster](./read-an-enrollment-roster.md),
+  [read 999 and TA1 acknowledgments](./read-acknowledgments.md),
+  [answer an attachment request](./answer-an-attachment-request.md),
+  [build and serialize X12](./emit-and-serialize.md), and [handle warnings](./handle-warnings.md).
+- [The envelope and loop model](./spec-notes-envelope.md) and
+  [Tolerance tiers and warning codes](./spec-notes-tolerance.md): the model behind every reader.
+- [Troubleshooting and known limitations](./troubleshooting.md): the common symptoms, and what this
+  package does not do.
 
-> **About runnable examples.** The blocks tagged ` ```ts runnable ` above are extracted by the test
-> suite, executed against the built package, and their `// =>` results asserted, so a documented
-> example can never silently drift from the code (`docSnippetSuite()`, the documentation analog of the
-> parser conformance runners). Blocks shown as plain ` ```ts ` are illustrative.
+Every TypeScript sample on these pages is run by the package's test suite against the built
+package, and its `// =>` values are checked, so a sample cannot drift from the code.

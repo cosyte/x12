@@ -1,12 +1,11 @@
 ---
 id: emit-and-serialize
-title: Building and serializing X12
+title: Build and serialize X12
 description: "How the emit side works: serializeX12 turns any interchange back into bytes, and the builders compose one from nothing."
-sidebar_label: Building and serializing
-sidebar_position: 8
+sidebar_label: Build and serialize X12
 ---
 
-# Building and serializing X12
+# Build and serialize X12
 
 The read side is only half of `@cosyte/x12`. The emit side ships too, and it is two layers:
 
@@ -18,7 +17,7 @@ The read side is only half of `@cosyte/x12`. The emit side ships too, and it is 
   IEA-01 counts), so you never hand-count a segment total. The per-guide domain builders (`build835`,
   `build837P`, `build271`, …) all sit on top of it; this page is the floor they stand on.
 
-> Every interchange below is **synthetic**: fabricated names, obviously-fake ids, pre-2024 control
+> Every interchange below is **synthetic**: fabricated names, invented ids, made-up control
 > numbers. X12 healthcare data is PHI; a fixture must never hold a real one.
 
 ## The asymmetry: liberal on read, conservative on emit
@@ -165,8 +164,8 @@ emitted === serializeX12(parseX12(emitted)); // => true
 ```
 
 The full list is six constructs, enumerated with the rest of the emit contract in
-[Line endings between segments](./spec-notes-envelope), and the canonical statement of the boundary
-is the package's `KNOWN-LIMITATIONS.md`.
+[Line endings between segments](./spec-notes-envelope.md#line-endings-between-segments), and the canonical statement of the boundary
+is the package's [KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md).
 
 ## Reconciling an envelope you did not write
 
@@ -203,10 +202,14 @@ emitted.includes("SE*2*0001~"); // => true
 
 ## Where to go next
 
-- [The 80/20 transaction sets](./spec-notes-transaction-sets): the builder each set is emitted
+- [The 80/20 transaction sets](./spec-notes-transaction-sets.md): the builder each set is emitted
   through, and the field each one preserves verbatim.
-- [Cookbook](./cookbook): worked builder recipes, including the 271 TRN-echo round trip and the 837
-  guide-identifier envelope.
-- [Decimal-exact money](./spec-notes-money): why a monetary slot refuses a raw `number` rather than
+- [Answer an eligibility inquiry with a 271](./answer-an-eligibility-inquiry.md) and
+  [Read and build 837 claims](./read-and-build-claims.md#build-one-and-declare-the-guide-your-partner-asked-for):
+  domain builders at work, including the 271 trace echo and the 837 guide identifier.
+- [Decimal-exact money](./spec-notes-money.md): why a monetary slot refuses a raw `number` rather than
   rounding it.
-- [Trading-partner profiles](./profiles): describing what a partner actually sends, on the read side.
+- [Describe a trading partner with a profile](./profiles.md): describing what a partner actually
+  sends, on the read side.
+- Reference: [`buildInterchange`](./api/README.md#buildinterchange),
+  [`serializeX12`](./api/README.md#serializex12), [`X12BuildError`](./api/README.md#x12builderror).

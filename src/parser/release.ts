@@ -41,8 +41,6 @@ import { danglingReleaseChar, type X12ParseWarning } from "./warnings.js";
  * // `?~` is an escaped segment terminator inside a value, not a real one:
  * "PER*IC*ACME?~BILLING".includes(RELEASE_CHAR); // true
  * ```
- *
- * @internal
  */
 export const RELEASE_CHAR = "?" as const;
 
