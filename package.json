@@ -57,7 +57,24 @@
         "default": "./dist/index.cjs"
       }
     },
+    "./arbitraries": {
+      "import": {
+        "types": "./dist/arbitraries.d.ts",
+        "default": "./dist/arbitraries.mjs"
+      },
+      "require": {
+        "types": "./dist/arbitraries.d.cts",
+        "default": "./dist/arbitraries.cjs"
+      }
+    },
     "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "arbitraries": [
+        "./dist/arbitraries.d.ts"
+      ]
+    }
   },
   "files": [
     "dist",
@@ -142,6 +159,14 @@
     "typescript": "5.9.3",
     "vite": "8.3.6",
     "vitest": "5.1.0"
+  },
+  "peerDependencies": {
+    "fast-check": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "fast-check": {
+      "optional": true
+    }
   },
   "dependencies": {}
 }

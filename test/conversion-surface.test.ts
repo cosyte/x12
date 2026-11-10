@@ -591,7 +591,9 @@ describe("the package constraints this surface was added under", () => {
   it("added no dependency of any kind and did not move the engine floor", () => {
     expect(manifest.engines.node).toBe(">=22.0.0");
     expect(Object.keys(manifest.dependencies)).toEqual([]);
-    expect(manifest.peerDependencies).toBeUndefined();
+    // The one peer dependency is fast-check, optional and loaded only by the
+    // `@cosyte/x12/arbitraries` subpath, which this surface never imports.
+    expect(manifest.peerDependencies).toEqual({ "fast-check": "^4.0.0" });
     expect(manifest.optionalDependencies).toBeUndefined();
     // The two names the shared shape is designed for are named in PROSE and are
     // imported by nothing: proving the interop would need a dependency this work

@@ -1,0 +1,5 @@
+---
+"@cosyte/x12": patch
+---
+
+New `@cosyte/x12/arbitraries` entry point: fast-check generators for ASC X12, so you can property-test your own code on generated interchanges. `interchange()` gives parsed, spec-clean interchanges over generated delimiters, with one or more functional groups of the transaction set types the library declares a guide for, and body segments whose elements carry repetitions, components and values that need the release character; `interchangeText()` gives messy text a real sender might produce, which the parser always accepts; `hostileInput()` gives random strings and bytes and broken interchanges; `interchangeSpec()` gives specs `buildInterchange` builds with no warning; and `delimiters()`, `value()`, `segment()` and `transactionSetType()` give the parts. Every generated value is synthetic and random. `fast-check` (4.x) is an optional peer dependency: install it to use this entry point. The main entry point never loads it, so nothing changes for code that only imports `@cosyte/x12`.

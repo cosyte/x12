@@ -27,7 +27,8 @@
         "emit-and-serialize",
         "profiles",
         "handle-warnings",
-        "read-dates"
+        "read-dates",
+        "property-test-your-code"
       ]
     },
     {

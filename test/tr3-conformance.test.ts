@@ -1370,7 +1370,18 @@ describe("AC12: the manifest and its types come from the entry point", () => {
     const manifest = JSON.parse(
       readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8"),
     ) as { exports?: Record<string, unknown> };
-    expect(sorted(Object.keys(manifest.exports ?? {}))).toEqual([".", "./package.json"]);
+    expect(sorted(Object.keys(manifest.exports ?? {}))).toEqual([
+      ".",
+      "./arbitraries",
+      "./package.json",
+    ]);
+    // The one other subpath is the fast-check generators, which read the manifest to pick a
+    // guide but never export it.
+    const arbitraries = readFileSync(
+      join(import.meta.dirname, "..", "src", "arbitraries", "index.ts"),
+      "utf8",
+    );
+    expect(arbitraries).not.toContain("X12_TR3_CONFORMANCE");
   });
 });
 
