@@ -914,6 +914,30 @@ function writtenInputs(): CorpusInput[] {
   );
   add("degenerate:component", wrap(["SVC*HC?99213?25*100.00", "HI*A??B"], "*", "^", "?", "~"));
   add("degenerate:repetition", wrap(["EB*1**30?1?35", "REF*A??B"], "*", "?", ":", "~"));
+  add(
+    "degenerate:component-tail",
+    wrap(["REF*EA*A?", "SVC*HC?1?*9", "HI*AB?"], "*", "^", "?", "~"),
+  );
+  add(
+    "degenerate:repetition-tail",
+    wrap(["REF*EA*B?", "EB*1**30?", "HI*A?^?"], "*", "?", ":", "~"),
+  );
+  // An input that ends inside a segment whose last element ends in a lone release character: the
+  // one place a parsed element can end in `?`, in each role `?` can be declared in.
+  for (const [role, r, c] of [
+    ["component", "^", "?"],
+    ["repetition", "?", ":"],
+  ] as const) {
+    add(
+      `degenerate:${role}-eof`,
+      `${isaWith("*", r, c, "~")}GS*HP*S*R*D*T*1*X*V~ST*835*1~REF*EA*A${r}B${c}C?`,
+    );
+  }
+  // A segment that opens on the separator itself, outside every transaction set.
+  add(
+    "degenerate:element-leading",
+    `${isaWith("?", "^", ":", "~")}?X~GS?HP?S?R?D?T?1?X?V~?Y~GE?0?1~?~IEA?1?000000001~`,
+  );
   add("degenerate:terminator", wrap(["REF*EA*X", "NM1*QC*1*DOE"], "*", "^", ":", "?"));
   add("delims:pipe", wrap(["NM1|QC|1|DOE?|X|Y", "SVC|HC>99213>25|10.00"], "|", "!", ">", "\n"));
   add("delims:crlf", wrap(["NM1*QC*1*DOE", "REF*EA*A"]).replaceAll("~", "~\r\n"));
@@ -946,6 +970,12 @@ function writtenInputs(): CorpusInput[] {
   add(
     "env:stray",
     `${isa}GE*1*1~ST*835*1~SE*1*1~NM1*X~TA1*000000001*260601*1200*A*000~GS*HP*S*R*D*T*1*X*V~TA1*1~GE*0*1~IEA*1*000000001~`,
+  );
+  // Warnings raised by the decode of a segment in a later transaction set and a later group.
+  add(
+    "env:later-sets",
+    `${isa}GS*HP*S*R*D*T*1*X*V~ST*835*1~BIN**1~SE*3*1~ST*835*2~BIN*X*1~BIN*5~SE*4*2~GE*2*1~` +
+      `GS*HP*S*R*D*T*2*X*V~ST*275*3~BDS*B64*Z*A~SE*3*3~ST*275*4~BDS*B64*4~GE*2*2~IEA*2*000000001~`,
   );
   add(
     "env:st-in-st",
