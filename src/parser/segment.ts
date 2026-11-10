@@ -30,7 +30,7 @@
  */
 
 import { binaryLayout, frameBinary, holdsNonOctet, type BinaryFrame } from "./binary.js";
-import { RELEASE_CHAR, splitWithRelease, unescapeRelease } from "./release.js";
+import { RELEASE_CHAR, findPart, splitWithRelease, unescapeRelease } from "./release.js";
 import type { Delimiters, X12Position } from "./types.js";
 import {
   binaryDataTruncated,
@@ -163,12 +163,43 @@ export function decodeSegment(
   emit: (w: X12ParseWarning) => void,
   position: X12Position,
 ): X12Segment {
+  return decodeSegmentAt(raw, delimiters, emit, position);
+}
+
+/**
+ * Where a segment is, for the warnings its decode raises: the position itself,
+ * or a function that makes it. The envelope walker passes a function, so the
+ * position of a segment that raises nothing is never built.
+ *
+ * @internal
+ */
+export type X12PositionSource = X12Position | (() => X12Position);
+
+/** The position a {@link X12PositionSource} names. @internal */
+function positionOf(source: X12PositionSource): X12Position {
+  return typeof source === "function" ? source() : source;
+}
+
+/**
+ * {@link decodeSegment}, with the position taken from a source that is read
+ * only when a warning is raised. Every decode in the library goes through it.
+ *
+ * @internal
+ */
+export function decodeSegmentAt(
+  raw: string,
+  delimiters: Delimiters,
+  emit: (w: X12ParseWarning) => void,
+  position: X12PositionSource,
+): X12Segment {
   const binary = frameBinary(raw, 0, delimiters);
-  if (binary?.kind === "counted") return decodeCountedSegment(raw, binary, emit, position);
+  if (binary?.kind === "counted") {
+    return decodeCountedSegment(raw, binary, emit, positionOf(position));
+  }
   if (binary?.problem === "length-invalid") {
-    emit(binaryLengthInvalid({ ...position, elementIndex: binary.layout.lengthIndex }));
+    emit(binaryLengthInvalid({ ...positionOf(position), elementIndex: binary.layout.lengthIndex }));
   } else if (binary?.problem === "data-absent") {
-    emit(binaryLengthMismatch({ ...position, elementIndex: binary.layout.dataIndex }));
+    emit(binaryLengthMismatch({ ...positionOf(position), elementIndex: binary.layout.dataIndex }));
   }
   // Degenerate delimiter set: when the element separator IS the release
   // character, `?` cannot also escape, so fall back to the literal split.
@@ -199,7 +230,7 @@ export function decodeSegment(
     let trailingRun = 0;
     for (let j = raw.length - 1; j >= 0 && raw.charAt(j) === RELEASE_CHAR; j -= 1) trailingRun += 1;
     if (trailingRun % 2 === 1) {
-      emit(danglingReleaseChar({ ...position, elementIndex: elements.length - 1 }));
+      emit(danglingReleaseChar({ ...positionOf(position), elementIndex: elements.length - 1 }));
     }
   }
   /* v8 ignore next -- a split always yields at least one element, so `elements[0]` is defined */
@@ -376,39 +407,145 @@ export function getSegmentValue(
   emit: (w: X12ParseWarning) => void = noop,
 ): string | undefined {
   const parsed = parseSegmentPath(path);
-  const rawElement = segment.elements[parsed.elementIndex];
+  return readSegmentValue(
+    segment,
+    parsed.elementIndex,
+    parsed.repetitionIndex ?? 0,
+    parsed.componentIndex,
+    delimiters,
+    emit,
+  );
+}
+
+/**
+ * Scratch bounds for {@link findPart}. Reads are synchronous and never
+ * re-entered, so one object serves every read.
+ *
+ * @internal
+ */
+const PART: { start: number; end: number } = { start: 0, end: 0 };
+
+/**
+ * Resolve element `elementIndex`, repetition `repetitionIndex` and (when given)
+ * component `componentIndex` of `segment`, exactly as {@link getSegmentValue}
+ * resolves the path that names them, without parsing a path or splitting the
+ * element into arrays: the repetition and the component are located in the
+ * element's raw text and only the value read is sliced out of it.
+ *
+ * @internal
+ */
+function readSegmentValue(
+  segment: X12Segment,
+  elementIndex: number,
+  repetitionIndex: number,
+  componentIndex: number | undefined,
+  delimiters: Delimiters,
+  emit: (w: X12ParseWarning) => void,
+): string | undefined {
+  const rawElement = segment.elements[elementIndex];
   if (rawElement === undefined) return undefined;
-  if (isBinaryDataElement(segment, parsed.elementIndex)) {
+  if (typeof rawElement !== "string") {
+    return readNonString(
+      segment,
+      rawElement,
+      elementIndex,
+      repetitionIndex,
+      componentIndex,
+      delimiters,
+      emit,
+    );
+  }
+  if (isBinaryDataElement(segment, elementIndex)) {
     // BDS-03 / BIN-02: one opaque run of octets, returned verbatim. Its only
     // repetition is `[0]` and its only component is `-1`.
-    if ((parsed.repetitionIndex ?? 0) !== 0) return undefined;
-    if (parsed.componentIndex !== undefined && parsed.componentIndex !== 1) return undefined;
+    if (repetitionIndex !== 0) return undefined;
+    if (componentIndex !== undefined && componentIndex !== 1) return undefined;
+    return rawElement;
+  }
+  let repStart = 0;
+  let repEnd = rawElement.length;
+  if (delimiters.repetition.length === 1) {
+    if (!findPart(rawElement, 0, rawElement.length, delimiters.repetition, repetitionIndex, PART)) {
+      return undefined;
+    }
+    repStart = PART.start;
+    repEnd = PART.end;
+  } else if (repetitionIndex !== 0) {
+    return undefined;
+  }
+  if (componentIndex === undefined) {
+    const value = rawElement.slice(repStart, repEnd);
+    if (!value.includes(RELEASE_CHAR)) return value;
+    return unescapeRelease(
+      value,
+      delimiters,
+      emit,
+      segment.elements[0] === "ISA" ? { segmentIndex: 0 } : { segmentIndex: 0, elementIndex },
+    );
+  }
+  let comp: string | undefined;
+  if (delimiters.component.length === 1) {
+    comp = findPart(rawElement, repStart, repEnd, delimiters.component, componentIndex - 1, PART)
+      ? rawElement.slice(PART.start, PART.end)
+      : undefined;
+  } else {
+    // A component separator that is not one character splits as
+    // `String.prototype.split` does; no detected delimiter set has one.
+    comp = splitWithRelease(rawElement.slice(repStart, repEnd), delimiters.component)[
+      componentIndex - 1
+    ];
+  }
+  if (comp === undefined) return undefined;
+  if (!comp.includes(RELEASE_CHAR)) return comp;
+  return unescapeRelease(comp, delimiters, emit, {
+    segmentIndex: 0,
+    elementIndex,
+    componentIndex,
+  });
+}
+
+/**
+ * {@link readSegmentValue} of an element that is not a string, which a segment
+ * a JavaScript caller built can hold: read by splitting into arrays, as every
+ * element was read before, so it answers or throws exactly as it did.
+ *
+ * @internal
+ */
+function readNonString(
+  segment: X12Segment,
+  rawElement: string,
+  elementIndex: number,
+  repIndex: number,
+  componentIndex: number | undefined,
+  delimiters: Delimiters,
+  emit: (w: X12ParseWarning) => void,
+): string | undefined {
+  if (isBinaryDataElement(segment, elementIndex)) {
+    if (repIndex !== 0) return undefined;
+    if (componentIndex !== undefined && componentIndex !== 1) return undefined;
     return rawElement;
   }
   const repetitions =
     delimiters.repetition.length === 1
       ? splitWithRelease(rawElement, delimiters.repetition)
       : [rawElement];
-  const repIndex = parsed.repetitionIndex ?? 0;
   const repetition = repetitions[repIndex];
   if (repetition === undefined) return undefined;
-  if (parsed.componentIndex === undefined) {
+  if (componentIndex === undefined) {
     return unescapeRelease(
       repetition,
       delimiters,
       emit,
-      segment.elements[0] === "ISA"
-        ? { segmentIndex: 0 }
-        : { segmentIndex: 0, elementIndex: parsed.elementIndex },
+      segment.elements[0] === "ISA" ? { segmentIndex: 0 } : { segmentIndex: 0, elementIndex },
     );
   }
   const components = splitWithRelease(repetition, delimiters.component);
-  const comp = components[parsed.componentIndex - 1];
+  const comp = components[componentIndex - 1];
   if (comp === undefined) return undefined;
   return unescapeRelease(comp, delimiters, emit, {
     segmentIndex: 0,
-    elementIndex: parsed.elementIndex,
-    componentIndex: parsed.componentIndex,
+    elementIndex,
+    componentIndex,
   });
 }
 
@@ -519,7 +656,21 @@ import { X12Decimal } from "../decimal.js";
  * ```
  */
 export function elementValue(seg: X12Segment, n: number, delimiters: Delimiters): string {
+  if (isIndex(n)) return readSegmentValue(seg, n, 0, undefined, delimiters, noop) ?? "";
   return getSegmentValue(seg, String(n).padStart(2, "0"), delimiters) ?? "";
+}
+
+/**
+ * Whether `n` is an index the numeric helpers read directly: a whole number,
+ * zero or more, that `String(n)` writes as plain digits. Anything else (a
+ * negative, a fraction, `NaN`, a number past `1e21`, a value that is not a
+ * number at all) takes the path-string route, which reads it, or refuses it
+ * with the path parser's `TypeError`, exactly as it always has.
+ *
+ * @internal
+ */
+function isIndex(n: unknown): n is number {
+  return typeof n === "number" && Number.isInteger(n) && n >= 0 && n < 1e21;
 }
 
 /**
@@ -538,7 +689,9 @@ export function elementOptional(
   n: number,
   delimiters: Delimiters,
 ): string | undefined {
-  const v = getSegmentValue(seg, String(n).padStart(2, "0"), delimiters);
+  const v = isIndex(n)
+    ? readSegmentValue(seg, n, 0, undefined, delimiters, noop)
+    : getSegmentValue(seg, String(n).padStart(2, "0"), delimiters);
   return v === undefined || v === "" ? undefined : v;
 }
 
@@ -559,7 +712,10 @@ export function componentOptional(
   p: number,
   delimiters: Delimiters,
 ): string | undefined {
-  const v = getSegmentValue(seg, `${String(n).padStart(2, "0")}-${String(p)}`, delimiters);
+  const v =
+    isIndex(n) && isIndex(p)
+      ? readSegmentValue(seg, n, 0, p, delimiters, noop)
+      : getSegmentValue(seg, `${String(n).padStart(2, "0")}-${String(p)}`, delimiters);
   return v === undefined || v === "" ? undefined : v;
 }
 

@@ -168,6 +168,9 @@ export function frameBinary(
   start: number,
   delimiters: Delimiters,
 ): BinaryFrame | undefined {
+  // Both binary ids start with `B`: every other segment is answered here,
+  // before an id is sliced out of the text for each one.
+  if (typeof text === "string" && text.charCodeAt(start) !== 0x42) return undefined;
   const id = text.slice(start, start + 3);
   const layout = binaryLayout(id);
   if (layout === undefined) return undefined;

@@ -16,7 +16,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -238,10 +238,18 @@ function attempt(fn: () => unknown): string {
   }
 }
 
+/**
+ * Where to write every recorded line, one file per document, for finding which line of a moved
+ * digest moved: set `X12_EQUIVALENCE_DUMP` to a directory and diff a base run against a head run.
+ */
+const DUMP_DIR = process.env["X12_EQUIVALENCE_DUMP"];
+let dumpSeq = 0;
+
 /** A recorder that collects lines for one document and hashes them. */
 class Observation {
   private readonly hash = createHash("sha256");
   private lines = 0;
+  private readonly dump: string[] | undefined = DUMP_DIR === undefined ? undefined : [];
 
   public add(label: string, text: string): void {
     this.hash.update(label);
@@ -249,9 +257,17 @@ class Observation {
     this.hash.update(text);
     this.hash.update("\u0001");
     this.lines += 1;
+    this.dump?.push(`${label}\t${text}`);
   }
 
   public digest(): string {
+    if (DUMP_DIR !== undefined && this.dump !== undefined) {
+      dumpSeq += 1;
+      writeFileSync(
+        join(DUMP_DIR, `${String(dumpSeq).padStart(5, "0")}.txt`),
+        this.dump.join("\n"),
+      );
+    }
     return `${this.hash.digest("hex")}:${String(this.lines)}`;
   }
 }
@@ -292,6 +308,15 @@ function observeSegment(
       read.push(attempt(() => getAllSegmentValues(seg, path, d, (w) => emitted.push(w))));
       read.push(record(emitted));
     }
+  }
+  // Indexes the numeric helpers are not written for, which a JavaScript caller can still pass.
+  const odd = [-1, -0, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 1e21, 2 ** 53 + 2, "2", null];
+  for (const n of odd as number[]) {
+    read.push(attempt(() => elementValue(seg, n, d)));
+    read.push(attempt(() => elementOptional(seg, n, d)));
+    read.push(attempt(() => componentOptional(seg, n, 1, d)));
+    read.push(attempt(() => componentOptional(seg, 1, n, d)));
+    read.push(attempt(() => readElementDecimal(seg, n, d)));
   }
   read.push(attempt(() => collectElementValues(seg, 1, seg.elements.length, d)));
   read.push(attempt(() => collectElementValues(seg, 0, last, d)));
@@ -550,6 +575,40 @@ export function observeDecimals(): string {
     "0.2",
   ];
   const values = forms.map((f) => X12Decimal.fromString(f));
+  // A JavaScript caller is not held to the string type.
+  const strange = [
+    5,
+    -0.25,
+    1e21,
+    Number.NaN,
+    true,
+    {},
+    [],
+    ["7"],
+    { length: 0 },
+    new String("1.5"),
+  ];
+  for (const [i, v] of strange.entries()) {
+    const read = attempt(() => X12Decimal.fromString(v as unknown as string));
+    const text = attempt(() => X12Decimal.fromString(v as unknown as string)?.toString());
+    obs.add(`strange${String(i)}`, `${read}|${text}`);
+  }
+  for (const [i, v] of [null, undefined, Symbol("x")].entries()) {
+    obs.add(
+      `thrown${String(i)}`,
+      attempt(() => X12Decimal.fromString(v as unknown as string)),
+    );
+  }
+  obs.add(
+    "primitive-this",
+    [
+      attempt(() => X12Decimal.prototype.toString.call(5)),
+      attempt(() => X12Decimal.prototype.signum.call(undefined)),
+      attempt(() => X12Decimal.prototype.add.call(null, X12Decimal.ZERO)),
+      attempt(() => X12Decimal.ZERO.add(0.3 as unknown as X12Decimal)),
+      attempt(() => X12Decimal.ZERO.compareTo("1" as unknown as X12Decimal)),
+    ].join("|"),
+  );
   obs.add("fromString", record(values));
   const defined = values.filter((v): v is X12Decimal => v !== undefined);
   for (const [i, a] of defined.entries()) {
@@ -629,6 +688,79 @@ export function observeDecimals(): string {
       attempt(() => one.add(Object.create(null) as X12Decimal)),
     ].join("|"),
   );
+  return obs.digest();
+}
+
+/**
+ * The public readers on values a JavaScript caller can pass that are not what they are typed as:
+ * a segment it built by hand with elements that are not strings, raw text that is not a string.
+ */
+export function observeOddValues(): string {
+  const obs = new Observation();
+  const d: Delimiters = { element: "*", repetition: "^", component: ":", segment: "~" };
+  const odd: unknown[] = [5, 0, ["?"], ["a"], ["a*b"], ["*"], ["?", "x"], null, {}, true, "A^B:C?"];
+  for (const [i, v] of odd.entries()) {
+    const warned: X12ParseWarning[] = [];
+    const at = { segmentIndex: 2 };
+    const u = attempt(() => unescapeRelease(v as string, d, (w) => warned.push(w), at));
+    obs.add(`unescape${String(i)}`, `${u}|${record(warned)}`);
+    const emitted: X12ParseWarning[] = [];
+    const decoded = attempt(() => decodeSegment(v as string, d, (w) => emitted.push(w), at));
+    obs.add(`decode${String(i)}`, `${decoded}|${record(emitted)}`);
+    for (const id of ["NM1", "BIN", "BDS", "ISA"]) {
+      const seg = { id, raw: "", elements: [id, v, v, v] } as unknown as X12Segment;
+      const reads: string[] = [];
+      for (const path of ["01", "01-1", "01-2", "01[0]", "01[1]", "02[1]-1", "03-1"]) {
+        const w: X12ParseWarning[] = [];
+        reads.push(attempt(() => getSegmentValue(seg, path, d, (x) => w.push(x))));
+        reads.push(attempt(() => getAllSegmentValues(seg, path, d, (x) => w.push(x))));
+        reads.push(record(w));
+      }
+      for (const n of [1, 2, 3]) {
+        reads.push(attempt(() => elementValue(seg, n, d)));
+        reads.push(attempt(() => elementOptional(seg, n, d)));
+        reads.push(attempt(() => componentOptional(seg, n, 1, d)));
+        reads.push(attempt(() => componentOptional(seg, n, 2, d)));
+        reads.push(attempt(() => readElementDecimal(seg, n, d)));
+      }
+      obs.add(`read${String(i)}${id}`, reads.join("|"));
+    }
+  }
+  const multi: Delimiters = { element: "**", repetition: "", component: "::", segment: "~~" };
+  const comp: Delimiters = { element: "*", repetition: "^^", component: "", segment: "~" };
+  for (const [name, delims] of [
+    ["multi", multi],
+    ["comp", comp],
+  ] as const) {
+    for (const raw of ["NM1**A::B^C**D", "SVC*HC:1^X:2*Y", "BIN*3*A*B", "", "A?*B"]) {
+      const emitted: X12ParseWarning[] = [];
+      const seg = attempt(() =>
+        decodeSegment(raw, delims, (w) => emitted.push(w), { segmentIndex: 1 }),
+      );
+      obs.add(`${name}:${raw}`, `${seg}|${record(emitted)}`);
+      const built = { id: "X", raw, elements: ["X", raw, "A::B", "1^2^^3", "a?:b:c"] };
+      const reads: string[] = [];
+      for (const path of [
+        "01",
+        "01-1",
+        "01-2",
+        "02-1",
+        "02-2",
+        "03[1]",
+        "03[2]",
+        "04-2",
+        "04[0]-3",
+      ]) {
+        reads.push(attempt(() => getSegmentValue(built, path, delims)));
+        reads.push(attempt(() => getAllSegmentValues(built, path, delims)));
+      }
+      for (const n of [1, 2, 3, 4]) {
+        reads.push(attempt(() => elementOptional(built, n, delims)));
+        reads.push(attempt(() => componentOptional(built, n, 2, delims)));
+      }
+      obs.add(`${name}:${raw}:reads`, reads.join("|"));
+    }
+  }
   return obs.digest();
 }
 

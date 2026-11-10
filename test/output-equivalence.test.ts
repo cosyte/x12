@@ -24,6 +24,7 @@ import {
   observeBuild,
   observeDecimals,
   observeInput,
+  observeOddValues,
 } from "./_helpers/output-corpus.js";
 
 const DIGESTS = fileURLToPath(
@@ -44,6 +45,7 @@ async function digests(): Promise<Record<string, string>> {
   }
   for (const build of corpusBuilds()) put(`build:${build.label}`, await observeBuild(build.build));
   put("decimal", observeDecimals());
+  put("odd-values", observeOddValues());
   return out;
 }
 

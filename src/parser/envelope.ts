@@ -15,8 +15,8 @@
 
 import { frameBinary } from "./binary.js";
 import { ISA_MIN_LENGTH } from "./delimiters.js";
-import { RELEASE_CHAR, splitWithRelease } from "./release.js";
-import { decodeSegment, type X12Segment } from "./segment.js";
+import { RELEASE_CHAR, RELEASE_CODE, splitWithRelease } from "./release.js";
+import { decodeSegmentAt, type X12Segment } from "./segment.js";
 import type {
   Delimiters,
   GeSegment,
@@ -173,15 +173,18 @@ function findUnescapedTerminator(text: string, from: number, term: string): numb
   // set), `?` cannot also escape - fall back to a literal scan so a `?`
   // terminator still splits, matching the historical behaviour.
   if (term.length !== 1 || term === RELEASE_CHAR) return text.indexOf(term, from);
+  // Jump between candidates with `indexOf` rather than reading every byte: a
+  // terminator is the answer unless a release character comes before it, and
+  // a release character consumes the byte after it, which may be that
+  // terminator. Each search starts where the last stopped, so this is linear.
+  let candidate = text.indexOf(term, from);
   let i = from;
-  while (i < text.length) {
-    const ch = text.charAt(i);
-    if (ch === RELEASE_CHAR && i + 1 < text.length) {
-      i += 2;
-      continue;
-    }
-    if (ch === term) return i;
-    i += 1;
+  while (candidate !== -1) {
+    const release = text.indexOf(RELEASE_CHAR, i);
+    if (release === -1 || release > candidate) return candidate;
+    // `release + 1` exists: the candidate terminator is at or after it.
+    i = release + 2;
+    if (i > candidate) candidate = text.indexOf(term, i);
   }
   return -1;
 }
@@ -338,6 +341,69 @@ function splitElements(segment: string, delimiters: Delimiters): readonly string
 }
 
 /**
+ * The name the walker dispatches a segment on: the segment name
+ * {@link splitElements} would put at `elements[0]` when that name is one of
+ * the envelope's own (`GS`, `GE`, `ST`, `SE`, `IEA`, `TA1`), `""` when it is
+ * empty, and {@link BODY_SEGMENT} for every other name. The name is found
+ * without splitting the segment or slicing the name out of it: the walker needs
+ * only this to place a body segment, and {@link decodeSegmentAt} splits that
+ * segment once, so a body segment is no longer split twice.
+ *
+ * @internal
+ */
+function segmentName(segment: string, delimiters: Delimiters): string {
+  const sep = delimiters.element;
+  /* v8 ignore next -- `detectDelimiters` reads every delimiter as one character */
+  if (sep.length !== 1) return dispatchName(el(splitElements(segment, delimiters), 0));
+  let end = segment.length;
+  if (sep === RELEASE_CHAR) {
+    const at = segment.indexOf(sep);
+    if (at !== -1) end = at;
+  } else {
+    const sepCode = sep.charCodeAt(0);
+    for (let i = 0; i < segment.length; i += 1) {
+      const code = segment.charCodeAt(i);
+      if (code === RELEASE_CODE && i + 1 < segment.length) {
+        i += 1;
+      } else if (code === sepCode) {
+        end = i;
+        break;
+      }
+    }
+  }
+  if (end === 0) return "";
+  if (end > 3) return BODY_SEGMENT;
+  for (const name of ENVELOPE_NAMES) {
+    if (name.length === end && segment.startsWith(name)) return name;
+  }
+  return BODY_SEGMENT;
+}
+
+/** The names {@link segmentName} answers with themselves. @internal */
+const ENVELOPE_NAMES: readonly string[] = Object.freeze(["GS", "GE", "ST", "SE", "IEA", "TA1"]);
+
+/**
+ * What {@link segmentName} answers for a segment whose name is neither empty
+ * nor one of the envelope's. Not a segment name the grammar admits, so it can
+ * match no case of the walker's switch. @internal
+ */
+const BODY_SEGMENT = "(body)";
+
+/** {@link segmentName} of a name already split out. @internal */
+/* v8 ignore next 3 -- reached only through the branch above */
+function dispatchName(name: string): string {
+  return name === "" || ENVELOPE_NAMES.includes(name) ? name : BODY_SEGMENT;
+}
+
+/**
+ * The elements the walker holds for a segment it does not split itself. Never
+ * read: every case that reads `elements` is one whose segment was split.
+ *
+ * @internal
+ */
+const EMPTY_ELEMENTS: readonly string[] = Object.freeze([]);
+
+/**
  * Read an element from a readonly array, defaulting to `""` for missing
  * positions. Used as the lenient narrowing for malformed-but-not-fatal
  * segment shapes (e.g. a truncated `IEA~` with no IEA-01 / IEA-02). The
@@ -489,7 +555,7 @@ export function decodeEnvelope(
     warnings.push(unexpectedSegment(position, context));
     orphanSegments.push({
       raw: segmentText,
-      segment: decodeSegment(segmentText, delimiters, collectWarning, position),
+      segment: decodeSegmentAt(segmentText, delimiters, collectWarning, position),
       segmentIndex: position.segmentIndex,
       context,
       anchor,
@@ -582,12 +648,32 @@ export function decodeEnvelope(
     });
   };
 
+  /**
+   * The position of the segment being walked inside the open transaction set,
+   * built only when its decode raises a warning: `segIdx`, the group and the
+   * transaction are read when it is called, which is inside the same step of
+   * the walk.
+   */
+  let segIdx = 0;
+  const inTransaction = (): X12Position => ({
+    segmentIndex: segIdx,
+    interchangeIndex: 0,
+    groupIndex: groups.length,
+    /* v8 ignore next -- only called while a group is open */
+    transactionIndex: currentGroup?.transactions.length ?? 0,
+  });
+
   // ISA itself occupies segIdx 0; the body starts at segIdx 1.
   for (let i = 0; i < segments.length; i++) {
     const segmentText = el(segments, i);
-    const segIdx = i + 1;
-    const elements = splitElements(segmentText, delimiters);
-    const name = el(elements, 0);
+    segIdx = i + 1;
+    const name = segmentName(segmentText, delimiters);
+    // Only the envelope's own segments are split here; a body segment is split
+    // once, by its decode, and the ST and SE reuse the elements theirs makes.
+    const elements =
+      name === "TA1" || name === "GS" || name === "GE" || name === "IEA"
+        ? splitElements(segmentText, delimiters)
+        : EMPTY_ELEMENTS;
 
     switch (name) {
       case "TA1": {
@@ -686,14 +772,11 @@ export function decodeEnvelope(
         if (currentTx !== undefined) {
           finalizeTx(currentTx, currentGroup, undefined);
         }
-        const stDecoded = decodeSegment(segmentText, delimiters, collectWarning, {
-          segmentIndex: segIdx,
-          interchangeIndex: 0,
-          groupIndex: groups.length,
-          transactionIndex: currentGroup.transactions.length,
-        });
+        const stDecoded = decodeSegmentAt(segmentText, delimiters, collectWarning, inTransaction);
         currentTx = {
-          st: { raw: segmentText, elements },
+          // An ST is never a binary segment, so its decode splits it exactly
+          // as `splitElements` does and the two arrays are interchangeable.
+          st: { raw: segmentText, elements: stDecoded.elements },
           segments: [stDecoded],
           rawSegments: [segmentText],
           startSegIdx: segIdx,
@@ -711,15 +794,11 @@ export function decodeEnvelope(
           );
           break;
         }
-        const seDecoded = decodeSegment(segmentText, delimiters, collectWarning, {
-          segmentIndex: segIdx,
-          interchangeIndex: 0,
-          groupIndex: groups.length,
-          transactionIndex: currentGroup.transactions.length,
-        });
+        const seDecoded = decodeSegmentAt(segmentText, delimiters, collectWarning, inTransaction);
         currentTx.segments.push(seDecoded);
         currentTx.rawSegments.push(segmentText);
-        const se = { raw: segmentText, elements };
+        // Not a binary segment either: see the ST above.
+        const se = { raw: segmentText, elements: seDecoded.elements };
         // ST-02 ↔ SE-02 control-number reconciliation.
         const stControl = el(currentTx.st.elements, 2);
         const seControl = el(se.elements, 2);
@@ -803,12 +882,7 @@ export function decodeEnvelope(
       default: {
         // Body segment of an open transaction → decode and append.
         if (currentTx !== undefined && currentGroup !== undefined) {
-          const decoded = decodeSegment(segmentText, delimiters, collectWarning, {
-            segmentIndex: segIdx,
-            interchangeIndex: 0,
-            groupIndex: groups.length,
-            transactionIndex: currentGroup.transactions.length,
-          });
+          const decoded = decodeSegmentAt(segmentText, delimiters, collectWarning, inTransaction);
           currentTx.segments.push(decoded);
           currentTx.rawSegments.push(segmentText);
         } else if (name.length > 0) {
