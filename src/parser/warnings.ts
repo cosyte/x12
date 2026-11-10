@@ -121,6 +121,7 @@ export const WARNING_CODES = {
   X12_275_ATTACHMENT_ABSENT: "X12_275_ATTACHMENT_ABSENT",
   X12_999_IK5_ABSENT: "X12_999_IK5_ABSENT",
   X12_999_AK9_ABSENT: "X12_999_AK9_ABSENT",
+  X12_999_AK1_ABSENT: "X12_999_AK1_ABSENT",
 } as const;
 
 /**
@@ -540,6 +541,8 @@ const WARNING_MESSAGES = {
     "999 transaction set response with no IK5: the AK2 at `position.segmentIndex` was closed by the next AK2, by the AK9 or by the end of the transaction set before its IK5 arrived, so the sender stated no disposition for that response. The reading fills one in, fail-safe: `ik5.disposition` reads `R` (rejected) and `ik5.syntaxErrorCodes` is empty. Treat that reject as the reader's, not the sender's. The verbatim segments are preserved on the transaction set. Nothing is echoed here.",
   X12_999_AK9_ABSENT:
     "999 with no AK9: the transaction set ends without a functional group response trailer, so the sender stated no disposition and no counts for the group. The reading fills them in, fail-safe: `ak9.disposition` reads `R` (rejected), the three transaction set counts read 0 and `ak9.syntaxErrorCodes` is empty. Treat that reject and those counts as the reader's, not the sender's. The verbatim segments are preserved on the transaction set. Nothing is echoed here.",
+  X12_999_AK1_ABSENT:
+    "999 with no AK1: the transaction set carries no functional group response header, so the sender named no functional group this 999 answers. The reading fills one in: `ak1.functionalIdCode` and `ak1.groupControlNumber` read as empty strings and `ak1.versionRelease` is undefined. Treat them as the reader's, not the sender's: nothing on this 999 ties it to a functional group you sent, so do not match it to one by those empty values. The verbatim segments are preserved on the transaction set. Nothing is echoed here.",
 } as const;
 
 /**
@@ -2367,6 +2370,29 @@ export function ack999Ak9Absent(position: X12Position): X12ParseWarning {
   return {
     code: WARNING_CODES.X12_999_AK9_ABSENT,
     message: WARNING_MESSAGES.X12_999_AK9_ABSENT,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_999_AK1_ABSENT` warning. Raised by `parse999` when the
+ * transaction set carries no AK1, and the reading fills in an empty AK1, so
+ * the 999 names no functional group it answers.
+ *
+ * The reader anchors it at the ST (`segmentIndex: 0`). It takes a position and
+ * nothing else, so no byte of the document reaches the message.
+ *
+ * @example
+ * ```ts
+ * import { ack999Ak1Absent } from "@cosyte/x12";
+ * const w = ack999Ak1Absent({ segmentIndex: 0, transactionIndex: 0 });
+ * w.code; // "X12_999_AK1_ABSENT"
+ * ```
+ */
+export function ack999Ak1Absent(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_999_AK1_ABSENT,
+    message: WARNING_MESSAGES.X12_999_AK1_ABSENT,
     position,
   };
 }

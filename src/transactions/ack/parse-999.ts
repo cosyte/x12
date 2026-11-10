@@ -30,11 +30,16 @@ import type {
   X12TransactionSet,
 } from "../../parser/types.js";
 import { splitWithRelease, unescapeRelease } from "../../parser/release.js";
-import { ack999Ak9Absent, ack999Ik5Absent, type X12ParseWarning } from "../../parser/warnings.js";
-// The reader is fail-safe: a missing IK5 or AK9 reads as a reject. Each
-// fill-in carries its own warning (`X12_999_IK5_ABSENT`,
-// `X12_999_AK9_ABSENT`), beside the declared-guide check every typed reader
-// runs.
+import {
+  ack999Ak1Absent,
+  ack999Ak9Absent,
+  ack999Ik5Absent,
+  type X12ParseWarning,
+} from "../../parser/warnings.js";
+// The reader is fail-safe: a missing IK5 or AK9 reads as a reject, and a
+// missing AK1 reads as an empty one. Each fill-in carries its own warning
+// (`X12_999_IK5_ABSENT`, `X12_999_AK9_ABSENT`, `X12_999_AK1_ABSENT`), beside
+// the declared-guide check every typed reader runs.
 import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 
 import {
@@ -333,9 +338,11 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
     }
   }
 
-  // EOF without AK9 → synthesize a placeholder + warn so the typed model
-  // resolves but the caller can detect the truncation.
+  // EOF without AK1 or AK9 → synthesize a placeholder + warn so the typed
+  // model resolves but the caller can tell the reader's fill-in from the
+  // sender's segment. Both anchor at the ST, AK1 first in segment order.
   if (currentResponse !== undefined) flushResponse(undefined);
+  if (ak1 === undefined) warnings.push(ack999Ak1Absent({ segmentIndex: 0, transactionIndex: 0 }));
   if (ak9 === undefined) warnings.push(ack999Ak9Absent({ segmentIndex: 0, transactionIndex: 0 }));
   const finalAk1: X12Ack999Ak1 = ak1 ?? {
     functionalIdCode: "",
