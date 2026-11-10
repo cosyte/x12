@@ -37,6 +37,9 @@ Concretely, a builder refuses rather than guesses when:
   so the library's own structural join would be emitted as an escape (and the escape as structure);
 - a **required control number is empty**, which used to be zero-padded into a control number nobody
   sent;
+- a **fixed-width ISA value is longer than its slot** (`senderId` over 15 characters,
+  `interchangeDate` over 6), which used to be cut to fit, so the interchange named a sender or a date
+  you never gave. A short value still pads with spaces;
 - a slot typed `X12Decimal` is handed a raw `number`, which is how `0.1 + 0.2` used to reach a
   monetary element as `0.30000000000000004`.
 

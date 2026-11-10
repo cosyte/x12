@@ -30,6 +30,7 @@ import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
+import { padIsaElement } from "../../builder/caller-isa.js";
 
 /**
  * Refuse with this module's typed error, for {@link makeCallerEscaper}. A
@@ -183,15 +184,29 @@ export function build999(spec: Build999Spec): X12Interchange {
     [
       "ISA",
       "00", // ISA-01 - Authorization Info Qualifier
-      pad(" ", 10), // ISA-02 - Authorization Info (blank when ISA-01 == "00")
+      " ".repeat(10), // ISA-02 - Authorization Info (blank when ISA-01 == "00")
       "00", // ISA-03 - Security Info Qualifier
-      pad(" ", 10), // ISA-04 - Security Info (blank when ISA-03 == "00")
-      pad(senderQualifier, 2), // ISA-05
-      pad(envelope.senderId, 15), // ISA-06
-      pad(receiverQualifier, 2), // ISA-07
-      pad(envelope.receiverId, 15), // ISA-08
-      pad(envelope.interchangeDate, 6), // ISA-09 - YYMMDD
-      pad(envelope.interchangeTime, 4), // ISA-10 - HHMM
+      " ".repeat(10), // ISA-04 - Security Info (blank when ISA-03 == "00")
+      padIsaElement(senderQualifier, 2, "ISA-05", "senderQualifier", "build999", refuseSpec), // ISA-05
+      padIsaElement(envelope.senderId, 15, "ISA-06", "senderId", "build999", refuseSpec), // ISA-06
+      padIsaElement(receiverQualifier, 2, "ISA-07", "receiverQualifier", "build999", refuseSpec), // ISA-07
+      padIsaElement(envelope.receiverId, 15, "ISA-08", "receiverId", "build999", refuseSpec), // ISA-08
+      padIsaElement(
+        envelope.interchangeDate,
+        6,
+        "ISA-09",
+        "interchangeDate",
+        "build999",
+        refuseSpec,
+      ), // ISA-09 - YYMMDD
+      padIsaElement(
+        envelope.interchangeTime,
+        4,
+        "ISA-10",
+        "interchangeTime",
+        "build999",
+        refuseSpec,
+      ), // ISA-10 - HHMM
       repetitionSeparator, // ISA-11 - repetition separator
       "00501", // ISA-12 - interchange version
       interchangeControlNumber, // ISA-13
@@ -549,13 +564,6 @@ function joinSeg(
 ): string {
   requireCallerSegment(parts, "build999", refuseSpec);
   return parts.join(elementSeparator) + segmentTerminator;
-}
-
-/** @internal */
-function pad(value: string, width: number): string {
-  if (value.length === width) return value;
-  if (value.length < width) return value + " ".repeat(width - value.length);
-  return value.slice(0, width);
 }
 
 /**

@@ -51,6 +51,7 @@ import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
+import { padIsaElement } from "../../builder/caller-isa.js";
 
 /**
  * Refuse with this module's typed error, for {@link requireCallerArray}. A
@@ -290,15 +291,29 @@ function buildServicesReview(
     [
       "ISA",
       "00",
-      pad(" ", 10),
+      " ".repeat(10),
       "00",
-      pad(" ", 10),
-      pad(senderQualifier, 2),
-      pad(envelope.senderId, 15),
-      pad(receiverQualifier, 2),
-      pad(envelope.receiverId, 15),
-      pad(envelope.interchangeDate, 6),
-      pad(envelope.interchangeTime, 4),
+      " ".repeat(10),
+      padIsaElement(senderQualifier, 2, "ISA-05", "senderQualifier", "build278", refuseSpec),
+      padIsaElement(envelope.senderId, 15, "ISA-06", "senderId", "build278", refuseSpec),
+      padIsaElement(receiverQualifier, 2, "ISA-07", "receiverQualifier", "build278", refuseSpec),
+      padIsaElement(envelope.receiverId, 15, "ISA-08", "receiverId", "build278", refuseSpec),
+      padIsaElement(
+        envelope.interchangeDate,
+        6,
+        "ISA-09",
+        "interchangeDate",
+        "build278",
+        refuseSpec,
+      ),
+      padIsaElement(
+        envelope.interchangeTime,
+        4,
+        "ISA-10",
+        "interchangeTime",
+        "build278",
+        refuseSpec,
+      ),
       repetitionSeparator,
       "00501",
       interchangeControlNumber,
@@ -691,13 +706,6 @@ function emitMember(member: Build278MemberSpec, body: string[], ctx: EmitContext
 // ---------------------------------------------------------------------------
 // String helpers - mirror the `build277` emit primitives.
 // ---------------------------------------------------------------------------
-
-/** @internal */
-function pad(value: string, width: number): string {
-  if (value.length === width) return value;
-  if (value.length < width) return value + " ".repeat(width - value.length);
-  return value.slice(0, width);
-}
 
 /**
  * Zero-pad a control number to `width` chars (ISA-13 / IEA-02 are always 9).

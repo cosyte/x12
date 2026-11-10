@@ -456,13 +456,14 @@ describe("build835 - envelope + payment overrides", () => {
     expect(ix.isa.elements[13]).toBe("000000001"); // ISA-13
   });
 
-  it("truncates an over-long ISA-06 sender id to 15 chars", () => {
+  it("refuses an over-long ISA-06 sender id rather than cutting it to 15 chars", () => {
     const spec: Build835Spec = {
       ...BALANCED_SPEC,
       envelope: { ...ENVELOPE, senderId: "SENDERIDWAYTOOLONGFORISA06" },
     };
-    const ix = build835(spec);
-    expect(ix.isa.elements[6]).toBe("SENDERIDWAYTOOL"); // 15 chars
+    expect(() => build835(spec)).toThrow(
+      /build835: senderId is 26 characters, and ISA-06 holds 15/,
+    );
   });
 
   it("expands a 20th-century YYMMDD interchange date for GS-04", () => {
@@ -977,7 +978,7 @@ describe("build835 - residual branches", () => {
         .elements[4];
     expect(gs04("990601")).toBe("19990601");
     expect(gs04("260601")).toBe("20260601");
-    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("2606")).toBe("2606");
     expect(gs04("AB0601")).toBe("AB0601");
   });
 });

@@ -1074,16 +1074,15 @@ describe("every builder with an escaper refuses a number in an element", () => {
 });
 
 // ---------------------------------------------------------------------------
-// The disclosed residual: the fixed-width ISA/GS slots, which do not use esc.
+// The fixed-width ISA slots, which do not use esc.
 // ---------------------------------------------------------------------------
 
-describe("the fixed-width envelope slots: the disclosed residual", () => {
-  it("throws an untyped TypeError for a numeric ISA-06, and must not start emitting empty", () => {
-    // A MEASUREMENT of a known gap, not an endorsement. `senderId` goes through
-    // `pad`, not `esc`: `pad(1, 15)` reaches `value.slice` and throws. Untyped
-    // (`code` is `undefined`), which is worse than the rest of this library -
-    // but it TERMINATES, so it is a different defect from the silent one this
-    // slice closes. PRE-EXISTING and identical at base commit `143a6ea`.
+describe("the fixed-width envelope slots", () => {
+  it("refuses a numeric ISA-06 with a typed refusal, and never emits it short", () => {
+    // WAS a measured gap: `senderId` went through a private `pad`, and
+    // `pad(1, 15)` reached `value.slice` and threw an untyped `TypeError` with
+    // no `code`. The fixed-width slots now go through `caller-isa.ts`, which
+    // checks the type first, so the refusal carries the builder's own code.
     let thrown: unknown;
     try {
       build834(
@@ -1092,8 +1091,9 @@ describe("the fixed-width envelope slots: the disclosed residual", () => {
     } catch (err) {
       thrown = err;
     }
-    expect(thrown).toBeInstanceOf(TypeError);
-    expect((thrown as { code?: unknown }).code).toBeUndefined();
+    expect(thrown).toBeInstanceOf(Enrollment834BuildError);
+    expect((thrown as { code?: unknown }).code).toBe("X12_834_BUILD_INVALID_SPEC");
+    expect((thrown as Error).message).toContain("build834: senderId must be a string");
   });
 
   it("no longer calls a numeric ISA-13 over-long, and the CODE did not move", () => {
@@ -1103,8 +1103,7 @@ describe("the fixed-width envelope slots: the disclosed residual", () => {
     // 9-char spec limit". Closed by `X12-CONTROL-NUMBER-GUARD-NOT-TYPE-CHECKED`
     // - `requireControlNumber` type-checks first. It refused at base and
     // refuses now, on the SAME class and the SAME code; only the sentence
-    // changed. The ISA-06 case above is the half that is NOT closed and is
-    // still a bare `TypeError`, which is why the two are pinned side by side.
+    // changed. The ISA-06 case above now refuses on the same code too.
     let thrown: unknown;
     try {
       build834(

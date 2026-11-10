@@ -339,18 +339,19 @@ describe("build270 - the happy path", () => {
     ]);
   });
 
-  it("truncates an over-wide fixed-width ISA element rather than shifting the header", () => {
+  it("refuses an over-wide fixed-width ISA element rather than cutting or shifting it", () => {
     // The ISA is byte-positional, so an over-long sender id cannot be emitted
     // whole: emitting it would move every element after it and the interchange
-    // would not frame at all. It is cut to the slot's spec width, which keeps
-    // the header readable, and the caller's value is still theirs.
-    const ix = build270({
-      ...CANONICAL_SPEC,
-      envelope: { ...ENVELOPE, senderId: "A".repeat(40) },
-    });
-    expect(ix.isa.raw.length).toBe(106);
-    expect(ix.isa.elements[6]).toBe("A".repeat(15));
-    expect(ix.warnings).toEqual([]);
+    // would not frame at all. Cutting it to the slot's width would name a
+    // sender the caller never gave, so the builder refuses.
+    const err = refusalOf(() =>
+      build270({
+        ...CANONICAL_SPEC,
+        envelope: { ...ENVELOPE, senderId: "A".repeat(40) },
+      }),
+    );
+    expect(err.code).toBe(ELIGIBILITY_270_BUILD_ERROR_CODES.X12_270_BUILD_INVALID_SPEC);
+    expect(err.message).toContain("build270: senderId is 40 characters, and ISA-06 holds 15");
   });
 });
 
@@ -1206,7 +1207,7 @@ describe("build270 - optional elements and envelope helpers", () => {
         .elements[4];
     expect(gs04("990601")).toBe("19990601");
     expect(gs04("260601")).toBe("20260601");
-    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("2606")).toBe("2606");
     expect(gs04("AB0601")).toBe("AB0601");
   });
 });

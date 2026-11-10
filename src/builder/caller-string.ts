@@ -173,12 +173,12 @@
  *   the slots named above were routed, and that is a list, with a list's
  *   weakness. `build999` with `groupControlNumber: "1*BOGUS"` shifting
  *   GS-07/GS-08 by one is the shape to look for.
- * - **The ISA fixed-width slots go through `pad` / `padControl`, not `esc`, and
- *   not through the segment join either** - every builder assembles ISA with a
- *   direct `.join()`. `pad(1, 15)` throws an untyped `TypeError` (`value.slice
- *   is not a function`), which terminates, which is better than emitting
- *   silently, and is not improved here. The control number is guarded ahead of
- *   `padControl` by {@link "./caller-control-number.js".requireControlNumber}.
+ * - **The ISA fixed-width slots go through `padIsaElement` / `padControl`, not
+ *   `esc`, and not through the segment join either** - every builder assembles
+ *   ISA with a direct `.join()`. {@link "./caller-isa.js".padIsaElement} refuses
+ *   a value that is not a string, or is longer than its slot, on the builder's
+ *   own typed error. The control number is guarded ahead of `padControl` by
+ *   {@link "./caller-control-number.js".requireControlNumber}.
  *   **`buildTA1` had no `esc` at all and no segment joiner
  *   either, and a later release gave it the escaper** - it
  *   still emits its five caller-supplied elements with a direct `.join()`, so

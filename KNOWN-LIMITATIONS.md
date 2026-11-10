@@ -72,7 +72,7 @@ model.
   evidence the header framed**. Pre-existing, disclosed, not fixed here.
 
   **The emit side is unchanged and is NOT guarded by this.** The fixed-width ISA slots go through
-  `pad` / `padControl` and never through the caller escaper, so `buildInterchange` still writes a
+  padding and never through the caller escaper, so `buildInterchange` still writes a
   caller value carrying the element separator straight onto the wire. What changed is that
   `buildInterchange` returns `parseX12` of the bytes it just wrote, so the report now reaches that
   path too: `interchangeControlNumber: "0000*0001"` used to come back with ISA-13 reading `"0000"`,
@@ -1590,13 +1590,13 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
      `GS*FA*…*1*BOGUS*X*005010X231A1`, shifting GS-07 and GS-08 by one. They are routed through the
      escape helper now, so that reads `1?*BOGUS`.
   3. **The fixed-width ISA slots** (`senderId`, `receiverId`, `interchangeControlNumber`, …) go
-     through padding rather than escaping, and **are still not covered** - they do not pass through
-     the segment join either. A number there throws an untyped `TypeError` with no `code`
-     (`value.slice is not a function`). That terminates rather than emitting silently, which is why
-     it was the smaller hazard and why it is left alone. `interchangeControlNumber` is the exception:
-     a number there draws the builder's typed refusal, saying it must be a string.
-     GS-04 and GS-05 were the counter-example that made this distinction worth stating - they
-     are envelope elements and they WERE silent. They are covered now; ISA still is not.
+     through padding rather than escaping, and do not pass through the segment join either. They
+     have a guard of their own: a value that is not a string, or is longer than its slot, draws the
+     builder's typed refusal naming the field. Through `0.1.9` a number there threw an untyped
+     `TypeError`, and an over-long value was cut to the slot's width with no warning, so an
+     `interchangeDate` of `"20250101"` went out as ISA-09 `202501`. A short value still pads with
+     spaces. What the guard does not check is content: a value carrying the element separator still
+     reaches the wire as that byte, as described above.
 
   **One other change, and it is a behaviour change:** the exported `escapeRelease(value, delimiters)`
   now **throws `TypeError` on a non-string** rather than returning `""`. If you call it directly, it

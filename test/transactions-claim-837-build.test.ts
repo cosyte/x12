@@ -232,12 +232,13 @@ describe("build837 - envelope identity", () => {
     expect(ix.groups[0]?.gs.elements[4]).toBe("19990601");
   });
 
-  it("truncates an over-long ISA-06 sender id to 15 chars", () => {
-    const ix = build837P({
-      ...P_SPEC,
-      envelope: { ...ENVELOPE, senderId: "SENDERIDWAYTOOLONGFORISA06" },
-    });
-    expect(ix.isa.elements[6]).toBe("SENDERIDWAYTOOL");
+  it("refuses an over-long ISA-06 sender id rather than cutting it to 15 chars", () => {
+    expect(() =>
+      build837P({
+        ...P_SPEC,
+        envelope: { ...ENVELOPE, senderId: "SENDERIDWAYTOOLONGFORISA06" },
+      }),
+    ).toThrow(/build837: senderId is 26 characters, and ISA-06 holds 15/);
   });
 });
 
@@ -1261,7 +1262,7 @@ describe("build837 - optional elements are written empty, never invented", () =>
         .elements[4];
     expect(gs04("990601")).toBe("19990601");
     expect(gs04("260601")).toBe("20260601");
-    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("2606")).toBe("2606");
     expect(gs04("AB0601")).toBe("AB0601");
   });
 });

@@ -31,6 +31,7 @@
 
 import { requireCallerArray } from "../../builder/caller-array.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
+import { padIsaElement } from "../../builder/caller-isa.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { parseX12 } from "../../parser/index.js";
@@ -157,17 +158,38 @@ export function build275(spec: Build275Spec): X12Interchange {
     [
       "ISA",
       "00",
-      pad(" ", 10),
+      " ".repeat(10),
       "00",
-      pad(" ", 10),
-      pad(envelope.senderQualifier ?? "ZZ", 2),
-      pad(envelope.senderId, 15),
-      pad(envelope.receiverQualifier ?? "ZZ", 2),
-      pad(envelope.receiverId, 15),
-      pad(envelope.interchangeDate, 6),
-      pad(envelope.interchangeTime, 4),
+      " ".repeat(10),
+      padIsaElement(
+        envelope.senderQualifier ?? "ZZ",
+        2,
+        "ISA-05",
+        "senderQualifier",
+        AT,
+        refuseSpec,
+      ),
+      padIsaElement(envelope.senderId, 15, "ISA-06", "senderId", AT, refuseSpec),
+      padIsaElement(
+        envelope.receiverQualifier ?? "ZZ",
+        2,
+        "ISA-07",
+        "receiverQualifier",
+        AT,
+        refuseSpec,
+      ),
+      padIsaElement(envelope.receiverId, 15, "ISA-08", "receiverId", AT, refuseSpec),
+      padIsaElement(envelope.interchangeDate, 6, "ISA-09", "interchangeDate", AT, refuseSpec),
+      padIsaElement(envelope.interchangeTime, 4, "ISA-10", "interchangeTime", AT, refuseSpec),
       repetitionSeparator,
-      pad(envelope.interchangeControlVersion ?? DEFAULT_INTERCHANGE_CONTROL_VERSION, 5),
+      padIsaElement(
+        envelope.interchangeControlVersion ?? DEFAULT_INTERCHANGE_CONTROL_VERSION,
+        5,
+        "ISA-12",
+        "interchangeControlVersion",
+        AT,
+        refuseSpec,
+      ),
       interchangeControlNumber,
       "0",
       envelope.usageIndicator ?? "P",
@@ -436,13 +458,6 @@ function emitLine(
 // ---------------------------------------------------------------------------
 // Envelope helpers, as the other domain builders carry them.
 // ---------------------------------------------------------------------------
-
-/** @internal */
-function pad(value: string, width: number): string {
-  if (value.length === width) return value;
-  if (value.length < width) return value + " ".repeat(width - value.length);
-  return value.slice(0, width);
-}
 
 /**
  * Zero-pad ISA-13 / IEA-02 to nine characters, refusing one longer than that

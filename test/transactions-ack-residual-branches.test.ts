@@ -267,7 +267,7 @@ describe("build999: optional elements on emit", () => {
         .elements[4];
     expect(gs04("990101")).toBe("19990101");
     expect(gs04("250101")).toBe("20250101");
-    expect(gs04("20250101")).toBe("20250101");
+    expect(gs04("2501")).toBe("2501");
     expect(gs04("AB0101")).toBe("AB0101");
   });
 });

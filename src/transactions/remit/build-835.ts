@@ -51,6 +51,7 @@ import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
+import { padIsaElement } from "../../builder/caller-isa.js";
 
 /**
  * Refuse with this module's typed error, for {@link requireCallerArray}. A
@@ -247,15 +248,29 @@ export function build835(spec: Build835Spec): X12Interchange {
     [
       "ISA",
       "00", // ISA-01
-      pad(" ", 10), // ISA-02
+      " ".repeat(10), // ISA-02
       "00", // ISA-03
-      pad(" ", 10), // ISA-04
-      pad(senderQualifier, 2), // ISA-05
-      pad(envelope.senderId, 15), // ISA-06
-      pad(receiverQualifier, 2), // ISA-07
-      pad(envelope.receiverId, 15), // ISA-08
-      pad(envelope.interchangeDate, 6), // ISA-09 - YYMMDD
-      pad(envelope.interchangeTime, 4), // ISA-10 - HHMM
+      " ".repeat(10), // ISA-04
+      padIsaElement(senderQualifier, 2, "ISA-05", "senderQualifier", "build835", refuseSpec), // ISA-05
+      padIsaElement(envelope.senderId, 15, "ISA-06", "senderId", "build835", refuseSpec), // ISA-06
+      padIsaElement(receiverQualifier, 2, "ISA-07", "receiverQualifier", "build835", refuseSpec), // ISA-07
+      padIsaElement(envelope.receiverId, 15, "ISA-08", "receiverId", "build835", refuseSpec), // ISA-08
+      padIsaElement(
+        envelope.interchangeDate,
+        6,
+        "ISA-09",
+        "interchangeDate",
+        "build835",
+        refuseSpec,
+      ), // ISA-09 - YYMMDD
+      padIsaElement(
+        envelope.interchangeTime,
+        4,
+        "ISA-10",
+        "interchangeTime",
+        "build835",
+        refuseSpec,
+      ), // ISA-10 - HHMM
       repetitionSeparator, // ISA-11
       "00501", // ISA-12
       interchangeControlNumber, // ISA-13
@@ -892,13 +907,6 @@ function emitProviderAdjustments(
 // ---------------------------------------------------------------------------
 // String helpers - mirror the `build999` / `buildInterchange` emit primitives.
 // ---------------------------------------------------------------------------
-
-/** @internal */
-function pad(value: string, width: number): string {
-  if (value.length === width) return value;
-  if (value.length < width) return value + " ".repeat(width - value.length);
-  return value.slice(0, width);
-}
 
 /**
  * Zero-pad a control number to `width` chars (ISA-13 / IEA-02 are always

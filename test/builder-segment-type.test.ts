@@ -37,9 +37,9 @@
  *    routing them through `esc`, and pinned in the sibling gate. Type safety is
  *    structural; delimiter safety is per-slot.
  * 2. **The fixed-width ISA line is outside it.** Every builder assembles ISA by
- *    `[...].join(elementSeparator)` directly, because its elements are `pad`ed
- *    rather than escaped. Those slots stay as `caller-string.ts` discloses them,
- *    and are pinned in `test/builder-string-type.test.ts`.
+ *    `[...].join(elementSeparator)` directly, because its elements are padded
+ *    rather than escaped. Those slots have a type and width guard of their own,
+ *    `src/builder/caller-isa.ts`, pinned in `test/builder-isa-fixed-width.test.ts`.
  * 3. **The scan is syntactic**, keyed on the `const seg = ` / `function joinSeg`
  *    shapes this library uses in all nine joining modules. A builder that joined inline
  *    would not be seen. A strong tripwire for the shape this library uses, not
@@ -479,13 +479,13 @@ describe("the joiners refuse where no element-level gate applies", () => {
     expect(ix.warnings).toHaveLength(0);
   });
 
-  it("still lets the ISA fixed-width slots fail their own way, which is limit 2", () => {
-    // Not covered and not fixed: ISA is joined directly, not through `joinSeg`.
-    // Both terminate, so neither is this defect - pinned so neither can quietly
-    // become silent.
+  it("lets the ISA fixed-width slots refuse through their own guard, which is limit 2", () => {
+    // ISA is joined directly, not through `joinSeg`, so this gate does not
+    // reach it. The fixed-width slots refuse through `caller-isa.ts` and the
+    // control number through its own guard, each on the builder's typed error.
     expect(() =>
       build999(asJsCaller({ envelope: { ...ENVELOPE, senderId: 1 }, functionalGroup: ACK_GROUP })),
-    ).toThrow(TypeError);
+    ).toThrow(AckBuildError);
     expect(() =>
       build999(
         asJsCaller({
