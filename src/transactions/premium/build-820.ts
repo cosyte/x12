@@ -39,12 +39,13 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import type { X12Decimal } from "../../decimal.js";
-import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
+import { padIsaElement } from "../../builder/caller-isa.js";
 
 /**
  * Refuse with this module's typed error, for {@link requireCallerArray}. A
@@ -194,15 +195,29 @@ export function build820(spec: Build820Spec): X12Interchange {
     [
       "ISA",
       "00", // ISA-01
-      pad(" ", 10), // ISA-02
+      " ".repeat(10), // ISA-02
       "00", // ISA-03
-      pad(" ", 10), // ISA-04
-      pad(senderQualifier, 2), // ISA-05
-      pad(envelope.senderId, 15), // ISA-06
-      pad(receiverQualifier, 2), // ISA-07
-      pad(envelope.receiverId, 15), // ISA-08
-      pad(envelope.interchangeDate, 6), // ISA-09 - YYMMDD
-      pad(envelope.interchangeTime, 4), // ISA-10 - HHMM
+      " ".repeat(10), // ISA-04
+      padIsaElement(senderQualifier, 2, "ISA-05", "senderQualifier", "build820", refuseSpec), // ISA-05
+      padIsaElement(envelope.senderId, 15, "ISA-06", "senderId", "build820", refuseSpec), // ISA-06
+      padIsaElement(receiverQualifier, 2, "ISA-07", "receiverQualifier", "build820", refuseSpec), // ISA-07
+      padIsaElement(envelope.receiverId, 15, "ISA-08", "receiverId", "build820", refuseSpec), // ISA-08
+      padIsaElement(
+        envelope.interchangeDate,
+        6,
+        "ISA-09",
+        "interchangeDate",
+        "build820",
+        refuseSpec,
+      ), // ISA-09 - YYMMDD
+      padIsaElement(
+        envelope.interchangeTime,
+        4,
+        "ISA-10",
+        "interchangeTime",
+        "build820",
+        refuseSpec,
+      ), // ISA-10 - HHMM
       repetitionSeparator, // ISA-11
       "00501", // ISA-12
       interchangeControlNumber, // ISA-13
@@ -308,7 +323,7 @@ export function build820(spec: Build820Spec): X12Interchange {
  * carry indices + counts, never a member id / name. @internal
  */
 function enforceStructuralSpec(spec: Build820Spec): void {
-  const traces = requireCallerArray(spec.traces, "build820: spec.traces", refuseSpec);
+  const traces = requireCallerEntries(spec.traces, "build820: spec.traces", refuseSpec);
   if (traces.length === 0) {
     throw new Premium820BuildError(
       PREMIUM_820_BUILD_ERROR_CODES.X12_820_BUILD_INVALID_SPEC,
@@ -389,7 +404,12 @@ function emitParty(
     ]),
   );
   emitAddress(party.address, body, seg, esc);
-  for (const ref of party.references ?? []) body.push(emitRef(ref, seg, esc));
+  for (const ref of requireCallerEntries(
+    party.references,
+    "build820: party.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, seg, esc));
 }
 
 /** Emit N3 + N4 for an address block, only the present lines / fields. @internal */
@@ -448,12 +468,25 @@ function emitRemittance(
   if (remittance.individual !== undefined) {
     body.push(emitPerson(remittance.individual, seg, esc));
   }
-  for (const ref of remittance.references ?? []) body.push(emitRef(ref, seg, esc));
-  for (const date of remittance.dates ?? []) {
+  for (const ref of requireCallerEntries(
+    remittance.references,
+    "build820: remittance.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, seg, esc));
+  for (const date of requireCallerEntries(
+    remittance.dates,
+    "build820: remittance.dates",
+    refuseSpec,
+  )) {
     body.push(seg(["DTM", esc(date.qualifier), esc(date.value)]));
   }
   for (const item of remittance.openItems) body.push(emitOpenItem(item, seg, esc));
-  for (const adjustment of remittance.adjustments ?? []) {
+  for (const adjustment of requireCallerEntries(
+    remittance.adjustments,
+    "build820: remittance.adjustments",
+    refuseSpec,
+  )) {
     body.push(
       seg([
         "ADX",
@@ -514,13 +547,6 @@ function emitRef(
 // ---------------------------------------------------------------------------
 // String helpers - mirror the `build835` emit primitives.
 // ---------------------------------------------------------------------------
-
-/** @internal */
-function pad(value: string, width: number): string {
-  if (value.length === width) return value;
-  if (value.length < width) return value + " ".repeat(width - value.length);
-  return value.slice(0, width);
-}
 
 /**
  * Zero-pad a control number to `width` chars (ISA-13 / IEA-02 are always 9).

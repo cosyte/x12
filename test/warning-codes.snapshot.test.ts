@@ -22,6 +22,8 @@ import {
   FATAL_CODES,
   REQUIRED_LOOPS,
   WARNING_CODES,
+  ack999Ak9Absent,
+  ack999Ik5Absent,
   attachmentAbsent,
   rfaiHeaderAbsent,
   rfaiLevelAbsent,
@@ -71,6 +73,8 @@ describe("public API: WARNING_CODES surface is stable", () => {
         "X12_837_SERVICE_SEGMENT_REPEATED",
         "X12_837_SERVICE_SEGMENT_WITHOUT_LX",
         "X12_837_UNKNOWN_VARIANT",
+        "X12_999_AK9_ABSENT",
+        "X12_999_IK5_ABSENT",
         "X12_AMOUNT_ROW_DROPPED",
         "X12_BINARY_DATA_TRUNCATED",
         "X12_BINARY_LENGTH_INVALID",
@@ -108,7 +112,7 @@ describe("public API: WARNING_CODES surface is stable", () => {
     for (const [k, v] of Object.entries(WARNING_CODES)) expect(k).toBe(v);
   });
 
-  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS) -> 27 (X12-DISCARD-AFTER-STRAY-LX) -> 28 (X12-PAY-TO-FUSION) -> 29 (X12-837-SV-UNDEFINED-DECIMAL) -> 30 (X12-AMT-ADX-ABSENT-AMOUNT) -> 31 (X12-STATED-AMOUNT-DISCARDED) -> 32 (X12-837-AMBIGUOUS-VARIANT) -> 33 (X12-837-SV1-OVERWRITE) -> 34 (X12-ISA-ELEMENT-ARITY) -> 40 (the 270 typed model) -> 44 (the 271 AAA request-validation surface) -> 49 (the 276 typed model) -> 51 (the declared-guide check) -> 55 (BDS / BIN binary framing, AC-9) -> 59 (the attachments readers, AC-18)", () => {
+  it("the registry is additions-only: 21 -> 22 (Phase 8) -> 23 (X12-QUANTITY-SILENT-DEFAULTS) -> 24 (X12-837-SV-SILENT-ZERO) -> 25 (X12-VARIANT-LOOKUP-PROTOTYPE) -> 26 (X12-837-LOOP-RESIDUALS) -> 27 (X12-DISCARD-AFTER-STRAY-LX) -> 28 (X12-PAY-TO-FUSION) -> 29 (X12-837-SV-UNDEFINED-DECIMAL) -> 30 (X12-AMT-ADX-ABSENT-AMOUNT) -> 31 (X12-STATED-AMOUNT-DISCARDED) -> 32 (X12-837-AMBIGUOUS-VARIANT) -> 33 (X12-837-SV1-OVERWRITE) -> 34 (X12-ISA-ELEMENT-ARITY) -> 40 (the 270 typed model) -> 44 (the 271 AAA request-validation surface) -> 49 (the 276 typed model) -> 51 (the declared-guide check) -> 55 (BDS / BIN binary framing, AC-9) -> 59 (the attachments readers, AC-18) -> 61 (the 999 reader's fill-ins)", () => {
     // SIX added by the 270 typed read path, and nothing renamed, removed or
     // renumbered: the two tolerances that path reports (a declared
     // non-conventional delimiter, whitespace between segments), the two
@@ -155,21 +159,34 @@ describe("public API: WARNING_CODES surface is stable", () => {
     // request) and the one the 275 reader reports (no BDS). Each is raised on
     // its own reader's path alone, so no other transaction set's warning stream
     // moves.
-    expect(Object.keys(WARNING_CODES)).toHaveLength(59);
+    //
+    // TWO more added by the 999 reader, which reads a missing IK5 and a
+    // missing AK9 as a reject and said in its comments that it warned when it
+    // did, while it raised nothing. Two codes and not one, because the two
+    // fill-ins leave different parts of the model unsent (one response's
+    // disposition, or the group's disposition and counts) and a caller
+    // switches on which. Raised on the 999 path alone.
+    expect(Object.keys(WARNING_CODES)).toHaveLength(61);
   });
 
   it("AC-18: gives no code that existed before the attachments readers a new message", () => {
     // Every message the registry carried before the four attachments codes
     // were added, sorted and joined, is pinned by digest: re-wording one moves
     // it, and so does dropping one. The four added codes' own messages are set
-    // aside through their factories, so an addition cannot move it.
+    // aside through their factories, so an addition cannot move it, and so
+    // are the two the 999 reader added after them.
     const at = { segmentIndex: 0, transactionIndex: 0 };
     const added = new Set(
-      [attachmentAbsent, rfaiHeaderAbsent, rfaiLevelAbsent, rfaiRequestAbsent].map(
-        (factory) => factory(at).message,
-      ),
+      [
+        attachmentAbsent,
+        rfaiHeaderAbsent,
+        rfaiLevelAbsent,
+        rfaiRequestAbsent,
+        ack999Ik5Absent,
+        ack999Ak9Absent,
+      ].map((factory) => factory(at).message),
     );
-    expect(added.size).toBe(4);
+    expect(added.size).toBe(6);
     const kept = [...ALL_WARNING_MESSAGES]
       .filter((message) => !added.has(message))
       .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));

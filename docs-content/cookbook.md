@@ -1092,6 +1092,12 @@ for (const response of ack.transactionResponses) {
 `X12_ACK_DISPOSITION_CODES` is the code registry if you prefer explicit comparisons
 (`ack.ak9.disposition === X12_ACK_DISPOSITION_CODES.R`).
 
+A 999 that stops short still reads, fail-safe. A response whose `IK5` never arrived reads
+`ik5.disposition` as `R`, and a 999 with no `AK9` reads `ak9.disposition` as `R` with all three
+counts at 0. That reject is ours, not the sender's, and `ack.warnings` says so: `X12_999_IK5_ABSENT`
+at the `AK2` whose `IK5` is missing, and `X12_999_AK9_ABSENT` at the `ST`. Check for them before you
+resubmit on a reject.
+
 ### The TA1 interchange acknowledgment sits one envelope out
 
 A 999 acknowledges a functional group. A **TA1** acknowledges the **interchange** itself: it says

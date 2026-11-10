@@ -29,8 +29,9 @@
  * exactly what `get275Attachments` reads back.
  */
 
-import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
+import { padIsaElement } from "../../builder/caller-isa.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { parseX12 } from "../../parser/index.js";
@@ -157,17 +158,38 @@ export function build275(spec: Build275Spec): X12Interchange {
     [
       "ISA",
       "00",
-      pad(" ", 10),
+      " ".repeat(10),
       "00",
-      pad(" ", 10),
-      pad(envelope.senderQualifier ?? "ZZ", 2),
-      pad(envelope.senderId, 15),
-      pad(envelope.receiverQualifier ?? "ZZ", 2),
-      pad(envelope.receiverId, 15),
-      pad(envelope.interchangeDate, 6),
-      pad(envelope.interchangeTime, 4),
+      " ".repeat(10),
+      padIsaElement(
+        envelope.senderQualifier ?? "ZZ",
+        2,
+        "ISA-05",
+        "senderQualifier",
+        AT,
+        refuseSpec,
+      ),
+      padIsaElement(envelope.senderId, 15, "ISA-06", "senderId", AT, refuseSpec),
+      padIsaElement(
+        envelope.receiverQualifier ?? "ZZ",
+        2,
+        "ISA-07",
+        "receiverQualifier",
+        AT,
+        refuseSpec,
+      ),
+      padIsaElement(envelope.receiverId, 15, "ISA-08", "receiverId", AT, refuseSpec),
+      padIsaElement(envelope.interchangeDate, 6, "ISA-09", "interchangeDate", AT, refuseSpec),
+      padIsaElement(envelope.interchangeTime, 4, "ISA-10", "interchangeTime", AT, refuseSpec),
       repetitionSeparator,
-      pad(envelope.interchangeControlVersion ?? DEFAULT_INTERCHANGE_CONTROL_VERSION, 5),
+      padIsaElement(
+        envelope.interchangeControlVersion ?? DEFAULT_INTERCHANGE_CONTROL_VERSION,
+        5,
+        "ISA-12",
+        "interchangeControlVersion",
+        AT,
+        refuseSpec,
+      ),
       interchangeControlNumber,
       "0",
       envelope.usageIndicator ?? "P",
@@ -236,7 +258,7 @@ function enforceStructure(spec: Build275Spec): readonly (readonly string[])[] {
   ) {
     refuseSpec("build275: spec.beginning must be an object where given.");
   }
-  requireCallerArray(spec.entities, "build275: spec.entities", refuseSpec);
+  requireCallerEntries(spec.entities, "build275: spec.entities", refuseSpec);
   const lines = requireCallerArray(spec.lines, "build275: spec.lines", refuseSpec);
   const octetsByLine: (readonly string[])[] = [];
   let count = 0;
@@ -264,7 +286,7 @@ function enforceLine(line: Build275LineSpec, locator: string): readonly string[]
     if (typeof line.status !== "object" || line.status === null) {
       refuseSpec(`build275: the status at ${locator} must be an object where given.`);
     }
-    const codes = requireCallerArray(
+    const codes = requireCallerEntries(
       line.status.codes,
       `build275: ${locator}.status.codes`,
       refuseSpec,
@@ -275,7 +297,7 @@ function enforceLine(line: Build275LineSpec, locator: string): readonly string[]
       );
     }
   }
-  requireCallerArray(line.references, `build275: ${locator}.references`, refuseSpec);
+  requireCallerEntries(line.references, `build275: ${locator}.references`, refuseSpec);
   const attachments = requireCallerArray(
     line.attachments,
     `build275: ${locator}.attachments`,
@@ -436,13 +458,6 @@ function emitLine(
 // ---------------------------------------------------------------------------
 // Envelope helpers, as the other domain builders carry them.
 // ---------------------------------------------------------------------------
-
-/** @internal */
-function pad(value: string, width: number): string {
-  if (value.length === width) return value;
-  if (value.length < width) return value + " ".repeat(width - value.length);
-  return value.slice(0, width);
-}
 
 /**
  * Zero-pad ISA-13 / IEA-02 to nine characters, refusing one longer than that

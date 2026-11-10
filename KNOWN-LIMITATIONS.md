@@ -72,7 +72,7 @@ model.
   evidence the header framed**. Pre-existing, disclosed, not fixed here.
 
   **The emit side is unchanged and is NOT guarded by this.** The fixed-width ISA slots go through
-  `pad` / `padControl` and never through the caller escaper, so `buildInterchange` still writes a
+  padding and never through the caller escaper, so `buildInterchange` still writes a
   caller value carrying the element separator straight onto the wire. What changed is that
   `buildInterchange` returns `parseX12` of the bytes it just wrote, so the report now reaches that
   path too: `interchangeControlNumber: "0000*0001"` used to come back with ISA-13 reading `"0000"`,
@@ -1590,13 +1590,13 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
      `GS*FA*…*1*BOGUS*X*005010X231A1`, shifting GS-07 and GS-08 by one. They are routed through the
      escape helper now, so that reads `1?*BOGUS`.
   3. **The fixed-width ISA slots** (`senderId`, `receiverId`, `interchangeControlNumber`, …) go
-     through padding rather than escaping, and **are still not covered** - they do not pass through
-     the segment join either. A number there throws an untyped `TypeError` with no `code`
-     (`value.slice is not a function`). That terminates rather than emitting silently, which is why
-     it was the smaller hazard and why it is left alone. `interchangeControlNumber` is the exception:
-     a number there draws the builder's typed refusal, saying it must be a string.
-     GS-04 and GS-05 were the counter-example that made this distinction worth stating - they
-     are envelope elements and they WERE silent. They are covered now; ISA still is not.
+     through padding rather than escaping, and do not pass through the segment join either. They
+     have a guard of their own: a value that is not a string, or is longer than its slot, draws the
+     builder's typed refusal naming the field. Through `0.1.9` a number there threw an untyped
+     `TypeError`, and an over-long value was cut to the slot's width with no warning, so an
+     `interchangeDate` of `"20250101"` went out as ISA-09 `202501`. A short value still pads with
+     spaces. What the guard does not check is content: a value carrying the element separator still
+     reaches the wire as that byte, as described above.
 
   **One other change, and it is a behaviour change:** the exported `escapeRelease(value, delimiters)`
   now **throws `TypeError` on a non-string** rather than returning `""`. If you call it directly, it
@@ -1604,7 +1604,7 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   spec context to name. Nothing inside the library can reach it: the builders refuse first. A boxed
   `new String("…")` is also refused now, where it built at `0.0.8`.
 
-- **A forged non-array in a builder spec refuses; in a few places it throws an untyped `TypeError`.**
+- **A forged non-array in a builder spec refuses, and so does a hole or a `null` inside a list.**
   The types say `readonly T[]`, but a JavaScript or JSON caller can hand a builder something else. As
   of `0.0.6` every indexed loop in every builder takes its bound from a checked array, so an object
   like `{ length: "9".repeat(120000) }` draws that builder's own typed
@@ -1612,8 +1612,8 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   refusing**. No loop or probe count is quoted here: both move with every builder added, and
   `test/builder-array-bounds.test.ts` re-derives them from the source on every run. Measured over the
   probes that suite shipped at the `0.0.6` base: most **hung** with no refusal and the rest threw an
-  untyped `TypeError`. Each of those probes now refuses with a typed, coded error, except the
-  `for…of` reads below, which still throw the untyped `TypeError`.
+  untyped `TypeError`. Each of those probes now refuses with a typed, coded error, and so do the
+  `for…of` reads below.
 
   **`null` is treated as absent, not forged**, exactly as the `?? []` this replaced did, so an
   optional list you send as `null` still builds. On a required list `null` draws that builder's own
@@ -1621,12 +1621,26 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   `build834`, `build820`, `build837`, `build271` and `build277`. **`build835`'s `claims` is the
   exception** and still throws an untyped `TypeError`, as it did at base.
 
-  Not covered, and disclosed rather than fixed: the places a builder reads a caller array with
-  `for…of` - `buildInterchange`'s `spec.groups`, `build999`'s `functionalGroup.transactionResponses`,
-  and the optional leaf arrays such as `claim.dates` or `member.references`. Those throw
-  `TypeError: … is not iterable` immediately. They terminate, so they are not the hang, but they carry
-  **no `code`**, so `err.code` is `undefined` and you cannot branch on it. Validate your spec shape at
-  your own boundary if it comes from JSON.
+  The places a builder reads a caller array with `for…of` - `buildInterchange`'s `spec.groups`,
+  `build999`'s `functionalGroup.transactionResponses`, and the optional leaf arrays such as
+  `claim.dates` or `member.references` - threw `TypeError: … is not iterable` through `0.1.9`, with
+  **no `code`**. They go through the same checked-array chokepoint now and refuse with the builder's
+  typed `INVALID_SPEC` code.
+
+  **A hole or a `null` inside a list refuses too, in every builder.** A real array with `undefined`
+  or `null` in a slot is a list and clears the chokepoint: that is the shape a JSON payload with a
+  dropped record carries. Through `0.1.9` only `build270` and `build276` checked every slot; the
+  other builders walked their hierarchy spine and stopped there, so a hole below it (`build271`'s
+  subscribers, dependents and benefits, and the leaf lists of every builder) reached an emitter and
+  threw an untyped `TypeError`. Some were quieter than that: a hole in `build271`'s
+  `serviceTypeCodes`, `build837`'s adjudication `adjustments` and `build275`'s status `codes` was
+  skipped and the document built without it, and a hole in `build837`'s `diagnosisPointers`,
+  `oralCavityArea` or tooth `surfaces` went out as an empty component. Each slot is checked now and
+  a hole refuses with the builder's `INVALID_SPEC` code. In a list of objects the refusal names the
+  slot with a structural locator such as `subscriber.benefits[0]`; in a list of strings it is the
+  element type refusal.
+  `build270` and `build276` keep their own `INVALID_HIERARCHY` code for a hole in their spine. A
+  list sent as `null` is still absent, as before.
 
   **`build270` is the exception, and it is deliberately stricter than its siblings.** EVERY list slot
   on `Build270Spec` - the spine (`informationSources`, `receivers`, `subscribers`, `dependents`,
@@ -1638,8 +1652,8 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   list and clears the chokepoint: that is the shape a JSON payload with a dropped record carries, and
   unguarded it reached an emitter and threw the untyped `TypeError` this whole section is about. A
   hole refuses wherever it stands, naming the slot and nothing out of the inquiry. A name loop sent
-  as `null` is refused the same way, at every level. The other builders are unchanged: on those, a
-  hole in a list still reaches whatever dereferences it.
+  as `null` is refused the same way, at every level. The other builders check every slot too now,
+  as described above.
 
   **One qualification worth stating precisely: on the acknowledgment path the value is not always
   strictly your own.** TR3 005010X231A1 requires AK2-02 to be a verbatim copy of the acknowledged

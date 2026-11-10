@@ -375,6 +375,9 @@ export function get837Claims(
   // work is bounded by the distance to it.
   if (explicitType === undefined && variantFromIcr === undefined) {
     for (const seg of body) {
+      // The same skip as the walk below: a hole, or a `null` where a JSON
+      // round trip left one, in a caller-built `segments` list.
+      if (seg === undefined || seg === null) continue;
       const fromSv = VARIANT_BY_SV_SEGMENT[seg.id];
       if (fromSv === undefined) continue;
       if (variantFromSegment === undefined) {
@@ -687,8 +690,9 @@ export function get837Claims(
 
   for (let i = 0; i < body.length; i += 1) {
     const seg = body[i];
-    // A transaction set a caller built can have a hole in `segments`: skip it.
-    if (seg === undefined) continue;
+    // A transaction set a caller built can have a hole in `segments`, or a
+    // `null` where a JSON round trip left one: skip either.
+    if (seg === undefined || seg === null) continue;
     const position: X12Position = { segmentIndex: i + 1, transactionIndex: 0 };
     // Every decimal read below routes its `X12_UNPARSEABLE_DECIMAL` here; the
     // helper narrows the position to the failing element itself.

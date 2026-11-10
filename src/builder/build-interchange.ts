@@ -11,7 +11,7 @@
  * surfaces as Tier-2 warnings on the returned interchange's `warnings` array).
  *
  * NEVER auto-sends, NEVER opens a socket, NEVER touches the filesystem.
- * Structurally impossible specs (an over-long ISA-13, a segment with no id)
+ * Structurally impossible specs (an over-long ISA element, a segment with no id)
  * are REFUSED via {@link "./errors.js".X12BuildError}; this mirrors the
  * `build999` boundary but without any disposition-specific safety guard -
  * those belong to the domain builders layered on top.
@@ -25,6 +25,8 @@ import { requireCallerSegment } from "./caller-segment.js";
 import { renderCallerValue } from "./caller-value.js";
 import { makeCallerEscaper } from "./caller-string.js";
 import { requireControlNumber } from "./caller-control-number.js";
+import { requireCallerEntries } from "./caller-array.js";
+import { padIsaElement } from "./caller-isa.js";
 
 /**
  * Refuse with this module's typed error, for {@link makeCallerEscaper}. A
@@ -100,17 +102,45 @@ export function buildInterchange(spec: InterchangeSpec): X12Interchange {
     [
       "ISA",
       "00", // ISA-01
-      pad(" ", 10), // ISA-02
+      " ".repeat(10), // ISA-02
       "00", // ISA-03
-      pad(" ", 10), // ISA-04
-      pad(senderQualifier, 2), // ISA-05
-      pad(spec.senderId, 15), // ISA-06
-      pad(receiverQualifier, 2), // ISA-07
-      pad(spec.receiverId, 15), // ISA-08
-      pad(spec.interchangeDate, 6), // ISA-09 - YYMMDD
-      pad(spec.interchangeTime, 4), // ISA-10 - HHMM
+      " ".repeat(10), // ISA-04
+      padIsaElement(
+        senderQualifier,
+        2,
+        "ISA-05",
+        "senderQualifier",
+        "buildInterchange",
+        refuseSpec,
+      ), // ISA-05
+      padIsaElement(spec.senderId, 15, "ISA-06", "senderId", "buildInterchange", refuseSpec), // ISA-06
+      padIsaElement(
+        receiverQualifier,
+        2,
+        "ISA-07",
+        "receiverQualifier",
+        "buildInterchange",
+        refuseSpec,
+      ), // ISA-07
+      padIsaElement(spec.receiverId, 15, "ISA-08", "receiverId", "buildInterchange", refuseSpec), // ISA-08
+      padIsaElement(
+        spec.interchangeDate,
+        6,
+        "ISA-09",
+        "interchangeDate",
+        "buildInterchange",
+        refuseSpec,
+      ), // ISA-09 - YYMMDD
+      padIsaElement(
+        spec.interchangeTime,
+        4,
+        "ISA-10",
+        "interchangeTime",
+        "buildInterchange",
+        refuseSpec,
+      ), // ISA-10 - HHMM
       repetitionSeparator, // ISA-11
-      pad(version, 5), // ISA-12
+      padIsaElement(version, 5, "ISA-12", "version", "buildInterchange", refuseSpec), // ISA-12
       interchangeControlNumber, // ISA-13
       "0", // ISA-14 - ack requested (0 = no inbound TA1)
       usageIndicator, // ISA-15
@@ -118,7 +148,11 @@ export function buildInterchange(spec: InterchangeSpec): X12Interchange {
     ].join(elementSeparator) + segmentTerminator;
 
   let body = "";
-  for (const group of spec.groups) {
+  for (const group of requireCallerEntries(
+    spec.groups,
+    "buildInterchange: spec.groups",
+    refuseSpec,
+  )) {
     body += buildGroup(group, spec, esc, elementSeparator, segmentTerminator);
   }
 
@@ -225,7 +259,11 @@ function buildGroup(
   );
 
   let transactions = "";
-  for (const tx of group.transactions) {
+  for (const tx of requireCallerEntries(
+    group.transactions,
+    "buildInterchange: group.transactions",
+    refuseSpec,
+  )) {
     transactions += buildTransaction(tx, esc, elementSeparator, segmentTerminator);
   }
 
@@ -263,7 +301,11 @@ function buildTransaction(
   const st = joinSeg(stParts, elementSeparator, segmentTerminator);
 
   let bodySegments = "";
-  for (const segment of tx.segments) {
+  for (const segment of requireCallerEntries(
+    tx.segments,
+    "buildInterchange: transaction.segments",
+    refuseSpec,
+  )) {
     if (segment.length === 0 || (segment[0] ?? "") === "") {
       throw new X12BuildError(
         X12_BUILD_ERROR_CODES.X12_BUILD_INVALID_SPEC,
@@ -311,13 +353,6 @@ function joinSeg(
   // property of the join and not of any list of call sites.
   requireCallerSegment(parts, "buildInterchange", refuseSpec);
   return parts.join(elementSeparator) + segmentTerminator;
-}
-
-/** @internal */
-function pad(value: string, width: number): string {
-  if (value.length === width) return value;
-  if (value.length < width) return value + " ".repeat(width - value.length);
-  return value.slice(0, width);
 }
 
 /**

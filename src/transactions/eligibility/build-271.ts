@@ -46,12 +46,13 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import type { X12Decimal } from "../../decimal.js";
-import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
+import { padIsaElement } from "../../builder/caller-isa.js";
 
 /**
  * Refuse with this module's typed error, for {@link requireCallerArray}. A
@@ -219,15 +220,29 @@ export function build271(spec: Build271Spec): X12Interchange {
     [
       "ISA",
       "00",
-      pad(" ", 10),
+      " ".repeat(10),
       "00",
-      pad(" ", 10),
-      pad(senderQualifier, 2),
-      pad(envelope.senderId, 15),
-      pad(receiverQualifier, 2),
-      pad(envelope.receiverId, 15),
-      pad(envelope.interchangeDate, 6),
-      pad(envelope.interchangeTime, 4),
+      " ".repeat(10),
+      padIsaElement(senderQualifier, 2, "ISA-05", "senderQualifier", "build271", refuseSpec),
+      padIsaElement(envelope.senderId, 15, "ISA-06", "senderId", "build271", refuseSpec),
+      padIsaElement(receiverQualifier, 2, "ISA-07", "receiverQualifier", "build271", refuseSpec),
+      padIsaElement(envelope.receiverId, 15, "ISA-08", "receiverId", "build271", refuseSpec),
+      padIsaElement(
+        envelope.interchangeDate,
+        6,
+        "ISA-09",
+        "interchangeDate",
+        "build271",
+        refuseSpec,
+      ),
+      padIsaElement(
+        envelope.interchangeTime,
+        4,
+        "ISA-10",
+        "interchangeTime",
+        "build271",
+        refuseSpec,
+      ),
       repetitionSeparator,
       "00501",
       interchangeControlNumber,
@@ -384,7 +399,11 @@ function emitReceiver(
   counter.next += 1;
   body.push(ctx.seg(["HL", hlId, parentHlId, HL_LEVEL.RECEIVER, "1"]));
   emitEntity(receiver.entity, body, ctx);
-  for (const subscriber of receiver.subscribers) {
+  for (const subscriber of requireCallerEntries(
+    receiver.subscribers,
+    "build271: receiver.subscribers",
+    refuseSpec,
+  )) {
     emitSubscriber(subscriber, hlId, body, ctx, counter);
   }
 }
@@ -399,15 +418,39 @@ function emitSubscriber(
 ): void {
   const hlId = String(counter.next);
   counter.next += 1;
-  const dependents = subscriber.dependents ?? [];
+  const dependents = requireCallerEntries(
+    subscriber.dependents,
+    "build271: subscriber.dependents",
+    refuseSpec,
+  );
   const hasChild = dependents.length > 0 ? "1" : "0";
   body.push(ctx.seg(["HL", hlId, parentHlId, HL_LEVEL.SUBSCRIBER, hasChild]));
 
-  for (const trace of subscriber.traces ?? []) emitTrace(trace, body, ctx);
+  for (const trace of requireCallerEntries(
+    subscriber.traces,
+    "build271: subscriber.traces",
+    refuseSpec,
+  ))
+    emitTrace(trace, body, ctx);
   if (subscriber.name !== undefined) emitMember(subscriber.name, body, ctx);
-  for (const ref of subscriber.references ?? []) body.push(emitRef(ref, ctx));
-  for (const date of subscriber.dates ?? []) emitDate(date, body, ctx);
-  for (const benefit of subscriber.benefits ?? []) emitBenefit(benefit, body, ctx);
+  for (const ref of requireCallerEntries(
+    subscriber.references,
+    "build271: subscriber.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, ctx));
+  for (const date of requireCallerEntries(
+    subscriber.dates,
+    "build271: subscriber.dates",
+    refuseSpec,
+  ))
+    emitDate(date, body, ctx);
+  for (const benefit of requireCallerEntries(
+    subscriber.benefits,
+    "build271: subscriber.benefits",
+    refuseSpec,
+  ))
+    emitBenefit(benefit, body, ctx);
 
   for (const dependent of dependents) {
     emitDependent(dependent, hlId, body, ctx, counter);
@@ -426,11 +469,27 @@ function emitDependent(
   counter.next += 1;
   body.push(ctx.seg(["HL", hlId, parentHlId, HL_LEVEL.DEPENDENT, "0"]));
 
-  for (const trace of dependent.traces ?? []) emitTrace(trace, body, ctx);
+  for (const trace of requireCallerEntries(
+    dependent.traces,
+    "build271: dependent.traces",
+    refuseSpec,
+  ))
+    emitTrace(trace, body, ctx);
   if (dependent.name !== undefined) emitMember(dependent.name, body, ctx);
-  for (const ref of dependent.references ?? []) body.push(emitRef(ref, ctx));
-  for (const date of dependent.dates ?? []) emitDate(date, body, ctx);
-  for (const benefit of dependent.benefits ?? []) emitBenefit(benefit, body, ctx);
+  for (const ref of requireCallerEntries(
+    dependent.references,
+    "build271: dependent.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, ctx));
+  for (const date of requireCallerEntries(dependent.dates, "build271: dependent.dates", refuseSpec))
+    emitDate(date, body, ctx);
+  for (const benefit of requireCallerEntries(
+    dependent.benefits,
+    "build271: dependent.benefits",
+    refuseSpec,
+  ))
+    emitBenefit(benefit, body, ctx);
 }
 
 /** Emit an NM1 entity (payer / provider / benefit-related). @internal */
@@ -506,7 +565,11 @@ function emitAddress(address: Build271AddressSpec, body: string[], ctx: EmitCont
  * re-escaped). @internal
  */
 function emitBenefit(benefit: Build271BenefitSpec, body: string[], ctx: EmitContext): void {
-  const serviceTypeElement = (benefit.serviceTypeCodes ?? [])
+  const serviceTypeElement = requireCallerEntries(
+    benefit.serviceTypeCodes,
+    "build271: benefit.serviceTypeCodes",
+    refuseSpec,
+  )
     .map((s) => ctx.esc(s.code))
     .join(ctx.repetitionSeparator);
   body.push(
@@ -528,9 +591,20 @@ function emitBenefit(benefit: Build271BenefitSpec, body: string[], ctx: EmitCont
     ]),
   );
 
-  for (const related of benefit.relatedEntities ?? []) emitEntity(related, body, ctx);
-  for (const ref of benefit.references ?? []) body.push(emitRef(ref, ctx));
-  for (const date of benefit.dates ?? []) emitDate(date, body, ctx);
+  for (const related of requireCallerEntries(
+    benefit.relatedEntities,
+    "build271: benefit.relatedEntities",
+    refuseSpec,
+  ))
+    emitEntity(related, body, ctx);
+  for (const ref of requireCallerEntries(
+    benefit.references,
+    "build271: benefit.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, ctx));
+  for (const date of requireCallerEntries(benefit.dates, "build271: benefit.dates", refuseSpec))
+    emitDate(date, body, ctx);
   for (const message of benefit.messages ?? []) {
     body.push(ctx.seg(["MSG", ctx.esc(message)]));
   }
@@ -617,13 +691,6 @@ function emitDate(
 // ---------------------------------------------------------------------------
 // String helpers - mirror the `build835` / `build837` emit primitives.
 // ---------------------------------------------------------------------------
-
-/** @internal */
-function pad(value: string, width: number): string {
-  if (value.length === width) return value;
-  if (value.length < width) return value + " ".repeat(width - value.length);
-  return value.slice(0, width);
-}
 
 /**
  * Zero-pad a control number to `width` chars (ISA-13 / IEA-02 are always

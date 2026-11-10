@@ -79,9 +79,9 @@ describe("buildInterchange: the GS-04 century window", () => {
   });
 
   it("passes a date that is not six characters to GS-04 unchanged", () => {
-    expect(gs04(buildInterchange(interchangeSpec({ interchangeDate: "20250101" })))).toBe(
-      "20250101",
-    );
+    // An eight-digit date no longer reaches here: ISA-09 holds six, so it is
+    // refused rather than cut. A shorter shape still passes through.
+    expect(gs04(buildInterchange(interchangeSpec({ interchangeDate: "2501" })))).toBe("2501");
   });
 
   it("never invents a century for a date whose year is not numeric", () => {

@@ -81,12 +81,12 @@ describe("buildInterchange: envelope mechanics", () => {
     expect(ix.warnings).toHaveLength(0);
   });
 
-  it("truncates an over-long fixed-width ISA field to its column count", () => {
-    // senderId exceeds the 15-char ISA-06 column; the builder truncates it so
-    // the ISA stays exactly 106 bytes rather than overrunning the envelope.
-    const ix = buildInterchange(minimalSpec({ senderId: "SENDERIDWAYTOOLONG" }));
-    expect(ix.isa.raw).toHaveLength(106);
-    expect(ix.isa.elements[6]).toBe("SENDERIDWAYTOOL"); // first 15 chars
+  it("refuses an over-long fixed-width ISA field rather than cutting it", () => {
+    // senderId exceeds the 15-char ISA-06 column. Cutting it to fit would name
+    // a sender the caller never gave, so the builder refuses instead.
+    expect(() => buildInterchange(minimalSpec({ senderId: "SENDERIDWAYTOOLONG" }))).toThrow(
+      /buildInterchange: senderId is 18 characters, and ISA-06 holds 15/,
+    );
   });
 
   it("escapes active delimiters inside body element values", () => {

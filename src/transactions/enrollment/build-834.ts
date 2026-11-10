@@ -38,12 +38,13 @@ import { lookupMaintenanceType } from "../../code-lists/maintenance-type.js";
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import type { X12Decimal } from "../../decimal.js";
-import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
+import { padIsaElement } from "../../builder/caller-isa.js";
 
 /**
  * Refuse with this module's typed error, for {@link requireCallerArray}. A
@@ -199,15 +200,29 @@ export function build834(spec: Build834Spec): X12Interchange {
     [
       "ISA",
       "00", // ISA-01
-      pad(" ", 10), // ISA-02
+      " ".repeat(10), // ISA-02
       "00", // ISA-03
-      pad(" ", 10), // ISA-04
-      pad(senderQualifier, 2), // ISA-05
-      pad(envelope.senderId, 15), // ISA-06
-      pad(receiverQualifier, 2), // ISA-07
-      pad(envelope.receiverId, 15), // ISA-08
-      pad(envelope.interchangeDate, 6), // ISA-09 - YYMMDD
-      pad(envelope.interchangeTime, 4), // ISA-10 - HHMM
+      " ".repeat(10), // ISA-04
+      padIsaElement(senderQualifier, 2, "ISA-05", "senderQualifier", "build834", refuseSpec), // ISA-05
+      padIsaElement(envelope.senderId, 15, "ISA-06", "senderId", "build834", refuseSpec), // ISA-06
+      padIsaElement(receiverQualifier, 2, "ISA-07", "receiverQualifier", "build834", refuseSpec), // ISA-07
+      padIsaElement(envelope.receiverId, 15, "ISA-08", "receiverId", "build834", refuseSpec), // ISA-08
+      padIsaElement(
+        envelope.interchangeDate,
+        6,
+        "ISA-09",
+        "interchangeDate",
+        "build834",
+        refuseSpec,
+      ), // ISA-09 - YYMMDD
+      padIsaElement(
+        envelope.interchangeTime,
+        4,
+        "ISA-10",
+        "interchangeTime",
+        "build834",
+        refuseSpec,
+      ), // ISA-10 - HHMM
       repetitionSeparator, // ISA-11
       "00501", // ISA-12
       interchangeControlNumber, // ISA-13
@@ -348,8 +363,14 @@ function emitHeader(
   );
   if (header.sponsor !== undefined) body.push(emitParty(header.sponsor, seg, esc));
   if (header.payer !== undefined) body.push(emitParty(header.payer, seg, esc));
-  for (const ref of header.references ?? []) body.push(emitRef(ref, seg, esc));
-  for (const date of header.dates ?? []) body.push(emitDate(date, seg, esc));
+  for (const ref of requireCallerEntries(
+    header.references,
+    "build834: header.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, seg, esc));
+  for (const date of requireCallerEntries(header.dates, "build834: header.dates", refuseSpec))
+    body.push(emitDate(date, seg, esc));
 }
 
 /** Emit a Loop 1000 party (N1). @internal */
@@ -395,9 +416,19 @@ function emitMember(
   );
 
   if (member.member !== undefined) emitMemberName(member.member, body, seg, esc);
-  for (const ref of member.references ?? []) body.push(emitRef(ref, seg, esc));
-  for (const date of member.dates ?? []) body.push(emitDate(date, seg, esc));
-  for (const cob of member.coordinationOfBenefits ?? []) {
+  for (const ref of requireCallerEntries(
+    member.references,
+    "build834: member.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, seg, esc));
+  for (const date of requireCallerEntries(member.dates, "build834: member.dates", refuseSpec))
+    body.push(emitDate(date, seg, esc));
+  for (const cob of requireCallerEntries(
+    member.coordinationOfBenefits,
+    "build834: member.coordinationOfBenefits",
+    refuseSpec,
+  )) {
     body.push(
       seg([
         "COB",
@@ -407,7 +438,12 @@ function emitMember(
       ]),
     );
   }
-  for (const coverage of member.healthCoverages ?? []) emitCoverage(coverage, body, seg, esc);
+  for (const coverage of requireCallerEntries(
+    member.healthCoverages,
+    "build834: member.healthCoverages",
+    refuseSpec,
+  ))
+    emitCoverage(coverage, body, seg, esc);
 }
 
 /** Emit the member name - NM1*IL + DMG (when dob/gender present) + N3/N4. @internal */
@@ -483,8 +519,13 @@ function emitCoverage(
       esc(coverage.coverageLevelCode ?? ""),
     ]),
   );
-  for (const date of coverage.dates ?? []) body.push(emitDate(date, seg, esc));
-  for (const amount of coverage.amounts ?? []) {
+  for (const date of requireCallerEntries(coverage.dates, "build834: coverage.dates", refuseSpec))
+    body.push(emitDate(date, seg, esc));
+  for (const amount of requireCallerEntries(
+    coverage.amounts,
+    "build834: coverage.amounts",
+    refuseSpec,
+  )) {
     body.push(seg(["AMT", esc(amount.qualifier), escDec(amount.amount, esc)]));
   }
 }
@@ -515,13 +556,6 @@ function emitDate(
 // ---------------------------------------------------------------------------
 // String helpers - mirror the `build835` emit primitives.
 // ---------------------------------------------------------------------------
-
-/** @internal */
-function pad(value: string, width: number): string {
-  if (value.length === width) return value;
-  if (value.length < width) return value + " ".repeat(width - value.length);
-  return value.slice(0, width);
-}
 
 /**
  * Zero-pad a control number to `width` chars (ISA-13 / IEA-02 are always 9).

@@ -55,20 +55,18 @@
  * ## Three limits, written down rather than claimed away
  *
  * 1. **`for…of` is NOT covered by the SCAN, and does not hang.** A forged
- *    `{ length }` is not iterable, so `for…of` throws
- *    `TypeError: … is not iterable` immediately. That is not the typed,
- *    code-tagged refusal this library promises - `err.code` is `undefined` -
- *    but it terminates, so it is a different defect from the one this gate
- *    closes. Measured identical at base and head for `buildInterchange`
- *    (`spec.groups`), `build999` (`functionalGroup.transactionResponses`), and
- *    the optional leaf arrays (`claim.dates`, `line.references`, …). Pinned
- *    below so it cannot quietly become a hang, and disclosed in
- *    `KNOWN-LIMITATIONS.md` rather than fixed. **`build270` is the one builder
- *    that does not sit in this residual:** it passes every list it reads, leaf
- *    lists included, through `requireCallerArray` before the `for…of`, so the
- *    forged value is refused rather than iterated. That sweep lives with the
- *    builder, in `test/transactions-eligibility-270-build.test.ts`, because it
- *    is a property of that builder's contract and not of this scan.
+ *    `{ length }` is not iterable, so a bare `for…of` throws
+ *    `TypeError: … is not iterable` immediately. That terminates, so it is a
+ *    different defect from the one this gate closes. The builders' `for…of`
+ *    reads (`buildInterchange`'s `spec.groups`, `build999`'s
+ *    `functionalGroup.transactionResponses`, and the leaf lists such as
+ *    `claim.dates` and `line.references`) go through `requireCallerEntries`,
+ *    which runs `requireCallerArray` and then checks every slot for a hole or a
+ *    `null`, so a forged value there draws the typed refusal too. Pinned below.
+ *    The scan does not prove that every `for…of` is routed that way;
+ *    `test/builder-list-entry-holes.test.ts` walks a rich spec per builder for
+ *    the holes, and the cases below pin the forged shape on the lists that
+ *    used to throw untyped.
  * 2. **The scan is syntactic.** It keys on `for (let x = 0; x < …` and
  *    `while (… < …)` shapes. A bound computed in a helper, or reached through a
  *    reassigned `let`, would not be seen. A strong tripwire for the shape this
@@ -236,8 +234,13 @@ describe("builder loop bounds: the source gate", () => {
   const bounds = modules.flatMap(loopBounds);
 
   it("finds every indexed loop bound in the builder modules", () => {
-    // Re-derived on this tree: FORTY-SEVEN indexed loops across NINE modules
-    // take their bound from a list. The forty-seventh is the 271's EB-13
+    // Re-derived on this tree: FORTY-FIVE indexed loops across NINE modules
+    // take their bound from a list. It was forty-seven until the 837's CAS
+    // grouping moved to a `for…of` over `requireCallerEntries`, which took its
+    // two `while` loops out of this scan: a hole there used to be skipped in
+    // silence and is refused now.
+    //
+    // Before that, FORTY-SEVEN: the forty-seventh is the 271's EB-13
     // procedure modifiers, in a module already counted below.
     //
     // Before it: FORTY-SIX indexed loops across NINE modules take
@@ -250,7 +253,7 @@ describe("builder loop bounds: the source gate", () => {
     // receivers, service providers, subscribers, dependents) plus its claims and
     // service lines. Pinned so a module that stops being scanned is a failure
     // rather than a silently smaller sweep.
-    expect(bounds.length).toBe(47);
+    expect(bounds.length).toBe(45);
     expect(new Set(bounds.map((b) => b.file)).size).toBe(9);
   });
 
@@ -676,10 +679,10 @@ describe("domain builders: a forged array-like refuses instead of hanging", () =
 });
 
 // ---------------------------------------------------------------------------
-// The disclosed residual: `for…of` throws untyped, and must not start hanging.
+// The former residual: `for…of` threw untyped. It refuses now, and must not hang.
 // ---------------------------------------------------------------------------
 
-describe("for-of over a forged array-like: the disclosed residual", () => {
+describe("for-of over a forged array-like: refused, where it used to throw untyped", () => {
   const RESIDUAL_CASES: readonly (readonly [string, () => unknown])[] = [
     [
       "buildInterchange spec.groups",
@@ -707,29 +710,28 @@ describe("for-of over a forged array-like: the disclosed residual", () => {
     ],
   ];
 
-  it.each(RESIDUAL_CASES)("throws an untyped TypeError, and terminates, for %s", (_label, run) => {
-    // This is a MEASUREMENT of a known gap, not an endorsement of it. Both
-    // reach the caller array through `for…of`, which refuses to iterate a
-    // forged `{ length }` rather than coercing it - so there is no hang here
-    // and never was. The refusal is untyped (`code` is `undefined`), which is
-    // the part that is worse than the rest of this library, and it is
-    // PRE-EXISTING and identical at base commit `55ebc66`.
+  it.each(RESIDUAL_CASES)("refuses with a typed code, and terminates, for %s", (_label, run) => {
+    // WAS a measured gap: both reached the caller array through a bare
+    // `for…of`, which threw `TypeError: … is not iterable` with no `code`. It
+    // never hung. Both lists now go through `requireCallerEntries`, so the
+    // forged `{ length }` draws the builder's own typed refusal.
     let thrown: unknown;
     try {
       run();
     } catch (err) {
       thrown = err;
     }
-    expect(thrown).toBeInstanceOf(TypeError);
-    expect((thrown as { code?: unknown }).code).toBeUndefined();
-    expect((thrown as Error).message).toMatch(/is not iterable/u);
+    expect(thrown).not.toBeInstanceOf(TypeError);
+    expect((thrown as { code?: unknown }).code).toMatch(/_INVALID_SPEC$/u);
+    expect((thrown as Error).message).toMatch(/must be an array/u);
   });
 
-  it("also covers three optional leaf arrays, which no guard walks", () => {
+  it("also covers three optional leaf arrays, which no structural guard walks", () => {
     // `member.references`, `member.dates` and `header.references` are never
-    // visited by any structural guard, so this is the general shape of the
-    // residual and not a quirk of the two entry points above. The baseline
-    // spec builds cleanly, so the only thing that changed is the forged field.
+    // visited by a structural guard. They are read through `requireCallerEntries`
+    // at the point they are emitted, so a forged list refuses there. The
+    // baseline spec builds cleanly, so the only thing that changed is the
+    // forged field.
     const envelope = ENVELOPE;
     const member = {
       subscriberIndicator: "Y",
@@ -760,10 +762,9 @@ describe("for-of over a forged array-like: the disclosed residual", () => {
       } catch (err) {
         thrown = err;
       }
-      expect(thrown).toBeInstanceOf(TypeError);
-      expect(thrown).not.toBeInstanceOf(Enrollment834BuildError);
-      expect((thrown as { code?: unknown }).code).toBeUndefined();
-      expect((thrown as Error).message).toMatch(/is not iterable/u);
+      expect(thrown).toBeInstanceOf(Enrollment834BuildError);
+      expect((thrown as { code?: unknown }).code).toBe("X12_834_BUILD_INVALID_SPEC");
+      expect((thrown as Error).message).toMatch(/must be an array/u);
     }
   });
 });

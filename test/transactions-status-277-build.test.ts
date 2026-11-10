@@ -170,12 +170,13 @@ describe("build277 - envelope identity", () => {
     expect(Object.isFrozen(build277(CANONICAL_SPEC))).toBe(true);
   });
 
-  it("truncates an over-long fixed-width ISA senderId to 15 chars", () => {
-    const ix = build277({
-      ...CANONICAL_SPEC,
-      envelope: { ...ENVELOPE, senderId: "SENDERIDENTIFIERTOOLONG" },
-    });
-    expect(ix.isa.elements[6]).toBe("SENDERIDENTIFIE");
+  it("refuses an over-long fixed-width ISA senderId rather than cutting it to 15 chars", () => {
+    expect(() =>
+      build277({
+        ...CANONICAL_SPEC,
+        envelope: { ...ENVELOPE, senderId: "SENDERIDENTIFIERTOOLONG" },
+      }),
+    ).toThrow(/build277: senderId is 23 characters, and ISA-06 holds 15/);
   });
 });
 
@@ -789,17 +790,18 @@ describe("build277 - envelope control-number / date expansion", () => {
     expect(ix.isa.elements[13]).toBe("000000001");
   });
 
-  it("expands a 2-digit-century interchange date and passes an 8-digit one through", () => {
+  it("expands a 2-digit-century interchange date and refuses an 8-digit one", () => {
     const pre2000 = build277({
       ...CANONICAL_SPEC,
       envelope: { ...ENVELOPE, interchangeDate: "990601" },
     });
     expect(pre2000.groups[0]?.gs.elements[4]).toBe("19990601");
-    const full = build277({
-      ...CANONICAL_SPEC,
-      envelope: { ...ENVELOPE, interchangeDate: "20260601" },
-    });
-    expect(full.groups[0]?.gs.elements[4]).toBe("20260601");
+    expect(() =>
+      build277({
+        ...CANONICAL_SPEC,
+        envelope: { ...ENVELOPE, interchangeDate: "20260601" },
+      }),
+    ).toThrow(/build277: interchangeDate is 8 characters, and ISA-09 holds 6/);
   });
 });
 
@@ -1077,7 +1079,7 @@ describe("build277 - residual branches", () => {
         .elements[4];
     expect(gs04("990601")).toBe("19990601");
     expect(gs04("260601")).toBe("20260601");
-    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("2606")).toBe("2606");
     expect(gs04("AB0601")).toBe("AB0601");
   });
 });

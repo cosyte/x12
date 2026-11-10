@@ -232,12 +232,13 @@ describe("build837 - envelope identity", () => {
     expect(ix.groups[0]?.gs.elements[4]).toBe("19990601");
   });
 
-  it("truncates an over-long ISA-06 sender id to 15 chars", () => {
-    const ix = build837P({
-      ...P_SPEC,
-      envelope: { ...ENVELOPE, senderId: "SENDERIDWAYTOOLONGFORISA06" },
-    });
-    expect(ix.isa.elements[6]).toBe("SENDERIDWAYTOOL");
+  it("refuses an over-long ISA-06 sender id rather than cutting it to 15 chars", () => {
+    expect(() =>
+      build837P({
+        ...P_SPEC,
+        envelope: { ...ENVELOPE, senderId: "SENDERIDWAYTOOLONGFORISA06" },
+      }),
+    ).toThrow(/build837: senderId is 26 characters, and ISA-06 holds 15/);
   });
 });
 
@@ -1194,24 +1195,27 @@ describe("build837 - optional elements are written empty, never invented", () =>
     expect(out).not.toContain("~DTP*573*");
   });
 
-  it("skips a hole in an adjustment list and still packs the CAS triples around it", () => {
+  it("refuses a hole in an adjustment list rather than skipping it", () => {
+    // The hole used to be skipped in silence, so the CAS went out without an
+    // adjustment the caller's list had a slot for.
     const adjustments = [
       { groupCode: "CO", reasonCode: "45", amount: dec("50.00") },
       undefined,
       { groupCode: "CO", reasonCode: "253", amount: dec("2.00") },
     ] as unknown as readonly Build837AdjustmentSpec[];
-    const out = text(
-      pSpecWithClaim({
-        ...P_CLAIM,
-        serviceLines: [
-          {
-            ...P_LINE,
-            adjudications: [{ otherPayerId: "PAYER02", amountPaid: dec("98.00"), adjustments }],
-          },
-        ],
-      }),
-    );
-    expect(out).toContain("~CAS*CO*45*50.00~CAS*CO*253*2.00~");
+    expect(() =>
+      text(
+        pSpecWithClaim({
+          ...P_CLAIM,
+          serviceLines: [
+            {
+              ...P_LINE,
+              adjudications: [{ otherPayerId: "PAYER02", amountPaid: dec("98.00"), adjustments }],
+            },
+          ],
+        }),
+      ),
+    ).toThrow(/build837: adjudication\.adjustments\[1\] is an empty list slot/);
   });
 
   it("writes an N4 with only a postal code, and a PER with only its function code", () => {
@@ -1261,7 +1265,7 @@ describe("build837 - optional elements are written empty, never invented", () =>
         .elements[4];
     expect(gs04("990601")).toBe("19990601");
     expect(gs04("260601")).toBe("20260601");
-    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("2606")).toBe("2606");
     expect(gs04("AB0601")).toBe("AB0601");
   });
 });

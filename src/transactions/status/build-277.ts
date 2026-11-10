@@ -55,12 +55,13 @@ import type {
 import { parseX12 } from "../../parser/index.js";
 import type { X12Interchange } from "../../parser/types.js";
 import type { X12Decimal } from "../../decimal.js";
-import { requireCallerArray } from "../../builder/caller-array.js";
+import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { requireControlNumber } from "../../builder/caller-control-number.js";
+import { padIsaElement } from "../../builder/caller-isa.js";
 
 /**
  * Refuse with this module's typed error, for {@link requireCallerArray} on the
@@ -260,15 +261,29 @@ function buildClaimStatus(version: ClaimStatusVersion, spec: Build277Spec): X12I
     [
       "ISA",
       "00",
-      pad(" ", 10),
+      " ".repeat(10),
       "00",
-      pad(" ", 10),
-      pad(senderQualifier, 2),
-      pad(envelope.senderId, 15),
-      pad(receiverQualifier, 2),
-      pad(envelope.receiverId, 15),
-      pad(envelope.interchangeDate, 6),
-      pad(envelope.interchangeTime, 4),
+      " ".repeat(10),
+      padIsaElement(senderQualifier, 2, "ISA-05", "senderQualifier", "build277", refuseSpec),
+      padIsaElement(envelope.senderId, 15, "ISA-06", "senderId", "build277", refuseSpec),
+      padIsaElement(receiverQualifier, 2, "ISA-07", "receiverQualifier", "build277", refuseSpec),
+      padIsaElement(envelope.receiverId, 15, "ISA-08", "receiverId", "build277", refuseSpec),
+      padIsaElement(
+        envelope.interchangeDate,
+        6,
+        "ISA-09",
+        "interchangeDate",
+        "build277",
+        refuseSpec,
+      ),
+      padIsaElement(
+        envelope.interchangeTime,
+        4,
+        "ISA-10",
+        "interchangeTime",
+        "build277",
+        refuseSpec,
+      ),
       repetitionSeparator,
       "00501",
       interchangeControlNumber,
@@ -529,7 +544,11 @@ function requireEntryObject<T>(entry: T | undefined, locator: string): asserts e
 /** @internal */
 function enforceStatus(status: Build277StatusSpec | undefined, locator: string): void {
   requireEntryObject(status, `status at ${locator}`);
-  const first = status.statuses[0];
+  const first = requireCallerEntries(
+    status.statuses,
+    `build277: status at ${locator}: statuses`,
+    refuseSpec,
+  )[0];
   if (first === undefined || first.categoryCode === "") {
     throw new ClaimStatus277BuildError(
       CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_SPEC,
@@ -662,8 +681,14 @@ function emitClaim(claim: Build277ClaimSpec, body: string[], ctx: EmitContext): 
     );
   }
   for (const status of claim.statuses ?? []) emitStatus(status, body, ctx);
-  for (const ref of claim.references ?? []) body.push(emitRef(ref, ctx));
-  for (const date of claim.dates ?? []) emitDate(date, body, ctx);
+  for (const ref of requireCallerEntries(
+    claim.references,
+    "build277: claim.references",
+    refuseSpec,
+  ))
+    body.push(emitRef(ref, ctx));
+  for (const date of requireCallerEntries(claim.dates, "build277: claim.dates", refuseSpec))
+    emitDate(date, body, ctx);
   for (const line of claim.serviceLines ?? []) emitServiceLine(line, body, ctx);
 }
 
@@ -695,8 +720,10 @@ function emitServiceLine(line: Build277ServiceLineSpec, body: string[], ctx: Emi
     ]),
   );
   for (const status of line.statuses ?? []) emitStatus(status, body, ctx);
-  for (const ref of line.references ?? []) body.push(emitRef(ref, ctx));
-  for (const date of line.dates ?? []) emitDate(date, body, ctx);
+  for (const ref of requireCallerEntries(line.references, "build277: line.references", refuseSpec))
+    body.push(emitRef(ref, ctx));
+  for (const date of requireCallerEntries(line.dates, "build277: line.dates", refuseSpec))
+    emitDate(date, body, ctx);
 }
 
 /**
@@ -789,13 +816,6 @@ function emitDate(
 // ---------------------------------------------------------------------------
 // String helpers - mirror the `build835` / `build837` emit primitives.
 // ---------------------------------------------------------------------------
-
-/** @internal */
-function pad(value: string, width: number): string {
-  if (value.length === width) return value;
-  if (value.length < width) return value + " ".repeat(width - value.length);
-  return value.slice(0, width);
-}
 
 /**
  * Zero-pad a control number to `width` chars (ISA-13 / IEA-02 are always
