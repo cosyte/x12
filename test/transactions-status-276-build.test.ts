@@ -956,3 +956,64 @@ describe("build276: a model the lenient reader returned is not always emittable"
     expect(emitted).toBe(serializeX12(parseX12(raw)));
   });
 });
+
+// ---------------------------------------------------------------------------
+// Residual branches: a partial NM1 and DMG, an SVC with no procedure, charge
+// or units, an SVC-01 procedure with no code, and the GS-04 century window.
+// ---------------------------------------------------------------------------
+
+describe("build276 - optional elements and the GS-04 century window", () => {
+  const segmentsOf = (spec: Build276Spec): string[] =>
+    (build276(spec).groups[0]?.transactions[0]?.segments ?? []).map((s) => s.raw);
+
+  it("writes an NM1 with no last name, and a DMG with only the date of birth or only the gender", () => {
+    const name = {
+      entityIdentifierCode: "IL",
+      entityTypeQualifier: "1",
+      firstName: "JANE",
+      idQualifier: "MI",
+      idCode: "MBR0001",
+    };
+    const dobOnly = segmentsOf(
+      specWith({ ...OK_SUBSCRIBER, name: { ...name, dateOfBirth: "19850515" } }),
+    );
+    expect(dobOnly).toContain("NM1*IL*1**JANE****MI*MBR0001");
+    expect(dobOnly).toContain("DMG*D8*19850515");
+    const genderOnly = segmentsOf(
+      specWith({ ...OK_SUBSCRIBER, name: { ...name, genderCode: "F" } }),
+    );
+    expect(genderOnly).toContain("DMG*D8**F");
+  });
+
+  it("writes an SVC with no procedure, charge or units, and an SVC-01 procedure with no code", () => {
+    const bare = segmentsOf(
+      specWith({
+        ...OK_SUBSCRIBER,
+        claims: [{ ...OK_CLAIM, serviceLines: [{ revenueCode: "0450" }] }],
+      }),
+    );
+    expect(bare).toContain("SVC****0450");
+    const noCode = segmentsOf(
+      specWith({
+        ...OK_SUBSCRIBER,
+        claims: [
+          {
+            ...OK_CLAIM,
+            serviceLines: [{ procedure: { qualifier: "HC" }, lineChargeAmount: dec("150") }],
+          },
+        ],
+      }),
+    );
+    expect(noCode).toContain("SVC*HC*150");
+  });
+
+  it("expands GS-04 through the century window and passes other shapes through", () => {
+    const gs04 = (interchangeDate: string): string | undefined =>
+      build276({ ...MINIMAL_SPEC, envelope: { ...ENVELOPE, interchangeDate } }).groups[0]?.gs
+        .elements[4];
+    expect(gs04("990601")).toBe("19990601");
+    expect(gs04("260601")).toBe("20260601");
+    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("AB0601")).toBe("AB0601");
+  });
+});

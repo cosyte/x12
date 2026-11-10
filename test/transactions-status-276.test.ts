@@ -26,6 +26,7 @@
  * `test/fixtures/status/276-fixture-provenance.md`.
  */
 
+import { Buffer } from "node:buffer";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -359,5 +360,72 @@ describe("the 276 loop specs are authored through the public defineLoopSpec API"
   it("freezes them, so a consumer cannot change what a later reader sees", () => {
     expect(Object.isFrozen(STATUS_276_LOOP_2200)).toBe(true);
     expect(Object.isFrozen(STATUS_276_LOOP_2200.segments)).toBe(true);
+  });
+});
+
+describe("parse276StatusInquiries and get276StatusInquiry - residual branches", () => {
+  /** The canonical fixture, one segment per line on disk, joined so an edit can span segments. */
+  const canonical = (): string => fixture("276-canonical.edi").replace(/~\r?\n/gu, "~");
+  const readText = (raw: string): X12StatusInquiry => {
+    const inquiry = parse276StatusInquiries(raw)[0];
+    if (inquiry === undefined) throw new Error("no 276 decoded");
+    return inquiry;
+  };
+
+  it("reads bytes handed over as a Buffer exactly as it reads the same text", () => {
+    const raw = canonical();
+    expect(parse276StatusInquiries(Buffer.from(raw, "utf8"))).toEqual(parse276StatusInquiries(raw));
+  });
+
+  it("reads a transaction set cut off before its SE", () => {
+    const cut = canonical().split("SE*25*0001~")[0] ?? "";
+    const subscriber = subscriberOf(readText(cut));
+    expect(subscriber?.claims.map((c) => c.trace?.referenceId)).toEqual(["STATUS20260601001"]);
+    expect(subscriber?.dependents[0]?.claims[0]?.trace?.referenceId).toBe("STATUS20260601002");
+  });
+
+  it("keeps the first NM1 of a level, ignores a DMG or NM1 before any HL, and leaves PER on the segments", () => {
+    const inquiry = readText(
+      canonical()
+        .replace("HL*1**20*1~", "DMG*D8*19750505*U~NM1*PR*2*EARLY PAYER~HL*1**20*1~")
+        .replace(
+          "NM1*IL*1*DOE*JANE*A***MI*MBR0001~",
+          "NM1*IL*1*DOE*JANE*A***MI*MBR0001~NM1*IL*1*ROE*JOHN~PER*IC*TEST CONTACT~",
+        ),
+    );
+    expect(inquiry.informationSources[0]?.name?.lastNameOrOrganizationName).toBe(
+      "MEDPAY INSURANCE",
+    );
+    const subscriber = subscriberOf(inquiry);
+    expect(subscriber?.name?.lastNameOrOrganizationName).toBe("DOE");
+    expect(subscriber?.name?.dateOfBirth).toBe("19850515");
+  });
+
+  it("drops an SVC, REF, AMT or DTP that arrives before any claim", () => {
+    const inquiry = readText(
+      canonical().replace(
+        "TRN*1*STATUS20260601001*9SAMPLEORG~",
+        "SVC*HC:99211*10~REF*1K*EARLYREF~AMT*T3*10~DTP*472*D8*20260101~TRN*1*STATUS20260601001*9SAMPLEORG~",
+      ),
+    );
+    const claim = subscriberOf(inquiry)?.claims[0];
+    expect(claim?.references.map((r) => r.value)).toEqual(["PCN0001"]);
+    expect(claim?.amounts).toHaveLength(1);
+    expect(claim?.dates).toHaveLength(1);
+    expect(claim?.serviceLines).toHaveLength(1);
+  });
+
+  it("reads an SVC with no SVC-01 qualifier as having no procedure", () => {
+    const inquiry = readText(canonical().replace("SVC*HC:99213:25*150", "SVC**150"));
+    const line = subscriberOf(inquiry)?.claims[0]?.serviceLines[0];
+    expect(line?.procedure).toBeUndefined();
+    expect(line?.lineChargeAmount?.toString()).toBe("150");
+  });
+
+  it("detaches a level that names no parent but needs one, and a level of an unknown code", () => {
+    const noParent = readText(canonical().replace("HL*4*3*22*1~", "HL*4**22*1~"));
+    expect(codes(noParent)).toContain(WARNING_CODES.X12_276_LEVEL_DETACHED);
+    const unknownCode = readText(canonical().replace("HL*5*4*23*0~", "HL*5*4*99*0~"));
+    expect(codes(unknownCode)).toContain(WARNING_CODES.X12_276_LEVEL_DETACHED);
   });
 });

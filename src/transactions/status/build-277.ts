@@ -349,7 +349,9 @@ function enforceStructuralSpec(version: ClaimStatusVersion, spec: Build277Spec):
   }
   for (let s = 0; s < sources.length; s += 1) {
     const source = sources[s];
-    if (source === undefined) continue;
+    // A hole in a sparse list, or a `null` from a JSON spec, used to be skipped
+    // here and then read by the emitter, which threw an untyped TypeError.
+    requireEntryObject(source, `spec.informationSources[${String(s)}]`);
     const receivers = requireCallerArray(
       source.receivers,
       `build277: spec.informationSources[${String(s)}].receivers`,
@@ -363,7 +365,7 @@ function enforceStructuralSpec(version: ClaimStatusVersion, spec: Build277Spec):
     }
     for (let r = 0; r < receivers.length; r += 1) {
       const receiver = receivers[r];
-      if (receiver === undefined) continue;
+      requireEntryObject(receiver, `spec.informationSources[${String(s)}].receivers[${String(r)}]`);
       const providers = requireCallerArray(
         receiver.providers,
         `build277: spec.informationSources[${String(s)}].receivers[${String(r)}].providers`,
@@ -377,8 +379,8 @@ function enforceStructuralSpec(version: ClaimStatusVersion, spec: Build277Spec):
       }
       for (let p = 0; p < providers.length; p += 1) {
         const provider = providers[p];
-        if (provider === undefined) continue;
         const locator = `source[${String(s)}].receiver[${String(r)}].provider[${String(p)}]`;
+        requireEntryObject(provider, `provider at ${locator}`);
         const subscribers = requireCallerArray(
           provider.subscribers,
           `build277: ${locator}.subscribers`,
@@ -392,7 +394,7 @@ function enforceStructuralSpec(version: ClaimStatusVersion, spec: Build277Spec):
         }
         for (let u = 0; u < subscribers.length; u += 1) {
           const subscriber = subscribers[u];
-          if (subscriber === undefined) continue;
+          requireEntryObject(subscriber, `subscriber at ${locator}.subscriber[${String(u)}]`);
           enforceSubscriber(version, subscriber, `${locator}.subscriber[${String(u)}]`);
         }
       }
@@ -424,13 +426,13 @@ function enforceSubscriber(
   }
   for (let c = 0; c < claims.length; c += 1) {
     const claim = claims[c];
-    if (claim !== undefined)
-      enforceClaim(version, claim, `${locator}.claim[${String(c)}]`, c === 0);
+    requireEntryObject(claim, `claim at ${locator}.claim[${String(c)}]`);
+    enforceClaim(version, claim, `${locator}.claim[${String(c)}]`, c === 0);
   }
   for (let d = 0; d < dependents.length; d += 1) {
     const dependent = dependents[d];
-    if (dependent === undefined) continue;
     const depLocator = `${locator}.dependent[${String(d)}]`;
+    requireEntryObject(dependent, `dependent at ${depLocator}`);
     const depClaims = requireCallerArray(
       dependent.claims,
       `build277: dependent at ${depLocator}: claims`,
@@ -444,8 +446,8 @@ function enforceSubscriber(
     }
     for (let c = 0; c < depClaims.length; c += 1) {
       const claim = depClaims[c];
-      if (claim !== undefined)
-        enforceClaim(version, claim, `${depLocator}.claim[${String(c)}]`, c === 0);
+      requireEntryObject(claim, `claim at ${depLocator}.claim[${String(c)}]`);
+      enforceClaim(version, claim, `${depLocator}.claim[${String(c)}]`, c === 0);
     }
   }
 }
@@ -495,7 +497,7 @@ function enforceClaim(
   }
   for (let l = 0; l < serviceLines.length; l += 1) {
     const line = serviceLines[l];
-    if (line === undefined) continue;
+    requireEntryObject(line, `service line at ${locator}.line[${String(l)}]`);
     if (version === "005010X212" && line.unitsOfService === undefined) {
       throw new ClaimStatus277BuildError(
         CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_SPEC,
@@ -513,9 +515,20 @@ function enforceClaim(
   }
 }
 
+/**
+ * Refuse a list entry that is not an object: a hole in a sparse array, or a
+ * `null` from a JSON spec. The `locator` is a structural path, never a value.
+ * @internal
+ */
+function requireEntryObject<T>(entry: T | undefined, locator: string): asserts entry is T & object {
+  if (typeof entry !== "object" || entry === null) {
+    refuseSpec(`build277: ${locator} must be an object.`);
+  }
+}
+
 /** @internal */
 function enforceStatus(status: Build277StatusSpec | undefined, locator: string): void {
-  if (status === undefined) return;
+  requireEntryObject(status, `status at ${locator}`);
   const first = status.statuses[0];
   if (first === undefined || first.categoryCode === "") {
     throw new ClaimStatus277BuildError(

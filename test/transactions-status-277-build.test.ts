@@ -939,3 +939,146 @@ describe("build277 - X12-EMIT-DEGENERATE-RELEASE-DELIMITER", () => {
     expect(build277(CANONICAL_SPEC).warnings).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Residual branches: list entries that are not objects, a service line with no
+// STC, and the GS-04 century window.
+// ---------------------------------------------------------------------------
+
+describe("build277 - residual branches", () => {
+  const forged = <T>(value: unknown): T => value as T;
+  const SOURCE = CANONICAL_SPEC.informationSources[0];
+  const RECEIVER = SOURCE?.receivers[0];
+  const PROVIDER = RECEIVER?.providers[0];
+  const SUBSCRIBER = PROVIDER?.subscribers[0];
+  const CLAIM = SUBSCRIBER?.claims?.[0];
+  const LINE = CLAIM?.serviceLines?.[0];
+  if (
+    SOURCE === undefined ||
+    RECEIVER === undefined ||
+    PROVIDER === undefined ||
+    SUBSCRIBER === undefined ||
+    CLAIM === undefined ||
+    LINE === undefined
+  ) {
+    throw new Error("CANONICAL_SPEC shape");
+  }
+  type Subscriber = typeof SUBSCRIBER;
+  const withSubscriber = (subscriber: Subscriber): Build277Spec => ({
+    ...CANONICAL_SPEC,
+    informationSources: [
+      {
+        ...SOURCE,
+        receivers: [{ ...RECEIVER, providers: [{ ...PROVIDER, subscribers: [subscriber] }] }],
+      },
+    ],
+  });
+  const withClaim = (claim: unknown): Build277Spec =>
+    withSubscriber({ ...SUBSCRIBER, claims: forged([claim]) });
+
+  // A hole in a sparse array, or a `null` from a JSON spec, passed the
+  // structural check and then threw an untyped TypeError while emitting.
+  /* eslint-disable no-sparse-arrays -- each hole is the input under test */
+  const cases: readonly (readonly [string, Build277Spec, string])[] = [
+    [
+      "an information source",
+      { ...CANONICAL_SPEC, informationSources: forged([, SOURCE]) },
+      "spec.informationSources[0] must be an object",
+    ],
+    [
+      "a receiver",
+      { ...CANONICAL_SPEC, informationSources: [{ ...SOURCE, receivers: forged([null]) }] },
+      "spec.informationSources[0].receivers[0] must be an object",
+    ],
+    [
+      "a provider",
+      {
+        ...CANONICAL_SPEC,
+        informationSources: [
+          { ...SOURCE, receivers: [{ ...RECEIVER, providers: forged([, PROVIDER]) }] },
+        ],
+      },
+      "provider at source[0].receiver[0].provider[0] must be an object",
+    ],
+    [
+      "a subscriber",
+      {
+        ...CANONICAL_SPEC,
+        informationSources: [
+          {
+            ...SOURCE,
+            receivers: [{ ...RECEIVER, providers: [{ ...PROVIDER, subscribers: forged([null]) }] }],
+          },
+        ],
+      },
+      "subscriber at source[0].receiver[0].provider[0].subscriber[0] must be an object",
+    ],
+    [
+      "a claim",
+      withSubscriber({ ...SUBSCRIBER, claims: forged([, CLAIM]) }),
+      ".claim[0] must be an object",
+    ],
+    [
+      "a dependent",
+      withSubscriber({ ...SUBSCRIBER, dependents: forged([, { claims: [CLAIM] }]) }),
+      ".dependent[0] must be an object",
+    ],
+    [
+      "a dependent's claim",
+      withSubscriber({ ...SUBSCRIBER, dependents: [{ claims: forged([null]) }] }),
+      ".dependent[0].claim[0] must be an object",
+    ],
+    [
+      "a service line",
+      withClaim({ ...CLAIM, serviceLines: [, LINE] }),
+      ".line[0] must be an object",
+    ],
+    ["a claim status", withClaim({ ...CLAIM, statuses: [null] }), ".status[0] must be an object"],
+  ];
+  /* eslint-enable no-sparse-arrays */
+
+  for (const [name, spec, message] of cases) {
+    it(`refuses ${name} entry that is not an object with X12_277_BUILD_INVALID_SPEC`, () => {
+      let caught: unknown;
+      try {
+        build277(spec);
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toBeInstanceOf(ClaimStatus277BuildError);
+      expect((caught as ClaimStatus277BuildError).code).toBe(
+        CLAIM_STATUS_277_BUILD_ERROR_CODES.X12_277_BUILD_INVALID_SPEC,
+      );
+      expect((caught as Error).message).toContain(message);
+    });
+  }
+
+  it("writes a service line's DTP when the line carries no STC", () => {
+    const { statuses: _statuses, ...noStatuses } = LINE;
+    const segments = (
+      build277(
+        withClaim({
+          ...CLAIM,
+          serviceLines: [
+            {
+              ...noStatuses,
+              dates: [{ qualifier: "472", formatQualifier: "D8", value: "20260601" }],
+            },
+          ],
+        }),
+      ).groups[0]?.transactions[0]?.segments ?? []
+    ).map((s) => s.raw);
+    const svc = segments.findIndex((s) => s.startsWith("SVC*"));
+    expect(segments.slice(svc + 1, svc + 3)).toEqual(["REF*FJ*LINE001", "DTP*472*D8*20260601"]);
+  });
+
+  it("expands GS-04 through the century window and passes other shapes through", () => {
+    const gs04 = (interchangeDate: string): string | undefined =>
+      build277({ ...CANONICAL_SPEC, envelope: { ...ENVELOPE, interchangeDate } }).groups[0]?.gs
+        .elements[4];
+    expect(gs04("990601")).toBe("19990601");
+    expect(gs04("260601")).toBe("20260601");
+    expect(gs04("20260601")).toBe("20260601");
+    expect(gs04("AB0601")).toBe("AB0601");
+  });
+});
