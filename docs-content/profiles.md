@@ -193,3 +193,6 @@ too: it usually means the convention you documented did not appear in this file.
 - [Build and serialize X12](./emit-and-serialize.md): the emit side, which profiles do not touch.
 - [Troubleshooting and known limitations](./troubleshooting.md): the bounds on the conformance judgment,
   and what a refusal message may and may not contain.
+- Reference: [`defineProfile`](./api/README.md#defineprofile),
+  [`X12ProfileSpec`](./api/README.md#x12profilespec), [`profiles`](./api/README.md#profiles),
+  [`partitionWarnings`](./api/README.md#partitionwarnings), [`parseX12`](./api/README.md#parsex12).

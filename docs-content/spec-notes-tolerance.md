@@ -68,6 +68,12 @@ seen.length > 0; // => true
 ix.warnings.length > 0; // => true
 ```
 
+[Handle warnings and fatal errors](./handle-warnings.md) puts this into practice: reading and
+streaming the warnings, escalating to strict, and catching the fatal codes. When a partner's known
+deviations should not page anyone, [Describe a trading partner with a
+profile](./profiles.md#separate-the-warnings-you-expect-from-the-ones-you-do-not) sorts the warnings
+you expect from the ones you do not, without removing any.
+
 ## The four fatal codes
 
 These are the only conditions that throw an `X12ParseError`, regardless of `strict`. They are
