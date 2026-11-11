@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "library": {
     "package": "@cosyte/x12",
-    "commit": "2cf4c3b804efb9ae73af3275418ed4051cd7a188",
-    "workingTreeDirty": false
+    "commit": "ae4b1aa69aab65bd3b9a6c8d82c9e7ff237ed4dc",
+    "workingTreeDirty": true
   },
   "oracles": [
     {
@@ -370,6 +370,13 @@
       "reason": "pyx12 4.0.0 binds no map in pyx12/map/maps.xml at interchange control version 00501 for transaction set 837 under implementation guide 005010X224; linuxforhealth-x12 0.57.0 binds no model in linuxforhealth.x12.v5010 at interchange control version 00501 for transaction set 837 under implementation guide 005010X224."
     },
     {
+      "transaction": "997",
+      "variant": null,
+      "title": "Functional Acknowledgment",
+      "libraryTr3": null,
+      "reason": "This package implements no implementation guide identifier for Functional Acknowledgment, so there is no version or release identifier for pyx12 4.0.0 (pyx12/map/maps.xml) or linuxforhealth-x12 0.57.0 (linuxforhealth.x12.v5010) to bind a map or model to."
+    },
+    {
       "transaction": "TA1",
       "variant": null,
       "title": "Interchange Acknowledgment",
@@ -596,6 +603,21 @@
     }
   ],
   "skipped": [
+    {
+      "document": "test/fixtures/ack/997-accept.edi",
+      "assigned": [],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/ack/997-partial-with-errors.edi",
+      "assigned": [],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/ack/997-reject.edi",
+      "assigned": [],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
+    },
     {
       "document": "test/fixtures/ack/ta1-accept-with-errors.edi",
       "assigned": [],

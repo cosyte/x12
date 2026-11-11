@@ -44,6 +44,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import * as functionalIdentifierModule from "../src/code-lists/functional-identifier.js";
+import { build999 } from "../src/index.js";
 import {
   ELEMENT_479_REFERENCE,
   FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET,
@@ -124,15 +125,51 @@ describe("GS-01 provenance: the cited element 479 table", () => {
     }
   });
 
-  it("carries a row for the 276 that no builder literal corroborates, and only that one", () => {
+  it("carries rows for the 276 and the 997 that no X12_<txn>_FUNCTIONAL_ID literal corroborates, and only those", () => {
     const corroborated = new Set(declaredFunctionalIds().map((d) => d.transactionSet));
     const uncorroborated = Object.keys(FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET)
       .filter((txn) => !corroborated.has(txn))
       .sort();
 
-    // Stated as a fact about this table rather than hidden: exactly one row
-    // rests on the cited reference alone, and it is the one this work added.
-    expect(uncorroborated).toEqual(["276"]);
+    // Stated as a fact about this table rather than hidden: the 276 row rests
+    // on the cited reference alone. The 997 row is checked against the 999
+    // builder's GS-01 below instead, which is not in the literal shape above.
+    expect(uncorroborated).toEqual(["276", "997"]);
+  });
+
+  it("gives the 997 the GS-01 the 999 builder already writes, FA", () => {
+    // Every acknowledgment group travels under one functional identifier, so
+    // the 999 builder's own GS-01, written long before the 997 row, is the
+    // corroboration: build one and read the GS-01 back off it.
+    const ack = build999({
+      envelope: {
+        senderId: "RECEIVER",
+        receiverId: "SENDER",
+        interchangeDate: "250101",
+        interchangeTime: "1200",
+        interchangeControlNumber: "000000001",
+        groupControlNumber: "1",
+        transactionSetControlNumber: "0001",
+      },
+      functionalGroup: {
+        functionalIdCode: "HC",
+        groupControlNumber: "1",
+        versionRelease: "005010X222A2",
+        disposition: "A",
+        numberOfTransactionSets: 1,
+        numberOfReceivedTransactionSets: 1,
+        numberOfAcceptedTransactionSets: 1,
+        transactionResponses: [
+          { transactionSetIdCode: "837", transactionSetControlNumber: "0001", disposition: "A" },
+        ],
+      },
+    });
+    expect(ack.groups[0]?.gs.elements[1]).toBe("FA");
+    expect(FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET["997"]).toBe(ack.groups[0]?.gs.elements[1]);
+    // And the 997 is written from this table, not from a literal of its own.
+    const shared = code(join(SRC, "transactions", "ack", "build-999.ts"));
+    expect(shared).toMatch(/FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET\["997"\]/u);
+    expect(code(join(SRC, "transactions", "ack", "build-997.ts"))).not.toContain('"FA"');
   });
 
   it("gives the 276 request and the 277 response DIFFERENT functional identifiers", () => {

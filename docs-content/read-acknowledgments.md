@@ -1,11 +1,11 @@
 ---
 id: read-acknowledgments
-title: Read 999 and TA1 acknowledgments
-sidebar_label: Read 999 and TA1 acknowledgments
-description: "Read a 999's group and transaction dispositions with the segment and element errors, and a TA1's answer about the interchange envelope."
+title: Read 999, 997 and TA1 acknowledgments
+sidebar_label: Read 999, 997 and TA1 acknowledgments
+description: "Read the dispositions and errors a 999 or a 997 reports, build a 997, and read a TA1's answer about the envelope."
 ---
 
-# Read 999 and TA1 acknowledgments
+# Read 999, 997 and TA1 acknowledgments
 
 You submitted an 837 and got a 999 back. Was the batch accepted? If not, which segments and
 elements failed, and where?
@@ -78,6 +78,115 @@ them before you resubmit on a reject. A 999 with no `AK1` reads `ak1.functionalI
 as empty strings, and `X12_999_AK1_ABSENT` at the `ST` says the 999 named no group: do not match it to
 one of yours by those empty values.
 
+## Read and build a 997
+
+Some trading partners still answer with a **997 Functional Acknowledgment** instead of a 999. It
+sits on the same segments: `AK1` and `AK9` for the functional group, `AK2` for each transaction set,
+and `AK3`, `AK4` and `AK5` where the 999 has `IK3`, `IK4` and `IK5`. No implementation guide names
+it, so we read and write it to the ASC X12 base standard alone: GS-08 is `005010`, the `ST` carries
+no `ST-03`, and no declared guide is checked. `parse997(raw)` returns an `X12Ack997`, or `undefined`
+if there is no 997 in the interchange.
+
+The 997 reader fills nothing in, where the 999 reader fills in a reject. An absent `AK1`, `AK5` or
+`AK9` reads as `undefined`, and a disposition outside its code list reads as an `undefined`
+`disposition` beside `dispositionRaw`, the code as sent. A segment out of order, or one the 997
+does not define (a `CTX`, an `IK5`), is not read. Each case warns, so check
+`disposition === "A"` rather than "not rejected".
+
+```ts runnable
+import { build997, parse997, serializeX12, WARNING_CODES } from "@cosyte/x12";
+
+// The answer to two 837s: the first accepted, the second rejected on a bad NM1 element.
+const raw997 = [
+  "ISA*00*          *00*          *ZZ*RECEIVER       *ZZ*SENDER         *250101*1230*^*00501*000000022*0*P*:~",
+  "GS*FA*RECEIVER*SENDER*20250101*1230*22*X*005010~",
+  "ST*997*0022~",
+  "AK1*HC*4*005010X222A2~",
+  "AK2*837*0004~",
+  "AK5*A~",
+  "AK2*837*0005~",
+  "AK3*NM1*8*2010BA*8~",
+  "AK4*3*66*7~",
+  "AK5*R*5~",
+  "AK9*P*2*2*1~",
+  "SE*10*0022~",
+  "GE*1*22~",
+  "IEA*1*000000022~",
+].join("\n");
+
+const ack = parse997(raw997);
+if (ack === undefined) throw new Error("no 997 in interchange");
+
+ack.ak1?.groupControlNumber; // => "4"
+ack.ak9?.disposition; // => "P"
+ack.ak9?.numberOfAcceptedTransactionSets; // => 1
+
+const rejected = ack.transactionResponses[1];
+rejected?.ak2.transactionSetControlNumber; // => "0005"
+rejected?.ak5?.disposition; // => "R"
+rejected?.segmentNotes[0]?.ak3.segmentIdCode; // => "NM1"
+rejected?.segmentNotes[0]?.elementNotes[0]?.syntaxErrorCode; // => "7"
+ack.warnings; // => []
+
+// A code outside list 717 is carried as sent, never read as a reject or an accept.
+const odd = parse997(raw997.replace("AK5*A~", "AK5*Q~"));
+odd?.transactionResponses[0]?.ak5?.disposition; // => undefined
+odd?.transactionResponses[0]?.ak5?.dispositionRaw; // => "Q"
+odd?.warnings[0]?.code === WARNING_CODES.X12_997_AK5_DISPOSITION_UNKNOWN; // => true
+
+// build997 writes the same document back from a spec.
+const built = build997({
+  envelope: {
+    senderId: "RECEIVER",
+    receiverId: "SENDER",
+    interchangeDate: "250101",
+    interchangeTime: "1230",
+    interchangeControlNumber: "000000022",
+    groupControlNumber: "22",
+    transactionSetControlNumber: "0022",
+  },
+  functionalGroup: {
+    functionalIdCode: "HC",
+    groupControlNumber: "4",
+    versionRelease: "005010X222A2",
+    disposition: "P",
+    numberOfTransactionSets: 2,
+    numberOfReceivedTransactionSets: 2,
+    numberOfAcceptedTransactionSets: 1,
+    transactionResponses: [
+      { transactionSetIdCode: "837", transactionSetControlNumber: "0004", disposition: "A" },
+      {
+        transactionSetIdCode: "837",
+        transactionSetControlNumber: "0005",
+        disposition: "R",
+        syntaxErrorCodes: ["5"],
+        segmentErrors: [
+          {
+            segmentIdCode: "NM1",
+            segmentPositionInTransactionSet: 8,
+            loopIdentifier: "2010BA",
+            syntaxErrorCode: "8",
+            elementErrors: [
+              { position: { element: 3 }, dataElementReferenceNumber: "66", syntaxErrorCode: "7" },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+});
+serializeX12(built) === raw997.replaceAll("\n", ""); // => true
+```
+
+`build997` refuses what the 999 builder refuses (an accept paired with errors, AK9 counts that
+disagree, an empty control number) and what a 997 adds: an `AK9-01` outside code list 715, an
+`AK5-01` outside code list 717 (which has no `P`: partial acceptance is stated for the group), a
+count or position that is not a whole number, an empty `AK4-03`, and `contexts` on any segment or
+element error, inherited ones included. A 999 error list type-checks as a 997 one, but the 997 has
+no `CTX` segment, and `build997` never writes one whatever its spec holds. It reads your spec once,
+so a getter cannot answer the checks one way and the writer another. The `AK3-04`, `AK4-03` and
+syntax error codes you supply are written as given, escaped; no code table checks them.
+
 ## Read a TA1 interchange acknowledgment
 
 A 999 acknowledges a functional group. A **TA1** acknowledges the **interchange** itself: it says
@@ -127,6 +236,6 @@ byte that is a delimiter there and not here comes back with a stray release char
 ## Related
 
 - [Warning and error codes](./warning-and-error-codes.md#x12_999_ik5_absent): the 999 reader's
-  fail-safe warnings.
+  fail-safe warnings, and [the 997 reader's](./warning-and-error-codes.md#x12_997_ak5_absent).
 - Reference: [`parse999`](./api/README.md#parse999), [`parseTA1`](./api/README.md#parseta1),
   [`buildTA1`](./api/README.md#buildta1), [`build999`](./api/README.md#build999).

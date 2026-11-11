@@ -161,6 +161,7 @@ const TRANSACTION_SET_EXPORTS: ReadonlyMap<string, readonly string[]> = new Map(
   ["837P", ["get837Claims", "build837P"]],
   ["837I", ["get837Claims", "build837I"]],
   ["837D", ["get837Claims", "build837D"]],
+  ["997", ["parse997", "build997"]],
   ["999", ["parse999", "build999"]],
   ["TA1", ["parseTA1", "buildTA1"]],
 ]);

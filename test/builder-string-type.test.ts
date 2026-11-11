@@ -285,6 +285,13 @@ describe("builder element escaping: the source gate", () => {
   });
 
   it("pins the invocation count, because the first draft published a line count", () => {
+    // 579 invocations on 541 lines, counted comment-stripped on this tree with
+    // `ctx.esc(...)` included. The 997 added the difference from 576 on 538,
+    // all three in `build-999.ts`, which now writes both acknowledgments: IK3-04
+    // and IK4-03 (AK3-04 and AK4-03 on a 997) go through `esc`, because a 997's
+    // codes are caller strings rather than a closed union, and the ST has one
+    // `esc` on each branch of the 999 / 997 choice.
+    //
     // 576 invocations on 538 lines, counted comment-stripped on this tree with
     // `ctx.esc(...)` included. The 271 BHT added the difference from 574 on
     // 536: its BHT-03, and the one helper every required BHT element goes
@@ -338,8 +345,8 @@ describe("builder element escaping: the source gate", () => {
           .filter((l) => /\besc\(/u.test(l)).length,
       0,
     );
-    expect(invocations).toBe(576);
-    expect(lines).toBe(538);
+    expect(invocations).toBe(579);
+    expect(lines).toBe(541);
     expect(invocations).toBeGreaterThan(lines);
   });
 

@@ -17,8 +17,8 @@ The numbers for the current release are in [Current numbers](#current-numbers) b
 ## What runs today
 
 A benchmark suite measures the built package on synthetic documents in the shapes real traffic has:
-an 835 remittance, 837P and 837I claim batches, a 270 and the 271 that answers it, a 999, and a 275
-attachment with one large payload. Each is parsed with `parseX12`, read with its typed reader (which
+an 835 remittance, 837P and 837I claim batches, a 270 and the 271 that answers it, a 999, a 997, and
+a 275 attachment with one large payload. Each is parsed with `parseX12`, read with its typed reader (which
 checks the loops, the balances and the code lists), and built with its builder, from the small
 document a feed carries all day up to several megabytes. A reading reports throughput, latency
 p50/p95/p99, allocations per operation, peak heap, whether the heap stays flat over a long run, and

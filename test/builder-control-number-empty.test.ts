@@ -342,7 +342,8 @@ describe("X12-EMPTY-CONTROL-NUMBER-FABRICATED: build999", () => {
 /**
  * Every builder module that assembles an ISA. Named rather than globbed so a
  * new one is a deliberate edit here, which is the only thing a source scan of
- * this shape can buy.
+ * this shape can buy. `build-997.ts` is not one: it hands its spec to the
+ * acknowledgment code in `build-999.ts`, which assembles the ISA for both.
  */
 const ISA_BUILDERS = [
   "src/builder/build-interchange.ts",
@@ -395,7 +396,11 @@ describe("X12-EMPTY-CONTROL-NUMBER-FABRICATED: the drift pin", () => {
         }
         if (!line.includes("padControl(")) continue;
         if (line.includes("function padControl(")) continue;
-        if (/padControl\((spec|envelope)\.interchangeControlNumber, 9\)/.test(line)) continue;
+        // `build-999.ts` writes the 997 too, so its call names the variant
+        // that labels the refusal; the value is the same guarded field.
+        if (/padControl\((spec|envelope)\.interchangeControlNumber, 9(, variant)?\)/.test(line)) {
+          continue;
+        }
         offenders.push(`${rel}:${String(index + 1)}: ${trimmed}`);
       }
     }

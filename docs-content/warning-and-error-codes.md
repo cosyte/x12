@@ -11,7 +11,7 @@ Every code `@cosyte/x12` can hand you, in three groups:
 
 - **Fatal codes** (4): `parseX12` throws an `X12ParseError` carrying one when the input is not
   recoverable as X12 at all.
-- **Warning codes** (65): a deviation a reader tolerated, recorded on the model's `warnings`
+- **Warning codes** (72): a deviation a reader tolerated, recorded on the model's `warnings`
   array with a position, while the value stays on the model.
 - **Refusal codes** (15 registries): a builder or a checker refused what it was given and threw
   a typed error carrying one.
@@ -332,6 +332,34 @@ The declared span of this BDS or BIN segment's binary data holds a character abo
 ### X12_271_HEADER_ABSENT
 
 271 with no BHT: the transaction set carries no Beginning of Hierarchical Transaction segment, which the implementation guide requires right after the ST of every 271, so a trading partner checking against the guide can reject it. Nothing is fabricated to stand in: no purpose code, reference, date or time is inferred, and the rest of the transaction set was read as it stands. The verbatim segments are preserved on the transaction set. Nothing is echoed here.
+
+### X12_997_AK1_ABSENT
+
+997 with no AK1: the transaction set carries no functional group response header, so the sender named no functional group this 997 answers. Nothing is filled in: `ak1` is undefined, so nothing on this 997 ties it to a functional group you sent. The verbatim segments are preserved on the transaction set. Nothing is echoed here.
+
+### X12_997_AK5_ABSENT
+
+997 transaction set response with no AK5: the AK2 at `position.segmentIndex` was closed by the next AK2, by the AK9 or by the end of the transaction set before its AK5 arrived, so the sender stated no disposition for that response. Nothing is filled in: that response's `ak5` is undefined. Do not read it as an accept. The verbatim segments are preserved on the transaction set. Nothing is echoed here.
+
+### X12_997_AK9_ABSENT
+
+997 with no AK9: the transaction set ends without a functional group response trailer, so the sender stated no disposition and no counts for the group. Nothing is filled in: `ak9` is undefined. Do not read it as an accept. The verbatim segments are preserved on the transaction set. Nothing is echoed here.
+
+### X12_997_AK5_DISPOSITION_UNKNOWN
+
+997 transaction set response disposition outside its code list: AK5-01 at `position.segmentIndex` is absent, empty or not one of the six codes of code list 717 (`A`, `E`, `M`, `R`, `W`, `X`, compared exactly). `ak5.disposition` is undefined and `ak5.dispositionRaw` carries the code as sent, so a code this package does not know survives. Do not read it as an accept. Nothing is echoed here.
+
+### X12_997_AK9_DISPOSITION_UNKNOWN
+
+997 functional group disposition outside its code list: AK9-01 at `position.segmentIndex` is absent, empty or not one of the seven codes of code list 715 (`A`, `E`, `P`, `R`, `M`, `W`, `X`, compared exactly). `ak9.disposition` is undefined and `ak9.dispositionRaw` carries the code as sent; the counts and syntax error codes after it are read as sent. Do not read it as an accept. Nothing is echoed here.
+
+### X12_997_SEGMENT_OUT_OF_PLACE
+
+997 segment the reader did not read where it stands: the segment at `position.segmentIndex` is an AK3 or AK5 with no AK2 open, an AK4 with no AK3 open, an AK1 after an AK2, an AK2 after the AK9, or a second AK1 or AK9, which the 997 does not allow. It is not on the reading, and for a repeated AK1 or AK9 the first one stands. The verbatim segment is preserved on the transaction set. Nothing is echoed here.
+
+### X12_997_SEGMENT_NOT_DEFINED
+
+997 segment the 997 does not define: the segment at `position.segmentIndex` is not one of AK1, AK2, AK3, AK4, AK5 or AK9, such as a CTX or an IK3, IK4 or IK5 of a 999. The 997 has no place for it, so it is not on the reading. The verbatim segment is preserved on the transaction set. Nothing is echoed here.
 
 ## Refusal codes
 

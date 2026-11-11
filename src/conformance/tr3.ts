@@ -372,6 +372,19 @@ export const X12_TR3_CONFORMANCE: readonly X12Tr3Conformance[] = Object.freeze([
       "states one is emitted verbatim instead.",
   }),
   tr3Row({
+    transaction: "997",
+    variant: null,
+    title: "Functional Acknowledgment",
+    tr3: null,
+    directions: READ_AND_BUILD,
+    adoption: "not-adopted",
+    cfrAdopted: [],
+    note:
+      "The 997 is read and written to the ASC X12 base standard alone, version 005010, so no " +
+      "implementation guide identifier names it and none is carried here. 45 CFR 162.920 names " +
+      "no identifier for it either.",
+  }),
+  tr3Row({
     transaction: "999",
     variant: null,
     title: "Implementation Acknowledgment",

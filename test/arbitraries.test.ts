@@ -209,6 +209,9 @@ describe("transactionSetType", () => {
       });
     }
     expect(TRANSACTION_SET_TYPES.some((t) => t.id === "999" || t.id === "275")).toBe(false);
+    // The 997 travels under FA, but names no guide for GS-08 and ST-03, so it is no type here.
+    expect(FUNCTIONAL_IDENTIFIERS["997"]).toBe("FA");
+    expect(TRANSACTION_SET_TYPES.some((t) => t.id === "997")).toBe(false);
     expect(new Set(draw(transactionSetType(), 400).map((t) => t.version))).toEqual(
       new Set(TRANSACTION_SET_TYPES.map((t) => t.version)),
     );

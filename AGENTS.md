@@ -43,13 +43,13 @@ pnpm differential:check
 ```
 
 `pnpm test:perf` is the scaling gate (`test/perf/scaling-gate.perf.ts`): it fails when `parseX12`,
-or the typed reader or builder of any shape the benchmarks measure (835, 837P, 837I, 270, 271, 999
-and 275), grows faster than its input. It runs apart from `pnpm test` and never under coverage.
+or the typed reader or builder of any shape the benchmarks measure (835, 837P, 837I, 270, 271, 999,
+997 and 275), grows faster than its input. It runs apart from `pnpm test` and never under coverage.
 
 ## Benchmarks
 
 `bench/x12.bench.mjs` measures the built package on synthetic documents in the shapes real traffic
-has (an 835 remittance, 837P and 837I batches, a 270 and its 271, a 999, and a 275 attachment),
+has (an 835 remittance, 837P and 837I batches, a 270 and its 271, a 999, a 997, and a 275 attachment),
 each parsed, read and built, from the small document a feed carries all day to several megabytes.
 `bench/corpus.mjs` builds every document in code; `test/perf/bench-corpus.test.ts` holds that each
 reads with no warning.

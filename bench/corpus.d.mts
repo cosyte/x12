@@ -7,6 +7,7 @@ import type {
   Build275Spec,
   Build835Spec,
   Build837Spec,
+  Build997Spec,
   Build999Spec,
   X12Decimal,
 } from "../src/index.js";
@@ -24,6 +25,8 @@ export function inquiry270Text(i: number): string;
 export function inquiry270Spec(dec: DecimalReader, i: number): Build270Spec;
 export function eligibility271Text(i: number, benefits: number): string;
 export function eligibility271Spec(dec: DecimalReader, i: number, benefits: number): Build271Spec;
+export function ack997Text(i: number, sets?: number): string;
+export function ack997Spec(dec: DecimalReader, i: number, sets?: number): Build997Spec;
 export function ack999Text(i: number, sets?: number): string;
 export function ack999Spec(dec: DecimalReader, i: number, sets?: number): Build999Spec;
 export function attachment275Text(i: number, bytes: number): string;

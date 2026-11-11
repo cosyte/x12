@@ -27,6 +27,7 @@ import type {
   Ik403Code,
   Ta1AckCode,
   Ta1NoteCode,
+  X12Ack997SetDispositionCode,
   X12AckDispositionCode,
 } from "./codes.js";
 
@@ -239,6 +240,140 @@ export interface X12Ack999 {
 }
 
 // ---------------------------------------------------------------------------
+// Parsed 997 model.
+// ---------------------------------------------------------------------------
+
+/**
+ * The decoded AK3 data segment note of a 997: the segment of the
+ * acknowledged transaction set the note is about.
+ *
+ * - `segmentIdCode` - AK3-01: the segment identifier (e.g. `NM1`).
+ * - `segmentPositionInTransactionSet` - AK3-02: 1-indexed position of the
+ *   segment inside the acknowledged ST..SE.
+ * - `loopIdentifier` - AK3-03: situational; the loop identifier code.
+ * - `syntaxErrorCode` - AK3-04: situational; the segment syntax error code,
+ *   carried verbatim as sent. No code list is bundled for it, so a code is
+ *   never dropped for being one this package does not know.
+ *
+ * @example
+ * ```ts
+ * import type { X12Ack997Ak3 } from "@cosyte/x12";
+ * declare const ak3: X12Ack997Ak3;
+ * ak3.segmentIdCode;   // "NM1"
+ * ak3.syntaxErrorCode; // "8" | undefined
+ * ```
+ */
+export interface X12Ack997Ak3 {
+  readonly segmentIdCode: string;
+  readonly segmentPositionInTransactionSet: number;
+  readonly loopIdentifier: string | undefined;
+  readonly syntaxErrorCode: string | undefined;
+}
+
+/**
+ * The decoded AK4 data element note of a 997: the element of the segment the
+ * enclosing AK3 names.
+ *
+ * - `position` - AK4-01: the element / component / repetition position, the
+ *   same composite the 999's IK4-01 carries.
+ * - `dataElementReferenceNumber` - AK4-02: situational.
+ * - `syntaxErrorCode` - AK4-03: the data element syntax error code, carried
+ *   verbatim as sent; `undefined` only when the sender left it empty.
+ * - `copyOfBadDataElement` - AK4-04: situational; the offending value as
+ *   sent. It can be PHI, so never log it.
+ *
+ * @example
+ * ```ts
+ * import type { X12Ack997Ak4 } from "@cosyte/x12";
+ * declare const ak4: X12Ack997Ak4;
+ * ak4.position.element; // 3
+ * ak4.syntaxErrorCode;  // "7"
+ * ```
+ */
+export interface X12Ack997Ak4 {
+  readonly position: X12Ack999Ik4Position;
+  readonly dataElementReferenceNumber: string | undefined;
+  readonly syntaxErrorCode: string | undefined;
+  readonly copyOfBadDataElement: string | undefined;
+}
+
+/** One AK3 with the AK4 element notes that follow it. */
+export interface X12Ack997SegmentNote {
+  readonly ak3: X12Ack997Ak3;
+  readonly elementNotes: readonly X12Ack997Ak4[];
+}
+
+/**
+ * The decoded AK5 transaction set response trailer of a 997.
+ *
+ * - `disposition` - AK5-01 narrowed to code list 717
+ *   ({@link X12Ack997SetDispositionCode}), or `undefined` when the sender
+ *   wrote a code outside it or none. Nothing stands in for it: a reader that
+ *   checks `disposition === "A"` never takes an unread code for an accept.
+ * - `dispositionRaw` - AK5-01 as sent (release escapes resolved), so an
+ *   unknown code survives. `""` when the element is empty or absent.
+ * - `syntaxErrorCodes` - AK5-02..AK5-06, verbatim.
+ */
+export interface X12Ack997Ak5 {
+  readonly disposition: X12Ack997SetDispositionCode | undefined;
+  readonly dispositionRaw: string;
+  readonly syntaxErrorCodes: readonly string[];
+}
+
+/**
+ * One AK2..AK5 transaction set response inside a 997. `ak5` is `undefined`
+ * when the response has no AK5, and the reading warns
+ * `X12_997_AK5_ABSENT`.
+ */
+export interface X12Ack997TransactionResponse {
+  readonly ak2: X12Ack999Ak2;
+  readonly segmentNotes: readonly X12Ack997SegmentNote[];
+  readonly ak5: X12Ack997Ak5 | undefined;
+}
+
+/**
+ * The decoded AK9 functional group response trailer of a 997.
+ *
+ * - `disposition` - AK9-01 narrowed to code list 715
+ *   ({@link X12AckDispositionCode}), or `undefined` when the sender wrote a
+ *   code outside it or none.
+ * - `dispositionRaw` - AK9-01 as sent, `""` when empty or absent.
+ * - the three counts - AK9-02, AK9-03 and AK9-04, read as on a 999.
+ * - `syntaxErrorCodes` - AK9-05..AK9-09, verbatim.
+ */
+export interface X12Ack997Ak9 {
+  readonly disposition: X12AckDispositionCode | undefined;
+  readonly dispositionRaw: string;
+  readonly numberOfTransactionSets: number;
+  readonly numberOfReceivedTransactionSets: number;
+  readonly numberOfAcceptedTransactionSets: number;
+  readonly syntaxErrorCodes: readonly string[];
+}
+
+/**
+ * The decoded 997 Functional Acknowledgment, returned by `parse997(raw)`.
+ * Read to the ASC X12 base standard: no implementation guide names the 997,
+ * so no declared guide is checked.
+ *
+ * Nothing on it is filled in. An absent AK1, AK5 or AK9 reads as
+ * `undefined` and warns (`X12_997_AK1_ABSENT`, `X12_997_AK5_ABSENT`,
+ * `X12_997_AK9_ABSENT`); a disposition outside its code list reads as
+ * `undefined` beside its verbatim `dispositionRaw` and warns
+ * (`X12_997_AK5_DISPOSITION_UNKNOWN`, `X12_997_AK9_DISPOSITION_UNKNOWN`); a
+ * segment the 997 does not allow where it stands is left unread and warns
+ * `X12_997_SEGMENT_OUT_OF_PLACE`, and one it does not define at all (a CTX,
+ * an IK3) warns `X12_997_SEGMENT_NOT_DEFINED`. Envelope-level warnings stay on
+ * `interchange.warnings`. Never throws on a document `parseX12` reads.
+ */
+export interface X12Ack997 {
+  readonly interchange: X12Interchange;
+  readonly ak1: X12Ack999Ak1 | undefined;
+  readonly transactionResponses: readonly X12Ack997TransactionResponse[];
+  readonly ak9: X12Ack997Ak9 | undefined;
+  readonly warnings: readonly X12ParseWarning[];
+}
+
+// ---------------------------------------------------------------------------
 // Parsed TA1 model.
 // ---------------------------------------------------------------------------
 
@@ -392,6 +527,68 @@ export interface Build999EnvelopeSpec {
 export interface Build999Spec {
   readonly envelope: Build999EnvelopeSpec;
   readonly functionalGroup: Build999FunctionalGroupSpec;
+}
+
+/**
+ * Element-level error spec for `build997`: one AK4. `syntaxErrorCode`
+ * (AK4-03) is required and written as given. `copyOfBadDataElement` is
+ * optional and SHOULD be omitted whenever the offending value is PHI.
+ */
+export interface Build997ElementErrorSpec {
+  readonly position: {
+    readonly element: number;
+    readonly component?: number;
+    readonly repetition?: number;
+  };
+  readonly dataElementReferenceNumber?: string;
+  readonly syntaxErrorCode: string;
+  readonly copyOfBadDataElement?: string;
+}
+
+/** Segment-level error spec for `build997`: one AK3 with its AK4s. */
+export interface Build997SegmentErrorSpec {
+  readonly segmentIdCode: string;
+  readonly segmentPositionInTransactionSet: number;
+  readonly loopIdentifier?: string;
+  readonly syntaxErrorCode?: string;
+  readonly elementErrors?: readonly Build997ElementErrorSpec[];
+}
+
+/** Transaction set response spec for `build997`: one AK2..AK5 block. */
+export interface Build997TransactionResponseSpec {
+  readonly transactionSetIdCode: string;
+  readonly transactionSetControlNumber: string;
+  readonly implementationConventionReference?: string;
+  /** AK5-01, code list 717: there is no `P` for one transaction set. */
+  readonly disposition: X12Ack997SetDispositionCode;
+  readonly syntaxErrorCodes?: readonly string[];
+  readonly segmentErrors?: readonly Build997SegmentErrorSpec[];
+}
+
+/**
+ * Functional group response spec for `build997`: the AK1 and AK9 pair. AK1-03
+ * is situational on a 997, so `versionRelease` is optional.
+ */
+export interface Build997FunctionalGroupSpec {
+  readonly functionalIdCode: string;
+  readonly groupControlNumber: string;
+  readonly versionRelease?: string;
+  readonly disposition: X12AckDispositionCode;
+  readonly numberOfTransactionSets: number;
+  readonly numberOfReceivedTransactionSets: number;
+  readonly numberOfAcceptedTransactionSets: number;
+  readonly syntaxErrorCodes?: readonly string[];
+  readonly transactionResponses: readonly Build997TransactionResponseSpec[];
+}
+
+/**
+ * Top-level spec for `build997`. The envelope takes the same fields and
+ * defaults as the 999's ({@link Build999EnvelopeSpec}); GS-08 is the base
+ * standard version `005010` and the ST carries no ST-03.
+ */
+export interface Build997Spec {
+  readonly envelope: Build999EnvelopeSpec;
+  readonly functionalGroup: Build997FunctionalGroupSpec;
 }
 
 /** Top-level spec for `buildTA1`. */

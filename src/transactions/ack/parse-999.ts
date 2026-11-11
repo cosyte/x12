@@ -22,15 +22,12 @@
 import type { Buffer } from "node:buffer";
 
 import { parseX12 } from "../../parser/index.js";
-import { getSegmentValue, type X12Segment } from "../../parser/segment.js";
 import type {
-  Delimiters,
   X12Interchange,
   X12ParseOptions,
   X12Position,
   X12TransactionSet,
 } from "../../parser/types.js";
-import { splitWithRelease, unescapeRelease } from "../../parser/release.js";
 import {
   ack999Ak1Absent,
   ack999Ak9Absent,
@@ -47,6 +44,16 @@ import {
 // beside the declared-guide check every typed reader runs.
 import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
 
+import {
+  collectErrorCodes,
+  getElement,
+  getOptionalElement,
+  parseElementPosition,
+  parseNonNegativeInteger,
+  readAk1,
+  readAk2,
+  readAk9Counts,
+} from "./ack-elements.js";
 import {
   IK3_SYNTAX_ERROR_CODES,
   IK4_SYNTAX_ERROR_CODES,
@@ -245,11 +252,7 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
       seg.id === "AK3" ? "IK3" : seg.id === "AK4" ? "IK4" : seg.id === "AK5" ? "IK5" : seg.id;
     switch (id) {
       case "AK1": {
-        ak1 = {
-          functionalIdCode: getElement(seg, 1, delimiters),
-          groupControlNumber: getElement(seg, 2, delimiters),
-          versionRelease: getOptionalElement(seg, 3, delimiters),
-        };
+        ak1 = readAk1(seg, delimiters);
         break;
       }
       case "AK2": {
@@ -258,11 +261,7 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
         // structurally truncated).
         if (currentResponse !== undefined) flushResponse(undefined);
         currentResponse = {
-          ak2: {
-            transactionSetIdCode: getElement(seg, 1, delimiters),
-            transactionSetControlNumber: getElement(seg, 2, delimiters),
-            implementationConventionReference: getOptionalElement(seg, 3, delimiters),
-          },
+          ak2: readAk2(seg, delimiters),
           // `body` starts after the ST, which is `tx.segments[0]`.
           segmentIndex: b + 1,
           segmentNotes: [],
@@ -293,7 +292,7 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
         const code = narrowIk403Code(rawCode);
         if (code === undefined) break; // IK4-03 is required; without it the IK4 is malformed and dropped
         const rawPos = getElement(seg, 1, delimiters);
-        const pos = parseIk4Position(rawPos, delimiters);
+        const pos = parseElementPosition(rawPos, delimiters);
         currentElementNote = {
           ik4: {
             position: pos,
@@ -339,14 +338,7 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
         const disposition =
           narrowDispositionCode(getElement(seg, 1, delimiters)) ??
           fallBackToReject(ack999Ak9DispositionUnknown, b + 1);
-        const errorCodes = collectErrorCodes(seg, 5, 9, delimiters);
-        ak9 = {
-          disposition,
-          numberOfTransactionSets: parseNonNegativeInteger(getElement(seg, 2, delimiters)),
-          numberOfReceivedTransactionSets: parseNonNegativeInteger(getElement(seg, 3, delimiters)),
-          numberOfAcceptedTransactionSets: parseNonNegativeInteger(getElement(seg, 4, delimiters)),
-          syntaxErrorCodes: errorCodes,
-        };
+        ak9 = { disposition, ...readAk9Counts(seg, delimiters) };
         break;
       }
       default: {
@@ -386,71 +378,9 @@ function decodeAck999(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
 }
 
 // ---------------------------------------------------------------------------
-// Element accessors (segment-internal).
+// Code narrowing (999-specific). The element readers are shared with the 997
+// in `./ack-elements.ts`.
 // ---------------------------------------------------------------------------
-
-/**
- * Read element `n` (1-indexed) of `seg`. Returns `""` when missing - the
- * lenient narrow consistent with the envelope walker's `el()` helper.
- *
- * @internal
- */
-function getElement(seg: X12Segment, n: number, delimiters: Delimiters): string {
-  const value = getSegmentValue(seg, String(n).padStart(2, "0"), delimiters);
-  return value ?? "";
-}
-
-/**
- * Read optional element `n` (1-indexed) of `seg`. Returns `undefined`
- * when missing OR when present-but-empty (X12 represents "not supplied"
- * either way), so the typed-model `string | undefined` collapses both.
- *
- * @internal
- */
-function getOptionalElement(
-  seg: X12Segment,
-  n: number,
-  delimiters: Delimiters,
-): string | undefined {
-  const value = getSegmentValue(seg, String(n).padStart(2, "0"), delimiters);
-  if (value === undefined || value === "") return undefined;
-  return value;
-}
-
-/**
- * Collect non-empty element strings between positions `start` and `end`
- * inclusive (1-indexed). Used for the trailing AK9-05..AK9-09 and
- * IK5-02..IK5-06 syntax-error code lists. Returns a frozen readonly
- * array - empty when no codes are present.
- *
- * @internal
- */
-function collectErrorCodes(
-  seg: X12Segment,
-  start: number,
-  end: number,
-  delimiters: Delimiters,
-): readonly string[] {
-  const out: string[] = [];
-  for (let i = start; i <= end; i++) {
-    const value = getOptionalElement(seg, i, delimiters);
-    if (value !== undefined) out.push(value);
-  }
-  return Object.freeze(out);
-}
-
-/**
- * Parse a non-negative integer from an X12 numeric element. Returns `0`
- * for empty / unparseable input - the lenient narrow consistent with the
- * envelope walker's behavior on malformed-but-not-fatal counts.
- *
- * @internal
- */
-function parseNonNegativeInteger(value: string): number {
-  if (value.length === 0) return 0;
-  if (!/^\d+$/u.test(value)) return 0;
-  return parseInt(value, 10);
-}
 
 /**
  * Narrow an inbound IK5/AK5/AK9 disposition string to {@link
@@ -505,52 +435,3 @@ function narrowIk403Code(value: string | undefined): Ik403Code | undefined {
   }
   return undefined;
 }
-
-/**
- * Parse the IK4-01 composite (element / component / repetition position)
- * into its triple. The composite is encoded with the active component
- * delimiter (typically `:` or `\\`). All three numeric positions are
- * 1-indexed against the inbound TR3.
- *
- * @internal
- */
-function parseIk4Position(
-  raw: string,
-  delimiters: Delimiters,
-): { element: number; component: number | undefined; repetition: number | undefined } {
-  const parts = splitWithRelease(raw, delimiters.component);
-  /* v8 ignore next -- a split always yields at least one part, so `parts[0]` is defined */
-  const elementText = unescapeRelease(parts[0] ?? "", delimiters, noop, { segmentIndex: 0 });
-  const componentText =
-    parts[1] === undefined
-      ? undefined
-      : unescapeRelease(parts[1], delimiters, noop, { segmentIndex: 0 });
-  const repetitionText =
-    parts[2] === undefined
-      ? undefined
-      : unescapeRelease(parts[2], delimiters, noop, { segmentIndex: 0 });
-  return {
-    element: parseNonNegativeInteger(elementText),
-    component:
-      componentText === undefined || componentText === ""
-        ? undefined
-        : parseNonNegativeInteger(componentText),
-    repetition:
-      repetitionText === undefined || repetitionText === ""
-        ? undefined
-        : parseNonNegativeInteger(repetitionText),
-  };
-}
-
-/**
- * The sink for the IK4-01 unescapes above. It is never called: IK4-01 is the
- * first element, so a trailing `?` in it would release the separator after it,
- * and an IK4 cut off inside IK4-01 has no IK4-03 and is dropped before its
- * position is read.
- *
- * @internal
- */
-/* v8 ignore next -- see above: no IK4-01 that reaches the decoder can end in a dangling `?` */
-const noop = (_w: X12ParseWarning): void => {
-  /* intentionally empty */
-};

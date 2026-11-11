@@ -695,6 +695,43 @@ export function ack999Text(i, sets = 1) {
   return envelope("PAYER01", "CLINIC01", i, "FA", "005010X231A1", body);
 }
 
+// ---- 997, the functional acknowledgment some partners still send ------------------------------
+
+/**
+ * The spec of a synthetic 997 for index `i`, accepting `sets` 837 transaction sets. The 999's
+ * shape on the base standard: AK1 without AK1-03, AK5 where the 999 has IK5.
+ */
+export function ack997Spec(_dec, i, sets = 1) {
+  const responses = [];
+  for (let k = 0; k < sets; k++) {
+    responses.push({
+      transactionSetIdCode: "837",
+      transactionSetControlNumber: String(k + 1).padStart(4, "0"),
+      disposition: "A",
+    });
+  }
+  return {
+    envelope: envelopeSpec("PAYER01", "CLINIC01", i),
+    functionalGroup: {
+      functionalIdCode: "HC",
+      groupControlNumber: gcn(i),
+      disposition: "A",
+      numberOfTransactionSets: sets,
+      numberOfReceivedTransactionSets: sets,
+      numberOfAcceptedTransactionSets: sets,
+      transactionResponses: responses,
+    },
+  };
+}
+
+/** The text of {@link ack997Spec}. */
+export function ack997Text(i, sets = 1) {
+  const body = ["ST*997*0001", `AK1*HC*${gcn(i)}`];
+  for (let k = 0; k < sets; k++) body.push(`AK2*837*${String(k + 1).padStart(4, "0")}`, "AK5*A");
+  body.push(`AK9*A*${String(sets)}*${String(sets)}*${String(sets)}`);
+  return envelope("PAYER01", "CLINIC01", i, "FA", "005010", body);
+}
+
 // ---- 275, an attachment: one large opaque payload -------------------------------------------
 
 /** `bytes` of base64 text: the shape a scanned record takes inside a BDS segment. */

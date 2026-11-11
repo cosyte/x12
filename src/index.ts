@@ -45,6 +45,13 @@ export {
   aaaRejectReasonAbsent,
   aaaSegmentMalformed,
   aaaUnknownCode,
+  ack997Ak1Absent,
+  ack997Ak5Absent,
+  ack997Ak5DispositionUnknown,
+  ack997Ak9Absent,
+  ack997Ak9DispositionUnknown,
+  ack997SegmentNotDefined,
+  ack997SegmentOutOfPlace,
   ack999Ak1Absent,
   ack999Ak9Absent,
   ack999Ak9DispositionUnknown,
@@ -752,8 +759,8 @@ export type {
   X12DateValue,
 } from "./transactions/shared/date-conversion.js";
 
-// Phase 3 - acknowledgments surface: parse / build 999 (005010X231A1) and
-// envelope-level TA1 as pure functions. See `src/transactions/ack/index.ts`
+// Phase 3 - acknowledgments surface: parse / build 999 (005010X231A1), 997
+// (base standard) and envelope-level TA1 as pure functions. See `src/transactions/ack/index.ts`
 // for the full barrel.
 export {
   ACK_BUILD_ERROR_CODES,
@@ -762,13 +769,21 @@ export {
   IK4_SYNTAX_ERROR_CODES,
   TA1_ACK_CODES,
   TA1_NOTE_CODES,
+  X12_997_SET_DISPOSITION_CODES,
   X12_ACK_DISPOSITION_CODES,
+  build997,
   build999,
   buildTA1,
   isAcceptDisposition,
+  parse997,
   parse999,
   parseTA1,
   type AckBuildErrorCode,
+  type Build997ElementErrorSpec,
+  type Build997FunctionalGroupSpec,
+  type Build997SegmentErrorSpec,
+  type Build997Spec,
+  type Build997TransactionResponseSpec,
   type Build999ElementErrorSpec,
   type Build999EnvelopeSpec,
   type Build999FunctionalGroupSpec,
@@ -781,6 +796,14 @@ export {
   type Ik403Code,
   type Ta1AckCode,
   type Ta1NoteCode,
+  type X12Ack997,
+  type X12Ack997Ak3,
+  type X12Ack997Ak4,
+  type X12Ack997Ak5,
+  type X12Ack997Ak9,
+  type X12Ack997SegmentNote,
+  type X12Ack997SetDispositionCode,
+  type X12Ack997TransactionResponse,
   type X12Ack999,
   type X12Ack999Ak1,
   type X12Ack999Ak2,

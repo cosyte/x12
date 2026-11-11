@@ -1701,6 +1701,31 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   whatever the sender put in IK4-04; the library never auto-populates it, and senders SHOULD omit it
   when the bytes are PHI.
 
+- **The 997 is read and built to the ASC X12 base standard alone, and its codes are carried, not
+  checked.** No implementation guide names the 997, so `parse997` checks no declared guide and
+  `build997` writes GS-08 `005010` and an `ST` with no `ST-03`. The material used is the base
+  standard's segment layout (`AK1`, `AK2`, `AK3`, `AK4`, `AK5`, `AK9`, the same positions the 999
+  reader already reads) and the code values of lists 715 and 717 for the two dispositions; no guide
+  table and no code description is bundled. So:
+  - **`AK5-01` and `AK9-01` are typed; every other code is a string as sent.** `AK3-04`, `AK4-03` and
+    the `AK5` and `AK9` syntax error codes are carried verbatim on read and written verbatim (escaped)
+    on build. Nothing says whether a code is one the standard defines, and `build997` will write a
+    code no receiver knows.
+  - **Nothing is filled in.** Unlike `parse999`, which reads a missing or unreadable disposition as a
+    reject, `parse997` reads an absent `AK1`, `AK5` or `AK9` as `undefined`, and a disposition outside
+    its list as an `undefined` `disposition` beside `dispositionRaw`, each with a warning. A caller
+    that tests for a reject rather than for an accept reads those as accepted; test
+    `disposition === "A"` (or `"E"`, `"P"`) instead.
+  - **A segment out of place is left unread, never repaired.** An `AK3` or `AK5` with no `AK2` open,
+    an `AK4` with no `AK3` open, an `AK1` after an `AK2`, an `AK2` after the `AK9`, and a second
+    `AK1` or `AK9` warn `X12_997_SEGMENT_OUT_OF_PLACE` and stay only on the transaction set; for a
+    repeated `AK1` or `AK9` the first one stands. A segment the 997 does not define (a `CTX`, a
+    999's `IK3`, `IK4` or `IK5`, anything else) warns `X12_997_SEGMENT_NOT_DEFINED` and is not read.
+  - **`build997` writes no `CTX`.** A 999 error list type-checks as a 997 one, `contexts` and all,
+    so `build997` refuses any segment or element error that carries `contexts` rather than writing a
+    segment the 997 does not have or dropping the caller's data.
+  - **`X12Ack997Ak4.copyOfBadDataElement` can carry PHI**, exactly as the 999's `IK4-04` can.
+
 - **Balance and integrity checks warn; they never rebalance or renumber.** The 835 TR3 §1.10.2 balance
   invariants, 837 HL parent-pointer integrity, and envelope-count reconciliation surface a warning on
   mismatch and preserve the inbound values verbatim. The library will not "fix" a payer artifact for

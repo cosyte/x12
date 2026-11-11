@@ -11,9 +11,13 @@
  * than on a runner. Every document is synthetic.
  */
 
+import { Buffer } from "node:buffer";
+
 import { describe, expect, it } from "vitest";
 
 import {
+  ack997Spec,
+  ack997Text,
   ack999Spec,
   ack999Text,
   attachment275Spec,
@@ -39,12 +43,14 @@ import {
   build835,
   build837I,
   build837P,
+  build997,
   build999,
   get270Inquiry,
   get271Eligibility,
   get275Attachments,
   get835,
   get837Claims,
+  parse997,
   parse999,
   parseX12,
   serializeX12,
@@ -136,6 +142,21 @@ describe("the benchmark corpus", () => {
     });
   }
 
+  for (const sets of [1, 5]) {
+    it(`997 accepting ${String(sets)} sets: reads clean and builds to its text`, () => {
+      const text = ack997Text(7, sets);
+      clean(text);
+      const ack = parse997(text);
+      expect(ack?.warnings).toEqual([]);
+      expect(ack?.transactionResponses).toHaveLength(sets);
+      expect(serializeX12(build997(ack997Spec(dec, 7, sets)))).toBe(text);
+    });
+  }
+
+  it("997 of one set is the size its bench label names", () => {
+    expect(Buffer.byteLength(ack997Text(0, 1))).toBe(239);
+  });
+
   for (const bytes of [1, 4096, 65_536]) {
     it(`275 with a ${String(bytes)}-octet payload: reads clean and builds to its text`, () => {
       const text = attachment275Text(7, bytes);
@@ -153,7 +174,8 @@ describe("the benchmark corpus", () => {
 describe("the benchmark suite", () => {
   it("runs every case once at its smallest size against the source", () => {
     const names = suite.benchmarks.map((b) => b.name);
-    expect(names).toHaveLength(21);
+    // Seven shapes, three operations each: the 997 brought the last three.
+    expect(names).toHaveLength(24);
     // The pull request comparison has a 600 second budget on a hosted runner: ten small cases.
     const compared = suite.benchmarks.flatMap((b) =>
       b.sizes.filter((s) => s.compare !== false).map((s) => `${b.name} @ ${s.label}`),

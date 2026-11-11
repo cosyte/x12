@@ -43,9 +43,15 @@
  * transcribed from the same reference as the eight that check out, on the same
  * retrieval, and `build-276.ts` reads it from here rather than restating it.
  *
+ * `FA` (997) is the tenth, added with the 997 builder, which reads it from
+ * here. It is the functional identifier every acknowledgment group travels
+ * under, and `build-999.ts` already stamps the same `FA` on the 999, so the
+ * test file asserts the two agree by building a 999 and reading its GS-01.
+ *
  * @internal - the builders' shared source for GS-01. Not part of the package's
  * public surface: a consumer reads GS-01 off a parsed `GS` segment, and this
- * table exists so the EMIT side has one carrier for the value instead of nine.
+ * table exists so the EMIT side has one carrier for the value instead of one
+ * per builder.
  */
 
 /**
@@ -87,4 +93,5 @@ export const FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET = Object.freeze({
   "834": "BE",
   "835": "HP",
   "837": "HC",
+  "997": "FA",
 } as const);

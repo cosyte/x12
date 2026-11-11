@@ -26,6 +26,8 @@ import {
 import { describe, expect, it } from "vitest";
 
 import {
+  ack997Spec,
+  ack997Text,
   ack999Spec,
   ack999Text,
   attachment275Spec,
@@ -49,12 +51,14 @@ import {
   build835,
   build837I,
   build837P,
+  build997,
   build999,
   get270Inquiry,
   get271Eligibility,
   get275Attachments,
   get835,
   get837Claims,
+  parse997,
   parse999,
   parseX12,
   serializeX12,
@@ -417,6 +421,30 @@ builderGate(
   1,
   1_200,
   { countN: 2_000 },
+);
+
+// The 997: the size knob is the number of transaction sets acknowledged, as for the 999, whose
+// documents it matches segment for segment. The 999's figures size it: 600 sets read and built in
+// under 10 ms on a hosted runner and 1,000 one-set 999s read in under 8 ms and built in about 11,
+// so these start at 2,000 sets and 4,000 documents, for a base phase of 20 ms or more on each axis.
+readerGate(
+  "@cosyte/x12 parse997",
+  ack997Text,
+  1,
+  2_000,
+  (raw) => {
+    const ack = parse997(raw);
+    return counted(ack, ack?.transactionResponses.length ?? 0);
+  },
+  { countN: 4_000 },
+);
+builderGate(
+  "@cosyte/x12 build997, then serializeX12",
+  ack997Spec.bind(null, dec),
+  build997,
+  1,
+  2_000,
+  { countN: 4_000 },
 );
 
 // The 275: the size knob is the octets of the one payload, a single long segment, so the

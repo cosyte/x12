@@ -39,13 +39,15 @@ codes. Below 1.0 a breaking change bumps the minor version and is called out in 
 its migration. On an older 0.0 release, pin an exact version rather than a range.
 
 Typed read and typed emit both ship for every transaction set this package covers: 270, 271, 276,
-277 and 277CA, 278 request and response, 820, 834, 835, 837P, 837I and 837D, 999 and TA1, each
-with a reader and a matching domain builder, and the two claims attachments guides 45 CFR 162.2002
+277 and 277CA, 278 request and response, 820, 834, 835, 837P, 837I and 837D, 999, 997 and TA1,
+each with a reader and a matching domain builder, and the two claims attachments guides 45 CFR 162.2002
 adopts for the period on and after May 26, 2028: the 277 request for additional information
 (`006020X313`) and the 275 that answers it (`006020X314`). For those two the base X12 006020
 structure is typed and no implementation-guide usage is checked, so a qualifier or segment the
 guide requires is carried as sent and never validated; `KNOWN-LIMITATIONS.md` lists what else
-they leave open. `X12_TR3_CONFORMANCE` is the machine-readable answer to which implementation
+they leave open. The 997 functional acknowledgment, which some trading partners still send in
+place of a 999, is read and built to the ASC X12 base standard alone, with no guide and no guide
+tables. `X12_TR3_CONFORMANCE` is the machine-readable answer to which implementation
 guide each one follows, and is a better source than this page.
 
 Not covered, and deliberately so: a byte-exact round trip is not guaranteed in general (see
@@ -149,7 +151,7 @@ Everything ships from one entry point; there are no subpath imports.
 
 - **Read.** `parseX12` decodes an interchange into a model, and a per-transaction reader turns a
   transaction set into a typed one (`get835`, `get837Claims`, `get270Inquiry`, `get271Eligibility`,
-  `get276StatusInquiry`, `parse999`, `parseTA1`, and the rest).
+  `get276StatusInquiry`, `parse999`, `parse997`, `parseTA1`, and the rest).
 - **Emit.** `serializeX12` and `buildInterchange` are the general path, and every transaction set
   with a reader also has a domain builder (`build835`, `build837P`, `build271`, and the rest).
 - **Errors and warnings.** Parsing is lenient, and only **four** structural failures are ever fatal

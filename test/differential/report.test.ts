@@ -359,7 +359,8 @@ describe("differential report, second oracle", () => {
 
   it("S0382 AC-4: a row neither oracle maps is uncovered with a reason naming each oracle and its exact version", () => {
     expect(UNCOVERED_KEYS.sort()).toEqual(
-      ["275/", "277/RFAI", "278/request", "278/response", "837/D", "TA1/"].sort(),
+      // The 997 names no guide, so neither oracle has a map or model to bind to it.
+      ["275/", "277/RFAI", "278/request", "278/response", "837/D", "997/", "TA1/"].sort(),
     );
     for (const entry of REPORT.uncovered) {
       for (const oracle of REPORT.oracles) {
