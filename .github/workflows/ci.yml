@@ -31,8 +31,8 @@ jobs:
   #
   # The performance standard's two jobs run beside `verify`, never after it, so a pull request waits
   # for the slowest job rather than their sum:
-  # - `scaling-gate`: `pnpm test:perf`, the scaling gate on `parseX12` and on the 835 reader, and
-  #   its self-check, never under coverage. A skipped job satisfies a required check, so require
+  # - `scaling-gate`: `pnpm test:perf`, the scaling gate on `parseX12` and on the typed reader and
+  #   builder of every shape the bench measures, and its self-check, never under coverage. A skipped job satisfies a required check, so require
   #   `ci / scaling-gate` only while its input below stays on.
   # - `bench-compare` (pull requests only): bench/x12.bench.mjs timed on the base build and the head
   #   build, interleaved on one runner, at the sizes that run in milliseconds. Advisory: it never

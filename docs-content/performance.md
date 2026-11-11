@@ -25,10 +25,12 @@ p50/p95/p99, allocations per operation, peak heap, whether the heap stays flat o
 the cold import with its gzipped size. On a pull request, CI times the base build against the head
 build at the small sizes, interleaved on one runner; that comparison is advisory and fails nothing.
 
-Beside it, a scaling gate fails a pull request when parsing or reading an 835 starts to cost more
-than its input grows: four times the documents, or documents with four times the claims, must cost
-close to four times as long. A self-check proves the gate's fixtures are large enough to catch a
-quadratic path.
+Beside it, a scaling gate fails a pull request when `parseX12`, any of the typed readers above or
+any of their builders starts to cost more than its input grows: four times the documents, or
+documents four times as large (four times the claims, the benefit lines, the acknowledged sets or
+the payload octets), must cost close to four times as long. The 270 is one fixed question, so its
+size axis is a batch of four times the inquiries. A self-check proves each gate's fixtures are
+large enough to catch a quadratic path.
 
 The other guards fail on a class of slowdown rather than describe speed:
 
