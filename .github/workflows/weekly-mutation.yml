@@ -19,7 +19,7 @@ on:
     - cron: "47 6 * * 0"
     - cron: "47 6 * * 3"
   workflow_dispatch:
-  # TEMPORARY, for measuring on this branch; removed before review.
+  # TEMPORARY, for measuring on this branch (run 2); removed before review.
   push:
     branches: [test/testing-standard]
     paths: [".github/workflows/weekly-mutation.yml"]
