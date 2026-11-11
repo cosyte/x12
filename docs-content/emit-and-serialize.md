@@ -163,7 +163,7 @@ ix.warnings.length; // => 0
 emitted === serializeX12(parseX12(emitted)); // => true
 ```
 
-The full list is six constructs, enumerated with the rest of the emit contract in
+The full list is five constructs, enumerated with the rest of the emit contract in
 [Line endings between segments](./spec-notes-envelope.md#line-endings-between-segments), and the canonical statement of the boundary
 is the package's [KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md).
 

@@ -28,7 +28,10 @@ import {
   FATAL_CODES,
   parseX12,
   serializeX12,
+  UNEXPECTED_SEGMENT_CONTEXTS,
+  unexpectedSegment,
   WARNING_CODES,
+  X12ParseError,
   type X12ParseWarning,
 } from "../src/index.js";
 
@@ -412,16 +415,18 @@ describe("serializeX12: the line-break normalization is uniform across EOL style
  * transaction is retained on `ix.orphanSegments` with a structural `anchor`,
  * and the emit now puts it back at that anchor, so it round-trips - measured
  * below and, at every structural position, in the orphan suite that follows.
+ * Neither is a segment whose first element is empty (`*PAYLOAD*MORE~`): it is
+ * warned, kept and re-emitted like any other segment outside a transaction.
  * Counting the line-break normalization, `KNOWN-LIMITATIONS.md` is therefore
- * down to SIX constructs the default emit does not reproduce, five of which
+ * down to FIVE constructs the default emit does not reproduce, four of which
  * need no line break.
  *
- * Note which ones are SILENT: of the six, only the trailing bytes warn at all.
- * The doubled terminator, the missing final terminator, the TA1 reorder and the
- * empty-first-element segment each produce an empty `warnings` array, as does
- * the line-break normalization itself, so five of the six are silent and a
- * clean warning stream is NOT evidence that a round trip will be byte-exact.
- * Asserted per case below rather than described.
+ * Note which ones are SILENT: of the five, only the trailing bytes warn at all.
+ * The doubled terminator, the missing final terminator and the TA1 reorder
+ * each produce an empty `warnings` array, as does the line-break normalization
+ * itself, so four of the five are silent and a clean warning stream is NOT
+ * evidence that a round trip will be byte-exact. Asserted per case below
+ * rather than described.
  *
  * Every case that remains here reproduces on the base commit: this suite
  * documents long-standing behaviour rather than locking anything this slice
@@ -571,16 +576,38 @@ describe("parseX12: segments outside a transaction are retained on the model", (
     ],
     ["a body segment with no group at all", `${isa}REF*ZZ*VENDORTAG~IEA*1*000000001~`, 1],
     ["two orphans in sequence", `${closed}REF*ZZ*ONE~REF*ZZ*TWO~IEA*1*000000001~`, 2],
+    [
+      "a segment with an empty first element between GE and IEA",
+      `${closed}*PAYLOAD*MORE~IEA*1*000000001~`,
+      1,
+    ],
+    [
+      "a segment with an empty first element between an SE and its group's GE",
+      `${isa}${gs}ST*837*0001~SE*2*0001~*PAYLOAD*MORE~GE*1*1~IEA*1*000000001~`,
+      1,
+    ],
+    [
+      "a segment with an empty first element between GS and the first ST",
+      `${isa}${gs}*PAYLOAD*MORE~ST*837*0001~SE*2*0001~GE*1*1~IEA*1*000000001~`,
+      1,
+    ],
+    [
+      "a segment with an empty first element and no group at all",
+      `${isa}*PAYLOAD*MORE~IEA*1*000000001~`,
+      1,
+    ],
   ];
 
-  it("covers ten constructed cases over nine distinct positions", () => {
+  it("covers fourteen constructed cases over nine distinct positions", () => {
     // A guard against the table silently shrinking, not a claim that these
     // are the only inputs that can produce an orphan. Retention runs through
     // one chokepoint (`recordOrphan`), so coverage does not depend on this
     // list being exhaustive. "two orphans in sequence" repeats the first
-    // position with two segments rather than adding a tenth, which is why the
-    // case count and the position count differ.
-    expect(cases).toHaveLength(10);
+    // position with two segments rather than adding a tenth, and the four
+    // empty-first-element cases repeat the four body-segment positions with
+    // a segment that has no id, which is why the case count and the position
+    // count differ.
+    expect(cases).toHaveLength(14);
   });
 
   it("lifts a TA1 out of the transaction it arrived in", () => {
@@ -607,7 +634,9 @@ describe("parseX12: segments outside a transaction are retained on the model", (
         expect(ix.orphanSegments).toHaveLength(expectedCount);
         for (const orphan of ix.orphanSegments) {
           expect(raw).toContain(orphan.raw);
-          expect(orphan.segment.id.length).toBeGreaterThan(0);
+          // Decoded from those same bytes. Not a check on `segment.id`: a
+          // segment whose first element is empty has the empty id.
+          expect(orphan.segment.raw).toBe(orphan.raw);
         }
       });
 
@@ -706,24 +735,48 @@ describe("parseX12: segments outside a transaction are retained on the model", (
     expect(ix.warnings).toEqual([]);
   });
 
-  it("does not record a segment whose first element is empty", () => {
-    // Long-standing: such a segment has no id for the walker to dispatch on
-    // and is skipped with no warning. Stated here so the JSDoc on
-    // `X12OrphanSegment` cannot quietly claim it retains EVERYTHING. This is
-    // case 7 in `KNOWN-LIMITATIONS.md`, the one construct that loses a value
-    // with no diagnostic of any kind.
+  it("records a segment whose first element is empty, with its warning", () => {
+    // Such a segment has no id for the walker to dispatch on. It used to be
+    // skipped with no warning at all, absent from the model and the emit,
+    // the one construct that lost a value with no diagnostic of any kind. It
+    // is now a body segment outside a transaction like any other.
     const raw = `${closed}*PAYLOAD*MORE~IEA*1*000000001~`;
     const ix = parseX12(raw);
-    expect(ix.orphanSegments).toEqual([]);
-    expect(ix.warnings).toEqual([]);
-    // Gone from the emit too, silently.
-    expect(serializeX12(ix)).not.toContain("PAYLOAD");
+    expect(ix.orphanSegments.map((o) => [o.raw, o.context, o.anchor, o.segmentIndex])).toEqual([
+      ["*PAYLOAD*MORE", "body-outside-transaction", { kind: "interchange", groupIndex: 1 }, 5],
+    ]);
+    expect(ix.orphanSegments[0]?.segment.elements).toEqual(["", "PAYLOAD", "MORE"]);
+    expect(ix.warnings.map((w) => [w.code, w.message, w.position.segmentIndex])).toEqual([
+      [
+        WARNING_CODES.X12_UNEXPECTED_SEGMENT,
+        unexpectedSegment({ segmentIndex: 5 }, UNEXPECTED_SEGMENT_CONTEXTS.BODY_OUTSIDE_TRANSACTION)
+          .message,
+        5,
+      ],
+    ]);
+    expect(serializeX12(ix)).toBe(raw);
+  });
+
+  it("refuses a segment whose first element is empty in strict mode", () => {
+    // Strict mode refuses it as it refuses every other unexpected segment.
+    const raw = `${closed}*PAYLOAD*MORE~IEA*1*000000001~`;
+    let thrown: unknown;
+    try {
+      parseX12(raw, { strict: true });
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown).toBeInstanceOf(X12ParseError);
+    const error = thrown as X12ParseError;
+    expect(String(error.code)).toBe(WARNING_CODES.X12_UNEXPECTED_SEGMENT);
+    expect(error.position.segmentIndex).toBe(5);
+    // The control: the same interchange without it parses strictly.
+    expect(() => parseX12(`${closed}IEA*1*000000001~`, { strict: true })).not.toThrow();
   });
 
   it("keeps an empty-first-element segment when it is INSIDE a transaction", () => {
-    // Scopes case 7 to the outside-a-transaction position. Inside an open
-    // ST..SE the same bytes are retained and re-emitted, so the limitation is
-    // about where the segment sits, not about its shape.
+    // Inside an open ST..SE the same bytes are bound to the transaction
+    // rather than recorded as an orphan, and re-emitted from there.
     const raw = `${isa}${gs}ST*837*0001~*PAYLOAD*MORE~SE*3*0001~GE*1*1~IEA*1*000000001~`;
     const ix = parseX12(raw);
     expect(serializeX12(ix)).toBe(raw);

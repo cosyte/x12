@@ -18858,11 +18858,12 @@ whatever occupies that slot - measurably, into an 835's `ST..SE` body,
 where a re-parse reports nothing at all. Use [segmentIndex](#segmentindex-1) to join
 back to the warning, not to place the segment. See `KNOWN-LIMITATIONS.md`.
 
-Two things are NOT recorded here. A doubled segment terminator delimits a
+One thing is NOT recorded here: a doubled segment terminator delimits a
 zero-length segment carrying no elements, so there is nothing to retain.
-A segment whose first element is empty (`*A*B~`) has no id for the
-envelope walker to dispatch on and is skipped without a warning; that is
-long-standing behaviour this array does not change.
+A segment whose first element is empty (`*A*B~`) IS recorded: it has no id
+for the envelope walker to dispatch on, so its `segment.id` is empty, but it
+carries values, and it is warned, kept and re-emitted like any other body
+segment outside a transaction.
 
 **This is document content, so treat it as PHI.** Unlike an
 `X12ParseWarning`, whose `message` is a lookup into a frozen registry and

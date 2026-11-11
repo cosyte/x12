@@ -5,14 +5,14 @@ delivers. Misreading a payer's remittance, a claim's diagnosis, or a member's co
 financial or clinical harm, so this is the deliberate "do not over-trust" list. Everything here is a
 documented, intentional boundary, not a bug. The lenient parser never silently drops or garbles a
 **decoded value**: where a limitation applies, the raw value is preserved (often with a warning), it
-is simply not further decoded. Three things it does discard are worth reading before you rely on a
-round trip, and all three are **silent**: **line breaks between segments**, **a doubled segment
-terminator** outside a transaction, and **a segment whose first element is empty** outside a
-transaction. All three are in the first two entries below. A **segment outside a transaction** used
-to belong on that list and no longer does: it is warned, kept on the model at `ix.orphanSegments`,
-**and re-emitted at the structural anchor the walker recorded**, so it survives a round trip. The
-empty-first-element case is now the sharpest of the three: no warning, and no copy anywhere on the
-model.
+is simply not further decoded. Two things it does discard are worth reading before you rely on a
+round trip, and both are **silent** and carry no value: **line breaks between segments** and **a
+doubled segment terminator** outside a transaction. Both are in the entries below. A **segment
+outside a transaction** used to belong on that list and no longer does: it is warned, kept on the
+model at `ix.orphanSegments`, **and re-emitted at the structural anchor the walker recorded**, so it
+survives a round trip. **A segment whose first element is empty** (`*A*B~`) outside a transaction
+used to be the sharpest case of all, skipped with no warning and no copy anywhere on the model; it
+is now one of those orphans, warned, kept and re-emitted like any other.
 
 ## Data / decode boundaries
 
@@ -1325,7 +1325,7 @@ Code"`, `SVC05 / 380 / "Units of Service Paid Count"`, `SVC06 / C003`,
 
 - **`serialize(parse(s)) === s` is NOT guaranteed.** `serializeX12` rebuilds the interchange from the
   model, so every segment the parser recorded comes back verbatim (element padding, composites, and
-  `?`-release escapes included), in the order the model holds it. Six constructs are known not to
+  `?`-release escapes included), in the order the model holds it. Five constructs are known not to
   survive:
   1. **Line breaks between segments.** Most senders write one after each terminator; the parser
      absorbs any run of CR / LF bytes between segments, so a pretty-printed, double-spaced, or
@@ -1340,16 +1340,21 @@ Code"`, `SVC05 / 380 / "Units of Service Paid Count"`, `SVC06 / C003`,
      identically. It is also the only construct that moves something _else_: a segment outside a
      transaction is placed correctly relative to the groups, but not relative to a TA1 hoisted past
      it. This library takes no position on where ASC X12 requires a TA1 to sit.
-  6. **A segment whose first element is empty (`*A*B~`), outside a transaction.** It has no id for
-     the envelope walker to dispatch on, so it is skipped: absent from the model, absent from the
-     emit, and it does not even raise `X12_UNEXPECTED_SEGMENT`. **Silent**, and the only case here
-     that loses a value with no diagnostic whatsoever. Inside an open transaction the same segment
-     is kept and re-emitted normally, so this is specific to the outside-a-transaction position.
 
-  **Cases 2 to 6 break the round trip on inputs containing no line breaks**, so "my file is compact"
-  is not sufficient grounds to expect byte equality. **Five of the six (1, 2, 3, 5, 6) produce no
+  **Cases 2 to 5 break the round trip on inputs containing no line breaks**, so "my file is compact"
+  is not sufficient grounds to expect byte equality. **Four of the five (1, 2, 3, 5) produce no
   warning at all**, so a clean `ix.warnings` is not evidence that a round trip will be byte-exact;
   only case 4 warns.
+
+  **A segment whose first element is empty (`*A*B~`), outside a transaction, is no longer on this
+  list.** It has no id for the envelope walker to dispatch on, and through `0.1.13` it was skipped:
+  absent from the model, absent from the emit, and with no warning at all, the one case that lost a
+  value with no diagnostic. It is now handled as a body segment outside a transaction: it raises
+  `X12_UNEXPECTED_SEGMENT`, is kept on `ix.orphanSegments` with its anchor (its `segment.id` is
+  empty), and is re-emitted there, so it round-trips byte-exactly. `{ strict: true }` refuses it
+  like any other unexpected segment, so a strict caller that used to accept such a file now gets an
+  `X12ParseError` with that code. Inside an open transaction the same segment was always kept and
+  re-emitted, and still is.
 
   **A segment outside a transaction is no longer on this list.** It used to be, in both halves: the
   segment was discarded from the model, and the emit could not reproduce what the model did not
@@ -1394,7 +1399,7 @@ Code"`, `SVC05 / 380 / "Units of Service Paid Count"`, `SVC06 / C003`,
   by **line breaks and nothing else**, with no element value lost, altered, reordered, or re-escaped.
   No corpus size is quoted: it moves with every fixture added, and `test/serialize.test.ts`
   re-derives the sweep from the tree on every run. Two caveats on that corpus, both of which limit
-  how far the sweep can be pushed: it contains **no instance of cases 2 to 6** (zero fixtures produce
+  how far the sweep can be pushed: it contains **no instance of cases 2 to 5** (zero fixtures produce
   an `orphanSegments` entry, which is why the orphan sweep above is constructed rather than drawn
   from it), and **all but one of the byte-identical fixtures are `golden/*.edi`**, which
   are serializer output by construction, leaving `envelope/no-trailing-crlf.edi` as the only
@@ -1426,10 +1431,9 @@ Code"`, `SVC05 / 380 / "Units of Service Paid Count"`, `SVC06 / C003`,
   `ix.warnings`, whose messages come from a frozen registry and whose metadata is positional, an
   orphan is document content. Log `context` and `segmentIndex`, not the whole entry.
 
-  Two related shapes are **not** captured here, both long-standing: a doubled segment terminator
-  (a zero-length segment with no elements, so there is nothing to retain) and a segment whose first
-  element is empty (`*A*B~`), which has no id for the walker to dispatch on and is skipped with no
-  warning.
+  One related shape is **not** captured here: a doubled segment terminator (a zero-length segment
+  with no elements, so there is nothing to retain). A segment whose first element is empty
+  (`*A*B~`) **is** captured, with an empty `segment.id`: it used to be skipped with no warning.
 
   This entry previously documented real silent data loss: the segment was discarded from the model
   entirely, and because a blank line between segments exceeded the old one-CR-plus-one-LF tolerance,
