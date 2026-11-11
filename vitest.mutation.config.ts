@@ -30,6 +30,11 @@ import config from "./vitest.config.js";
  *   mutant. The properties beside them (round trip, idempotent normalize, never throws in lenient
  *   mode) stay in, at 100 cases each, and so do the unit tests over the same readers.
  *
+ * - The 10 MB streaming test in `transactions-enrollment-834.test.ts`, skipped through
+ *   `X12_MUTATION_RUN` below: a mutant that slows the parser without changing what it returns made
+ *   it finish on one full run and time out on the next (twelve parser mutants moved between timed
+ *   out and survived across two runs), and it killed no mutant on either.
+ *
  * The instrumented code runs several times slower than the plain build, so a test's budget here is
  * 60 s rather than 10 s. StrykerJS sets each mutant's own timeout from the time the test took in
  * its first run (`stryker.config.mjs`), so this budget does not slow the mutant runs.
@@ -59,6 +64,7 @@ export default {
       "test/eligibility-271-aaa-provenance.test.ts",
       "test/parser-decimal-silent-defaults.test.ts",
     ],
+    env: { ...config.test?.env, X12_MUTATION_RUN: "1" },
     testTimeout: 60_000,
   },
 };
