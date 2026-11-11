@@ -342,8 +342,6 @@ describe("X12-VARIANT-ICR-UNGROUNDED: what still does NOT resolve", () => {
     ["005010X221A1", "a real identifier, but the 835 remittance TR3 and not an 837 guide"],
     ["004010X098A1", "the 4010 professional addenda; pre-005010 is outside v1 scope"],
     ["005010X222A9", "an errata designation no source names; inventing one is the failure mode"],
-    ["005010x222a1", "lowercase: ST-03 is read verbatim and nothing normalises case"],
-    [" 005010X222A1", "leading whitespace: nothing trims the element"],
     ["005010X225", "a professional-looking stem that names no 837 guide"],
     ["constructor", "the prototype trap wireLookup exists to close"],
     ["__proto__", "the prototype trap wireLookup exists to close"],
@@ -352,10 +350,33 @@ describe("X12-VARIANT-ICR-UNGROUNDED: what still does NOT resolve", () => {
   for (const [icr, why] of NOT_RECOGNISED) {
     it(`ST-03 ${JSON.stringify(icr)} does not resolve (${why})`, () => {
       // Every key of the variant table is a guide the reader implements, so
-      // an ST-03 that keys no variant declares a guide it does not implement
-      // and gets no reading at all. Reading "P" would mean the string was
-      // matched somehow; reading "I" would mean the body was read under it.
+      // an ST-03 that keys no variant, even trimmed and upper-cased, declares
+      // a guide it does not implement and gets no reading at all. Reading "P"
+      // would mean the string was matched somehow; reading "I" would mean the
+      // body was read under it.
       expect(read837(icr, SV2_ONLY)).toBeUndefined();
+    });
+  }
+
+  /**
+   * Padding and case. The variant lookup reads ST-03 verbatim, so neither
+   * keys a variant and the body falls back to its `SVx`. The refusal compares
+   * the declaration trimmed and upper-cased, so both are still read, with the
+   * exact-compare `X12_GUIDE_NOT_IMPLEMENTED`, as they were before readers
+   * refused anything.
+   */
+  const READ_BUT_NOT_KEYED: readonly (readonly [string, string])[] = [
+    ["005010x222a1", "lowercase: the variant lookup reads ST-03 verbatim and folds no case"],
+    [" 005010X222A1", "leading whitespace: the variant lookup trims nothing"],
+  ];
+
+  for (const [icr, why] of READ_BUT_NOT_KEYED) {
+    it(`ST-03 ${JSON.stringify(icr)} keys no variant but is read (${why})`, () => {
+      const sub = read837(icr, SV2_ONLY);
+      expect(sub?.variant).toBe("I");
+      expect(sub === undefined ? [] : channel(sub)).toEqual([
+        WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      ]);
     });
   }
 
