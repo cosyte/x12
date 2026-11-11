@@ -22,10 +22,9 @@
 import { frameBinary } from "../parser/binary.js";
 import { ISA_MIN_LENGTH, detectDelimiters } from "../parser/delimiters.js";
 import { decodeBuiltEnvelope } from "../parser/envelope.js";
-import { interchangeOf, parseX12 } from "../parser/index.js";
+import { defaultInterchangeOf, parseX12 } from "../parser/index.js";
 import { RELEASE_CHAR } from "../parser/release.js";
 import type { Delimiters, X12Interchange } from "../parser/types.js";
-import { getDefaultProfile } from "../profiles/default.js";
 
 /**
  * The segments a builder wrote, in the order it wrote them: each segment's text as the builder
@@ -106,7 +105,7 @@ export function builtInterchange(
     }
   }
   const decoded = decodeBuiltEnvelope(isa, delimiters, segments, elements);
-  return interchangeOf(decoded, delimiters, getDefaultProfile());
+  return defaultInterchangeOf(decoded, delimiters);
 }
 
 /**

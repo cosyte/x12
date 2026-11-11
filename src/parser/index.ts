@@ -135,6 +135,20 @@ export function parseX12(raw: string | Buffer, options: X12ParseOptions = {}): X
 }
 
 /**
+ * The interchange {@link parseX12} answers with no options for the text a
+ * decoded envelope came from: the process-wide default profile attached, as a
+ * call with no `profile` option attaches it. A builder makes its result here.
+ *
+ * @internal
+ */
+export function defaultInterchangeOf(
+  decoded: DecodedEnvelope,
+  delimiters: Delimiters,
+): X12Interchange {
+  return interchangeOf(decoded, delimiters, getDefaultProfile());
+}
+
+/**
  * The frozen {@link X12Interchange} of a decoded envelope, as {@link parseX12}
  * returns it. A builder makes its result here too, from the segments it wrote
  * (see `../builder/assemble.ts`), so the two cannot differ in shape.
