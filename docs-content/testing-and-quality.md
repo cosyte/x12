@@ -2,7 +2,7 @@
 id: testing-and-quality
 title: Testing and quality
 sidebar_label: Testing and quality
-description: "How we test @cosyte/x12: unit tests, fixture corpora, property-based tests, fuzzing, differential testing, coverage and mutation floors and the PHI scan, with what each catches."
+description: "How we test @cosyte/x12: unit tests, fixtures, properties, fuzzing, differential tests, coverage and mutation floors and the PHI scan, and what each catches."
 ---
 
 # Testing and quality

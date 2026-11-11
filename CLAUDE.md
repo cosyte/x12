@@ -15,7 +15,7 @@ Required checks: `ci / verify (22)`, `ci / verify (24)`, `ci / actionlint` and
 ```sh
 pnpm install --frozen-lockfile
 pnpm typecheck && pnpm lint && pnpm format:check && pnpm phi-scan
-pnpm test && pnpm test:coverage && pnpm build && pnpm attw
+pnpm test && pnpm test:coverage && pnpm quality:check --base origin/main && pnpm build && pnpm attw
 pnpm typecheck:examples && pnpm lint:examples && pnpm examples && pnpm phi-scan:examples
 pnpm check:no-emdash && pnpm check:no-internal-refs
 pnpm check:documents && pnpm check:process
