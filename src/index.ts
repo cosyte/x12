@@ -760,10 +760,11 @@ export type {
 } from "./transactions/shared/date-conversion.js";
 
 // Phase 3 - acknowledgments surface: parse / build 999 (005010X231A1), 997
-// (base standard) and envelope-level TA1 as pure functions. See `src/transactions/ack/index.ts`
-// for the full barrel.
+// (base standard) and envelope-level TA1 as pure functions, and the TA1 and 999
+// specs derived from a parse. See `src/transactions/ack/index.ts` for the full barrel.
 export {
   ACK_BUILD_ERROR_CODES,
+  ACK_WARNING_MAPPINGS,
   AckBuildError,
   IK3_SYNTAX_ERROR_CODES,
   IK4_SYNTAX_ERROR_CODES,
@@ -774,6 +775,8 @@ export {
   build997,
   build999,
   buildTA1,
+  derive999Spec,
+  deriveTA1Spec,
   isAcceptDisposition,
   parse997,
   parse999,
@@ -792,6 +795,7 @@ export {
   type Build999TransactionResponseSpec,
   type BuildTA1Options,
   type BuildTA1Spec,
+  type Derive999Options,
   type Ik304Code,
   type Ik403Code,
   type Ta1AckCode,
@@ -817,6 +821,8 @@ export {
   type X12Ack999TransactionResponse,
   type X12AckDispositionCode,
   type X12AckTA1,
+  type X12AckWarningMapping,
+  type X12DerivedAck,
 } from "./transactions/ack/index.js";
 
 // Phase 8 - spec-clean serializer (the emit half of the parser).
