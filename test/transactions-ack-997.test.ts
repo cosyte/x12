@@ -37,6 +37,7 @@ import {
   type Build999Spec,
   type X12ParseWarning,
 } from "../src/index.js";
+import { buildAcknowledgment } from "../src/transactions/ack/build-999.js";
 
 const FIXTURE_DIR = join(__dirname, "fixtures", "ack");
 
@@ -973,6 +974,134 @@ describe("build997: what it refuses", () => {
     });
   }
 
+  /** A one-response reject spec around `segmentErrors`, as an untyped caller hands it over. */
+  function rejectWith(segmentErrors: unknown): unknown {
+    return withResponse({ segmentErrors });
+  }
+
+  it("contexts inherited from the prototype at the segment level are refused", () => {
+    const entry = Object.assign(Object.create({ contexts: ["NM1"] }) as object, {
+      segmentIdCode: "NM1",
+      segmentPositionInTransactionSet: 3,
+      elementErrors: [],
+    });
+    expect(refusal(rejectWith([entry])).message).toBe(
+      "build997: transactionResponses[0].segmentErrors[0].contexts is set. The 997 has no CTX segment, so this builder writes none; remove contexts.",
+    );
+  });
+
+  it("contexts inherited from the prototype at the element level are refused", () => {
+    const element = Object.assign(Object.create({ contexts: ["C2"] }) as object, {
+      position: { element: 1 },
+      syntaxErrorCode: "7",
+    });
+    const spec = rejectWith([
+      { segmentIdCode: "NM1", segmentPositionInTransactionSet: 3, elementErrors: [element] },
+    ]);
+    expect(refusal(spec).message).toBe(
+      "build997: transactionResponses[0].segmentErrors[0].elementErrors[0].contexts is set. The 997 has no CTX segment, so this builder writes none; remove contexts.",
+    );
+  });
+
+  it("a class instance with a contexts getter on its prototype is refused", () => {
+    class SegmentError {
+      public readonly segmentIdCode = "NM1";
+      public readonly segmentPositionInTransactionSet = 3;
+      public get contexts(): readonly string[] {
+        return ["NM1"];
+      }
+    }
+    expect(refusal(rejectWith([new SegmentError()])).message).toMatch(
+      /segmentErrors\[0\]\.contexts is set/u,
+    );
+  });
+
+  it("a segmentErrors getter read once: a clean first answer is what is written, with no CTX", () => {
+    // The spec is read once into a plain snapshot, and the writer is handed
+    // the snapshot, so a getter cannot show the check one list and the writer
+    // another. Here the first read is clean, so the 997 is written from it.
+    let reads = 0;
+    const response = {
+      transactionSetIdCode: "837",
+      transactionSetControlNumber: "0003",
+      disposition: "R",
+      get segmentErrors(): unknown {
+        reads += 1;
+        return reads === 1
+          ? [{ segmentIdCode: "NM1", segmentPositionInTransactionSet: 3 }]
+          : [{ segmentIdCode: "NM1", segmentPositionInTransactionSet: 3, contexts: ["NM1"] }];
+      },
+    };
+    const spec = withGroup({
+      disposition: "R",
+      numberOfAcceptedTransactionSets: 0,
+      transactionResponses: [
+        response,
+      ] as unknown as Build997Spec["functionalGroup"]["transactionResponses"],
+    });
+    const text = serializeX12(build997(spec as Build997Spec));
+    expect(reads).toBe(1);
+    expect(text).toContain("~AK2*837*0003~AK3*NM1*3~AK5*R~");
+    expect(text).not.toContain("CTX");
+  });
+
+  it("a transactionResponses getter read once, the same way", () => {
+    let reads = 0;
+    const group = {
+      ...ACCEPT.functionalGroup,
+      disposition: "R",
+      numberOfAcceptedTransactionSets: 0,
+      get transactionResponses(): unknown {
+        reads += 1;
+        const segmentErrors =
+          reads === 1
+            ? [{ segmentIdCode: "NM1", segmentPositionInTransactionSet: 3 }]
+            : [{ segmentIdCode: "NM1", segmentPositionInTransactionSet: 3, contexts: ["NM1"] }];
+        return [
+          {
+            transactionSetIdCode: "837",
+            transactionSetControlNumber: "0003",
+            disposition: "R",
+            segmentErrors,
+          },
+        ];
+      },
+    };
+    const text = serializeX12(
+      build997({ ...ACCEPT, functionalGroup: group } as unknown as Build997Spec),
+    );
+    expect(reads).toBe(1);
+    expect(text).not.toContain("CTX");
+  });
+
+  it("the shared writer itself writes no CTX for a 997, whatever the spec holds", () => {
+    // The guarantee under the refusal: handed contexts directly, past build997,
+    // the writer still leaves them out of a 997 and keeps them on a 999.
+    const group = {
+      ...ACCEPT.functionalGroup,
+      disposition: "R",
+      numberOfAcceptedTransactionSets: 0,
+      transactionResponses: [
+        {
+          transactionSetIdCode: "837",
+          transactionSetControlNumber: "0003",
+          disposition: "R",
+          segmentErrors: ERRORS_999,
+        },
+      ],
+    };
+    const joiner = (parts: readonly string[], e: string, t: string): string => parts.join(e) + t;
+    const as997 = serializeX12(
+      buildAcknowledgment({ ...ACCEPT, functionalGroup: group }, "997", joiner),
+    );
+    expect(as997).not.toContain("CTX");
+    expect(as997).toContain("~AK3*NM1*3**8~AK4*3**7~AK5*R~");
+    const as999 = serializeX12(
+      buildAcknowledgment({ ...ACCEPT, functionalGroup: group }, "999", joiner),
+    );
+    expect(as999).toContain("~IK3*NM1*3**8~CTX*C1~IK4*3**7~CTX*C2~IK5*R~");
+  });
+
   it("writes no CTX for a 997 whatever it was given, since it refuses first", () => {
     for (const spec of [ACCEPT, PARTIAL, REJECT]) {
       expect(serializeX12(build997(spec))).not.toContain("CTX");
@@ -998,6 +1127,38 @@ describe("build997: what it refuses", () => {
       message:
         "build997: transactionResponses[0].segmentErrors[1].elementErrors[1].syntaxErrorCode (AK4-03) is empty. It is required, and this builder never invents one.",
     });
+  });
+
+  for (const [label, segmentErrors, field] of [
+    ["a segment error", ["NM1"], "segmentErrors[]"],
+    [
+      "an element error",
+      [{ segmentIdCode: "NM1", segmentPositionInTransactionSet: 3, elementErrors: [7] }],
+      "elementErrors[]",
+    ],
+    [
+      "an element position",
+      [
+        {
+          segmentIdCode: "NM1",
+          segmentPositionInTransactionSet: 3,
+          elementErrors: [{ position: null, syntaxErrorCode: "7" }],
+        },
+      ],
+      "elementErrors[].position",
+    ],
+  ] as const) {
+    it(`${label} that is not an object, from an untyped caller`, () => {
+      expect(refusal(withResponse({ segmentErrors }))).toEqual({
+        code: ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC,
+        message: `build997: ${field} must be an object.`,
+      });
+    });
+  }
+
+  it("a null code list reads as none, as the 999 builder reads it", () => {
+    const text = serializeX12(build997(withResponse({ syntaxErrorCodes: null }) as Build997Spec));
+    expect(text).toContain("~AK5*R~");
   });
 
   it("an AK4-03 that is not a string", () => {

@@ -16,10 +16,16 @@
  */
 
 import type { X12Interchange } from "../../parser/types.js";
-import { requireCallerEntries } from "../../builder/caller-array.js";
+import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 
-import { buildAcknowledgment } from "./build-999.js";
+import {
+  buildAcknowledgment,
+  type AckElementErrorSpec,
+  type AckSegmentErrorSpec,
+  type AckSpec,
+  type AckTransactionResponseSpec,
+} from "./build-999.js";
 import { X12_997_SET_DISPOSITION_CODES, X12_ACK_DISPOSITION_CODES } from "./codes.js";
 import { ACK_BUILD_ERROR_CODES, AckBuildError } from "./errors.js";
 import type { Build997Spec } from "./types.js";
@@ -66,34 +72,87 @@ function refuseSpec(message: string): never {
  * ```
  */
 export function build997(spec: Build997Spec): X12Interchange {
+  // Every field is read once, here, into fresh plain objects, and the writer
+  // is handed that snapshot rather than the caller's spec: a getter or a
+  // prototype cannot show one answer to these checks and another to the
+  // writer.
+  return buildAcknowledgment(snapshot(spec), "997", joinSeg);
+}
+
+/** Every field of the envelope spec, read once each. @internal */
+const ENVELOPE_FIELDS = [
+  "senderId",
+  "senderQualifier",
+  "receiverId",
+  "receiverQualifier",
+  "interchangeDate",
+  "interchangeTime",
+  "interchangeControlNumber",
+  "usageIndicator",
+  "groupControlNumber",
+  "groupDate",
+  "groupTime",
+  "groupResponsibleAgency",
+  "transactionSetControlNumber",
+  "repetitionSeparator",
+  "componentSeparator",
+  "segmentTerminator",
+  "elementSeparator",
+] as const;
+
+/**
+ * Read the caller's spec once into a plain object the shared writer takes,
+ * refusing on the way what a 997 cannot carry. Fields the writer does not
+ * read are not copied. @internal
+ */
+function snapshot(spec: Build997Spec): AckSpec {
+  const source = spec.envelope as unknown as Readonly<Record<string, unknown>>;
+  const envelope: Record<string, unknown> = {};
+  for (const field of ENVELOPE_FIELDS) {
+    const value = source[field];
+    if (value !== undefined) envelope[field] = value;
+  }
+
   const group = spec.functionalGroup;
-  if (!isCode(X12_ACK_DISPOSITION_CODES, group.disposition)) {
+  const disposition = group.disposition;
+  if (!isCode(X12_ACK_DISPOSITION_CODES, disposition)) {
     throw new AckBuildError(
       ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_DISPOSITION,
       "build997: functionalGroup.disposition (AK9-01) must be one of A, E, P, R, M, W or X, the codes of code list 715.",
     );
   }
-  requireWholeNumber(group.numberOfTransactionSets, "functionalGroup.numberOfTransactionSets");
-  requireWholeNumber(
+  const numberOfTransactionSets = requireWholeNumber(
+    group.numberOfTransactionSets,
+    "functionalGroup.numberOfTransactionSets",
+  );
+  const numberOfReceivedTransactionSets = requireWholeNumber(
     group.numberOfReceivedTransactionSets,
     "functionalGroup.numberOfReceivedTransactionSets",
   );
-  requireWholeNumber(
+  const numberOfAcceptedTransactionSets = requireWholeNumber(
     group.numberOfAcceptedTransactionSets,
     "functionalGroup.numberOfAcceptedTransactionSets",
   );
+  const functionalIdCode = group.functionalIdCode;
+  const groupControlNumber = group.groupControlNumber;
+  const versionRelease = group.versionRelease;
+  const groupCodes = copyList(group.syntaxErrorCodes, "functionalGroup.syntaxErrorCodes");
+
+  const transactionResponses: AckTransactionResponseSpec[] = [];
   let r = 0;
   for (const response of requireCallerEntries(
     group.transactionResponses,
     "build997: functionalGroup.transactionResponses",
     refuseSpec,
   )) {
-    if (!isCode(X12_997_SET_DISPOSITION_CODES, response.disposition)) {
+    const setDisposition = response.disposition;
+    if (!isCode(X12_997_SET_DISPOSITION_CODES, setDisposition)) {
       throw new AckBuildError(
         ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_DISPOSITION,
         `build997: transactionResponses[${String(r)}].disposition (AK5-01) must be one of A, E, M, R, W or X, the codes of code list 717, which has no P.`,
       );
     }
+    const segmentErrors: AckSegmentErrorSpec[] = [];
     let s = 0;
     for (const segError of requireCallerEntries(
       response.segmentErrors,
@@ -101,50 +160,114 @@ export function build997(spec: Build997Spec): X12Interchange {
       refuseSpec,
     )) {
       // A 999 error list has this shape plus `contexts`, so it type-checks
-      // here; the 997 has no CTX segment, so any `contexts` at all is refused
-      // rather than written or dropped.
-      if (Object.hasOwn(segError, "contexts")) {
+      // here. The writer never emits a CTX for a 997, and a caller who
+      // supplied contexts is told so rather than having them dropped: `in`
+      // sees an inherited or getter-backed `contexts` as the writer would.
+      if ("contexts" in requireObject(segError, "segmentErrors[]")) {
         throw new AckBuildError(
           ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC,
           `build997: transactionResponses[${String(r)}].segmentErrors[${String(s)}].contexts is set. The 997 has no CTX segment, so this builder writes none; remove contexts.`,
         );
       }
-      requireWholeNumber(
+      const segmentPositionInTransactionSet = requireWholeNumber(
         segError.segmentPositionInTransactionSet,
         "segmentErrors[].segmentPositionInTransactionSet",
       );
+      const segmentIdCode = segError.segmentIdCode;
+      const loopIdentifier = segError.loopIdentifier;
+      const segmentCode = segError.syntaxErrorCode;
+      const elementErrors: AckElementErrorSpec[] = [];
       let e = 0;
       for (const elemError of requireCallerEntries(
         segError.elementErrors,
         "build997: segError.elementErrors",
         refuseSpec,
       )) {
-        if (Object.hasOwn(elemError, "contexts")) {
+        if ("contexts" in requireObject(elemError, "elementErrors[]")) {
           throw new AckBuildError(
             ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC,
             `build997: transactionResponses[${String(r)}].segmentErrors[${String(s)}].elementErrors[${String(e)}].contexts is set. The 997 has no CTX segment, so this builder writes none; remove contexts.`,
           );
         }
-        requireWholeNumber(elemError.position.element, "elementErrors[].position.element");
-        if (elemError.position.component !== undefined) {
-          requireWholeNumber(elemError.position.component, "elementErrors[].position.component");
-        }
-        if (elemError.position.repetition !== undefined) {
-          requireWholeNumber(elemError.position.repetition, "elementErrors[].position.repetition");
-        }
-        if (elemError.syntaxErrorCode === "") {
+        const position = requireObject(elemError.position, "elementErrors[].position");
+        const element = requireWholeNumber(position.element, "elementErrors[].position.element");
+        const rawComponent = position.component;
+        const component =
+          rawComponent === undefined
+            ? undefined
+            : requireWholeNumber(rawComponent, "elementErrors[].position.component");
+        const rawRepetition = position.repetition;
+        const repetition =
+          rawRepetition === undefined
+            ? undefined
+            : requireWholeNumber(rawRepetition, "elementErrors[].position.repetition");
+        const syntaxErrorCode = elemError.syntaxErrorCode;
+        if (syntaxErrorCode === "") {
           throw new AckBuildError(
             ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC,
             `build997: transactionResponses[${String(r)}].segmentErrors[${String(s)}].elementErrors[${String(e)}].syntaxErrorCode (AK4-03) is empty. It is required, and this builder never invents one.`,
           );
         }
+        elementErrors.push({
+          position: { element, component, repetition },
+          dataElementReferenceNumber: elemError.dataElementReferenceNumber,
+          syntaxErrorCode,
+          copyOfBadDataElement: elemError.copyOfBadDataElement,
+        });
         e += 1;
       }
+      segmentErrors.push({
+        segmentIdCode,
+        segmentPositionInTransactionSet,
+        loopIdentifier,
+        syntaxErrorCode: segmentCode,
+        elementErrors,
+      });
       s += 1;
     }
+    transactionResponses.push({
+      transactionSetIdCode: response.transactionSetIdCode,
+      transactionSetControlNumber: response.transactionSetControlNumber,
+      implementationConventionReference: response.implementationConventionReference,
+      disposition: setDisposition,
+      syntaxErrorCodes: copyList(
+        response.syntaxErrorCodes,
+        "transactionResponses[].syntaxErrorCodes",
+      ),
+      segmentErrors,
+    });
     r += 1;
   }
-  return buildAcknowledgment(spec, "997", joinSeg);
+
+  return {
+    envelope: envelope as unknown as AckSpec["envelope"],
+    functionalGroup: {
+      functionalIdCode,
+      groupControlNumber,
+      versionRelease,
+      disposition,
+      numberOfTransactionSets,
+      numberOfReceivedTransactionSets,
+      numberOfAcceptedTransactionSets,
+      syntaxErrorCodes: groupCodes,
+      transactionResponses,
+    },
+  };
+}
+
+/** A caller list copied once into a fresh array, or `undefined` when absent. @internal */
+function copyList(
+  value: readonly string[] | null | undefined,
+  at: string,
+): readonly string[] | undefined {
+  if (value === undefined) return undefined;
+  return Array.from(requireCallerArray(value, `build997: ${at}`, refuseSpec));
+}
+
+/** Refuse an entry that is not an object, so a property read on it means what it says. @internal */
+function requireObject<T>(value: T, field: string): T & object {
+  if (typeof value === "object" && value !== null) return value;
+  refuseSpec(`build997: ${field} must be an object.`);
 }
 
 /**
@@ -163,7 +286,10 @@ function joinSeg(
 }
 
 /** Whether `code` is a key of `table`, compared exactly. @internal */
-function isCode(table: Readonly<Record<string, string>>, code: unknown): boolean {
+function isCode<T extends string>(
+  table: Readonly<Record<string, string>>,
+  code: unknown,
+): code is T {
   return typeof code === "string" && Object.hasOwn(table, code);
 }
 
@@ -173,8 +299,8 @@ function isCode(table: Readonly<Record<string, string>>, code: unknown): boolean
  *
  * @internal
  */
-function requireWholeNumber(value: unknown, field: string): void {
-  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) return;
+function requireWholeNumber(value: unknown, field: string): number {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) return value;
   refuseSpec(
     `build997: ${field} must be a whole number of zero or more, written as it stands; nothing is rounded or coerced.`,
   );

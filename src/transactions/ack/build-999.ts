@@ -126,45 +126,45 @@ export type AckVariant = "999" | "997";
 export interface AckElementErrorSpec {
   readonly position: {
     readonly element: number;
-    readonly component?: number;
-    readonly repetition?: number;
+    readonly component?: number | undefined;
+    readonly repetition?: number | undefined;
   };
-  readonly dataElementReferenceNumber?: string;
+  readonly dataElementReferenceNumber?: string | undefined;
   readonly syntaxErrorCode: string;
-  readonly copyOfBadDataElement?: string;
-  readonly contexts?: readonly string[];
+  readonly copyOfBadDataElement?: string | undefined;
+  readonly contexts?: readonly string[] | undefined;
 }
 
 /** A segment note as {@link buildAcknowledgment} writes it, IK3 or AK3. @internal */
 export interface AckSegmentErrorSpec {
   readonly segmentIdCode: string;
   readonly segmentPositionInTransactionSet: number;
-  readonly loopIdentifier?: string;
-  readonly syntaxErrorCode?: string;
-  readonly contexts?: readonly string[];
-  readonly elementErrors?: readonly AckElementErrorSpec[];
+  readonly loopIdentifier?: string | undefined;
+  readonly syntaxErrorCode?: string | undefined;
+  readonly contexts?: readonly string[] | undefined;
+  readonly elementErrors?: readonly AckElementErrorSpec[] | undefined;
 }
 
 /** A transaction set response, AK2 to IK5 or AK5. @internal */
 export interface AckTransactionResponseSpec {
   readonly transactionSetIdCode: string;
   readonly transactionSetControlNumber: string;
-  readonly implementationConventionReference?: string;
+  readonly implementationConventionReference?: string | undefined;
   readonly disposition: string;
-  readonly syntaxErrorCodes?: readonly string[];
-  readonly segmentErrors?: readonly AckSegmentErrorSpec[];
+  readonly syntaxErrorCodes?: readonly string[] | undefined;
+  readonly segmentErrors?: readonly AckSegmentErrorSpec[] | undefined;
 }
 
 /** The AK1 and AK9 pair with the responses between them. @internal */
 export interface AckFunctionalGroupSpec {
   readonly functionalIdCode: string;
   readonly groupControlNumber: string;
-  readonly versionRelease?: string;
+  readonly versionRelease?: string | undefined;
   readonly disposition: string;
   readonly numberOfTransactionSets: number;
   readonly numberOfReceivedTransactionSets: number;
   readonly numberOfAcceptedTransactionSets: number;
-  readonly syntaxErrorCodes?: readonly string[];
+  readonly syntaxErrorCodes?: readonly string[] | undefined;
   readonly transactionResponses: readonly AckTransactionResponseSpec[];
 }
 
@@ -535,6 +535,9 @@ function buildAk2(
   return join(parts);
 }
 
+/** The contexts a 997 writes: none. @internal */
+const NO_CONTEXTS: readonly string[] = Object.freeze([]);
+
 /**
  * The segment note (IK3 on a 999, AK3 on a 997) with its CTX contexts and its
  * element notes. A 997 has no CTX segment; its specs carry no contexts.
@@ -560,7 +563,9 @@ function buildSegmentNote(
     ik3Parts.push(esc(segError.syntaxErrorCode));
   }
   const out: string[] = [join(ik3Parts)];
-  for (const ctxValue of segError.contexts ?? []) {
+  // CTX is a 999 segment. A 997 has none, so its contexts are never read,
+  // whatever the spec holds: this, not build997's refusal, is the guarantee.
+  for (const ctxValue of variant === "999" ? (segError.contexts ?? []) : NO_CONTEXTS) {
     out.push(join(["CTX", esc(ctxValue)]));
   }
   for (const elemError of requireCallerEntries(
@@ -569,7 +574,7 @@ function buildSegmentNote(
     refuseSpec,
   )) {
     out.push(buildElementNote(elemError, esc, componentSeparator, join, variant));
-    for (const ctxValue of elemError.contexts ?? []) {
+    for (const ctxValue of variant === "999" ? (elemError.contexts ?? []) : NO_CONTEXTS) {
       out.push(join(["CTX", esc(ctxValue)]));
     }
   }

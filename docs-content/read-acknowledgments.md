@@ -182,7 +182,9 @@ serializeX12(built) === raw997.replaceAll("\n", ""); // => true
 disagree, an empty control number) and what a 997 adds: an `AK9-01` outside code list 715, an
 `AK5-01` outside code list 717 (which has no `P`: partial acceptance is stated for the group), a
 count or position that is not a whole number, an empty `AK4-03`, and `contexts` on any segment or
-element error: a 999 error list type-checks as a 997 one, but the 997 has no `CTX` segment. The `AK3-04`, `AK4-03` and
+element error, inherited ones included. A 999 error list type-checks as a 997 one, but the 997 has
+no `CTX` segment, and `build997` never writes one whatever its spec holds. It reads your spec once,
+so a getter cannot answer the checks one way and the writer another. The `AK3-04`, `AK4-03` and
 syntax error codes you supply are written as given, escaped; no code table checks them.
 
 ## Read a TA1 interchange acknowledgment
