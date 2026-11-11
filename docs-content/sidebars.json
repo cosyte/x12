@@ -22,6 +22,7 @@
         "read-and-build-claims",
         "read-a-services-review",
         "read-an-enrollment-roster",
+        "read-and-build-a-premium-payment",
         "read-acknowledgments",
         "answer-an-attachment-request",
         "emit-and-serialize",
