@@ -3,7 +3,7 @@
  * **public** {@link "../../loops/define.js".defineLoopSpec} API, the same
  * dogfooding gate every other built-in transaction spec goes through.
  *
- * Hierarchy (per WPC TR3 `005010X220A1` §3, §4):
+ * Hierarchy (as this reader implements it; no implementation guide was read):
  *
  * ```text
  *  Header (transaction set, ST..SE)

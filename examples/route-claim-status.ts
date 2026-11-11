@@ -200,7 +200,7 @@ const answer = status.claims[0];
 const triple = answer?.statuses[0]?.statuses[0];
 console.log(
   `277 answers trace ${String(answer?.traces[0]?.referenceId)}:`,
-  `${String(triple?.categoryCode)}/${String(triple?.statusCode)} ${String(triple?.statusDescription)}`,
+  `${String(triple?.categoryCode)}/${String(triple?.statusCode)}`,
 );
 
 // 4. A 277CA for a batch of two claims: one accepted (A1), one rejected (A7, invalid information).
@@ -239,7 +239,7 @@ for (const claim of ack.claims) {
   // A1 and A2 mean accepted into adjudication; anything else goes back for rework.
   if (stc !== undefined && stc.categoryCode !== "A1" && stc.categoryCode !== "A2") {
     rework.push(claim.traces[0]?.referenceId ?? "(no trace)");
-    console.log(`277CA rejects ${rework.at(-1) ?? ""}: ${String(stc.statusDescription)}`);
+    console.log(`277CA rejects ${rework.at(-1) ?? ""}: ${stc.categoryCode}/${stc.statusCode}`);
   }
 }
 

@@ -78,7 +78,7 @@ describe("get834Enrollments - Tier-1 canonical (X220A1)", () => {
     expect(add?.subscriberIndicator).toBe("Y");
     expect(add?.relationshipCode).toBe("18");
     expect(add?.maintenanceTypeCode).toBe("021");
-    expect(add?.maintenanceTypeDescription).toBe("Addition");
+    expect(add?.maintenanceTypeDescription).toBeUndefined();
     expect(add?.member?.lastName).toBe("DOE");
     expect(add?.member?.firstName).toBe("JANE");
     expect(add?.member?.idCode).toBe("MBR0001");
@@ -107,7 +107,7 @@ describe("get834Enrollments - Tier-1 canonical (X220A1)", () => {
     const members = await collect834(raw);
     const term = members[1];
     expect(term?.maintenanceTypeCode).toBe("024");
-    expect(term?.maintenanceTypeDescription).toBe("Cancellation or Termination");
+    expect(term?.maintenanceTypeDescription).toBeUndefined();
     expect(term?.member?.lastName).toBe("ROE");
     expect(term?.healthCoverages[0]?.insuranceLineCode).toBe("DEN");
   });

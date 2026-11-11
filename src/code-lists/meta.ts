@@ -2,21 +2,24 @@
  * Shared types for bundled X12 code-list snapshots. Every snapshot is a
  * **versioned data artifact** (not a runtime fetch) - `meta.snapshotDate`
  * is the date this package captured the list; `meta.publishedDate` is the
- * WPC / X12 / CMS publication date the snapshot reflects.
+ * publication date the snapshot reflects.
  *
- * Snapshots are deliberately tiny in v0.0.x - pre-launch initial subsets
- * covering only the codes already exercised by the parser's Tier-1 + Tier-2
- * fixtures. The `pnpm refresh:code-lists` script will regenerate
- * the full WPC-published lists from canonical sources for the first real
- * release; until then `lookup(code)` returns `undefined` for codes outside
- * the subset and consumers receive the **verbatim** inbound code (the
+ * Snapshots are deliberately small: each covers the codes the readers and
+ * their fixtures exercise, not the whole published list, and a code outside
+ * the subset reaches the consumer as its **verbatim** inbound value (the
  * value is never lost - only the human-readable description is absent).
  *
- * Update / freshness policy: WPC updates CARC + RARC monthly; CSCC + CSC
- * monthly; X12 internal code lists (Claim Adjustment Group, etc.) follow
- * the standard release cadence (rare). Snapshots are refreshed on a
- * release cadence, not at runtime - a stale description never produces a
- * wrong code, only a missing description.
+ * **Descriptions ship only where the list's own record permits them.** Each
+ * snapshot carries a redistribution record (`meta.redistribution`), and only a
+ * list recorded as `"permitted"` ships description text: today that is the
+ * Remittance Advice Remark Codes alone. Every other list keeps its codes and
+ * its metadata and maps each code to `undefined`, so a lookup still answers
+ * membership (and drives the unknown-code warnings) while returning no
+ * description. A caller that holds its own descriptions passes them to any
+ * lookup as {@link CodeListLookupOptions}.`descriptions`.
+ *
+ * Snapshots are refreshed on a release cadence, not at runtime - a stale
+ * snapshot never produces a wrong code, only a missing description.
  *
  * Per-code validity is a SEPARATE question from freshness, and the snapshots
  * that carry the maintainer's per-code dates answer it through
@@ -129,10 +132,14 @@ export interface CodeListEntryDates {
 /**
  * One entry returned from a code-list `lookup(code)`. The inbound code
  * value is echoed verbatim (so a caller that branches on `entry.code` is
- * comparing exactly the bytes that came in, never a normalized form);
- * `description` is the bundled human-readable text from the snapshot.
- * Snapshots ship the code and description only; fields such as `isObsolete`
- * and `replacedBy` are not carried.
+ * comparing exactly the bytes that came in, never a normalized form).
+ *
+ * `description` may be absent, and for most bundled lists it is: a list ships
+ * description text only when its redistribution record says `"permitted"`
+ * (the Remittance Advice Remark Codes today). For every other list the entry
+ * still comes back, so the code is known, with `description: undefined`; pass
+ * your own table as {@link CodeListLookupOptions}.`descriptions` to fill it.
+ * Fields such as `isObsolete` and `replacedBy` are not carried.
  *
  * `dates` is present only on the snapshots that carry per-code dates (CARC and
  * RARC today) and only for a code that HAS one there, so an entry from a
@@ -142,17 +149,56 @@ export interface CodeListEntryDates {
  *
  * @example
  * ```ts
- * import { lookupCarc } from "@cosyte/x12";
+ * import { lookupCarc, lookupRarc } from "@cosyte/x12";
  * const entry = lookupCarc("45");
  * entry?.code;          // "45"
- * entry?.description;   // "Charge exceeds fee schedule/maximum allowable..."
+ * entry?.description;   // undefined (this list ships no description text)
  * entry?.dates?.start;  // "1995-01-01"
+ * lookupCarc("45", { descriptions: { "45": "Your own text" } })?.description; // "Your own text"
+ * typeof lookupRarc("N4")?.description; // "string" (a list recorded as permitted)
  * ```
  */
 export interface CodeListEntry {
   readonly code: string;
-  readonly description: string;
+  /**
+   * The description, or `undefined` where the list ships none and the caller
+   * supplied none. Only a list whose redistribution record is `"permitted"`
+   * ships description text.
+   */
+  readonly description: string | undefined;
   readonly dates?: CodeListEntryDates;
+}
+
+/**
+ * Options every bundled code-list lookup takes.
+ *
+ * `descriptions` is your own table of code descriptions, keyed by code. Most
+ * bundled lists ship no description text, because their own redistribution
+ * record does not say `"permitted"`; a caller that holds descriptions it may
+ * use (for example under its own licence with the list's maintainer) supplies
+ * them here. The lookup reads the table and never changes it:
+ *
+ * - a bundled code your table describes comes back with your text, and keeps
+ *   its published `dates` where the snapshot has them;
+ * - a code outside the bundled subset that your table describes comes back as
+ *   `{ code, description }` with your text;
+ * - a code your table does not describe gets the bundled description, which
+ *   is `undefined` for every list not recorded as `"permitted"`.
+ *
+ * Only an own property holding a string counts, so an inherited key such as
+ * `constructor` is never read as a description.
+ *
+ * @example
+ * ```ts
+ * import { lookupCarc } from "@cosyte/x12";
+ * const mine = { "45": "Made-up text for this example" };
+ * lookupCarc("45", { descriptions: mine })?.description; // "Made-up text for this example"
+ * lookupCarc("45")?.description;                         // undefined
+ * ```
+ */
+export interface CodeListLookupOptions {
+  /** Your own descriptions, keyed by code. Read, never changed. */
+  readonly descriptions?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -166,12 +212,18 @@ export interface CodeListEntry {
  * ```ts
  * import { CARC } from "@cosyte/x12";
  * Object.keys(CARC.codes).length;        // count of bundled CARC codes
- * CARC.codes["45"];                      // raw description string (or undefined)
+ * Object.hasOwn(CARC.codes, "45");       // true: the code is bundled
+ * CARC.codes["45"];                      // undefined: no description ships for this list
  * ```
  */
 export interface CodeListSnapshot {
   readonly meta: CodeListMeta;
-  readonly codes: Readonly<Record<string, string>>;
+  /**
+   * Every bundled code, mapped to its description where the list ships one.
+   * A code is bundled when it is an own key here; its value is `undefined` for
+   * every list whose redistribution record is not `"permitted"`.
+   */
+  readonly codes: Readonly<Record<string, string | undefined>>;
 }
 
 /**
@@ -206,7 +258,7 @@ export interface DatedCodeListMeta extends CodeListMeta {
  * @example
  * ```ts
  * import { RARC } from "@cosyte/x12";
- * RARC.codes["N4"];          // the bundled description
+ * typeof RARC.codes["N4"];   // "string" (this list ships descriptions)
  * RARC.dates["N4"]?.start;   // "2000-01-01"
  * ```
  */
@@ -236,7 +288,13 @@ export function freezeCodeDates(
  * Construct a `lookup` helper for a {@link CodeListSnapshot}. Returns
  * `undefined` for codes outside the bundled subset (which is the
  * fail-safe - the verbatim inbound code is preserved by the helper that
- * called us; only the description is unavailable).
+ * called us; only the description is unavailable), unless the caller's own
+ * {@link CodeListLookupOptions}.`descriptions` describes the code.
+ *
+ * Membership is read off the own keys of `codes`, never off the value, so a
+ * bundled code whose list ships no description still comes back as an entry
+ * with `description: undefined`. The readers' unknown-code warnings branch on
+ * that `undefined` entry, which is why the two are kept apart.
  *
  * The parameter is the `codes` half of a snapshot rather than the whole
  * {@link CodeListSnapshot}, because the guard below reads nothing else and a
@@ -253,8 +311,9 @@ export function freezeCodeDates(
  */
 export function makeLookup(
   snapshot: Pick<CodeListSnapshot, "codes"> & Partial<Pick<DatedCodeListSnapshot, "dates">>,
-): (code: string) => CodeListEntry | undefined {
-  return (code: string): CodeListEntry | undefined => {
+): (code: string, options?: CodeListLookupOptions) => CodeListEntry | undefined {
+  return (code: string, options?: CodeListLookupOptions): CodeListEntry | undefined => {
+    const own = readOwnDescription(options?.descriptions, code);
     // `Object.hasOwn` first, ALWAYS. `snapshot.codes` is a plain object
     // literal, `code` comes off the wire, and a literal inherits
     // `Object.prototype` - so a bare `snapshot.codes[code]` answers a
@@ -269,14 +328,32 @@ export function makeLookup(
     // snapshot is read through, rather than at each caller: `snapshot` is
     // supplied by the caller, so this module cannot re-declare the table
     // with a null prototype the way `src/parser/lookup.ts` does.
-    if (!Object.hasOwn(snapshot.codes, code)) return undefined;
-    const description = snapshot.codes[code];
-    /* v8 ignore next -- `hasOwn` passed and every bundled snapshot maps a code to a string */
-    if (description === undefined) return undefined;
+    if (!Object.hasOwn(snapshot.codes, code)) {
+      return own === undefined ? undefined : Object.freeze({ code, description: own });
+    }
+    const description = own ?? snapshot.codes[code];
     const dates = readOwnDates(snapshot.dates, code);
     if (dates === undefined) return Object.freeze({ code, description });
     return Object.freeze({ code, description, dates });
   };
+}
+
+/**
+ * Read one code's description off a caller's own table through the same
+ * `Object.hasOwn` guard the bundled read uses, and only when it is a string:
+ * the table comes from the caller, so neither an inherited key nor a value of
+ * another type is ever handed back as a description.
+ *
+ * @internal
+ */
+function readOwnDescription(
+  descriptions: Readonly<Record<string, string>> | undefined,
+  code: string,
+): string | undefined {
+  if (descriptions === undefined) return undefined;
+  if (!Object.hasOwn(descriptions, code)) return undefined;
+  const value: unknown = descriptions[code];
+  return typeof value === "string" ? value : undefined;
 }
 
 /**
@@ -354,7 +431,10 @@ export type CodeValidityReason = (typeof CODE_VALIDITY_REASONS)[keyof typeof COD
  * `code` is the inbound value byte for byte, exactly as the lookup helpers echo
  * it, so a code outside the bundled subset is never lost on the way through.
  * `description` is `undefined` for such a code: an absent code gets no
- * description and no validity claim, only its own bytes back.
+ * description and no validity claim, only its own bytes back. It is
+ * `undefined` for a bundled code too wherever the list ships no description
+ * text (the Claim Adjustment Reason Codes among them); the verdict does not
+ * depend on it.
  *
  * @example
  * ```ts
@@ -369,7 +449,7 @@ export type CodeValidityReason = (typeof CODE_VALIDITY_REASONS)[keyof typeof COD
 export interface CodeValidityResult {
   /** The inbound code, byte for byte as it was supplied. */
   readonly code: string;
-  /** The bundled description, or `undefined` outside the bundled subset. */
+  /** The bundled description, or `undefined` where none ships or outside the subset. */
   readonly description: string | undefined;
   /** The supplied document date, normalised to `YYYY-MM-DD`. */
   readonly documentDate: string;

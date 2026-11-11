@@ -35,6 +35,7 @@ export { CODE_VALIDITY, CODE_VALIDITY_REASONS, codeListRedistributionIsPermitted
 export type {
   CodeListEntry,
   CodeListEntryDates,
+  CodeListLookupOptions,
   CodeListMeta,
   CodeListSnapshot,
   CodeValidity,

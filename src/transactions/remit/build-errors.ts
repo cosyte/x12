@@ -4,8 +4,8 @@
  * `X12BuildError` (a structurally impossible envelope) and from
  * `AckBuildError` (the 999/TA1 disposition guard): `Remit835BuildError`
  * is raised when a remittance spec is *clinically* impossible - most
- * importantly, when the supplied amounts do not satisfy the TR3
- * 005010X221A1 §1.10.2 balance equations.
+ * importantly, when the supplied amounts do not satisfy the three 835
+ * balance equations.
  *
  * Money is the largest blast radius in a remit. The read side (`get835`)
  * is lenient - a real, payer-issued, out-of-balance 835 is WARNED, never
@@ -26,7 +26,7 @@
  * thereafter (renaming any code is a breaking change).
  *
  * - `X12_835_BUILD_BALANCE_MISMATCH` - a spec violated one of the three
- *   §1.10.2 balance invariants (service-line `SVC-02 == SVC-03 + Σ(line
+ *   835 balance equations (service-line `SVC-02 == SVC-03 + Σ(line
  *   CAS)`, claim `CLP-03 == CLP-04 + Σ(claim+line CAS)`, or top-of-remit
  *   `BPR-02 == Σ(CLP-04) − Σ(PLB)`). The message names the invariant,
  *   the spec'd vs computed totals, and the delta - numeric values only,
@@ -64,7 +64,7 @@ export type Remit835BuildErrorCode =
 /**
  * Thrown by {@link "./build-835.js".build835} when the supplied remittance
  * spec cannot be emitted as a conformant, self-consistent 835 - most
- * importantly when it fails a §1.10.2 balance invariant. Carries a stable
+ * importantly when it fails an 835 balance equation. Carries a stable
  * `code` for programmatic narrowing. Deliberately does NOT extend
  * `X12ParseError` or `X12BuildError` - the domain-refusal distinction
  * matters at the type level.

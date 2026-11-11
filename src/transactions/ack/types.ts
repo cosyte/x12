@@ -111,9 +111,9 @@ export interface X12Ack999Ik3 {
 
 /**
  * Position of an element/component/repetition inside a parent segment for
- * an IK4 element note. Element is 1-indexed (the TR3 convention);
- * component and repetition are surfaced exactly as encoded in IK4-01's
- * composite - see TR3 `005010X231A1` §IK4.
+ * an IK4 element note. Element is 1-indexed, as positions are throughout
+ * this package; component and repetition are surfaced exactly as encoded in
+ * IK4-01's composite.
  *
  * @example
  * ```ts

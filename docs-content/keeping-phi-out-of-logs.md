@@ -185,7 +185,7 @@ Fourth, **`build835`'s balance-equation amounts refuse UNTYPED.** The balance gu
 escape helper is built and calls `X12Decimal` methods on your value, so a raw `number` there throws a
 plain `TypeError` with **no `code`** rather than the typed refusal. The rule is the equation, not a
 list: an amount refuses untyped exactly when the balance guard reads it as a term of one of the three
-TR3 X221A1 §1.10.2 invariants. Named by spec field rather than element number, the untyped set is
+835 balance equations. Named by spec field rather than element number, the untyped set is
 `payment.totalActualPayment`, `claim.totalChargeAmount`, `claim.totalPaymentAmount`, every
 `adjustments[].amount` at claim and line level, `serviceLine.chargeAmount`,
 `serviceLine.paymentAmount` and `providerAdjustments[].amount`. Every other `X12Decimal` field

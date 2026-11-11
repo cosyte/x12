@@ -1,9 +1,11 @@
 /**
  * Code-list registries for the X12 acknowledgment surface (999 + TA1).
  *
- * Every code list here is a {@link https://x12.org/codes ASC X12 standard
- * code list} cited by TR3 005010X231A1 (999) or by the ASC X12 standard
- * itself (TA1). The registries are FROZEN string-literal unions so
+ * Every code list here is an {@link https://x12.org/codes ASC X12 standard
+ * code list} used by the 999 (005010X231A1) or by the TA1. We carry the code
+ * values alone, without their published definitions; the note beside each
+ * says what the code makes this library do. The registries are FROZEN
+ * string-literal unions so
  * consumers narrow exhaustively on `disposition: X12AckDispositionCode`
  * and the like - adding a code is an additive public-surface change; a
  * rename is breaking (locked by the warning/code-snapshot tripwires).
@@ -24,14 +26,14 @@
  * fabricated `A` against a non-empty error list is a bug and refused at
  * build time (see {@link "./errors.js".AckBuildError}).
  *
- * - `A` - Accepted.
- * - `E` - Accepted, but errors were noted.
- * - `P` - Partially accepted: at least one transaction set was rejected
- *   while the functional group as a whole was accepted.
- * - `R` - Rejected.
- * - `M` - Rejected: message authentication code (MAC) failed.
- * - `W` - Rejected: assurance failed validity tests.
- * - `X` - Rejected: content after decryption could not be analyzed.
+ * - `A` - {@link isAcceptDisposition} answers `true`; `build999` refuses it
+ *   beside a non-empty error list.
+ * - `E` - {@link isAcceptDisposition} answers `true`.
+ * - `P` - {@link isAcceptDisposition} answers `true`.
+ * - `R` - {@link isAcceptDisposition} answers `false`.
+ * - `M` - {@link isAcceptDisposition} answers `false`.
+ * - `W` - {@link isAcceptDisposition} answers `false`.
+ * - `X` - {@link isAcceptDisposition} answers `false`.
  *
  * @example
  * ```ts
@@ -135,19 +137,10 @@ export function isAcceptDisposition(code: X12AckDispositionCode): boolean {
  * inbound segment. The library NEVER auto-classifies - the application
  * supplies the code; the library mechanically builds the IK3 around it.
  *
- * - `1` - Unrecognized segment ID.
- * - `2` - Unexpected segment.
- * - `3` - Required segment missing.
- * - `4` - Loop occurs over maximum times.
- * - `5` - Segment exceeds maximum use.
- * - `6` - Segment not in defined transaction set.
- * - `7` - Segment not in proper sequence.
- * - `8` - Segment has data element errors.
- * - `I4` - Implementation "Not Used" segment present.
- * - `I6` - Implementation dependent segment missing.
- * - `I7` - Implementation loop occurs under minimum times.
- * - `I8` - Implementation segment below minimum use.
- * - `I9` - Implementation dependent "Not Used" segment present.
+ * Code values: `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `I4`, `I6`, `I7`, `I8`,
+ * `I9`. Each one does the same thing here: `parse999` narrows IK3-04 to it,
+ * and reads any other value as `undefined` (the raw segment keeps the
+ * bytes); `build999` writes the code it is given.
  *
  * @example
  * ```ts
@@ -182,24 +175,10 @@ export type Ik304Code = (typeof IK3_SYNTAX_ERROR_CODES)[keyof typeof IK3_SYNTAX_
  * 723). Cited per IK4 segment to identify the issue against the inbound
  * element/component/repetition.
  *
- * - `1` - Required data element missing.
- * - `2` - Conditional required data element missing.
- * - `3` - Too many data elements.
- * - `4` - Data element too short.
- * - `5` - Data element too long.
- * - `6` - Invalid character in data element.
- * - `7` - Invalid code value.
- * - `8` - Invalid date.
- * - `9` - Invalid time.
- * - `10` - Exclusion condition violated.
- * - `12` - Too many repetitions.
- * - `13` - Too many components.
- * - `I6` - Code value not used in implementation.
- * - `I9` - Implementation dependent data element missing.
- * - `I10` - Implementation "Not Used" data element present.
- * - `I11` - Implementation too few repetitions.
- * - `I12` - Implementation pattern match failure.
- * - `I13` - Implementation dependent "Not Used" data element present.
+ * Code values: `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, `12`, `13`,
+ * `I6`, `I9`, `I10`, `I11`, `I12`, `I13`. Each one does the same thing here:
+ * `parse999` narrows IK4-03 to it, and reads any other value as `undefined`
+ * (the raw segment keeps the bytes); `build999` writes the code it is given.
  *
  * @example
  * ```ts
@@ -267,36 +246,10 @@ export type Ta1AckCode = (typeof TA1_ACK_CODES)[keyof typeof TA1_ACK_CODES];
  * acceptance. The build-time safety guard refuses a fabricated `A` paired
  * with any non-`000` note (see {@link "./errors.js".AckBuildError}).
  *
- * Standard-issued values:
- * - `000` - No error.
- * - `001` - Interchange Control Number in the Header and Trailer do not match.
- * - `002` - Standard as noted in the Control Standards Identifier is not supported.
- * - `003` - Version of the controls is not supported.
- * - `004` - Segment Terminator is invalid.
- * - `005` - Invalid Interchange ID Qualifier for Sender.
- * - `006` - Invalid Interchange Sender ID.
- * - `007` - Invalid Interchange ID Qualifier for Receiver.
- * - `008` - Invalid Interchange Receiver ID.
- * - `009` - Unknown Interchange Receiver ID.
- * - `010` - Invalid Authorization Information Qualifier value.
- * - `011` - Invalid Authorization Information value.
- * - `012` - Invalid Security Information Qualifier value.
- * - `013` - Invalid Security Information value.
- * - `014` - Invalid Interchange Date value.
- * - `015` - Invalid Interchange Time value.
- * - `016` - Invalid Interchange Standards Identifier value.
- * - `017` - Invalid Interchange Version ID value.
- * - `018` - Invalid Interchange Control Number value.
- * - `019` - Invalid Acknowledgment Requested value.
- * - `020` - Invalid Test Indicator value.
- * - `021` - Invalid Number of Included Groups value.
- * - `022` - Invalid Control Structure.
- * - `023` - Improper (premature) end-of-file (transmission).
- * - `024` - Invalid Interchange Content (e.g., invalid GS segment).
- * - `025` - Duplicate Interchange Control Number.
- * - `026` - Invalid Data Element Separator.
- * - `027` - Invalid Component Element Separator.
- * - `028` - Invalid Delivery Date in Deferred Delivery Request.
+ * Standard-issued values, `000` to `028`:
+ * - `000` - the one note `buildTA1` accepts beside TA1-04 `A`.
+ * - `001` to `028` - `parseTA1` narrows TA1-05 to the value; `buildTA1`
+ *   refuses any of them beside TA1-04 `A`.
  *
  * @example
  * ```ts

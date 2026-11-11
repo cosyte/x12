@@ -8,7 +8,7 @@
  * Loop 2200 status-tracking shape; they differ only by `ST-03` and by
  * which levels carry status (277CA can acknowledge at the provider level).
  *
- * Hierarchy (per WPC TR3 X212 §1.4 / X214 §1.4):
+ * Hierarchy (as this reader implements it; no implementation guide was read):
  *
  * ```text
  *  Header (ST, BHT)

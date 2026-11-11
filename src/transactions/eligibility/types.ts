@@ -373,15 +373,17 @@ export interface X12EligibilityProcedure {
 
 /**
  * A decoded Service Type Code (EB-03, X12 external code source 1365). The
- * verbatim code is always preserved; `description` resolves from the
- * bundled snapshot (or `undefined` when outside the subset).
+ * verbatim code is always preserved; `description` is `undefined`, because
+ * the Service Type list ships no description text (its redistribution record
+ * is `"licence-required"`). Call `lookupServiceType(st.code, { descriptions })`
+ * with a table you hold to show your own text.
  *
  * @example
  * ```ts
  * import type { X12EligibilityServiceType } from "@cosyte/x12";
  * declare const st: X12EligibilityServiceType;
  * st.code;        // "30"
- * st.description; // "Health Benefit Plan Coverage"
+ * st.description; // undefined (no description text ships for this list)
  * ```
  */
 export interface X12EligibilityServiceType {

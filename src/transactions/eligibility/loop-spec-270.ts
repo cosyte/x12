@@ -5,8 +5,8 @@
  * SAME factory a consumer uses for a payer-specific companion-guide loop, so a
  * regression in `defineLoopSpec` cannot hide from the built-in reader.
  *
- * Hierarchy (per WPC TR3 section 1.4.2; the request tree the 271's response
- * tree mirrors):
+ * Hierarchy, as this reader implements it (no implementation guide was
+ * read); the request tree the 271's response tree mirrors:
  *
  * ```text
  *  Header (ST, BHT)

@@ -18,17 +18,19 @@
  *   the X12 External Code Lists index publishes cites its own row there and
  *   never claims the index is silent about it, and only the two lists that
  *   really are absent from it carry the unsettled record.
- * - That this change added no code and altered no description, pinned by
- *   digest so an addition or an edit reds here.
+ * - That every list keeps exactly the codes it carried, pinned by digest so an
+ *   addition or an edit reds here; only the list recorded as permitted keeps
+ *   its descriptions (`test/code-lists-descriptions.test.ts` holds that rule).
  * - The regression locks below: adding per-code validity dates to the CARC and
- *   RARC snapshots moved NO code, NO description and NO existing lookup
- *   behaviour, on those two lists or on any other bundled list.
+ *   RARC snapshots moved NO code and NO existing lookup behaviour, on those two
+ *   lists or on any other bundled list.
  *
  * The redistribution record and the per-code validity dates are ORTHOGONAL and
  * both are asserted here: one says what may be done with a description, the
  * other says which days a code was valid on. Neither displaces the other, and
  * the transcribed tables below plus the digests above pin the SAME `codes` maps
- * from two independent directions.
+ * from two independent directions. No description from a list that is not
+ * recorded as permitted is copied into this file.
  */
 
 import { createHash } from "node:crypto";
@@ -101,10 +103,10 @@ describe("code-list metadata invariants", () => {
 });
 
 describe("lookup helpers", () => {
-  it("CARC lookup returns frozen { code, description } for a known code", () => {
+  it("CARC lookup returns a frozen entry with no description for a known code", () => {
     const entry = lookupCarc("45");
     expect(entry?.code).toBe("45");
-    expect(entry?.description).toMatch(/fee schedule/iu);
+    expect(entry?.description).toBeUndefined();
     expect(Object.isFrozen(entry)).toBe(true);
   });
 
@@ -119,10 +121,10 @@ describe("lookup helpers", () => {
     expect(lookupRarc("ZZZZ")).toBeUndefined();
   });
 
-  it("CLP status lookup returns the expected dispositions", () => {
-    expect(lookupClpStatus("1")?.description).toMatch(/Primary/iu);
-    expect(lookupClpStatus("4")?.description).toMatch(/Denied/iu);
-    expect(lookupClpStatus("22")?.description).toMatch(/Reversal/iu);
+  it("CLP status lookup knows the bundled dispositions and describes none", () => {
+    for (const code of ["1", "4", "22"]) {
+      expect(lookupClpStatus(code)).toEqual({ code, description: undefined });
+    }
     expect(lookupClpStatus("99")).toBeUndefined();
   });
 });
@@ -318,16 +320,15 @@ describe("AC-1/AC-5: the recorded terms agree with the sources they were read of
   });
 });
 
-describe("AC-8: no code and no description changed", () => {
+describe("AC-8: every list keeps its codes, and only the permitted one its descriptions", () => {
   /**
    * Digest of a bundled list's exact `code -> description` pairs, order
-   * normalised so a re-ordering is not mistaken for an edit.
+   * normalised so a re-ordering is not mistaken for an edit. A list that ships
+   * no description digests its codes against `null`.
    *
-   * A digest rather than a copy of the tables ON PURPOSE. Six of the seven
-   * lists carry descriptions this package may not redistribute, and pasting a
-   * second copy of them into a test would be exactly the exposure the record
-   * beside them exists to prevent. The digest pins every byte without making a
-   * copy, and the explicit code keys below make the "added none" half readable.
+   * A digest rather than a copy of the tables ON PURPOSE: it pins every byte
+   * without making a copy, and the explicit code keys below make the "added
+   * none" half readable.
    */
   function digest(snap: CodeListSnapshot): string {
     const entries = Object.entries(snap.codes).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
@@ -335,13 +336,14 @@ describe("AC-8: no code and no description changed", () => {
   }
 
   /**
-   * Taken on the tree BEFORE this change, with `codes` untouched by it. A code
-   * added, a code dropped or a description reworded moves the digest.
+   * A code added, a code dropped or a description added or reworded moves the
+   * digest. RARC's is the one taken before the restricted lists lost their
+   * descriptions, so it shows RARC did not change with them.
    */
   const EXPECTED: Readonly<Record<string, { readonly count: number; readonly sha256: string }>> = {
     CARC: {
       count: 29,
-      sha256: "529df9cbe8d9a3c8f2020980dc21fb3f103fd01b7ffed834314562062ac9f2b3",
+      sha256: "80c0103e231779d3715cb954d9f99374984a7a31eab139c9d98d43b404902d71",
     },
     RARC: {
       count: 12,
@@ -349,23 +351,23 @@ describe("AC-8: no code and no description changed", () => {
     },
     "CLAIM-STATUS-CATEGORY": {
       count: 29,
-      sha256: "09fd13c05e5b90167f70afd53c3fb31bb89f465e5b9fe65ac458a868bb0f06a5",
+      sha256: "603c79fca5b680dadb122df6f63d6f2906010c0173e4f91f37371aac4bfb0eab",
     },
     "CLAIM-STATUS": {
       count: 25,
-      sha256: "09d95f60ac0bf591bc53f2acbebb9ddaea0c0c49f90efd7f6d9fb4095b7b6ab0",
+      sha256: "583623dcf3139aab3450c66028878e2ce50a4ae67351bfde6fb9ed1eb328971c",
     },
     "SERVICE-TYPE": {
       count: 40,
-      sha256: "3d75a45b4148ab2ed7f0e5b7a1d655a148ec76425178ab50b21327a69d8f7cec",
+      sha256: "07bd3f4b40dcaafd4dd50b52781cb9a12d8ef902ecf8b77dffffbec2f324df1c",
     },
     "CLP-STATUS": {
       count: 10,
-      sha256: "3ddc3ad59bfc5f71b5e9f3f038346d051b24135e9f42af721f85ec1255c944ca",
+      sha256: "7aff9d1bac4b92ad9ee37c77c4abfca4419537bebb415d6875fd09bb7cf7fc5f",
     },
     "MAINTENANCE-TYPE": {
       count: 9,
-      sha256: "931caca746a13573d78acf77f58a1671ef91e59d3525c638f213e12b5378f181",
+      sha256: "0481468607ff217e9adf2a1c944b0c7210c3cdfa998806436d7c3633960c5ffd",
     },
   };
 
@@ -434,48 +436,49 @@ describe("AC-8: no code and no description changed", () => {
     // Without this the pins above could pass over a broken digest function.
     const altered: CodeListSnapshot = {
       meta: CARC.meta,
-      codes: { ...CARC.codes, "1": "Deductible Amount (edited)" },
+      codes: { ...CARC.codes, "1": "Synthetic text added for this control" },
     };
     expect(digest(altered)).not.toBe(EXPECTED["CARC"]?.sha256);
   });
 });
 
 /**
- * The CARC subset as it shipped before per-code dates were added, code by code
- * and byte for byte. Transcribed rather than derived: a lock that reads the
- * value it asserts cannot catch the change it exists to catch.
+ * The CARC codes as they shipped before per-code dates were added, code by
+ * code. Transcribed rather than derived: a lock that reads the value it
+ * asserts cannot catch the change it exists to catch. The list ships no
+ * description, so none is transcribed.
  */
-const BUNDLED_CARC: Readonly<Record<string, string>> = {
-  "1": "Deductible Amount",
-  "2": "Coinsurance Amount",
-  "3": "Co-payment Amount",
-  "4": "The procedure code is inconsistent with the modifier used.",
-  "5": "The procedure code/type of bill is inconsistent with the place of service.",
-  "6": "The procedure/revenue code is inconsistent with the patient's age.",
-  "7": "The procedure/revenue code is inconsistent with the patient's gender.",
-  "8": "The procedure code is inconsistent with the provider type/specialty (taxonomy).",
-  "9": "The diagnosis is inconsistent with the patient's age.",
-  "10": "The diagnosis is inconsistent with the patient's gender.",
-  "11": "The diagnosis is inconsistent with the procedure.",
-  "15": "The authorization number is missing, invalid, or does not apply to the billed services or provider.",
-  "16": "Claim/service lacks information or has submission/billing error(s).",
-  "18": "Exact duplicate claim/service.",
-  "22": "This care may be covered by another payer per coordination of benefits.",
-  "23": "The impact of prior payer(s) adjudication including payments and/or adjustments.",
-  "24": "Charges are covered under a capitation agreement/managed care plan.",
-  "26": "Expenses incurred prior to coverage.",
-  "27": "Expenses incurred after coverage terminated.",
-  "29": "The time limit for filing has expired.",
-  "31": "Patient cannot be identified as our insured.",
-  "45": "Charge exceeds fee schedule/maximum allowable or contracted/legislated fee arrangement.",
-  "50": "These are non-covered services because this is not deemed a 'medical necessity' by the payer.",
-  "96": "Non-covered charge(s).",
-  "97": "The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated.",
-  "109": "Claim/service not covered by this payer/contractor.",
-  "119": "Benefit maximum for this time period or occurrence has been reached.",
-  "197": "Precertification/authorization/notification/pre-treatment absent.",
-  "204": "This service/equipment/drug is not covered under the patient's current benefit plan.",
-};
+const BUNDLED_CARC_CODES: readonly string[] = [
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+  "11",
+  "15",
+  "16",
+  "18",
+  "22",
+  "23",
+  "24",
+  "26",
+  "27",
+  "29",
+  "31",
+  "45",
+  "50",
+  "96",
+  "97",
+  "109",
+  "119",
+  "197",
+  "204",
+];
 
 /** The RARC subset as it shipped before per-code dates were added. */
 const BUNDLED_RARC: Readonly<Record<string, string>> = {
@@ -602,11 +605,12 @@ const OTHER_LIST_CODES = {
   ],
 } as const;
 
-describe("regression locks: per-code dates moved no code and no description", () => {
-  it("CARC ships exactly the same 29 codes with byte-identical descriptions", () => {
-    expect(Object.keys(CARC.codes).sort()).toEqual(Object.keys(BUNDLED_CARC).sort());
-    for (const [code, description] of Object.entries(BUNDLED_CARC)) {
-      expect(CARC.codes[code]).toBe(description);
+describe("regression locks: per-code dates moved no code", () => {
+  it("CARC ships exactly the same 29 codes, none with a description", () => {
+    expect(Object.keys(CARC.codes).sort()).toEqual([...BUNDLED_CARC_CODES].sort());
+    for (const code of BUNDLED_CARC_CODES) {
+      expect(Object.hasOwn(CARC.codes, code)).toBe(true);
+      expect(CARC.codes[code]).toBeUndefined();
     }
   });
 
@@ -617,11 +621,11 @@ describe("regression locks: per-code dates moved no code and no description", ()
     }
   });
 
-  it("the single-argument lookups return the same code and description as before", () => {
-    for (const [code, description] of Object.entries(BUNDLED_CARC)) {
+  it("the single-argument lookups return the same codes, and RARC its descriptions", () => {
+    for (const code of BUNDLED_CARC_CODES) {
       const entry = lookupCarc(code);
       expect(entry?.code).toBe(code);
-      expect(entry?.description).toBe(description);
+      expect(entry?.description).toBeUndefined();
       expect(Object.isFrozen(entry)).toBe(true);
     }
     for (const [code, description] of Object.entries(BUNDLED_RARC)) {
@@ -638,7 +642,7 @@ describe("regression locks: per-code dates moved no code and no description", ()
       // X12_UNKNOWN_RARC, so `undefined` is the contract and not an artefact.
       const carc = lookupCarc(code);
       const rarc = lookupRarc(code);
-      expect(carc === undefined || Object.hasOwn(BUNDLED_CARC, code)).toBe(true);
+      expect(carc === undefined || BUNDLED_CARC_CODES.includes(code)).toBe(true);
       expect(rarc === undefined || Object.hasOwn(BUNDLED_RARC, code)).toBe(true);
     },
   );
@@ -662,14 +666,16 @@ describe("regression locks: every other bundled list is untouched", () => {
     ["CLP_STATUS", CLP_STATUS, OTHER_LIST_CODES.CLP_STATUS],
     ["MAINTENANCE_TYPE_CODES", MAINTENANCE_TYPE_CODES, OTHER_LIST_CODES.MAINTENANCE_TYPE_CODES],
     ["SERVICE_TYPE_CODES", SERVICE_TYPE_CODES, OTHER_LIST_CODES.SERVICE_TYPE_CODES],
-  ] as const)("%s ships exactly the codes it always did", (name, snap, codes) => {
-    expect(Object.keys(snap.codes).sort()).toEqual([...codes].sort());
-    for (const description of Object.values(snap.codes)) {
-      expect(typeof description).toBe("string");
-      expect(description.length).toBeGreaterThan(0);
-    }
-    void name;
-  });
+  ] as const)(
+    "%s ships exactly the codes it always did, with no description",
+    (name, snap, codes) => {
+      expect(Object.keys(snap.codes).sort()).toEqual([...codes].sort());
+      for (const description of Object.values(snap.codes)) {
+        expect(description).toBeUndefined();
+      }
+      void name;
+    },
+  );
 
   it.each([
     ["CLAIM_STATUS_CODES", CLAIM_STATUS_CODES],

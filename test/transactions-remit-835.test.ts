@@ -4,7 +4,7 @@
  * - All six 835 Tier-1 + Tier-2 fixtures: end-to-end extraction.
  * - Money discipline: every monetary field decodes as `X12Decimal`, never
  *   `number` - float arithmetic destroys cents at scale.
- * - Balance invariants per TR3 X221A1 §1.10.2: line + claim + top-of-remit
+ * - The three 835 balance equations: line + claim + top-of-remit
  *   warn loudly on mismatch, NEVER silently rebalance.
  * - CAS triple flattening: one CAS segment carrying multiple triples
  *   becomes multiple flat `X12RemitAdjustment` entries.
@@ -75,7 +75,7 @@ describe("get835 - Medicare canonical fixture", () => {
     if (claim === undefined) throw new Error("missing claim");
     expect(claim.patientControlNumber).toBe("PT-ACCT-001");
     expect(claim.claimStatusCode).toBe("1");
-    expect(claim.claimStatusDescription).toMatch(/Primary/iu);
+    expect(claim.claimStatusDescription).toBeUndefined();
     expect(claim.totalChargeAmount?.toString()).toBe("500.00");
     expect(claim.totalPaymentAmount?.toString()).toBe("450.00");
     expect(claim.patientResponsibilityAmount?.toString()).toBe("50.00");
@@ -98,7 +98,7 @@ describe("get835 - Medicare canonical fixture", () => {
     expect(line.adjustments[0]?.groupCode).toBe(CLAIM_ADJUSTMENT_GROUP_CODES.PR);
     expect(line.adjustments[0]?.reasonCode).toBe("1");
     expect(line.adjustments[0]?.amount?.toString()).toBe("50.00");
-    expect(line.adjustments[0]?.reasonDescription).toMatch(/Deductible/iu);
+    expect(line.adjustments[0]?.reasonDescription).toBeUndefined();
 
     expect(remit.warnings).toEqual([]);
   });
@@ -160,7 +160,7 @@ describe("get835 - PLB take-back and top-of-remit balance", () => {
 });
 
 describe("get835 - CARC / RARC integration", () => {
-  it("looks up CARC descriptions for known codes; warns + preserves unknown verbatim", () => {
+  it("ships no CARC description for a known code; warns + preserves unknown verbatim", () => {
     const remit = readRemitFixture("835-carc-rarc-mix.edi");
     const claim = remit.claims[0];
     if (claim === undefined) throw new Error("missing claim");
@@ -168,7 +168,7 @@ describe("get835 - CARC / RARC integration", () => {
     if (line === undefined) throw new Error("missing line");
     expect(line.adjustments).toHaveLength(2);
     expect(line.adjustments[0]?.reasonCode).toBe("45");
-    expect(line.adjustments[0]?.reasonDescription).toMatch(/fee schedule/iu);
+    expect(line.adjustments[0]?.reasonDescription).toBeUndefined();
     expect(line.adjustments[1]?.reasonCode).toBe("9999");
     expect(line.adjustments[1]?.reasonDescription).toBeUndefined();
     expect(remit.warnings.some((w) => w.code === WARNING_CODES.X12_UNKNOWN_CARC)).toBe(true);
@@ -177,8 +177,7 @@ describe("get835 - CARC / RARC integration", () => {
   it("looks up RARC descriptions on LQ*HE (service-line); warns on unknown RARC", () => {
     const remit = readRemitFixture("835-carc-rarc-mix.edi");
     // LQ in this fixture follows the SVC, so the remarks land on the
-    // service line (not the claim) - both placements are spec-valid per
-    // X221A1 §LQ.
+    // service line (not the claim); the reader accepts LQ in either place.
     const remarks = remit.claims[0]?.serviceLines[0]?.remarks ?? [];
     expect(remarks).toHaveLength(2);
     expect(remarks[0]?.code).toBe("N4");

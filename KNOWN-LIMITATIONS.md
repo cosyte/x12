@@ -873,7 +873,7 @@ is now one of those orphans, warned, kept and re-emitted like any other.
     route guarantees a decodable amount, because there AMT-02 decoded before the row was skipped.
 
 - **🩺 An 835 balance invariant with an undecoded term is reported as UNEVALUABLE, not as a
-  mismatch.** The three TR3 005010X221A1 §1.10.2 equations (line, claim, top-of-remit) read amounts
+  mismatch.** The three 835 balance equations (line, claim, top-of-remit) read amounts
   that are all `X12Decimal | undefined` as of `0.0.13`. Where any term of an equation is
   `undefined`, the equation is not run and `X12_835_BALANCE_NOT_EVALUABLE` is emitted instead of
   `X12_835_REMIT_BALANCE_MISMATCH`, because nothing was measured out of balance: substituting `0`
@@ -1595,7 +1595,7 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
      value. So a raw `number` there throws a plain `TypeError` with **no `code`** - some saying the
      value "has no internal state - was it tampered with?", which is a misleading thing to be told
      when you passed a number. **The rule, not a list:** a slot refuses untyped exactly when the
-     balance guard reads it as a term of one of the three TR3 X221A1 §1.10.2 invariants (the claim,
+     balance guard reads it as a term of one of the three 835 balance equations (the claim,
      service-line and remit-total equations). **Named by SPEC FIELD rather than element number,
      because a draft that used element numbers got one wrong:** the untyped set is
      `payment.totalActualPayment`, `claim.totalChargeAmount`, `claim.totalPaymentAmount`, every
@@ -1781,7 +1781,7 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
     A transaction set built by hand or copied out of the parse has none: it is still rejected with
     IK5-02 `5`, but without an IK3, and the warning is returned as `unreported`.
 
-- **Balance and integrity checks warn; they never rebalance or renumber.** The 835 TR3 §1.10.2 balance
+- **Balance and integrity checks warn; they never rebalance or renumber.** The 835 balance
   invariants, 837 HL parent-pointer integrity, and envelope-count reconciliation surface a warning on
   mismatch and preserve the inbound values verbatim. The library will not "fix" a payer artifact for
   you. Gate your own posting/adjudication on the warning.
@@ -1928,9 +1928,9 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` (277 statuses), `X12_271_AAA_UNKNOWN_CODE` (271 AAA codes),
   `X12_UNKNOWN_HI_QUALIFIER` (837 and 278 HI qualifiers) or `X12_834_UNKNOWN_MAINTENANCE_TYPE` (834
   INS-03 and HD-01), and `build834` refuses a maintenance type outside its list with
-  `X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE`. Three bundled lists are code subsets cited from a TR3:
-  `MAINTENANCE_TYPE_CODES` (INS-03), `CLP_STATUS` (CLP-02, which the 835 reader describes but does not
-  warn on) and `HI_QUALIFIERS`. We ship no TR3 usage tables, and the package does not check TR3 usage:
+  `X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE`. Three bundled lists are code subsets of lists a TR3
+  prints, which we did not read: `MAINTENANCE_TYPE_CODES` (INS-03), `CLP_STATUS` (CLP-02, which the
+  835 reader carries but does not warn on) and `HI_QUALIFIERS`. We ship no TR3 usage tables, and the package does not check TR3 usage:
   whether a segment or element is required, situational or not used where it sits, a guide's
   situational rules, repeat counts, or which code values a guide allows at an element beyond those
   bundled lists. Every TR3 is sold by X12, so a document that breaks its guide can parse with no
@@ -2132,6 +2132,35 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
     `indeterminate` with the inbound value echoed verbatim, which is a statement about what this
     package bundles rather than about what the maintainer publishes.
 
+## Code-list descriptions
+
+**Only a list whose own redistribution record says `permitted` ships description text.** Today that
+is the Remittance Advice Remark Codes alone. The other six bundled lists (CARC, the two claim-status
+lists, the service type codes, the CLP-02 dispositions and the INS-03 maintenance types) keep their
+codes, their metadata and, for CARC, the published per-code dates, and map every code to `undefined`.
+Their records, in the table below, say `licence-required` or `not-established`, and the package
+treats both as not redistributable.
+
+What that means for a caller:
+
+- **Membership is unchanged.** A bundled code still resolves through its lookup, so every
+  unknown-code warning and the `build834` refusal fire exactly where they did. The entry comes back
+  as `{ code, description: undefined }`, plus `dates` on CARC.
+- **The derived description fields on the read models are `undefined`** for these lists:
+  `reasonDescription` on 835 and 837 adjustments, `claimStatusDescription` on an 835 claim,
+  `categoryDescription` and `statusDescription` on 277 and 277 RFAI status codes, `description` on
+  270 and 271 service types, and `maintenanceTypeDescription` on an 834 member or coverage. The
+  verbatim codes beside them are unchanged.
+- **Bring your own descriptions.** Every lookup takes `{ descriptions }`, a table of your own text
+  keyed by code, and answers from it: a bundled code gets your text, a code outside the bundled
+  subset that your table describes gets `{ code, description }`, and a code your table does not
+  describe gets the bundled answer. Only an own property holding a string counts.
+  [`examples/describe-codes-with-your-own-table.ts`](https://github.com/cosyte/x12/blob/main/examples/describe-codes-with-your-own-table.ts)
+  runs it end to end with made-up text.
+- **A description cannot creep back in.** `pnpm refresh:code-lists` fails a list that is not
+  recorded as permitted and carries a description, and `test/code-lists-descriptions.test.ts` fails
+  on the same condition.
+
 ## Code-list `--fetch` regeneration
 
 `pnpm refresh:code-lists` (default) validates the bundled snapshots and prints a freshness audit,
@@ -2179,12 +2208,13 @@ their use. The same index records RARC as external code list 411 maintained by C
 terminology licensure page puts CARC among the code systems that require a purchased licence and RARC
 among those requiring none.
 
-**Being cited from a TR3 is not evidence of a missing publisher.** Three bundled lists point their
-`meta.source` at a purchased Technical Report Type 3: the service type codes, the CLP-02 dispositions
-and the INS-03 maintenance types. Only the last two are absent from the External Code Lists index;
-the service type codes have a row there, so they are answered from it. Where a bundled subset was
-read is a different question from what the publisher publishes, and only the second decides the
-terms.
+**Where a list is printed is not evidence of a missing publisher.** Three bundled lists are printed
+in a purchased Technical Report Type 3: the service type codes, the CLP-02 dispositions and the
+INS-03 maintenance types. We did not read those guides, and their `meta.source` says that no source
+for the bundled code values is recorded. Only the CLP-02 dispositions and the INS-03 maintenance
+types are absent from the External Code Lists index; the service type codes have a row there, so
+they are answered from it. Where a bundled subset came from is a different question from what the
+publisher publishes, and only the second decides the terms.
 
 **"Not established" is a recorded answer here, not a gap waiting to be tidied.** The last two lists,
 the CLP-02 dispositions and the INS-03 maintenance types, are printed inside a purchased ASC X12
@@ -2195,9 +2225,9 @@ licence-restricted list is: an unsettled question is never read as a permission.
 
 Consequences you can rely on:
 
-- **A list whose descriptions may not be redistributed stays exactly the cited part it already
-  ships.** Nothing is enlarged, refetched or relicensed by recording the terms, and the record names
-  the licensor who could change that.
+- **A list whose descriptions may not be redistributed ships its codes and no description.**
+  Nothing is enlarged, refetched or relicensed by recording the terms, and the record names the
+  licensor who could change that.
 - **`--fetch` answers each list on its own terms.** It reports each bundled list's regeneration
   permission independently, refuses only the lists whose own record forbids it, prints the licensor
   to approach beside each refusal, and never refuses a list because a different list is restricted.

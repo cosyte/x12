@@ -5,7 +5,7 @@
  * `X12_835_REMIT_BALANCE_MISMATCH` warning fires iff the input is out of
  * balance - never silently rebalanced.
  *
- * The invariants exercised (per TR3 X221A1 §1.10.2 - see
+ * The invariants exercised (the three 835 balance equations - see
  * `src/transactions/remit/balance.ts`):
  *
  * - Line: `SVC-02 === SVC-03 + Σ(line CAS)`

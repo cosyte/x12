@@ -221,7 +221,8 @@ export interface X12RemitContact {
  * c.patientControlNumber;          // "PT-ACCT-001"
  * c.totalChargeAmount?.toString();  // "500.00", or undefined if none decoded
  * c.totalPaymentAmount?.toString(); // "450.00", or undefined if none decoded
- * c.claimStatusCode;               // "1" - Processed as Primary
+ * c.claimStatusCode;               // "1"
+ * c.claimStatusDescription;        // undefined: the CLP-02 list ships no description text
  * c.serviceLines.length;           // count of SVC loops
  * ```
  */
@@ -284,15 +285,17 @@ export interface X12RemitClaim {
  * {@link "../../code-lists/cagc.js".CLAIM_ADJUSTMENT_GROUP_CODES}. `CO`
  * = provider write-off; `PR` = patient owes; `OA` / `PI` = other / payer
  * edit. `reasonCode` is the CARC value (verbatim); `reasonDescription`
- * is from the bundled snapshot or `undefined` if outside the subset.
+ * is `undefined`, because the CARC list ships no description text (its
+ * redistribution record is `"licence-required"`). To show your own text,
+ * call `lookupCarc(a.reasonCode, { descriptions })` with a table you hold.
  *
  * @example
  * ```ts
  * import type { X12RemitAdjustment } from "@cosyte/x12";
  * declare const a: X12RemitAdjustment;
- * a.groupCode;             // "PR" (patient responsibility)
- * a.reasonCode;            // "1" (deductible)
- * a.reasonDescription;     // "Deductible Amount"
+ * a.groupCode;             // "PR" (the patient owes it)
+ * a.reasonCode;            // "1"
+ * a.reasonDescription;     // undefined (no description text ships for CARC)
  * a.amount?.toString();    // "50.00", or undefined if none decoded
  * ```
  */

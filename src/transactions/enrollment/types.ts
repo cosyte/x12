@@ -85,8 +85,8 @@ export interface X12EnrollmentParty {
  * ```ts
  * import type { X12Enrollment } from "@cosyte/x12";
  * declare const e: X12Enrollment;
- * e.maintenanceTypeCode;            // "021" addition
- * e.maintenanceTypeDescription;     // "Addition"
+ * e.maintenanceTypeCode;            // "021"
+ * e.maintenanceTypeDescription;     // undefined: the INS-03 list ships no description text
  * e.member?.lastName;               // verbatim member surname
  * e.healthCoverages[0]?.insuranceLineCode; // "HLT"
  * ```

@@ -15,24 +15,33 @@
  * and never derives an accept/reject boolean (that interpretation belongs
  * to the consumer's business rules).
  *
- * Spec source: ASC X12 / Washington Publishing Company "Claim Status
- * Category Codes" (Code Source 507), as referenced by TR3s 005010X212 and
- * 005010X214. WPC updates this list periodically (roughly thrice yearly).
+ * The list is ASC X12's external code list 507, used by the 005010X212 and
+ * 005010X214 transactions. It is updated a few times a year.
+ *
+ * **No description text ships.** This list's redistribution record is
+ * `"licence-required"`, so the snapshot keeps the codes and the metadata and
+ * maps every code to `undefined`. Pass your own descriptions to the lookup as
+ * `options.descriptions`.
  */
 
-import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js";
+import {
+  makeLookup,
+  type CodeListEntry,
+  type CodeListLookupOptions,
+  type CodeListSnapshot,
+} from "./meta.js";
 import { CLAIM_STATUS_REDISTRIBUTION } from "./redistribution.js";
 
 /**
- * Bundled Claim Status Category Code (CSCC) snapshot. Used by the 277 and
- * 277CA helpers to surface a human-readable category alongside each
- * verbatim CSCC parsed from an STC composite.
+ * Bundled Claim Status Category Code (CSCC) snapshot. The 277 and 277CA
+ * helpers read it to tell a known CSCC from an unknown one; it ships no
+ * description text.
  *
  * @example
  * ```ts
  * import { CLAIM_STATUS_CATEGORY_CODES } from "@cosyte/x12";
- * CLAIM_STATUS_CATEGORY_CODES.codes["A2"]; // "Acknowledgement/Acceptance into adjudication system"
- * CLAIM_STATUS_CATEGORY_CODES.codes["F2"]; // "Finalized/Denial"
+ * Object.hasOwn(CLAIM_STATUS_CATEGORY_CODES.codes, "A2"); // true (bundled)
+ * CLAIM_STATUS_CATEGORY_CODES.codes["A2"];                // undefined (no description ships)
  * CLAIM_STATUS_CATEGORY_CODES.meta.redistribution?.status; // "licence-required"
  * ```
  */
@@ -50,50 +59,54 @@ export const CLAIM_STATUS_CATEGORY_CODES: CodeListSnapshot = Object.freeze({
     completeness: "cited-subset",
   }),
   codes: Object.freeze({
-    A0: "Acknowledgement/Forwarded - The claim/encounter has been forwarded to another entity.",
-    A1: "Acknowledgement/Receipt - The claim/encounter has been received.",
-    A2: "Acknowledgement/Acceptance into adjudication system - The claim/encounter has been accepted.",
-    A3: "Acknowledgement/Returned as unprocessable claim - The claim/encounter has been rejected and has not been entered into the adjudication system.",
-    A4: "Acknowledgement/Not Found - The claim/encounter cannot be found in the adjudication system.",
-    A5: "Acknowledgement/Split Claim - The claim/encounter has been split upon acceptance into the adjudication system.",
-    A6: "Acknowledgement/Rejected for Missing Information.",
-    A7: "Acknowledgement/Rejected for Invalid Information.",
-    A8: "Acknowledgement/Rejected for relational field in error.",
-    D0: "Data Search Unsuccessful - The payer is unable to return status on the requested claim(s).",
-    E0: "Response not possible - error on submitted request data.",
-    E1: "Response not possible - System Status.",
-    E2: "Information Holder is not responding; resubmit at a later time.",
-    E3: "Correction required - relational fields in error.",
-    E4: "Trading partner agreement specific requirement not met.",
-    F0: "Finalized - The claim/encounter has completed the adjudication cycle and no more action will be taken.",
-    F1: "Finalized/Payment - The claim/line has been paid.",
-    F2: "Finalized/Denial - The claim/line has been denied.",
-    F3: "Finalized/Revised - Adjudication information has been changed.",
-    F3F: "Finalized/Forwarded - The claim/encounter processing has been completed. Any payment information is forwarded with this transaction.",
-    F4: "Finalized/Adjudication Complete - No payment forthcoming.",
-    P0: "Pending - The claim/encounter is in the adjudication system but no decision has been made.",
-    P1: "Pending/In Process - The claim or encounter is in the adjudication system.",
-    P2: "Pending/Payer Review - The claim/encounter is suspended and is pending review.",
-    P3: "Pending/Provider Requested Information - The claim or encounter is waiting for information that has already been requested from the provider.",
-    P4: "Pending/Patient Requested Information - The claim or encounter is waiting for information that has already been requested from the patient/subscriber.",
-    P5: "Pending/Payer Administrative/System hold.",
-    R0: "Requests for additional Information - General requests.",
-    R1: "Requests for additional Information - Entity Information.",
+    A0: undefined,
+    A1: undefined,
+    A2: undefined,
+    A3: undefined,
+    A4: undefined,
+    A5: undefined,
+    A6: undefined,
+    A7: undefined,
+    A8: undefined,
+    D0: undefined,
+    E0: undefined,
+    E1: undefined,
+    E2: undefined,
+    E3: undefined,
+    E4: undefined,
+    F0: undefined,
+    F1: undefined,
+    F2: undefined,
+    F3: undefined,
+    F3F: undefined,
+    F4: undefined,
+    P0: undefined,
+    P1: undefined,
+    P2: undefined,
+    P3: undefined,
+    P4: undefined,
+    P5: undefined,
+    R0: undefined,
+    R1: undefined,
   }),
 });
 
 /**
- * Look up a Claim Status Category Code (CSCC) description from the bundled
- * snapshot. Returns `undefined` for codes outside the subset; the verbatim
- * code is always preserved on the parsed status model.
+ * Look up a Claim Status Category Code (CSCC). A bundled code returns
+ * `{ code, description: undefined }`, since this list ships no description
+ * text; pass your own table as `options.descriptions` to fill it. Returns
+ * `undefined` for a code outside the subset that your table does not
+ * describe; the verbatim code is always preserved on the parsed status model.
  *
  * @example
  * ```ts
  * import { lookupClaimStatusCategory } from "@cosyte/x12";
- * lookupClaimStatusCategory("A2")?.description; // "Acknowledgement/Acceptance..."
- * lookupClaimStatusCategory("ZZ");              // undefined (outside subset)
+ * lookupClaimStatusCategory("A2");   // { code: "A2", description: undefined }
+ * lookupClaimStatusCategory("A2", { descriptions: { A2: "Made-up text" } })?.description; // "Made-up text"
+ * lookupClaimStatusCategory("ZZ");   // undefined (outside subset)
  * ```
  */
-export const lookupClaimStatusCategory: (code: string) => CodeListEntry | undefined = makeLookup(
-  CLAIM_STATUS_CATEGORY_CODES,
-);
+export const lookupClaimStatusCategory: (
+  code: string,
+  options?: CodeListLookupOptions,
+) => CodeListEntry | undefined = makeLookup(CLAIM_STATUS_CATEGORY_CODES);

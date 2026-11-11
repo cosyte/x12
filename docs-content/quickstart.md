@@ -81,14 +81,16 @@ adj?.reasonCode; // => "1"
 adj?.amount?.toString(); // => "50.00"
 ```
 
-The `groupCode` (`PR` = patient responsibility, `CO` = contractual obligation, …) is what tells you
-who owes the money. Never infer it, read it. The `reasonDescription` on each adjustment is prefilled
-from the bundled CARC snapshot when the code is recognized; an unrecognized code is preserved verbatim
-and raises `X12_UNKNOWN_CARC` (the value is never dropped).
+The `groupCode` (`PR`: the patient owes it, `CO`: the provider's contract writes it off, and so on)
+is what tells you who owes the money. Never infer it, read it. The `reasonDescription` on each
+adjustment is `undefined`: the bundled CARC list ships its codes and no description text, because
+its own redistribution record says `licence-required`. Pass your own table to
+`lookupCarc(code, { descriptions })` to show text beside a code. An unrecognized code is preserved
+verbatim and raises `X12_UNKNOWN_CARC` (the value is never dropped).
 
 ## Respect the balance warning
 
-The reader runs the 835 implementation guide's balance equations (`005010X221A1`, section 1.10.2)
+The reader runs three balance equations over the 835
 and emits `X12_835_REMIT_BALANCE_MISMATCH` on a mismatch. It **never silently rebalances**. **Gate on two codes, not one:** where a term of an
 equation is `undefined` the equation cannot be run at all and you get
 `X12_835_BALANCE_NOT_EVALUABLE` instead, which is a document you must not post automatically either. Through

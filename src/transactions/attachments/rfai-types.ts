@@ -236,8 +236,9 @@ export interface X12AdditionalInformationRequestStatus {
  * code from that source (a LOINC code naming the attachment requested, say) and
  * is NOT looked up in the claim status code list, so `statusDescription` is
  * `undefined` and no unknown-claim-status warning is raised for it. Where it is
- * empty, C043-02 is a claim status code and is described from the bundled list
- * when the list has it. C043-01 is always a claim status category code.
+ * empty, C043-02 is a claim status code and is checked against the bundled
+ * list, which ships no description text, so `statusDescription` is `undefined`
+ * then too. C043-01 is always a claim status category code.
  *
  * @example
  * ```ts
@@ -250,11 +251,11 @@ export interface X12AdditionalInformationRequestStatus {
 export interface X12AdditionalInformationRequestStatusCode {
   /** C043-01, the claim status category code. */
   readonly categoryCode: string | undefined;
-  /** The bundled description of C043-01, where the list has it. */
+  /** Always `undefined`: the Claim Status Category list ships no description text. */
   readonly categoryDescription: string | undefined;
   /** C043-02, a code from the source C043-04 names, or a claim status code. */
   readonly statusCode: string | undefined;
-  /** The claim status description of C043-02; only where C043-04 is empty. */
+  /** Always `undefined`: the Claim Status list ships no description text. */
   readonly statusDescription: string | undefined;
   /** C043-03, entity identifier code. */
   readonly entityCode: string | undefined;

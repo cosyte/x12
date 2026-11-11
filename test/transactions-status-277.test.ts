@@ -84,9 +84,9 @@ describe("get277Status - Tier-1 canonical (X212)", () => {
 
     const code = info?.statuses[0];
     expect(code?.categoryCode).toBe("A2");
-    expect(code?.categoryDescription).toContain("Acceptance into adjudication system");
+    expect(code?.categoryDescription).toBeUndefined();
     expect(code?.statusCode).toBe("20");
-    expect(code?.statusDescription).toBe("Accepted for processing.");
+    expect(code?.statusDescription).toBeUndefined();
     expect(code?.entityCode).toBe("PR");
   });
 
@@ -143,7 +143,7 @@ describe("get277CADisposition - Tier-1 batch acknowledgment (X214)", () => {
     const rejected = r.claims[2]?.statuses[0]?.statuses[0];
     expect(rejected?.categoryCode).toBe("A7");
     expect(rejected?.statusCode).toBe("21");
-    expect(rejected?.statusDescription).toBe("Missing or invalid information.");
+    expect(rejected?.statusDescription).toBeUndefined();
   });
 
   it("admits the X214 convention only; get277Status admits either", () => {

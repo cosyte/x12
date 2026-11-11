@@ -33,6 +33,7 @@ import {
   makeLookup,
   makeValidityCheck,
   type CodeListEntry,
+  type CodeListLookupOptions,
   type CodeValidityResult,
   type DatedCodeListSnapshot,
 } from "./meta.js";
@@ -106,10 +107,12 @@ export const RARC: DatedCodeListSnapshot = Object.freeze({
 });
 
 /**
- * Look up a RARC code's bundled description. Same fail-safe semantics as
- * {@link "./carc.js".lookupCarc}: unknown codes return `undefined`, the
- * verbatim code is preserved on the parsed model, and the 835 walker
- * emits `X12_UNKNOWN_RARC`.
+ * Look up a RARC code's bundled description. This is the one bundled list
+ * that ships description text, because its redistribution record is
+ * `"permitted"`. Same fail-safe semantics as {@link "./carc.js".lookupCarc}:
+ * unknown codes return `undefined`, the verbatim code is preserved on the
+ * parsed model, and the 835 walker emits `X12_UNKNOWN_RARC`. Your own
+ * `options.descriptions` replaces the bundled text for a code it describes.
  *
  * @example
  * ```ts
@@ -117,7 +120,10 @@ export const RARC: DatedCodeListSnapshot = Object.freeze({
  * lookupRarc("N4")?.description; // "Missing/incomplete/invalid prior insurance carrier(s) EOB."
  * ```
  */
-export const lookupRarc: (code: string) => CodeListEntry | undefined = makeLookup(RARC);
+export const lookupRarc: (
+  code: string,
+  options?: CodeListLookupOptions,
+) => CodeListEntry | undefined = makeLookup(RARC);
 
 /**
  * Report whether a RARC code was valid on the day a document was produced.

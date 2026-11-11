@@ -6,7 +6,8 @@
  * guide loops, so a regression in `defineLoopSpec` cannot hide from the
  * built-in extractor.
  *
- * Hierarchy (per WPC TR3 §1.4.2, the HL tree mirrors the 270 request):
+ * Hierarchy, as this reader implements it (no implementation guide was
+ * read); the HL tree mirrors the 270 request:
  *
  * ```text
  *  Header (ST, BHT)

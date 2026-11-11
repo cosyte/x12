@@ -68,26 +68,29 @@ const adjustment = line?.adjustments[0];
 adjustment?.groupCode; // => "PR"
 adjustment?.reasonCode; // => "1"
 adjustment?.amount?.toString(); // => "50.00"
-adjustment?.reasonDescription; // => "Deductible Amount"
+adjustment?.reasonDescription; // => undefined
 
 const remark = line?.remarks[0];
 remark?.code; // => "N4"
 remark?.description; // => "Missing/incomplete/invalid prior insurance carrier(s) EOB."
 
-// The descriptions come from the bundled snapshots, which you can query yourself.
-lookupCarc("1")?.description; // => "Deductible Amount"
+// RARC ships its descriptions; CARC ships its codes and no description text, so
+// you supply your own (this text is made up for the example).
 lookupRarc("N4")?.description === remark?.description; // => true
+lookupCarc("1")?.description; // => undefined
+lookupCarc("1", { descriptions: { "1": "Your own text for code 1" } })?.description; // => "Your own text for code 1"
 ```
 
-The `groupCode` (`PR` patient responsibility, `CO` contractual obligation, and so on) is what tells
+The `groupCode` (`PR`: the patient owes it, `CO`: the provider's contract writes it off, and so on) is what tells
 you who owes the money. Read it; never infer it. A CARC or RARC code outside the bundled snapshot
 is kept verbatim with no description, and raises `X12_UNKNOWN_CARC` or `X12_UNKNOWN_RARC`: a stale
-snapshot gives a missing description, never a wrong code.
+snapshot gives a missing description, never a wrong code. A CARC code inside the snapshot also has
+no description: only lists whose own redistribution record says `permitted` ship description text,
+and of the bundled lists that is RARC alone.
 
 ## Refuse to post a remittance that does not balance
 
-The reader runs the three balance equations of the 835 implementation guide (`005010X221A1`,
-section 1.10.2) and warns on a mismatch. It never rebalances; the payer's values stand.
+The reader runs three balance equations over the 835 and warns on a mismatch. It never rebalances; the payer's values stand.
 
 - **Claim:** `CLP-04 + Σ(claim CAS + line CAS) == CLP-03`.
 - **Service line:** `SVC-03 + Σ(line CAS) == SVC-02`.

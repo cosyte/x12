@@ -5,8 +5,9 @@
  * The built-in 278 HL hierarchy goes through the SAME factory consumers use
  * for payer-specific companion-guide loops.
  *
- * Hierarchy (per WPC TR3 §1.4, request + response share the HL spine; the
- * response adds the `HCR` decision under the event / service levels):
+ * Hierarchy, as this reader implements it (no implementation guide was
+ * read): request + response share the HL spine; the response adds the `HCR`
+ * decision under the event / service levels.
  *
  * ```text
  *  Header (ST, BHT)

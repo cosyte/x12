@@ -580,24 +580,29 @@ describe("AC-5: the 006020X313 row leaves both existing 277 readers reading only
    * status and claim acknowledgment goldens, and the claim status golden
    * re-declared as its adopted errata 005010X212E1. `[get277Status,
    * get277CADisposition]` per document.
+   *
+   * Re-taken once since, when the claim status lists stopped shipping
+   * description text: those readings now carry `undefined` where they carried
+   * a description. With the six description tables put back and nothing else
+   * changed, the earlier digests matched again, so nothing else moved.
    */
   const UNCHANGED: readonly (readonly [string, string, string, string])[] = [
     [
       "005010X212",
       "277",
-      "708339452c4495f426c180a8ee627e8c73b6ea183514426a95771d60c9dd8290",
+      "e2adafb4dbb7e9d6d447ae8074a2a43f42284a6ac7d9ba811c9437d08feb6f61",
       "eb045d78d273107348b0300c01d29b7552d622abbc6faf81b3ec55359aa9950c",
     ],
     [
       "005010X214",
       "277ca",
-      "2b6c546aeb4723633f82e70f7c955887c04a568d211e830c5c7c0aed26ae1c68",
-      "2b6c546aeb4723633f82e70f7c955887c04a568d211e830c5c7c0aed26ae1c68",
+      "23efb487dc4c4ba537eaeedbc1964c07398eb352d62b5bfde290aee6b8d7fb2a",
+      "23efb487dc4c4ba537eaeedbc1964c07398eb352d62b5bfde290aee6b8d7fb2a",
     ],
     [
       "005010X212E1",
       "277",
-      "516bd2fd7d1fd47c0c40cacaebe311b1b6e126501f72b77f543e22cd37fa8650",
+      "3064ad72fce104b0263e722b123db307e9322800c921482c229770b257291655",
       "eb045d78d273107348b0300c01d29b7552d622abbc6faf81b3ec55359aa9950c",
     ],
   ];

@@ -2,7 +2,7 @@
  * `build835` - pure-function builder for a 005010X221A1 Health Care Claim
  * Payment/Advice (ERA). NEVER auto-sends, NEVER opens a socket, NEVER
  * touches the filesystem. The library mechanically emits the remittance it
- * is told; a spec that violates a TR3 §1.10.2 balance invariant is REFUSED
+ * is told; a spec that violates an 835 balance equation is REFUSED
  * via {@link "./build-errors.js".Remit835BuildError} - emitting an
  * out-of-balance 835 would tell a downstream cash-poster that money math
  * holds when it does not (mirrors `build999`'s accept-with-errors refusal).
@@ -111,7 +111,7 @@ const UNANCHORED_BUILD_POSITION: X12Position = Object.freeze({
  * Refused via {@link "./build-errors.js".Remit835BuildError}:
  * - No trace supplied, or a claim with no patient-control number, etc. →
  *   `X12_835_BUILD_INVALID_SPEC`.
- * - Any §1.10.2 balance invariant violated (service-line `SVC-02 ==
+ * - Any 835 balance equation violated (service-line `SVC-02 ==
  *   SVC-03 + Σ(line CAS)`, claim `CLP-03 == CLP-04 + Σ(claim+line CAS)`,
  *   or top-of-remit `BPR-02 == Σ(CLP-04) − Σ(PLB)`) →
  *   `X12_835_BUILD_BALANCE_MISMATCH`.
@@ -438,7 +438,7 @@ function enforceStructuralSpec(spec: Build835Spec): void {
 }
 
 /**
- * Run the three §1.10.2 balance invariants over the spec and REFUSE on the
+ * Run the three 835 balance equations over the spec and REFUSE on the
  * first violation. Reuses the authoritative read-side validators
  * ({@link checkClaimBalance} / {@link checkServiceLineBalance} /
  * {@link checkRemitTotalBalance}) against a materialized read model so the

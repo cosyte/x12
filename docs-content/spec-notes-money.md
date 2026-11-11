@@ -26,7 +26,7 @@ the difference is the money-handling analog of mis-reading a dose.
 > **One caveat on the error you get.** Most slots refuse with that builder's typed, code-tagged
 > error. `build835`'s balance-equation amounts do not: the balance guard runs first and calls
 > `X12Decimal` methods on your value, so any amount it reads as a term of one of the three TR3
-> X221A1 §1.10.2 invariants throws a plain `TypeError` with no `code`: `payment.totalActualPayment`,
+> 835 balance equations throws a plain `TypeError` with no `code`: `payment.totalActualPayment`,
 > `claim.totalChargeAmount`, `claim.totalPaymentAmount`, every `adjustments[].amount`,
 > `serviceLine.chargeAmount`, `serviceLine.paymentAmount`, and `providerAdjustments[].amount`. It
 > still refuses; it just refuses untyped. Every other `X12Decimal` field refuses typed. See
@@ -130,7 +130,7 @@ Three things to hold onto:
   DID decode, so `X12_837_SERVICE_LINE_NOT_DECODED` does not fire.
   **`X12_837_SERVICE_SEGMENT_REPEATED`**, anchored at the repeated segment, is what announces it.
   No census of never-read slots is published here, on purpose: the rule is what holds.
-- **The 835 balance invariants do not sum an absent term.** Where any term of a TR3 X221A1 §1.10.2
+- **The 835 balance invariants do not sum an absent term.** Where any term of an 835 balance
   equation is `undefined`, the equation is reported as **`X12_835_BALANCE_NOT_EVALUABLE`** rather
   than as a mismatch: nothing was measured out of balance, and substituting `0` for the missing term
   would be this library asserting a total nobody sent.
@@ -305,7 +305,7 @@ deliberate, lossy escape hatch. Use it only for display math you will never post
 
 ## Why the 835 balance is decimal-exact
 
-The 835 reader runs the TR3 X221A1 §1.10.2 balance invariants entirely in `X12Decimal`, so the check
+The 835 reader runs the three 835 balance equations entirely in `X12Decimal`, so the check
 is exact rather than float-approximate:
 
 - **Service line:** `SVC-03` line paid + Σ(line `CAS` adjustments) = `SVC-02` line charge.
