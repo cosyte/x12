@@ -73,9 +73,18 @@ const remit = tx ? get835(ix.delimiters, tx) : undefined;
 remit?.traces[0]?.referenceId; // => "0012345"
 ```
 
-Every set in the map has at least one worked example on this site, in the how-to guides. The
-general emit surface those domain builders sit on top of is
-[Build and serialize X12](./emit-and-serialize.md).
+Every set in the map has at least one worked example in the how-to guides, a sample that calls
+its reader, its builder or both: [Post an 835 remittance](./post-a-remittance.md),
+[Route claim status responses](./route-claim-status-responses.md),
+[Answer an eligibility inquiry](./answer-an-eligibility-inquiry.md),
+[Read eligibility and claim status inquiries](./read-inquiries.md),
+[Read and build 837 claims](./read-and-build-claims.md),
+[Read and build a 278 services review](./read-a-services-review.md),
+[Read and build an 834 enrollment roster](./read-an-enrollment-roster.md),
+[Read and build an 820 premium payment](./read-and-build-a-premium-payment.md),
+[Read 999, 997 and TA1 acknowledgments](./read-acknowledgments.md) and
+[Answer a request for additional information](./answer-an-attachment-request.md). The general emit
+surface those domain builders sit on top of is [Build and serialize X12](./emit-and-serialize.md).
 
 ## The reader/builder symmetry
 
@@ -102,6 +111,10 @@ out-of-enum level (`X12_278_BUILD_INVALID_SPEC`) rather than emit a document tha
 - **Non-healthcare sets**: 850 (purchase order), 856 (ASN), 810 (invoice), 204 (load tender), etc.
 - **The EDIFACT syntax family**: a different standard entirely.
 - **Transport**: AS2, SFTP, MLLP-style delivery. This is a parser/serializer, not a comms stack.
+- **The 824 application advice.** We do not read or build the 824 yet. An 824 parses like any
+  other transaction set, and its segments stay on `tx.segments` with no typed reader over them.
+  The 997 functional acknowledgment, which sits beside it in some trading partners' traffic, is in
+  the map above: `parse997` and `build997`, to the ASC X12 base standard alone.
 - **Pre-005010 field maps.** Pre-005010 input is _tolerated and flagged_ (`X12_PRE_005010`), not
   decoded against those older guides.
 - **The 4010 variants and the 4010 277U.** We do not build readers or builders for the 004010

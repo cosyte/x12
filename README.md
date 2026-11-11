@@ -47,7 +47,8 @@ structure is typed and no implementation-guide usage is checked, so a qualifier 
 guide requires is carried as sent and never validated; `KNOWN-LIMITATIONS.md` lists what else
 they leave open. The 997 functional acknowledgment, which some trading partners still send in
 place of a 999, is read and built to the ASC X12 base standard alone, with no guide and no guide
-tables. `X12_TR3_CONFORMANCE` is the machine-readable answer to which implementation
+tables. The 824 application advice is not read or built yet: an 824 parses, and its segments stay
+on the transaction set untyped. `X12_TR3_CONFORMANCE` is the machine-readable answer to which implementation
 guide each one follows, and is a better source than this page.
 
 Not covered, and deliberately so: a byte-exact round trip is not guaranteed in general (see

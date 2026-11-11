@@ -1,11 +1,11 @@
 ---
 id: read-an-enrollment-roster
-title: Read an 834 enrollment roster
-sidebar_label: Read an 834 roster
-description: "Read an 834's sponsor and payer, then each member one at a time, with the maintenance type that says whether to add, change or terminate."
+title: Read and build an 834 enrollment roster
+sidebar_label: Read and build an 834 roster
+description: "Read an 834's sponsor, payer and each member with the maintenance type that says add, change or terminate, and build one that reads back."
 ---
 
-# Read an 834 enrollment roster
+# Read and build an 834 enrollment roster
 
 A plan sponsor sent a benefit enrollment and maintenance file. You need the header
 (who sponsored it, who the payer is), then each member, each member's coverage, and above all what to
@@ -100,10 +100,108 @@ the input side, and this is not a byte-streaming reader for arbitrarily large fi
 `AMT` whose amount does not decode loses its whole row, reported by `X12_AMOUNT_ROW_DROPPED` on that
 member.
 
+## Build a roster and read it back
+
+`build834(spec)` writes `GS-01` `BE` and `005010X220A1` in `GS-08` and `ST-03`, counts the
+segments, and returns an `X12Interchange`; it sends nothing and touches no file. The maintenance
+type is written as given, never inferred, and the builder is stricter than the reader: an `INS-03`
+or `HD-01` code outside the bundled list is **refused** with
+`X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE`, because a roster that tells an enrollment system to do
+something it cannot name is the harm the reader's warning exists to catch. No member, or an empty
+`INS-03`, is refused with `X12_834_BUILD_INVALID_SPEC`. Both come as an
+[`Enrollment834BuildError`](./api/README.md#enrollment834builderror).
+
+```ts runnable
+import {
+  build834,
+  Enrollment834BuildError,
+  get834Enrollments,
+  get834Header,
+  X12Decimal,
+  type Build834Spec,
+  type X12Enrollment,
+} from "@cosyte/x12";
+
+const spec: Build834Spec = {
+  envelope: {
+    senderId: "EMPLOYERCO",
+    receiverId: "MEDPAY",
+    interchangeDate: "260601",
+    interchangeTime: "1200",
+    interchangeControlNumber: "000000001",
+    groupControlNumber: "1",
+    transactionSetControlNumber: "0001",
+  },
+  header: {
+    transactionSetPurposeCode: "00",
+    referenceId: "ENR-202606",
+    date: "20260601",
+    sponsor: {
+      entityIdentifierCode: "P5",
+      name: "EMPLOYER CO",
+      idQualifier: "FI",
+      idCode: "444556666",
+    },
+    payer: {
+      entityIdentifierCode: "IN",
+      name: "MEDPAY INSURANCE",
+      idQualifier: "FI",
+      idCode: "111223333",
+    },
+  },
+  members: [
+    {
+      subscriberIndicator: "Y",
+      relationshipCode: "18",
+      maintenanceTypeCode: "021", // add
+      benefitStatusCode: "A",
+      member: { lastName: "DOE", firstName: "JANE", idQualifier: "MI", idCode: "MBR0001" },
+      references: [{ qualifier: "0F", value: "MBR0001" }],
+      healthCoverages: [
+        {
+          maintenanceTypeCode: "021",
+          insuranceLineCode: "HLT",
+          planCoverageDescription: "GOLD PPO",
+          coverageLevelCode: "FAM",
+          dates: [{ qualifier: "348", value: "20260101" }],
+          amounts: [{ qualifier: "P3", amount: X12Decimal.fromString("125.00")! }],
+        },
+      ],
+    },
+  ],
+};
+
+const built = build834(spec);
+built.groups[0]?.gs.elements[1]; // => "BE"
+built.groups[0]?.transactions[0]?.st.elements[3]; // => "005010X220A1"
+
+const tx = built.groups[0]?.transactions[0];
+if (tx === undefined) throw new Error("no 834 built");
+get834Header(built.delimiters, tx)?.sponsor?.name; // => "EMPLOYER CO"
+
+const members: X12Enrollment[] = [];
+for await (const member of get834Enrollments(built.delimiters, tx)) members.push(member);
+members[0]?.maintenanceTypeCode; // => "021"
+members[0]?.maintenanceTypeDescription; // => "Addition"
+members[0]?.healthCoverages[0]?.amounts[0]?.amount.toString(); // => "125.00"
+members[0]?.warnings.length; // => 0
+
+// A maintenance type outside the bundled list is refused, never written.
+let refused: string | undefined;
+try {
+  build834({ ...spec, members: [{ ...spec.members[0]!, maintenanceTypeCode: "999" }] });
+} catch (err) {
+  if (err instanceof Enrollment834BuildError) refused = err.code;
+}
+refused; // => "X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE"
+```
+
 ## Related
 
 - [Decimal-exact money](./spec-notes-money.md): why a coverage amount that does not decode reads
   `undefined`.
 - Reference: [`get834Header`](./api/README.md#get834header),
   [`get834Enrollments`](./api/README.md#get834enrollments),
+  [`build834`](./api/README.md#build834), [`Build834Spec`](./api/README.md#build834spec),
+  [`Enrollment834BuildError`](./api/README.md#enrollment834builderror),
   [`lookupMaintenanceType`](./api/README.md#lookupmaintenancetype).
