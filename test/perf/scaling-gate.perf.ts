@@ -88,10 +88,14 @@ function read835(ix: X12Interchange): X12Remittance {
   return remit;
 }
 
-/** Both phases, and the self-check, use exactly these fixtures. */
+/**
+ * Both phases, and the self-check, use exactly these fixtures. The parse splits every segment
+ * during the parse (`{ lazy: false }`), the work this gate has always timed; the lazy parse, which
+ * leaves the split for the first read, has its own gate below.
+ */
 const parseOptions: ScalingGateOptions<string, X12Interchange> = {
   name: "@cosyte/x12 parseX12",
-  parse: (raw) => parseX12(raw),
+  parse: (raw) => parseX12(raw, { lazy: false }),
   weigh: (ix) => ix.groups.length,
   count: { n: 1_000, generate: (i) => remit835Text(i, 4) },
   // Ten 150-claim remittances parsed in about 6 ms on a hosted runner, under the 8 ms floor.
@@ -146,7 +150,7 @@ describe("the scaling gate: parseX12, then get835", () => {
  */
 const longParseOptions: ScalingGateOptions<string, X12Interchange> = {
   name: "@cosyte/x12 parseX12, long documents",
-  parse: (raw) => parseX12(raw),
+  parse: (raw) => parseX12(raw, { lazy: false }),
   weigh: (ix) => ix.groups.length,
   // 200 small documents parsed in under 6 ms on a hosted runner, under the 8 ms floor.
   count: { n: 600, generate: (i) => remit835Text(i, 4) },
@@ -156,6 +160,25 @@ const longParseOptions: ScalingGateOptions<string, X12Interchange> = {
 describe("the scaling gate: parseX12 on long documents", () => {
   it("has not acquired a complexity regression on either axis", () => {
     expectMeasured(scalingGate(longParseOptions));
+  });
+});
+
+/**
+ * The lazy parse `parseX12` makes by default: it frames every segment and finds every warning, and
+ * leaves the split of a segment that cannot warn for the first read, so it does a fifth of the work
+ * of the gates above. Its documents are larger to keep each base phase over the floor.
+ */
+const lazyParseOptions: ScalingGateOptions<string, X12Interchange> = {
+  name: "@cosyte/x12 parseX12, lazy",
+  parse: (raw) => parseX12(raw),
+  weigh: (ix) => ix.groups.length,
+  count: { n: 3_000, generate: (i) => remit835Text(i, 4) },
+  size: { inputs: 20, size: 800, generate: (i, claims) => remit835Text(i, claims) },
+};
+
+describe("the scaling gate: parseX12, lazy", () => {
+  it("has not acquired a complexity regression on either axis", () => {
+    expectMeasured(scalingGate(lazyParseOptions));
   });
 });
 

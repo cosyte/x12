@@ -105,6 +105,7 @@
     "bench:reading": "cosyte-bench run --suite bench/x12.bench.mjs --target dist/index.mjs",
     "bench:compare": "cosyte-bench compare --suite bench/x12.bench.mjs",
     "bench:profile": "node bench/profile.mjs",
+    "bench:large": "node bench/large.mjs",
     "fuzz": "vitest run test/property",
     "test:property": "vitest run test/property --exclude \"test/property/*-fuzz.property.test.ts\"",
     "quality:check": "cosyte-ratchet check --skip mutation",

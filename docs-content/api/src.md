@@ -19056,6 +19056,19 @@ parseX12(raw, opts);
 
 #### Properties
 
+##### lazy?
+
+> `readonly` `optional` **lazy?**: `boolean`
+
+Whether a transaction set's segments are split into elements the first
+time `segments` is read, rather than during the parse. Default `true`.
+Every warning is found during the parse either way, in the same order
+and at the same positions, and what `segments` answers is the same: a
+lazy parse splits only the segments a split can warn on (a BDS or BIN,
+or one that ends in a release character) and leaves the rest for the
+first read of that transaction set's `segments`, which splits them all.
+Pass `false` to split every segment during the parse.
+
 ##### onWarning?
 
 > `readonly` `optional` **onWarning?**: [`OnWarningCallback`](#onwarningcallback)
@@ -22002,6 +22015,46 @@ t.referenceId;   // "CLAIM20260627001"
 
 ***
 
+### X12StreamTransaction
+
+One transaction set [readTransactionSets](#readtransactionsets) yields, with the envelope around it.
+
+#### Properties
+
+##### delimiters
+
+> `readonly` **delimiters**: [`Delimiters`](#delimiters)
+
+The delimiters the interchange's ISA declares.
+
+##### groupIndex
+
+> `readonly` **groupIndex**: `number`
+
+Which functional group of the interchange holds it, from 0: `ix.groups[groupIndex]`.
+
+##### isa
+
+> `readonly` **isa**: [`IsaSegment`](#isasegment)
+
+The interchange's ISA, as `parseX12` reads it.
+
+##### transaction
+
+> `readonly` **transaction**: [`X12TransactionSet`](#x12transactionset)
+
+The transaction set, as `parseX12` of the whole input holds it at
+`ix.groups[groupIndex].transactions[transactionIndex]`: its `gs` included. Hand it and
+`delimiters` to a typed reader (`get835(delimiters, transaction)`).
+
+##### transactionIndex
+
+> `readonly` **transactionIndex**: `number`
+
+Which transaction set of that group it is, from 0: `.transactions[transactionIndex]`.
+
+***
+
 ### X12SubscriberInfo
 
 Decoded SBR - Subscriber Information (Loop 2000B's primary trigger). Or
@@ -23197,6 +23250,25 @@ String-literal union over [REQUIRED\_LOOPS](#required_loops).
 import type { X12RequiredLoop } from "@cosyte/x12";
 const loop: X12RequiredLoop = "2010BB";
 ```
+
+***
+
+### X12StreamOptions
+
+> **X12StreamOptions** = `Omit`\<[`X12ParseOptions`](#x12parseoptions), `"profile"`\>
+
+The options [readTransactionSets](#readtransactionsets) takes: those of `parseX12` but `profile`, which a stream
+has no interchange to attach to.
+
+***
+
+### X12StreamSource
+
+> **X12StreamSource** = `AsyncIterable`\<`string` \| `Uint8Array`\> \| `Iterable`\<`string` \| `Uint8Array`\>
+
+What [readTransactionSets](#readtransactionsets) reads: any iterable or async iterable of chunks, such as a Node
+`Readable`. A chunk is text or bytes; bytes are read one character per byte, as `parseX12` reads
+a `Buffer` (`latin1`), so a chunk may end anywhere, even inside a segment.
 
 ***
 
@@ -32462,6 +32534,54 @@ Pure: it never warns and never throws. [elementDecimal](#elementdecimal) and
 ```ts
 import { readElementDecimal } from "@cosyte/x12";
 readElementDecimal(seg, 2, delim); // { value: undefined, status: "unparseable" }
+```
+
+***
+
+### readTransactionSets()
+
+> **readTransactionSets**(`source`, `options?`): `AsyncGenerator`\<[`X12StreamTransaction`](#x12streamtransaction), `void`, `undefined`\>
+
+Read an X12 interchange from a stream of chunks and yield each transaction set as soon as it is
+closed, so a file far larger than memory is read holding about one transaction set at a time.
+
+Each transaction set it yields is the one `parseX12` of the whole input holds at the same place,
+and every warning `parseX12` would report reaches `options.onWarning` in the same order, with
+the same position, as it is found: a warning on a transaction set arrives before the set is
+yielded, and one about its group or the interchange (a count or control number that does not
+match, a missing `GE` or `IEA`, bytes after the `IEA`) when the stream reaches it. With
+`{ strict: true }` the first warning is thrown as an `X12ParseError` carrying its code, as
+`parseX12` throws it, once it is found; the sets yielded before it stand.
+
+It keeps nothing it has yielded, and no closed group. The interchange-level segments `parseX12`
+keeps on the interchange (an envelope `TA1`, a segment outside every transaction set, bytes
+after the `IEA`) are reported through their warnings and not yielded; read them with `parseX12`.
+The four fatal errors `parseX12` throws are thrown here for the same input.
+
+#### Parameters
+
+##### source
+
+[`X12StreamSource`](#x12streamsource)
+
+##### options?
+
+[`X12StreamOptions`](#x12streamoptions) = `{}`
+
+#### Returns
+
+`AsyncGenerator`\<[`X12StreamTransaction`](#x12streamtransaction), `void`, `undefined`\>
+
+#### Example
+
+```ts
+import { createReadStream } from "node:fs";
+import { get835, readTransactionSets } from "@cosyte/x12";
+
+for await (const { delimiters, transaction } of readTransactionSets(createReadStream(path))) {
+  const remit = get835(delimiters, transaction);
+  // handle one remittance, then let it go
+}
 ```
 
 ***

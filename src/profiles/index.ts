@@ -35,6 +35,7 @@ export type {
 
 import { availity } from "./availity.js";
 import { bcbsCommon } from "./bcbsCommon.js";
+import type { X12Profile } from "./types.js";
 
 /**
  * Namespace object exposing the shipped built-in profiles. Each is authored
@@ -47,10 +48,17 @@ import { bcbsCommon } from "./bcbsCommon.js";
  * ix.profile?.name; // "availity"
  * ```
  */
-export const profiles = Object.freeze({
-  availity,
-  bcbsCommon,
-}) as {
-  readonly availity: typeof availity;
-  readonly bcbsCommon: typeof bcbsCommon;
-};
+export const profiles: {
+  readonly availity: X12Profile;
+  readonly bcbsCommon: X12Profile;
+} = Object.freeze({
+  // Each is built the first time it is read and the same profile answers every read after it:
+  // an own enumerable accessor, so `Object.keys`, spread, `JSON.stringify` and destructuring see
+  // the profiles they saw when they were built at import.
+  get availity(): X12Profile {
+    return availity();
+  },
+  get bcbsCommon(): X12Profile {
+    return bcbsCommon();
+  },
+});
