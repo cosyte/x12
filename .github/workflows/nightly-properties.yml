@@ -14,10 +14,6 @@ on:
     # 04:41 UTC. An odd minute: GitHub delays scheduled runs at the start of every hour.
     - cron: "41 4 * * *"
   workflow_dispatch:
-  # TEMPORARY, for measuring on this branch (run 3, a seed from the run id); removed before review.
-  push:
-    branches: [test/testing-standard]
-    paths: [".github/workflows/nightly-properties.yml"]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
