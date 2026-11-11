@@ -55,6 +55,21 @@ Not covered, and deliberately so: a byte-exact round trip is not guaranteed in g
 AS2 and SFTP, pre-005010 revisions, 006020 guides other than the two attachments guides, and
 decoding what an attachment carries are all out of scope.
 
+**We do not validate against implementation guides.** The package checks the ASC X12 base standard
+(the envelope, the delimiters, the control numbers and segment counts, the HL pointers), a few guide
+facts each typed reader needs to build its model (the guide a transaction set declares, the loops it
+requires, the 835 balancing equations), and one CAQH CORE rule, the CORE 360 Code Combinations, when
+you call `checkCoreCodeCombination` with a table you supply. It does not check TR3 usage: whether a
+segment or element is required, situational or not used where it sits, a guide's situational rules,
+repeat counts, or which code values a guide allows at each element. Every TR3 is sold by X12 and we
+ship no tables derived from one, so a document that breaks its guide can parse with no warning. What
+you can check with the typed readers: `implementationConventionReference` and the
+`X12_GUIDE_NOT_IMPLEMENTED` and `X12_GUIDE_NOT_DECLARED` warnings say which guide was declared; a
+field the sender left out reads `undefined` and is never defaulted, so you can refuse a document that
+lacks a field your guide or partner requires; qualifiers and codes are carried verbatim for you to
+compare with your copy of the guide, and `checkCarcValidity` and `checkRarcValidity` date-check
+adjustment and remark codes; anything untyped stays verbatim on `tx.segments`.
+
 ## Install
 
 ```bash

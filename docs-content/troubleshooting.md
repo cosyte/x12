@@ -133,6 +133,22 @@ builders run on a JSON-driven caller's values.
 
 ### Scope (non-goals for v1)
 
+- **No implementation-guide (TR3) validation.** We check the ASC X12 base standard (the envelope,
+  delimiters, control numbers, segment counts and HL pointers), the few guide facts each typed reader
+  needs to build its model (the declared guide, the loops it requires, the 835 balancing equations),
+  and one CAQH CORE rule, the CORE 360 Code Combinations, through
+  [`checkCoreCodeCombination`](./api/README.md#checkcorecodecombination) with a table you supply. We
+  do not check TR3 usage: required, situational and not-used segments and elements, situational
+  rules, repeat counts, or the code values a guide allows at each element. Every TR3 is sold by X12
+  and we ship no tables derived from one, so a document that breaks its guide can parse with no
+  warning. With the typed readers you can still check the declared guide
+  ([`X12_GUIDE_NOT_IMPLEMENTED`](./warning-and-error-codes.md#x12_guide_not_implemented),
+  [`X12_GUIDE_NOT_DECLARED`](./warning-and-error-codes.md#x12_guide_not_declared)), refuse a document
+  whose required field reads `undefined` (an absent value is never defaulted), compare the verbatim
+  qualifiers and codes with your copy of the guide, date-check adjustment and remark codes with
+  [`checkCarcValidity`](./api/README.md#checkcarcvalidity) and
+  [`checkRarcValidity`](./api/README.md#checkrarcvalidity), and read anything untyped with
+  [`getSegmentValue`](./api/README.md#getsegmentvalue).
 - **Healthcare HIPAA 005010 only.** Non-healthcare sets (850/856/810/204, …), the EDIFACT syntax
   family, and pre-005010 versions are out of v1 scope. Pre-005010 input is tolerated and flagged
   (`X12_PRE_005010`), not decoded to older field maps.
