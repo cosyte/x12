@@ -88,13 +88,14 @@ builders run on a JSON-driven caller's values.
   **description** is absent. A stale or partial snapshot yields a missing description, **never a wrong
   code**.
 - **`serialize(parse(s)) === s` is not guaranteed.** Every segment on the model comes back verbatim,
-  in the order the model holds it. Six constructs are known not to survive: line breaks between
+  in the order the model holds it. Five constructs are known not to survive: line breaks between
   segments, a doubled terminator outside a transaction, a missing final terminator,
-  post-IEA `trailingBytes`, a TA1 that followed a functional group (emitted right after the ISA,
-  so reordered, though nothing is lost), and a segment whose first element is empty outside a
-  transaction (skipped entirely, with no warning at all). The last five fire on inputs with no line
-  breaks, so a compact file is not guaranteed to round-trip either, and five of the six are silent, so a clean
-  warnings list is not evidence of byte-exactness. Measured across every committed fixture: each emit is a fixed point
+  post-IEA `trailingBytes`, and a TA1 that followed a functional group (emitted right after the ISA,
+  so reordered, though nothing is lost). The last four fire on inputs with no line
+  breaks, so a compact file is not guaranteed to round-trip either, and four of the five are silent, so a clean
+  warnings list is not evidence of byte-exactness. A segment whose first element is empty outside a
+  transaction is not on that list: it is warned, kept and re-emitted like any other segment outside a
+  transaction. Measured across every committed fixture: each emit is a fixed point
   and re-parses to an identical model with an identical warning stream, the fixtures with no line
   breaks return byte-identical (all but one of those are `golden/*.edi`, serializer output by
   construction), and the rest differ by line breaks and nothing else. No corpus size is quoted: it

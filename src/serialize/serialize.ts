@@ -10,7 +10,7 @@
  *
  *   Every segment the parser recorded comes back verbatim, including element
  *   padding, composite structure and `?`-release escapes, but it comes back in
- *   the ORDER the model holds it, which is not always the input order. SIX
+ *   the ORDER the model holds it, which is not always the input order. FIVE
  *   constructs are known not to survive, and line breaks are only the most
  *   common:
  *
@@ -39,19 +39,14 @@
  *      segment outside a transaction is placed correctly relative to the
  *      groups but not relative to a TA1 that was hoisted past it. This library
  *      takes no position here on where ASC X12 requires a TA1 to sit.
- *   6. **A segment whose first element is empty** (`*A*B~`), outside a
- *      transaction. It has no id for the envelope walker to dispatch on, so it
- *      is skipped: absent from the model, absent from the emit, and it does
- *      not even raise `X12_UNEXPECTED_SEGMENT`. Silent, and the only case here
- *      that loses a value with no diagnostic at all. Inside an open
- *      transaction the same segment is kept and re-emitted normally.
  *
  *   **A segment outside a transaction is no longer on that list.** It is
  *   retained on `ix.orphanSegments` with a structural `anchor`, and this
  *   function re-emits it at that anchor, so the segment, its value and its
- *   `X12_UNEXPECTED_SEGMENT` warning all survive the round trip. See the
- *   `orphans` block below for why placement is by anchor and never by
- *   `segmentIndex`.
+ *   `X12_UNEXPECTED_SEGMENT` warning all survive the round trip. That
+ *   includes a segment whose first element is empty (`*A*B~`): it has no id,
+ *   but it is warned, kept and re-emitted like any other. See the `orphans`
+ *   block below for why placement is by anchor and never by `segmentIndex`.
  *
  *   **A BDS or BIN segment is not on that list either.** The parser frames its
  *   binary data element by the octet count its length element declares, so the
@@ -66,7 +61,7 @@
  *
  *   So `serialize(parse(s)) === s` is still NOT guaranteed in general, and the
  *   absence of line breaks is still not sufficient to make it hold: cases 2 to
- *   6 all break it on inputs that contain none. Five of the six (1, 2, 3, 5, 6)
+ *   5 all break it on inputs that contain none. Four of the five (1, 2, 3, 5)
  *   produce no warning at all, so the warning stream is not a reliable signal
  *   that a round trip will be byte-exact - only case 4 warns.
  *
@@ -77,11 +72,11 @@
  *   differ from their source by line breaks and nothing else. No corpus size
  *   is quoted here, because it moves with every fixture added and the suite
  *   re-derives the sweep from the tree. Two caveats on
- *   that corpus: it contains no instance of cases 2 to 6 and no orphan at all,
+ *   that corpus: it contains no instance of cases 2 to 5 and no orphan at all,
  *   and all but one of the byte-identical fixtures are `golden/*.edi`, which
  *   are serializer output by construction, so `envelope/no-trailing-crlf.edi`
  *   is the only independent witness. `test/serialize.test.ts` covers the
- *   corpus sweep, the orphan round trip, and cases 1 to 6 separately.
+ *   corpus sweep, the orphan round trip, and cases 1 to 5 separately.
  *
  * - **Spec-clean (`{ specClean: true }`).** Same byte-faithful structure, but
  *   the serializer ALSO reconciles the envelope counts and control numbers.

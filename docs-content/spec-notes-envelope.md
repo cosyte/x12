@@ -175,7 +175,7 @@ including element padding, composite structure, and `?`-release escapes. Anythin
 record does not come back, and line breaks are only the most common of several such things.
 
 **`serialize(parse(s)) === s` is not guaranteed in general**, and having no line breaks is not enough
-to make it hold. Six constructs are known not to survive:
+to make it hold. Five constructs are known not to survive:
 
 1. **Line breaks between segments**, as above. Silent.
 2. **A doubled segment terminator** outside a transaction. It delimits a zero-length segment carrying
@@ -192,19 +192,16 @@ to make it hold. Six constructs are known not to survive:
    It is also the only construct that moves something _else_: a segment outside a transaction is
    placed correctly relative to the groups but not relative to a TA1 hoisted past it. This library
    takes no position on where ASC X12 requires a TA1 to sit.
-6. **A segment whose first element is empty (`*A*B~`), outside a transaction.** It has no id for the
-   envelope walker to dispatch on, so it is skipped entirely: absent from the model, absent from the
-   emit, and it does not even raise `X12_UNEXPECTED_SEGMENT`. Silent, and the only case here that
-   loses a value with no diagnostic at all. Inside an open transaction the same segment is kept and
-   re-emitted normally.
 
 **A segment outside a transaction is not on that list.** It is kept on `ix.orphanSegments` and
 re-emitted at its structural anchor, so the segment, its value, and its `X12_UNEXPECTED_SEGMENT`
-warning all survive the round trip. See
+warning all survive the round trip. That includes a segment whose first element is empty
+(`*A*B~`): it has no id, so its `segment.id` is empty, but it is warned, kept and re-emitted like any
+other. It used to be skipped with no warning at all. See
 [Segments outside a transaction](#segments-outside-a-transaction) below.
 
-Cases 2 to 6 all break the round trip on inputs containing no line breaks at all, and **five of the
-six (1, 2, 3, 5, 6) produce no warning**, so a clean `ix.warnings` does not tell you a round trip
+Cases 2 to 5 all break the round trip on inputs containing no line breaks at all, and **four of the
+five (1, 2, 3, 5) produce no warning**, so a clean `ix.warnings` does not tell you a round trip
 will be byte-exact; only case 4 warns.
 
 What is **measured**, across every fixture committed to this repository: each emit is a fixed point
@@ -229,7 +226,9 @@ The envelope grammar binds body segments to an open `ST..SE` transaction set. A 
 outside one has nowhere to go in `ix.groups`. The positions that do this are a stray segment between
 `GE` and `IEA`, a body segment between an `SE` and its group's `GE`, a body segment between `GS` and
 the first `ST`, an `ST` with no open group, an `SE` that closes nothing, a `GE` that closes nothing,
-and a `TA1` inside an open group.
+and a `TA1` inside an open group. A segment whose first element is empty (`*A*B~`) at any of the
+body-segment positions is one of them too: it has no id, so its `segment.id` is empty, but its values
+are kept.
 
 That last one is the exception to this section's title. `TA1` is envelope-level by spec, so a `TA1`
 inside an open group lands on `ix.orphanSegments` even when it arrived **between an `ST` and its
