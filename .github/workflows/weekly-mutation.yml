@@ -19,13 +19,14 @@ on:
     - cron: "47 6 * * 0"
     - cron: "47 6 * * 3"
   workflow_dispatch:
-  # TEMPORARY, for measuring on this branch (run 2); removed before review.
+  # TEMPORARY, for measuring on this branch (run 3); removed before review.
   push:
     branches: [test/testing-standard]
     paths: [".github/workflows/weekly-mutation.yml"]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # TEMPORARY suffix, so this measuring run does not wait for an earlier one; removed before review.
+  group: ${{ github.workflow }}-${{ github.ref }}-measure-3
   cancel-in-progress: false
 
 permissions:
