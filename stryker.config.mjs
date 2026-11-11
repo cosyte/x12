@@ -16,6 +16,10 @@ export default cosyteStryker({
   // The suite without the tests that cannot judge a mutant (see that file).
   vitestConfig: "vitest.mutation.config.ts",
   stryker: {
+    // StrykerJS writes `// @ts-nocheck` into every source file of its sandbox by default. Vitest
+    // never type-checks, so the comment changes nothing a test runs, only the bytes a test that
+    // reads the source would see.
+    disableTypeChecks: false,
     // A mutant times out when a test takes longer than timeoutFactor times its first, unmutated
     // run plus timeoutMS. At StrykerJS's defaults (1.5 and 5,000 ms) a mutant near that line can be
     // a timeout on one run and a survivor on the next, which moves a full score the ratchet

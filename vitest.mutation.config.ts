@@ -18,6 +18,12 @@ import config from "./vitest.config.js";
  *   (`readme-usage.test.ts`, run in a child process) and the bundle check (`bundle-ascii.test.ts`,
  *   which runs tsup). Code a child process or a build runs is not the instrumented source, so no
  *   mutant is ever killed there.
+ * - The tests that read this repository's source text and hold it to a shape: that every builder
+ *   bounds its loops over a caller's list, types each value it writes, declares its GS-01 as a
+ *   literal the cited table agrees with, and so on. In a mutation run the source they would read
+ *   is StrykerJS's instrumented copy, in which every literal and branch is wrapped in a mutant
+ *   switch, so they fail before any mutant runs, and the shape they hold is not one a mutant
+ *   changes. `pnpm test` runs them on every pull request.
  * - The fuzz targets (`test/property/*-fuzz.property.test.ts`): each flips a byte of every
  *   committed fixture hundreds of times and holds each case to a CPU-time budget, so a mutant that
  *   slows a path fails them on time rather than on what the code returns, and they cost seconds a
@@ -42,6 +48,16 @@ export default {
       "test/readme-usage.test.ts",
       "test/bundle-ascii.test.ts",
       "test/property/*-fuzz.property.test.ts",
+      "test/builder-array-bounds.test.ts",
+      "test/builder-control-number-empty.test.ts",
+      "test/builder-decimal-type.test.ts",
+      "test/builder-refusal-bounds.test.ts",
+      "test/builder-segment-type.test.ts",
+      "test/builder-string-type.test.ts",
+      "test/code-lists-functional-identifier.test.ts",
+      "test/conversion-surface.test.ts",
+      "test/eligibility-271-aaa-provenance.test.ts",
+      "test/parser-decimal-silent-defaults.test.ts",
     ],
     testTimeout: 60_000,
   },
