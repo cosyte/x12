@@ -213,3 +213,5 @@ jobs:
       - run: pnpm check:catalog
       - run: pnpm check:process
       - run: pnpm check:docs-reference
+      # Rehearses the release version step in a temporary copy and holds it to the reference check.
+      - run: pnpm check:version-bump
