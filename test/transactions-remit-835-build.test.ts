@@ -23,6 +23,7 @@ import { describe, expect, it } from "vitest";
 import {
   BUILD_REFUSAL_VALUE_MAX_RENDERED,
   build835,
+  buildInterchange,
   get835,
   parseX12,
   REMIT_835_BUILD_ERROR_CODES,
@@ -674,6 +675,75 @@ describe("build835 - delimiter-bearing values round-trip losslessly", () => {
     const remit = remitOf(ix);
     expect(remit.warnings).toHaveLength(0);
     expect(remit.traces[0]?.referenceId).toBe("AB~CD*EF:GH");
+  });
+});
+
+describe("build835 - a composite is escaped once (the envelope is written inline)", () => {
+  // `build835` composes a composite element (CLP-08, SVC-01) by escaping each
+  // component and joining them with the component separator, then writes the
+  // envelope around its own segments. `buildInterchange` escapes every element
+  // it is handed, so routing these segments through it would release the
+  // component separator of a composite that is already composed: SVC-01
+  // `HC:99213` would go out as `HC?:99213`, one element value with no
+  // components, and a component `A:B` released once as `A?:B` would go out as
+  // `A???:B`. These tests fail on that change.
+  const spec: Build835Spec = {
+    ...BALANCED_SPEC,
+    claims: [
+      {
+        ...BASE_CLAIM,
+        serviceLines: [{ ...BASE_SERVICE_LINE, productServiceId: "TEST:CODE" }],
+      },
+    ],
+  };
+
+  it("writes each component separator of a composite raw and each caller value released once", () => {
+    const text = serializeX12(build835(spec));
+    expect(text).toContain("~CLP*PT-ACCT-001*1*500.00*450.00*50.00*MB*ICN-9001*11::1~");
+    expect(text).toContain("~SVC*HC:TEST?:CODE:25*500.00*450.00~");
+    expect(text).not.toContain("11?:");
+    expect(text).not.toContain("HC?:");
+    expect(text).not.toContain("???");
+  });
+
+  it("reads each composite back as the components the caller gave", () => {
+    const remit = remitOf(build835(spec));
+    expect(remit.warnings).toHaveLength(0);
+    const claim = remit.claims[0];
+    expect(claim?.facilityTypeCode).toBe("11");
+    expect(claim?.claimFrequencyCode).toBe("1");
+    const line = claim?.serviceLines[0];
+    expect(line?.productServiceIdQualifier).toBe("HC");
+    expect(line?.productServiceId).toBe("TEST:CODE");
+    expect(line?.modifiers).toEqual(["25"]);
+  });
+
+  it("is what buildInterchange would break: it releases a pre-composed composite's separators", () => {
+    // The reason the domain builders do not delegate to `buildInterchange`:
+    // handed the composite this builder composed, it escapes it again.
+    const ix = buildInterchange({
+      senderId: ENVELOPE.senderId,
+      receiverId: ENVELOPE.receiverId,
+      interchangeDate: ENVELOPE.interchangeDate,
+      interchangeTime: ENVELOPE.interchangeTime,
+      interchangeControlNumber: ENVELOPE.interchangeControlNumber,
+      groups: [
+        {
+          functionalIdCode: "HP",
+          groupControlNumber: "1",
+          versionRelease: "005010X221A1",
+          transactions: [
+            {
+              transactionSetIdCode: "835",
+              transactionSetControlNumber: "0001",
+              implementationConventionReference: "005010X221A1",
+              segments: [["SVC", "HC:TEST?:CODE:25", "500", "450"]],
+            },
+          ],
+        },
+      ],
+    });
+    expect(serializeX12(ix)).toContain("~SVC*HC?:TEST???:CODE?:25*500*450~");
   });
 });
 
