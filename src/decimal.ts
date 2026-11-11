@@ -59,7 +59,13 @@
  * large remittance spent more time there than anywhere else. Private fields
  * keep the guarantees: nothing outside the class reads or replaces them, a
  * forged instance (`Object.create(X12Decimal.prototype)`) throws the same
- * `TypeError` it did, and every instance is frozen with no own properties.
+ * `TypeError` it did, and an instance has no own properties.
+ *
+ * An instance is not frozen. Its value is the four private fields, which are
+ * read-only and which no code outside the class can reach, so freezing it
+ * guarded nothing a caller reads through the methods, and it cost about two
+ * fifths of every construction. A property a caller adds to an instance stays
+ * on that object and changes neither its value nor what any method answers.
  */
 
 /**
@@ -108,7 +114,6 @@ export class X12Decimal {
     this.#scaled = scaled;
     this.#scale = scale;
     this.#signum = signum;
-    Object.freeze(this);
   }
 
   /** The verbatim or canonical text. @internal */

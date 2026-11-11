@@ -1742,7 +1742,13 @@ function writtenInterchangeSpecs(): [string, InterchangeSpec][] {
     ],
     [
       "names-outside-grammar",
-      oneTransaction([["ref", "x"], ["TOOLONG", "x"], ["1AB", "x"], ["A", "x"], ["N1:X", "x"]]),
+      oneTransaction([
+        ["ref", "x"],
+        ["TOOLONG", "x"],
+        ["1AB", "x"],
+        ["A", "x"],
+        ["N1:X", "x"],
+      ]),
     ],
     ["version-00401", oneTransaction([["REF", "EA", "X"]], { version: "00401" })],
     [
@@ -1756,7 +1762,13 @@ function writtenInterchangeSpecs(): [string, InterchangeSpec][] {
     ],
     [
       "carriage-return-name-under-another-terminator",
-      oneTransaction([["\rREF", "EA", "X"], ["REF", "EA", "X"]], { segmentTerminator: "#" }),
+      oneTransaction(
+        [
+          ["\rREF", "EA", "X"],
+          ["REF", "EA", "X"],
+        ],
+        { segmentTerminator: "#" },
+      ),
     ],
     [
       "several",
@@ -1772,11 +1784,19 @@ function writtenInterchangeSpecs(): [string, InterchangeSpec][] {
               {
                 transactionSetIdCode: "837",
                 transactionSetControlNumber: "0002",
-                segments: [["BHT", "0019"], ["REF", "EA", "X"]],
+                segments: [
+                  ["BHT", "0019"],
+                  ["REF", "EA", "X"],
+                ],
               },
             ],
           },
-          { functionalIdCode: "HP", groupControlNumber: "2", versionRelease: "X", transactions: [] },
+          {
+            functionalIdCode: "HP",
+            groupControlNumber: "2",
+            versionRelease: "X",
+            transactions: [],
+          },
           {
             functionalIdCode: "HB",
             groupControlNumber: "3",
@@ -1785,7 +1805,11 @@ function writtenInterchangeSpecs(): [string, InterchangeSpec][] {
             groupDate: "20250102",
             responsibleAgencyCode: "T",
             transactions: [
-              { transactionSetIdCode: "271", transactionSetControlNumber: "9", segments: [["BHT"]] },
+              {
+                transactionSetIdCode: "271",
+                transactionSetControlNumber: "9",
+                segments: [["BHT"]],
+              },
             ],
           },
         ],
