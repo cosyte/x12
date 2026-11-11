@@ -373,6 +373,10 @@ be synthetic: never open a pull request carrying a real patient's data.
 
 ## Trademarks
 
+X12 is a mark of X12 Incorporated. Cosyte is not affiliated with, endorsed by, or certified by
+X12 Incorporated. This package uses the name X12 only to say which standard it reads and builds,
+and it uses none of X12 Incorporated's logos.
+
 Availity and Blue Cross Blue Shield are trademarks of their respective owners. Cosyte is not
 affiliated with, endorsed by, or sponsored by any of them. The names identify the trading partners
 whose companion-guide deviations the built-in profiles accommodate. See

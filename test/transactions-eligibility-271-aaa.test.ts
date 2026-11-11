@@ -538,3 +538,69 @@ describe("AC-1 / AC-7a / AC-16: an HL-03 naming a prototype member is an ordinar
     }
   });
 });
+
+/**
+ * `X12AaaCode.code` is the decoded element value: a release-escaped delimiter
+ * in AAA-03 reaches `code` with its `?` removed, as every decoded field in this
+ * package does, while `tx.segments` keeps the framed bytes. The shipped doc
+ * comment on `X12AaaCode` compiles into the published type declarations, so it
+ * must not promise the bytes the payer sent: for this AAA-03 the two differ.
+ */
+describe("X12AaaCode: the doc comment states what `code` holds", () => {
+  /** A one-loop 271 whose single AAA carries `aaa03` as AAA-03. */
+  function read(aaa03: string): { readonly seg: X12Segment; readonly elig: X12Eligibility } {
+    const raw = [
+      "ISA*00*          *00*          *ZZ*MEDPAY         *ZZ*ANYTOWNCLINIC  *260601*1200*^*00501*000000001*0*P*:~",
+      "GS*HB*MEDPAY*ANYTOWNCLINIC*20260601*1200*1*X*005010X279A1~",
+      "ST*271*0001*005010X279A1~",
+      "BHT*0022*11*ECHO-270-TRACE-141*20260601*1200~",
+      "HL*1**22*0~",
+      `AAA*N**${aaa03}*C~`,
+      "SE*5*0001~",
+      "GE*1*1~",
+      "IEA*1*000000001~",
+    ].join("\n");
+    const ix = parseX12(raw);
+    const tx = ix.groups[0]?.transactions[0];
+    if (tx === undefined) throw new Error("probe document carries no 271 transaction set");
+    const elig = get271Eligibility(ix.delimiters, tx);
+    if (elig === undefined) throw new Error("get271Eligibility returned undefined");
+    const seg = tx.segments.find((s) => s.id === "AAA");
+    if (seg === undefined) throw new Error("the AAA left tx.segments");
+    return { seg, elig };
+  }
+
+  /** The doc comment directly above `export interface X12AaaCode`. */
+  function aaaCodeDocComment(): string {
+    const source = readFileSync(
+      join(__dirname, "..", "src", "transactions", "eligibility", "types.ts"),
+      "utf8",
+    );
+    const at = source.indexOf("export interface X12AaaCode ");
+    expect(at).toBeGreaterThan(0);
+    const before = source.slice(0, at);
+    const open = before.lastIndexOf("/**");
+    expect(open).toBeGreaterThanOrEqual(0);
+    return before.slice(open);
+  }
+
+  it("CONTROL an ordinary code is the same on `code` and on tx.segments", () => {
+    const { seg, elig } = read("42");
+    expect(elig.aaaConditions[0]?.rejectReasonCode?.code).toBe("42");
+    expect(seg.elements[3]).toBe("42");
+  });
+
+  it("a released delimiter is unescaped on `code` and framed on tx.segments", () => {
+    const { seg, elig } = read("7?*2");
+    expect(seg.elements).toHaveLength(5);
+    expect(seg.elements[3]).toBe("7?*2");
+    expect(elig.aaaConditions[0]?.rejectReasonCode?.code).toBe("7*2");
+  });
+
+  it("promises the decoded value and points at tx.segments for the bytes", () => {
+    const doc = aaaCodeDocComment();
+    expect(doc).not.toMatch(/exactly the bytes/iu);
+    expect(doc).not.toMatch(/verbatim/iu);
+    expect(doc).toMatch(/tx\.segments/u);
+  });
+});

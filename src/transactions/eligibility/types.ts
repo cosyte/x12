@@ -96,17 +96,19 @@ export type X12AaaConditionLevel = Exclude<
 >;
 
 /**
- * One AAA code as it reached the reader: the VERBATIM inbound value, plus the
- * bundled description where one resolves. `description` is `undefined` for a
- * code outside the bundled snapshot, and the snapshots ship empty, so today it
- * is `undefined` for every code. The code itself is never normalised, never
- * defaulted and never dropped.
+ * One AAA code as it reached the reader: the decoded element value, plus the
+ * bundled description where one resolves. `code` is read the way every decoded
+ * field here is, with the release character removed, so an AAA-03 sent as
+ * `7?*2` reads `7*2`; `tx.segments` keeps the framed bytes. `description` is
+ * `undefined` for a code outside the bundled snapshot, and the snapshots ship
+ * empty, so today it is `undefined` for every code. The code itself is never
+ * normalised past that, never defaulted and never dropped.
  *
  * @example
  * ```ts
  * import type { X12AaaCode } from "@cosyte/x12";
  * declare const c: X12AaaCode;
- * c.code;        // "42", exactly the bytes the payer sent
+ * c.code;        // "42", the decoded AAA-03 value
  * c.description; // undefined (the bundled snapshot is empty)
  * ```
  */

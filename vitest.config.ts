@@ -47,8 +47,6 @@ const config = cosyteVitest({
     // Pins fast-check's seed for every property suite, so coverage is reproducible and a failure
     // replays; the nightly fuzz run swaps in a rotating seed through it.
     setupFiles: ["test/setup.fast-check.ts"],
-    // Only `*.test.ts` is collected: the `regress_*.ts` files under test/ are standalone regression
-    // scripts run with tsx, deliberately left out of the suite.
     include: ["test/**/*.test.ts", "src/**/*.test.ts"],
     // The fixture corpus under test/fixtures/ is data and is never collected, nor is a build output.
     exclude: ["node_modules", "dist", "coverage", "test/fixtures/**"],
