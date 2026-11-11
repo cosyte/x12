@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 
 import ts from "typescript";
 
@@ -41,7 +41,10 @@ const READER_OPTIONS: ts.CompilerOptions = {
  * into the published entry point and its types. Only the example's own errors are returned.
  */
 export function compileErrors(root: string, pkg: string, entry: string, code: string): string[] {
-  const file = join(root, "first-use-example.mts");
+  // Forward slashes, as the compiler host names every file it asks for: with the backslashes
+  // `join` writes on Windows, no name the host asks for would equal this one, the sample would
+  // never be read, and every check would pass with no errors.
+  const file = join(root, "first-use-example.mts").split(sep).join("/");
   const options: ts.CompilerOptions = {
     ...READER_OPTIONS,
     typeRoots: [join(root, "node_modules", "@types")],

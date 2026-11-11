@@ -14,6 +14,7 @@ import {
 } from "@cosyte/vitest-config/snippets";
 
 import { compileErrors, fences, section } from "./_helpers/first-use.js";
+import { tsx } from "./_helpers/runtime.js";
 
 /**
  * README/code-agreement gate. The `## Usage` block is the single most copied thing on this page:
@@ -70,7 +71,7 @@ docSnippetSuite({
   name: "README usage example agrees with the built package",
   files: [README],
   requireSnippet: true,
-  resolve: (specifier) => (specifier === "@cosyte/x12" ? ENTRY : undefined),
+  resolve: (specifier) => (specifier === "@cosyte/x12" ? pathToFileURL(ENTRY).href : undefined),
   tmpDir: TMP_DIR,
 });
 
@@ -203,7 +204,8 @@ describe("the README gate binds the FIRST ## Usage block and can go red", () => 
     const mutated = code.replace(claim, 'adjustment?.reasonCode; // => "2"');
     await expect(
       runSnippet(mutated, {
-        resolve: (specifier) => (specifier === "@cosyte/x12" ? ENTRY : undefined),
+        resolve: (specifier) =>
+          specifier === "@cosyte/x12" ? pathToFileURL(ENTRY).href : undefined,
         tmpDir: CONTROL_TMP_DIR,
       }),
     ).rejects.toThrow();
@@ -219,7 +221,6 @@ describe("the README gate binds the FIRST ## Usage block and can go red", () => 
  * could not pass.
  */
 describe("the README usage example prints exactly what the page says it prints", () => {
-  const TSX = join(root, "node_modules", ".bin", "tsx");
   const SPECIFIER = '"@cosyte/x12"';
 
   function runAsProgram(
@@ -230,7 +231,7 @@ describe("the README usage example prints exactly what the page says it prints",
     mkdirSync(CONTROL_TMP_DIR, { recursive: true });
     const file = join(CONTROL_TMP_DIR, name);
     writeFileSync(file, code.replace(SPECIFIER, JSON.stringify(pathToFileURL(ENTRY).href)), "utf8");
-    const run = spawnSync(TSX, [file], {
+    const run = spawnSync(...tsx([file]), {
       cwd: root,
       encoding: "utf8",
       shell: false,

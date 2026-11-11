@@ -5,7 +5,8 @@ name: Nightly fuzz
 # callers here name, and that workflow runs `pnpm fuzz`: the whole property layer under
 # test/property/. Its fuzz targets (flipped interchanges through the envelope parser, hostile bytes
 # and flips through the 270 reader, and a byte flipped anywhere in every committed 835, 837, 271,
-# and 277 fixture through its walker) generate hostile inputs for a time budget instead of their
+# 277, 997, 278, 275 and 277 request for additional information fixture through its walker)
+# generate hostile inputs for a time budget instead of their
 # committed run counts; the fixture families share one budget per family. The seed changes with
 # every run, for the round-trip properties too, so each night explores a different slice of the
 # input space.

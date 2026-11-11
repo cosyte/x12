@@ -31,10 +31,10 @@
  * the literal a builder stamps equal the row the cited table carries.
  *
  * The scan is syntactic, keyed on the `const X12_<txn>_FUNCTIONAL_ID = "<code>"`
- * shape all eight use. A builder that computed its GS-01 some other way would
- * not be seen, which is why the count below is pinned: a ninth literal
- * appearing, or one of the eight disappearing, reds this file rather than
- * silently shrinking what it checks.
+ * shape all eight use, and `build-275.ts` uses since its row was added. A
+ * builder that computed its GS-01 some other way would not be seen, which is
+ * why the count below is pinned: a literal appearing, or one of them
+ * disappearing, reds this file rather than silently shrinking what it checks.
  */
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -98,15 +98,27 @@ function declaredFunctionalIds(): {
 }
 
 /**
- * The transaction sets that declared their GS-01 as a literal BEFORE the cited
- * table existed. Pinned rather than derived: the point of the check is that
- * these eight independent declarations agree with the table, and a derived list
- * would shrink silently to whatever still happens to agree.
+ * The transaction sets that declare their GS-01 as a literal of their own: the
+ * eight that did before the cited table existed, and the 275, whose builder
+ * stamped `PI` before the table had its row. Pinned rather than derived: the
+ * point of the check is that these independent declarations agree with the
+ * table, and a derived list would shrink silently to whatever still happens to
+ * agree.
  */
-const CORROBORATING_TRANSACTION_SETS = ["270", "271", "277", "278", "820", "834", "835", "837"];
+const CORROBORATING_TRANSACTION_SETS = [
+  "270",
+  "271",
+  "275",
+  "277",
+  "278",
+  "820",
+  "834",
+  "835",
+  "837",
+];
 
 describe("GS-01 provenance: the cited element 479 table", () => {
-  it("agrees with every GS-01 the other builders declare, and there are eight of them", () => {
+  it("agrees with every GS-01 the other builders declare, and there are nine of them", () => {
     const declared = declaredFunctionalIds();
 
     // Non-vacuity FIRST. An empty scan would make every assertion below pass.
@@ -125,7 +137,7 @@ describe("GS-01 provenance: the cited element 479 table", () => {
     }
   });
 
-  it("carries rows for the 276 and the 997 that no X12_<txn>_FUNCTIONAL_ID literal corroborates, and only those", () => {
+  it("carries rows for the 276, the 997 and the 999 that no X12_<txn>_FUNCTIONAL_ID literal corroborates, and only those", () => {
     const corroborated = new Set(declaredFunctionalIds().map((d) => d.transactionSet));
     const uncorroborated = Object.keys(FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET)
       .filter((txn) => !corroborated.has(txn))
@@ -133,8 +145,9 @@ describe("GS-01 provenance: the cited element 479 table", () => {
 
     // Stated as a fact about this table rather than hidden: the 276 row rests
     // on the cited reference alone. The 997 row is checked against the 999
-    // builder's GS-01 below instead, which is not in the literal shape above.
-    expect(uncorroborated).toEqual(["276", "997"]);
+    // builder's GS-01 below instead, which is not in the literal shape above,
+    // and so is the 999 row.
+    expect(uncorroborated).toEqual(["276", "997", "999"]);
   });
 
   it("gives the 997 the GS-01 the 999 builder already writes, FA", () => {
@@ -166,6 +179,7 @@ describe("GS-01 provenance: the cited element 479 table", () => {
     });
     expect(ack.groups[0]?.gs.elements[1]).toBe("FA");
     expect(FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET["997"]).toBe(ack.groups[0]?.gs.elements[1]);
+    expect(FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET["999"]).toBe(ack.groups[0]?.gs.elements[1]);
     // And the 997 is written from this table, not from a literal of its own.
     const shared = code(join(SRC, "transactions", "ack", "build-999.ts"));
     expect(shared).toMatch(/FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET\["997"\]/u);

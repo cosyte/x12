@@ -33,7 +33,9 @@ import {
 } from "../src/arbitraries/index.js";
 import {
   FUNCTIONAL_IDENTIFIERS,
+  OMITTED_TRANSACTION_SETS,
   TRANSACTION_SET_TYPES,
+  deriveTransactionSetTypes,
   interchangeParts,
   writeClean,
   type InterchangeParts,
@@ -196,25 +198,91 @@ describe("transactionSetType", () => {
     expect(FUNCTIONAL_IDENTIFIERS).toEqual(FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET);
   });
 
-  it("derives each type from the conformance declaration", () => {
+  it("carries the 275 and the 999, each under the GS-01 its builder writes", () => {
+    expect(FUNCTIONAL_IDENTIFIERS["275"]).toBe("PI");
+    expect(FUNCTIONAL_IDENTIFIERS["999"]).toBe("FA");
+    expect(TRANSACTION_SET_TYPES).toContainEqual({
+      id: "275",
+      functionalIdCode: "PI",
+      version: "006020X314",
+    });
+    expect(TRANSACTION_SET_TYPES).toContainEqual({
+      id: "999",
+      functionalIdCode: "FA",
+      version: "005010X231A1",
+    });
+  });
+
+  it("has a type for every conformance row, or a listed reason for leaving it out", () => {
+    // A row the generator does not draw is a transaction set no property here ever builds, so
+    // leaving one out is a decision with a reason, never the side effect of a missing table row.
+    for (const row of X12_TR3_CONFORMANCE) {
+      const typed = TRANSACTION_SET_TYPES.some(
+        (t) => t.id === row.transaction && t.version === row.tr3,
+      );
+      const reason = Object.hasOwn(OMITTED_TRANSACTION_SETS, row.transaction)
+        ? OMITTED_TRANSACTION_SETS[row.transaction]
+        : undefined;
+      expect(
+        typed || reason !== undefined,
+        `the ${row.transaction} (${String(row.tr3)}) row is neither a type nor listed with a reason`,
+      ).toBe(true);
+    }
+    // Only the rows that name no guide are left out: the 997 and the TA1.
+    expect(Object.keys(OMITTED_TRANSACTION_SETS).sort()).toEqual(["997", "TA1"]);
+    for (const reason of Object.values(OMITTED_TRANSACTION_SETS)) expect(reason).not.toBe("");
+    for (const id of Object.keys(OMITTED_TRANSACTION_SETS)) {
+      expect(TRANSACTION_SET_TYPES.some((t) => t.id === id)).toBe(false);
+    }
+  });
+
+  it("derives each type from the conformance declaration, in its order", () => {
     const declared = X12_TR3_CONFORMANCE.filter(
-      (row) => row.tr3 !== null && row.transaction in FUNCTIONAL_IDENTIFIERS,
+      (row) => !Object.hasOwn(OMITTED_TRANSACTION_SETS, row.transaction),
     );
-    expect(TRANSACTION_SET_TYPES).toHaveLength(declared.length);
-    for (const row of declared) {
-      expect(TRANSACTION_SET_TYPES).toContainEqual({
+    expect(TRANSACTION_SET_TYPES).toEqual(
+      declared.map((row) => ({
         id: row.transaction,
         functionalIdCode: FUNCTIONAL_IDENTIFIERS[row.transaction],
         version: row.tr3,
-      });
-    }
-    expect(TRANSACTION_SET_TYPES.some((t) => t.id === "999" || t.id === "275")).toBe(false);
-    // The 997 travels under FA, but names no guide for GS-08 and ST-03, so it is no type here.
-    expect(FUNCTIONAL_IDENTIFIERS["997"]).toBe("FA");
-    expect(TRANSACTION_SET_TYPES.some((t) => t.id === "997")).toBe(false);
+      })),
+    );
+    expect(Object.isFrozen(TRANSACTION_SET_TYPES)).toBe(true);
     expect(new Set(draw(transactionSetType(), 400).map((t) => t.version))).toEqual(
       new Set(TRANSACTION_SET_TYPES.map((t) => t.version)),
     );
+  });
+
+  it("refuses, naming the row, a declared guide with no GS-01 and no listed reason", () => {
+    const rows = [{ transaction: "123", tr3: "005010X999" }];
+    expect(() => deriveTransactionSetTypes(rows, {}, {})).toThrow(
+      new Error(
+        "@cosyte/x12/arbitraries: the 123 row of X12_TR3_CONFORMANCE (005010X999) has no GS-01 functional identifier and no listed reason to leave it out",
+      ),
+    );
+    // A row that names no guide refuses the same way: it is only left out when listed.
+    expect(() => deriveTransactionSetTypes([{ transaction: "123", tr3: null }], {}, {})).toThrow(
+      /the 123 row of X12_TR3_CONFORMANCE \(no guide\) has no GS-01/u,
+    );
+    // A listed row is left out, and a row with its GS-01 becomes a type.
+    expect(
+      deriveTransactionSetTypes(
+        [
+          { transaction: "123", tr3: null },
+          { transaction: "456", tr3: "005010X998" },
+        ],
+        { "456": "ZZ" },
+        { "123": "names no guide" },
+      ),
+    ).toEqual([{ id: "456", functionalIdCode: "ZZ", version: "005010X998" }]);
+    // A row with a GS-01 but no guide cannot be a type, so it needs a listed reason as well.
+    expect(() =>
+      deriveTransactionSetTypes([{ transaction: "456", tr3: null }], { "456": "ZZ" }, {}),
+    ).toThrow(/the 456 row of X12_TR3_CONFORMANCE \(no guide\) has no guide/u);
+    // A table key off the prototype is not a GS-01.
+    expect(() =>
+      deriveTransactionSetTypes([{ transaction: "constructor", tr3: "005010X997" }], {}, {}),
+    ).toThrow(/the constructor row/u);
   });
 });
 

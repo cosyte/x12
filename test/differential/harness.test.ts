@@ -44,9 +44,9 @@ import {
   parseRequirement,
   pyx12Oracle,
 } from "../../scripts/differential/pyx12-oracle.js";
+import { IS_DENO, IS_WINDOWS, tsx } from "../_helpers/runtime.js";
 
 const REPO_ROOT = process.cwd();
-const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
 const ENTRY_PATH = join(REPO_ROOT, "scripts", "differential.ts");
 const REPORT_PATH = join(REPO_ROOT, "test", "differential", "report.json");
 const REQUIREMENT = "pyx12==4.0.0";
@@ -218,20 +218,26 @@ describe("differential harness", () => {
     expect((error as OracleUnavailableError).message).toContain(REQUIREMENT);
   });
 
-  it("AC-5: the real entry exits non-zero and leaves the report untouched", () => {
-    const before = readFileSync(REPORT_PATH, "utf8");
-    // SECURITY: array-form spawnSync, no shell.
-    const result = spawnSync(TSX_BIN, [ENTRY_PATH, "--oracle", REQUIREMENT], {
-      cwd: REPO_ROOT,
-      encoding: "utf8",
-      env: { ...process.env, [INTERPRETER_ENV]: join(REPO_ROOT, "no-such-interpreter") },
-    });
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain(REQUIREMENT);
-    expect(result.stderr).toContain("no-such-interpreter");
-    expect(result.stderr).toContain("No report was written");
-    expect(readFileSync(REPORT_PATH, "utf8")).toBe(before);
-  }, 30_000);
+  // Skipped under Deno: the deno job takes Node off PATH, and this starts the harness's command
+  // line under tsx, a Node command line that starts Node again with its loader.
+  it.skipIf(IS_DENO)(
+    "AC-5: the real entry exits non-zero and leaves the report untouched",
+    () => {
+      const before = readFileSync(REPORT_PATH, "utf8");
+      // SECURITY: array-form spawnSync, no shell.
+      const result = spawnSync(...tsx([ENTRY_PATH, "--oracle", REQUIREMENT]), {
+        cwd: REPO_ROOT,
+        encoding: "utf8",
+        env: { ...process.env, [INTERPRETER_ENV]: join(REPO_ROOT, "no-such-interpreter") },
+      });
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toContain(REQUIREMENT);
+      expect(result.stderr).toContain("no-such-interpreter");
+      expect(result.stderr).toContain("No report was written");
+      expect(readFileSync(REPORT_PATH, "utf8")).toBe(before);
+    },
+    30_000,
+  );
 
   it("AC-5: a requirement that is not an exact version is refused", () => {
     expect(() => parseRequirement("pyx12")).toThrow(/exact version/u);
@@ -565,109 +571,132 @@ describe("differential harness, second oracle", () => {
     ]);
   });
 
-  it("S0382 AC-6: the second oracle reporting a version, interpreter or companion other than its pin is refused", async () => {
-    const cases: { installed: unknown; says: RegExp }[] = [
-      { installed: { ...INSTALLED, version: "0.56.0" }, says: /reports version 0\.56\.0/u },
-      { installed: { ...INSTALLED, python: "3.12.3" }, says: /runs under Python 3\.12\.3/u },
-      {
-        installed: {
-          ...INSTALLED,
-          companions: [{ package: "pydantic", version: "2.9.2" }, ...INSTALLED.companions.slice(1)],
+  // Skipped on Windows: the stand-in for the oracle's interpreter is a script that starts with
+  // `#!/usr/bin/env node`, which Windows cannot start as a program. The real oracles run on Linux
+  // in the differential job, which checks the same pins against the real interpreters.
+  it.skipIf(IS_WINDOWS)(
+    "S0382 AC-6: the second oracle reporting a version, interpreter or companion other than its pin is refused",
+    async () => {
+      const cases: { installed: unknown; says: RegExp }[] = [
+        { installed: { ...INSTALLED, version: "0.56.0" }, says: /reports version 0\.56\.0/u },
+        { installed: { ...INSTALLED, python: "3.12.3" }, says: /runs under Python 3\.12\.3/u },
+        {
+          installed: {
+            ...INSTALLED,
+            companions: [
+              { package: "pydantic", version: "2.9.2" },
+              ...INSTALLED.companions.slice(1),
+            ],
+          },
+          says: /runs on pydantic 2\.9\.2/u,
         },
-        says: /runs on pydantic 2\.9\.2/u,
-      },
-    ];
-    for (const { installed, says } of cases) {
-      const error = await describeSecond(installed);
-      expect(error).toBeInstanceOf(OracleUnavailableError);
-      expect((error as OracleUnavailableError).oracle).toBe(REQUIREMENT_2.oracle);
-      expect((error as Error).message).toMatch(says);
-    }
-    // The same installation answering as pinned is described, from what it
-    // reported rather than from anything written into the harness.
-    const described = (await describeSecond(INSTALLED)) as OracleDescription;
-    expect(described.package).toBe(SECOND);
-    expect(described.version).toBe("0.57.0");
-    expect(described.licence).toBe("Apache 2.0");
-    expect(described.python).toBe("3.11.16");
-    expect(described.companions).toEqual(INSTALLED.companions);
-  });
+      ];
+      for (const { installed, says } of cases) {
+        const error = await describeSecond(installed);
+        expect(error).toBeInstanceOf(OracleUnavailableError);
+        expect((error as OracleUnavailableError).oracle).toBe(REQUIREMENT_2.oracle);
+        expect((error as Error).message).toMatch(says);
+      }
+      // The same installation answering as pinned is described, from what it
+      // reported rather than from anything written into the harness.
+      const described = (await describeSecond(INSTALLED)) as OracleDescription;
+      expect(described.package).toBe(SECOND);
+      expect(described.version).toBe("0.57.0");
+      expect(described.licence).toBe("Apache 2.0");
+      expect(described.python).toBe("3.11.16");
+      expect(described.companions).toEqual(INSTALLED.companions);
+    },
+  );
 
-  it("S0382 AC-6: a requirement that leaves the oracle, a companion or the interpreter free is refused", async () => {
-    const refusals: LinuxForHealthRequirement[] = [
-      { ...REQUIREMENT_2, oracle: SECOND },
-      { ...REQUIREMENT_2, oracle: `${SECOND}>=0.57.0` },
-      {
-        ...REQUIREMENT_2,
-        companions: ["pydantic>=1.9", "python-dotenv==1.2.3", "typing-extensions==4.16.0"],
-      },
-      {
-        ...REQUIREMENT_2,
-        companions: ["pydantic", "python-dotenv==1.2.3", "typing-extensions==4.16.0"],
-      },
-      { ...REQUIREMENT_2, python: "3.11" },
-      { ...REQUIREMENT_2, python: null },
-    ];
-    for (const requirement of refusals) {
-      expect(() => linuxforhealthOracle(requirement, "00501")).toThrow(OracleRequirementError);
-    }
-    // A companion the installation runs on that the requirement does not pin.
-    const unpinned = await describeSecond(INSTALLED, {
-      ...REQUIREMENT_2,
-      companions: ["python-dotenv==1.2.3", "typing-extensions==4.16.0"],
-    });
-    expect(unpinned).toBeInstanceOf(OracleRequirementError);
-    expect((unpinned as OracleRequirementError).oracle).toBe(REQUIREMENT_2.oracle);
-    expect((unpinned as Error).message).toMatch(/pydantic 1\.10\.13.*pins no version/u);
-  });
-
-  it("S0382 AC-6: the real entry refuses the second oracle, names it, exits non-zero and writes no report", () => {
-    const before = readFileSync(REPORT_PATH, "utf8");
-    const interpreter = interpreterDouble();
-    const pins = ["--with", "pydantic==1.10.13", "--with", "python-dotenv==1.2.3"];
-    const tail = ["--with", "typing-extensions==4.16.0", "--python", "3.11.16"];
-    const oracle = `${SECOND}==0.57.0`;
-    const cases: { args: string[]; env: Record<string, string>; says: string }[] = [
-      {
-        // It cannot be invoked.
-        args: ["--oracle", oracle, ...pins, ...tail],
-        env: { [LINUXFORHEALTH_INTERPRETER_ENV]: join(REPO_ROOT, "no-such-interpreter") },
-        says: "no-such-interpreter",
-      },
-      {
-        // It reports a version other than its pin.
-        args: ["--oracle", oracle, ...pins, ...tail],
-        env: {
-          [LINUXFORHEALTH_INTERPRETER_ENV]: interpreter,
-          [DESCRIBE_ENV]: JSON.stringify({ ...INSTALLED, version: "0.56.0" }),
+  // Skipped on Windows: the stand-in for the oracle's interpreter is a script that starts with
+  // `#!/usr/bin/env node`, which Windows cannot start as a program. The real oracles run on Linux
+  // in the differential job, which checks the same pins against the real interpreters.
+  it.skipIf(IS_WINDOWS)(
+    "S0382 AC-6: a requirement that leaves the oracle, a companion or the interpreter free is refused",
+    async () => {
+      const refusals: LinuxForHealthRequirement[] = [
+        { ...REQUIREMENT_2, oracle: SECOND },
+        { ...REQUIREMENT_2, oracle: `${SECOND}>=0.57.0` },
+        {
+          ...REQUIREMENT_2,
+          companions: ["pydantic>=1.9", "python-dotenv==1.2.3", "typing-extensions==4.16.0"],
         },
-        says: "reports version 0.56.0",
-      },
-      {
-        // Its requirement does not pin a companion exactly.
-        args: ["--oracle", oracle, "--with", "pydantic>=1.9", ...pins.slice(2), ...tail],
-        env: {},
-        says: "exact version",
-      },
-      {
-        // Its requirement does not pin itself exactly.
-        args: ["--oracle", SECOND, ...pins, ...tail],
-        env: {},
-        says: "exact version",
-      },
-    ];
-    for (const { args, env, says } of cases) {
-      // SECURITY: array-form spawnSync, no shell.
-      const result = spawnSync(TSX_BIN, [ENTRY_PATH, ...args], {
-        cwd: REPO_ROOT,
-        encoding: "utf8",
-        env: { ...process.env, ...env },
+        {
+          ...REQUIREMENT_2,
+          companions: ["pydantic", "python-dotenv==1.2.3", "typing-extensions==4.16.0"],
+        },
+        { ...REQUIREMENT_2, python: "3.11" },
+        { ...REQUIREMENT_2, python: null },
+      ];
+      for (const requirement of refusals) {
+        expect(() => linuxforhealthOracle(requirement, "00501")).toThrow(OracleRequirementError);
+      }
+      // A companion the installation runs on that the requirement does not pin.
+      const unpinned = await describeSecond(INSTALLED, {
+        ...REQUIREMENT_2,
+        companions: ["python-dotenv==1.2.3", "typing-extensions==4.16.0"],
       });
-      expect(result.status).not.toBe(0);
-      expect(result.stderr).toContain(SECOND);
-      expect(result.stderr).toContain(says);
-      expect(result.stderr).toContain("No report was written");
-      expect(readFileSync(REPORT_PATH, "utf8")).toBe(before);
-    }
-  }, 60_000);
+      expect(unpinned).toBeInstanceOf(OracleRequirementError);
+      expect((unpinned as OracleRequirementError).oracle).toBe(REQUIREMENT_2.oracle);
+      expect((unpinned as Error).message).toMatch(/pydantic 1\.10\.13.*pins no version/u);
+    },
+  );
+
+  // Skipped on Windows: the stand-in for the oracle's interpreter is a script that starts with
+  // `#!/usr/bin/env node`, which Windows cannot start as a program. The real oracles run on Linux
+  // in the differential job, which checks the same pins against the real interpreters.
+  // Skipped under Deno too: it starts the harness's command line under tsx, as above.
+  it.skipIf(IS_WINDOWS || IS_DENO)(
+    "S0382 AC-6: the real entry refuses the second oracle, names it, exits non-zero and writes no report",
+    () => {
+      const before = readFileSync(REPORT_PATH, "utf8");
+      const interpreter = interpreterDouble();
+      const pins = ["--with", "pydantic==1.10.13", "--with", "python-dotenv==1.2.3"];
+      const tail = ["--with", "typing-extensions==4.16.0", "--python", "3.11.16"];
+      const oracle = `${SECOND}==0.57.0`;
+      const cases: { args: string[]; env: Record<string, string>; says: string }[] = [
+        {
+          // It cannot be invoked.
+          args: ["--oracle", oracle, ...pins, ...tail],
+          env: { [LINUXFORHEALTH_INTERPRETER_ENV]: join(REPO_ROOT, "no-such-interpreter") },
+          says: "no-such-interpreter",
+        },
+        {
+          // It reports a version other than its pin.
+          args: ["--oracle", oracle, ...pins, ...tail],
+          env: {
+            [LINUXFORHEALTH_INTERPRETER_ENV]: interpreter,
+            [DESCRIBE_ENV]: JSON.stringify({ ...INSTALLED, version: "0.56.0" }),
+          },
+          says: "reports version 0.56.0",
+        },
+        {
+          // Its requirement does not pin a companion exactly.
+          args: ["--oracle", oracle, "--with", "pydantic>=1.9", ...pins.slice(2), ...tail],
+          env: {},
+          says: "exact version",
+        },
+        {
+          // Its requirement does not pin itself exactly.
+          args: ["--oracle", SECOND, ...pins, ...tail],
+          env: {},
+          says: "exact version",
+        },
+      ];
+      for (const { args, env, says } of cases) {
+        // SECURITY: array-form spawnSync, no shell.
+        const result = spawnSync(...tsx([ENTRY_PATH, ...args]), {
+          cwd: REPO_ROOT,
+          encoding: "utf8",
+          env: { ...process.env, ...env },
+        });
+        expect(result.status).not.toBe(0);
+        expect(result.stderr).toContain(SECOND);
+        expect(result.stderr).toContain(says);
+        expect(result.stderr).toContain("No report was written");
+        expect(readFileSync(REPORT_PATH, "utf8")).toBe(before);
+      }
+    },
+    60_000,
+  );
 });

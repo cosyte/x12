@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -63,15 +64,24 @@ const PUBLIC_ENTRY_SOURCE = join(root, "src", "index.ts");
 /** Map the generators' subpath to its built ESM artifact. */
 const ARBITRARIES = join(root, "dist", "arbitraries.mjs");
 
+/**
+ * A sample's import of the package resolves to the built file by its `file:` URL. Node's ESM
+ * loader on Windows takes no bare drive-letter path (`D:\...`), and a URL loads everywhere.
+ */
 const resolveEntry = (specifier: string): string | undefined =>
   specifier === "@cosyte/x12"
-    ? ENTRY
+    ? pathToFileURL(ENTRY).href
     : specifier === "@cosyte/x12/arbitraries"
-      ? ARBITRARIES
+      ? pathToFileURL(ARBITRARIES).href
       : undefined;
 
 beforeAll(() => {
-  execFileSync("pnpm", ["build"], { cwd: root, stdio: "inherit" });
+  // On Windows `pnpm` is a `.cmd` file, which only a shell starts.
+  execFileSync("pnpm", ["build"], {
+    cwd: root,
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
 }, 120_000);
 
 /** The hand-written pages: every `.md` file at the top of `docs-content/`, not the generated `api/`. */

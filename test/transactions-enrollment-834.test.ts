@@ -225,61 +225,67 @@ describe("get834Enrollments - edge cases", () => {
   });
 });
 
-describe("get834Enrollments - streaming property (10MB+ synthetic file)", () => {
-  function buildLarge834(memberCount: number): string {
-    const head = [
-      "ISA*00*          *00*          *ZZ*EMPLOYERCO     *ZZ*MEDPAY         *260601*1200*^*00501*000000001*0*P*:~",
-      "GS*BE*EMPLOYERCO*MEDPAY*20260601*1200*1*X*005010X220A1~",
-      "ST*834*0001~",
-      "BGN*00*ENR-BIG*20260601*1200****2~",
-      "N1*P5*EMPLOYER CO*FI*444556666~",
-      "N1*IN*MEDPAY INSURANCE*FI*111223333~",
-    ];
-    const parts: string[] = [...head];
-    for (let n = 1; n <= memberCount; n += 1) {
-      const id = String(n).padStart(7, "0");
-      parts.push(
-        "INS*Y*18*021*EC*A***FT~",
-        `REF*0F*MEMBER-${id}~`,
-        `NM1*IL*1*DOE*JANE****MI*MEMBER-${id}~`,
-        "DTP*356*D8*20260101~",
-        "HD*021**HLT*GOLD PPO*FAM~",
-      );
+// Skipped in a mutation run (`vitest.mutation.config.ts` sets X12_MUTATION_RUN): it parses a
+// 10 MB document for every parser mutant, and on four full runs it killed none. `pnpm test` runs
+// it on every pull request.
+describe.skipIf(process.env["X12_MUTATION_RUN"] === "1")(
+  "get834Enrollments - streaming property (10MB+ synthetic file)",
+  () => {
+    function buildLarge834(memberCount: number): string {
+      const head = [
+        "ISA*00*          *00*          *ZZ*EMPLOYERCO     *ZZ*MEDPAY         *260601*1200*^*00501*000000001*0*P*:~",
+        "GS*BE*EMPLOYERCO*MEDPAY*20260601*1200*1*X*005010X220A1~",
+        "ST*834*0001~",
+        "BGN*00*ENR-BIG*20260601*1200****2~",
+        "N1*P5*EMPLOYER CO*FI*444556666~",
+        "N1*IN*MEDPAY INSURANCE*FI*111223333~",
+      ];
+      const parts: string[] = [...head];
+      for (let n = 1; n <= memberCount; n += 1) {
+        const id = String(n).padStart(7, "0");
+        parts.push(
+          "INS*Y*18*021*EC*A***FT~",
+          `REF*0F*MEMBER-${id}~`,
+          `NM1*IL*1*DOE*JANE****MI*MEMBER-${id}~`,
+          "DTP*356*D8*20260101~",
+          "HD*021**HLT*GOLD PPO*FAM~",
+        );
+      }
+      const segCount = head.length + memberCount * 5 + 1; // + SE itself
+      parts.push(`SE*${String(segCount)}*0001~`, "GE*1*1~", "IEA*1*000000001~");
+      return parts.join("");
     }
-    const segCount = head.length + memberCount * 5 + 1; // + SE itself
-    parts.push(`SE*${String(segCount)}*0001~`, "GE*1*1~", "IEA*1*000000001~");
-    return parts.join("");
-  }
 
-  it("yields one enrollment per INS over a 10MB+ file and supports early-break", async () => {
-    const memberCount = 90_000;
-    const raw = buildLarge834(memberCount);
-    expect(raw.length).toBeGreaterThan(10 * 1024 * 1024);
+    it("yields one enrollment per INS over a 10MB+ file and supports early-break", async () => {
+      const memberCount = 90_000;
+      const raw = buildLarge834(memberCount);
+      expect(raw.length).toBeGreaterThan(10 * 1024 * 1024);
 
-    const { delimiters, tx } = load834(raw);
+      const { delimiters, tx } = load834(raw);
 
-    // Early-break: pull just the first 3 members without draining the rest.
-    const firstThree: X12Enrollment[] = [];
-    for await (const member of get834Enrollments(delimiters, tx)) {
-      firstThree.push(member);
-      if (firstThree.length === 3) break;
-    }
-    expect(firstThree).toHaveLength(3);
-    expect(firstThree[0]?.member?.idCode).toBe("MEMBER-0000001");
-    expect(firstThree[2]?.member?.idCode).toBe("MEMBER-0000003");
+      // Early-break: pull just the first 3 members without draining the rest.
+      const firstThree: X12Enrollment[] = [];
+      for await (const member of get834Enrollments(delimiters, tx)) {
+        firstThree.push(member);
+        if (firstThree.length === 3) break;
+      }
+      expect(firstThree).toHaveLength(3);
+      expect(firstThree[0]?.member?.idCode).toBe("MEMBER-0000001");
+      expect(firstThree[2]?.member?.idCode).toBe("MEMBER-0000003");
 
-    // Full drain: every member surfaces exactly once, in order, one at a
-    // time (the loop never builds an array of all members internally).
-    let count = 0;
-    let lastSeen = "";
-    for await (const member of get834Enrollments(delimiters, tx)) {
-      count += 1;
-      lastSeen = member.member?.idCode ?? "";
-    }
-    expect(count).toBe(memberCount);
-    expect(lastSeen).toBe(`MEMBER-${String(memberCount).padStart(7, "0")}`);
-  }, 120_000);
-});
+      // Full drain: every member surfaces exactly once, in order, one at a
+      // time (the loop never builds an array of all members internally).
+      let count = 0;
+      let lastSeen = "";
+      for await (const member of get834Enrollments(delimiters, tx)) {
+        count += 1;
+        lastSeen = member.member?.idCode ?? "";
+      }
+      expect(count).toBe(memberCount);
+      expect(lastSeen).toBe(`MEMBER-${String(memberCount).padStart(7, "0")}`);
+    }, 120_000);
+  },
+);
 
 describe("get834 - guards + dogfooded specs", () => {
   it("returns undefined / yields nothing for a non-834 transaction set", async () => {

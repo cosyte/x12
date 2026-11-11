@@ -1,5 +1,5 @@
 import { closeSync, constants, fstatSync, openSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, sep } from "node:path";
 
 import ts from "typescript";
 
@@ -162,7 +162,17 @@ export function sampleCompileErrors(
     },
   };
   const files = new Map<string, SampleSource>();
-  samples.forEach((sample, i) => files.set(join(root, `docs-sample-${String(i)}.mts`), sample));
+  // Forward slashes, as the compiler host names every file it asks for: with the backslashes
+  // `join` writes on Windows, no name the host asks for would match, and every sample would pass
+  // unread.
+  samples.forEach((sample, i) =>
+    files.set(
+      join(root, `docs-sample-${String(i)}.mts`)
+        .split(sep)
+        .join("/"),
+      sample,
+    ),
+  );
   const host = ts.createCompilerHost(options, true);
   const getSourceFile = host.getSourceFile.bind(host);
   host.getSourceFile = (name, language, onError, create) => {

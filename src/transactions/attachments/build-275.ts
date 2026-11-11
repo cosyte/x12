@@ -49,7 +49,7 @@ import { ATTACHMENT_275_BUILD_ERROR_CODES, Attachment275BuildError } from "./bui
 const AT = "build275";
 
 /** GS-01 for the 275: `PI`, per the carried base standard. @internal */
-const FUNCTIONAL_ID = "PI";
+const X12_275_FUNCTIONAL_ID = "PI";
 
 /** GS-08 and ST-03. @internal */
 const GUIDE = "006020X314";
@@ -203,7 +203,7 @@ export function build275(spec: Build275Spec): X12Interchange {
 
   const gs = seg([
     "GS",
-    FUNCTIONAL_ID,
+    X12_275_FUNCTIONAL_ID,
     esc(envelope.applicationSenderCode ?? envelope.senderId),
     esc(envelope.applicationReceiverCode ?? envelope.receiverId),
     esc(envelope.groupDate ?? expandYY(envelope.interchangeDate)),

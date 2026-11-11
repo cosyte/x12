@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "library": {
     "package": "@cosyte/x12",
-    "commit": "ae4b1aa69aab65bd3b9a6c8d82c9e7ff237ed4dc",
+    "commit": "c5992784aa2f60fbf60ac5356ba2a9c3fa27f83a",
     "workingTreeDirty": true
   },
   "oracles": [
@@ -631,6 +631,34 @@
     {
       "document": "test/fixtures/ack/ta1-reject-control-mismatch.edi",
       "assigned": [],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/attachments/275-canonical.edi",
+      "assigned": [
+        "275/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/attachments/275-two-lines.edi",
+      "assigned": [
+        "275/"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/attachments/277-rfai-canonical.edi",
+      "assigned": [
+        "277/RFAI"
+      ],
+      "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
+    },
+    {
+      "document": "test/fixtures/attachments/277-rfai-service-lines.edi",
+      "assigned": [
+        "277/RFAI"
+      ],
       "reason": "This document's own GS-08 and ST-01 name no transaction pyx12 or linuxforhealth-x12 maps at interchange control version 00501."
     },
     {

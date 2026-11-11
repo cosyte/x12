@@ -28,6 +28,7 @@ pnpm format:check
 pnpm phi-scan
 pnpm test
 pnpm test:coverage
+pnpm quality:check --base origin/main
 pnpm test:perf
 pnpm build
 pnpm attw
@@ -45,6 +46,26 @@ pnpm differential:check
 `pnpm test:perf` is the scaling gate (`test/perf/scaling-gate.perf.ts`): it fails when `parseX12`,
 or the typed reader or builder of any shape the benchmarks measure (835, 837P, 837I, 270, 271, 999,
 997 and 275), grows faster than its input. It runs apart from `pnpm test` and never under coverage.
+
+## The testing standard
+
+`quality-floor.json` holds the coverage and the mutation score CI measures, and they only rise.
+`pnpm quality:check` holds coverage to it (after `pnpm test:coverage`); with `--base origin/main`
+every changed line coverage counts must also have run, and no floor may be lowered. On a pull
+request CI's `mutation` job mutates the changed source files with `stryker.config.mjs`
+(`pnpm mutate changed --base origin/main`, then `pnpm quality:mutation --base origin/main`) and
+every mutant in the changed lines must be killed. `.github/workflows/weekly-mutation.yml` runs the
+full run (`pnpm mutate:full`) twice a week, in sixteen shards, and holds its score to the floor. To
+raise a floor, run `pnpm quality:raise` after a full run and open a pull request. Mutation runs the
+suite of `vitest.mutation.config.ts`, which leaves out the tests that cannot judge a mutant: the
+scaling gate, the tooling tests, the tests that start a build or a process, and the fuzz targets.
+
+Properties under `test/property/` that run through `assertProperty` (`test/property/_runner.ts`)
+run 100 cases on a pull request and 10,000 each night (`.github/workflows/nightly-properties.yml`,
+which runs `pnpm test:property`), and a failure prints the seed and path that replay it. The fuzz
+targets (`*-fuzz.property.test.ts`) keep their own nightly run, `pnpm fuzz`. CI runs the suite on
+Linux, Windows and macOS, and under Bun and Deno; a test that cannot run on one is skipped there by
+name, with its reason, through the checks in `test/_helpers/runtime.ts`.
 
 ## Benchmarks
 

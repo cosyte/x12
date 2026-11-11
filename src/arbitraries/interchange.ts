@@ -30,6 +30,7 @@ import {
 export const FUNCTIONAL_IDENTIFIERS: Readonly<Record<string, string>> = Object.freeze({
   "270": "HS",
   "271": "HB",
+  "275": "PI",
   "276": "HR",
   "277": "HN",
   "278": "HI",
@@ -38,6 +39,21 @@ export const FUNCTIONAL_IDENTIFIERS: Readonly<Record<string, string>> = Object.f
   "835": "HP",
   "837": "HC",
   "997": "FA",
+  "999": "FA",
+});
+
+/**
+ * The rows of `X12_TR3_CONFORMANCE` that {@link transactionSetType} never draws, each with its
+ * reason. A type is what GS-08 and ST-03 carry, so a row that names no implementation guide cannot
+ * be one. Every other row must become a type: {@link deriveTransactionSetTypes} throws on a row
+ * that is neither a type nor listed here, so a new row cannot drop out of the generator unseen.
+ *
+ * @internal
+ */
+export const OMITTED_TRANSACTION_SETS: Readonly<Record<string, string>> = Object.freeze({
+  "997":
+    "The 997 is written to the base standard alone and names no implementation guide, so it has no GS-08 and ST-03 value to draw.",
+  TA1: "The TA1 is an interchange acknowledgment segment in the envelope, not a transaction set, and names no implementation guide.",
 });
 
 /** A transaction set type: what ST-01, GS-01 and GS-08 (and ST-03) carry for it. */
@@ -51,25 +67,59 @@ export interface TransactionSetType {
 }
 
 /**
- * Every transaction set type the library declares a guide for in `X12_TR3_CONFORMANCE` and
- * knows the functional identifier of, derived rather than restated.
+ * Derive the transaction set types from conformance rows: one type for each row, in order, but
+ * the rows `omitted` lists.
+ *
+ * @param rows The conformance rows, each a transaction set and the guide it declares.
+ * @param identifiers The GS-01 of each transaction set, keyed by ST-01.
+ * @param omitted The transaction sets left out, each with its reason.
+ * @returns The types, frozen.
+ * @throws {Error} When a row that is not listed has no GS-01 or names no guide, naming the row.
+ * @internal
+ */
+export function deriveTransactionSetTypes(
+  rows: readonly { readonly transaction: string; readonly tr3: string | null }[],
+  identifiers: Readonly<Record<string, string>>,
+  omitted: Readonly<Record<string, string>>,
+): readonly TransactionSetType[] {
+  const types: TransactionSetType[] = [];
+  for (const row of rows) {
+    if (Object.hasOwn(omitted, row.transaction)) continue;
+    const named = `the ${row.transaction} row of X12_TR3_CONFORMANCE (${row.tr3 ?? "no guide"})`;
+    const functionalIdCode = Object.hasOwn(identifiers, row.transaction)
+      ? identifiers[row.transaction]
+      : undefined;
+    if (functionalIdCode === undefined) {
+      throw new Error(
+        `@cosyte/x12/arbitraries: ${named} has no GS-01 functional identifier and no listed reason to leave it out`,
+      );
+    }
+    if (row.tr3 === null) {
+      throw new Error(
+        `@cosyte/x12/arbitraries: ${named} has no guide for GS-08 and ST-03 and no listed reason to leave it out`,
+      );
+    }
+    types.push({ id: row.transaction, functionalIdCode, version: row.tr3 });
+  }
+  return Object.freeze(types);
+}
+
+/**
+ * Every transaction set type the library declares a guide for in `X12_TR3_CONFORMANCE`, derived
+ * rather than restated: every row but those {@link OMITTED_TRANSACTION_SETS} lists.
  *
  * @internal
  */
-export const TRANSACTION_SET_TYPES: readonly TransactionSetType[] = Object.freeze(
-  X12_TR3_CONFORMANCE.flatMap((row): TransactionSetType[] => {
-    const functionalIdCode = Object.hasOwn(FUNCTIONAL_IDENTIFIERS, row.transaction)
-      ? FUNCTIONAL_IDENTIFIERS[row.transaction]
-      : undefined;
-    if (row.tr3 === null || functionalIdCode === undefined) return [];
-    return [{ id: row.transaction, functionalIdCode, version: row.tr3 }];
-  }),
+export const TRANSACTION_SET_TYPES: readonly TransactionSetType[] = deriveTransactionSetTypes(
+  X12_TR3_CONFORMANCE,
+  FUNCTIONAL_IDENTIFIERS,
+  OMITTED_TRANSACTION_SETS,
 );
 
 /**
  * Generate a transaction set type: an ST-01 such as `835`, the GS-01 it travels under and the
- * implementation guide the library declares for it, one of the 270, 271, 276, 277 (with the
- * 277CA and the request for additional information), 278, 820, 834, 835 and 837 guides.
+ * implementation guide the library declares for it, one of the 270, 271, 275, 276, 277 (with
+ * the 277CA and the request for additional information), 278, 820, 834, 835, 837 and 999 guides.
  *
  * @returns An arbitrary of a {@link TransactionSetType}.
  * @example

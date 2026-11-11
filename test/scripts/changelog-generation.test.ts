@@ -82,6 +82,8 @@ import { join } from "node:path";
 
 import { describe, it, expect, afterAll } from "vitest";
 
+import { IS_DENO } from "../_helpers/runtime.js";
+
 const REPO_ROOT = process.cwd();
 const CHANGELOG_PATH = join(REPO_ROOT, "CHANGELOG.md");
 const CONFIG_PATH = join(REPO_ROOT, ".changeset", "config.json");
@@ -293,7 +295,10 @@ describe("the shape that makes generated output land correctly", () => {
     expect(shapeViolation(changelog)).toBeUndefined();
   });
 
-  it(
+  // Skipped under Deno: run there, `changeset version` writes the archived history with one more
+  // blank line (before a nested list) than it does under Node, so the bytes this holds differ for
+  // a reason that is the runtime's, not this repository's. The release runs on Node.
+  it.skipIf(IS_DENO)(
     "writes the new version section between the H1 and the archived history",
     { timeout: 90_000 },
     () => {
@@ -329,7 +334,10 @@ describe("the shape that makes generated output land correctly", () => {
     },
   );
 
-  it(
+  // Skipped under Deno: run there, `changeset version` writes the archived history with one more
+  // blank line (before a nested list) than it does under Node, so the bytes this holds differ for
+  // a reason that is the runtime's, not this repository's. The release runs on Node.
+  it.skipIf(IS_DENO)(
     "keeps every rule in this file true across two consecutive releases",
     // Above the two 60s `spawnSync` ceilings this case can spend, so a hung subprocess
     // reports as itself rather than as a case timeout.
