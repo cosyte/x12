@@ -20,6 +20,8 @@ import {
   assertScalingGateFires,
   scalingGate,
   type ScalingGateOptions,
+  type ScalingGateReport,
+  type ScalingSelfCheckReport,
 } from "@cosyte/test-utils/perf";
 import { describe, expect, it } from "vitest";
 
@@ -78,6 +80,40 @@ function reassembleQuadratic(raw: string): string {
   return `${segments.join("~")}~`;
 }
 
+/**
+ * The fastest base phase each axis must reach. The shared contract skips an axis under 4 ms; a
+ * fixture that sits just over that skips at random on a busier runner, so ours stay at twice it.
+ */
+const MIN_BASE_PHASE_MS = 8;
+
+/**
+ * Both axes of a gate measured, each base phase at least `MIN_BASE_PHASE_MS`, and the margin
+ * written to the job log: the ratio and the fastest base and scaled phase of each axis.
+ */
+function expectMeasured(report: ScalingGateReport): void {
+  for (const axis of [report.count, report.size]) {
+    // A skip is not a pass: a gate that could not measure says so here, rather than reading green.
+    expect(axis.status, axis.diagnostic).toBe("measured");
+    if (axis.status !== "measured") return;
+    process.stdout.write(
+      `[scaling gate] ${report.name}, ${axis.axis} axis: ratio ${axis.ratio.toFixed(2)}, ` +
+        `base ${axis.base.min.toFixed(2)} ms, scaled ${axis.scaled.min.toFixed(2)} ms\n`,
+    );
+    expect(axis.base.min, axis.diagnostic).toBeGreaterThanOrEqual(MIN_BASE_PHASE_MS);
+  }
+}
+
+/** A self-check's margin written to the job log, then held above 1. */
+function expectFires(report: ScalingSelfCheckReport): void {
+  process.stdout.write(
+    `[scaling self-check] ${report.name}, ${report.axis} axis: signal ` +
+      `${report.signal.toFixed(2)}, margin ${report.margin.toFixed(2)}x, clean base ` +
+      `${report.cleanBaseMinMs.count.toFixed(2)} ms (count), ` +
+      `${report.cleanBaseMinMs.size.toFixed(2)} ms (size)\n`,
+  );
+  expect(report.margin).toBeGreaterThan(1);
+}
+
 /** The one 835 in a parsed remittance interchange, read. */
 function read835(ix: X12Interchange): X12Remittance {
   const tx = ix.groups[0]?.transactions[0];
@@ -106,10 +142,7 @@ const readOptions: ScalingGateOptions<string, X12Remittance> = {
 
 describe("the scaling gate: parseX12", () => {
   it("has not acquired a complexity regression on either axis", () => {
-    const report = scalingGate(parseOptions);
-    // A skip is not a pass: a gate that could not measure says so here, rather than reading green.
-    expect(report.count.status, report.count.diagnostic).toBe("measured");
-    expect(report.size.status, report.size.diagnostic).toBe("measured");
+    expectMeasured(scalingGate(parseOptions));
   });
 
   it("has fixtures large enough for that gate to fail", () => {
@@ -117,15 +150,13 @@ describe("the scaling gate: parseX12", () => {
       regressedParse: (raw) => parseX12(reassembleQuadratic(raw)),
       equals: (a, b) => serializeX12(a) === serializeX12(b),
     });
-    expect(report.margin).toBeGreaterThan(1);
+    expectFires(report);
   });
 });
 
 describe("the scaling gate: parseX12, then get835", () => {
   it("has not acquired a complexity regression on either axis", () => {
-    const report = scalingGate(readOptions);
-    expect(report.count.status, report.count.diagnostic).toBe("measured");
-    expect(report.size.status, report.size.diagnostic).toBe("measured");
+    expectMeasured(scalingGate(readOptions));
   });
 
   it("has fixtures large enough for that gate to fail", () => {
@@ -135,7 +166,7 @@ describe("the scaling gate: parseX12, then get835", () => {
         a.claims.length === b.claims.length &&
         a.payment.totalActualPayment?.toString() === b.payment.totalActualPayment?.toString(),
     });
-    expect(report.margin).toBeGreaterThan(1);
+    expectFires(report);
   });
 });
 
@@ -157,9 +188,7 @@ const longParseOptions: ScalingGateOptions<string, X12Interchange> = {
 
 describe("the scaling gate: parseX12 on long documents", () => {
   it("has not acquired a complexity regression on either axis", () => {
-    const report = scalingGate(longParseOptions);
-    expect(report.count.status, report.count.diagnostic).toBe("measured");
-    expect(report.size.status, report.size.diagnostic).toBe("measured");
+    expectMeasured(scalingGate(longParseOptions));
   });
 });
 
@@ -196,7 +225,7 @@ function counted(model: { readonly warnings: readonly unknown[] } | undefined, n
 
 /** The same text, reassembled the wrong way round a payload: its cost grows with the square of its length. */
 function reassembleQuadraticChars(raw: string): string {
-  const chunk = 1_024;
+  const chunk = 2_048;
   const pieces: string[] = [];
   for (let start = 0; start < raw.length; start += chunk) {
     // Each piece is vouched for by a pass over everything before it.
@@ -232,9 +261,7 @@ function gate<TInput, TResult>(op: Operation<TInput, TResult>): void {
   };
   describe(`the scaling gate: ${op.name}`, () => {
     it("has not acquired a complexity regression on either axis", () => {
-      const report = scalingGate(options);
-      expect(report.count.status, report.count.diagnostic).toBe("measured");
-      expect(report.size.status, report.size.diagnostic).toBe("measured");
+      expectMeasured(scalingGate(options));
     });
 
     it("has fixtures large enough for that gate to fail", () => {
@@ -242,7 +269,7 @@ function gate<TInput, TResult>(op: Operation<TInput, TResult>): void {
         regressedParse: op.regressed,
         equals: (a, b) => Object.is(a, b),
       });
-      expect(report.margin).toBeGreaterThan(1);
+      expectFires(report);
     });
   });
 }
@@ -321,7 +348,7 @@ readerGate(
   "@cosyte/x12 parseX12, then get837Claims (837I)",
   claim837IText,
   4,
-  150,
+  100,
   viaParse((ix) => {
     const sub = get837Claims(ix.delimiters, firstTransaction(ix));
     return counted(sub, sub?.claims.length ?? 0);
@@ -332,16 +359,17 @@ builderGate(
   claim837ISpec.bind(null, dec),
   build837I,
   4,
-  150,
+  100,
 );
 
 // The 271: the size knob is the number of benefit lines. At 150 a quadratic read did not clear the
-// ceiling and a clean build took under the 4 ms a phase needs, so the size axis starts at 400.
+// ceiling and a clean build took under the 4 ms a phase needs; at 400 the build's base phase was
+// about 7 ms on a hosted runner and the read's self-check margin 1.17x, so the axis starts at 800.
 readerGate(
   "@cosyte/x12 parseX12, then get271Eligibility",
   eligibility271Text,
   30,
-  400,
+  800,
   viaParse((ix) => {
     const response = get271Eligibility(ix.delimiters, firstTransaction(ix));
     return counted(response, response?.subscribers[0]?.benefits.length ?? 0);
@@ -352,11 +380,12 @@ builderGate(
   eligibility271Spec.bind(null, dec),
   build271,
   30,
-  400,
+  800,
 );
 
-// The 999: the size knob is the number of transaction sets acknowledged.
-readerGate("@cosyte/x12 parse999", ack999Text, 1, 300, (raw) => {
+// The 999: the size knob is the number of transaction sets acknowledged. At 300 the build's base
+// phase was under 6 ms on a hosted runner, so the size axis starts at 600.
+readerGate("@cosyte/x12 parse999", ack999Text, 1, 600, (raw) => {
   const ack = parse999(raw);
   return counted(ack, ack?.transactionResponses.length ?? 0);
 });
@@ -365,17 +394,18 @@ builderGate(
   ack999Spec.bind(null, dec),
   build999,
   1,
-  300,
+  600,
 );
 
 // The 275: the size knob is the octets of the one payload, a single long segment, so the
 // regression reached is a scan of the whole text before each piece of it. At the bench's 64 KiB a
-// clean read took about the 4 ms a phase needs, so the size axis starts at 128 KiB.
+// clean read took about the 4 ms a phase needs, and at 128 KiB under 8 ms on a hosted runner, so
+// the size axis starts at 256 KiB.
 readerGate(
   "@cosyte/x12 parseX12, then get275Attachments",
   attachment275Text,
   1_024,
-  128 * 1_024,
+  256 * 1_024,
   viaParse((ix) => {
     const submission = get275Attachments(ix.delimiters, firstTransaction(ix));
     return counted(submission, submission?.attachments[0]?.data.octetCount ?? 0);
@@ -387,12 +417,15 @@ builderGate(
   attachment275Spec.bind(null, dec),
   build275,
   1_024,
-  128 * 1_024,
+  256 * 1_024,
   reassembleQuadraticChars,
 );
 
 // The 270 is one fixed question, so its size axis is a batch of them, read or built one by one.
-// This holds the cost of a batch to its length; the cost of one inquiry is the count axis.
+// This holds the cost of a batch to its length; the cost of one inquiry is the count axis. The
+// self-check's regression adds the quadratic work beside the real read or build rather than
+// inside it: it reassembles the joined batch the slow way, then reads or builds every inquiry as
+// the clean run does. A batch of 75 keeps the base phase well over 10 ms.
 gate<readonly string[], number>({
   name: "@cosyte/x12 parseX12, then get270Inquiry, over a batch",
   run: (batch) => {
@@ -408,7 +441,7 @@ gate<readonly string[], number>({
   count: { n: 1_000, generate: (i) => [inquiry270Text(i)] },
   size: {
     inputs: 10,
-    size: 150,
+    size: 75,
     generate: (i, s) => Array.from({ length: s }, (_v, k) => inquiry270Text(i * s + k)),
   },
   regressed: (batch) => {
@@ -428,7 +461,7 @@ gate<readonly Build270Spec[], string>({
   count: { n: 1_000, generate: (i) => [inquiry270Spec(dec, i)] },
   size: {
     inputs: 10,
-    size: 150,
+    size: 75,
     generate: (i, s) => Array.from({ length: s }, (_v, k) => inquiry270Spec(dec, i * s + k)),
   },
   regressed: (batch) =>

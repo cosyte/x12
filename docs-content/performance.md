@@ -30,7 +30,9 @@ any of their builders starts to cost more than its input grows: four times the d
 documents four times as large (four times the claims, the benefit lines, the acknowledged sets or
 the payload octets), must cost close to four times as long. The 270 is one fixed question, so its
 size axis is a batch of four times the inquiries. A self-check proves each gate's fixtures are
-large enough to catch a quadratic path.
+large enough to catch a quadratic path. The 276, 277, 278, 820, 834, 837D and TA1 readers and
+builders have no benchmark shape and no scaling gate yet; the large 834 below is the one guard on
+any of them.
 
 The other guards fail on a class of slowdown rather than describe speed:
 
