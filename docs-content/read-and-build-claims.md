@@ -275,9 +275,151 @@ be read out of a neighbor's slot. A release-escaped one is read correctly, and a
 ending in a literal `?` merges with its successor. The behavior, in both directions, is measured in
 [KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md).
 
+## Build a dental or an institutional claim
+
+`build837D` and `build837I` take the same [`Build837Spec`](./api/README.md#build837spec) as
+`build837P`; only the service lines differ. A `variant: "D"` line is written as `SV3`, with its
+teeth as `TOO` segments after it, and a `variant: "I"` line as `SV2`, keyed by its revenue code.
+The reader hands the variant's own fields back on the line once you narrow on `variant`. Every line
+must match the builder: a line of another variant is refused with `X12_837_BUILD_INVALID_SPEC`.
+
+```ts runnable
+import {
+  build837D,
+  build837I,
+  get837Claims,
+  X12Decimal,
+  type Build837ServiceLineSpec,
+  type Build837Spec,
+} from "@cosyte/x12";
+
+/** One claim from one billing provider, with the service lines given. */
+function claimSpec(provider: string, lines: readonly Build837ServiceLineSpec[]): Build837Spec {
+  return {
+    envelope: {
+      senderId: "SUBMITTER",
+      receiverId: "RECEIVER",
+      interchangeDate: "260601",
+      interchangeTime: "1200",
+      interchangeControlNumber: "000000001",
+      groupControlNumber: "1",
+      transactionSetControlNumber: "0001",
+    },
+    submitter: {
+      entityIdentifierCode: "41",
+      entityTypeQualifier: "2",
+      name: "SUBMITTER ONE",
+      idQualifier: "46",
+      idCode: "SUB001",
+    },
+    receiver: {
+      entityIdentifierCode: "40",
+      entityTypeQualifier: "2",
+      name: "RECEIVER ONE",
+      idQualifier: "46",
+      idCode: "REC001",
+    },
+    billingProviders: [
+      {
+        provider: {
+          entityIdentifierCode: "85",
+          entityTypeQualifier: "2",
+          name: provider,
+          idQualifier: "XX",
+          idCode: "1234567890",
+        },
+        subscribers: [
+          {
+            info: {
+              payerResponsibilityCode: "P",
+              individualRelationshipCode: "18",
+              claimFilingIndicator: "CI",
+            },
+            subscriber: {
+              entityIdentifierCode: "IL",
+              entityTypeQualifier: "1",
+              name: "PATIENT",
+              firstName: "TEST",
+              idQualifier: "MI",
+              idCode: "MEMBER001",
+            },
+            payer: {
+              entityIdentifierCode: "PR",
+              entityTypeQualifier: "2",
+              name: "PAYER ONE",
+              idQualifier: "PI",
+              idCode: "PAYER01",
+            },
+            claims: [
+              {
+                claimId: "PT-ACCT-002",
+                totalCharge: lines[0]!.charge,
+                serviceLines: lines,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+// A dental claim: one CDT procedure on tooth 14, occlusal surface.
+const dental = build837D(
+  claimSpec("BILLING DENTAL GROUP", [
+    {
+      variant: "D",
+      procedureQualifier: "AD",
+      procedureCode: "D2391",
+      charge: X12Decimal.fromString("180.00")!,
+      units: X12Decimal.fromString("1")!,
+      placeOfServiceCode: "11",
+      toothInformation: [{ qualifier: "JP", toothCode: "14", surfaces: ["O"] }],
+    },
+  ]),
+);
+dental.groups[0]?.transactions[0]?.st.elements[3]; // => "005010X224A2"
+
+const dentalTx = dental.groups[0]?.transactions[0];
+const dentalRead = dentalTx ? get837Claims(dental.delimiters, dentalTx) : undefined;
+dentalRead?.variant; // => "D"
+dentalRead?.warnings.length; // => 0
+const tooth = dentalRead?.claims[0]?.serviceLines[0];
+tooth?.charge?.toString(); // => "180.00"
+if (tooth?.variant === "D") {
+  tooth.procedureCode; // => "D2391"
+  tooth.toothInformation[0]?.toothCode; // => "14"
+  tooth.toothInformation[0]?.surfaces; // => ["O"]
+}
+
+// An institutional claim: one room and board line, keyed by its revenue code.
+const institutional = build837I(
+  claimSpec("BILLING HOSPITAL INC", [
+    {
+      variant: "I",
+      revenueCode: "0120",
+      charge: X12Decimal.fromString("1500.00")!,
+      unitOfMeasure: "DA",
+      units: X12Decimal.fromString("1")!,
+    },
+  ]),
+);
+institutional.groups[0]?.transactions[0]?.st.elements[3]; // => "005010X223A3"
+
+const instTx = institutional.groups[0]?.transactions[0];
+const instRead = instTx ? get837Claims(institutional.delimiters, instTx) : undefined;
+instRead?.variant; // => "I"
+const room = instRead?.claims[0]?.serviceLines[0];
+room?.charge?.toString(); // => "1500.00"
+if (room?.variant === "I") {
+  room.revenueCode; // => "0120"
+}
+```
+
 ## Related
 
 - [The envelope and loop model](./spec-notes-envelope.md): loops and the HL hierarchy.
 - [Build and serialize X12](./emit-and-serialize.md): what every builder refuses.
 - Reference: [`get837Claims`](./api/README.md#get837claims),
-  [`build837P`](./api/README.md#build837p), [`Build837Spec`](./api/README.md#build837spec).
+  [`build837P`](./api/README.md#build837p), [`build837I`](./api/README.md#build837i),
+  [`build837D`](./api/README.md#build837d), [`Build837Spec`](./api/README.md#build837spec).
