@@ -52,13 +52,43 @@ The other guards fail on a class of slowdown rather than describe speed:
 These catch a super-linear path, a hang and a runaway allocation; the benchmark suite is what
 measures throughput, latency, peak memory, import time and bundle size.
 
+## Large documents and the lazy parse
+
+`parseX12` frames every segment and finds every warning during the parse, and splits a transaction
+set's segments into elements the first time `segments` is read; `{ lazy: false }` splits them
+during the parse. `readTransactionSets` reads an interchange as it arrives and yields one
+transaction set at a time, holding about one set rather than the file.
+[Read large files](./read-large-files.md) shows both.
+
+- **Large documents, base and head.** `pnpm bench:large` (`bench/large.mjs`) times a 10,000-claim
+  835 and 837P parsed, parsed and read by their typed readers, and read through
+  `readTransactionSets`, with the peak heap of each, on two builds side by side in fresh processes.
+  The bench workflow runs it on a pull request that changes `bench/`, the base build against the
+  head, and shows every round in the job summary.
+- **Bounded heap while streaming.** A test streams a generated interchange ten times larger than
+  its heap budget through `readTransactionSets`, reading every transaction set with `get835`, and
+  fails when the heap held after a forced collection grows past the budget. A control run that
+  keeps every set shows the measurement sees retained heap.
+- **A scaling gate on the lazy parse**, beside the gates on the parse that splits every segment.
+
+## The cold import budget
+
+Importing the package costs a process time before it parses anything, which matters most to a
+short-lived process: a command-line tool, a serverless function, a test worker.
+`pnpm check:cold-import` starts a new Node.js process twenty times, each timing one
+`await import()` of the built `dist/index.mjs`, and fails when the median is over 15 ms. CI runs it
+on a GitHub-hosted runner after every build, interleaved with imports of an empty module so a slow
+runner shows as a slow empty import. Most of the import is compiling the one bundle; the built-in
+profiles are built on first read rather than at import.
+
 ## What these are not
 
 - **Not a guarantee for every input.** The benchmarks cover the shapes above, up to about 3 MiB of
   claims and a 4 MiB attachment; adversarial nesting is not characterized here.
-- **Not a byte-streaming reader.** `get834Enrollments` yields one member at a time from an
-  interchange `parseX12` has already parsed whole, so the memory saved is on the result side, not
-  the input side.
+- **Not a byte-streaming reader of one transaction set.** `readTransactionSets` holds one
+  transaction set at a time, so a single transaction set as large as the file (a 10,000-claim 835)
+  is held whole. `get834Enrollments` yields one member at a time from a transaction set already
+  read, so the memory it saves is on the result side, not the input side.
 - **Not a comparison with other libraries.** That is a separate suite with its own written method.
 
 ## Run the guards yourself
@@ -71,6 +101,7 @@ pnpm test test/transactions-enrollment-834.test.ts
 pnpm test:perf                                   # the scaling gate and its self-check
 pnpm build && pnpm bench:reading                 # a reading of every benchmark, on this machine
 pnpm build && pnpm bench:profile                 # a CPU and heap profile of the hottest paths
+pnpm build && pnpm check:cold-import             # the cold import budget, on this machine
 ```
 
 ## Current numbers

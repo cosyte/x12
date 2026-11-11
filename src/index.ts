@@ -30,6 +30,8 @@ export type { X12Tr3Adoption, X12Tr3Conformance, X12Tr3Direction } from "./confo
 
 // Phase 1 - envelope parser surface.
 export { parseX12 } from "./parser/index.js";
+export { readTransactionSets } from "./parser/stream.js";
+export type { X12StreamOptions, X12StreamSource, X12StreamTransaction } from "./parser/stream.js";
 export { detectDelimiters, DELIMITER_POSITIONS, ISA_MIN_LENGTH } from "./parser/delimiters.js";
 export { FATAL_CODES, X12ParseError } from "./parser/errors.js";
 export type { X12FatalCode } from "./parser/errors.js";

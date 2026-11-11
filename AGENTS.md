@@ -32,6 +32,7 @@ pnpm quality:check --base origin/main
 pnpm test:perf
 pnpm build
 pnpm attw
+pnpm check:cold-import
 pnpm typecheck:examples
 pnpm lint:examples
 pnpm examples
@@ -42,6 +43,9 @@ pnpm check:documents
 pnpm check:process
 pnpm differential:check
 ```
+
+`pnpm check:cold-import` times twenty cold imports of `dist/index.mjs`, each in a new process, and
+fails when the median is over 15 ms; CI's `cold-import` job is the reading that counts.
 
 `pnpm test:perf` is the scaling gate (`test/perf/scaling-gate.perf.ts`): it fails when `parseX12`,
 or the typed reader or builder of any shape the benchmarks measure (835, 837P, 837I, 270, 271, 999,
@@ -81,6 +85,10 @@ pnpm bench:reading --out bench-results/reading.json --summary bench-results/read
 pnpm bench:compare --base <base checkout>/dist/index.mjs --head dist/index.mjs
 pnpm bench:profile --out bench-results/profile
 ```
+
+`pnpm bench:large --base <base checkout>/dist/index.mjs --head dist/index.mjs` times the large 835
+and 837P, parsed, read and streamed, with their peak heap, on two builds side by side (the bench
+workflow's `large` job).
 
 A reading reports throughput, latency p50/p95/p99, allocations, peak heap, a long run for leaks,
 and the cold import with its gzip size. On a pull request CI compares the base build with the head

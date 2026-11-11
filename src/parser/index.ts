@@ -80,7 +80,7 @@ export function parseX12(raw: string | Buffer, options: X12ParseOptions = {}): X
 
   // Step 4: decode the envelope (lenient; collects warnings, never
   // throws).
-  const decoded = decodeEnvelope(text, delimiters);
+  const decoded = decodeEnvelope(text, delimiters, options.lazy !== false);
 
   // Step 5: in strict mode, escalate the first warning into a thrown
   // X12ParseError carrying the warning code. Lenient mode forwards every
