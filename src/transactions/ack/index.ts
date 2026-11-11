@@ -1,12 +1,17 @@
 /**
  * Barrel for the X12 acknowledgment transaction surface.
  *
- * Two acks ship side-by-side:
+ * Three acks ship side-by-side:
  *
  * - **999** (Implementation Acknowledgment) - TR3 005010X231A1.
  *   Transaction-set level; reports per-transaction structural disposition.
  *   Parse + build are pure functions; the builder REFUSES to fabricate an
  *   `A` against a non-empty error list.
+ * - **997** (Functional Acknowledgment) - ASC X12 base standard, no
+ *   implementation guide. The same AK1 / AK2 / AK9 segments as the 999, with
+ *   AK3 / AK4 / AK5 where the 999 has IK3 / IK4 / IK5; read and written by the
+ *   same code. Nothing is filled in on read: an absent or unknown disposition
+ *   reads as `undefined` and warns.
  * - **TA1** (Interchange Acknowledgment) - ASC X12 standard, envelope
  *   level. Reports interchange-envelope structural disposition.
  *
@@ -24,21 +29,30 @@ export {
   IK4_SYNTAX_ERROR_CODES,
   TA1_ACK_CODES,
   TA1_NOTE_CODES,
+  X12_997_SET_DISPOSITION_CODES,
   X12_ACK_DISPOSITION_CODES,
   isAcceptDisposition,
   type Ik304Code,
   type Ik403Code,
   type Ta1AckCode,
   type Ta1NoteCode,
+  type X12Ack997SetDispositionCode,
   type X12AckDispositionCode,
 } from "./codes.js";
 
+export { parse997 } from "./parse-997.js";
 export { parse999 } from "./parse-999.js";
 export { parseTA1 } from "./parse-ta1.js";
+export { build997 } from "./build-997.js";
 export { build999 } from "./build-999.js";
 export { buildTA1, type BuildTA1Options } from "./build-ta1.js";
 
 export type {
+  Build997ElementErrorSpec,
+  Build997FunctionalGroupSpec,
+  Build997SegmentErrorSpec,
+  Build997Spec,
+  Build997TransactionResponseSpec,
   Build999ElementErrorSpec,
   Build999EnvelopeSpec,
   Build999FunctionalGroupSpec,
@@ -46,6 +60,13 @@ export type {
   Build999Spec,
   Build999TransactionResponseSpec,
   BuildTA1Spec,
+  X12Ack997,
+  X12Ack997Ak3,
+  X12Ack997Ak4,
+  X12Ack997Ak5,
+  X12Ack997Ak9,
+  X12Ack997SegmentNote,
+  X12Ack997TransactionResponse,
   X12Ack999,
   X12Ack999Ak1,
   X12Ack999Ak2,

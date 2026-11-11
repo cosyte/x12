@@ -66,6 +66,44 @@ export type X12AckDispositionCode =
   (typeof X12_ACK_DISPOSITION_CODES)[keyof typeof X12_ACK_DISPOSITION_CODES];
 
 /**
+ * AK5-01 transaction set disposition codes of the 997 Functional
+ * Acknowledgment, ASC X12 code list 717. The six codes code list 715 shares
+ * with it, without `P`: partial acceptance is a functional group outcome, so
+ * a 997 states it at AK9-01 and never for one transaction set. AK9-01 of a
+ * 997 takes the seven codes of {@link X12_ACK_DISPOSITION_CODES}.
+ *
+ * Code values only, carried as the base standard spells them; no guide
+ * table is bundled.
+ *
+ * @example
+ * ```ts
+ * import { X12_997_SET_DISPOSITION_CODES, type X12Ack997SetDispositionCode } from "@cosyte/x12";
+ * const rejected: X12Ack997SetDispositionCode = X12_997_SET_DISPOSITION_CODES.R;
+ * ```
+ */
+export const X12_997_SET_DISPOSITION_CODES = {
+  A: "A",
+  E: "E",
+  M: "M",
+  R: "R",
+  W: "W",
+  X: "X",
+} as const;
+
+/**
+ * String-literal union over {@link X12_997_SET_DISPOSITION_CODES}: the type
+ * of AK5-01 on a 997.
+ *
+ * @example
+ * ```ts
+ * import type { X12Ack997SetDispositionCode } from "@cosyte/x12";
+ * const accepted: X12Ack997SetDispositionCode = "A";
+ * ```
+ */
+export type X12Ack997SetDispositionCode =
+  (typeof X12_997_SET_DISPOSITION_CODES)[keyof typeof X12_997_SET_DISPOSITION_CODES];
+
+/**
  * The four disposition codes that flag rejection - `R`, `M`, `W`, `X`. A
  * disposition NOT in this set (`A`, `E`, `P`) is some form of acceptance.
  * Used by the build-time safety guard to refuse a fabricated accept

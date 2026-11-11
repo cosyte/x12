@@ -73,6 +73,7 @@ import {
   build837D,
   build837I,
   build837P,
+  build997,
   build999,
   buildInterchange,
   buildTA1,
@@ -96,6 +97,7 @@ import type {
   Build835Spec,
   Build837ServiceLineSpec,
   Build837Spec,
+  Build997Spec,
   Build999Spec,
   BuildTA1Spec,
   InterchangeSpec,
@@ -700,6 +702,22 @@ const SPEC_999: Build999Spec = {
   },
 };
 
+/** The 997 shares the 999's envelope and group shape, without AK1-03. */
+const SPEC_997: Build997Spec = {
+  envelope: ENVELOPE,
+  functionalGroup: {
+    functionalIdCode: "HC",
+    groupControlNumber: "1",
+    disposition: "A",
+    numberOfTransactionSets: 1,
+    numberOfReceivedTransactionSets: 1,
+    numberOfAcceptedTransactionSets: 1,
+    transactionResponses: [
+      { transactionSetIdCode: "837", transactionSetControlNumber: "0001", disposition: "A" },
+    ],
+  },
+};
+
 const SPEC_TA1: BuildTA1Spec = {
   interchangeControlNumber: "000000001",
   interchangeDate: "250101",
@@ -817,6 +835,10 @@ const BUILDER_CASES: Readonly<Record<string, BuilderCase>> = {
   build837P: {
     emit: () => serializeX12(build837P(SPEC_837P)),
     refuse: () => serializeX12(build837P({ ...SPEC_837P, envelope: BAD_ENVELOPE })),
+  },
+  build997: {
+    emit: () => serializeX12(build997(SPEC_997)),
+    refuse: () => serializeX12(build997({ ...SPEC_997, envelope: BAD_ENVELOPE })),
   },
   build999: {
     emit: () => serializeX12(build999(SPEC_999)),

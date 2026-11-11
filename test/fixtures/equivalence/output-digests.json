@@ -1,4 +1,7 @@
 {
+  "input:fixture-bytes:ack/997-accept.edi": "0958432f573f8dd35b27b48e1c334103621691c05fd8c851cc4e4aaadb88b15c:28",
+  "input:fixture-bytes:ack/997-partial-with-errors.edi": "a2468c69fa507953cf76c91a07853c676a0c52ce137f6c37c1e14435bba001d8:28",
+  "input:fixture-bytes:ack/997-reject.edi": "700dafafe4a95d56384e32a636f9cad0d54a2bc903cf4964508106c60f88ebc4:28",
   "input:fixture-bytes:ack/999-accept-with-errors.edi": "02ce29e0a32d5087abbfe8cc32a67f0692815973812f4e73d136671c25373ab3:28",
   "input:fixture-bytes:ack/999-accept.edi": "e9c654aa9d91edab29d48a8b93d3489e7377f24e843d4c95781fb2752eb4c965:28",
   "input:fixture-bytes:ack/999-reject-control-number-mismatch.edi": "e2ca2bc32cbff97cc482c43506d8dbbf97b2b42762cf2e98d5630c9b446416b6:28",
@@ -90,6 +93,9 @@
   "input:fixture-bytes:status/277-unknown-status.edi": "ab4fe6c3f4c1d0f7c1d7641bbbbb9feb33f5dca82289f496727beccd292a669b:28",
   "input:fixture-bytes:status/277ca-canonical.edi": "b86c8427940070c0beb6c9547b9b6eece35403ec0251ae2f34f970534ee91ca3:28",
   "input:fixture-bytes:status/277ca-hl-orphan.edi": "e79c42a479ef3f6a77575d63688205f036a15fa2a53e54d4f315879bb71e0bb5:28",
+  "input:fixture:ack/997-accept.edi": "4a2c810a1cb62a8ffcb3295fb70ba73f48fbd5e71626f1a4a7395a4c3d6d6cfa:60",
+  "input:fixture:ack/997-partial-with-errors.edi": "b7a416ca45be0ccbe4e3cca9528dd5d36917912bcd6642e69e1354f980ee3c98:83",
+  "input:fixture:ack/997-reject.edi": "6972f0d21a05a40aea6fcf516d503494a472e72ecdda4bd1a69952bc5fa29a13:73",
   "input:fixture:ack/999-accept-with-errors.edi": "ee2d5ce55fc444b14b7a8efa4c45bccf5ec9f44f61352bb961361d6b59d7bb42:75",
   "input:fixture:ack/999-accept.edi": "90f2850d67259745904e7edadb6cb6a934456569cece36326d810735b0ebba8f:62",
   "input:fixture:ack/999-reject-control-number-mismatch.edi": "c4b87266d1fc9e74b4ea94e40ee684dfe2ca6e06533f9af32fef9591b895b268:63",

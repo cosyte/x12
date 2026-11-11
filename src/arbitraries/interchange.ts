@@ -37,6 +37,7 @@ export const FUNCTIONAL_IDENTIFIERS: Readonly<Record<string, string>> = Object.f
   "834": "BE",
   "835": "HP",
   "837": "HC",
+  "997": "FA",
 });
 
 /** A transaction set type: what ST-01, GS-01 and GS-08 (and ST-03) carry for it. */

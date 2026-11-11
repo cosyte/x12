@@ -163,8 +163,12 @@ describe("builder segment joining: the source gate", () => {
     // `build-277-rfai.ts` and `build-275.ts`, each declaring one like every
     // other domain builder does and each naming the transaction set number its
     // file name carries.
+    //
+    // FOURTEEN with the 997: `build-997.ts` declares its own `joinSeg` naming
+    // `build997` and hands it to the acknowledgment code in `build-999.ts`, so
+    // a refusal at the join names the builder the caller called.
     const joining = modules.filter(declaresJoiner);
-    expect(joining).toHaveLength(13);
+    expect(joining).toHaveLength(14);
     const ta1 = join("transactions", "ack", "build-ta1.ts");
     expect(modules.some((m) => m.endsWith(ta1))).toBe(true);
     expect(joining.some((m) => m.endsWith(ta1))).toBe(false);

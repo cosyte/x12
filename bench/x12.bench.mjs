@@ -18,6 +18,8 @@
 import { defineBenchmark, defineSuite } from "@cosyte/bench";
 
 import {
+  ack997Spec,
+  ack997Text,
   ack999Spec,
   ack999Text,
   attachment275Spec,
@@ -62,7 +64,7 @@ function readWith(reader) {
  * side in a fresh process inside a 600 second budget: all 21 small cases took about 45 seconds a
  * round on a fast developer machine, so a hosted runner would spend the budget before the twelfth
  * round. The 10 kept are the parse, read and build of the two shapes most traffic is (835 and
- * 837P), and one each of the rest. A call that takes a tenth of a second or more also does not
+ * 837P), and one each of the rest but the 997, which shares the 999's shape and keeps none. A call that takes a tenth of a second or more also does not
  * settle inside the warmup's bound on a hosted runner, which rules the large sizes out anyway.
  */
 const SHAPES = [
@@ -137,6 +139,17 @@ const SHAPES = [
     build: "build999",
     compared: ["read"],
     sizes: [{ label: "1 set, 271 B", n: 1, documents: 64 }],
+  },
+  {
+    // The functional acknowledgment some trading partners send in place of a 999. Its shape
+    // is the 999's, so the pull request comparison leaves it out and keeps its budget.
+    shape: "997",
+    text: ack997Text,
+    spec: ack997Spec,
+    read: (x12, text) => x12.parse997(text),
+    build: "build997",
+    compared: [],
+    sizes: [{ label: "1 set, 239 B", n: 1, documents: 64 }],
   },
   {
     // An attachment: one large opaque payload in a BDS segment, the shape whose peak heap should

@@ -155,7 +155,7 @@ parseX12("this is not an X12 interchange"); // throws X12ParseError (X12_NO_ISA_
   [read and build 837 claims](./read-and-build-claims.md),
   [read a 278 decision](./read-a-services-review.md),
   [read an 834 roster](./read-an-enrollment-roster.md),
-  [read 999 and TA1 acknowledgments](./read-acknowledgments.md),
+  [read 999, 997 and TA1 acknowledgments](./read-acknowledgments.md),
   [answer an attachment request](./answer-an-attachment-request.md),
   [build and serialize X12](./emit-and-serialize.md), and [handle warnings](./handle-warnings.md).
 - [The envelope and loop model](./spec-notes-envelope.md) and

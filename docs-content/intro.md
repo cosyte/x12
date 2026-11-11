@@ -39,7 +39,7 @@ The HIPAA **005010** healthcare transaction sets, each with a lenient reader and
 - **834**: benefit enrollment and maintenance
 - **835**: claim payment and advice (remittance, ERA)
 - **837P / 837I / 837D**: professional, institutional and dental claims
-- **999 / TA1**: implementation and interchange acknowledgments
+- **999 / 997 / TA1**: implementation, functional and interchange acknowledgments
 
 And the two claims attachments guides 45 CFR 162.2002 adopts for the period on and after May 26,
 2028, also read and built: the **277 request for additional information** (`006020X313`) and the
@@ -99,7 +99,7 @@ an EDI amount**. [The envelope and loop model](./spec-notes-envelope.md) and
   [read and build 837 claims](./read-and-build-claims.md),
   [read a 278 decision](./read-a-services-review.md),
   [read an 834 roster](./read-an-enrollment-roster.md),
-  [read 999 and TA1 acknowledgments](./read-acknowledgments.md),
+  [read 999, 997 and TA1 acknowledgments](./read-acknowledgments.md),
   [answer an attachment request](./answer-an-attachment-request.md),
   [build and serialize X12](./emit-and-serialize.md),
   [describe a partner with a profile](./profiles.md), [handle warnings](./handle-warnings.md), and

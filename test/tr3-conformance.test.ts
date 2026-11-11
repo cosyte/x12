@@ -123,6 +123,8 @@ const EXPECTED_ROWS: readonly (readonly [string, string | null, string | null])[
   ["837", "P", "005010X222A2"],
   ["837", "I", "005010X223A3"],
   ["837", "D", "005010X224A2"],
+  // The 997 is read and written to the base standard, with no guide to name.
+  ["997", null, null],
   ["999", null, "005010X231A1"],
   ["TA1", null, null],
 ];
@@ -1096,13 +1098,13 @@ describe("AC6: an errata row keeps the adopted identifier and says why", () => {
 // ---------------------------------------------------------------------------
 
 describe("AC7: the unadopted transactions are reported as unadopted", () => {
-  it("is exactly the 277CA, the 999 and the TA1", () => {
+  it("is exactly the 277CA, the 997, the 999 and the TA1", () => {
     const notAdopted = ROWS.filter((r) => r.adoption === "not-adopted").map(keyOf);
-    expect(notAdopted).toEqual(["277|277CA", "999|", "TA1|"]);
+    expect(notAdopted).toEqual(["277|277CA", "997|", "999|", "TA1|"]);
   });
 
   it("carries no adopted identifier for any of them", () => {
-    for (const key of ["277|277CA", "999|", "TA1|"]) {
+    for (const key of ["277|277CA", "997|", "999|", "TA1|"]) {
       const r = ROW_BY_KEY.get(key);
       expect(r?.cfrAdopted).toEqual([]);
       expect(r?.adoption).not.toBe("incorporated-by-reference");
@@ -1110,7 +1112,7 @@ describe("AC7: the unadopted transactions are reported as unadopted", () => {
   });
 
   it("records on each of them that the section names no identifier for it", () => {
-    for (const key of ["277|277CA", "999|", "TA1|"]) {
+    for (const key of ["277|277CA", "997|", "999|", "TA1|"]) {
       const note = ROW_BY_KEY.get(key)?.note ?? "";
       expect(note.length, `${key} has no note`).toBeGreaterThan(0);
       expect(note, `${key} note does not cite the section`).toContain("45 CFR 162.920");
@@ -1134,7 +1136,9 @@ describe("AC8: every build row agrees with the emitted ST-03", () => {
   it("covers every build row that emits a transaction set", () => {
     const buildRows = ROWS.filter((r) => r.directions.includes("build")).map(keyOf);
     expect(buildRows).toEqual([...EXPECTED_ROWS.map(([t, v]) => `${t}|${v ?? ""}`)]);
-    expect(sorted(EMITTED_ST03.keys())).toEqual(sorted(buildRows.filter((k) => k !== "TA1|")));
+    expect(sorted(EMITTED_ST03.keys())).toEqual(
+      sorted(buildRows.filter((k) => k !== "TA1|" && k !== "997|")),
+    );
   });
 
   it("names the identifier the builder writes, on every build row", () => {
@@ -1174,6 +1178,36 @@ describe("AC8: every build row agrees with the emitted ST-03", () => {
     expect(st03(x12.build278Request(SPEC_278))).toBe("005010X217");
   });
 
+  it("reads the 997 row against a builder that writes no ST-03", () => {
+    const ix = x12.build997({
+      envelope: {
+        senderId: "RECEIVER",
+        receiverId: "SENDER",
+        interchangeDate: "250101",
+        interchangeTime: "1200",
+        interchangeControlNumber: "000000019",
+        groupControlNumber: "19",
+        transactionSetControlNumber: "0019",
+      },
+      functionalGroup: {
+        functionalIdCode: "HC",
+        groupControlNumber: "1",
+        disposition: "A",
+        numberOfTransactionSets: 1,
+        numberOfReceivedTransactionSets: 1,
+        numberOfAcceptedTransactionSets: 1,
+        transactionResponses: [
+          { transactionSetIdCode: "837", transactionSetControlNumber: "0001", disposition: "A" },
+        ],
+      },
+    });
+    const group = ix.groups[0];
+    expect(group?.transactions[0]?.st.elements).toEqual(["ST", "997", "0019"]);
+    // GS-08 is the base standard version, which names no implementation guide.
+    expect(group?.gs.elements[8]).toBe("005010");
+    expect(row("997", null).tr3).toBeNull();
+  });
+
   it("reads the TA1 row against a builder that emits no transaction set", () => {
     const ta1 = x12.buildTA1({
       interchangeControlNumber: "000000019",
@@ -1203,8 +1237,14 @@ describe("AC9: a row is never empty where it looks populated", () => {
     }
   });
 
-  it("is the TA1 row alone, and its note says why", () => {
-    expect(ROWS.filter((r) => r.tr3 === null).map(keyOf)).toEqual(["TA1|"]);
+  it("is the 997 row and the TA1 row, and the 997's note says why", () => {
+    expect(ROWS.filter((r) => r.tr3 === null).map(keyOf)).toEqual(["997|", "TA1|"]);
+    const base = row("997", null).note ?? "";
+    expect(base).toContain("base standard");
+    expect(base.toLowerCase()).toContain("no implementation guide identifier names it");
+  });
+
+  it("is the TA1 row's note that says why it carries no identifier", () => {
     const note = row("TA1", null).note ?? "";
     expect(note.toLowerCase()).toContain("envelope");
     expect(note.toLowerCase()).toContain("no implementation guide identifier names it");
@@ -1428,7 +1468,10 @@ describe("AC-17: the claims attachments rows, and every pre-existing row unchang
   });
 
   it("AC-17: leaves every pre-existing row exactly as it was", () => {
-    const preExisting = ROWS.filter((r) => r.tr3 !== "006020X313" && r.tr3 !== "006020X314");
+    // The 997 row came after the attachments rows, so it is not one of the fifteen.
+    const preExisting = ROWS.filter(
+      (r) => r.tr3 !== "006020X313" && r.tr3 !== "006020X314" && r.transaction !== "997",
+    );
     expect(preExisting).toHaveLength(15);
     const digest = createHash("sha256").update(JSON.stringify(preExisting)).digest("hex");
     expect(digest).toBe(PRE_EXISTING_ROWS_SHA256);
