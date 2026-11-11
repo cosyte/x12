@@ -21,6 +21,8 @@ Run all of these from the repository root, in this order, before you push. CI ru
 `differential:check` fetches two pinned Python oracles through `uv`, so it needs the network.
 `check:docs-reference` fails when `docs-content/api/` differs from what the TSDoc in `src/`
 generates or an export has no summary: run `pnpm docs:reference` and commit the pages it writes.
+`check:version-bump` runs the `version` script on a synthetic patch in a temporary copy and then
+`check:docs-reference` there: the reference renders `VERSION`, so the version step must regenerate it.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -43,6 +45,7 @@ pnpm check:no-internal-refs
 pnpm check:documents
 pnpm check:process
 pnpm check:docs-reference
+pnpm check:version-bump
 pnpm differential:check
 ```
 
