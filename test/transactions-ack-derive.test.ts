@@ -502,6 +502,27 @@ describe("derive999Spec", () => {
     expect(derived.spec.functionalGroup.transactionResponses[1]?.segmentErrors).toEqual([
       { segmentIdCode: "BIN", segmentPositionInTransactionSet: 3, syntaxErrorCode: "8" },
     ]);
+    // Each unexpected segment is placed by its own orphan: the TA1 in the set, the NTE outside.
+    expect(codes(derived.reported)).toEqual([
+      WARNING_CODES.X12_UNEXPECTED_SEGMENT,
+      WARNING_CODES.X12_BINARY_LENGTH_INVALID,
+    ]);
+    expect(derived.reported[0]?.position.segmentIndex).toBe(3);
+    const ta1Ack = deriveTA1Spec(ix);
+    expect(ta1Ack.spec.noteCode).toBe("024");
+    expect(ta1Ack.reported.map((w) => w.position.segmentIndex)).toEqual([6]);
+  });
+
+  it("counts only the TA1s lifted out of the set before the finding", () => {
+    const ta1 = "TA1*000000009*260601*1200*A*000~";
+    const ix = parseX12(
+      CLEAN.replace(BHT1, `${BHT1}BIN*X*TESTDATA~${ta1}`).replace(SE1, "SE*4*0001~"),
+    );
+    const derived = derive999(ix);
+    expect(derived.spec.functionalGroup.transactionResponses[0]?.segmentErrors).toEqual([
+      { segmentIdCode: "BIN", segmentPositionInTransactionSet: 3, syntaxErrorCode: "8" },
+      { segmentIdCode: "TA1", segmentPositionInTransactionSet: 4, syntaxErrorCode: "2" },
+    ]);
   });
 
   it("counts only the TA1s lifted out of a set of the same group", () => {
@@ -593,6 +614,25 @@ describe("derive999Spec", () => {
     });
     expect(derived.spec.functionalGroup.transactionResponses[0]?.segmentErrors).toBeUndefined();
     expect(codes(derived.unreported)).toEqual([WARNING_CODES.X12_DANGLING_RELEASE_CHAR]);
+  });
+
+  it("rejects without an IK3 a copied set that holds a lifted TA1", () => {
+    const ix = parseX12(
+      CLEAN.replace(BHT1, `TA1*000000009*260601*1200*A*000~${BHT1}`).replace(SE1, "SE*4*0001~"),
+    );
+    const group = ix.groups[0];
+    if (group === undefined) throw new Error("no group");
+    const copied: X12Interchange = {
+      ...ix,
+      groups: [{ ...group, transactions: group.transactions.map((tx) => ({ ...tx })) }],
+    };
+    const derived = derive999(copied);
+    expect(derived.spec.functionalGroup.transactionResponses[0]).toMatchObject({
+      disposition: "R",
+      syntaxErrorCodes: ["5"],
+    });
+    expect(derived.spec.functionalGroup.transactionResponses[0]?.segmentErrors).toBeUndefined();
+    expect(codes(derived.unreported)).toEqual([WARNING_CODES.X12_UNEXPECTED_SEGMENT]);
   });
 
   it("rejects without an IK3 a set whose finding sits on a segment with no segment id", () => {

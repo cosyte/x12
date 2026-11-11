@@ -428,7 +428,7 @@ const BODY_SEGMENT = "(body)";
 const ENVELOPE_NAMES: readonly string[] = Object.freeze(["GS", "GE", "ST", "SE", "IEA", "TA1"]);
 
 /** {@link segmentName} of a name already split out. @internal */
-/* v8 ignore next 3 -- reached only through the branch above */
+/* v8 ignore next -- reached only through the branch above, so the whole function is left out */
 function dispatchName(name: string): string {
   return name === "" || ENVELOPE_NAMES.includes(name) ? name : BODY_SEGMENT;
 }

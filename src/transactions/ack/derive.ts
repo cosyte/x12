@@ -283,23 +283,28 @@ export interface Derive999Options {
 }
 
 /**
- * Where a warning sits, for the acknowledgment that reports it. A transaction
- * scope carries the orphan when the warning is `X12_UNEXPECTED_SEGMENT`.
+ * Where a warning sits, for the acknowledgment that reports it: on the
+ * interchange with no `group`, on a functional group with no `transaction`,
+ * else on a transaction set of it. A transaction set scope carries the orphan
+ * when the warning is `X12_UNEXPECTED_SEGMENT`.
  *
  * @internal
  */
-type Scope =
-  | { readonly kind: "interchange" }
-  | { readonly kind: "group"; readonly group: number }
-  | {
-      readonly kind: "transaction";
-      readonly group: number;
-      readonly transaction: number;
-      readonly orphan: X12OrphanSegment | undefined;
-    };
+interface Scope {
+  readonly group?: number;
+  readonly transaction?: number;
+  readonly orphan?: X12OrphanSegment | undefined;
+}
+
+/** A scope on a transaction set. @internal */
+interface TransactionScope {
+  readonly group: number;
+  readonly transaction: number;
+  readonly orphan?: X12OrphanSegment | undefined;
+}
 
 /** @internal */
-const INTERCHANGE: Scope = Object.freeze({ kind: "interchange" });
+const INTERCHANGE: Scope = Object.freeze({});
 
 /**
  * Place a warning: by its orphan's anchor for an unexpected segment, else by
@@ -324,8 +329,8 @@ function scopeOf(w: X12ParseWarning, ix: X12Interchange): Scope {
   const framed = ix.groups[groupAt];
   if (framed === undefined) return INTERCHANGE;
   const transactionAt = transaction ?? -1;
-  if (framed.transactions[transactionAt] === undefined) return { kind: "group", group: groupAt };
-  return { kind: "transaction", group: groupAt, transaction: transactionAt, orphan };
+  if (framed.transactions[transactionAt] === undefined) return { group: groupAt };
+  return { group: groupAt, transaction: transactionAt, orphan };
 }
 
 /**
@@ -374,7 +379,7 @@ export function deriveTA1Spec(interchange: X12Interchange): X12DerivedAck<BuildT
   const unreported: X12ParseWarning[] = [];
   let noteCode: Ta1NoteCode | undefined;
   for (const w of interchange.warnings) {
-    if (scopeOf(w, interchange).kind !== "interchange") continue;
+    if (scopeOf(w, interchange).group !== undefined) continue;
     const note = ACK_WARNING_MAPPINGS[w.code].ta1NoteCode;
     if (note === undefined || noteCode !== undefined) {
       unreported.push(w);
@@ -491,10 +496,10 @@ export function derive999Spec(
   }));
 
   for (const w of interchange.warnings) {
-    const scope = scopeOf(w, interchange);
-    if (scope.kind === "interchange" || scope.group !== groupIndex) continue;
+    const { group: at, transaction, orphan } = scopeOf(w, interchange);
+    if (at !== groupIndex) continue;
     const mapping = ACK_WARNING_MAPPINGS[w.code];
-    if (scope.kind === "group") {
+    if (transaction === undefined) {
       if (mapping.ak9SyntaxErrorCode === undefined) {
         unreported.push(w);
       } else {
@@ -504,8 +509,9 @@ export function derive999Spec(
       continue;
     }
     // `scopeOf` names only a transaction set the group holds.
-    const tx = group.transactions[scope.transaction] as X12TransactionSet;
-    const set = sets[scope.transaction] as SetFindings;
+    const tx = group.transactions[transaction] as X12TransactionSet;
+    const set = sets[transaction] as SetFindings;
+    const scope: TransactionScope = { group: groupIndex, transaction, orphan };
     if (mapping.ik5SyntaxErrorCode !== undefined) {
       addCode(set.codes, mapping.ik5SyntaxErrorCode);
       reported.push(w);
@@ -562,7 +568,7 @@ function addCode(codes: string[], code: string): void {
  */
 function noteSegment(
   w: X12ParseWarning,
-  scope: Extract<Scope, { kind: "transaction" }>,
+  scope: TransactionScope,
   tx: X12TransactionSet,
   ix: X12Interchange,
   mapping: X12AckWarningMapping,
@@ -607,7 +613,7 @@ function unlocated(set: SetFindings): false {
  */
 function segmentIdAt(
   w: X12ParseWarning,
-  scope: Extract<Scope, { kind: "transaction" }>,
+  scope: TransactionScope,
   tx: X12TransactionSet,
   start: number,
   ix: X12Interchange,
