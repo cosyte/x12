@@ -61,7 +61,9 @@ arithmetic answer. Since `0.1.12` an instance is no longer passed to `Object.fre
 about two fifths of every decimal the readers made: `Object.isFrozen` answers `false`, and a
 property you add to an instance stays on that object and shows in its `Object.keys` and
 `JSON.stringify`. If you relied on either, freeze the instance yourself (`Object.freeze(d)`), and
-call the class's methods rather than ones you attach to an instance.
+call the class's methods rather than ones you attach to an instance. The shared constant
+`X12Decimal.ZERO`, the one object every reader returns for an empty or unreadable amount read as
+zero, stays frozen, so no code in the process can change it for another caller.
 
 ## An amount this library cannot read never reads as `0`
 
