@@ -808,6 +808,39 @@ describe("the generated codes page", () => {
     );
     expect([...LISTED_ERROR_REGISTRIES].sort()).toEqual(registries.sort());
   });
+
+  it("says when the readers raise the guide codes and when they return no reading", () => {
+    const page = readFileSync(join(root, CODES_PAGE), "utf8");
+    const section = (code: string): string => {
+      const start = page.indexOf(`### ${code}\n`);
+      const end = page.indexOf("\n### ", start + 1);
+      // One line of prose, so a phrase the formatter wrapped across lines still matches.
+      return page.slice(start, end === -1 ? undefined : end).replace(/\s+/g, " ");
+    };
+    const notImplemented = section("X12_GUIDE_NOT_IMPLEMENTED");
+    // GS-08 is read where ST-03 is absent, empty or whitespace only.
+    expect(notImplemented).toMatch(/absent, empty or whitespace only/);
+    // The refusing readers raise it on a reading only for a padded or lower-cased implemented guide.
+    expect(notImplemented).toMatch(/padded or lower-cased/);
+    expect(notImplemented).toMatch(/trimmed and upper-cased/);
+    for (const reader of [
+      "get270Inquiry",
+      "get271Eligibility",
+      "get276StatusInquiry",
+      "get277Status",
+      "get278Request",
+      "get278Response",
+      "get820Payments",
+      "get834Header",
+      "get835",
+      "get837Claims",
+      "get275Attachments",
+      "parse999",
+    ]) {
+      expect(notImplemented).toContain(`\`${reader}\``);
+    }
+    expect(section("X12_GUIDE_NOT_DECLARED")).toMatch(/whitespace only/);
+  });
 });
 
 describe("docs-content covers the shipped surfaces intro.md names", () => {

@@ -273,9 +273,25 @@ The hierarchical level at `position.segmentIndex` is not attached to the claim-s
 
 The transaction set declares an implementation guide this reader does not implement. The declaration is ST-03, decoded of any release escape, or, where ST-03 is absent or empty, GS-08 of the functional group that framed the transaction set, decoded the same way; it is compared exactly, with nothing trimmed, case-folded or prefix-matched, against the guide identifiers this reader's rows in `X12_TR3_CONFORMANCE` name. The reading was still decoded and returned against the element positions of the guide this reader implements, and nothing was refused, dropped or re-decoded because of this code, so a value on it may sit at a position the declared guide defines differently. Nothing the sender declared is echoed here. Where the reading publishes `implementationConventionReference`, that field carries the decoded ST-03; the transaction set's `st` carries ST-03 as framed, and GS-08 is raw, framed bytes on the functional group's `gs`.
 
+Which readers raise it, and when: GS-08 is read where ST-03 is absent, empty or whitespace
+only. `get275Attachments` and `parse999` raise it wherever the declaration, compared exactly,
+is not a guide they implement, and still return their reading. The readers that refuse a
+guide they do not implement (`get270Inquiry`, `parse270Inquiries`, `get271Eligibility`,
+`get276StatusInquiry`, `parse276StatusInquiries`, `get277Status`, `get278Request`,
+`get278Response`, `get820Payments`, `get834Header`, `get834Enrollments`, `get835` and
+`get837Claims`) compare the declaration trimmed and upper-cased. Where it then names a guide
+they implement, which is a padded or lower-cased 005010 guide, they return the reading and
+raise this code on it. Where it still names none, a 4010 guide for one, they return no reading
+at all, the same answer they give a transaction set of another ST-01, and raise nothing.
+
 ### X12_GUIDE_NOT_DECLARED
 
 The transaction set declares no implementation guide: ST-03 is absent or empty, and GS-08 of the functional group that framed the transaction set is absent or empty too, or no functional group header reached the transaction set at all. The reading was still decoded and returned against the element positions of the guide this reader implements, and nothing was refused, dropped or re-decoded because of this code; that the document follows that guide is assumed here, not established. `X12_TR3_CONFORMANCE` names the guides each reader implements. Nothing is echoed here.
+
+GS-08 is read where ST-03 is absent, empty or whitespace only, and a GS-08 that is absent,
+empty or whitespace only declares nothing, so a declaration of whitespace only raises this
+code rather than `X12_GUIDE_NOT_IMPLEMENTED`. Every reader that raises it still returns its
+reading; `get277Status` gives that reading `transactionType: "unrecognized-guide"`.
 
 ### X12_BINARY_DATA_TRUNCATED
 
