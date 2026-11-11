@@ -7,11 +7,16 @@
  * What a caller can see now: `Object.isFrozen` answers `false`, and a property added to an
  * instance stays on that object (and so shows in `Object.keys` and `JSON.stringify` of it).
  * Neither touches the value.
+ *
+ * The shared constant `X12Decimal.ZERO` stays frozen: the readers hand that one object to every
+ * caller (an empty or unreadable amount read with `elementDecimalOrZero`, an empty sum), so a
+ * property set on it would reach every reader in the process.
  */
 
 import { describe, expect, it } from "vitest";
 
-import { X12Decimal, get835, parseX12 } from "../src/index.js";
+import { X12Decimal, decodeSegment, elementDecimalOrZero, get835, parseX12 } from "../src/index.js";
+import { sumDecimals } from "../src/decimal.js";
 import { remit835Text } from "../bench/corpus.mjs";
 
 function dec(value: string): X12Decimal {
@@ -22,12 +27,7 @@ function dec(value: string): X12Decimal {
 
 describe("X12Decimal instances", () => {
   it("are not frozen and have no own properties", () => {
-    for (const d of [
-      dec("12.50"),
-      X12Decimal.ZERO,
-      dec("1").add(dec("2")),
-      dec("-0.10").negate(),
-    ]) {
+    for (const d of [dec("12.50"), dec("0"), dec("1").add(dec("2")), dec("-0.10").negate()]) {
       expect(Object.isFrozen(d)).toBe(false);
       expect(Object.getOwnPropertyNames(d)).toEqual([]);
       expect(Object.getOwnPropertySymbols(d)).toEqual([]);
@@ -65,5 +65,27 @@ describe("X12Decimal instances", () => {
     expect(paid).toBeInstanceOf(X12Decimal);
     expect(Object.isFrozen(paid)).toBe(false);
     expect(Object.isFrozen(remit.claims)).toBe(true);
+  });
+
+  it("except the shared ZERO, which stays frozen and cannot be changed for other callers", () => {
+    const ZERO = X12Decimal.ZERO;
+    expect(Object.isFrozen(ZERO)).toBe(true);
+    // Test files are modules, so strict mode: an assignment to a frozen object throws.
+    expect(() => {
+      (ZERO as unknown as Record<string, unknown>)["toString"] = () => "999";
+    }).toThrow(TypeError);
+    expect(() => {
+      (ZERO as unknown as Record<string, unknown>)["note"] = "x";
+    }).toThrow(TypeError);
+    expect(Reflect.set(ZERO, "note", "x")).toBe(false);
+    expect(Object.keys(ZERO)).toEqual([]);
+
+    const d = { element: "*", repetition: "^", component: ":", segment: "~" };
+    const amt = decodeSegment("AMT*AU*", d, () => undefined, { segmentIndex: 1 });
+    const zero = elementDecimalOrZero(amt, 2, d);
+    expect(zero).toBe(ZERO);
+    expect(zero.toString()).toBe("0");
+    expect(JSON.stringify(zero)).toBe("{}");
+    expect(sumDecimals([])).toBe(ZERO);
   });
 });
