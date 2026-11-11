@@ -42,8 +42,9 @@ pnpm check:process
 pnpm differential:check
 ```
 
-`pnpm test:perf` is the scaling gate (`test/perf/scaling-gate.perf.ts`): it fails when parsing or
-reading an 835 grows faster than its input. It runs apart from `pnpm test` and never under coverage.
+`pnpm test:perf` is the scaling gate (`test/perf/scaling-gate.perf.ts`): it fails when `parseX12`,
+or the typed reader or builder of any shape the benchmarks measure (835, 837P, 837I, 270, 271, 999
+and 275), grows faster than its input. It runs apart from `pnpm test` and never under coverage.
 
 ## Benchmarks
 
