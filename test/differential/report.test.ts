@@ -239,7 +239,7 @@ describe("differential report", () => {
 describe("differential report, second oracle", () => {
   const SECOND_ROWS = ["270/", "271/", "276/", "277/"];
 
-  it("S0382 AC-1: the 270, 271, 276 and 277 claim status rows are compared against the second oracle", () => {
+  it("AC-1: the 270, 271, 276 and 277 claim status rows are compared against the second oracle", () => {
     for (const key of SECOND_ROWS) {
       const entry = REPORT.compared.find((e) => scopeKey(e) === key);
       expect(entry?.oracle, key).toBe(SECOND);
@@ -251,7 +251,7 @@ describe("differential report, second oracle", () => {
     expect(REPORT.compared.find((e) => scopeKey(e) === "277/")?.oracleTr3).toBe("005010X212");
   });
 
-  it("S0382 AC-2: the report records both oracles, the second with its licence, interpreter and every companion pin", () => {
+  it("AC-2: the report records both oracles, the second with its licence, interpreter and every companion pin", () => {
     expect(REPORT.oracles.map((oracle) => oracle.package)).toEqual([PYX12, SECOND]);
     const first = oracleNamed(PYX12);
     expect(first?.version).toBe("4.0.0");
@@ -268,7 +268,7 @@ describe("differential report, second oracle", () => {
     }
   });
 
-  it("S0382 AC-2: the report carries each oracle's name, version, licence and companions as the oracle described them", async () => {
+  it("AC-2: the report carries each oracle's name, version, licence and companions as the oracle described them", async () => {
     // Nothing in the harness names an oracle: whatever the running oracles say
     // about themselves is what the report says about them.
     const described = (name: string): OracleDescription => ({
@@ -310,7 +310,7 @@ describe("differential report, second oracle", () => {
     );
   });
 
-  it("S0382 AC-3: every row is listed once, and each compared entry names one reporting oracle, its guide and its model", () => {
+  it("AC-3: every row is listed once, and each compared entry names one reporting oracle, its guide and its model", () => {
     const all = [...COMPARED_KEYS, ...UNCOVERED_KEYS];
     expect(new Set(all).size).toBe(all.length);
     expect(all.sort()).toEqual(
@@ -326,7 +326,7 @@ describe("differential report, second oracle", () => {
     }
   });
 
-  it("S0382 AC-3: a row both oracles bind is compared against the first and only the first", () => {
+  it("AC-3: a row both oracles bind is compared against the first and only the first", () => {
     // The committed run's own indexes, with the second oracle also binding
     // every row the first compares: nothing moves off the first oracle.
     const descriptions = descriptionsFromReport();
@@ -344,7 +344,7 @@ describe("differential report, second oracle", () => {
     expect(remittance?.oracle).toBe(1);
   });
 
-  it("S0382 AC-3: withdrawing one of the second oracle's bindings moves its row to the uncovered list", () => {
+  it("AC-3: withdrawing one of the second oracle's bindings moves its row to the uncovered list", () => {
     for (const key of SECOND_ROWS) {
       const partition = partitionScope(descriptionsFromReport({ oracle: SECOND, key }));
       expect(
@@ -357,7 +357,7 @@ describe("differential report, second oracle", () => {
     }
   });
 
-  it("S0382 AC-4: a row neither oracle maps is uncovered with a reason naming each oracle and its exact version", () => {
+  it("AC-4: a row neither oracle maps is uncovered with a reason naming each oracle and its exact version", () => {
     expect(UNCOVERED_KEYS.sort()).toEqual(
       // The 997 names no guide, so neither oracle has a map or model to bind to it.
       ["275/", "277/RFAI", "278/request", "278/response", "837/D", "997/", "TA1/"].sort(),
@@ -369,7 +369,7 @@ describe("differential report, second oracle", () => {
     }
   });
 
-  it("S0382 AC-10: exactly the rows pyx12 compared before the second oracle stay attributed to pyx12 4.0.0", () => {
+  it("AC-10: exactly the rows pyx12 compared before the second oracle stay attributed to pyx12 4.0.0", () => {
     expect(oracleNamed(PYX12)?.version).toBe("4.0.0");
     expect(
       REPORT.compared
