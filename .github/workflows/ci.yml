@@ -188,7 +188,11 @@ jobs:
   # against the house skeleton and npm's size limit, the CLAUDE.md card against its spec, and the
   # package.json description against the catalog of our libraries. It also runs
   # `cosyte-process check`, which holds the build, test, lint, typecheck and format scripts to the
-  # exact `cosyte-process` delegations and validates cosyte-process.config.json.
+  # exact `cosyte-process` delegations and validates cosyte-process.config.json, and
+  # `cosyte-docs-reference --check` (@cosyte/process), which regenerates the API reference under
+  # docs-content/api/ from the TSDoc of both entry points and fails when a committed page differs,
+  # when an export has no TSDoc summary, or when a TSDoc comment holds a heading: regenerate with
+  # `pnpm docs:reference` and commit the pages with the change that moved them.
   documents:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -208,3 +212,4 @@ jobs:
       - run: pnpm check:claude-card
       - run: pnpm check:catalog
       - run: pnpm check:process
+      - run: pnpm check:docs-reference

@@ -13,7 +13,7 @@ with their code system. Or you are sending one, and need to declare the implemen
 trading partner asked for.
 
 `get837Claims(delimiters, tx)` returns an
-[`X12_837Submission`](./api/README.md#x12_837submission), or `undefined` for a transaction set
+[`X12_837Submission`](./api/src.md#x12_837submission), or `undefined` for a transaction set
 that is not an 837.
 
 ## Read a claim
@@ -84,6 +84,7 @@ dx?.code; // => "J20.9"
 // Service lines are a union on `variant`: narrow before reading the SVx fields.
 const line = claim?.serviceLines[0];
 line?.charge?.toString(); // => "150"
+line?.variant; // => "P"
 if (line?.variant === "P") {
   line.procedureCode; // => "99213"
   line.modifiers; // => ["25"]
@@ -277,7 +278,7 @@ ending in a literal `?` merges with its successor. The behavior, in both directi
 
 ## Build a dental or an institutional claim
 
-`build837D` and `build837I` take the same [`Build837Spec`](./api/README.md#build837spec) as
+`build837D` and `build837I` take the same [`Build837Spec`](./api/src.md#build837spec) as
 `build837P`; only the service lines differ. A `variant: "D"` line is written as `SV3`, with its
 teeth as `TOO` segments after it, and a `variant: "I"` line as `SV2`, keyed by its revenue code.
 The reader hands the variant's own fields back on the line once you narrow on `variant`. Every line
@@ -386,6 +387,7 @@ dentalRead?.variant; // => "D"
 dentalRead?.warnings.length; // => 0
 const tooth = dentalRead?.claims[0]?.serviceLines[0];
 tooth?.charge?.toString(); // => "180.00"
+tooth?.variant; // => "D"
 if (tooth?.variant === "D") {
   tooth.procedureCode; // => "D2391"
   tooth.toothInformation[0]?.toothCode; // => "14"
@@ -411,6 +413,7 @@ const instRead = instTx ? get837Claims(institutional.delimiters, instTx) : undef
 instRead?.variant; // => "I"
 const room = instRead?.claims[0]?.serviceLines[0];
 room?.charge?.toString(); // => "1500.00"
+room?.variant; // => "I"
 if (room?.variant === "I") {
   room.revenueCode; // => "0120"
 }
@@ -420,6 +423,6 @@ if (room?.variant === "I") {
 
 - [The envelope and loop model](./spec-notes-envelope.md): loops and the HL hierarchy.
 - [Build and serialize X12](./emit-and-serialize.md): what every builder refuses.
-- Reference: [`get837Claims`](./api/README.md#get837claims),
-  [`build837P`](./api/README.md#build837p), [`build837I`](./api/README.md#build837i),
-  [`build837D`](./api/README.md#build837d), [`Build837Spec`](./api/README.md#build837spec).
+- Reference: [`get837Claims`](./api/src.md#get837claims),
+  [`build837P`](./api/src.md#build837p), [`build837I`](./api/src.md#build837i),
+  [`build837D`](./api/src.md#build837d), [`Build837Spec`](./api/src.md#build837spec).

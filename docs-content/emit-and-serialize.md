@@ -211,5 +211,5 @@ emitted.includes("SE*2*0001~"); // => true
   rounding it.
 - [Describe a trading partner with a profile](./profiles.md): describing what a partner actually
   sends, on the read side.
-- Reference: [`buildInterchange`](./api/README.md#buildinterchange),
-  [`serializeX12`](./api/README.md#serializex12), [`X12BuildError`](./api/README.md#x12builderror).
+- Reference: [`buildInterchange`](./api/src.md#buildinterchange),
+  [`serializeX12`](./api/src.md#serializex12), [`X12BuildError`](./api/src.md#x12builderror).

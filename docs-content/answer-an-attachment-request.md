@@ -156,6 +156,6 @@ Three things to hold onto:
   is framed by its declared length.
 - [Keeping PHI out of logs](./keeping-phi-out-of-logs.md): why only the attachment data refuses to
   print, and every other field is a plain string.
-- Reference: [`get277RequestForAdditionalInformation`](./api/README.md#get277requestforadditionalinformation),
-  [`build275`](./api/README.md#build275), [`get275Attachments`](./api/README.md#get275attachments),
-  [`X12AttachmentData`](./api/README.md#x12attachmentdata).
+- Reference: [`get277RequestForAdditionalInformation`](./api/src.md#get277requestforadditionalinformation),
+  [`build275`](./api/src.md#build275), [`get275Attachments`](./api/src.md#get275attachments),
+  [`X12AttachmentData`](./api/src.md#x12attachmentdata).

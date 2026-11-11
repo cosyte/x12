@@ -184,7 +184,7 @@ list one you can report as "no benefits of that kind". The `AAA` segments also s
 - [The 80/20 transaction sets](./spec-notes-transaction-sets.md): the field each set preserves
   verbatim, the 271's trace among them.
 - [Build and serialize X12](./emit-and-serialize.md): what every builder refuses.
-- Reference: [`build271`](./api/README.md#build271),
-  [`get271Eligibility`](./api/README.md#get271eligibility),
-  [`Build271Spec`](./api/README.md#build271spec),
-  [`Build271HeaderSpec`](./api/README.md#build271headerspec).
+- Reference: [`build271`](./api/src.md#build271),
+  [`get271Eligibility`](./api/src.md#get271eligibility),
+  [`Build271Spec`](./api/src.md#build271spec),
+  [`Build271HeaderSpec`](./api/src.md#build271headerspec).

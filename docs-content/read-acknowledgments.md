@@ -237,5 +237,5 @@ byte that is a delimiter there and not here comes back with a stray release char
 
 - [Warning and error codes](./warning-and-error-codes.md#x12_999_ik5_absent): the 999 reader's
   fail-safe warnings, and [the 997 reader's](./warning-and-error-codes.md#x12_997_ak5_absent).
-- Reference: [`parse999`](./api/README.md#parse999), [`parseTA1`](./api/README.md#parseta1),
-  [`buildTA1`](./api/README.md#buildta1), [`build999`](./api/README.md#build999).
+- Reference: [`parse999`](./api/src.md#parse999), [`parseTA1`](./api/src.md#parseta1),
+  [`buildTA1`](./api/src.md#buildta1), [`build999`](./api/src.md#build999).

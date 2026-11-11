@@ -19,6 +19,8 @@ pnpm test
 
 Run all of these from the repository root, in this order, before you push. CI runs the same checks.
 `differential:check` fetches two pinned Python oracles through `uv`, so it needs the network.
+`check:docs-reference` fails when `docs-content/api/` differs from what the TSDoc in `src/`
+generates or an export has no summary: run `pnpm docs:reference` and commit the pages it writes.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -40,6 +42,7 @@ pnpm check:no-emdash
 pnpm check:no-internal-refs
 pnpm check:documents
 pnpm check:process
+pnpm check:docs-reference
 pnpm differential:check
 ```
 

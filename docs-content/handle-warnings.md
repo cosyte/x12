@@ -110,5 +110,5 @@ warning you triage, not an exception you catch.
 - [Describe a trading partner with a profile](./profiles.md#separate-the-warnings-you-expect-from-the-ones-you-do-not):
   split a partner's known deviations from the unexpected ones.
 - [Troubleshooting](./troubleshooting.md): what a given warning usually means and what to do.
-- Reference: [`X12ParseWarning`](./api/README.md#x12parsewarning),
-  [`X12ParseError`](./api/README.md#x12parseerror), [`WARNING_CODES`](./api/README.md#warning_codes).
+- Reference: [`X12ParseWarning`](./api/src.md#x12parsewarning),
+  [`X12ParseError`](./api/src.md#x12parseerror), [`WARNING_CODES`](./api/src.md#warning_codes).

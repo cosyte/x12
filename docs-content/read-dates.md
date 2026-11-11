@@ -73,5 +73,5 @@ raised.
 
 ## Related
 
-- Reference: [`toObject`](./api/README.md#toobject), [`toISO`](./api/README.md#toiso),
-  [`toDate`](./api/README.md#todate), [`checkCarcValidity`](./api/README.md#checkcarcvalidity).
+- Reference: [`toObject`](./api/src.md#toobject), [`toISO`](./api/src.md#toiso),
+  [`toDate`](./api/src.md#todate), [`checkCarcValidity`](./api/src.md#checkcarcvalidity).

@@ -39,14 +39,16 @@ import * as pkg from "../src/index.js";
  * (` ```ts no-run <reason> `). The runner strips types without checking them, so a second test
  * compiles every TypeScript sample against the package's types. The contract half checks the
  * bundle as a whole: front matter, the sidebar's shape, every link and anchor, the symbols a
- * sample imports, a worked example for every transaction set, the two quality pages, and the
- * generated codes page. Each contract check is a pure function, proven below to still see a
- * seeded defect before its verdict on the real pages is believed.
+ * sample imports, a worked example on a how-to page for every transaction set, the two quality
+ * pages, and the generated codes page. Each contract check is a pure function, proven below to
+ * still see a seeded defect before its verdict on the real pages is believed.
  *
  * The pages under `docs-content/api/` are generated from the TSDoc comments in `src/` by
- * `cosyte-docs-reference`, and their `@example` blocks are fragments written for an editor's
- * tooltip (many use an undeclared `raw`), so they are not samples here: only the top-level pages
- * are passed to the suite. Links into them are checked, page and anchor.
+ * `cosyte-docs-reference` (`pnpm docs:reference`; `pnpm check:docs-reference` fails when a
+ * committed page is stale or an export has no summary), and their `@example` blocks are
+ * fragments written for an editor's tooltip (many use an undeclared `raw`), so they are not
+ * samples here: only the top-level pages are passed to the suite. Links into them are checked,
+ * page and anchor.
  *
  * The shared CI gate runs `test` before `build`, so `dist/` is built on demand here.
  */
@@ -149,7 +151,7 @@ const SAMPLE_LANGS: ReadonlySet<string> = new Set([
 /**
  * The transaction-set map from `docs-content/spec-notes-transaction-sets.md`, as data: each set
  * the library claims, and the reader / builder exports that set is reached through. A set is
- * covered when a TypeScript sample anywhere in the bundle CALLS one of its exports.
+ * covered when a TypeScript sample on a How-to guides page CALLS one of its exports.
  *
  * `837P` / `837I` / `837D` share the reader `get837Claims`, exactly as the map does.
  */
@@ -572,25 +574,57 @@ function checkImportedSymbols(pages: readonly DocsPage[], exported: ReadonlySet<
   return findings;
 }
 
+/** The sidebar category whose pages hold the worked example for each transaction set. */
+const HOW_TO_CATEGORY = "How-to guides";
+
 /**
- * Every transaction set in the map has at least one TypeScript sample calling one of its reader
- * or builder exports.
+ * The document ids the sidebar's How-to guides category lists, a nested category's included.
+ *
+ * @param sidebars - The parsed `sidebars.json`.
+ * @returns The ids, in sidebar order; empty when there is no such category.
+ */
+function howToPageIds(sidebars: unknown): ReadonlySet<string> {
+  if (typeof sidebars !== "object" || sidebars === null) return new Set();
+  const ids: string[] = [];
+  for (const top of Object.values(sidebars as Record<string, unknown>)) {
+    if (!Array.isArray(top)) continue;
+    for (const item of top as unknown[]) {
+      if (typeof item !== "object" || item === null) continue;
+      const category = item as Record<string, unknown>;
+      if (category["type"] === "category" && category["label"] === HOW_TO_CATEGORY) {
+        ids.push(...sidebarDocIds(category["items"]));
+      }
+    }
+  }
+  return new Set(ids);
+}
+
+/**
+ * Every transaction set in the map has at least one TypeScript sample, on a page of the How-to
+ * guides category, calling one of its reader or builder exports. A sample anywhere else does not
+ * count: the transaction-set page promises a worked example in the how-to guides, not one in an
+ * explanation or the quickstart.
  *
  * @param pages - The bundle's pages.
  * @param sets - Set id to the exports that set is reached through.
+ * @param howTo - The document ids the How-to guides category lists.
  * @returns One finding per uncovered set.
  */
 function checkTransactionSetCoverage(
   pages: readonly DocsPage[],
   sets: ReadonlyMap<string, readonly string[]>,
+  howTo: ReadonlySet<string>,
 ): string[] {
-  const code = pages.flatMap((p) => typescriptBlocks(p).map((b) => b.code)).join("\n");
+  const code = pages
+    .filter((p) => howTo.has(p.stem))
+    .flatMap((p) => typescriptBlocks(p).map((b) => b.code))
+    .join("\n");
   const findings: string[] = [];
   for (const [set, exports] of sets) {
     const called = exports.some((name) => new RegExp(`\\b${name}\\s*\\(`).test(code));
     if (!called) {
       findings.push(
-        `transaction set ${set} has no TypeScript sample calling any of: ${exports.join(", ")}`,
+        `transaction set ${set} has no TypeScript sample on a How-to guides page calling any of: ${exports.join(", ")}`,
       );
     }
   }
@@ -682,6 +716,9 @@ const BUNDLE_SIDEBARS: unknown = JSON.parse(BUNDLE_FILES.get("sidebars.json") ??
 /** The document ids `sidebars.json` names, in order. */
 const BUNDLE_SIDEBAR_ORDER: readonly string[] = sidebarOrder(BUNDLE_SIDEBARS);
 
+/** The document ids the sidebar's How-to guides category lists. */
+const BUNDLE_HOW_TO_IDS: ReadonlySet<string> = howToPageIds(BUNDLE_SIDEBARS);
+
 /** The names `src/index.ts` publishes. */
 const PUBLIC_EXPORTS: ReadonlySet<string> = publicEntryExports(
   readFileSync(PUBLIC_ENTRY_SOURCE, "utf8"),
@@ -721,8 +758,13 @@ describe("docs-content bundle contract", () => {
     expect(checkImportedSymbols(BUNDLE_PAGES, PUBLIC_EXPORTS)).toEqual([]);
   });
 
-  it("carries a worked example for every transaction set the library claims", () => {
-    expect(checkTransactionSetCoverage(BUNDLE_PAGES, TRANSACTION_SET_EXPORTS)).toEqual([]);
+  it("carries a worked example on a how-to page for every transaction set the library claims", () => {
+    // Non-vacuity: the How-to guides category the check reads must list the set pages.
+    expect(BUNDLE_HOW_TO_IDS.has("post-a-remittance")).toBe(true);
+    expect(BUNDLE_HOW_TO_IDS.has("read-and-build-a-premium-payment")).toBe(true);
+    expect(
+      checkTransactionSetCoverage(BUNDLE_PAGES, TRANSACTION_SET_EXPORTS, BUNDLE_HOW_TO_IDS),
+    ).toEqual([]);
   });
 
   it("keeps only the placeholder sentence under each quality page's Current numbers", () => {
@@ -765,6 +807,39 @@ describe("the generated codes page", () => {
       (name) => /_ERROR_CODES$/.test(name) && !/^IK[34]_SYNTAX_/.test(name),
     );
     expect([...LISTED_ERROR_REGISTRIES].sort()).toEqual(registries.sort());
+  });
+
+  it("says when the readers raise the guide codes and when they return no reading", () => {
+    const page = readFileSync(join(root, CODES_PAGE), "utf8");
+    const section = (code: string): string => {
+      const start = page.indexOf(`### ${code}\n`);
+      const end = page.indexOf("\n### ", start + 1);
+      // One line of prose, so a phrase the formatter wrapped across lines still matches.
+      return page.slice(start, end === -1 ? undefined : end).replace(/\s+/g, " ");
+    };
+    const notImplemented = section("X12_GUIDE_NOT_IMPLEMENTED");
+    // GS-08 is read where ST-03 is absent, empty or whitespace only.
+    expect(notImplemented).toMatch(/absent, empty or whitespace only/);
+    // The refusing readers raise it on a reading only for a padded or lower-cased implemented guide.
+    expect(notImplemented).toMatch(/padded or lower-cased/);
+    expect(notImplemented).toMatch(/trimmed and upper-cased/);
+    for (const reader of [
+      "get270Inquiry",
+      "get271Eligibility",
+      "get276StatusInquiry",
+      "get277Status",
+      "get278Request",
+      "get278Response",
+      "get820Payments",
+      "get834Header",
+      "get835",
+      "get837Claims",
+      "get275Attachments",
+      "parse999",
+    ]) {
+      expect(notImplemented).toContain(`\`${reader}\``);
+    }
+    expect(section("X12_GUIDE_NOT_DECLARED")).toMatch(/whitespace only/);
   });
 });
 
@@ -968,9 +1043,9 @@ describe("the bundle-contract checkers still see", () => {
   it("resolves a link into the generated reference, page and anchor", () => {
     const into = (target: string): string[] =>
       checkLinks([seedPage("intro.md", goodFields("intro"), `[x](${target})`)], DOCS_DIR);
-    expect(into("./api/README.md#parsex12")).toEqual([]);
+    expect(into("./api/src.md#parsex12")).toEqual([]);
     expect(into("./api/README.md")).toEqual([]);
-    expect(into("./api/README.md#not-an-export").join("\n")).toContain("names no heading");
+    expect(into("./api/src.md#not-an-export").join("\n")).toContain("names no heading");
     expect(into("./api/NOPE.md").join("\n")).toContain("resolves to no page in docs-content/api/");
     expect(into("./api/../intro.md").join("\n")).toContain("is not written as");
   });
@@ -1054,16 +1129,51 @@ describe("the bundle-contract checkers still see", () => {
   });
 
   it("fails, naming the set, when a transaction set has no worked example", () => {
-    const pages = [seedPage("intro.md", goodFields("intro"), "```ts\nget835(d, tx);\n```")];
+    const pages = [seedPage("a.md", goodFields("a"), "```ts\nget835(d, tx);\n```")];
     const findings = checkTransactionSetCoverage(
       pages,
       new Map([
         ["835", ["get835", "build835"]],
         ["834", ["get834Header", "build834"]],
       ]),
+      howToPageIds(seedSidebar()),
     );
     expect(findings).toHaveLength(1);
     expect(findings[0]).toContain("transaction set 834");
+  });
+
+  it("does not count a sample that sits on a page outside the How-to guides category", () => {
+    // `b` is an Explanation page in the seeded sidebar and `c` is nested under it: a sample there
+    // is not the worked example the transaction-set page promises in the how-to guides.
+    const sidebar = seedSidebar();
+    expect([...howToPageIds(sidebar)]).toEqual(["a"]);
+    const sample = "```ts\nget835(d, tx);\n```";
+    const sets = new Map([["835", ["get835"]]]);
+    for (const stem of ["intro", "b", "c"]) {
+      const pages = [seedPage(`${stem}.md`, goodFields(stem), sample)];
+      expect(checkTransactionSetCoverage(pages, sets, howToPageIds(sidebar))).toEqual([
+        "transaction set 835 has no TypeScript sample on a How-to guides page calling any of: get835",
+      ]);
+    }
+    const onHowTo = [seedPage("a.md", goodFields("a"), sample)];
+    expect(checkTransactionSetCoverage(onHowTo, sets, howToPageIds(sidebar))).toEqual([]);
+  });
+
+  it("reads the How-to guides pages from the sidebar, a nested category's pages included", () => {
+    const sidebar = {
+      docs: [
+        "intro",
+        {
+          type: "category",
+          label: "How-to guides",
+          items: ["a", { type: "category", label: "Claims", items: ["d"] }],
+        },
+        { type: "category", label: "Explanation", items: ["b"] },
+      ],
+    };
+    expect([...howToPageIds(sidebar)]).toEqual(["a", "d"]);
+    expect(howToPageIds({}).size).toBe(0);
+    expect(howToPageIds(null).size).toBe(0);
   });
 
   it("does not count a set named only in prose, or called only in a non-TypeScript fence", () => {
@@ -1075,7 +1185,9 @@ describe("the bundle-contract checkers still see", () => {
       ),
     ];
     expect(
-      checkTransactionSetCoverage(pages, new Map([["834", ["build834"]]])).join("\n"),
+      checkTransactionSetCoverage(pages, new Map([["834", ["build834"]]]), new Set(["intro"])).join(
+        "\n",
+      ),
     ).toContain("transaction set 834");
   });
 

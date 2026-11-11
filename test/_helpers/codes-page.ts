@@ -50,6 +50,32 @@ const FATAL_MEANINGS: Readonly<Record<string, string>> = {
   X12_INVALID_DELIMITERS: "The delimiters cannot be recovered from the ISA.",
 };
 
+/**
+ * What the page says under a warning code's message about which readers raise it and when, where
+ * the frozen message alone does not say it. A message is part of the warning contract and its
+ * digest is pinned, so the reader behaviour that grew around it is written here instead.
+ */
+const WARNING_NOTES: Readonly<Record<string, string>> = {
+  X12_GUIDE_NOT_IMPLEMENTED: [
+    "Which readers raise it, and when: GS-08 is read where ST-03 is absent, empty or whitespace",
+    "only. `get275Attachments` and `parse999` raise it wherever the declaration, compared exactly,",
+    "is not a guide they implement, and still return their reading. The readers that refuse a",
+    "guide they do not implement (`get270Inquiry`, `parse270Inquiries`, `get271Eligibility`,",
+    "`get276StatusInquiry`, `parse276StatusInquiries`, `get277Status`, `get278Request`,",
+    "`get278Response`, `get820Payments`, `get834Header`, `get834Enrollments`, `get835` and",
+    "`get837Claims`) compare the declaration trimmed and upper-cased. Where it then names a guide",
+    "they implement, which is a padded or lower-cased 005010 guide, they return the reading and",
+    "raise this code on it. Where it still names none, a 4010 guide for one, they return no reading",
+    "at all, the same answer they give a transaction set of another ST-01, and raise nothing.",
+  ].join("\n"),
+  X12_GUIDE_NOT_DECLARED: [
+    "GS-08 is read where ST-03 is absent, empty or whitespace only, and a GS-08 that is absent,",
+    "empty or whitespace only declares nothing, so a declaration of whitespace only raises this",
+    "code rather than `X12_GUIDE_NOT_IMPLEMENTED`. Every reader that raises it still returns its",
+    'reading; `get277Status` gives that reading `transactionType: "unrecognized-guide"`.',
+  ].join("\n"),
+};
+
 /** Each refusal registry, the error class whose `code` it types, and the registry's export name. */
 const ERROR_REGISTRIES: readonly {
   readonly name: string;
@@ -199,6 +225,10 @@ function apiAnchor(name: string): string {
 /** Render the whole page. */
 export function renderCodesPage(): string {
   const warningCodes = Object.values(WARNING_CODES) as string[];
+  for (const code of Object.keys(WARNING_NOTES)) {
+    if (!warningCodes.includes(code))
+      throw new Error(`a note is written for ${code}, no warning code`);
+  }
   const byCode = new Map<string, [string, string][]>();
   for (const [key, message] of warningMessageEntries()) {
     const code = codeOfKey(key, warningCodes);
@@ -232,7 +262,7 @@ export function renderCodesPage(): string {
     "## Fatal codes",
     "",
     "Thrown as `X12ParseError`, whatever `strict` says. Exported as",
-    `[\`FATAL_CODES\`](./api/README.md#${apiAnchor("FATAL_CODES")}).`,
+    `[\`FATAL_CODES\`](./api/src.md#${apiAnchor("FATAL_CODES")}).`,
     "",
     "| Code | Meaning |",
     "| --- | --- |",
@@ -246,11 +276,11 @@ export function renderCodesPage(): string {
     "",
     "## Warning codes",
     "",
-    `Exported as [\`WARNING_CODES\`](./api/README.md#${apiAnchor("WARNING_CODES")}), in the order the registry lists them.`,
+    `Exported as [\`WARNING_CODES\`](./api/src.md#${apiAnchor("WARNING_CODES")}), in the order the registry lists them.`,
     "Each warning's `message` is one of the strings below, taken from a frozen registry and never",
     "built from the document, so a message holds no value from it; `position` says where to look.",
     "Where one code carries several messages, each is listed with the registry entry it comes from.",
-    `[\`ALL_WARNING_MESSAGES\`](./api/README.md#${apiAnchor("ALL_WARNING_MESSAGES")}) holds every one of them.`,
+    `[\`ALL_WARNING_MESSAGES\`](./api/src.md#${apiAnchor("ALL_WARNING_MESSAGES")}) holds every one of them.`,
   );
   for (const code of warningCodes) {
     const entries = byCode.get(code);
@@ -263,6 +293,8 @@ export function renderCodesPage(): string {
         lines.push(`- \`${key}\`: ${prose(message)}`);
       }
     }
+    const note = WARNING_NOTES[code];
+    if (note !== undefined) lines.push("", note);
   }
   lines.push(
     "",
@@ -279,7 +311,7 @@ export function renderCodesPage(): string {
       .map((c) => `\`${c}\``)
       .join(", ");
     lines.push(
-      `| [\`${registry.name}\`](./api/README.md#${apiAnchor(registry.name)}) | [\`${registry.errorClass}\`](./api/README.md#${apiAnchor(registry.errorClass)}) | ${codes} |`,
+      `| [\`${registry.name}\`](./api/src.md#${apiAnchor(registry.name)}) | [\`${registry.errorClass}\`](./api/src.md#${apiAnchor(registry.errorClass)}) | ${codes} |`,
     );
   }
   lines.push("");
