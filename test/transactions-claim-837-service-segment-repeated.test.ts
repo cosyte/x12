@@ -75,13 +75,15 @@ const SV3_FOREIGN = "SV3*AD:D1110*6100**11*1*1~";
 
 /**
  * An ST-03 `get837Claims` turns into no variant, so the `SVx` fall-back is
- * what decides. The ASC X12N **4010** addenda reference for professional
- * claims, named at 45 CFR 162.1102(a)(3); this library's v1 scope is 005010
- * only. Through `0.0.13` this case used `005010X222A1`, which is the errata
- * production 837Ps actually carry in ST-03 and which now RESOLVES (sources:
- * the comment above `VARIANT_BY_ICR` in `src/transactions/claim/get-837.ts`).
+ * what decides: no ST-03, under a GS-08 that declares the professional guide,
+ * so the declared guide is one the reader implements and the raw ST-03 keys
+ * nothing. Through `0.0.13` this case used `005010X222A1`, which now RESOLVES
+ * (sources: the comment above `VARIANT_BY_ICR` in
+ * `src/transactions/claim/get-837.ts`), and then the 4010 professional
+ * reference `004010X098A1`, which now declares a guide the reader does not
+ * implement and gets no reading at all.
  */
-const UNRESOLVED_ICR = "004010X098A1";
+const UNRESOLVED_ICR = "";
 
 interface Parsed {
   readonly sub: X12_837Submission;
@@ -509,7 +511,7 @@ describe("additivity", () => {
     // resolution and repeats inside the open line.
     const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1_FIRST, SV2_FOREIGN]));
 
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, AMBIGUOUS, REPEATED]);
+    expect(channel(sub)).toEqual([AMBIGUOUS, REPEATED]);
     expect(sub.variant).toBe("P");
     expect(line(sub).charge).toBe("8500");
   });

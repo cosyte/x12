@@ -59,6 +59,13 @@ const DEFAULT_DELIMITERS = {
   segment: "~",
 } as const;
 
+/** A guide each reader implements, declared in GS-08. */
+const GS08_BY_SET: Readonly<Record<string, string>> = {
+  "837": "005010X222A1",
+  "277": "005010X212",
+  "278": "005010X217",
+};
+
 /**
  * Assemble a one-transaction interchange whose `ST-03` is exactly `st03`
  * (omitted when `undefined`). Bodies are synthetic and carry no PHI.
@@ -77,7 +84,10 @@ function interchange(
     component: delimiters.component,
     segment: delimiters.segment,
   });
-  const gs = ["GS", "HC", "S", "R", "20250101", "1200", "1", "X", "005010X222A1"].join(e);
+  // GS-08 names a guide the reader of `transactionSetId` implements, so an
+  // empty ST-03 still declares one and the reader reads.
+  const gs08 = GS08_BY_SET[transactionSetId] ?? "005010X222A1";
+  const gs = ["GS", "HC", "S", "R", "20250101", "1200", "1", "X", gs08].join(e);
   const stParts = ["ST", transactionSetId, "0001"];
   if (st03 !== undefined) stParts.push(st03);
   const se = ["SE", String(body.length + 2), "0001"].join(e);
@@ -139,24 +149,54 @@ const DECODE_CELLS: readonly (readonly [framed: string, stated: string])[] = [
 ];
 
 describe("ST-03 is published post-?-unescape by every typed reader that publishes it", () => {
+  /**
+   * A reader publishes ST-03 only on a reading, and it reads only a declared
+   * guide it implements, so each case escapes a delimiter that occurs in that
+   * guide's own identifier: the component separator is `X`, ST-03 frames the
+   * guide with its `X` escaped, and it decodes to the guide. No data element
+   * of the body carries an `X`.
+   */
+  const PUBLISHED: readonly (readonly [set: string, framed: string])[] = [
+    ["837", "005010?X222A1"],
+    ["277", "005010?X212"],
+    ["278", "005010?X217"],
+  ];
+  const BODY_BY_SET: Readonly<Record<string, readonly string[]>> = {
+    "837": BODY_837P,
+    "277": BODY_277,
+    "278": BODY_278,
+  };
+  for (const [set, framed] of PUBLISHED) {
+    const stated = framed.replace("?", "");
+    it(`the ${set} reader publishes ${JSON.stringify(stated)} where the ST-03 element is ${JSON.stringify(framed)}`, () => {
+      const { delimiters, tx } = firstTransaction(
+        interchange(set, framed, BODY_BY_SET[set] ?? [], { ...DEFAULT_DELIMITERS, component: "X" }),
+      );
+      expect(tx.st.elements[3]).toBe(framed);
+      const readings =
+        set === "837"
+          ? [get837Claims(delimiters, tx)]
+          : set === "277"
+            ? [get277Status(delimiters, tx)]
+            : [get278Request(delimiters, tx), get278Response(delimiters, tx)];
+      for (const reading of readings) {
+        expect(reading?.implementationConventionReference).toBe(stated);
+      }
+    });
+  }
+
   for (const [framed, stated] of DECODE_CELLS) {
-    it(`get837Claims publishes ${JSON.stringify(stated)} where the ST-03 element is ${JSON.stringify(framed)}`, () => {
-      const { delimiters, tx } = firstTransaction(interchange("837", framed, BODY_837P));
-      expect(tx.st.elements[3]).toBe(framed);
-      expect(get837Claims(delimiters, tx)?.implementationConventionReference).toBe(stated);
-    });
-
-    it(`get277Status publishes ${JSON.stringify(stated)} where the ST-03 element is ${JSON.stringify(framed)}`, () => {
-      const { delimiters, tx } = firstTransaction(interchange("277", framed, BODY_277));
-      expect(tx.st.elements[3]).toBe(framed);
-      expect(get277Status(delimiters, tx)?.implementationConventionReference).toBe(stated);
-    });
-
-    it(`get278Request and get278Response publish ${JSON.stringify(stated)} where the ST-03 element is ${JSON.stringify(framed)}`, () => {
-      const { delimiters, tx } = firstTransaction(interchange("278", framed, BODY_278));
-      expect(tx.st.elements[3]).toBe(framed);
-      expect(get278Request(delimiters, tx)?.implementationConventionReference).toBe(stated);
-      expect(get278Response(delimiters, tx)?.implementationConventionReference).toBe(stated);
+    it(`a reader returns no reading where the ST-03 element ${JSON.stringify(framed)} decodes to ${JSON.stringify(stated)}, a guide it does not implement`, () => {
+      for (const set of ["837", "277", "278"]) {
+        const { delimiters, tx } = firstTransaction(
+          interchange(set, framed, BODY_BY_SET[set] ?? []),
+        );
+        expect(tx.st.elements[3]).toBe(framed);
+        expect(get837Claims(delimiters, tx)).toBeUndefined();
+        expect(get277Status(delimiters, tx)).toBeUndefined();
+        expect(get278Request(delimiters, tx)).toBeUndefined();
+        expect(get278Response(delimiters, tx)).toBeUndefined();
+      }
     });
   }
 
@@ -183,13 +223,16 @@ describe("ST-03 is published post-?-unescape by every typed reader that publishe
 
 describe("what the decode leaves alone", () => {
   it("preserves a release character whose target is not a delimiter (Postel's Law)", () => {
-    const { delimiters, tx } = firstTransaction(interchange("837", "A?XB", BODY_837P));
-    expect(get837Claims(delimiters, tx)?.implementationConventionReference).toBe("A?XB");
+    // `005010X222A?1` decodes to itself, release character kept, which is no
+    // guide the reader implements: no reading. Had the release character been
+    // dropped it would decode to `005010X222A1` and read.
+    const { delimiters, tx } = firstTransaction(interchange("837", "005010X222A?1", BODY_837P));
+    expect(get837Claims(delimiters, tx)).toBeUndefined();
   });
 
-  it("introduces no normalisation: a whitespace-only ST-03 is published untrimmed", () => {
-    const { delimiters, tx } = firstTransaction(interchange("837", "   ", BODY_837P));
-    expect(get837Claims(delimiters, tx)?.implementationConventionReference).toBe("   ");
+  it("introduces no normalisation: a whitespace-padded ST-03 is not trimmed to a guide", () => {
+    const { delimiters, tx } = firstTransaction(interchange("837", " 005010X222A1 ", BODY_837P));
+    expect(get837Claims(delimiters, tx)).toBeUndefined();
   });
 
   it("keeps each reader's own empty / absent mapping unchanged", () => {

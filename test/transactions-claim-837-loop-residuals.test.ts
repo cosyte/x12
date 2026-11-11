@@ -329,15 +329,11 @@ describe("X12-837-LOOP-RESIDUALS: the controls the reset must NOT change", () =>
     // variant is what could not be resolved, so `activeEntity` was already
     // reset at base and the REF falls through to the enclosing claim. This is
     // the route-DEPENDENCE `#69` recorded, and it is deliberately untouched.
-    const sub = parse837(
-      [...HEADER, CLM, "HI*ABK:J20.9~", "LX*1~", TRAILING_REF, TRAILING_N3],
-      "005010XZZZZZ",
-    );
+    const sub = parse837([...HEADER, CLM, "HI*ABK:J20.9~", "LX*1~", TRAILING_REF, TRAILING_N3], "");
     expect(sub.claims[0]?.references).toEqual([{ qualifier: "6R", value: "LINE-CTRL-1" }]);
     // The N3 had nowhere to go on this route at base either.
     expect(sub.claims[0]?.payer?.address).toBeUndefined();
     expect(channel(sub)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
       WARNING_CODES.X12_837_UNKNOWN_VARIANT,
       WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
     ]);
@@ -420,27 +416,26 @@ describe("X12-837-LOOP-RESIDUALS: the controls the reset must NOT change", () =>
 
 describe("X12-837-LOOP-RESIDUALS: X12_837_UNKNOWN_VARIANT anchors at the ST, not the BHT", () => {
   it("🩺 the position resolves through tx.segments to the ST", () => {
-    const { sub, tx } = parseWithTx(HEADER, "005010XZZZZZ");
-    // AC-5: 005010XZZZZZ is outside the implemented set, so the declared-guide
-    // code comes first and the variant code this test is about is index 1.
-    expect(channel(sub)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
-      WARNING_CODES.X12_837_UNKNOWN_VARIANT,
-    ]);
-    const position = sub.warnings[1]?.position;
+    // ST-03 sent empty: the declared guide is GS-08, which the reader
+    // implements, and the empty ST-03 keys no variant. A non-empty ST-03 that
+    // keys none declares a guide the reader does not implement, and gets no
+    // reading at all.
+    const { sub, tx } = parseWithTx(HEADER, "");
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_UNKNOWN_VARIANT]);
+    const position = sub.warnings[0]?.position;
     expect(position?.segmentIndex).toBe(0);
     // The property, not just the literal: whatever the index is, the segment
     // it names must be the one carrying ST-03.
     expect(tx.segments[position?.segmentIndex ?? -1]?.id).toBe("ST");
-    expect(tx.segments[position?.segmentIndex ?? -1]?.elements[3]).toBe("005010XZZZZZ");
+    expect(tx.segments[position?.segmentIndex ?? -1]?.elements[3]).toBe("");
   });
 
   it("🩺 it is NOT the BHT, which is what index 1 names in this document", () => {
     // The honest half of the pairing: this pins that index 1 really is the
     // BHT here, so the base value was not merely a different convention.
-    const { sub, tx } = parseWithTx(HEADER, "005010XZZZZZ");
+    const { sub, tx } = parseWithTx(HEADER, "");
     expect(tx.segments[1]?.id).toBe("BHT");
-    expect(sub.warnings[1]?.position.segmentIndex).not.toBe(1);
+    expect(sub.warnings[0]?.position.segmentIndex).not.toBe(1);
   });
 
   it("🩺 an ST with NO ST-03 at all anchors identically, and has no element 3 to name", () => {
@@ -456,9 +451,7 @@ describe("X12-837-LOOP-RESIDUALS: X12_837_UNKNOWN_VARIANT anchors at the ST, not
   });
 
   it("no elementIndex is set on either route", () => {
-    expect(
-      parseWithTx(HEADER, "005010XZZZZZ").sub.warnings[1]?.position.elementIndex,
-    ).toBeUndefined();
+    expect(parseWithTx(HEADER, "").sub.warnings[0]?.position.elementIndex).toBeUndefined();
     expect(parseWithTx(HEADER, null).sub.warnings[0]?.position.elementIndex).toBeUndefined();
   });
 
@@ -470,8 +463,7 @@ describe("X12-837-LOOP-RESIDUALS: X12_837_UNKNOWN_VARIANT anchors at the ST, not
 
   it("the warning still carries the registry message verbatim", () => {
     // The anchor moved; nothing about the message did.
-    const { sub } = parseWithTx(HEADER, "005010XZZZZZ");
-    expect(sub.warnings[1]?.message).toContain("837 variant could not be resolved");
-    expect(sub.warnings[1]?.message).not.toContain("005010XZZZZZ");
+    const { sub } = parseWithTx(HEADER, "");
+    expect(sub.warnings[0]?.message).toContain("837 variant could not be resolved");
   });
 });

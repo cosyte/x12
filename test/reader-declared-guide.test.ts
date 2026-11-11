@@ -1,8 +1,11 @@
 /**
  * The declared-guide check: every typed reader compares the implementation
  * guide a transaction set declares (ST-03 decoded, else GS-08 decoded) with
- * the guides that reader implements, warns where they differ, and still
- * returns its reading. Every test names the acceptance criterion it grades.
+ * the guides that reader implements. Where they differ, the readers of the
+ * 005010 transactions return no reading (`undefined`, an empty list, or no
+ * yielded member), and the 275 and 999 readers warn and return theirs. Where
+ * nothing is declared, every reader warns and returns its reading. Every test
+ * names the acceptance criterion it grades.
  *
  * **Every fixture in this file is SYNTHETIC.** Each interchange is assembled
  * here, at run time, from a Tier 1 shape of the transaction it carries, and
@@ -283,6 +286,11 @@ interface ReaderCase {
   readonly readTx?: ReadTx;
   /** What the reader answers for a transaction set of another ST-01. */
   readonly mismatch: "undefined" | "empty";
+  /**
+   * Whether the reader returns no reading for a declared guide it does not
+   * implement. False only for the 275 and 999 readers, which warn and return.
+   */
+  readonly refuses: boolean;
 }
 
 function tr3Of(transaction: string, variant: string | null): string {
@@ -311,6 +319,7 @@ function txCase(
   body: Body,
   readTx: ReadTx,
   mismatch: "undefined" | "empty" = "undefined",
+  refuses = true,
 ): ReaderCase {
   return {
     name,
@@ -320,6 +329,7 @@ function txCase(
     body,
     readTx,
     mismatch,
+    refuses,
     read: (raw) => {
       const { d, tx } = firstTransaction(raw);
       return readTx(d, tx);
@@ -335,8 +345,9 @@ function rawCase(
   body: Body,
   read: ReadRaw,
   mismatch: "undefined" | "empty",
+  refuses = true,
 ): ReaderCase {
-  return { name, st01, functionalId, tr3, body, read, mismatch };
+  return { name, st01, functionalId, tr3, body, read, mismatch, refuses };
 }
 
 const R270 = tr3Of("270", null);
@@ -360,10 +371,17 @@ const READERS: readonly ReaderCase[] = [
   txCase("get271Eligibility", "271", "HB", tr3Of("271", null), BODY_271, (d, tx) =>
     one(get271Eligibility(d, tx)),
   ),
-  // AC-9 (claims attachments): the 275 reader warns and returns as every
-  // reader in this list does, so it is swept by every check below.
-  txCase("get275Attachments", "275", "PI", tr3Of("275", null), BODY_275, (d, tx) =>
-    one(get275Attachments(d, tx)),
+  // AC-9 (claims attachments): the 275 reader is swept by every check below.
+  // It warns and returns for a declared guide it does not implement.
+  txCase(
+    "get275Attachments",
+    "275",
+    "PI",
+    tr3Of("275", null),
+    BODY_275,
+    (d, tx) => one(get275Attachments(d, tx)),
+    "undefined",
+    false,
   ),
   txCase("get276StatusInquiry", "276", "HR", R276, BODY_276, (d, tx) =>
     one(get276StatusInquiry(d, tx)),
@@ -397,6 +415,7 @@ const READERS: readonly ReaderCase[] = [
     BODY_999,
     (raw) => one(parse999(raw)),
     "undefined",
+    false,
   ),
 ];
 
@@ -443,6 +462,34 @@ async function readAs(reader: ReaderCase, declaration: Declaration): Promise<rea
   return readings;
 }
 
+/** What the reader answers, which may be no reading at all. */
+async function readMaybe(
+  reader: ReaderCase,
+  declaration: Declaration,
+): Promise<readonly Reading[] | undefined> {
+  return reader.read(
+    interchange(reader.st01, reader.functionalId, declaration, reader.body(CONVENTIONAL)),
+  );
+}
+
+/**
+ * What a reader answers for a declared guide it does not implement: no reading
+ * (`undefined` or an empty list) for a reader that refuses, and otherwise a
+ * reading per transaction set carrying exactly one `X12_GUIDE_NOT_IMPLEMENTED`
+ * at the ST.
+ */
+async function expectForeign(reader: ReaderCase, declaration: Declaration): Promise<void> {
+  const readings = await readMaybe(reader, declaration);
+  if (reader.refuses) {
+    expect(readings ?? []).toEqual([]);
+    return;
+  }
+  if (readings === undefined || readings.length === 0) {
+    throw new Error(`${reader.name} returned no reading`);
+  }
+  expect(guideChannel(readings)).toEqual(each(readings, [[GUIDE_NOT_IMPLEMENTED, 0]]));
+}
+
 function guideWarnings(reading: Reading): readonly X12ParseWarning[] {
   return reading.warnings.filter((w) => GUIDE_CODES.has(w.code));
 }
@@ -462,7 +509,7 @@ function each(readings: readonly Reading[], expected: readonly (readonly [string
 // AC-1
 // ---------------------------------------------------------------------------
 
-describe("AC-1: a 277 declaring 006020X313 is labelled neither a claim status nor a claim acknowledgment", () => {
+describe("AC-1: a 277 declaring 006020X313 is read as neither a claim status nor a claim acknowledgment", () => {
   const X313 = "006020X313";
   const cases: readonly (readonly [string, Declaration])[] = [
     ["declared in ST-03", { st03: X313, gs08: X313 }],
@@ -473,13 +520,13 @@ describe("AC-1: a 277 declaring 006020X313 is labelled neither a claim status no
       const { d, tx } = firstTransaction(
         interchange("277", "HN", declaration, BODY_277(CONVENTIONAL)),
       );
-      const status = get277Status(d, tx);
-      expect(status).toBeDefined();
-      expect(["claim-status", "claim-acknowledgment"]).not.toContain(status?.transactionType);
-      expect(status?.warnings.map((w) => w.code)).toContain(GUIDE_NOT_IMPLEMENTED);
-      // Still walked: the reading is the body, not an empty stand-in.
-      expect(status?.claims[0]?.traces[0]?.referenceId).toBe("TRACE-0001");
+      // A guide neither reader implements: no reading from either, so no claim
+      // status answer reaches code written for one.
+      expect(get277Status(d, tx)).toBeUndefined();
       expect(get277CADisposition(d, tx)).toBeUndefined();
+      // The body is a request for additional information, and its own reader
+      // reads it.
+      expect(get277RequestForAdditionalInformation(d, tx)).toBeDefined();
     });
   }
 });
@@ -489,7 +536,7 @@ describe("AC-1: a 277 declaring 006020X313 is labelled neither a claim status no
 // readers answer a 006020X313 277 exactly as they did without it.
 // ---------------------------------------------------------------------------
 
-describe("AC-5: the 006020X313 row leaves both existing 277 readers where they were", () => {
+describe("AC-5: the 006020X313 row leaves both existing 277 readers reading only their own guides", () => {
   const X313 = "006020X313";
   const GOLDEN = join(import.meta.dirname, "fixtures", "golden");
 
@@ -518,15 +565,11 @@ describe("AC-5: the 006020X313 row leaves both existing 277 readers where they w
     ["declared in GS-08 under an ST with no ST-03", { st03: null, gs08: X313 }],
   ];
   for (const [route, declaration] of routes) {
-    it(`AC-5: ${route}, get277Status reads unrecognized-guide with one X12_GUIDE_NOT_IMPLEMENTED and get277CADisposition returns nothing`, () => {
+    it(`AC-5: ${route}, neither get277Status nor get277CADisposition returns a reading`, () => {
       const { d, tx } = firstTransaction(
         interchange("277", "HN", declaration, BODY_277(CONVENTIONAL)),
       );
-      const status = get277Status(d, tx);
-      expect(status?.transactionType).toBe("unrecognized-guide");
-      expect(guideChannel(status === undefined ? [] : [status])).toEqual([
-        [[GUIDE_NOT_IMPLEMENTED, 0]],
-      ]);
+      expect(get277Status(d, tx)).toBeUndefined();
       expect(get277CADisposition(d, tx)).toBeUndefined();
     });
   }
@@ -575,7 +618,7 @@ describe("AC-5: the 006020X313 row leaves both existing 277 readers where they w
 // AC-2
 // ---------------------------------------------------------------------------
 
-describe("AC-2: an ST-03 outside the reader's implemented set is warned once, at the ST", () => {
+describe("AC-2: an ST-03 outside the reader's implemented set gets no reading, or one warning at the ST", () => {
   const EXTRA: Readonly<Record<string, readonly string[]>> = {
     get278Request: ["005010X216"],
     get278Response: ["005010X216"],
@@ -591,23 +634,23 @@ describe("AC-2: an ST-03 outside the reader's implemented set is warned once, at
       ...(EXTRA[reader.name] ?? []),
     ];
     for (const declared of declarations) {
-      it(`AC-2: ${reader.name} returns a reading carrying X12_GUIDE_NOT_IMPLEMENTED for ST-03 ${declared}`, async () => {
-        const readings = await readAs(reader, { st03: declared, gs08: reader.tr3 });
-        expect(guideChannel(readings)).toEqual(each(readings, [[GUIDE_NOT_IMPLEMENTED, 0]]));
+      const answer = reader.refuses ? "returns no reading" : "warns X12_GUIDE_NOT_IMPLEMENTED";
+      it(`AC-2: ${reader.name} ${answer} for ST-03 ${declared}`, async () => {
+        await expectForeign(reader, { st03: declared, gs08: reader.tr3 });
       });
     }
   }
 
-  it("AC-2: get834Enrollments puts the code on EVERY yielded enrollment", async () => {
-    const readings = await readAs(readerNamed("get834Enrollments"), {
-      st03: foreign(readerNamed("get834Enrollments")),
-      gs08: R834,
-    });
+  it("AC-2: get834Enrollments yields no enrollment, though the body carries two", async () => {
+    const reader = readerNamed("get834Enrollments");
+    expect(await readAs(reader, { st03: R834, gs08: R834 })).toHaveLength(2);
+    expect(await readMaybe(reader, { st03: foreign(reader), gs08: R834 })).toEqual([]);
+  });
+
+  it("AC-2: get834Enrollments puts X12_GUIDE_NOT_DECLARED on EVERY yielded enrollment", async () => {
+    const readings = await readAs(readerNamed("get834Enrollments"), { st03: null, gs08: "" });
     expect(readings).toHaveLength(2);
-    expect(guideChannel(readings)).toEqual([
-      [[GUIDE_NOT_IMPLEMENTED, 0]],
-      [[GUIDE_NOT_IMPLEMENTED, 0]],
-    ]);
+    expect(guideChannel(readings)).toEqual([[[GUIDE_NOT_DECLARED, 0]], [[GUIDE_NOT_DECLARED, 0]]]);
   });
 });
 
@@ -624,16 +667,20 @@ describe("AC-3: with ST-03 absent or empty, the declaration is GS-08", () => {
     const GS_FORMS: readonly (readonly [
       string,
       string | null,
-      readonly (readonly [string, number])[],
+      readonly (readonly [string, number])[] | "foreign",
     ])[] = [
       ["GS-08 implemented", reader.tr3, []],
-      ["GS-08 foreign", foreign(reader), [[GUIDE_NOT_IMPLEMENTED, 0]]],
+      ["GS-08 foreign", foreign(reader), "foreign"],
       ["GS-08 empty", "", [[GUIDE_NOT_DECLARED, 0]]],
       ["GS-08 absent", null, [[GUIDE_NOT_DECLARED, 0]]],
     ];
     for (const [stForm, st03] of ST_FORMS) {
       for (const [gsForm, gs08, expected] of GS_FORMS) {
         it(`AC-3: ${reader.name}, ${stForm}, ${gsForm}`, async () => {
+          if (expected === "foreign") {
+            await expectForeign(reader, { st03, gs08 });
+            return;
+          }
           const readings = await readAs(reader, { st03, gs08 });
           expect(guideChannel(readings)).toEqual(each(readings, expected));
         });
@@ -758,7 +805,9 @@ describe("AC-6: a guide code echoes nothing the sender declared", () => {
     return first;
   }
 
-  for (const reader of READERS) {
+  // Only the readers that warn on a foreign declaration have a warning to
+  // inspect; the others return no reading for it (AC-2).
+  for (const reader of READERS.filter((r) => !r.refuses)) {
     it(`AC-6: ${reader.name} - planted in ST-03, and in GS-08 under an empty ST-03`, async () => {
       const routes = (marker: string): readonly Declaration[] => [
         { st03: marker, gs08: reader.tr3 },
@@ -783,7 +832,7 @@ describe("AC-6: a guide code echoes nothing the sender declared", () => {
 // AC-8
 // ---------------------------------------------------------------------------
 
-describe("AC-8: a warned reading is the reading an implemented declaration gets", () => {
+describe("AC-8: a reading with no declared guide is the reading an implemented declaration gets", () => {
   const SET_ASIDE: ReadonlySet<string> = new Set(["warnings", "implementationConventionReference"]);
 
   function withoutDeclaration(reading: object): Record<string, unknown> {
@@ -791,7 +840,7 @@ describe("AC-8: a warned reading is the reading an implemented declaration gets"
   }
 
   for (const name of ["get835", "get837Claims"]) {
-    it(`AC-8: ${name} decodes a 004010 declaration exactly as its implemented one`, async () => {
+    it(`AC-8: ${name} decodes an undeclared transaction set exactly as its implemented one`, async () => {
       const reader = readerNamed(name);
       const readTx = reader.readTx;
       if (readTx === undefined) throw new Error("not a transaction reader");
@@ -799,26 +848,38 @@ describe("AC-8: a warned reading is the reading an implemented declaration gets"
       const implemented = firstTransaction(
         interchange(reader.st01, reader.functionalId, { st03: reader.tr3, gs08: reader.tr3 }, body),
       );
-      const declaredForeign = firstTransaction(
-        interchange(
-          reader.st01,
-          reader.functionalId,
-          { st03: foreign(reader), gs08: reader.tr3 },
-          body,
-        ),
+      const undeclared = firstTransaction(
+        interchange(reader.st01, reader.functionalId, { st03: null, gs08: "" }, body),
       );
-      const segmentsBefore = structuredClone(declaredForeign.tx.segments);
+      const segmentsBefore = structuredClone(undeclared.tx.segments);
 
       const [ok] = (await readTx(implemented.d, implemented.tx)) ?? [];
-      const [warned] = (await readTx(declaredForeign.d, declaredForeign.tx)) ?? [];
+      const [warned] = (await readTx(undeclared.d, undeclared.tx)) ?? [];
       if (ok === undefined || warned === undefined) throw new Error("no reading");
 
       expect(withoutDeclaration(warned)).toEqual(withoutDeclaration(ok));
       expect(ok.warnings.length).toBeGreaterThan(0);
       expect(warned.warnings.filter((w) => !GUIDE_CODES.has(w.code))).toEqual(ok.warnings);
-      expect(guideWarnings(warned).map((w) => w.code)).toEqual([GUIDE_NOT_IMPLEMENTED]);
+      expect(guideWarnings(warned).map((w) => w.code)).toEqual([GUIDE_NOT_DECLARED]);
       expect(guideWarnings(ok)).toEqual([]);
       // The read leaves the transaction set it was handed exactly as it was.
+      expect(undeclared.tx.segments).toEqual(segmentsBefore);
+    });
+
+    it(`AC-8: ${name} returns no reading for a 004010 declaration and leaves the set as it was`, async () => {
+      const reader = readerNamed(name);
+      const readTx = reader.readTx;
+      if (readTx === undefined) throw new Error("not a transaction reader");
+      const declaredForeign = firstTransaction(
+        interchange(
+          reader.st01,
+          reader.functionalId,
+          { st03: foreign(reader), gs08: reader.tr3 },
+          reader.body(CONVENTIONAL),
+        ),
+      );
+      const segmentsBefore = structuredClone(declaredForeign.tx.segments);
+      expect(await readTx(declaredForeign.d, declaredForeign.tx)).toBeUndefined();
       expect(declaredForeign.tx.segments).toEqual(segmentsBefore);
     });
   }
@@ -836,13 +897,7 @@ describe("AC-9: a non-empty ST-03 decides alone, and GS-08 is not consulted", ()
         gs08: foreign(reader),
       });
       expect(guideChannel(implementedOverForeign)).toEqual(each(implementedOverForeign, []));
-      const foreignOverImplemented = await readAs(reader, {
-        st03: foreign(reader),
-        gs08: reader.tr3,
-      });
-      expect(guideChannel(foreignOverImplemented)).toEqual(
-        each(foreignOverImplemented, [[GUIDE_NOT_IMPLEMENTED, 0]]),
-      );
+      await expectForeign(reader, { st03: foreign(reader), gs08: reader.tr3 });
     });
   }
 });
@@ -860,8 +915,7 @@ describe("AC-10: a prototype member name or a whitespace-only declaration is nev
           { st03: declared, gs08: reader.tr3 },
           { st03: "", gs08: declared },
         ]) {
-          const readings = await readAs(reader, declaration);
-          expect(guideChannel(readings)).toEqual(each(readings, [[GUIDE_NOT_IMPLEMENTED, 0]]));
+          await expectForeign(reader, declaration);
         }
       }
     });

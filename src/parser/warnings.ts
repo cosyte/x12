@@ -2107,18 +2107,19 @@ export function aaaLoopUnidentified(
 }
 
 /**
- * Build an `X12_GUIDE_NOT_IMPLEMENTED` warning. Raised by a typed reader when
- * the implementation guide a transaction set declares is not one that reader
- * implements. The declaration is ST-03, decoded of any release escape, or
- * GS-08 of the enclosing functional group where ST-03 is absent or empty; the
- * comparison is exact, and the guides a reader implements are the ones its
- * rows in `X12_TR3_CONFORMANCE` name.
+ * Build an `X12_GUIDE_NOT_IMPLEMENTED` warning. Raised by the 275 and 999
+ * readers when the implementation guide a transaction set declares is not one
+ * that reader implements. The declaration is ST-03, decoded of any release
+ * escape, or GS-08 of the enclosing functional group where ST-03 is absent or
+ * empty; the comparison is exact, and the guides a reader implements are the
+ * ones its rows in `X12_TR3_CONFORMANCE` name. Every other typed reader
+ * returns no reading for such a transaction set instead.
  *
- * The reading is still decoded and returned: this code refuses, drops and
- * re-decodes nothing. It takes a position and no value, so the declared
- * identifier never reaches the message; readers anchor it at the ST
- * (`segmentIndex: 0`) with no `elementIndex`, because the declaration may have
- * come from GS-08 rather than from an element of the ST.
+ * Where it is raised, the reading is still decoded and returned: this code
+ * refuses, drops and re-decodes nothing. It takes a position and no value, so
+ * the declared identifier never reaches the message; readers anchor it at the
+ * ST (`segmentIndex: 0`) with no `elementIndex`, because the declaration may
+ * have come from GS-08 rather than from an element of the ST.
  *
  * @example
  * ```ts
@@ -2140,8 +2141,8 @@ export function guideNotImplemented(position: X12Position): X12ParseWarning {
  * transaction set declares no implementation guide at all: ST-03 is absent or
  * empty and GS-08 of the enclosing functional group is absent or empty too, or
  * no functional group header reached the transaction set (one assembled by
- * hand, say). A whitespace-only declaration is NOT empty and is reported as
- * `X12_GUIDE_NOT_IMPLEMENTED` instead, because nothing is trimmed.
+ * hand, say). A whitespace-only declaration is NOT empty and is a declared
+ * guide the reader does not implement instead, because nothing is trimmed.
  *
  * The reading is still decoded and returned against the guide the reader
  * implements. Readers anchor it at the ST (`segmentIndex: 0`).

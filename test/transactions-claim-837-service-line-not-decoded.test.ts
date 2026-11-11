@@ -231,11 +231,13 @@ describe("X12-837-SV-SILENT-ZERO: retention and counting are unchanged", () => {
   });
 
   it("an unresolvable variant emits no service line at all, and is not double-reported", () => {
-    // ST-03 is not a known implementation-convention reference and there is
-    // no SVx to fall back on, so the submission-level X12_837_UNKNOWN_VARIANT
-    // is the diagnostic. `openServiceLine` returns undefined, so there is no
-    // line to warn about and no decimal slot at all.
-    const { sub } = parse837("005010X999A9", claimBody(["DTP*472*D8*20260601~"]));
+    // Nothing is declared (ST-03 and GS-08 both empty), so no variant comes
+    // from the declaration, and there is no SVx to fall back on: the
+    // submission-level X12_837_UNKNOWN_VARIANT is the diagnostic.
+    // `openServiceLine` returns undefined, so there is no line to warn about
+    // and no decimal slot at all. (A declared guide the reader does not
+    // implement gets no reading at all.)
+    const { sub } = parse837("", claimBody(["DTP*472*D8*20260601~"]));
     expect(sub.variant).toBe("unknown");
     expect(sub.claims[0]?.serviceLines ?? []).toHaveLength(0);
     expect(codes(sub.warnings)).toContain(WARNING_CODES.X12_837_UNKNOWN_VARIANT);

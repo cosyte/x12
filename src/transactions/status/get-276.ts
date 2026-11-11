@@ -93,7 +93,11 @@ import {
   statusInquiryReferenceRowDropped,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
-import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
+import {
+  declaredGuideWarning,
+  implementedGuides,
+  refusesReading,
+} from "../shared/declared-guide.js";
 import { HL_LEVEL_CODES, decodeHl, validateHl, type X12Hl } from "../shared/hl.js";
 
 import type {
@@ -140,11 +144,12 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Obje
 
 /**
  * Extract the typed {@link X12StatusInquiry} from one 276 transaction set. Pure
- * function: no I/O, no global state, never throws. Returns `undefined` only
- * when the transaction set's ST-01 is not `"276"` (a mis-routed call) - the
- * same refusal shape `get277Status`, `get270Inquiry` and every other
- * per-transaction reader in this package uses. Every other deviation is
- * recoverable and surfaces on `result.warnings`.
+ * function: no I/O, no global state, never throws. Returns `undefined` when
+ * the transaction set's ST-01 is not `"276"` (a mis-routed call), and when it
+ * declares (ST-03, else GS-08) a guide this reader does not implement, such as
+ * the 4010 `004010X093A1` - the same refusal shape `get277Status`,
+ * `get270Inquiry` and every other per-transaction reader in this package uses.
+ * Every other deviation is recoverable and surfaces on `result.warnings`.
  *
  * @example
  * ```ts
@@ -175,7 +180,9 @@ export function get276StatusInquiry(
  * {@link X12StatusInquiry} per 276 transaction set, each with its own model and
  * its own warnings, and an EMPTY list when the interchange carries no 276 at
  * all. Two 276s are never merged into one model and the first is never returned
- * in place of the rest.
+ * in place of the rest. A 276 declaring a guide this reader does not implement
+ * (the 4010 `004010X093A1`, say) is left out of the list, as
+ * {@link get276StatusInquiry} returns `undefined` for it.
  *
  * **No warning is raised about an interchange that carries no 276.** An
  * interchange full of 277s is not a defective 276 and this reader says nothing
@@ -209,7 +216,8 @@ function collectInquiries(interchange: X12Interchange): readonly X12StatusInquir
   for (const group of interchange.groups) {
     for (const tx of group.transactions) {
       if (tx.st.elements[1] !== STATUS_INQUIRY_276) continue;
-      out.push(decodeStatusInquiry(interchange.delimiters, tx));
+      const inquiry = decodeStatusInquiry(interchange.delimiters, tx);
+      if (inquiry !== undefined) out.push(inquiry);
     }
   }
   return Object.freeze(out);
@@ -250,13 +258,21 @@ interface ServiceLineAccumulator {
   readonly dates: X12StatusInquiryDate[];
 }
 
-/** Decode one 276 transaction set. @internal */
-function decodeStatusInquiry(delimiters: Delimiters, tx: X12TransactionSet): X12StatusInquiry {
-  const warnings: X12ParseWarning[] = [];
+/**
+ * Decode one 276 transaction set, or `undefined` where it declares a guide this
+ * reader does not implement. @internal
+ */
+function decodeStatusInquiry(
+  delimiters: Delimiters,
+  tx: X12TransactionSet,
+): X12StatusInquiry | undefined {
   // The declared guide (ST-03, else GS-08) against the guides this reader
-  // implements. Warned at the ST and never refused; both entry points reach
-  // it through this decode, and the walk below runs the same either way.
+  // implements: a guide it does not implement gets no reading, and nothing
+  // declared is warned at the ST and read. Both entry points reach it through
+  // this decode.
   const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_276);
+  if (refusesReading(guideWarning)) return undefined;
+  const warnings: X12ParseWarning[] = [];
   if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
   const levels: LevelAccumulator[] = [];

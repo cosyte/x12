@@ -25,7 +25,12 @@
  * truthy (see `../../parser/lookup.ts`); `Set.prototype.has` consults no
  * prototype chain, so `constructor` or `__proto__` is simply not a member.
  *
- * **It decides only what is WARNED.** Every keyed decision a reader already
+ * **What it decides.** Where something is declared and it is not a guide the
+ * reader implements, the reader returns no reading at all (see
+ * {@link refusesReading}): walking a 4010 transaction set, say, against the
+ * 005010 element positions gives values that look ordinary and are wrong.
+ * Where nothing is declared the reader still reads and warns, because it
+ * cannot tell one version from another. Every other keyed decision a reader
  * takes on the raw ST-03 text (the 837 variant, the 277 claim acknowledgment
  * discriminator and admission) is left to that reader, unmoved.
  *
@@ -35,6 +40,7 @@
 import { X12_TR3_CONFORMANCE } from "../../conformance/tr3.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
 import {
+  WARNING_CODES,
   guideNotDeclared,
   guideNotImplemented,
   type X12ParseWarning,
@@ -155,4 +161,26 @@ export function declaredGuideWarning(
   if (declared === undefined) return guideNotDeclared(ST_POSITION);
   if (implemented.has(declared)) return undefined;
   return guideNotImplemented(ST_POSITION);
+}
+
+/**
+ * Whether a reader handed `warning` (what {@link declaredGuideWarning}
+ * answered) returns no reading: true exactly where the transaction set
+ * declares a guide the reader does not implement. A reader that refuses
+ * returns what it returns for a transaction set of another ST-01 (`undefined`,
+ * an empty list, or no yielded member), so no value read against element
+ * positions the declared guide may define differently reaches a caller.
+ * Nothing declared is not refused: the reading goes ahead with
+ * `X12_GUIDE_NOT_DECLARED`.
+ *
+ * @example
+ * ```ts
+ * // const w = declaredGuideWarning(delimiters, tx, implementedGuides("835"));
+ * // if (refusesReading(w)) return undefined; // ST-03 or GS-08 reads 004010X091A1
+ * ```
+ *
+ * @internal
+ */
+export function refusesReading(warning: X12ParseWarning | undefined): boolean {
+  return warning?.code === WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED;
 }

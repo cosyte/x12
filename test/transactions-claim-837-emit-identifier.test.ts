@@ -200,10 +200,14 @@ function declaredReference(ix: X12Interchange): {
   };
 }
 
-function submissionOf(ix: X12Interchange): X12_837Submission {
+function readerOf(ix: X12Interchange): X12_837Submission | undefined {
   const tx = ix.groups[0]?.transactions[0];
   if (tx === undefined) throw new Error("built interchange has no transaction");
-  const sub = get837Claims(ix.delimiters, tx);
+  return get837Claims(ix.delimiters, tx);
+}
+
+function submissionOf(ix: X12Interchange): X12_837Submission {
+  const sub = readerOf(ix);
   if (sub === undefined) throw new Error("get837Claims did not recognize the built 837");
   return sub;
 }
@@ -312,15 +316,11 @@ describe("X12-837-EMIT-IDENTIFIER-FIXED: an uncited reference is emitted, not re
     });
   });
 
-  it("🩺 and states the cost: this library's own reader falls back to the SVx scan", () => {
+  it("🩺 and states the cost: this library's own reader returns no reading for it", () => {
     // Not a defect of the override - it is what the reader does with any
-    // unrecognised ST-03, and it is pinned so nobody reads the case above as a
-    // promise that an arbitrary identifier round-trips as a declaration.
-    const sub = submissionOf(build("P", "005010X222A9"));
-    expect(sub.variant).toBe("P"); // resolved from the SV1, not from the declaration
-    // AC-5: 005010X222A9 is outside the 837 reader's implemented set, so the
-    // read carries the declared-guide code and nothing else.
-    expect(sub.warnings.map((w) => w.code)).toEqual(["X12_GUIDE_NOT_IMPLEMENTED"]);
+    // declared guide it does not implement, and it is pinned so nobody reads
+    // the case above as a promise that an arbitrary identifier round-trips.
+    expect(readerOf(build("P", "005010X222A9"))).toBeUndefined();
   });
 
   it("accepts every cited reference for its OWN variant, base guide and errata alike", () => {

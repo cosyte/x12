@@ -137,32 +137,52 @@ model.
   - **No census of other builders' required elements is published here.** This change measured TA1.
 
 - **🩺 Every typed reader checks the implementation guide a transaction set declares against the
-  guides that reader implements, and WARNS rather than refuses where they differ.**
-  `X12_GUIDE_NOT_IMPLEMENTED` is raised where the declared guide is outside the reader's set and
-  `X12_GUIDE_NOT_DECLARED` where nothing is declared, both anchored at the ST. The reading is
-  decoded and returned either way, against the element positions of the guide the reader
-  implements, so on a warned document a value can sit at a position the declared guide defines
-  differently. What the check keys on, exactly:
+  guides that reader implements, and returns NO reading where it declares one outside them.** The
+  readers of the 005010 transactions (`get835`, `get837Claims`, `get270Inquiry`,
+  `parse270Inquiries`, `get271Eligibility`, `get276StatusInquiry`, `parse276StatusInquiries`,
+  `get277Status`, `get277CADisposition`, `get278Request`, `get278Response`, `get834Header`,
+  `get834Enrollments`, `get820Payments`) answer such a transaction set as they answer one of
+  another ST-01: `undefined`, a list without it, or no yielded member. Until this release they
+  returned a reading decoded against their own 005010 element positions with
+  `X12_GUIDE_NOT_IMPLEMENTED` on it, and a caller that ignored the warning trusted values the
+  declared guide may place elsewhere. What still reads, and what it carries:
+  - **Nothing declared is still read.** Where ST-03 and GS-08 are both absent or empty, or no group
+    header reached the transaction set, the reader cannot tell which guide the document follows, so
+    it reads against its own guide and puts `X12_GUIDE_NOT_DECLARED` on the reading, anchored at
+    the ST. A 4010 transaction set sent with an empty GS-08 is read this way; `X12_PRE_005010` on
+    the interchange is then the only sign it is not 005010.
+  - **The 275 and 999 readers still warn and return.** `get275Attachments` and `parse999` raise
+    `X12_GUIDE_NOT_IMPLEMENTED` at the ST and return their reading, as every reader did before. No
+    other reader raises that code any more.
+  - **A refusal carries no reason.** `undefined` does not say whether ST-01 or the declared guide
+    turned the transaction set away. Read `tx.st.elements[1]`, `tx.st.elements[3]` and
+    `tx.gs?.elements[8]`, and compare with `X12_TR3_CONFORMANCE`, to tell which. A caller who knows
+    a document follows an implemented guide despite what it declares can hand the reader a copy of
+    the transaction set whose ST-03 names that guide.
+
+  What the check keys on, exactly:
   - **The declaration is `ST-03` decoded, then `GS-08` decoded.** `ST-03` is read post-`?`-unescape,
     exactly as `implementationConventionReference` is published. Only where `ST-03` is absent or
     decodes to `""` is GS-08 of the enclosing functional group read, decoded the same way; a parsed
     transaction set carries its group's GS header on `tx.gs` for this, and one assembled by hand
     without it is read as GS-08 absent. Nothing is trimmed, case-folded or prefix-matched, so a
-    whitespace-only or lower-cased declaration is reported as not implemented.
+    whitespace-only or lower-cased declaration is a guide the reader does not implement.
   - **🛑 `ST-03` and `GS-08` are NOT reconciled.** Where `ST-03` is non-empty it alone decides and
     GS-08 is never read, so a document whose two declarations disagree is judged on `ST-03` and
     nothing reports the disagreement.
   - **The implemented set is `X12_TR3_CONFORMANCE`**, each of the reader's rows contributing its
     `tr3` and every `cfrAdopted` entry. **The 837 reader also recognises every identifier its
     variant table resolves**, which includes the companion-guide identifiers production claims carry,
-    so a conformant claim declaring one is not accused. A 278 declaring `005010X216`, the 278
-    notification guide, is warned on both 278 readers.
-  - **What the check decides is a warning, plus one label.** A 277 whose declared guide is outside
-    `get277Status`'s set, or absent, reads `transactionType: "unrecognized-guide"`. Everything else
-    that keys on `ST-03` - the 837 variant, the choice between `claim-status` and
-    `claim-acknowledgment`, and `get277CADisposition`'s admission - still keys on the raw text and
-    did not move, so the check and those decisions can read the same `ST-03` differently where a
-    release escape is involved (see the next entry).
+    so a conformant claim declaring one is not refused. A 278 declaring `005010X216`, the 278
+    notification guide, gets no reading from either 278 reader.
+  - **What the check decides is whether there is a reading, plus one label.** A 277 that declares
+    no guide reads `transactionType: "unrecognized-guide"`. Everything else that keys on `ST-03` -
+    the 837 variant, the choice between `claim-status` and `claim-acknowledgment`, and
+    `get277CADisposition`'s admission - still keys on the raw text and did not move, so the check
+    and those decisions can read the same `ST-03` differently where a release escape is involved
+    (see the next entry). The 837 variant falls back to the `SVx` scan only where the raw ST-03
+    keys no variant and the declared guide is implemented: ST-03 absent or empty under an
+    implemented GS-08, or escaped.
 
 - **🩺 `implementationConventionReference` is POST-`?`-unescape as of this release, in every typed
   reader that publishes it, and that is a behaviour change on documents whose `ST-03` carries a
@@ -1879,13 +1899,26 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
   whether a segment or element is required, situational or not used where it sits, a guide's
   situational rules, repeat counts, or which code values a guide allows at an element beyond those
   bundled lists. Every TR3 is sold by X12, so a document that breaks its guide can parse with no
-  warning. What you can check with the typed readers: `implementationConventionReference` and the
-  `X12_GUIDE_NOT_IMPLEMENTED` and `X12_GUIDE_NOT_DECLARED` warnings say which guide was declared; a
+  warning. What you can check with the typed readers: a reader returns no reading for a
+  transaction set that declares a guide it does not implement, and on the ones it reads
+  `implementationConventionReference` and the `X12_GUIDE_NOT_DECLARED` warning say what was declared; a
   field the sender left out reads `undefined` and is never defaulted, so you can refuse a document that
   lacks a field your guide or partner requires; qualifiers and codes are carried verbatim for you to
   compare with your copy of the guide where no bundled list covers them, and `checkCarcValidity` and
   `checkRarcValidity` date-check adjustment and remark codes; anything untyped stays verbatim on
   `tx.segments`.
+- **No 4010 variants and no 277U.** We do not build readers or builders for the 004010 versions of
+  the 835, the 837, the 270/271, the 276/277, the 278, the 834 or the 820, or for the 4010 277U
+  unsolicited claim status. This is a decision, not a gap we plan to close. Their 005010
+  replacements are what we read and build: the 277 claim status response (`005010X212`) answers a
+  276, and the 277CA claim acknowledgment (`005010X214`) does the acknowledgment work the 277U was
+  used for. A 4010 interchange still parses, with `X12_PRE_005010`, and its segments stay verbatim
+  on the model. A typed reader returns no reading for a transaction set that declares a 4010 guide
+  (`004010X091A1`, `004010X098A1`, `004010X070` and the rest): `get277Status` and
+  `get277CADisposition` both answer `undefined` for a 277U. One that declares no guide at all is
+  read against the 005010 positions with `X12_GUIDE_NOT_DECLARED`, as described above. If you
+  still receive 4010 traffic, translate it to 005010 before it reaches this package, or use a
+  parser that reads 4010.
 - **Healthcare HIPAA 005010, and two 006020 guides: the claims attachments pair.** Beside the
   005010 transaction sets, the package reads and builds the 277 Health Care Claim Request for
   Additional Information (`006020X313`) and the 275 Additional Information to Support a Health Care

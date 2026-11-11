@@ -156,7 +156,20 @@ const fixture =
 
 const READERS: readonly (readonly [string, Source, Reader])[] = [
   ["get278Request", fixture("auth/278-request.edi"), get278Request],
-  ["get278Response", fixture("auth/278-response.edi"), get278Response],
+  // The response fixture declares 005010X216, the notification guide, which the
+  // 278 readers do not implement: re-declared as 005010X217 so there is a
+  // reading to compare.
+  [
+    "get278Response",
+    () => {
+      const text = readFileSync(join(__dirname, "fixtures", "auth/278-response.edi"), "utf8");
+      const ix = parseX12(text.trimEnd().replaceAll("005010X216", "005010X217"));
+      const tx = ix.groups[0]?.transactions[0];
+      if (tx === undefined) throw new Error("278-response.edi has no transaction set");
+      return { delimiters: ix.delimiters, tx };
+    },
+    get278Response,
+  ],
   ["get837Claims", fixture("claim/837p-canonical.edi"), (d, tx) => get837Claims(d, tx)],
   ["get270Inquiry", fixture("eligibility/270-canonical.edi"), get270Inquiry],
   ["get271Eligibility", fixture("eligibility/271-canonical.edi"), get271Eligibility],
@@ -251,7 +264,13 @@ describe("get837Claims: a hole or null where the variant comes from the service 
   }
 
   const SOURCES: readonly (readonly [string, Source, string])[] = [
-    ["837p-unknown-variant.edi", fixture("claim/837p-unknown-variant.edi"), "unknown"],
+    // This fixture declares 005010X999A1, a guide the reader does not
+    // implement, so it is read with its declaration taken off.
+    [
+      "837p-unknown-variant.edi with no ST-03",
+      () => withoutDeclaredGuide("claim/837p-unknown-variant.edi"),
+      "unknown",
+    ],
     ["envelope/medicare-canonical.edi", fixture("envelope/medicare-canonical.edi"), "unknown"],
     [
       "837p-canonical.edi with no ST-03",

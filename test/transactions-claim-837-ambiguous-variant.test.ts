@@ -60,11 +60,13 @@ const SV3 = "SV3*AD:D1110*6100**11*1*1~";
 
 /**
  * An ST-03 `get837Claims` turns into no variant, so every case below is
- * decided by the `SVx` fall-back. It is the ASC X12N **4010** addenda
- * reference for professional claims, named verbatim at 45 CFR 162.1102(a)(3)
- * - a real identifier of a version this library's v1 scope deliberately
- * excludes (005010 only). A 4010 reference is NOT read as `"P"`, and that
- * is a property of the scope, not an oversight.
+ * decided by the `SVx` fall-back: an ST with no ST-03 at all, under a GS-08
+ * that declares the professional guide. The declared guide is one the reader
+ * implements, so it reads; the raw ST-03 keys no variant, so the fall-back
+ * decides. This file used the ASC X12N **4010** professional reference
+ * (`004010X098A1`) for this job until a reader stopped returning a reading
+ * for a guide it does not implement: a 4010 transaction set now gets
+ * `undefined` and never reaches the fall-back.
  *
  * **🩺 Through `0.0.13` this file used `005010X222A1` for this job, and
  * that was the defect `X12-VARIANT-ICR-UNGROUNDED` closed.** `005010X222A1`
@@ -74,7 +76,7 @@ const SV3 = "SV3*AD:D1110*6100**11*1*1~";
  * resolves now. Sources: the comment above `VARIANT_BY_ICR` in
  * `src/transactions/claim/get-837.ts`.
  */
-const UNRESOLVED_ICR = "004010X098A1";
+const UNRESOLVED_ICR = "";
 
 interface Parsed {
   readonly sub: X12_837Submission;
@@ -85,11 +87,11 @@ interface Parsed {
  * `icr` is placed in ST-03 verbatim; pass `""` for a transaction set whose
  * ST-03 is absent altogether (`ST*837*0001~`).
  */
-function parse837(
+function read837(
   icr: string,
   body: readonly string[],
   opts?: { readonly type?: "P" | "I" | "D" },
-): Parsed {
+): { readonly sub: X12_837Submission | undefined; readonly tx: X12TransactionSet } {
   const st = icr === "" ? "ST*837*0001~" : `ST*837*0001*${icr}~`;
   const segs = [
     ISA,
@@ -104,7 +106,15 @@ function parse837(
   const ix = parseX12(segs.join("\n"));
   const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "837");
   if (tx === undefined) throw new Error("no 837 transaction set");
-  const sub = get837Claims(ix.delimiters, tx, opts);
+  return { sub: get837Claims(ix.delimiters, tx, opts), tx };
+}
+
+function parse837(
+  icr: string,
+  body: readonly string[],
+  opts?: { readonly type?: "P" | "I" | "D" },
+): Parsed {
+  const { sub, tx } = read837(icr, body, opts);
   if (sub === undefined) throw new Error("get837Claims returned undefined");
   return { sub, tx };
 }
@@ -185,12 +195,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     // The whole channel. The two line codes are exactly the ones raised at
     // `0.0.13`, in the same order; the new code is ADDED ahead of them,
     // because resolution runs before the walk.
-    expect(channel(sub)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
-      AMBIGUOUS,
-      WITHOUT_LX,
-      NOT_DECODED,
-    ]);
+    expect(channel(sub)).toEqual([AMBIGUOUS, WITHOUT_LX, NOT_DECODED]);
   });
 
   it("🩺 the same document read with an explicit type decodes it, and is silent", () => {
@@ -218,7 +223,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     expect(sub.claims[0]?.serviceLines[0]?.units?.toString()).toBe("4");
     // The orphan SV2 is still an orphan and still reported; the ambiguity is
     // not, because the caller settled the type.
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, WITHOUT_LX]);
+    expect(channel(sub)).toEqual([WITHOUT_LX]);
   });
 
   it("🩺 both conflicting segments inside opened Loop 2400s raise it once, at the ST", () => {
@@ -230,20 +235,20 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     expect(sub.claims[0]?.serviceLines).toHaveLength(2);
     expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     expect(sub.claims[0]?.serviceLines[1]?.charge).toBeUndefined();
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, AMBIGUOUS, NOT_DECODED]);
+    expect(channel(sub)).toEqual([AMBIGUOUS, NOT_DECODED]);
   });
 
   it("it fires in the other direction too: an SV2 first, an SV1 second", () => {
     // The code is about the conflict, not about which variant loses.
     const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV2, "LX*2~", SV1]));
     expect(sub.variant).toBe("I");
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, AMBIGUOUS, NOT_DECODED]);
+    expect(channel(sub)).toEqual([AMBIGUOUS, NOT_DECODED]);
   });
 
   it("an SV3 conflicting with an SV1 raises it (all three ids are in the table)", () => {
     const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1, "LX*2~", SV3]));
     expect(sub.variant).toBe("P");
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, AMBIGUOUS, NOT_DECODED]);
+    expect(channel(sub)).toEqual([AMBIGUOUS, NOT_DECODED]);
   });
 
   it("an ST-03 that is absent altogether reaches it the same way", () => {
@@ -254,13 +259,12 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     expect(channel(sub)).toEqual([AMBIGUOUS, NOT_DECODED]);
   });
 
-  it("an inherited-key ST-03 composes with the prototype guard rather than fighting it", () => {
-    // `VARIANT_BY_ICR` is null-prototype (`X12-VARIANT-LOOKUP-PROTOTYPE`), so
-    // `constructor` resolves nothing and the fall-back decides, contested.
-    const { sub } = parse837("constructor", claimBody(["LX*1~", SV1, "LX*2~", SV2]));
-    expect(typeof sub.variant).toBe("string");
-    expect(sub.variant).toBe("P");
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, AMBIGUOUS, NOT_DECODED]);
+  it("an inherited-key ST-03 is a guide the reader does not implement, so it gets no reading", () => {
+    // `constructor` is no member of the implemented set (a `Set`, which reads
+    // no prototype chain), so the reader returns nothing before any variant is
+    // resolved, contested or not.
+    const { sub } = read837("constructor", claimBody(["LX*1~", SV1, "LX*2~", SV2]));
+    expect(sub).toBeUndefined();
   });
 
   it("🩺 it fires where NEITHER conflicting segment is reported at itself", () => {
@@ -289,11 +293,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
       "CLM*PT-ACCT-900*8500***11:B:1*Y*A*Y*Y~",
     ]);
     expect(sub.variant).toBe("P");
-    expect(channel(sub)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
-      AMBIGUOUS,
-      WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
-    ]);
+    expect(channel(sub)).toEqual([AMBIGUOUS, WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
     expect(channel(sub)).not.toContain(WITHOUT_LX);
   });
 
@@ -301,12 +301,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: a contested SVx fall-back is reported", () 
     // It reports the RESOLUTION, and there is one of those per transaction.
     const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1, "LX*2~", SV2, "LX*3~", SV3]));
     expect(channel(sub).filter((c) => c === AMBIGUOUS)).toHaveLength(1);
-    expect(channel(sub)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
-      AMBIGUOUS,
-      NOT_DECODED,
-      NOT_DECODED,
-    ]);
+    expect(channel(sub)).toEqual([AMBIGUOUS, NOT_DECODED, NOT_DECODED]);
   });
 });
 
@@ -318,7 +313,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: controls, where the fall-back was not conte
   it("CONTROL: an unresolvable ST-03 whose body names ONE variant is silent", () => {
     const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", SV1, "LX*2~", SV1]));
     expect(sub.variant).toBe("P");
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED]);
+    expect(channel(sub)).toEqual([]);
   });
 
   it("CONTROL: a RESOLVING ST-03 with a mixed body does not raise it", () => {
@@ -337,7 +332,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: controls, where the fall-back was not conte
     expect(sub.variant).toBe("I");
     // The caller typed it Institutional, so it is the SV1 line that fails to
     // decode. Still no ambiguity: nothing was guessed.
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, NOT_DECODED]);
+    expect(channel(sub)).toEqual([NOT_DECODED]);
   });
 
   it("CONTROL: no SVx at all is X12_837_UNKNOWN_VARIANT, never this code", () => {
@@ -345,11 +340,7 @@ describe("X12-837-AMBIGUOUS-VARIANT: controls, where the fall-back was not conte
     // travel together: a conflicting body has something to fall back on.
     const { sub } = parse837(UNRESOLVED_ICR, claimBody(["LX*1~", "DTP*472*D8*20260601~"]));
     expect(sub.variant).toBe("unknown");
-    expect(channel(sub)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
-      UNKNOWN_VARIANT,
-      WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
-    ]);
+    expect(channel(sub)).toEqual([UNKNOWN_VARIANT, WARNING_CODES.X12_837_SERVICE_LINE_DROPPED]);
   });
 
   it("CONTROL: a clean 837P on a resolving ST-03 stays completely silent", () => {
@@ -367,7 +358,6 @@ describe("X12-837-AMBIGUOUS-VARIANT: controls, where the fall-back was not conte
     });
     expect(sub.variant).toBe("X");
     expect(channel(sub)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
       WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
       WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
     ]);
@@ -396,9 +386,9 @@ describe("X12-837-AMBIGUOUS-VARIANT: the warning's shape", () => {
   });
 
   it("🩺 no document bytes reach the diagnostic", () => {
-    // The ST-03, the claim id and the procedure code all carry a marker; the
+    // The names and the claim id all carry a marker; the
     // frozen message table is what makes this structural rather than a habit.
-    const { sub } = parse837(`005010X${MARKER}`, [
+    const { sub } = parse837(UNRESOLVED_ICR, [
       "HL*1**20*1~",
       `NM1*85*2*${MARKER} CLINIC*****XX*1234567890~`,
       "HL*2*1*22*0~",
@@ -416,9 +406,6 @@ describe("X12-837-AMBIGUOUS-VARIANT: the warning's shape", () => {
       expect(w.message).not.toContain(MARKER);
       expect(ALL_WARNING_MESSAGES.has(w.message)).toBe(true);
     }
-    // The reference is still on the model, which is where a
-    // consumer reads it from.
-    expect(sub.implementationConventionReference).toBe(`005010X${MARKER}`);
   });
 
   it("the factory is a pure builder over the position it is handed", () => {

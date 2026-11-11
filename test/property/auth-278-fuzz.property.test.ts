@@ -52,7 +52,12 @@ describe("278 fuzz: byte-flipped fixtures never throw outside the 4 Tier-3 fatal
 
   for (const fixture of fixtures) {
     it(`${fixture}: 100 byte-flips`, { timeout: fuzzTimeout(10_000, fixtures.length) }, () => {
-      const raw = readFileSync(join(FIXTURE_DIR, fixture), "latin1").trimEnd();
+      // The response fixtures declare 005010X216, the notification guide, which
+      // the 278 readers do not implement and so never walk: they are flipped
+      // re-declared as 005010X217 so every flip reaches the walk.
+      const raw = readFileSync(join(FIXTURE_DIR, fixture), "latin1")
+        .trimEnd()
+        .replaceAll("005010X216", "005010X217");
       fc.assert(
         fc.property(
           fc.integer({ min: 0, max: raw.length - 1 }),
