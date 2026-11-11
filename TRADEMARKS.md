@@ -3,7 +3,14 @@
 `@cosyte/x12` is an independent open-source project. Cosyte is **not affiliated with, endorsed by,
 or sponsored by** any company named in this repository or its documentation.
 
-## Why these names appear
+## X12
+
+X12 is a mark of X12 Incorporated. Cosyte is **not affiliated with, endorsed by, or certified by**
+X12 Incorporated. This package uses the name X12 only to say which standard it reads and builds:
+the X12 electronic data interchange standard and the healthcare transaction sets its documentation
+names. It uses none of X12 Incorporated's logos.
+
+## Why the trading-partner names appear
 
 Clearinghouses and payers publish companion guides that deviate from the base X12 implementation
 guide. A profile records whose deviation it accommodates, which cannot be said without naming
@@ -23,6 +30,7 @@ parse. They embed no privileged, confidential, or reverse-engineered material.
 
 | Name                          | Where it appears                                                                              |
 | ----------------------------- | --------------------------------------------------------------------------------------------- |
+| X12                           | the package name `@cosyte/x12`, and throughout the documentation to name the standard         |
 | Availity                      | `profiles.availity`: a built-in profile name                                                  |
 | Blue Cross Blue Shield (BCBS) | `profiles.bcbsCommon`: a built-in profile name, and descriptive use in documentation examples |
 
