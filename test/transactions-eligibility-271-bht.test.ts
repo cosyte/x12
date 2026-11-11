@@ -218,10 +218,15 @@ describe("get271Eligibility warns on a 271 with no BHT", () => {
   });
 
   it("puts it after the declared-guide warning, both at the ST", () => {
-    const raw = withBody(NO_BHT).replace("~ST*271*0001*005010X279A1~", "~ST*271*0001*005010X999~");
+    // Nothing declared: no ST-03, and GS-08 sent empty. A declared guide the
+    // reader does not implement gets no reading at all, so this is the one
+    // declared-guide warning a 271 reading can carry.
+    const raw = withBody(NO_BHT)
+      .replace("~ST*271*0001*005010X279A1~", "~ST*271*0001~")
+      .replace("*X*005010X279A1~", "*X*~");
     const elig = read(parseX12(raw));
     expect(elig.warnings.map((w) => [w.code, w.position.segmentIndex])).toEqual([
-      [WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED, 0],
+      [WARNING_CODES.X12_GUIDE_NOT_DECLARED, 0],
       [WARNING_CODES.X12_271_HEADER_ABSENT, 0],
     ]);
   });

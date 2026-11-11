@@ -72,8 +72,9 @@ warn on) and `HI_QUALIFIERS`. We ship no TR3 usage tables, and the package does 
 whether a segment or element is required, situational or not used where it sits, a guide's
 situational rules, repeat counts, or which code values a guide allows at an element beyond those
 bundled lists. Every TR3 is sold by X12, so a document that breaks its guide can parse with no
-warning. What you can check with the typed readers: `implementationConventionReference` and the
-`X12_GUIDE_NOT_IMPLEMENTED` and `X12_GUIDE_NOT_DECLARED` warnings say which guide was declared; a
+warning. What you can check with the typed readers: a reader returns no reading for a
+transaction set that declares a guide it does not implement, and on the ones it reads
+`implementationConventionReference` and the `X12_GUIDE_NOT_DECLARED` warning say what was declared; a
 field the sender left out reads `undefined` and is never defaulted, so you can refuse a document that
 lacks a field your guide or partner requires; qualifiers and codes are carried verbatim for you to
 compare with your copy of the guide where no bundled list covers them, and `checkCarcValidity` and

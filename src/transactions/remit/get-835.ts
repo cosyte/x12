@@ -32,7 +32,11 @@ import {
   unknownRarc,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
-import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
+import {
+  declaredGuideWarning,
+  implementedGuides,
+  refusesReading,
+} from "../shared/declared-guide.js";
 import { checkClaimBalance, checkRemitTotalBalance, checkServiceLineBalance } from "./balance.js";
 import type {
   X12RemitAdjustment,
@@ -60,9 +64,12 @@ const IMPLEMENTED_GUIDES_835 = implementedGuides("835");
 
 /**
  * Extract a typed {@link X12Remittance} from an 835 transaction set.
- * Pure function - no I/O, no global state. Returns `undefined` only if
- * the input transaction's ST-01 is not `"835"` (mis-routed call); every
- * other deviation is recoverable and surfaces on `result.warnings`.
+ * Pure function - no I/O, no global state. Returns `undefined` when the
+ * input transaction's ST-01 is not `"835"` (mis-routed call), and when it
+ * declares (ST-03, else GS-08) a guide this reader does not implement, such
+ * as the 4010 `004010X091A1`: its values would be read off 005010 element
+ * positions. Every other deviation is recoverable and surfaces on
+ * `result.warnings`.
  *
  * @example
  * ```ts
@@ -83,10 +90,12 @@ const IMPLEMENTED_GUIDES_835 = implementedGuides("835");
 export function get835(delimiters: Delimiters, tx: X12TransactionSet): X12Remittance | undefined {
   if (tx.st.elements[1] !== "835") return undefined;
 
-  const warnings: X12ParseWarning[] = [];
   // The declared guide (ST-03 decoded, else GS-08 decoded) against the guides
-  // this reader implements: warned at the ST, never refused, walk unchanged.
+  // this reader implements: a guide it does not implement gets no reading,
+  // and nothing declared is warned at the ST and read.
   const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_835);
+  if (refusesReading(delimiters, tx, IMPLEMENTED_GUIDES_835)) return undefined;
+  const warnings: X12ParseWarning[] = [];
   if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
 

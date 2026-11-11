@@ -80,7 +80,14 @@ interface Parsed {
   readonly tx: X12TransactionSet;
 }
 
-function parse837(icr: string, body: readonly string[]): Parsed {
+/**
+ * `icr` is placed in ST-03; `""` sends it empty, so the declared guide is
+ * GS-08 (the professional guide) and the raw ST-03 keys no variant.
+ */
+function read837(
+  icr: string,
+  body: readonly string[],
+): { readonly sub: X12_837Submission | undefined; readonly tx: X12TransactionSet } {
   const segs = [
     ISA,
     "GS*HC*SUBMITTER*RECEIVER*20260601*1200*1*X*005010X222A2~",
@@ -94,10 +101,22 @@ function parse837(icr: string, body: readonly string[]): Parsed {
   const ix = parseX12(segs.join("\n"));
   const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "837");
   if (tx === undefined) throw new Error("no 837 transaction set");
-  const sub = get837Claims(ix.delimiters, tx);
+  return { sub: get837Claims(ix.delimiters, tx), tx };
+}
+
+function parse837(icr: string, body: readonly string[]): Parsed {
+  const { sub, tx } = read837(icr, body);
   if (sub === undefined) throw new Error("get837Claims returned undefined");
   return { sub, tx };
 }
+
+/**
+ * An ST-03 that keys no variant while the declared guide is one the reader
+ * implements: ST-03 sent empty under the professional GS-08. An unrecognized
+ * non-empty ST-03 used to do this job; it now declares a guide the reader
+ * does not implement and gets no reading.
+ */
+const NO_VARIANT_ICR = "";
 
 /** 2000A + 2000B + a CLM, parameterised by what follows the claim header. */
 function claimBody(trailing: readonly string[]): readonly string[] {
@@ -140,21 +159,12 @@ function channel(sub: X12_837Submission): string[] {
 
 describe("X12-VARIANT-LOOKUP-PROTOTYPE: an inherited-key ST-03 resolves like any other unknown", () => {
   for (const key of INHERITED_KEYS) {
-    it(`🩺 ST-03 "${key}" falls back to the SVx, keeps the line, and says nothing`, () => {
-      const { sub } = parse837(key, claimBody(["LX*1~", SV1]));
-      // At base `variant` was a function or `Object.prototype` itself.
-      expect(typeof sub.variant).toBe("string");
-      expect(sub.variant).toBe("P");
-      // At base this was 0: the entire Loop 2400 left the model.
-      expect(sub.claims[0]?.serviceLines).toHaveLength(1);
-      expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
-      expect(sub.claims[0]?.serviceLines[0]?.units?.toString()).toBe("4");
-      // The whole channel, not one code. An unrecognized ST-03 that the SVx
-      // fallback resolves raises no variant code; the one code on it is the
-      // declared-guide check, because the key is outside the implemented set.
-      expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED]);
-      // The reference is still on the model, unchanged by the fix.
-      expect(sub.implementationConventionReference).toBe(key);
+    it(`🩺 ST-03 "${key}" is a guide the reader does not implement, so it gets no reading`, () => {
+      // At base `variant` was a function or `Object.prototype` itself, and the
+      // entire Loop 2400 left the model. The implemented set is a `Set`, which
+      // reads no prototype chain, so the key is simply not a member and the
+      // reader returns nothing, as it does for any other foreign declaration.
+      expect(read837(key, claimBody(["LX*1~", SV1])).sub).toBeUndefined();
     });
   }
 
@@ -162,11 +172,16 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: an inherited-key ST-03 resolves like any
     // The claim the fix makes is that an inherited key is now indistinguishable
     // from this. If this control ever diverges from the cases above, the guard
     // has grown a behaviour of its own.
-    const { sub } = parse837("005010XZZZZZ", claimBody(["LX*1~", SV1]));
+    expect(read837("005010XZZZZZ", claimBody(["LX*1~", SV1])).sub).toBeUndefined();
+  });
+
+  it("CONTROL: an ST-03 that keys no variant under an implemented GS-08 falls back to the SVx", () => {
+    const { sub } = parse837(NO_VARIANT_ICR, claimBody(["LX*1~", SV1]));
     expect(sub.variant).toBe("P");
     expect(sub.claims[0]?.serviceLines).toHaveLength(1);
     expect(sub.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
-    expect(channel(sub)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED]);
+    expect(sub.claims[0]?.serviceLines[0]?.units?.toString()).toBe("4");
+    expect(channel(sub)).toEqual([]);
   });
 
   it("CONTROL: a recognized ST-03 still resolves from ST-03, silently", () => {
@@ -179,24 +194,19 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: an inherited-key ST-03 resolves like any
 
 describe("X12-VARIANT-LOOKUP-PROTOTYPE: with no SVx to fall back on, the variant is unknown", () => {
   for (const key of ["constructor", "valueOf", "__proto__", "toString"] as const) {
-    it(`🩺 ST-03 "${key}" with no SVx anywhere raises X12_837_UNKNOWN_VARIANT`, () => {
-      // The item's headline in one assertion: at base this channel was `[]`,
-      // because the inherited key resolved truthy and the code never fired.
-      const { sub } = parse837(key, claimBody(["LX*1~", "DTP*472*D8*20260601~"]));
-      expect(sub.variant).toBe("unknown");
-      expect(channel(sub)).toEqual([
-        WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
-        WARNING_CODES.X12_837_UNKNOWN_VARIANT,
-        WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
-      ]);
+    it(`🩺 ST-03 "${key}" with no SVx anywhere gets no reading`, () => {
+      // At base this channel was `[]`, because the inherited key resolved
+      // truthy and the variant code never fired. A foreign declaration now
+      // gets no reading at all, so nothing can be read off a bad variant.
+      const { sub } = read837(key, claimBody(["LX*1~", "DTP*472*D8*20260601~"]));
+      expect(sub).toBeUndefined();
     });
   }
 
-  it("CONTROL: an ordinary unrecognized ST-03 with no SVx answers identically", () => {
-    const { sub } = parse837("005010XZZZZZ", claimBody(["LX*1~", "DTP*472*D8*20260601~"]));
+  it("CONTROL: an ST-03 that keys no variant, with no SVx, raises X12_837_UNKNOWN_VARIANT", () => {
+    const { sub } = parse837(NO_VARIANT_ICR, claimBody(["LX*1~", "DTP*472*D8*20260601~"]));
     expect(sub.variant).toBe("unknown");
     expect(channel(sub)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
       WARNING_CODES.X12_837_UNKNOWN_VARIANT,
       WARNING_CODES.X12_837_SERVICE_LINE_DROPPED,
     ]);
@@ -204,11 +214,8 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: with no SVx to fall back on, the variant
 
   it("CONTROL: an unknown variant with no LX at all raises only the variant code", () => {
     // Isolates the two codes from each other: no LX, no dropped line.
-    const { sub } = parse837("005010XZZZZZ", claimBody([]));
-    expect(channel(sub)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
-      WARNING_CODES.X12_837_UNKNOWN_VARIANT,
-    ]);
+    const { sub } = parse837(NO_VARIANT_ICR, claimBody([]));
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_UNKNOWN_VARIANT]);
   });
 });
 
@@ -222,12 +229,9 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: the SVx fallback table is keyed by a wir
     // makes an inherited key unreachable through a well-formed document
     // today, which is a property of another guard and not of this table -
     // so the table is null-prototype anyway, and this pins the honest case.
-    const { sub } = parse837("005010XZZZZZ", claimBody(["ZZ*NOT-A-SERVICE-SEGMENT~"]));
+    const { sub } = parse837(NO_VARIANT_ICR, claimBody(["ZZ*NOT-A-SERVICE-SEGMENT~"]));
     expect(sub.variant).toBe("unknown");
-    expect(channel(sub)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
-      WARNING_CODES.X12_837_UNKNOWN_VARIANT,
-    ]);
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_UNKNOWN_VARIANT]);
   });
 });
 
@@ -534,7 +538,7 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: the bounds of X12_837_SERVICE_LINE_DROPP
     // an address being one of the kinds this reader does surface on it, which
     // is why this document can measure the reset at all. Trading a warned
     // omission for a silent mis-attribution is the wrong direction.
-    const sub = parse837("005010XZZZZZ", [
+    const sub = parse837(NO_VARIANT_ICR, [
       ...noClaimBody([]),
       "CLM*PT-ACCT-900*8500***11:B:1*Y*A*Y*Y~",
       "SBR*S*01*GRP2******CI~",
@@ -554,7 +558,7 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: the bounds of X12_837_SERVICE_LINE_DROPP
     // the first draft of this slice's disclosure called these values "absent"
     // and they are not: they are re-attributed, which is harder to notice.
     const sub = parse837(
-      "005010XZZZZZ",
+      NO_VARIANT_ICR,
       claimBody(["LX*1~", "DTP*472*D8*20260615~", "AMT*T*77.77~", "NTE*ADD*LINE LEVEL NOTE~"]),
     ).sub;
     expect(sub.claims[0]?.serviceLines).toEqual([]);

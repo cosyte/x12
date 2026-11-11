@@ -85,13 +85,15 @@ const SV3 = "SV3*AD:D1110*10000***1~";
 
 /**
  * An ST-03 `get837Claims` turns into no variant, so the `SVx` fall-back is
- * what decides. The ASC X12N **4010** addenda reference for professional
- * claims, named at 45 CFR 162.1102(a)(3); this library's v1 scope is 005010
- * only. Through `0.0.13` this case used `005010X222A1`, which is the errata
- * production 837Ps actually carry in ST-03 and which now RESOLVES (sources:
- * the comment above `VARIANT_BY_ICR` in `src/transactions/claim/get-837.ts`).
+ * what decides: no ST-03, under a GS-08 that declares the professional guide,
+ * so the declared guide is one the reader implements and the raw ST-03 keys
+ * nothing. Through `0.0.13` this case used `005010X222A1`, which now RESOLVES
+ * (sources: the comment above `VARIANT_BY_ICR` in
+ * `src/transactions/claim/get-837.ts`), and then the 4010 professional
+ * reference `004010X098A1`, which now declares a guide the reader does not
+ * implement and gets no reading at all.
  */
-const UNRESOLVED_ICR = "004010X098A1";
+const UNRESOLVED_ICR = "";
 
 interface Parsed {
   readonly sub: X12_837Submission;
@@ -346,7 +348,6 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     // `revenueCode`, and this repo distinguishes the two by rule.
     expect(stray.claims[0]?.serviceLines[0]?.procedureCode).toBeUndefined();
     expect(channel(stray)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
       WARNING_CODES.X12_837_AMBIGUOUS_VARIANT,
       WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
       WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED,
@@ -358,7 +359,7 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     const clean = parse837([...HEADER, CLM, "LX*1~", SV1], UNRESOLVED_ICR);
     expect(clean.variant).toBe("P");
     expect(clean.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
-    expect(channel(clean)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED]);
+    expect(channel(clean)).toEqual([]);
 
     // CONTROL: a caller `type` wins ahead of both the ICR and the scan, so
     // the identical bytes read correctly. The orphan is still reported.
@@ -366,10 +367,7 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     expect(typed.variant).toBe("P");
     expect(typed.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("8500");
     expect(typed.claims[0]?.serviceLines[0]?.procedureCode).toBe("99213");
-    expect(channel(typed)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
-      WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
-    ]);
+    expect(channel(typed)).toEqual([WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX]);
 
     // And the fallback takes the FIRST SVx: a stray SV2 placed AFTER the
     // conformant line changes nothing. Every sentence about this says
@@ -386,7 +384,6 @@ describe("X12-837-LOOP-RESIDUALS: what X12_837_SERVICE_SEGMENT_WITHOUT_LX carrie
     // `[AMBIGUOUS]` alone until that slice, and its going red is the finding
     // rather than a regression: it was the pin ON that silence.
     expect(channel(trailing)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
       WARNING_CODES.X12_837_AMBIGUOUS_VARIANT,
       WARNING_CODES.X12_837_SERVICE_SEGMENT_REPEATED,
     ]);

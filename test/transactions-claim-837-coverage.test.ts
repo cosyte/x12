@@ -257,12 +257,32 @@ describe("get837Claims - empty optional defensive paths", () => {
   });
 });
 
+/**
+ * The fixture declares `005010X999A1` in GS-08 and ST-03, a guide the reader
+ * does not implement, so it is read with ST-03 taken off and the professional
+ * guide declared in GS-08: the declared guide is implemented and the absent
+ * ST-03 keys no variant.
+ */
+function withoutForeignGuide(raw: string): string {
+  return raw
+    .replace("*X*005010X999A1~", "*X*005010X222A2~")
+    .replace("ST*837*0001*005010X999A1~", "ST*837*0001~");
+}
+
 describe("get837Claims - variant fallback", () => {
-  it("emits X12_837_UNKNOWN_VARIANT for a non-snapshot ST-03 reference; walks shared structure", () => {
-    const sub = readClaimFixture("837p-unknown-variant.edi");
+  it("returns no reading for the fixture as sent, which declares a guide it does not implement", () => {
+    const ix = parseX12(readFileSync(join(FIXTURE_DIR, "837p-unknown-variant.edi"), "utf8"));
+    const tx = ix.groups[0]?.transactions[0];
+    if (tx === undefined) throw new Error("the fixture has no 837 transaction set");
+    expect(tx.st.elements[3]).toBe("005010X999A1");
+    expect(get837Claims(ix.delimiters, tx)).toBeUndefined();
+  });
+
+  it("emits X12_837_UNKNOWN_VARIANT for an ST-03 that keys no variant; walks shared structure", () => {
+    const sub = readEdited("837p-unknown-variant.edi", withoutForeignGuide);
     expect(sub.variant).toBe("unknown");
     expect(sub.warnings.some((w) => w.code === WARNING_CODES.X12_837_UNKNOWN_VARIANT)).toBe(true);
-    expect(sub.implementationConventionReference).toBe("005010X999A1");
+    expect(sub.implementationConventionReference).toBeUndefined();
 
     // Shared structure (HL + entities + CLM + HI) still extracts; only
     // the service-line decoder branches by variant.
@@ -272,7 +292,7 @@ describe("get837Claims - variant fallback", () => {
   });
 
   it("unknown-variant LX still walks without crashing; openServiceLine returns undefined and the line is dropped", () => {
-    const sub = readClaimFixture("837p-unknown-variant.edi");
+    const sub = readEdited("837p-unknown-variant.edi", withoutForeignGuide);
     // The fixture has an LX without an SVx; with variant unknown,
     // openServiceLine returns undefined and the LX produces no service
     // line on the claim model.

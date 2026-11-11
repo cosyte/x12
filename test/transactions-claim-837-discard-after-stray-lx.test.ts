@@ -329,14 +329,10 @@ describe("X12-DISCARD-AFTER-STRAY-LX: the silences this code must NOT break", ()
     // `N3` had nowhere to go on this route at base either. Untouched here.
     const sub = parse837(
       [...HEADER, CLM, "HI*ABK:J20.9~", "LX*1~", "REF*6R*LINE-CTRL-1~", "N3*1 NOWHERE LANE~"],
-      "005010XZZZZZ",
+      "",
     );
     expect(sub.claims[0]?.references).toEqual([{ qualifier: "6R", value: "LINE-CTRL-1" }]);
-    expect(channel(sub)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
-      WARNING_CODES.X12_837_UNKNOWN_VARIANT,
-      DROPPED,
-    ]);
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_UNKNOWN_VARIANT, DROPPED]);
   });
 
   it("CONTROL: ordinary entity attachment with no LX in play raises nothing", () => {

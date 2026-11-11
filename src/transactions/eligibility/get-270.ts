@@ -107,7 +107,11 @@ import {
   nonConventionalDelimiter,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
-import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
+import {
+  declaredGuideWarning,
+  implementedGuides,
+  refusesReading,
+} from "../shared/declared-guide.js";
 import { HL_LEVEL_CODES, decodeHl, validateHl, type X12Hl } from "../shared/hl.js";
 import { decodeProcedure } from "../shared/procedure.js";
 
@@ -165,11 +169,13 @@ const CONVENTIONAL_DELIMITERS: Delimiters = Object.freeze({
 
 /**
  * Extract the typed {@link X12Inquiry} from one 270 transaction set. Pure
- * function: no I/O, no global state, never throws. Returns `undefined` only
- * when the transaction set's ST-01 is not `"270"` (a mis-routed call) - the
- * same refusal shape `get271Eligibility`, `get835`, `get820Payments` and
- * every other per-transaction reader in this package uses. Every other
- * deviation is recoverable and surfaces on `result.warnings`.
+ * function: no I/O, no global state, never throws. Returns `undefined` when
+ * the transaction set's ST-01 is not `"270"` (a mis-routed call), and when it
+ * declares (ST-03, else GS-08) a guide this reader does not implement, such as
+ * the 4010 `004010X092A1` - the same refusal shape `get271Eligibility`,
+ * `get835`, `get820Payments` and every other per-transaction reader in this
+ * package uses. Every other deviation is recoverable and surfaces on
+ * `result.warnings`.
  *
  * @example
  * ```ts
@@ -199,7 +205,9 @@ export function get270Inquiry(
  * {@link X12Inquiry} per 270 transaction set, each with its own model and its
  * own warnings, and an EMPTY list when the interchange carries no 270 at all.
  * Two 270s are never merged into one model and the first is never returned in
- * place of the rest.
+ * place of the rest. A 270 declaring a guide this reader does not implement
+ * (the 4010 `004010X092A1`, say) is left out of the list, as
+ * {@link get270Inquiry} returns `undefined` for it.
  *
  * This is also the entry point that reports an inter-segment line break
  * (`X12_270_INTER_SEGMENT_LINE_BREAK`): the shared parse consumes a run of CR
@@ -245,7 +253,8 @@ function collectInquiries(interchange: X12Interchange, text: string): readonly X
   for (const group of interchange.groups) {
     for (const tx of group.transactions) {
       if (tx.st.elements[1] !== INQUIRY_270) continue;
-      out.push(decodeInquiry(interchange.delimiters, tx, framing));
+      const inquiry = decodeInquiry(interchange.delimiters, tx, framing);
+      if (inquiry !== undefined) out.push(inquiry);
     }
   }
   return Object.freeze(out);
@@ -316,21 +325,24 @@ interface InquiryAccumulator {
 /**
  * Decode one 270 transaction set, with `seeded` prepended to its warning
  * stream (the document-level framing deviation, where there is one).
+ * `undefined` where it declares a guide this reader does not implement.
  * @internal
  */
 function decodeInquiry(
   delimiters: Delimiters,
   tx: X12TransactionSet,
   seeded: readonly X12ParseWarning[],
-): X12Inquiry {
+): X12Inquiry | undefined {
+  // The declared guide (ST-03, else GS-08) against the guides this reader
+  // implements: a guide it does not implement gets no reading, and nothing
+  // declared is warned at the ST and read. Both entry points reach it through
+  // this decode.
+  const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_270);
+  if (refusesReading(delimiters, tx, IMPLEMENTED_GUIDES_270)) return undefined;
   const warnings: X12ParseWarning[] = [...seeded];
   if (!sameDelimiters(delimiters, CONVENTIONAL_DELIMITERS)) {
     warnings.push(nonConventionalDelimiter(ISA_POSITION));
   }
-  // The declared guide (ST-03, else GS-08) against the guides this reader
-  // implements. Warned at the ST and never refused: the walk below runs the
-  // same whatever it answers. Both entry points reach it through this decode.
-  const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_270);
   if (guideWarning !== undefined) warnings.push(guideWarning);
 
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);

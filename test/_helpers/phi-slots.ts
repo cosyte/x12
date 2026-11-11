@@ -589,16 +589,19 @@ export const PHI_SLOTS: readonly DiagnosticSlot<string>[] = [
     expectCode: WARNING_CODES.X12_GROUP_COUNT_MISMATCH,
   },
   {
-    name: "ST-03 implementation convention reference (837 variant resolution)",
-    // own: this is the element X12_837_UNKNOWN_VARIANT reports on. The SV1
-    // service line has to go too, or the walker falls back to it.
+    name: "ST-03 implementation convention reference (a guide the 837 reader does not implement)",
+    // co-located: a marker in ST-03 declares a guide the 837 reader does not
+    // implement, so the reader returns no reading and raises nothing on it.
+    // Taking the SV1 service line out leaves the SE count one short, which the
+    // parse reports for the same transaction set while the marker is on the
+    // model.
     plant: (m) =>
       swap(
         swap(G_837P, "~ST*837*0001*005010X222A2~", `~ST*837*0001*${m}~`),
         "~SV1*HC:99213:25*150*UN*1***1~",
         "~",
       ),
-    expectCode: WARNING_CODES.X12_837_UNKNOWN_VARIANT,
+    expectCode: WARNING_CODES.X12_SEGMENT_COUNT_MISMATCH,
   },
 
   // ---- segment-level structure -------------------------------------------

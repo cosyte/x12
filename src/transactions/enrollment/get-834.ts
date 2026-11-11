@@ -37,7 +37,11 @@ import {
   unknownMaintenanceType,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
-import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
+import {
+  declaredGuideWarning,
+  implementedGuides,
+  refusesReading,
+} from "../shared/declared-guide.js";
 import type {
   X12CoordinationOfBenefits,
   X12Enrollment,
@@ -64,19 +68,26 @@ const IMPLEMENTED_GUIDES_834 = implementedGuides("834");
 
 /**
  * The declared-guide warning for `tx`, as a list of zero or one, so the header
- * and every streamed member can seed their own warnings from it. Warned at
- * the ST and never refused. @internal
+ * and every streamed member can seed their own warnings from it. `undefined`
+ * where `tx` declares a guide this reader does not implement: the header is
+ * then `undefined` and the stream yields nothing. @internal
  */
-function guideWarnings(delimiters: Delimiters, tx: X12TransactionSet): readonly X12ParseWarning[] {
+function guideWarnings(
+  delimiters: Delimiters,
+  tx: X12TransactionSet,
+): readonly X12ParseWarning[] | undefined {
   const warning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_834);
+  if (refusesReading(delimiters, tx, IMPLEMENTED_GUIDES_834)) return undefined;
   return warning === undefined ? [] : [warning];
 }
 
 /**
  * Extract the 834 header - BGN + sponsor (`N1*P5`) + payer (`N1*IN`).
- * Pure function. Returns `undefined` only if the input transaction's ST-01
- * is not `"834"` (mis-routed call). Stops collecting header parties at the
- * first `INS` (member-level detail) - those belong to the member stream.
+ * Pure function. Returns `undefined` when the input transaction's ST-01 is
+ * not `"834"` (mis-routed call), and when it declares (ST-03, else GS-08) a
+ * guide this reader does not implement, such as the 4010 `004010X095A1`.
+ * Stops collecting header parties at the first `INS` (member-level detail) -
+ * those belong to the member stream.
  *
  * @example
  * ```ts
@@ -93,7 +104,9 @@ export function get834Header(
 ): X12EnrollmentHeader | undefined {
   if (tx.st.elements[1] !== "834") return undefined;
 
-  const warnings: X12ParseWarning[] = [...guideWarnings(delimiters, tx)];
+  const guide = guideWarnings(delimiters, tx);
+  if (guide === undefined) return undefined;
+  const warnings: X12ParseWarning[] = [...guide];
   const references: X12EnrollmentReference[] = [];
   const dates: X12EnrollmentDate[] = [];
   let purpose = "";
@@ -155,7 +168,9 @@ export function get834Header(
 
 /**
  * Stream the 834 member-level detail loops - one {@link X12Enrollment} per
- * `INS` segment. For a non-834 transaction the iterable yields nothing.
+ * `INS` segment. For a non-834 transaction, and for one declaring (ST-03,
+ * else GS-08) a guide this reader does not implement, such as the 4010
+ * `004010X095A1`, the iterable yields nothing.
  * Async-generator typed so the contract leaves room for a future
  * file→iterator streaming source; the v1 implementation iterates the
  * already-parsed `tx.segments` synchronously under the hood.
@@ -187,6 +202,7 @@ export async function* get834Enrollments(
   // may read the stream without ever reading the header, so the declared-guide
   // warning (if any) opens EVERY member's own warnings.
   const seeded = guideWarnings(delimiters, tx);
+  if (seeded === undefined) return;
   const body = enrollmentBody(tx);
   let current: EnrollmentAccumulator | undefined;
   let currentCoverage: HealthCoverageAccumulator | undefined;

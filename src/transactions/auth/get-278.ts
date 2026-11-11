@@ -5,8 +5,9 @@
  * one guide covering both the request and the response). Both directions
  * share one lenient HL-tree walk; the entry point only records `direction` on
  * the result. Every recoverable deviation surfaces as a warning, never a
- * throw, and a declared guide outside that one is warned
- * (`X12_GUIDE_NOT_IMPLEMENTED`) in either direction.
+ * throw. A transaction set declaring a guide outside that one gets no reading
+ * in either direction, and one declaring no guide is read and warned
+ * (`X12_GUIDE_NOT_DECLARED`).
  *
  * **The certification decision is the safety-critical surface.** In a
  * response the `HCR-01` action code (certified / not-certified / pended /
@@ -36,7 +37,11 @@ import {
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
 import { unknownHiQualifier, type X12ParseWarning } from "../../parser/warnings.js";
-import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
+import {
+  declaredGuideWarning,
+  implementedGuides,
+  refusesReading,
+} from "../shared/declared-guide.js";
 import { decodeHl, HL_LEVEL_CODES, validateHl, type X12Hl } from "../shared/hl.js";
 import { decodeSt03 } from "../shared/st03.js";
 import type {
@@ -82,9 +87,11 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Obje
 
 /**
  * Extract a typed {@link X12ServicesReview} from a 278 **request**
- * (`005010X217`). Pure function - no I/O. Returns `undefined` only when the
- * transaction's ST-01 is not `"278"` (mis-routed call); every other
- * deviation is recoverable and surfaces on `result.warnings`.
+ * (`005010X217`). Pure function - no I/O. Returns `undefined` when the
+ * transaction's ST-01 is not `"278"` (mis-routed call), and when it declares
+ * (ST-03, else GS-08) a guide this reader does not implement, such as the
+ * 4010 `004010X094A1`: its values would be read off 005010 element positions.
+ * Every other deviation is recoverable and surfaces on `result.warnings`.
  *
  * @example
  * ```ts
@@ -109,9 +116,10 @@ export function get278Request(
  * Extract a typed {@link X12ServicesReview} from a 278 **response**
  * (`005010X217`, the same guide as the request). Same lenient walk as
  * {@link get278Request}; the `HCR` decision under each event / service review
- * is the response's safety-critical addition. Returns `undefined` only on a
- * mis-routed ST-01. A response declaring `005010X216`, the 278 notification
- * guide, is read like any other and carries `X12_GUIDE_NOT_IMPLEMENTED`.
+ * is the response's safety-critical addition. Returns `undefined` on a
+ * mis-routed ST-01, and for a transaction set that declares a guide this
+ * reader does not implement: `005010X216`, the 278 notification guide, or the
+ * 4010 `004010X094A1`, say.
  *
  * @example
  * ```ts
@@ -140,11 +148,12 @@ function walk278(
 ): X12ServicesReview | undefined {
   if (tx.st.elements[1] !== "278") return undefined;
 
-  const warnings: X12ParseWarning[] = [];
   // The declared guide (ST-03 decoded, else GS-08 decoded) against the guides
-  // this reader implements. Warned at the ST and never refused: the walk below
-  // runs the same whatever it answers, in both directions.
+  // this reader implements, in both directions: a guide it does not implement
+  // gets no reading, and nothing declared is warned at the ST and read.
   const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_278);
+  if (refusesReading(delimiters, tx, IMPLEMENTED_GUIDES_278)) return undefined;
+  const warnings: X12ParseWarning[] = [];
   if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
 

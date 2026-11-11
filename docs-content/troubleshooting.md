@@ -155,9 +155,10 @@ builders run on a JSON-driven caller's values.
   tables, and we do not check TR3 usage: required, situational and not-used segments and elements,
   situational rules, repeat counts, or the code values a guide allows at an element beyond those
   bundled lists. Every TR3 is sold by X12, so a document that breaks its guide can parse with no
-  warning. With the typed readers you can still check the declared guide
-  ([`X12_GUIDE_NOT_IMPLEMENTED`](./warning-and-error-codes.md#x12_guide_not_implemented),
-  [`X12_GUIDE_NOT_DECLARED`](./warning-and-error-codes.md#x12_guide_not_declared)), refuse a document
+  warning. With the typed readers you can still check the declared guide (a reader returns no
+  reading for a guide it does not implement, and
+  [`X12_GUIDE_NOT_DECLARED`](./warning-and-error-codes.md#x12_guide_not_declared) marks a reading
+  whose transaction set declares none), refuse a document
   whose required field reads `undefined` (an absent value is never defaulted), compare the verbatim
   qualifiers and codes no bundled list covers with your copy of the guide, date-check adjustment and
   remark codes with [`checkCarcValidity`](./api/src.md#checkcarcvalidity) and
@@ -169,8 +170,9 @@ builders run on a JSON-driven caller's values.
 - **No 4010 variants and no 277U.** We do not build the 004010 835, 837, 270/271, 276/277, 278, 834
   or 820, or the 4010 277U unsolicited claim status. Their replacements are the 005010 sets we read
   and build: the 277 (`005010X212`) and the 277CA (`005010X214`) in place of the 4010 277 and the
-  277U. [The transaction sets](./spec-notes-transaction-sets.md#what-is-out-of-scope-v1) shows what
-  a typed reader does with a 4010 document.
+  277U. A typed reader returns no reading for a transaction set that declares a 4010 guide;
+  [the transaction sets](./spec-notes-transaction-sets.md#what-is-out-of-scope-v1) shows it on a
+  277U.
 - **No transport.** AS2, SFTP, and MLLP-style delivery are out of scope. This is a parser/serializer,
   not a communications stack.
 - **Below 1.0.** The package is published on npm as `@cosyte/x12` from a public repo, on the 0.1 line. Its

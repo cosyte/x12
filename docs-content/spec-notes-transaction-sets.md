@@ -125,11 +125,22 @@ out-of-enum level (`X12_278_BUILD_INVALID_SPEC`) rather than emit a document tha
   used for. If you still receive 4010 traffic, translate it to 005010 before it reaches this
   package, or use a parser that reads 4010.
 
-A 4010 document is not refused. The interchange parses and carries `X12_PRE_005010`, and a typed
-reader handed one of its transaction sets still walks it against the 005010 element positions and
-says so with
-[`X12_GUIDE_NOT_IMPLEMENTED`](./warning-and-error-codes.md#x12_guide_not_implemented). Treat that
-reading as unverified: a value on it may sit at a position the 4010 guide defines differently.
+The interchange of a 4010 document still parses and carries `X12_PRE_005010`, so its envelope and
+raw segments stay readable. A typed reader returns no reading for one of its transaction sets: it
+answers `undefined` (or an empty list, or no yielded member), exactly as it does for a transaction set
+of another ST-01, because its values would be read off 005010 element positions the 4010 guide
+defines differently. The same holds for any declared guide a reader does not implement. The
+declaration is ST-03, else GS-08, and the guides each reader implements are its rows of
+`X12_TR3_CONFORMANCE`. Whether to refuse is decided on the declaration trimmed of surrounding
+whitespace and upper-cased, so a 005010 guide declared with padding or in lower case is still read,
+with [`X12_GUIDE_NOT_IMPLEMENTED`](./warning-and-error-codes.md#x12_guide_not_implemented) on the
+reading because that warning compares exactly. A refused transaction set carries no warning of its
+own; for a 4010 document, `X12_PRE_005010` on the interchange is the sign.
+
+A 4010 transaction set that declares nothing (no ST-03 and an empty GS-08) cannot be told from a
+005010 one, so it is still read, with
+[`X12_GUIDE_NOT_DECLARED`](./warning-and-error-codes.md#x12_guide_not_declared) on the reading. Do
+not trust such a reading where `X12_PRE_005010` is on the interchange.
 
 ```ts runnable
 import { get277CADisposition, get277Status, parseX12 } from "@cosyte/x12";
@@ -149,11 +160,10 @@ const ix = parseX12(raw);
 ix.warnings.map((w) => w.code); // => ["X12_PRE_005010"]
 
 const tx = ix.groups[0]!.transactions[0]!;
-const status = get277Status(ix.delimiters, tx);
-status?.transactionType; // => "unrecognized-guide"
-status?.warnings.some((w) => w.code === "X12_GUIDE_NOT_IMPLEMENTED"); // => true
+tx.st.elements[1]; // => "277"
 
-// Only a 277 whose ST-03 reads 005010X214 is a claim acknowledgment.
+// 004010X070 is a guide neither 277 reader implements: no reading.
+get277Status(ix.delimiters, tx); // => undefined
 get277CADisposition(ix.delimiters, tx); // => undefined
 ```
 
