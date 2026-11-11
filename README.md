@@ -55,6 +55,30 @@ Not covered, and deliberately so: a byte-exact round trip is not guaranteed in g
 AS2 and SFTP, pre-005010 revisions, 006020 guides other than the two attachments guides, and
 decoding what an attachment carries are all out of scope.
 
+**We do not validate against implementation guides.** The package checks the ASC X12 base standard
+(the envelope, the delimiters, the control numbers and segment counts, the HL pointers), a few guide
+facts each typed reader needs to build its model (the guide a transaction set declares, the loops it
+requires, the 835 balancing equations), and one CAQH CORE rule, the CORE 360 Code Combinations, when
+you call `checkCoreCodeCombination` with a table you supply. It also checks codes against the lists
+it bundles: a reader keeps a code outside them verbatim and warns with `X12_UNKNOWN_CARC` (835 and
+837 adjustments), `X12_UNKNOWN_RARC` (835 remarks), `X12_UNKNOWN_CLAIM_STATUS` and
+`X12_UNKNOWN_CLAIM_STATUS_CATEGORY` (277 statuses), `X12_271_AAA_UNKNOWN_CODE` (271 AAA codes),
+`X12_UNKNOWN_HI_QUALIFIER` (837 and 278 HI qualifiers) or `X12_834_UNKNOWN_MAINTENANCE_TYPE` (834
+INS-03 and HD-01), and `build834` refuses a maintenance type outside its list with
+`X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE`. Three bundled lists are code subsets cited from a TR3:
+`MAINTENANCE_TYPE_CODES` (INS-03), `CLP_STATUS` (CLP-02, which the 835 reader describes but does not
+warn on) and `HI_QUALIFIERS`. We ship no TR3 usage tables, and the package does not check TR3 usage:
+whether a segment or element is required, situational or not used where it sits, a guide's
+situational rules, repeat counts, or which code values a guide allows at an element beyond those
+bundled lists. Every TR3 is sold by X12, so a document that breaks its guide can parse with no
+warning. What you can check with the typed readers: `implementationConventionReference` and the
+`X12_GUIDE_NOT_IMPLEMENTED` and `X12_GUIDE_NOT_DECLARED` warnings say which guide was declared; a
+field the sender left out reads `undefined` and is never defaulted, so you can refuse a document that
+lacks a field your guide or partner requires; qualifiers and codes are carried verbatim for you to
+compare with your copy of the guide where no bundled list covers them, and `checkCarcValidity` and
+`checkRarcValidity` date-check adjustment and remark codes; anything untyped stays verbatim on
+`tx.segments`.
+
 ## Install
 
 ```bash
