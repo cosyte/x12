@@ -40,6 +40,27 @@ import type { LoopSegmentSpec, LoopSpec } from "./types.js";
 const SEGMENT_ID_RE = /^[A-Z][A-Z0-9]{1,2}$/u;
 
 /**
+ * {@link SEGMENT_ID_RE} of `id`, read a character at a time for a string: the
+ * built-in loop specs call {@link defineLoopSpec} for several hundred segments
+ * on every import, and a regular expression is compiled on its first use and
+ * run in the interpreter there. A value that is not a string still goes to the
+ * expression, which converts it to text first, so it answers as it did.
+ *
+ * @internal
+ */
+function isSegmentId(id: unknown): boolean {
+  if (typeof id !== "string") return SEGMENT_ID_RE.test(id as string);
+  if (id.length < 2 || id.length > 3) return false;
+  const first = id.charCodeAt(0);
+  if (first < 0x41 || first > 0x5a) return false;
+  for (let i = 1; i < id.length; i += 1) {
+    const code = id.charCodeAt(i);
+    if (!((code >= 0x41 && code <= 0x5a) || (code >= 0x30 && code <= 0x39))) return false;
+  }
+  return true;
+}
+
+/**
  * Thrown by {@link defineLoopSpec} when the supplied spec is structurally
  * invalid. Carries the offending path so a consumer fixing a typo doesn't
  * have to hunt: e.g. `"segments[3].id"` or `"children[0].trigger"`.
@@ -125,7 +146,7 @@ export function defineLoopSpec(input: DefineLoopSpecInput): LoopSpec {
   if (typeof input.id !== "string" || input.id.length === 0) {
     throw new LoopSpecDefinitionError("id", "loop id must be a non-empty string");
   }
-  if (typeof input.trigger !== "string" || !SEGMENT_ID_RE.test(input.trigger)) {
+  if (typeof input.trigger !== "string" || !isSegmentId(input.trigger)) {
     throw new LoopSpecDefinitionError(
       "trigger",
       `trigger "${input.trigger}" must match /^[A-Z][A-Z0-9]{1,2}$/`,
@@ -148,7 +169,7 @@ export function defineLoopSpec(input: DefineLoopSpecInput): LoopSpec {
   for (let i = 0; i < input.segments.length; i += 1) {
     const s = input.segments[i];
     if (s === undefined) continue;
-    if (!SEGMENT_ID_RE.test(s.id)) {
+    if (!isSegmentId(s.id)) {
       throw new LoopSpecDefinitionError(
         `segments[${String(i)}].id`,
         `segment id "${s.id}" must match /^[A-Z][A-Z0-9]{1,2}$/`,
@@ -166,22 +187,25 @@ export function defineLoopSpec(input: DefineLoopSpecInput): LoopSpec {
         `max "${String(s.max)}" must be a positive integer or ">1"`,
       );
     }
-    const seg: LoopSegmentSpec = Object.freeze({
+    // Optional keys are added in place rather than spread from a conditional
+    // literal: the same keys in the same order, without a temporary object for
+    // each, which the built-in specs made several hundred of on every import.
+    const seg: { -readonly [K in keyof LoopSegmentSpec]: LoopSegmentSpec[K] } = {
       id: s.id,
       usage: s.usage,
       max: s.max,
-      ...(s.position !== undefined ? { position: s.position } : {}),
-      ...(s.description !== undefined ? { description: s.description } : {}),
-    });
-    frozenSegments.push(seg);
+    };
+    if (s.position !== undefined) seg.position = s.position;
+    if (s.description !== undefined) seg.description = s.description;
+    frozenSegments.push(Object.freeze(seg));
   }
   const children = Object.freeze((input.children ?? []).slice());
-  const out: LoopSpec = Object.freeze({
+  const out: { -readonly [K in keyof LoopSpec]: LoopSpec[K] } = {
     id: input.id,
     trigger: input.trigger,
     segments: Object.freeze(frozenSegments),
     children,
-    ...(input.description !== undefined ? { description: input.description } : {}),
-  });
-  return out;
+  };
+  if (input.description !== undefined) out.description = input.description;
+  return Object.freeze(out);
 }

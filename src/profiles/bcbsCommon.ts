@@ -12,20 +12,11 @@
  * that BCBS senders may diverge from the `:` most consumers assume.
  */
 
-import { defineProfile } from "./define.js";
+import { defineBuiltInProfile } from "./define.js";
+import type { X12ProfileSpec } from "./types.js";
 
-/**
- * Built-in BCBS common-denominator profile. See file header for grounding;
- * use via `parseX12(raw, { profile: profiles.bcbsCommon })`.
- *
- * @example
- * ```ts
- * import { parseX12, profiles } from "@cosyte/x12";
- * const ix = parseX12(raw, { profile: profiles.bcbsCommon });
- * ix.profile?.describe().relaxes.map((q) => q.id);
- * ```
- */
-export const bcbsCommon = defineProfile({
+/** The spec bcbsCommon is defined from, for the test that holds it equal to `defineProfile` of it. @internal */
+export const BCBS_COMMON_SPEC: X12ProfileSpec = {
   name: "bcbsCommon",
   description:
     "Lowest-common-denominator BCBS envelope quirks - a documented starting point, not a complete plan-specific edit set",
@@ -46,4 +37,17 @@ export const bcbsCommon = defineProfile({
       conformance: "permitted",
     },
   ],
-});
+};
+
+/**
+ * Built-in BCBS common-denominator profile. See file header for grounding;
+ * use via `parseX12(raw, { profile: profiles.bcbsCommon })`.
+ *
+ * @example
+ * ```ts
+ * import { parseX12, profiles } from "@cosyte/x12";
+ * const ix = parseX12(raw, { profile: profiles.bcbsCommon });
+ * ix.profile?.describe().relaxes.map((q) => q.id);
+ * ```
+ */
+export const bcbsCommon = defineBuiltInProfile(BCBS_COMMON_SPEC);

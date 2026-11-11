@@ -7,6 +7,7 @@
  * stack before any consumer touches it.
  */
 
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 import { LoopSpecDefinitionError, defineLoopSpec } from "../src/loops/define.js";
@@ -143,5 +144,83 @@ describe("defineLoopSpec - structural validation refuses consumer bugs", () => {
       if (!(err instanceof LoopSpecDefinitionError)) throw err;
       expect(err.path).toBe("segments[1].id");
     }
+  });
+});
+
+describe("defineLoopSpec - segment ids read without a regular expression", () => {
+  const GRAMMAR = /^[A-Z][A-Z0-9]{1,2}$/u;
+  const accepts = (id: unknown): boolean => {
+    try {
+      defineLoopSpec({
+        id: "L",
+        trigger: "ST",
+        segments: [
+          { id: "ST", usage: "required", max: 1 },
+          { id: id as string, usage: "optional", max: 1 },
+        ],
+      });
+      return true;
+    } catch (err) {
+      if (!(err instanceof LoopSpecDefinitionError)) throw err;
+      return false;
+    }
+  };
+
+  it("accepts exactly the ids the grammar matches", () => {
+    const edges = [
+      "",
+      "A",
+      "AB",
+      "A1",
+      "ABC",
+      "A12",
+      "ABCD",
+      "1AB",
+      "aB",
+      "Ab",
+      "AB\n",
+      "A_",
+      "A@",
+      "@A",
+      "[A",
+      "A[",
+      "A/",
+      "A:",
+      "Z9",
+      "ÀB",
+    ];
+    for (const id of edges) expect(accepts(id)).toBe(GRAMMAR.test(id));
+    fc.assert(
+      fc.property(fc.string({ maxLength: 4 }), (id) => accepts(id) === GRAMMAR.test(id)),
+      { numRuns: 2000 },
+    );
+  });
+
+  it("converts an id that is not a string to text, as the expression did", () => {
+    expect(accepts({ toString: () => "NM1" })).toBe(true);
+    expect(accepts(12)).toBe(false);
+    expect(accepts(["N3"])).toBe(true);
+  });
+
+  it("keeps the optional keys in their order, and leaves absent ones out", () => {
+    const loop = defineLoopSpec({
+      id: "L",
+      trigger: "ST",
+      segments: [
+        { id: "ST", usage: "required", max: 1, description: "d", position: "0100" },
+        { id: "N3", usage: "optional", max: ">1" },
+      ],
+    });
+    expect(Object.keys(loop)).toEqual(["id", "trigger", "segments", "children"]);
+    expect(Object.keys(loop.segments[0] ?? {})).toEqual([
+      "id",
+      "usage",
+      "max",
+      "position",
+      "description",
+    ]);
+    expect(Object.keys(loop.segments[1] ?? {})).toEqual(["id", "usage", "max"]);
+    expect(Object.isFrozen(loop.segments[0])).toBe(true);
+    expect(Object.isFrozen(loop)).toBe(true);
   });
 });

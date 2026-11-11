@@ -48,14 +48,33 @@ import { validateOptionKeys, validateProfileName, validateQuirks } from "./valid
  * ```
  */
 export function defineProfile(opts: X12ProfileSpec): X12Profile {
+  return assembleProfile(opts, true);
+}
+
+/**
+ * {@link defineProfile} for a profile this package ships, without the checks:
+ * the spec is our own, and `test/profiles-builtins.test.ts` holds every
+ * built-in equal to `defineProfile` of the same spec, so the checks would only
+ * run (and compile) on every import to find nothing.
+ *
+ * @internal
+ */
+export function defineBuiltInProfile(opts: X12ProfileSpec): X12Profile {
+  return assembleProfile(opts, false);
+}
+
+/** The body of {@link defineProfile}, its checks run only when `check` is set. @internal */
+function assembleProfile(opts: X12ProfileSpec, check: boolean): X12Profile {
   // Fail-fast: name first so downstream throws can name the offending profile.
-  validateProfileName(opts);
-  validateOptionKeys(opts);
+  if (check) {
+    validateProfileName(opts);
+    validateOptionKeys(opts);
+  }
 
   // Pre-merge: validate self quirks in isolation so a hard-rule violation
   // surfaces with the offending profile's own name (not the composed lineage).
   const selfQuirks = opts.quirks ?? [];
-  validateQuirks(selfQuirks, opts.name);
+  if (check) validateQuirks(selfQuirks, opts.name);
 
   // Compose `extends`.
   const parents = normaliseParents(opts.extends);
@@ -66,7 +85,7 @@ export function defineProfile(opts: X12ProfileSpec): X12Profile {
   // Post-merge re-validation - catches a rogue parent (a hand-crafted
   // X12Profile bypassing defineProfile whose quirks violate the rules) and
   // id collisions introduced by the merge.
-  validateQuirks(quirks, opts.name);
+  if (check) validateQuirks(quirks, opts.name);
 
   // exactOptionalPropertyTypes: conditionally assign optional `description`.
   type Mutable<T> = { -readonly [K in keyof T]?: T[K] };

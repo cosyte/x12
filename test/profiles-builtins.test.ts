@@ -23,7 +23,9 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { get835, parseX12, profiles } from "../src/index.js";
+import { defineProfile, get835, parseX12, profiles } from "../src/index.js";
+import { AVAILITY_SPEC } from "../src/profiles/availity.js";
+import { BCBS_COMMON_SPEC } from "../src/profiles/bcbsCommon.js";
 import type { X12Profile, X12ProfileConformance } from "../src/index.js";
 
 const FIXTURE_ROOT = join(__dirname, "fixtures");
@@ -187,5 +189,23 @@ describe("profile-on / profile-off divergence - attribution only, no data loss",
     expect(on.warnings).toEqual(off.warnings);
     expect(on.groups).toEqual(off.groups);
     expect(on.isa).toEqual(off.isa);
+  });
+});
+
+describe("built-in profiles are what defineProfile makes of their specs", () => {
+  // The built-ins skip `defineProfile`'s checks so an import does not run them; this holds each
+  // to the checked factory, so a spec that would fail a check, or an assembly that drifted from
+  // it, fails here.
+  it.each([
+    ["availity", profiles.availity, AVAILITY_SPEC],
+    ["bcbsCommon", profiles.bcbsCommon, BCBS_COMMON_SPEC],
+  ] as const)("%s", (_name, builtIn, spec) => {
+    const checked = defineProfile(spec);
+    expect(builtIn).toStrictEqual({ ...checked, describe: builtIn.describe });
+    expect(Object.keys(builtIn)).toEqual(Object.keys(checked));
+    expect(Object.isFrozen(builtIn)).toBe(true);
+    expect(Object.isFrozen(builtIn.quirks)).toBe(Object.isFrozen(checked.quirks));
+    expect(Object.isFrozen(builtIn.lineage)).toBe(Object.isFrozen(checked.lineage));
+    expect(builtIn.describe()).toStrictEqual(checked.describe());
   });
 });

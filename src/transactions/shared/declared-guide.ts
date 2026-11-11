@@ -68,6 +68,33 @@ export function implementedGuides(
   transaction: string,
   variant?: string | null,
   extra: Iterable<string> = [],
+): ImplementedGuides {
+  // Collected on the first question rather than when the reader's module
+  // loads: every reader holds one of these, and an import reads none of them.
+  let guides: ReadonlySet<string> | undefined;
+  const collected = (): ReadonlySet<string> => {
+    guides ??= collectGuides(transaction, variant, extra);
+    return guides;
+  };
+  return Object.freeze({
+    has: (guide: string): boolean => collected().has(guide),
+    [Symbol.iterator]: (): Iterator<string> => collected()[Symbol.iterator](),
+  });
+}
+
+/**
+ * The guides a reader implements, as {@link implementedGuides} answers them:
+ * whether one is among them, and each of them in turn. @internal
+ */
+export interface ImplementedGuides extends Iterable<string> {
+  has(guide: string): boolean;
+}
+
+/** The set {@link implementedGuides} describes, collected. @internal */
+function collectGuides(
+  transaction: string,
+  variant: string | null | undefined,
+  extra: Iterable<string>,
 ): ReadonlySet<string> {
   const guides = new Set<string>();
   for (const row of X12_TR3_CONFORMANCE) {
@@ -122,7 +149,7 @@ export function declaredGuide(delimiters: Delimiters, tx: X12TransactionSet): st
 export function declaredGuideWarning(
   delimiters: Delimiters,
   tx: X12TransactionSet,
-  implemented: ReadonlySet<string>,
+  implemented: ImplementedGuides,
 ): X12ParseWarning | undefined {
   const declared = declaredGuide(delimiters, tx);
   if (declared === undefined) return guideNotDeclared(ST_POSITION);

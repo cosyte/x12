@@ -46,7 +46,11 @@ import {
   unknownClaimStatusCategory,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
-import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
+import {
+  declaredGuideWarning,
+  implementedGuides,
+  type ImplementedGuides,
+} from "../shared/declared-guide.js";
 import { decodeHl, HL_LEVEL_CODES, validateHl, type X12Hl } from "../shared/hl.js";
 import { decodeSt03 } from "../shared/st03.js";
 import type {
@@ -73,10 +77,11 @@ const ICR_277CA = "005010X214";
  * `277` row and this reader does not implement it: a 277 declaring that guide
  * stays `"unrecognized-guide"` here and is read by its own reader. @internal
  */
-const IMPLEMENTED_GUIDES_277: ReadonlySet<string> = new Set([
-  ...implementedGuides("277", null),
-  ...implementedGuides("277", "277CA"),
-]);
+const IMPLEMENTED_GUIDES_277: ImplementedGuides = implementedGuides(
+  "277",
+  null,
+  implementedGuides("277", "277CA"),
+);
 
 /**
  * The guides `get277CADisposition` implements: the claim acknowledgment row
@@ -174,7 +179,7 @@ export function get277CADisposition(
 function walk277(
   delimiters: Delimiters,
   tx: X12TransactionSet,
-  implemented: ReadonlySet<string>,
+  implemented: ImplementedGuides,
 ): X12ClaimStatusResponse {
   const warnings: X12ParseWarning[] = [];
   // The declared guide (ST-03 decoded, else GS-08 decoded) against the guides

@@ -11,20 +11,11 @@
  * leniency.
  */
 
-import { defineProfile } from "./define.js";
+import { defineBuiltInProfile } from "./define.js";
+import type { X12ProfileSpec } from "./types.js";
 
-/**
- * Built-in Availity 835 ERA profile. See file header for grounding; use via
- * `parseX12(raw, { profile: profiles.availity })`.
- *
- * @example
- * ```ts
- * import { parseX12, profiles } from "@cosyte/x12";
- * const ix = parseX12(raw, { profile: profiles.availity });
- * ix.profile?.describe().adds.map((q) => q.id);
- * ```
- */
-export const availity = defineProfile({
+/** The spec availity is defined from, for the test that holds it equal to `defineProfile` of it. @internal */
+export const AVAILITY_SPEC: X12ProfileSpec = {
   name: "availity",
   description: "Availity clearinghouse 835 ERA conventions - payer-routed REF segment additions",
   quirks: [
@@ -58,4 +49,17 @@ export const availity = defineProfile({
       conformance: "undetermined",
     },
   ],
-});
+};
+
+/**
+ * Built-in Availity 835 ERA profile. See file header for grounding; use via
+ * `parseX12(raw, { profile: profiles.availity })`.
+ *
+ * @example
+ * ```ts
+ * import { parseX12, profiles } from "@cosyte/x12";
+ * const ix = parseX12(raw, { profile: profiles.availity });
+ * ix.profile?.describe().adds.map((q) => q.id);
+ * ```
+ */
+export const availity = defineBuiltInProfile(AVAILITY_SPEC);
