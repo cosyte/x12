@@ -2,8 +2,7 @@ name: CI
 
 on:
   push:
-    # TEMPORARY: test/testing-standard, for measuring on this branch; removed before review.
-    branches: [main, test/testing-standard]
+    branches: [main]
   pull_request:
     branches: [main]
   schedule:
