@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.12
+
+### Patch Changes
+
+- 28fb39e: Builders no longer parse the bytes they just wrote, and an `X12Decimal` is no longer a frozen object, so building and reading run faster; every built interchange, warning and typed read is the same as before. Each builder now makes the interchange it returns from the segments it wrote, through the same envelope walk the parser runs, so it reports exactly what parsing its bytes reports (an `SE` you put inside a body, a count that does not match). Where its bytes hold a release character or a binary segment it still parses them. One change you can see: `Object.isFrozen` answers `false` for an `X12Decimal`, and a property you add to one stays on that instance and shows in its `Object.keys` and `JSON.stringify`. Its value cannot change, since it lives in private fields no code outside the class reaches. If you relied on the freeze, call `Object.freeze` on the decimal yourself. The shared constant `X12Decimal.ZERO`, which a reader returns for an empty or unreadable amount, stays frozen, so no code can change it for other callers. The built-in profiles and loop specifications also do less work when the package is imported, with the same values.
+
 ## 0.1.11
 
 ### Patch Changes
