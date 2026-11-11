@@ -1628,6 +1628,24 @@ export function corpusBuilds(): CorpusBuild[] {
       (s) => withDelimiters(s, { elementSeparator: "~", segmentTerminator: "~" }),
     ],
     ["long-control", (s) => withDelimiters(s, { interchangeControlNumber: "0123456789" })],
+    // Free text holding the default delimiters under another set, where none of them is active,
+    // so nothing is released and each builder's logged segments become the elements as written.
+    [
+      "foreign-delimiters",
+      (s) =>
+        withDelimiters(
+          retext(s, (v) => `${v}*~:^ SE IEA`),
+          {
+            elementSeparator: "|",
+            repetitionSeparator: "!",
+            componentSeparator: ">",
+            segmentTerminator: "#",
+          },
+        ),
+    ],
+    // Every free-text value empty or a single space, so trailing elements are trimmed and interior
+    // ones kept, on the logged path.
+    ["blank", (s) => retext(s, () => " ")],
   ];
   const out: CorpusBuild[] = [];
   for (const [name, builder, spec] of builders) {
