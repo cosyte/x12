@@ -1,5 +1,5 @@
 {
-  "$comment": "The public-surface gate's axes for @cosyte/x12, read by the shared gate in @cosyte/script-utils (`pnpm check:no-internal-refs`). X12 is both the standard and our own item prefix, so it is a project prefix here and no X12 designation is listed: the sibling repos' X12-\\d{3} exclusion matched 141 of our identifiers and no standards designation (#120). The umbrella-item-id rule is the bare `S` and four digits then a hyphen that x12's docs-content test used to assert; the canonical identifier rule needs a lower-case slug after the hyphen, so this keeps the wider form, on every surface the gate reads.",
+  "$comment": "The public-surface gate's axes for @cosyte/x12, read by the shared gate in @cosyte/script-utils (`pnpm check:no-internal-refs`). X12 is both the standard and our own item prefix, so it is a project prefix here and no X12 designation is listed: the sibling repos' X12-\\d{3} exclusion matched 141 of our identifiers and no standards designation (#120). The umbrella-item-id rule is the bare `S` and four digits then a hyphen that x12's docs-content test used to assert; the canonical identifier rule needs a lower-case slug after the hyphen, so this keeps the wider form, on every surface the gate reads. The umbrella-decision-id rule catches a decision or work-item number of two or three digits, which the canonical set has no rule for; one digit is left out because D8, D9, D6 and D0 are X12 qualifier and code values. CLAUDE.md, AGENTS.md and .changeset/README.md are surfaces because this repository is public.",
   "projectPrefixes": [
     "PARSERS-PUBLIC",
     "DOCS-CONTENT",
@@ -49,7 +49,16 @@
     "CCDA-R\\d(?:\\.\\d)?",
     "ASTM-E\\d+"
   ],
-  "surfacePaths": ["README.md", "TRADEMARKS.md", "LICENSE", "KNOWN-LIMITATIONS.md", "docs-content"],
+  "surfacePaths": [
+    "README.md",
+    "TRADEMARKS.md",
+    "LICENSE",
+    "KNOWN-LIMITATIONS.md",
+    "docs-content",
+    "CLAUDE.md",
+    "AGENTS.md",
+    ".changeset/README.md"
+  ],
   "accountedTarballFiles": ["CHANGELOG.md", "dist"],
   "sourceDocComments": {
     "enabled": true,
@@ -72,6 +81,21 @@
       "negatives": [
         "HCPCS S9083 and S0630 are billing codes, and S0228 alone is one too",
         "ICD-10-CM P00-P96, NM1-03 name, SV1-02 charge, 835 remittance, segment S, 2000-2300 loops"
+      ]
+    },
+    {
+      "id": "umbrella-decision-id",
+      "name": "umbrella decision or work-item number",
+      "pattern": "\\b(?:D\\d{2,3}|OW\\d+|KD\\d+)\\b",
+      "positives": [
+        "Changesets are patches (D56, 2026-11-07)",
+        "the operator's rule (D56 in the umbrella's decisions)",
+        "follow-up filed as OW393",
+        "see KD12"
+      ],
+      "negatives": [
+        "DTP-02 is D8 for a date and RD8 for a range, REF-01 D9 is a claim number",
+        "toISO({ formatQualifier: \"D6\" }), status category D0, HCPCS D0120 is a dental code"
       ]
     }
   ]

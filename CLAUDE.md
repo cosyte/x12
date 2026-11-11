@@ -52,9 +52,9 @@ document bytes out of errors, warnings and logs.
 - `scripts/phi-scan.ts` keeps its `--staged` argv and takes no exemption: a rename passed it
   unseen (#76), and it reported clean over files it never opened (#77, #90).
 - `pnpm attw` is the shared gate: bare `attw` exits 0 on a tarball with no types (#55).
-- No internal ids or phase words in `README.md`, `KNOWN-LIMITATIONS.md`, `docs-content/`, `src/`
-  doc comments or strings; translate, never delete. X12 stays a prefix in internal-refs.json (#120).
-- Changesets are patches (D56, 2026-11-07) with no internal id, first sentence for a consumer: the
-  release refused 0.0.14 and 0.0.16 over one (#93, #114). Never hand-edit `CHANGELOG.md`.
+- No internal ids or roadmap stage names on a surface in `scripts/internal-refs.json` or in `src/`
+  doc comments or strings; translate, never delete. X12 stays a prefix there (#120).
+- Changesets are patches (the operator's rule since 2026-11-07), no internal id, first sentence for
+  a consumer: the release refused 0.0.14 and 0.0.16 over one (#93, #114). Never hand-edit CHANGELOG.
 - `release.yml` grants every scope the shared release pipeline declares (#27, #129, #133).
 - In `docs-content/`, link outside files by GitHub URL and keep the sidebar spine (#125, #159).
