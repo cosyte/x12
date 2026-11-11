@@ -16,6 +16,7 @@ import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 
 import {
+  attachment275Spec,
   attachment275Text,
   claim837ISpec,
   claim837IText,
@@ -58,6 +59,7 @@ const attachment = attachment275Text(0, 4 * 1024 * 1024);
 const remitSpec = remit835Spec(dec, 0, 10_000);
 const claimSpec = claim837PSpec(dec, 0, 10_000);
 const institutionalSpec = claim837ISpec(dec, 0, 10_000);
+const attachmentSpec = attachment275Spec(dec, 0, 4 * 1024 * 1024);
 
 /** The hottest paths: the largest dense documents read and built, and the large opaque one. */
 const PATHS = [
@@ -97,6 +99,13 @@ const PATHS = [
     name: "275-read",
     what: "275, 4 MiB payload: parseX12, then get275Attachments",
     run: () => read("get275Attachments")(attachment),
+  },
+  {
+    // A build whose bytes hold a binary segment, so it still reads them back: the one builder path
+    // that parses, profiled beside the ones that do not.
+    name: "275-build",
+    what: "275, 4 MiB payload: build275, then serializeX12",
+    run: () => x12.serializeX12(x12.build275(attachmentSpec)),
   },
 ];
 
