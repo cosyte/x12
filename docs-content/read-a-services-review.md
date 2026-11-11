@@ -76,7 +76,7 @@ review?.diagnoses[0]?.codeSystem; // => "ICD-10-CM"
 ## Build a request, then the response that answers it
 
 `build278Request(spec)` and `build278Response(spec)` take one spec shape,
-[`Build278Spec`](./api/README.md#build278spec), declare `005010X217` in `GS-08` and `ST-03`, compute
+[`Build278Spec`](./api/src.md#build278spec), declare `005010X217` in `GS-08` and `ST-03`, compute
 the HL spine (organization, requester, subscriber, optional dependent, review), and return an
 `X12Interchange`. Neither one sends anything, opens a socket or touches the filesystem.
 
@@ -203,9 +203,9 @@ refused; // => "X12_278_BUILD_INVALID_SPEC"
 
 - [The 80/20 transaction sets](./spec-notes-transaction-sets.md#the-readerbuilder-symmetry): why
   the review level is the one value check on the builder side.
-- Reference: [`get278Response`](./api/README.md#get278response),
-  [`get278Request`](./api/README.md#get278request),
-  [`build278Request`](./api/README.md#build278request),
-  [`build278Response`](./api/README.md#build278response),
-  [`Build278Spec`](./api/README.md#build278spec),
-  [`ServicesReview278BuildError`](./api/README.md#servicesreview278builderror).
+- Reference: [`get278Response`](./api/src.md#get278response),
+  [`get278Request`](./api/src.md#get278request),
+  [`build278Request`](./api/src.md#build278request),
+  [`build278Response`](./api/src.md#build278response),
+  [`Build278Spec`](./api/src.md#build278spec),
+  [`ServicesReview278BuildError`](./api/src.md#servicesreview278builderror).

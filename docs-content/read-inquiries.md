@@ -168,7 +168,7 @@ there is no half a row to keep.
   that echoes the 270's trace.
 - [Route 277CA acknowledgments and 277 status responses](./route-claim-status-responses.md): the
   answer to a 276.
-- Reference: [`parse270Inquiries`](./api/README.md#parse270inquiries),
-  [`get270Inquiry`](./api/README.md#get270inquiry),
-  [`parse276StatusInquiries`](./api/README.md#parse276statusinquiries),
-  [`get276StatusInquiry`](./api/README.md#get276statusinquiry).
+- Reference: [`parse270Inquiries`](./api/src.md#parse270inquiries),
+  [`get270Inquiry`](./api/src.md#get270inquiry),
+  [`parse276StatusInquiries`](./api/src.md#parse276statusinquiries),
+  [`get276StatusInquiry`](./api/src.md#get276statusinquiry).

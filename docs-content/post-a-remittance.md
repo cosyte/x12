@@ -12,7 +12,7 @@ service line, read the CARC and RARC adjustment reasons, and refuse to post a re
 not balance.
 
 `get835(delimiters, tx)` returns a typed
-[`X12Remittance`](./api/README.md#x12remittance), or `undefined` when the transaction set is not an 835. Every amount is an [`X12Decimal`](./api/README.md#x12decimal), exact to the digits the payer
+[`X12Remittance`](./api/src.md#x12remittance), or `undefined` when the transaction set is not an 835. Every amount is an [`X12Decimal`](./api/src.md#x12decimal), exact to the digits the payer
 sent; never `parseFloat` an EDI amount. [Decimal-exact money](./spec-notes-money.md) says why.
 
 > Every interchange below is **synthetic**: fabricated names, invented ids, made-up control
@@ -140,7 +140,7 @@ amount; the values are on the model.
 CAQH CORE Operating Rule 360 conveys why a claim was adjusted by the combined use of a group code,
 a reason code and optionally one or more remark codes, and its CORE Code Combinations table lists
 the combinations it expects for each of four CORE-defined business scenarios.
-[`checkCoreCodeCombination`](./api/README.md#checkcorecodecombination) answers whether one
+[`checkCoreCodeCombination`](./api/src.md#checkcorecodecombination) answers whether one
 adjustment's combination is in **your** copy of that table for a scenario you name. It answers that
 one question about that one adjustment, and nothing about the remittance as a whole.
 
@@ -216,5 +216,5 @@ never a value from your table.
 - [Handle warnings](./handle-warnings.md): triage everything else the reader tolerated.
 - [Warning and error codes](./warning-and-error-codes.md#x12_835_remit_balance_mismatch): the
   balance codes' messages.
-- Reference: [`get835`](./api/README.md#get835), [`X12Remittance`](./api/README.md#x12remittance),
-  [`lookupCarc`](./api/README.md#lookupcarc), [`lookupRarc`](./api/README.md#lookuprarc).
+- Reference: [`get835`](./api/src.md#get835), [`X12Remittance`](./api/src.md#x12remittance),
+  [`lookupCarc`](./api/src.md#lookupcarc), [`lookupRarc`](./api/src.md#lookuprarc).

@@ -232,7 +232,7 @@ export function renderCodesPage(): string {
     "## Fatal codes",
     "",
     "Thrown as `X12ParseError`, whatever `strict` says. Exported as",
-    `[\`FATAL_CODES\`](./api/README.md#${apiAnchor("FATAL_CODES")}).`,
+    `[\`FATAL_CODES\`](./api/src.md#${apiAnchor("FATAL_CODES")}).`,
     "",
     "| Code | Meaning |",
     "| --- | --- |",
@@ -246,11 +246,11 @@ export function renderCodesPage(): string {
     "",
     "## Warning codes",
     "",
-    `Exported as [\`WARNING_CODES\`](./api/README.md#${apiAnchor("WARNING_CODES")}), in the order the registry lists them.`,
+    `Exported as [\`WARNING_CODES\`](./api/src.md#${apiAnchor("WARNING_CODES")}), in the order the registry lists them.`,
     "Each warning's `message` is one of the strings below, taken from a frozen registry and never",
     "built from the document, so a message holds no value from it; `position` says where to look.",
     "Where one code carries several messages, each is listed with the registry entry it comes from.",
-    `[\`ALL_WARNING_MESSAGES\`](./api/README.md#${apiAnchor("ALL_WARNING_MESSAGES")}) holds every one of them.`,
+    `[\`ALL_WARNING_MESSAGES\`](./api/src.md#${apiAnchor("ALL_WARNING_MESSAGES")}) holds every one of them.`,
   );
   for (const code of warningCodes) {
     const entries = byCode.get(code);
@@ -279,7 +279,7 @@ export function renderCodesPage(): string {
       .map((c) => `\`${c}\``)
       .join(", ");
     lines.push(
-      `| [\`${registry.name}\`](./api/README.md#${apiAnchor(registry.name)}) | [\`${registry.errorClass}\`](./api/README.md#${apiAnchor(registry.errorClass)}) | ${codes} |`,
+      `| [\`${registry.name}\`](./api/src.md#${apiAnchor(registry.name)}) | [\`${registry.errorClass}\`](./api/src.md#${apiAnchor(registry.errorClass)}) | ${codes} |`,
     );
   }
   lines.push("");

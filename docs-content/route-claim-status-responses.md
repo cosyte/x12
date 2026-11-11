@@ -16,7 +16,7 @@ Two different documents arrive as a 277, and each has its own reader:
 - A **277** status response (`005010X212`) answers a 276 claim status request.
   `get277Status(delimiters, tx)` reads it, and admits either guide.
 
-Both return an [`X12ClaimStatusResponse`](./api/README.md#x12claimstatusresponse). The status
+Both return an [`X12ClaimStatusResponse`](./api/src.md#x12claimstatusresponse). The status
 lives in STC triples: a claim status category code (CSCC), a claim status code (CSC), and the
 entity the status is about.
 
@@ -153,6 +153,6 @@ shows the pattern.
 
 - [Read eligibility and claim status inquiries](./read-inquiries.md): the 276 these responses answer.
 - [Tolerance tiers and warning codes](./spec-notes-tolerance.md): what the readers tolerate.
-- Reference: [`get277CADisposition`](./api/README.md#get277cadisposition),
-  [`get277Status`](./api/README.md#get277status),
-  [`X12ClaimStatusResponse`](./api/README.md#x12claimstatusresponse).
+- Reference: [`get277CADisposition`](./api/src.md#get277cadisposition),
+  [`get277Status`](./api/src.md#get277status),
+  [`X12ClaimStatusResponse`](./api/src.md#x12claimstatusresponse).

@@ -225,10 +225,10 @@ environment variable, as we do with `COSYTE_PROPERTY_RUNS`.
 
 ## Reference
 
-- [`parseX12`](./api/README.md#parsex12), [`serializeX12`](./api/README.md#serializex12),
-  [`buildInterchange`](./api/README.md#buildinterchange),
-  [`getSegmentValue`](./api/README.md#getsegmentvalue),
-  [`X12ParseError`](./api/README.md#x12parseerror)
+- [`parseX12`](./api/src.md#parsex12), [`serializeX12`](./api/src.md#serializex12),
+  [`buildInterchange`](./api/src.md#buildinterchange),
+  [`getSegmentValue`](./api/src.md#getsegmentvalue),
+  [`X12ParseError`](./api/src.md#x12parseerror)
 - The generators' options are in their TSDoc comments, which an editor shows on hover.
 - [Testing and quality](./testing-and-quality.md) says how we use these generators on this
   library, and [Tolerance tiers and warning codes](./spec-notes-tolerance.md) explains what lenient

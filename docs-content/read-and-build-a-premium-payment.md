@@ -14,7 +14,7 @@ policy, and to know whether the parts add up to the deposit. Or you are the spon
 send one.
 
 `get820Payments(delimiters, tx)` reads the `005010X218` guide and returns an
-[`X12PremiumPayments`](./api/README.md#x12premiumpayments), or `undefined` for a transaction set
+[`X12PremiumPayments`](./api/src.md#x12premiumpayments), or `undefined` for a transaction set
 that is not an 820. `build820(spec)` writes one.
 
 ## Read a premium payment
@@ -80,7 +80,7 @@ second?.adjustments[0]?.amount.toString(); // => "-25.00"
 second?.adjustments[0]?.reasonCode; // => "52"
 ```
 
-Every amount is an [`X12Decimal`](./api/README.md#x12decimal), never a `number`. An amount
+Every amount is an [`X12Decimal`](./api/src.md#x12decimal), never a `number`. An amount
 element that is absent, empty or not a decimal reads `undefined`, never zero; one that is not a
 decimal also raises `X12_UNPARSEABLE_DECIMAL`. An `RMR` with neither a qualifier nor a reference
 id is not on the model, and if it stated an amount the reader raises
@@ -236,7 +236,7 @@ readBack?.remittances[1]?.adjustments[0]?.amount.toString(); // => "-25.00"
 serializeX12(built).includes("RMR*AZ*POL-0001**250.00*250.00~"); // => true
 ```
 
-**What it refuses**, each a [`Premium820BuildError`](./api/README.md#premium820builderror) with the
+**What it refuses**, each a [`Premium820BuildError`](./api/src.md#premium820builderror) with the
 code `X12_820_BUILD_INVALID_SPEC`: no trace, no remittance, a remittance with neither an `entity`
 nor an `individual` to open its loop, a remittance with no open item, and an open item whose
 qualifier and reference id are both empty, since the reader would drop it. The message names the
@@ -286,7 +286,7 @@ code; // => "X12_820_BUILD_INVALID_SPEC"
 - [The 80/20 transaction sets](./spec-notes-transaction-sets.md): where the 820 sits among the
   other sets.
 - [Build and serialize X12](./emit-and-serialize.md): what every builder refuses.
-- Reference: [`get820Payments`](./api/README.md#get820payments),
-  [`build820`](./api/README.md#build820), [`Build820Spec`](./api/README.md#build820spec),
-  [`X12PremiumPayments`](./api/README.md#x12premiumpayments),
-  [`Premium820BuildError`](./api/README.md#premium820builderror).
+- Reference: [`get820Payments`](./api/src.md#get820payments),
+  [`build820`](./api/src.md#build820), [`Build820Spec`](./api/src.md#build820spec),
+  [`X12PremiumPayments`](./api/src.md#x12premiumpayments),
+  [`Premium820BuildError`](./api/src.md#premium820builderror).

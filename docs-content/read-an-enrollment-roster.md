@@ -109,7 +109,7 @@ or `HD-01` code outside the bundled list is **refused** with
 `X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE`, because a roster that tells an enrollment system to do
 something it cannot name is the harm the reader's warning exists to catch. No member, or an empty
 `INS-03`, is refused with `X12_834_BUILD_INVALID_SPEC`. Both come as an
-[`Enrollment834BuildError`](./api/README.md#enrollment834builderror).
+[`Enrollment834BuildError`](./api/src.md#enrollment834builderror).
 
 ```ts runnable
 import {
@@ -200,8 +200,8 @@ refused; // => "X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE"
 
 - [Decimal-exact money](./spec-notes-money.md): why a coverage amount that does not decode reads
   `undefined`.
-- Reference: [`get834Header`](./api/README.md#get834header),
-  [`get834Enrollments`](./api/README.md#get834enrollments),
-  [`build834`](./api/README.md#build834), [`Build834Spec`](./api/README.md#build834spec),
-  [`Enrollment834BuildError`](./api/README.md#enrollment834builderror),
-  [`lookupMaintenanceType`](./api/README.md#lookupmaintenancetype).
+- Reference: [`get834Header`](./api/src.md#get834header),
+  [`get834Enrollments`](./api/src.md#get834enrollments),
+  [`build834`](./api/src.md#build834), [`Build834Spec`](./api/src.md#build834spec),
+  [`Enrollment834BuildError`](./api/src.md#enrollment834builderror),
+  [`lookupMaintenanceType`](./api/src.md#lookupmaintenancetype).

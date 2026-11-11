@@ -126,6 +126,8 @@
     "check:catalog": "cosyte-catalog",
     "check:documents": "pnpm check:readme && pnpm check:claude-card && pnpm check:catalog",
     "check:process": "cosyte-process check",
+    "check:docs-reference": "cosyte-docs-reference --check",
+    "docs:reference": "cosyte-docs-reference",
     "check:release-caller-permissions": "tsx scripts/check-release-caller-permissions.ts",
     "refresh:code-lists": "tsx scripts/refresh-code-lists.ts",
     "capture:271-goldens": "tsx scripts/capture-271-goldens.ts",
@@ -148,7 +150,8 @@
       "minimatch@>=7.0.0 <11.0.1": "11.0.1",
       "brace-expansion@>=3.0.0 <5.0.12": "5.0.12",
       "postcss@<8.5.23": "8.5.23",
-      "source-map-js@>=1.0.0 <1.2.2": "1.2.2"
+      "source-map-js@>=1.0.0 <1.2.2": "1.2.2",
+      "typedoc>minimatch": "10.2.6"
     }
   },
   "devDependencies": {
@@ -157,7 +160,7 @@
     "@cosyte/bench": "^0.1.1",
     "@cosyte/eslint-config": "^0.1.4",
     "@cosyte/prettier-config": "^0.1.2",
-    "@cosyte/process": "^0.1.7",
+    "@cosyte/process": "^0.1.8",
     "@cosyte/script-utils": "^0.1.11",
     "@cosyte/test-utils": "^0.1.4",
     "@cosyte/tsconfig": "^0.1.2",
