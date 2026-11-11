@@ -184,7 +184,7 @@ const longParseOptions: ScalingGateOptions<string, X12Interchange> = {
   parse: (raw) => parseX12(raw),
   weigh: (ix) => ix.groups.length,
   // 200 small documents parsed in under 6 ms on a hosted runner, under the 8 ms floor.
-  count: { n: 400, generate: (i) => remit835Text(i, 4) },
+  count: { n: 600, generate: (i) => remit835Text(i, 4) },
   size: { inputs: 4, size: 800, generate: (i, claims) => remit835Text(i, claims) },
 };
 
@@ -398,7 +398,7 @@ builderGate(
 
 // The 999: the size knob is the number of transaction sets acknowledged. At 600 the base phases
 // were under 10 ms on a hosted runner, so the size axis starts at 1,200; 1,000 one-set 999s read
-// in under 8 ms, so the read's count axis takes 2,000.
+// in under 8 ms and built in about 11, so both count axes take 2,000.
 readerGate(
   "@cosyte/x12 parse999",
   ack999Text,
@@ -416,6 +416,7 @@ builderGate(
   build999,
   1,
   1_200,
+  { countN: 2_000 },
 );
 
 // The 275: the size knob is the octets of the one payload, a single long segment, so the
