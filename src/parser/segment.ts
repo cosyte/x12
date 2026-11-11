@@ -191,7 +191,15 @@ export function decodeSegmentAt(
   delimiters: Delimiters,
   emit: (w: X12ParseWarning) => void,
   position: X12PositionSource,
+  presplit?: readonly string[],
 ): X12Segment {
+  // Elements a builder already split, for a segment it vouches holds no release
+  // character and is no binary segment (see `decodeBuiltEnvelope`): the split
+  // below would answer the same array and nothing below would warn.
+  if (presplit !== undefined) {
+    /* v8 ignore next -- a split always yields at least one element, so `presplit[0]` is defined */
+    return Object.freeze({ id: boundSegmentId(presplit[0] ?? ""), raw, elements: presplit });
+  }
   const binary = frameBinary(raw, 0, delimiters);
   if (binary?.kind === "counted") {
     return decodeCountedSegment(raw, binary, emit, positionOf(position));

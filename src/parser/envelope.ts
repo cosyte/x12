@@ -463,18 +463,55 @@ function el(elements: readonly string[], index: number): string {
  *
  * @internal
  */
-export function decodeEnvelope(
+export function decodeEnvelope(raw: string, delimiters: Delimiters): DecodedEnvelope {
+  return walkEnvelope(raw, delimiters, undefined, undefined);
+}
+
+/** What {@link decodeEnvelope} and {@link decodeBuiltEnvelope} answer. @internal */
+export interface DecodedEnvelope {
+  readonly isa: IsaSegment;
+  readonly groups: readonly X12FunctionalGroup[];
+  readonly iea: IeaSegment | undefined;
+  readonly ta1Segments: readonly Ta1Segment[];
+  readonly orphanSegments: readonly X12OrphanSegment[];
+  readonly trailingBytes: string | undefined;
+  readonly warnings: readonly X12ParseWarning[];
+}
+
+/**
+ * {@link decodeEnvelope} of an interchange a builder wrote, from the segments it wrote rather than
+ * from its bytes: `isa` is the 106-byte ISA, `segments` every segment after it in order without
+ * its terminator, and `elements[i]`, where given, the frozen elements `segments[i]` splits into.
+ *
+ * The caller vouches for what reading the bytes would find, and `../builder/assemble.ts` checks it
+ * before it calls: the bytes are `isa` and then each segment followed by the terminator; no segment
+ * holds the terminator or the release character, opens with a carriage return or a line feed, or
+ * is a binary segment framed by its count. Under those the reader would frame exactly these
+ * segments and split each into exactly these elements, so the walk below, which is the reader's
+ * own, reports what reading the bytes reports.
+ *
+ * @internal
+ */
+export function decodeBuiltEnvelope(
+  isa: string,
+  delimiters: Delimiters,
+  segments: readonly string[],
+  elements: readonly (readonly string[] | undefined)[],
+): DecodedEnvelope {
+  return walkEnvelope(isa, delimiters, segments, elements);
+}
+
+/**
+ * The walk both decodes share: the ISA, then every segment after it. `framed` is the segment list
+ * when it is already known, and `split` the elements of any of them already split; without them
+ * the segments are framed from `raw` and each is split here. @internal
+ */
+function walkEnvelope(
   raw: string,
   delimiters: Delimiters,
-): {
-  isa: IsaSegment;
-  groups: readonly X12FunctionalGroup[];
-  iea: IeaSegment | undefined;
-  ta1Segments: readonly Ta1Segment[];
-  orphanSegments: readonly X12OrphanSegment[];
-  trailingBytes: string | undefined;
-  warnings: readonly X12ParseWarning[];
-} {
+  framed: readonly string[] | undefined,
+  split: readonly (readonly string[] | undefined)[] | undefined,
+): DecodedEnvelope {
   const warnings: X12ParseWarning[] = [];
   /**
    * Single chokepoint that collects every warning emitted from any sub-
@@ -504,7 +541,7 @@ export function decodeEnvelope(
     warnings.push(pre005010({ segmentIndex: 0, interchangeIndex: 0, elementIndex: 12 }));
   }
 
-  const { segments } = splitSegments(raw, ISA_MIN_LENGTH, delimiters);
+  const segments = framed ?? splitSegments(raw, ISA_MIN_LENGTH, delimiters).segments;
 
   // Walk the segment stream. State machine: optional currentGroup,
   // optional currentTransaction. Segment index (`segIdx`) is global to
@@ -592,7 +629,7 @@ export function decodeEnvelope(
     warnings.push(unexpectedSegment(position, context));
     orphanSegments.push({
       raw: segmentText,
-      segment: decodeSegmentAt(segmentText, delimiters, collectWarning, position),
+      segment: decodeSegmentAt(segmentText, delimiters, collectWarning, position, presplit),
       segmentIndex: position.segmentIndex,
       context,
       anchor,
@@ -700,16 +737,20 @@ export function decodeEnvelope(
     transactionIndex: currentGroup?.transactions.length ?? 0,
   });
 
+  /** The elements of the segment being walked when they arrived already split. */
+  let presplit: readonly string[] | undefined;
+
   // ISA itself occupies segIdx 0; the body starts at segIdx 1.
   for (let i = 0; i < segments.length; i++) {
     const segmentText = el(segments, i);
     segIdx = i + 1;
+    presplit = split?.[i];
     const name = segmentName(segmentText, delimiters);
     // Only the envelope's own segments are split here; a body segment is split
     // once, by its decode, and the ST and SE reuse the elements theirs makes.
     const elements =
       name === "TA1" || name === "GS" || name === "GE" || name === "IEA"
-        ? splitElements(segmentText, delimiters)
+        ? (presplit ?? splitElements(segmentText, delimiters))
         : EMPTY_ELEMENTS;
 
     switch (name) {
@@ -809,7 +850,13 @@ export function decodeEnvelope(
         if (currentTx !== undefined) {
           finalizeTx(currentTx, currentGroup, undefined);
         }
-        const stDecoded = decodeSegmentAt(segmentText, delimiters, collectWarning, inTransaction);
+        const stDecoded = decodeSegmentAt(
+          segmentText,
+          delimiters,
+          collectWarning,
+          inTransaction,
+          presplit,
+        );
         currentTx = {
           // An ST is never a binary segment, so its decode splits it exactly
           // as `splitElements` does and the two arrays are interchangeable.
@@ -831,7 +878,13 @@ export function decodeEnvelope(
           );
           break;
         }
-        const seDecoded = decodeSegmentAt(segmentText, delimiters, collectWarning, inTransaction);
+        const seDecoded = decodeSegmentAt(
+          segmentText,
+          delimiters,
+          collectWarning,
+          inTransaction,
+          presplit,
+        );
         currentTx.segments.push(seDecoded);
         currentTx.rawSegments.push(segmentText);
         // Not a binary segment either: see the ST above.
@@ -919,7 +972,13 @@ export function decodeEnvelope(
       default: {
         // Body segment of an open transaction → decode and append.
         if (currentTx !== undefined && currentGroup !== undefined) {
-          const decoded = decodeSegmentAt(segmentText, delimiters, collectWarning, inTransaction);
+          const decoded = decodeSegmentAt(
+            segmentText,
+            delimiters,
+            collectWarning,
+            inTransaction,
+            presplit,
+          );
           currentTx.segments.push(decoded);
           currentTx.rawSegments.push(segmentText);
         } else if (name.length > 0) {

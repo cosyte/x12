@@ -59,7 +59,15 @@
  * large remittance spent more time there than anywhere else. Private fields
  * keep the guarantees: nothing outside the class reads or replaces them, a
  * forged instance (`Object.create(X12Decimal.prototype)`) throws the same
- * `TypeError` it did, and every instance is frozen with no own properties.
+ * `TypeError` it did, and an instance has no own properties.
+ *
+ * An instance is not frozen. Its value is the four private fields, which are
+ * read-only and which no code outside the class can reach, so freezing it
+ * guarded nothing a caller reads through the methods, and it cost about two
+ * fifths of every construction. A property a caller adds to an instance stays
+ * on that object and changes neither its value nor what any method answers.
+ * The one shared instance, {@link X12Decimal.ZERO}, stays frozen: it is handed
+ * to every caller, so a property set on it would reach all of them.
  */
 
 /**
@@ -108,7 +116,6 @@ export class X12Decimal {
     this.#scaled = scaled;
     this.#scale = scale;
     this.#signum = signum;
-    Object.freeze(this);
   }
 
   /** The verbatim or canonical text. @internal */
@@ -238,7 +245,14 @@ export class X12Decimal {
    * X12Decimal.ZERO.isZero();        // true
    * ```
    */
-  public static readonly ZERO: X12Decimal = new X12Decimal("0", 0n, 0, 0);
+  // Frozen, unlike every other instance: this one object is shared by every
+  // caller (`elementDecimalOrZero` answers it for an empty or unreadable
+  // amount, `sumDecimals` for an empty list), so a property set on it would
+  // reach every reader in the process. Frozen once, here, so no construction
+  // pays for it.
+  public static readonly ZERO: X12Decimal = Object.freeze(
+    new X12Decimal("0", 0n, 0, 0),
+  ) as X12Decimal;
 
   /**
    * Return the verbatim lexical form (for {@link X12Decimal.fromString})

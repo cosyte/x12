@@ -55,6 +55,16 @@ X12Decimal.fromString("450.00")!.toString(); // => "450.00"
 X12Decimal.fromString("not a number"); // => undefined
 ```
 
+An `X12Decimal` is immutable in value, not a frozen object. Its value lives in private fields that
+no code outside the class can reach, so no assignment changes what `toString`, `equals` or the
+arithmetic answer. Since `0.1.12` an instance is no longer passed to `Object.freeze`, which cost
+about two fifths of every decimal the readers made: `Object.isFrozen` answers `false`, and a
+property you add to an instance stays on that object and shows in its `Object.keys` and
+`JSON.stringify`. If you relied on either, freeze the instance yourself (`Object.freeze(d)`), and
+call the class's methods rather than ones you attach to an instance. The shared constant
+`X12Decimal.ZERO`, the one object every reader returns for an empty or unreadable amount read as
+zero, stays frozen, so no code in the process can change it for another caller.
+
 ## An amount this library cannot read never reads as `0`
 
 `X12Decimal.fromString` returning `undefined` is only half the story: the readers have to put

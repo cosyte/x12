@@ -36,7 +36,7 @@ import type {
   Build820RemittanceSpec,
   Build820Spec,
 } from "./build-820-types.js";
-import { parseX12 } from "../../parser/index.js";
+import { SegmentLog, builtInterchange } from "../../builder/assemble.js";
 import type { X12Interchange } from "../../parser/types.js";
 import type { X12Decimal } from "../../decimal.js";
 import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
@@ -129,6 +129,9 @@ export function build820(spec: Build820Spec): X12Interchange {
   };
   const esc = makeCallerEscaper(delimiters, "build820", refuseSpec);
 
+  // Every segment written, in order, so the result is made from them (see `builtInterchange`).
+  const log = new SegmentLog();
+
   /**
    * Join already-escaped element strings into a segment, dropping trailing
    * empty elements (interior empties are positionally meaningful and kept).
@@ -137,7 +140,8 @@ export function build820(spec: Build820Spec): X12Interchange {
     requireCallerSegment(parts, "build820", refuseSpec);
     let end = parts.length;
     while (end > 1 && parts[end - 1] === "") end -= 1;
-    return parts.slice(0, end).join(elementSeparator) + segmentTerminator;
+    const kept = parts.slice(0, end);
+    return log.record(kept, kept.join(elementSeparator), segmentTerminator);
   };
 
   // ---- ISA envelope -----------------------------------------------------
@@ -307,11 +311,10 @@ export function build820(spec: Build820Spec): X12Interchange {
   const ge = seg(["GE", "1", esc(envelope.groupControlNumber)]);
   const iea = seg(["IEA", "1", interchangeControlNumber]);
 
-  const raw = isa + gs + st + body.join("") + se + ge + iea;
-
-  // Final round-trip through `parseX12` so the returned interchange is
-  // bit-identical with the parsed form every other helper consumes.
-  return parseX12(raw);
+  // The interchange the bytes read as, made from the segments written: the
+  // reader's own envelope walk runs over them, so it reports what parsing the
+  // bytes reports, and the bytes are parsed instead where that is not certain.
+  return builtInterchange(isa, [gs, st, ...body, se, ge, iea], log);
 }
 
 // ---------------------------------------------------------------------------

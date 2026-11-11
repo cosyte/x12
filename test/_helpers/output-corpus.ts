@@ -127,6 +127,8 @@ import type {
  * Write `value` as deterministic text: every own enumerable key in its order, whether each object
  * and array is frozen, an `X12Decimal` by its text, an error by its class, code and message. Key
  * order is kept, not sorted, because it is observable through `JSON.stringify` and `Object.keys`.
+ * Whether an `X12Decimal` is frozen is not recorded: instances stopped being frozen on purpose,
+ * and `test/decimal-not-frozen.test.ts` holds what they answer now.
  */
 export function record(value: unknown): string {
   const out: string[] = [];
@@ -169,7 +171,7 @@ function write(value: unknown, out: string[], depth: number): void {
   }
   if (value instanceof X12Decimal) {
     out.push(
-      `dec(${JSON.stringify(value.toString())},${String(value.signum())},${Object.isFrozen(value) ? "F" : "M"},${String(Object.keys(value).length)})`,
+      `dec(${JSON.stringify(value.toString())},${String(value.signum())},${String(Object.keys(value).length)})`,
     );
     return;
   }
@@ -625,15 +627,12 @@ export function observeDecimals(): string {
         attempt(() => a.isZero()),
         attempt(() => a.abs()),
         attempt(() => a.negate()),
-        attempt(() => Object.isFrozen(a)),
         attempt(() => Object.keys(a)),
         attempt(() => JSON.stringify(a)),
         attempt(() => String(a)),
         attempt(() => `${a.toString()}`),
         attempt(() => Object.getOwnPropertyNames(a)),
         attempt(() => Object.getOwnPropertySymbols(a).length),
-        attempt(() => Reflect.set(a, "x", 1)),
-        attempt(() => (a as unknown as Record<string, unknown>)["x"]),
         attempt(() => a instanceof X12Decimal),
       ].join("|"),
     );
@@ -1629,6 +1628,24 @@ export function corpusBuilds(): CorpusBuild[] {
       (s) => withDelimiters(s, { elementSeparator: "~", segmentTerminator: "~" }),
     ],
     ["long-control", (s) => withDelimiters(s, { interchangeControlNumber: "0123456789" })],
+    // Free text holding the default delimiters under another set, where none of them is active,
+    // so nothing is released and each builder's logged segments become the elements as written.
+    [
+      "foreign-delimiters",
+      (s) =>
+        withDelimiters(
+          retext(s, (v) => `${v}*~:^ SE IEA`),
+          {
+            elementSeparator: "|",
+            repetitionSeparator: "!",
+            componentSeparator: ">",
+            segmentTerminator: "#",
+          },
+        ),
+    ],
+    // Every free-text value empty or a single space, so trailing elements are trimmed and interior
+    // ones kept, on the logged path.
+    ["blank", (s) => retext(s, () => " ")],
   ];
   const out: CorpusBuild[] = [];
   for (const [name, builder, spec] of builders) {
@@ -1661,5 +1678,160 @@ export function corpusBuilds(): CorpusBuild[] {
   for (const [i, spec] of fc.sample(interchangeSpec(), { seed: 4404, numRuns: 60 }).entries()) {
     out.push({ label: `drawn:interchange:${String(i)}`, build: () => buildInterchange(spec) });
   }
+  for (const [label, spec] of writtenInterchangeSpecs()) {
+    out.push({ label: `written:interchange:${label}`, build: () => buildInterchange(spec) });
+  }
   return out;
+}
+
+/** One transaction set of `segments` inside one group, for the written interchange specs. */
+function oneTransaction(
+  segments: readonly (readonly string[])[],
+  extra: Partial<InterchangeSpec> = {},
+): InterchangeSpec {
+  return {
+    ...INTERCHANGE_SPEC,
+    ...extra,
+    groups: [
+      {
+        functionalIdCode: "HC",
+        groupControlNumber: "1",
+        versionRelease: "005010X222A2",
+        transactions: [
+          {
+            transactionSetIdCode: "837",
+            transactionSetControlNumber: "0001",
+            implementationConventionReference: "005010X222A2",
+            segments,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * Interchange specs whose built bytes hold no release character, written for how a builder turns
+ * what it emits into the interchange it returns: envelope segment names inside a body, segment
+ * names a line break opens, binary segments, empty and trailing elements, names outside the
+ * grammar, an older version, several groups and transaction sets, and other delimiter sets.
+ */
+function writtenInterchangeSpecs(): [string, InterchangeSpec][] {
+  return [
+    [
+      "envelope-names-in-body",
+      oneTransaction([
+        ["REF", "EA", "BEFORE"],
+        ["SE", "3", "0001"],
+        ["REF", "EA", "BETWEEN"],
+        ["ST", "837", "0002"],
+        ["GE", "1", "1"],
+        ["TA1", "000000001", "250101", "1200", "A", "000"],
+        ["GS", "HC", "A", "B", "20250101", "1200", "2", "X", "005010X222A2"],
+        ["IEA", "1", "000000001"],
+        ["REF", "EA", "AFTER"],
+      ]),
+    ],
+    ["iea-in-body", oneTransaction([["IEA", "1", "000000001"]])],
+    ["se-in-body", oneTransaction([["SE", "9", "0001"]])],
+    ["ge-in-body", oneTransaction([["GE", "1", "1"]])],
+    [
+      "line-break-names",
+      oneTransaction([["\nREF", "EA", "X"], ["\r\nNM1", "IL"], ["REF", "EA", "A\rB"], ["\r"]]),
+    ],
+    [
+      "binary",
+      oneTransaction([
+        ["BIN", "3", "XYZ"],
+        ["BIN", "9", "XYZ"],
+        ["BIN", "", "XYZ"],
+        ["BIN", "X", "XYZ"],
+        ["BIN", "2"],
+        ["BDS", "B64", "4", "QUJD"],
+        ["BDS", "B64"],
+        ["BIX", "1", "Z"],
+        ["BI"],
+        ["BPR", "I", "1"],
+      ]),
+    ],
+    [
+      "empty-elements",
+      oneTransaction([["REF"], ["REF", ""], ["REF", "", "", ""], ["N3", "A", "", "B"], ["N4", ""]]),
+    ],
+    [
+      "names-outside-grammar",
+      oneTransaction([
+        ["ref", "x"],
+        ["TOOLONG", "x"],
+        ["1AB", "x"],
+        ["A", "x"],
+        ["N1:X", "x"],
+      ]),
+    ],
+    ["version-00401", oneTransaction([["REF", "EA", "X"]], { version: "00401" })],
+    [
+      "pipes",
+      oneTransaction([["REF", "EA", "A*B~C:D^E"]], {
+        elementSeparator: "|",
+        repetitionSeparator: "!",
+        componentSeparator: ">",
+        segmentTerminator: "#",
+      }),
+    ],
+    [
+      "carriage-return-name-under-another-terminator",
+      oneTransaction(
+        [
+          ["\rREF", "EA", "X"],
+          ["REF", "EA", "X"],
+        ],
+        { segmentTerminator: "#" },
+      ),
+    ],
+    [
+      "several",
+      {
+        ...INTERCHANGE_SPEC,
+        groups: [
+          {
+            functionalIdCode: "HC",
+            groupControlNumber: "1",
+            versionRelease: "005010X222A2",
+            transactions: [
+              { transactionSetIdCode: "837", transactionSetControlNumber: "0001", segments: [] },
+              {
+                transactionSetIdCode: "837",
+                transactionSetControlNumber: "0002",
+                segments: [
+                  ["BHT", "0019"],
+                  ["REF", "EA", "X"],
+                ],
+              },
+            ],
+          },
+          {
+            functionalIdCode: "HP",
+            groupControlNumber: "2",
+            versionRelease: "X",
+            transactions: [],
+          },
+          {
+            functionalIdCode: "HB",
+            groupControlNumber: "3",
+            versionRelease: "005010X279A1",
+            applicationSenderCode: "APP",
+            groupDate: "20250102",
+            responsibleAgencyCode: "T",
+            transactions: [
+              {
+                transactionSetIdCode: "271",
+                transactionSetControlNumber: "9",
+                segments: [["BHT"]],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  ];
 }

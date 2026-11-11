@@ -24,7 +24,7 @@ import type {
   Build999Spec,
   Build999TransactionResponseSpec,
 } from "./types.js";
-import { parseX12 } from "../../parser/index.js";
+import { SegmentLog, builtInterchange } from "../../builder/assemble.js";
 import type { X12Interchange } from "../../parser/types.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
@@ -317,16 +317,11 @@ export function build999(spec: Build999Spec): X12Interchange {
 
   const iea = joinSeg(["IEA", "1", interchangeControlNumber], elementSeparator, segmentTerminator);
 
-  const raw = isa + gs + bodySegments.join("") + se + ge + iea;
-
-  // Final round-trip through `parseX12` so the returned `X12Interchange`
-  // is bit-identical with the parsed form the consumer's other helpers
-  // operate on - and so the build path inherits delimiter detection,
-  // envelope walking, and any future Phase-1+ refinements for free. This
-  // also catches any internal builder bug at the call boundary (any
-  // self-build-self-parse divergence surfaces as Tier-2 warnings on the
-  // returned interchange's `warnings` array).
-  return parseX12(raw);
+  // The interchange the bytes read as, exactly what `parseX12` answers for
+  // them: the reader's own envelope walk runs over the segments written, so
+  // any self-build-self-parse divergence still surfaces as Tier-2 warnings on
+  // the returned interchange's `warnings` array.
+  return builtInterchange(isa, [gs, ...bodySegments, se, ge, iea], new SegmentLog());
 }
 
 // ---------------------------------------------------------------------------
