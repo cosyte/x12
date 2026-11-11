@@ -981,12 +981,14 @@ function walkEnvelope(
           );
           currentTx.segments.push(decoded);
           currentTx.rawSegments.push(segmentText);
-        } else if (name.length > 0) {
+        } else if (segmentText.length > 0) {
           // Outside any transaction, a body segment is structurally
-          // unexpected. The empty-name guard skips the synthetic empty
-          // "segment" the splitter produces after a trailing terminator
-          // (e.g. an interchange that ends `...IEA*1*1~\r\n` - the
-          // post-terminator newline-only chunk is not a real segment).
+          // unexpected. The guard skips only the zero-length segment a
+          // doubled terminator delimits, which carries nothing to keep. A
+          // segment whose first element is empty (`*A*B`) has no name to
+          // dispatch on but does carry values, so it is warned and kept here
+          // like any other: skipping it on its empty name lost those values
+          // with no diagnostic at all.
           recordOrphan(
             segmentText,
             { segmentIndex: segIdx, interchangeIndex: 0 },
