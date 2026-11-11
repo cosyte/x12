@@ -14,7 +14,7 @@ on:
     # 04:41 UTC. An odd minute: GitHub delays scheduled runs at the start of every hour.
     - cron: "41 4 * * *"
   workflow_dispatch:
-  # TEMPORARY, for measuring on this branch (run 2, with the new suites); removed before review.
+  # TEMPORARY, for measuring on this branch (run 3, a seed from the run id); removed before review.
   push:
     branches: [test/testing-standard]
     paths: [".github/workflows/nightly-properties.yml"]
@@ -31,6 +31,9 @@ jobs:
     uses: cosyte/.github/.github/workflows/nightly-properties.yml@398cd4ded647dddd9f2e220ceb042840f59e1426 # the release of 398cd4ded647
     with:
       # The property suites only, without the fuzz targets: nothing else reads the depth, so the
-      # rest of the suite would add time and no cases.
-      test-cmd: "pnpm test:property"
+      # rest of the suite would add time and no cases. The seed is this run's id, printed first, so
+      # each night draws other cases than the pinned seed a pull request runs, and a passing night
+      # is recorded as well as a failing one: `X12_FUZZ_SEED=<run id> pnpm test:property` replays
+      # the whole night (test/setup.fast-check.ts reads it).
+      test-cmd: 'echo "properties: X12_FUZZ_SEED=${GITHUB_RUN_ID}" && X12_FUZZ_SEED="${GITHUB_RUN_ID}" pnpm test:property'
       property-runs: "10000"

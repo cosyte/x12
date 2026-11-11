@@ -44,7 +44,8 @@ that the parser did not throw.
   every Cosyte parser proves (round trip, idempotent normalize, and never throws in lenient mode)
   run on the generators we publish at `@cosyte/x12/arbitraries`, and for the 278 request and
   response, the 275 and the 277 request for additional information on generated build specs. They
-  run 100 cases each on a pull request and 10,000 each every night, `COSYTE_PROPERTY_RUNS` sets the
+  run 100 cases each on a pull request and 10,000 each every night from a seed that changes each
+  night and is printed first, `COSYTE_PROPERTY_RUNS` sets the
   depth of a run, and a failure prints the seed and path that replay it.
   [Property-test your code](./property-test-your-code.md) shows those generators on code of your
   own.
