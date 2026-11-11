@@ -9,7 +9,9 @@
  *   (default)  VALIDATE + FRESHNESS AUDIT - offline, deterministic, CI-safe.
  *              Loads every bundled `CodeListSnapshot` and asserts it is
  *              well-formed (meta present + ISO dates, non-empty unique codes,
- *              non-empty descriptions) AND that it carries a maintaining
+ *              a non-empty description for every code of a list recorded as
+ *              permitted and NO description for every code of any other
+ *              list) AND that it carries a maintaining
  *              organisation and a redistribution record naming a licensor
  *              wherever the descriptions are not free to redistribute. Then it
  *              prints a freshness table (each list's snapshot date, the
@@ -98,18 +100,19 @@ export const TARGETS: readonly RefreshTarget[] = [
   {
     snapshot: SERVICE_TYPE_CODES,
     cadence: "X12 005010X279A1 - standard release cadence (rare)",
-    canonicalSource:
-      "ASC X12 005010X279A1 TR3 §EB Eligibility or Benefit Information (Code Source 411)",
+    canonicalSource: "ASC X12 external code list 958 (https://x12.org/codes)",
   },
   {
     snapshot: CLP_STATUS,
     cadence: "X12 005010X221A1 - standard release cadence (rare)",
-    canonicalSource: "ASC X12 005010X221A1 TR3 §CLP Claim Payment Information (Code Source 65)",
+    canonicalSource:
+      "X12 Code Source 65, printed in the 005010X221A1 implementation guide (not read; no other source recorded)",
   },
   {
     snapshot: MAINTENANCE_TYPE_CODES,
     cadence: "X12 005010X220A1 - standard release cadence (rare)",
-    canonicalSource: "ASC X12 005010X220A1 TR3 §INS Member Level Detail (Code Source 875)",
+    canonicalSource:
+      "X12 Code Source 875, printed in the 005010X220A1 implementation guide (not read; no other source recorded)",
   },
 ] as const;
 
@@ -173,6 +176,10 @@ export function validateCodeLists(targets: readonly RefreshTarget[] = TARGETS): 
 
     const entries = Object.entries(codes);
     if (entries.length === 0) errors.push(`${id}: snapshot has zero codes`);
+    // Description text ships only where the list's own record permits it. A
+    // list recorded as anything else keeps its codes and describes none, so a
+    // description added to one of them stops the release here.
+    const describes = codeListRedistributionIsPermitted(meta);
 
     const seen = new Set<string>();
     for (const [code, description] of entries) {
@@ -186,7 +193,13 @@ export function validateCodeLists(targets: readonly RefreshTarget[] = TARGETS): 
         errors.push(`${id}: duplicate code key ${JSON.stringify(code)} (whitespace variant)`);
       }
       seen.add(normalized);
-      if (typeof description !== "string" || description.trim().length === 0) {
+      if (!describes) {
+        if (description !== undefined) {
+          errors.push(
+            `${id}: code ${JSON.stringify(code)} carries a description, but the list's redistribution record is not "permitted"`,
+          );
+        }
+      } else if (typeof description !== "string" || description.trim().length === 0) {
         errors.push(`${id}: code ${JSON.stringify(code)} has an empty description`);
       }
     }

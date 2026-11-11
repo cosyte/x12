@@ -67,11 +67,11 @@ asked?.name?.lastNameOrOrganizationName; // => "DOE"
 asked?.name?.idCode; // => "MBR0001"
 asked?.name?.dateOfBirth; // => "19850515"
 
-// EQ-01 repeats, so the service types come back as a list, and the bundled
-// snapshot fills a description in beside the code without ever replacing it.
+// EQ-01 repeats, so the service types come back as a list. The Service Type
+// list ships no description text, so each description is undefined.
 const request = asked?.inquiries[0];
 request?.serviceTypeCodes.map((s) => s.code); // => ["30", "35"]
-request?.serviceTypeCodes[0]?.description; // => "Health Benefit Plan Coverage"
+request?.serviceTypeCodes[0]?.description; // => undefined
 
 // EQ-02 is a composite, and comes back as separated components rather than
 // one joined string: the separator is framing and appears in no value.

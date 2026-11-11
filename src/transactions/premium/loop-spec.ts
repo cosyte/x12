@@ -4,7 +4,7 @@
  * gate the 835 / 837 / 271 / 277 specs go through. A regression in
  * `defineLoopSpec` cannot hide from the built-in 820 extractor.
  *
- * Hierarchy (per WPC TR3 `005010X218` §3, §4):
+ * Hierarchy (as this reader implements it; no implementation guide was read):
  *
  * ```text
  *  Header (transaction set, ST..SE)
@@ -46,7 +46,7 @@ import type { LoopSpec } from "../../loops/types.js";
  * 820 Loop 2310A - Adjustment. Triggered by `ADX`. Innermost detail loop:
  * a signed monetary adjustment tied to the enclosing `RMR` open item.
  *
- * Cited as Loop 2310A in TR3 X218.
+ * Loop 2310A.
  *
  * @example
  * ```ts
@@ -65,7 +65,7 @@ export const PREMIUM_820_LOOP_2310A: LoopSpec = defineLoopSpec({
  * 820 Loop 2300A - Organization Summary Remittance Detail. Triggered by
  * `RMR` (the premium-line open-item reference). Nests Loop 2310A.
  *
- * Cited as Loop 2300A in TR3 X218.
+ * Loop 2300A.
  *
  * @example
  * ```ts
@@ -90,7 +90,7 @@ export const PREMIUM_820_LOOP_2300A: LoopSpec = defineLoopSpec({
  * 820 Loop 2100A - Party Name (member / entity inside an organization
  * summary). Triggered by `NM1`.
  *
- * Cited as Loop 2100A in TR3 X218.
+ * Loop 2100A.
  *
  * @example
  * ```ts
@@ -113,7 +113,7 @@ export const PREMIUM_820_LOOP_2100A: LoopSpec = defineLoopSpec({
  * 820 Loop 2000A - Organization Summary Remittance. Triggered by `ENT`.
  * Nests Loop 2100A (party name) and Loop 2300A (remittance detail).
  *
- * Cited as Loop 2000A in TR3 X218.
+ * Loop 2000A.
  *
  * @example
  * ```ts

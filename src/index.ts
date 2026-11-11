@@ -211,6 +211,7 @@ export {
   type CodeListCompleteness,
   type CodeListEntry,
   type CodeListEntryDates,
+  type CodeListLookupOptions,
   type CodeListMeta,
   type CodeListRedistribution,
   type CodeListRedistributionStatus,

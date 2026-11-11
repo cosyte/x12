@@ -66,9 +66,9 @@ it bundles: a reader keeps a code outside them verbatim and warns with `X12_UNKN
 `X12_UNKNOWN_CLAIM_STATUS_CATEGORY` (277 statuses), `X12_271_AAA_UNKNOWN_CODE` (271 AAA codes),
 `X12_UNKNOWN_HI_QUALIFIER` (837 and 278 HI qualifiers) or `X12_834_UNKNOWN_MAINTENANCE_TYPE` (834
 INS-03 and HD-01), and `build834` refuses a maintenance type outside its list with
-`X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE`. Three bundled lists are code subsets cited from a TR3:
-`MAINTENANCE_TYPE_CODES` (INS-03), `CLP_STATUS` (CLP-02, which the 835 reader describes but does not
-warn on) and `HI_QUALIFIERS`. We ship no TR3 usage tables, and the package does not check TR3 usage:
+`X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE`. Three bundled lists are code subsets of lists a TR3
+prints, which we did not read: `MAINTENANCE_TYPE_CODES` (INS-03), `CLP_STATUS` (CLP-02, which the 835
+reader carries but does not warn on) and `HI_QUALIFIERS`. We ship no TR3 usage tables, and the package does not check TR3 usage:
 whether a segment or element is required, situational or not used where it sits, a guide's
 situational rules, repeat counts, or which code values a guide allows at an element beyond those
 bundled lists. Every TR3 is sold by X12, so a document that breaks its guide can parse with no
@@ -145,7 +145,7 @@ const adjustment = claim?.serviceLines[0]?.adjustments[0];
 console.log("paid", remit.payment.totalActualPayment?.toString(), "by", remit.payment.method);
 console.log("claim", claim?.patientControlNumber, "charged", claim?.totalChargeAmount?.toString());
 console.log("patient owes", claim?.patientResponsibilityAmount?.toString());
-console.log("reason", adjustment?.groupCode, adjustment?.reasonCode, adjustment?.reasonDescription);
+console.log("reason", adjustment?.groupCode, adjustment?.reasonCode);
 console.log("warnings", ix.warnings.length);
 
 // The values printed above, which the test suite asserts on every run:
@@ -154,7 +154,7 @@ claim?.totalChargeAmount?.toString(); // => "500.00"
 claim?.patientResponsibilityAmount?.toString(); // => "50.00"
 adjustment?.groupCode; // => "PR"
 adjustment?.reasonCode; // => "1"
-adjustment?.reasonDescription; // => "Deductible Amount"
+adjustment?.reasonDescription; // => undefined
 ix.warnings; // => []
 ```
 
@@ -164,12 +164,20 @@ It prints:
 paid 450.00 by ACH
 claim PT-ACCT-001 charged 500.00
 patient owes 50.00
-reason PR 1 Deductible Amount
+reason PR 1
 warnings 0
 ```
 
-The `groupCode` is what tells you who owes the money (`PR` patient responsibility, `CO` contractual
-obligation, and so on). Read it; never infer it.
+The `groupCode` is what tells you who owes the money (`PR`: the patient owes it, `CO`: the provider's
+contract writes it off, and so on). Read it; never infer it.
+
+`reasonDescription` is `undefined` on purpose. Most code lists we bundle ship their codes and no
+description text, because each list's own redistribution record (`meta.redistribution`) does not
+say `permitted`; the Remittance Advice Remark Codes are the one list that ships descriptions. To
+show text beside a code, pass your own table to the lookup:
+`lookupCarc(code, { descriptions: yourTable })`.
+[`examples/describe-codes-with-your-own-table.ts`](https://github.com/cosyte/x12/blob/main/examples/describe-codes-with-your-own-table.ts)
+runs that end to end.
 
 ## API
 

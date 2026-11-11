@@ -88,9 +88,19 @@ function target(
       redistribution,
       completeness: "cited-subset",
     },
-    codes: { "1": "a description" },
+    codes: { "1": redistribution?.status === "permitted" ? "a description" : undefined },
   };
   return { snapshot, cadence: "n/a", canonicalSource: `source-for-${id}` };
+}
+
+/** The same target with its one code carrying `description`, whatever the record says. */
+function describedTarget(
+  id: string,
+  redistribution: CodeListRedistribution,
+  description: string | undefined,
+): RefreshTarget {
+  const base = target(id, "someone", redistribution);
+  return { ...base, snapshot: { ...base.snapshot, codes: { "1": description } } };
 }
 
 const PERMITTED: CodeListRedistribution = {
@@ -259,6 +269,28 @@ describe("AC-6: an unlabelled list cannot reach a release", () => {
 
   it("CONTROL: a fully labelled list passes, so the checks above are not always-red", () => {
     expect(validateCodeLists([target("LABELLED", "someone", PERMITTED)])).toEqual([]);
+  });
+});
+
+describe("a description ships only where the list's own record permits it", () => {
+  const CARRIES =
+    'code "1" carries a description, but the list\'s redistribution record is not "permitted"';
+
+  it.each([
+    ["licence-required", LICENCE_REQUIRED],
+    ["not-established", NOT_ESTABLISHED],
+  ] as const)("a %s list carrying a description fails validation, named", (status, record) => {
+    const errors = validateCodeLists([describedTarget("ADDED", record, "Synthetic text")]);
+    expect(errors, status).toContain(`ADDED: ${CARRIES}`);
+  });
+
+  it("a restricted list with no description passes", () => {
+    expect(validateCodeLists([describedTarget("BARE", LICENCE_REQUIRED, undefined)])).toEqual([]);
+  });
+
+  it("a permitted list still needs a description for every code", () => {
+    const errors = validateCodeLists([describedTarget("EMPTY", PERMITTED, undefined)]);
+    expect(errors).toContain('EMPTY: code "1" has an empty description');
   });
 });
 

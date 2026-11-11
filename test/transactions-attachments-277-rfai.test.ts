@@ -334,9 +334,12 @@ describe("AC-3: C043-04 names the code source of C043-02, so a qualified code is
     reading.warnings.filter((w) => w.code === WARNING_CODES.X12_UNKNOWN_CLAIM_STATUS);
 
   it("AC-3: a code the claim status list DOES carry gets no description when C043-04 is present", () => {
-    // Control first: with C043-04 empty, "20" IS a claim status code and is described.
+    // Control first: with C043-04 empty, "20" IS a claim status code, known to
+    // the bundled list, so it raises no unknown-claim-status warning. The list
+    // ships no description text, so neither reading carries one.
     const unqualified = stcReading("R0", "20");
-    expect(codeOf(unqualified)?.statusDescription).toBeDefined();
+    expect(statusWarnings(unqualified)).toEqual([]);
+    expect(codeOf(unqualified)?.statusDescription).toBeUndefined();
     // With C043-04 present, the same bytes are not looked up at all.
     const qualified = stcReading("R0", "20", "", "LOI");
     expect(codeOf(qualified)?.statusCode).toBe("20");

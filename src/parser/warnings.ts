@@ -1027,7 +1027,7 @@ export function unexpectedSegment(
 
 /**
  * Build an `X12_835_REMIT_BALANCE_MISMATCH` warning. Emitted by the 835
- * helper when a TR3 X221A1 §1.10.2 balance invariant fails. `invariant`
+ * helper when one of the three 835 balance equations fails. `invariant`
  * names which equation broke; the spec'd, computed and delta amounts stay
  * on the model as {@link "../decimal.js".X12Decimal} values and are never
  * rendered into the message.
@@ -1058,7 +1058,7 @@ export function remitBalanceMismatch(
 
 /**
  * Build an `X12_835_BALANCE_NOT_EVALUABLE` warning. Emitted where a term of
- * a TR3 X221A1 §1.10.2 invariant is `undefined` on the model, so the
+ * one of the three 835 balance equations is `undefined` on the model, so the
  * equation has nothing to compare on one side. `invariant` names which
  * equation could not be run.
  *

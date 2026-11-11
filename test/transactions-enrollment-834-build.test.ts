@@ -171,7 +171,7 @@ describe("build834 → get834Enrollments round-trip", () => {
     expect(subscriber?.subscriberIndicator).toBe("Y");
     expect(subscriber?.relationshipCode).toBe("18");
     expect(subscriber?.maintenanceTypeCode).toBe("021");
-    expect(subscriber?.maintenanceTypeDescription).toBe("Addition");
+    expect(subscriber?.maintenanceTypeDescription).toBeUndefined();
     expect(subscriber?.benefitStatusCode).toBe("A");
     expect(subscriber?.employmentStatusCode).toBe("FT");
     expect(subscriber?.member?.lastName).toBe("DOE");
@@ -205,7 +205,7 @@ describe("build834 → get834Enrollments round-trip", () => {
     const dependent = members[1];
     expect(dependent?.subscriberIndicator).toBe("N");
     expect(dependent?.maintenanceTypeCode).toBe("024");
-    expect(dependent?.maintenanceTypeDescription).toBe("Cancellation or Termination");
+    expect(dependent?.maintenanceTypeDescription).toBeUndefined();
     expect(dependent?.member?.firstName).toBe("JIMMY");
     expect(dependent?.dates[0]?.qualifier).toBe("357");
     expect(dependent?.warnings).toHaveLength(0);

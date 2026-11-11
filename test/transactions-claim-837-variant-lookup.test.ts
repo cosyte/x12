@@ -391,7 +391,7 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: the code-list lookups answer undefined f
   }
 
   it("CONTROL: the same helpers still resolve their real codes", () => {
-    expect(lookupCarc("1")?.description).toEqual(expect.any(String));
+    expect(lookupCarc("1")?.code).toBe("1");
     expect(resolveHiQualifier("ABK")?.system).toBe("ICD-10-CM");
   });
 
@@ -464,10 +464,11 @@ describe("X12-VARIANT-LOOKUP-PROTOTYPE: reached through the 837 walker, on real 
     expect(channel(sub)).toEqual([WARNING_CODES.X12_UNKNOWN_CARC]);
   });
 
-  it("CONTROL: a known CARC still resolves its description, silently", () => {
+  it("CONTROL: a known CARC still resolves, silently, with no description shipped", () => {
     const { sub } = parse837("005010X222A2", casBody("1"));
     const adj = sub.claims[0]?.serviceLines[0]?.adjudications[0]?.adjustments[0];
-    expect(adj?.reasonDescription).toEqual(expect.any(String));
+    expect(adj?.reasonCode).toBe("1");
+    expect(adj?.reasonDescription).toBeUndefined();
     expect(channel(sub)).toEqual([]);
   });
 });

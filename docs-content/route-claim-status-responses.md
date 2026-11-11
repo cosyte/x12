@@ -79,7 +79,7 @@ rejected; // => ["CLAIM-TRACE-REJECT-001"]
 const reject = ack.claims[2]?.statuses[0]?.statuses[0];
 reject?.categoryCode; // => "A7"
 reject?.statusCode; // => "21"
-reject?.statusDescription; // => "Missing or invalid information."
+reject?.statusDescription; // => undefined
 reject?.entityCode; // => "PR"
 ```
 
@@ -138,7 +138,7 @@ info?.actionCode; // => "WQ"
 info?.totalChargeAmount?.toString(); // => "150"
 info?.statuses[0]?.categoryCode; // => "A2"
 info?.statuses[0]?.statusCode; // => "20"
-info?.statuses[0]?.statusDescription; // => "Accepted for processing."
+info?.statuses[0]?.statusDescription; // => undefined
 
 // Loop 2220 carries the per-line answer.
 statusClaim?.serviceLines[0]?.procedureCode; // => "99213"

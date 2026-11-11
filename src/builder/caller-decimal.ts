@@ -83,7 +83,7 @@
  * **And one class of `X12Decimal` slot never reaches this guard at all.**
  * `build835` runs `enforceBalance(spec)` before it resolves delimiters, and the
  * balance check calls `X12Decimal` methods on the caller's value. So every slot
- * that is a TERM in the TR3 X221A1 balance equation - BPR-02, CLP-03, CLP-04,
+ * that is a TERM in an 835 balance equation - BPR-02, CLP-03, CLP-04,
  * CAS-03 - throws an **untyped `TypeError` with no `code`** (one of them saying
  * the caller tampered with a frozen class) before `requireCallerDecimal` can
  * refuse it typed. `PRE-EXISTING`, pinned in `test/builder-decimal-type.test.ts`,

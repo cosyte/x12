@@ -5,9 +5,16 @@
  * reversed, predetermination). Misreading flips an accepted claim to a
  * denied one in a cash-poster's downstream system.
  *
- * Spec source: X12 005010X221A1 TR3 §"CLP Claim Payment Information",
- * Element `CLP-02` (Code Source 65). The full code list is bounded
- * (~25 values) and X12-internal (not WPC) - it grows rarely.
+ * The list is X12 Code Source 65, printed in the 005010X221A1
+ * implementation guide rather than published as an external code list. We
+ * did not read that guide, and no other source for these code values is
+ * recorded. The full list is small and grows rarely.
+ *
+ * **No description text ships.** This list's redistribution record is
+ * `"not-established"`, which is treated as not redistributable, so the
+ * snapshot keeps the codes and the metadata and maps every code to
+ * `undefined`. Pass your own descriptions to the lookup as
+ * `options.descriptions`.
  *
  * **Initial bundled subset** covers the ~10 most common dispositions.
  * Codes outside the subset still parse (verbatim code preserved on the
@@ -16,19 +23,23 @@
  * this table only carries the codes the readers actually use).
  */
 
-import { makeLookup, type CodeListEntry, type CodeListSnapshot } from "./meta.js";
+import {
+  makeLookup,
+  type CodeListEntry,
+  type CodeListLookupOptions,
+  type CodeListSnapshot,
+} from "./meta.js";
 import { X12_TR3_REDISTRIBUTION_NOT_ESTABLISHED } from "./redistribution.js";
 
 /**
- * Bundled CLP-02 (Claim Status) snapshot. Used by the 835 helper to
- * surface a human-readable description alongside the verbatim
- * disposition code.
+ * Bundled CLP-02 (Claim Status) snapshot. The 835 helper reads it beside the
+ * verbatim disposition code; it ships no description text.
  *
  * @example
  * ```ts
  * import { CLP_STATUS } from "@cosyte/x12";
- * CLP_STATUS.codes["1"];  // "Processed as Primary"
- * CLP_STATUS.codes["4"];  // "Denied"
+ * Object.hasOwn(CLP_STATUS.codes, "1"); // true (bundled)
+ * CLP_STATUS.codes["1"];                // undefined (no description ships)
  * CLP_STATUS.meta.redistribution?.status; // "not-established"
  * ```
  */
@@ -36,7 +47,8 @@ export const CLP_STATUS: CodeListSnapshot = Object.freeze({
   meta: Object.freeze({
     id: "CLP-STATUS",
     description: "835 CLP-02 Claim Status Code (X12 Code Source 65)",
-    source: "X12 005010X221A1 TR3 §CLP Claim Payment Information, Element CLP-02 (Code Source 65)",
+    source:
+      "X12 Code Source 65, element CLP-02. No source for these code values is recorded; the 005010X221A1 implementation guide that prints the list was not read.",
     publishedDate: "2010-04-01",
     snapshotDate: "2026-06-27",
     note: "Initial subset; X12-internal list (not WPC) - codes are stable.",
@@ -45,29 +57,35 @@ export const CLP_STATUS: CodeListSnapshot = Object.freeze({
     completeness: "cited-subset",
   }),
   codes: Object.freeze({
-    "1": "Processed as Primary",
-    "2": "Processed as Secondary",
-    "3": "Processed as Tertiary",
-    "4": "Denied",
-    "19": "Processed as Primary, Forwarded to Additional Payer(s)",
-    "20": "Processed as Secondary, Forwarded to Additional Payer(s)",
-    "21": "Processed as Tertiary, Forwarded to Additional Payer(s)",
-    "22": "Reversal of Previous Payment",
-    "23": "Not Our Claim, Forwarded to Additional Payer(s)",
-    "25": "Predetermination Pricing Only - No Payment",
+    "1": undefined,
+    "2": undefined,
+    "3": undefined,
+    "4": undefined,
+    "19": undefined,
+    "20": undefined,
+    "21": undefined,
+    "22": undefined,
+    "23": undefined,
+    "25": undefined,
   }),
 });
 
 /**
- * Look up a CLP-02 claim status code's bundled description. Returns
- * `undefined` for codes outside the initial subset; the verbatim code is
- * still preserved on the parsed claim model.
+ * Look up a CLP-02 claim status code. A bundled code returns
+ * `{ code, description: undefined }`, since this list ships no description
+ * text; pass your own table as `options.descriptions` to fill it. Returns
+ * `undefined` for a code outside the subset that your table does not
+ * describe; the verbatim code is still preserved on the parsed claim model.
  *
  * @example
  * ```ts
  * import { lookupClpStatus } from "@cosyte/x12";
- * lookupClpStatus("1")?.description; // "Processed as Primary"
- * lookupClpStatus("99");             // undefined (outside subset)
+ * lookupClpStatus("1");    // { code: "1", description: undefined }
+ * lookupClpStatus("1", { descriptions: { "1": "Made-up text" } })?.description; // "Made-up text"
+ * lookupClpStatus("99");   // undefined (outside subset)
  * ```
  */
-export const lookupClpStatus: (code: string) => CodeListEntry | undefined = makeLookup(CLP_STATUS);
+export const lookupClpStatus: (
+  code: string,
+  options?: CodeListLookupOptions,
+) => CodeListEntry | undefined = makeLookup(CLP_STATUS);

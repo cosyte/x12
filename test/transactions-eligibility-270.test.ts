@@ -129,7 +129,7 @@ describe("get270Inquiry - the canonical inquiry (X279A1)", () => {
       readInquiry("270-canonical.edi").informationSources[0]?.receivers[0]?.subscribers[0]
         ?.inquiries[0];
     expect(request?.serviceTypeCodes[0]?.code).toBe("30");
-    expect(request?.serviceTypeCodes[0]?.description).toBe("Health Benefit Plan Coverage");
+    expect(request?.serviceTypeCodes[0]?.description).toBeUndefined();
   });
 
   it("exposes EQ-02 as separated components, never as one joined string", () => {

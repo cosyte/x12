@@ -4,8 +4,8 @@
  *
  * `build834` writes the maintenance type as given and refuses one outside the bundled list.
  * `get834Header` reads the sponsor and payer; `get834Enrollments` is an async iterable that yields
- * one decoded member per INS loop. The verbatim INS-03 code is always on the model and the
- * description sits beside it, so an action is taken on the code. Every value is synthetic, and
+ * one decoded member per INS loop. The verbatim INS-03 code is always on the model, and an action
+ * is taken on the code (the INS-03 list ships no description text). Every value is synthetic, and
  * nothing is sent anywhere.
  *
  * Run from the repository root after `pnpm build`:
@@ -102,7 +102,7 @@ console.log(
   `for ${String(header?.payer?.name)}`,
 );
 
-// One member at a time. Act on the verbatim code, never on the description, and route a member
+// One member at a time. Act on the verbatim code, and route a member
 // whose code did not resolve (it carries a warning of its own) to a person.
 const actions: [string | undefined, string][] = [];
 for await (const enrollment of get834Enrollments(ix.delimiters, tx)) {
@@ -112,8 +112,7 @@ for await (const enrollment of get834Enrollments(ix.delimiters, tx)) {
   if (enrollment.warnings.length === 0 && code === "024") action = "terminate";
   actions.push([enrollment.member?.idCode, action]);
   console.log(
-    `  ${String(enrollment.member?.idCode)}: INS-03 ${String(code)}`,
-    `(${String(enrollment.maintenanceTypeDescription)}) -> ${action},`,
+    `  ${String(enrollment.member?.idCode)}: INS-03 ${String(code)} -> ${action},`,
     `coverage ${String(enrollment.healthCoverages[0]?.insuranceLineCode)}`,
   );
 }

@@ -7,8 +7,9 @@
  * party. Spec-fixed: this list never grows or churns (unlike WPC CARC /
  * RARC), so it ships as a frozen literal union, not as a snapshot.
  *
- * Spec source: X12 005010X221A1 TR3 §"CAS Claim Adjustment", Element
- * `CAS-01` (Code Source: X12 internal); ASC X12 Data Element 1033.
+ * Element `CAS-01`, ASC X12 data element 1033. No source for the four code
+ * values is recorded, and the 005010X221A1 implementation guide was not read;
+ * the notes below are our own statement of how a cash-poster acts on each.
  */
 
 /**
@@ -16,18 +17,16 @@
  * `as const` so consumers compare `code === CLAIM_ADJUSTMENT_GROUP_CODES.PR`
  * and TypeScript narrows exhaustively.
  *
- * - `CO` - **Contractual Obligation.** The provider's contracted write-off
- *   (e.g. payer fee schedule below billed charges). **The PROVIDER eats
- *   this.** Posting `CO` to patient responsibility is the wrong-party bug.
- * - `PR` - **Patient Responsibility.** Patient deductible / coinsurance /
- *   copay / non-covered. **The PATIENT owes this.** This is the
- *   patient-statement total.
- * - `OA` - **Other Adjustment.** Used when neither CO nor PR fits -
- *   typically prior-payer payments, COB adjustments, withholding for
- *   refund. Use is fact-pattern-specific.
- * - `PI` - **Payer Initiated Reductions.** Payer-side reduction the
- *   provider may not dispute under the contract - e.g. bundling edits,
- *   prepayment review reductions.
+ * - `CO` - the provider's contracted write-off (e.g. payer fee schedule
+ *   below billed charges). **The PROVIDER eats this.** Posting `CO` to
+ *   patient responsibility is the wrong-party bug.
+ * - `PR` - patient deductible / coinsurance / copay / non-covered. **The
+ *   PATIENT owes this.** This is the patient-statement total.
+ * - `OA` - used when neither CO nor PR fits - typically prior-payer
+ *   payments, COB adjustments, withholding for refund. Use is
+ *   fact-pattern-specific.
+ * - `PI` - a payer-side reduction the provider may not dispute under the
+ *   contract - e.g. bundling edits, prepayment review reductions.
  *
  * @example
  * ```ts

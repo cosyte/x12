@@ -191,7 +191,7 @@ describe("a code valid on the supplied day", () => {
     expect(answer.validity).toBe(CODE_VALIDITY.VALID);
     expect(answer.reason).toBeUndefined();
     expect(answer.code).toBe("1");
-    expect(answer.description).toBe("Deductible Amount");
+    expect(answer.description).toBeUndefined();
     expect(answer.documentDate).toBe("2026-06-27");
     expect(answer.dates?.start).toBe("1995-01-01");
   });
@@ -239,10 +239,11 @@ describe("a code not valid on the supplied day", () => {
     expect(answer.dates?.stop).toBe("2018-05-01");
   });
 
-  it("CARC 15 is not valid on a present-day date, and still carries its description", () => {
+  it("CARC 15 is not valid on a present-day date, and is still the bundled code", () => {
     const answer = checkCarcValidity("15", "2026-06-27");
     expect(answer.validity).toBe(CODE_VALIDITY.NOT_VALID);
-    expect(answer.description).toBe(CARC.codes["15"]);
+    expect(answer.code).toBe("15");
+    expect(answer.description).toBeUndefined();
   });
 
   it("RARC N4 is not valid on 1999-12-31, the day before its start", () => {

@@ -6,7 +6,7 @@
  * guide loops. A regression in `defineLoopSpec` cannot hide from the
  * built-in extractors.
  *
- * Hierarchy (per WPC TR3 §3, §4):
+ * Hierarchy (as this reader implements it; no implementation guide was read):
  *
  * ```text
  *  Header (transaction set, ST..SE)
@@ -45,7 +45,7 @@ import type { LoopSpec } from "../../loops/types.js";
 /**
  * 835 Loop 2110 - Service Payment Information. Triggered by `SVC`.
  *
- * Cited as Loop 2110 in TR3 X221A1.
+ * Loop 2110.
  *
  * @example
  * ```ts
@@ -73,7 +73,7 @@ export const REMIT_835_LOOP_2110: LoopSpec = defineLoopSpec({
  * 835 Loop 2100 - Claim Payment Information. Triggered by `CLP`. Nests
  * Loop 2110.
  *
- * Cited as Loop 2100 in TR3 X221A1.
+ * Loop 2100.
  *
  * @example
  * ```ts
@@ -105,7 +105,7 @@ export const REMIT_835_LOOP_2100: LoopSpec = defineLoopSpec({
 /**
  * 835 Loop 2000 - Header Number. Triggered by `LX`. Nests Loop 2100.
  *
- * Cited as Loop 2000 in TR3 X221A1; situational because some payers
+ * Loop 2000; situational because some payers
  * (notably Medicare FFS) omit the LX header entirely and ship CLP loops
  * directly under the transaction set header. The walker handles
  * both shapes - claims appear inside Loop 2000 if `LX` is present, at

@@ -15,13 +15,14 @@
  * qualifier still passes through with an `X12_UNKNOWN_HI_QUALIFIER`
  * warning rather than a silent miscategorization.
  *
- * Source: CMS NUBC / WPC TR3 references for 005010X222A2 (837P),
- * 005010X223A3 (837I), and 005010X224A2 (837D); the qualifier list is
- * cross-referenced with X12 External Code List 1270 (Code List Qualifier
- * Code) - the values that appear specifically on HI in HIPAA healthcare
- * claims. Listed verbatim from the TR3 cross-references - no inference;
- * unknown qualifiers map to `"unknown"` and the verbatim code is still
- * preserved on the parsed diagnosis / procedure.
+ * The qualifier values are codes of X12 External Code List 1270 (Code List
+ * Qualifier Code) as they appear on HI in the 837P, 837I and 837D. No source
+ * for this table is recorded, and the implementation guides for those
+ * transactions (005010X222A2, 005010X223A3, 005010X224A2) were not read. Each
+ * `description` is our own one-line note of what this library does with the
+ * qualifier, not text taken from any code list. Unknown qualifiers map to
+ * `"unknown"` and the verbatim code is still preserved on the parsed
+ * diagnosis / procedure.
  *
  * Snapshot date 2026-06-27. This is a curated read-only table - the profile
  * system may LAYER additional qualifiers per payer, but the
@@ -31,8 +32,8 @@
 
 /**
  * Discriminant for the code system referenced by a single HI composite. The
- * `"unknown"` member is the catch-all for qualifiers outside the TR3-cited
- * set - verbatim code is preserved on the parsed structure and an
+ * `"unknown"` member is the catch-all for qualifiers outside the bundled
+ * table - verbatim code is preserved on the parsed structure and an
  * `X12_UNKNOWN_HI_QUALIFIER` warning is emitted.
  *
  * @example
@@ -100,11 +101,12 @@ interface HiQualifierEntry {
 /**
  * The HI qualifier → ({@link X12HiCodeSystem} + {@link X12HiCategory})
  * registry. Frozen with `as const` so the keyset is type-narrowed for
- * downstream consumers. Each entry cites its TR3 use site in the
- * description so a reviewer can confirm against the source.
+ * downstream consumers. Each entry's `description` is our own note of what
+ * the library does with the qualifier: which code system it reads HI-NN-2 as,
+ * and in what role.
  *
- * Snapshot covers the qualifiers cited across 837P/I/D TR3s plus the most
- * common NUBC code-set qualifiers. Additions are non-breaking; renames or
+ * Snapshot covers the diagnosis, procedure, DRG and NUBC qualifiers the 837
+ * readers handle. Additions are non-breaking; renames or
  * removals are breaking and require a public-surface bump.
  *
  * @example
@@ -120,112 +122,112 @@ export const HI_QUALIFIERS = {
   ABK: {
     system: "ICD-10-CM",
     category: "principal-diagnosis",
-    description: "Principal diagnosis, ICD-10-CM (837I; 837P uses ABK in HI-01 for the principal).",
+    description: "Read as the principal diagnosis, coded in ICD-10-CM.",
   },
   ABF: {
     system: "ICD-10-CM",
     category: "diagnosis",
-    description: "Other (secondary) diagnosis, ICD-10-CM.",
+    description: "Read as a diagnosis other than the principal one, coded in ICD-10-CM.",
   },
   ABJ: {
     system: "ICD-10-CM",
     category: "admitting-diagnosis",
-    description: "Admitting diagnosis, ICD-10-CM (837I inpatient).",
+    description: "Read as the admitting diagnosis, coded in ICD-10-CM.",
   },
   ABN: {
     system: "ICD-10-CM",
     category: "patient-reason-for-visit",
-    description: "Patient's reason for visit, ICD-10-CM (837I outpatient).",
+    description: "Read as the patient's reason for visit, coded in ICD-10-CM.",
   },
   APR: {
     system: "ICD-10-CM",
     category: "external-cause",
-    description: "External cause of injury, ICD-10-CM (V-Y codes).",
+    description: "Read as an external cause of injury, coded in ICD-10-CM.",
   },
 
   // ---------------- ICD-9-CM diagnoses (legacy / pre-2015) ----------------
   BK: {
     system: "ICD-9-CM",
     category: "principal-diagnosis",
-    description: "Principal diagnosis, ICD-9-CM (legacy; replaced by ABK 2015-10-01 onward).",
+    description: "Read as the principal diagnosis, coded in ICD-9-CM.",
   },
   BF: {
     system: "ICD-9-CM",
     category: "diagnosis",
-    description: "Other diagnosis, ICD-9-CM (legacy; replaced by ABF).",
+    description: "Read as a diagnosis other than the principal one, coded in ICD-9-CM.",
   },
   BJ: {
     system: "ICD-9-CM",
     category: "admitting-diagnosis",
-    description: "Admitting diagnosis, ICD-9-CM (legacy; replaced by ABJ).",
+    description: "Read as the admitting diagnosis, coded in ICD-9-CM.",
   },
   BN: {
     system: "ICD-9-CM",
     category: "patient-reason-for-visit",
-    description: "Reason for visit, ICD-9-CM (legacy; replaced by ABN).",
+    description: "Read as the patient's reason for visit, coded in ICD-9-CM.",
   },
   BR: {
     system: "ICD-9-CM",
     category: "external-cause",
-    description: "External cause of injury, ICD-9-CM (legacy; replaced by APR).",
+    description: "Read as an external cause of injury, coded in ICD-9-CM.",
   },
 
   // ---------------- ICD-10-PCS procedures (current) ----------------
   BBR: {
     system: "ICD-10-PCS",
     category: "procedure",
-    description: "Other (secondary) procedure, ICD-10-PCS (837I).",
+    description: "Read as a procedure other than the principal one, coded in ICD-10-PCS.",
   },
   BBQ: {
     system: "ICD-10-PCS",
     category: "treatment",
-    description: "Principal procedure, ICD-10-PCS (837I).",
+    description: "Read as the principal procedure (category treatment), coded in ICD-10-PCS.",
   },
 
   // ---------------- ICD-9-PCS procedures (legacy / pre-2015) ----------------
   BQ: {
     system: "ICD-9-PCS",
     category: "treatment",
-    description: "Principal procedure, ICD-9-PCS (legacy; replaced by BBQ).",
+    description: "Read as the principal procedure (category treatment), coded in ICD-9-PCS.",
   },
   BBA: {
     system: "ICD-9-PCS",
     category: "procedure",
-    description: "Other procedure, ICD-9-PCS (legacy; replaced by BBR).",
+    description: "Read as a procedure other than the principal one, coded in ICD-9-PCS.",
   },
 
   // ---------------- DRG / patient-related groupings ----------------
   DR: {
     system: "DRG",
     category: "drg",
-    description: "Diagnosis Related Group (DRG) - payment-grouping code.",
+    description: "Read as a Diagnosis Related Group (DRG) code.",
   },
 
   // ---------------- NUBC institutional code sets (837I) ----------------
   BG: {
     system: "NUBC-CONDITION",
     category: "condition",
-    description: "Condition code (NUBC FL 18-28).",
+    description: "Read as an NUBC condition code.",
   },
   BH: {
     system: "NUBC-OCCURRENCE",
     category: "occurrence",
-    description: "Occurrence code (NUBC FL 31-34) - date paired in HI-NN-4.",
+    description: "Read as an NUBC occurrence code.",
   },
   BI: {
     system: "NUBC-OCCURRENCE-SPAN",
     category: "occurrence-span",
-    description: "Occurrence span code (NUBC FL 35-36) - date range in HI-NN-5/6.",
+    description: "Read as an NUBC occurrence span code.",
   },
   BE: {
     system: "NUBC-VALUE",
     category: "value",
-    description: "Value code (NUBC FL 39-41) - paired amount in HI-NN-5 as decimal.",
+    description: "Read as an NUBC value code.",
   },
   PR: {
     system: "NUBC-PATIENT-REASON",
     category: "patient-reason-for-visit",
-    description: "Patient reason for visit (837I outpatient secondary code; ICD-10-CM coded).",
+    description: "Read as the patient's reason for visit, under the NUBC-PATIENT-REASON system.",
   },
 } as const satisfies Record<string, HiQualifierEntry>;
 
@@ -246,7 +248,7 @@ export type X12HiQualifier = keyof typeof HI_QUALIFIERS;
  * `undefined` if the qualifier is outside the bundled snapshot. Unknown
  * qualifiers still parse - the parser preserves the verbatim qualifier on
  * the diagnosis/procedure and emits `X12_UNKNOWN_HI_QUALIFIER`. The lookup
- * is case-sensitive (TR3 qualifiers are uppercase).
+ * is case-sensitive (the bundled qualifiers are uppercase).
  *
  * @example
  * ```ts

@@ -67,12 +67,12 @@ for await (const member of get834Enrollments(ix834.delimiters, tx834)) members.p
 members.length; // => 2
 
 // INS-03 is the maintenance type: the safety-critical field of this document.
-// The verbatim code is ALWAYS on the model; the description is looked up beside
-// it and never in place of it.
+// The verbatim code is ALWAYS on the model. The INS-03 list ships no
+// description text, so the description beside it is undefined.
 const added = members[0];
 added?.subscriberIndicator; // => "Y"
 added?.maintenanceTypeCode; // => "021"
-added?.maintenanceTypeDescription; // => "Addition"
+added?.maintenanceTypeDescription; // => undefined
 added?.member?.lastName; // => "DOE"
 added?.member?.idCode; // => "MBR0001"
 
@@ -84,7 +84,7 @@ added?.healthCoverages[0]?.amounts[0]?.amount.toString(); // => "125.00"
 
 const terminated = members[1];
 terminated?.maintenanceTypeCode; // => "024"
-terminated?.maintenanceTypeDescription; // => "Cancellation or Termination"
+terminated?.maintenanceTypeDescription; // => undefined
 terminated?.healthCoverages[0]?.insuranceLineCode; // => "DEN"
 ```
 
@@ -182,7 +182,7 @@ get834Header(built.delimiters, tx)?.sponsor?.name; // => "EMPLOYER CO"
 const members: X12Enrollment[] = [];
 for await (const member of get834Enrollments(built.delimiters, tx)) members.push(member);
 members[0]?.maintenanceTypeCode; // => "021"
-members[0]?.maintenanceTypeDescription; // => "Addition"
+members[0]?.maintenanceTypeDescription; // => undefined
 members[0]?.healthCoverages[0]?.amounts[0]?.amount.toString(); // => "125.00"
 members[0]?.warnings.length; // => 0
 

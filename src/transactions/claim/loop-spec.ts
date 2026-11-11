@@ -10,7 +10,7 @@
  * is the canonical shape; 837I / 837D are written as separate exports
  * because their service-line trigger differs.
  *
- * Hierarchy (per WPC TR3s X222A2 / X223A3 / X224A2):
+ * Hierarchy (as this reader implements it; no implementation guide was read):
  *
  * ```text
  *  Header

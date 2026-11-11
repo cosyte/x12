@@ -189,16 +189,19 @@ export interface X12StatusInfo {
  * One Health Care Claim Status composite (C043, STC-01 / STC-10 / STC-11).
  * Pairs a **CSCC** (Claim Status Category Code, X12 source 507) with a
  * **CSC** (Claim Status Code, X12 source 508) and the responsible entity.
- * The verbatim codes are always preserved; descriptions resolve from the
- * bundled snapshots (or `undefined` outside the subset).
+ * The verbatim codes are always preserved. `categoryDescription` and
+ * `statusDescription` are `undefined`, because neither list ships description
+ * text (both redistribution records are `"licence-required"`); call
+ * `lookupClaimStatusCategory` and `lookupClaimStatus` with your own
+ * `descriptions` table to show your own text.
  *
  * @example
  * ```ts
  * import type { X12StatusCode } from "@cosyte/x12";
  * declare const c: X12StatusCode;
- * c.categoryCode;        // "A7" (rejected/invalid)
- * c.statusCode;          // "21" (Missing or invalid information)
- * c.statusDescription;   // "Missing or invalid information."
+ * c.categoryCode;        // "A7"
+ * c.statusCode;          // "21"
+ * c.statusDescription;   // undefined (no description text ships for this list)
  * c.entityCode;          // "85" (billing provider)
  * ```
  */

@@ -39,9 +39,8 @@ for (const claim of remit.claims) {
   let adjusted = X12Decimal.ZERO;
   for (const line of claim.serviceLines) {
     for (const a of line.adjustments) {
-      console.log(
-        `  ${a.groupCode} ${a.reasonCode} ${String(a.amount)}: ${String(a.reasonDescription)}`,
-      );
+      // The reason code ships with no description: see describe-codes-with-your-own-table.ts.
+      console.log(`  ${a.groupCode} ${a.reasonCode} ${String(a.amount)}`);
       if (a.amount !== undefined) adjusted = adjusted.add(a.amount);
     }
   }

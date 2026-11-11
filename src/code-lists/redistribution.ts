@@ -7,6 +7,11 @@
  * Answering both with one sentence hides a permission this package already has
  * and hides a restriction it must respect.
  *
+ * **The record decides what ships.** A bundled list carries description text
+ * only when its status here is `"permitted"`; every other list keeps its codes
+ * and maps each to `undefined`, and `test/code-lists-descriptions.test.ts`
+ * fails if a description is added to one of them.
+ *
  * **"Not established" is a recorded answer, not a placeholder.** Two bundled
  * lists are printed inside a purchased ASC X12 Technical Report Type 3 rather
  * than on the X12 External Code Lists index, and no source obtained for this
@@ -164,17 +169,16 @@ export const CLAIM_STATUS_REDISTRIBUTION: CodeListRedistribution = Object.freeze
  * permission. Same evidence, and therefore the same answer, as the two
  * claim-status lists above.
  *
- * The bundled snapshot is a subset cited from a Technical Report Type 3, which
- * is where its `meta.source` points; that is a statement about where the cited
- * codes were read, and NOT a statement that the published list is unavailable
- * elsewhere. Conflating the two is what put this list on the shared
- * not-established record.
+ * The bundled snapshot is a subset of the codes; no source for those code
+ * values is recorded, which is a statement about this snapshot and NOT a
+ * statement that the published list is unavailable. Conflating the two is
+ * what put this list on the shared not-established record.
  *
  * @internal
  */
 export const SERVICE_TYPE_REDISTRIBUTION: CodeListRedistribution = Object.freeze({
   status: "licence-required",
-  terms: `The X12 External Code Lists index publishes the Service Type Codes as external code list 958, maintained by an X12 code maintenance committee group and last updated 07/01/2026, under the scope statement "These codes identify business groupings for health care services or benefits" (https://x12.org/codes, retrieved 2026-08-28). The bundled subset here is cited from the Technical Report Type 3 section named in this snapshot's source field; the published list behind it is that X12-maintained code list. ${X12_COPYRIGHT} HL7's CARIN Consumer Directed Payer Data Exchange code system stubs reproduce X12's intellectual-property policy, under which "All X12 products are subject to this IP policy, including published and draft works" and "X12 is the only organization authorized to grant permission for use of X12 products" (retrieved 2026-08-28). No source obtained for this package exempts this list from those terms, so its descriptions are treated the same way the Claim Adjustment Reason Codes are.`,
+  terms: `The X12 External Code Lists index publishes the Service Type Codes as external code list 958, maintained by an X12 code maintenance committee group and last updated 07/01/2026, under the scope statement "These codes identify business groupings for health care services or benefits" (https://x12.org/codes, retrieved 2026-08-28). The bundled subset is a part of that X12-maintained code list. ${X12_COPYRIGHT} HL7's CARIN Consumer Directed Payer Data Exchange code system stubs reproduce X12's intellectual-property policy, under which "All X12 products are subject to this IP policy, including published and draft works" and "X12 is the only organization authorized to grant permission for use of X12 products" (retrieved 2026-08-28). No source obtained for this package exempts this list from those terms, so its descriptions are treated the same way the Claim Adjustment Reason Codes are.`,
   approach: X12_PERMISSION_ROUTE,
 });
 

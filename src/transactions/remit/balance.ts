@@ -11,7 +11,8 @@
  * unbounded. Recompute them from the model, which carries every one of
  * them as an `X12Decimal`.
  *
- * Three invariants per TR3 005010X221A1 §1.10.2 ("Balancing"):
+ * Three balance equations, written here in our own words. No source for them
+ * is recorded and the 005010X221A1 implementation guide was not read:
  *
  * 1. **Service-line:** `SVC-02 === SVC-03 + Σ(line CAS amounts)` per
  *    Loop 2110 service line. "Submitted charge = paid + adjustments."
@@ -30,8 +31,8 @@
  *    (reduces BPR-02), negative PLB = credit to provider (increases
  *    BPR-02). So subtraction is what makes the equation balance.
  *
- * > Implementation note: the implementation here matches the **X12
- * > 005010X221A1 TR3 §1.10.2 spec text** directly.
+ * > Implementation note: these are the three equations as this package
+ * > states them above, checked directly.
  *
  * **A term that did not decode makes the equation UNEVALUABLE, and that is a
  * third outcome, not a failure.** Every amount these three checks read is

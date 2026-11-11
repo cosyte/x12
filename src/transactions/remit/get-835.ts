@@ -584,7 +584,7 @@ function decodeLq(
 
 /** @internal */
 function collectMiaRemarks(seg: X12Segment, delimiters: Delimiters): readonly string[] {
-  // MIA-05, MIA-20: remark codes (per TR3 X221A1).
+  // MIA-05, MIA-20: remark codes.
   const out: string[] = [];
   for (const idx of [5, 20]) {
     const v = elementOptional(seg, idx, delimiters);

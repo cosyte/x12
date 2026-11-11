@@ -338,7 +338,7 @@ describe("every builder that emits an X12Decimal refuses a raw number", () => {
 
   it("build835 refuses a numeric CLP-05 (patientResponsibilityAmount)", () => {
     // CLP-05 specifically, because it is informational and NOT a term in the
-    // TR3 X221A1 balance equation, so it survives `enforceBalance` and actually
+    // 835 balance equation, so it survives `enforceBalance` and actually
     // reaches `escDec`. BPR-02, CLP-03, CLP-04 and CAS-03 do not - see the
     // disclosure below.
     const run = (): X12Interchange =>
@@ -741,7 +741,7 @@ describe("the X12Decimal slots this guard does NOT reach, disclosed not fixed", 
   // an overclaim. So what is asserted is the rule:
   //
   //   > A slot refuses UNTYPED exactly when the balance guard reads it as a term
-  //   > of one of the three TR3 X221A1 §1.10.2 invariants in
+  //   > of one of the three 835 balance equations in
   //   > `src/transactions/remit/balance.ts`. Every other X12Decimal slot refuses
   //   > TYPED.
   //
@@ -753,7 +753,7 @@ describe("the X12Decimal slots this guard does NOT reach, disclosed not fixed", 
   // fixed because reordering `enforceBalance` after the escaper changes the
   // refusal PRECEDENCE of an out-of-balance remit, which is its own decision.
 
-  /** Terms of the three §1.10.2 invariants: claim, service line, remit total. */
+  /** Terms of the three 835 balance equations: claim, service line, remit total. */
   const balanceTermSlots: readonly (readonly [string, readonly (string | number)[]])[] = [
     ["payment.totalActualPayment", ["payment", "totalActualPayment"]],
     ["claim.totalChargeAmount", ["claims", 0, "totalChargeAmount"]],

@@ -695,7 +695,7 @@ try {
 
 Thrown by "./build-835.js".build835 when the supplied remittance
 spec cannot be emitted as a conformant, self-consistent 835 - most
-importantly when it fails a §1.10.2 balance invariant. Carries a stable
+importantly when it fails an 835 balance equation. Carries a stable
 `code` for programmatic narrowing. Deliberately does NOT extend
 `X12ParseError` or `X12BuildError` - the domain-refusal distinction
 matters at the type level.
@@ -11841,10 +11841,14 @@ Top-level spec for `buildTA1`.
 
 One entry returned from a code-list `lookup(code)`. The inbound code
 value is echoed verbatim (so a caller that branches on `entry.code` is
-comparing exactly the bytes that came in, never a normalized form);
-`description` is the bundled human-readable text from the snapshot.
-Snapshots ship the code and description only; fields such as `isObsolete`
-and `replacedBy` are not carried.
+comparing exactly the bytes that came in, never a normalized form).
+
+`description` may be absent, and for most bundled lists it is: a list ships
+description text only when its redistribution record says `"permitted"`
+(the Remittance Advice Remark Codes today). For every other list the entry
+still comes back, so the code is known, with `description: undefined`; pass
+your own table as [CodeListLookupOptions](#codelistlookupoptions).`descriptions` to fill it.
+Fields such as `isObsolete` and `replacedBy` are not carried.
 
 `dates` is present only on the snapshots that carry per-code dates (CARC and
 RARC today) and only for a code that HAS one there, so an entry from a
@@ -11855,11 +11859,13 @@ day; [CodeValidityResult](#codevalidityresult) is where that question is answere
 #### Example
 
 ```ts
-import { lookupCarc } from "@cosyte/x12";
+import { lookupCarc, lookupRarc } from "@cosyte/x12";
 const entry = lookupCarc("45");
 entry?.code;          // "45"
-entry?.description;   // "Charge exceeds fee schedule/maximum allowable..."
+entry?.description;   // undefined (this list ships no description text)
 entry?.dates?.start;  // "1995-01-01"
+lookupCarc("45", { descriptions: { "45": "Your own text" } })?.description; // "Your own text"
+typeof lookupRarc("N4")?.description; // "string" (a list recorded as permitted)
 ```
 
 #### Properties
@@ -11874,7 +11880,11 @@ entry?.dates?.start;  // "1995-01-01"
 
 ##### description
 
-> `readonly` **description**: `string`
+> `readonly` **description**: `string` \| `undefined`
+
+The description, or `undefined` where the list ships none and the caller
+supplied none. Only a list whose redistribution record is `"permitted"`
+ships description text.
 
 ***
 
@@ -11914,6 +11924,45 @@ CARC.dates["1"]?.stop;   // undefined (still current)
 ##### stop?
 
 > `readonly` `optional` **stop?**: `string`
+
+***
+
+### CodeListLookupOptions
+
+Options every bundled code-list lookup takes.
+
+`descriptions` is your own table of code descriptions, keyed by code. Most
+bundled lists ship no description text, because their own redistribution
+record does not say `"permitted"`; a caller that holds descriptions it may
+use (for example under its own licence with the list's maintainer) supplies
+them here. The lookup reads the table and never changes it:
+
+- a bundled code your table describes comes back with your text, and keeps
+  its published `dates` where the snapshot has them;
+- a code outside the bundled subset that your table describes comes back as
+  `{ code, description }` with your text;
+- a code your table does not describe gets the bundled description, which
+  is `undefined` for every list not recorded as `"permitted"`.
+
+Only an own property holding a string counts, so an inherited key such as
+`constructor` is never read as a description.
+
+#### Example
+
+```ts
+import { lookupCarc } from "@cosyte/x12";
+const mine = { "45": "Made-up text for this example" };
+lookupCarc("45", { descriptions: mine })?.description; // "Made-up text for this example"
+lookupCarc("45")?.description;                         // undefined
+```
+
+#### Properties
+
+##### descriptions?
+
+> `readonly` `optional` **descriptions?**: `Readonly`\<`Record`\<`string`, `string`\>\>
+
+Your own descriptions, keyed by code. Read, never changed.
 
 ***
 
@@ -12048,7 +12097,8 @@ per-snapshot `lookup*` helpers - they return a frozen [CodeListEntry](#codeliste
 ```ts
 import { CARC } from "@cosyte/x12";
 Object.keys(CARC.codes).length;        // count of bundled CARC codes
-CARC.codes["45"];                      // raw description string (or undefined)
+Object.hasOwn(CARC.codes, "45");       // true: the code is bundled
+CARC.codes["45"];                      // undefined: no description ships for this list
 ```
 
 #### Extended by
@@ -12059,7 +12109,11 @@ CARC.codes["45"];                      // raw description string (or undefined)
 
 ##### codes
 
-> `readonly` **codes**: `Readonly`\<`Record`\<`string`, `string`\>\>
+> `readonly` **codes**: `Readonly`\<`Record`\<`string`, `string` \| `undefined`\>\>
+
+Every bundled code, mapped to its description where the list ships one.
+A code is bundled when it is an own key here; its value is `undefined` for
+every list whose redistribution record is not `"permitted"`.
 
 ##### meta
 
@@ -12074,7 +12128,10 @@ The answer to "was this code valid on the day this document was produced".
 `code` is the inbound value byte for byte, exactly as the lookup helpers echo
 it, so a code outside the bundled subset is never lost on the way through.
 `description` is `undefined` for such a code: an absent code gets no
-description and no validity claim, only its own bytes back.
+description and no validity claim, only its own bytes back. It is
+`undefined` for a bundled code too wherever the list ships no description
+text (the Claim Adjustment Reason Codes among them); the verdict does not
+depend on it.
 
 #### Example
 
@@ -12105,7 +12162,7 @@ The maintainer's dates for this code, where the snapshot has them.
 
 > `readonly` **description**: `string` \| `undefined`
 
-The bundled description, or `undefined` outside the bundled subset.
+The bundled description, or `undefined` where none ships or outside the subset.
 
 ##### documentDate
 
@@ -12389,7 +12446,7 @@ that means no date was published for it, never that it has none.
 
 ```ts
 import { RARC } from "@cosyte/x12";
-RARC.codes["N4"];          // the bundled description
+typeof RARC.codes["N4"];   // "string" (this list ships descriptions)
 RARC.dates["N4"]?.start;   // "2000-01-01"
 ```
 
@@ -12401,7 +12458,11 @@ RARC.dates["N4"]?.start;   // "2000-01-01"
 
 ##### codes
 
-> `readonly` **codes**: `Readonly`\<`Record`\<`string`, `string`\>\>
+> `readonly` **codes**: `Readonly`\<`Record`\<`string`, `string` \| `undefined`\>\>
+
+Every bundled code, mapped to its description where the list ships one.
+A code is bundled when it is an own key here; its value is `undefined` for
+every list whose redistribution record is not `"permitted"`.
 
 ###### Inherited from
 
@@ -14326,9 +14387,9 @@ note.ik4.syntaxErrorCode; // "7" (invalid code value)
 ### X12Ack999Ik4Position
 
 Position of an element/component/repetition inside a parent segment for
-an IK4 element note. Element is 1-indexed (the TR3 convention);
-component and repetition are surfaced exactly as encoded in IK4-01's
-composite - see TR3 `005010X231A1` §IK4.
+an IK4 element note. Element is 1-indexed, as positions are throughout
+this package; component and repetition are surfaced exactly as encoded in
+IK4-01's composite.
 
 #### Example
 
@@ -15077,8 +15138,9 @@ C043-04 names the code source of C043-02. Where it is non-empty, C043-02 is a
 code from that source (a LOINC code naming the attachment requested, say) and
 is NOT looked up in the claim status code list, so `statusDescription` is
 `undefined` and no unknown-claim-status warning is raised for it. Where it is
-empty, C043-02 is a claim status code and is described from the bundled list
-when the list has it. C043-01 is always a claim status category code.
+empty, C043-02 is a claim status code and is checked against the bundled
+list, which ships no description text, so `statusDescription` is `undefined`
+then too. C043-01 is always a claim status category code.
 
 #### Example
 
@@ -15101,7 +15163,7 @@ C043-01, the claim status category code.
 
 > `readonly` **categoryDescription**: `string` \| `undefined`
 
-The bundled description of C043-01, where the list has it.
+Always `undefined`: the Claim Status Category list ships no description text.
 
 ##### codeListQualifier
 
@@ -15125,7 +15187,7 @@ C043-02, a code from the source C043-04 names, or a claim status code.
 
 > `readonly` **statusDescription**: `string` \| `undefined`
 
-The claim status description of C043-02; only where C043-04 is empty.
+Always `undefined`: the Claim Status list ships no description text.
 
 ***
 
@@ -17255,8 +17317,10 @@ r.value;     // "GRP0001"
 ### X12EligibilityServiceType
 
 A decoded Service Type Code (EB-03, X12 external code source 1365). The
-verbatim code is always preserved; `description` resolves from the
-bundled snapshot (or `undefined` when outside the subset).
+verbatim code is always preserved; `description` is `undefined`, because
+the Service Type list ships no description text (its redistribution record
+is `"licence-required"`). Call `lookupServiceType(st.code, { descriptions })`
+with a table you hold to show your own text.
 
 #### Example
 
@@ -17264,7 +17328,7 @@ bundled snapshot (or `undefined` when outside the subset).
 import type { X12EligibilityServiceType } from "@cosyte/x12";
 declare const st: X12EligibilityServiceType;
 st.code;        // "30"
-st.description; // "Health Benefit Plan Coverage"
+st.description; // undefined (no description text ships for this list)
 ```
 
 #### Properties
@@ -17387,8 +17451,8 @@ recoverable deviation (e.g. an unknown maintenance type) is surfaced on
 ```ts
 import type { X12Enrollment } from "@cosyte/x12";
 declare const e: X12Enrollment;
-e.maintenanceTypeCode;            // "021" addition
-e.maintenanceTypeDescription;     // "Addition"
+e.maintenanceTypeCode;            // "021"
+e.maintenanceTypeDescription;     // undefined: the INS-03 list ships no description text
 e.member?.lastName;               // verbatim member surname
 e.healthCoverages[0]?.insuranceLineCode; // "HLT"
 ```
@@ -18319,7 +18383,7 @@ transmitted under it.
 import type { X12InquiryRequest } from "@cosyte/x12";
 declare const q: X12InquiryRequest;
 q.serviceTypeCodes[0]?.code;        // "30"
-q.serviceTypeCodes[0]?.description; // "Health Benefit Plan Coverage"
+q.serviceTypeCodes[0]?.description; // undefined (no description text ships)
 q.coverageLevelCode;                // "IND"
 ```
 
@@ -18372,9 +18436,10 @@ EQ-01 - one or more requested Service Type Codes (a repeating element).
 ### X12InquiryServiceType
 
 A requested Service Type Code (EQ-01, X12 external code source 1365). The
-verbatim `code` is ALWAYS preserved; `description` resolves from the
-bundled snapshot the 271 reader already consumes, and is `undefined`
-outside it. The code is never replaced by its description.
+verbatim `code` is ALWAYS preserved; `description` is `undefined`, because
+the Service Type list ships no description text (its redistribution record
+is `"licence-required"`). Call `lookupServiceType(st.code, { descriptions })`
+with a table you hold to show your own text.
 
 #### Example
 
@@ -18382,7 +18447,7 @@ outside it. The code is never replaced by its description.
 import type { X12InquiryServiceType } from "@cosyte/x12";
 declare const st: X12InquiryServiceType;
 st.code;        // "30"
-st.description; // "Health Benefit Plan Coverage"
+st.description; // undefined (no description text ships for this list)
 ```
 
 #### Properties
@@ -19798,16 +19863,18 @@ triples (reason code + amount + optional quantity) all under the same
 "../../code-lists/cagc.js".CLAIM\_ADJUSTMENT\_GROUP\_CODES. `CO`
 = provider write-off; `PR` = patient owes; `OA` / `PI` = other / payer
 edit. `reasonCode` is the CARC value (verbatim); `reasonDescription`
-is from the bundled snapshot or `undefined` if outside the subset.
+is `undefined`, because the CARC list ships no description text (its
+redistribution record is `"licence-required"`). To show your own text,
+call `lookupCarc(a.reasonCode, { descriptions })` with a table you hold.
 
 #### Example
 
 ```ts
 import type { X12RemitAdjustment } from "@cosyte/x12";
 declare const a: X12RemitAdjustment;
-a.groupCode;             // "PR" (patient responsibility)
-a.reasonCode;            // "1" (deductible)
-a.reasonDescription;     // "Deductible Amount"
+a.groupCode;             // "PR" (the patient owes it)
+a.reasonCode;            // "1"
+a.reasonDescription;     // undefined (no description text ships for CARC)
 a.amount?.toString();    // "50.00", or undefined if none decoded
 ```
 
@@ -19893,7 +19960,8 @@ declare const c: X12RemitClaim;
 c.patientControlNumber;          // "PT-ACCT-001"
 c.totalChargeAmount?.toString();  // "500.00", or undefined if none decoded
 c.totalPaymentAmount?.toString(); // "450.00", or undefined if none decoded
-c.claimStatusCode;               // "1" - Processed as Primary
+c.claimStatusCode;               // "1"
+c.claimStatusDescription;        // undefined: the CLP-02 list ships no description text
 c.serviceLines.length;           // count of SVC loops
 ```
 
@@ -20878,17 +20946,20 @@ if (tx !== undefined) {
 One Health Care Claim Status composite (C043, STC-01 / STC-10 / STC-11).
 Pairs a **CSCC** (Claim Status Category Code, X12 source 507) with a
 **CSC** (Claim Status Code, X12 source 508) and the responsible entity.
-The verbatim codes are always preserved; descriptions resolve from the
-bundled snapshots (or `undefined` outside the subset).
+The verbatim codes are always preserved. `categoryDescription` and
+`statusDescription` are `undefined`, because neither list ships description
+text (both redistribution records are `"licence-required"`); call
+`lookupClaimStatusCategory` and `lookupClaimStatus` with your own
+`descriptions` table to show your own text.
 
 #### Example
 
 ```ts
 import type { X12StatusCode } from "@cosyte/x12";
 declare const c: X12StatusCode;
-c.categoryCode;        // "A7" (rejected/invalid)
-c.statusCode;          // "21" (Missing or invalid information)
-c.statusDescription;   // "Missing or invalid information."
+c.categoryCode;        // "A7"
+c.statusCode;          // "21"
+c.statusDescription;   // undefined (no description text ships for this list)
 c.entityCode;          // "85" (billing provider)
 ```
 
@@ -22739,8 +22810,8 @@ const c: X12HiCategory = "diagnosis";
 > **X12HiCodeSystem** = `"ICD-10-CM"` \| `"ICD-10-PCS"` \| `"ICD-9-CM"` \| `"ICD-9-PCS"` \| `"DRG"` \| `"NDC"` \| `"NUBC-CONDITION"` \| `"NUBC-OCCURRENCE"` \| `"NUBC-OCCURRENCE-SPAN"` \| `"NUBC-VALUE"` \| `"NUBC-PATIENT-REASON"` \| `"unknown"`
 
 Discriminant for the code system referenced by a single HI composite. The
-`"unknown"` member is the catch-all for qualifiers outside the TR3-cited
-set - verbatim code is preserved on the parsed structure and an
+`"unknown"` member is the catch-all for qualifiers outside the bundled
+table - verbatim code is preserved on the parsed structure and an
 `X12_UNKNOWN_HI_QUALIFIER` warning is emitted.
 
 #### Example
@@ -23567,19 +23638,17 @@ BUILD_REFUSAL_VALUE_MAX_RENDERED; // 90
 
 > `const` **CARC**: [`DatedCodeListSnapshot`](#datedcodelistsnapshot)
 
-Bundled CARC snapshot. `meta.publishedDate` is the WPC publication
-date this subset reflects; `meta.snapshotDate` is when cosyte captured
-it, and `meta.datesCapturedAt` / `meta.datesSource` say separately when the
+Bundled CARC snapshot. `meta.publishedDate` is the publication date this
+subset reflects; `meta.snapshotDate` is when we captured it, and
+`meta.datesCapturedAt` / `meta.datesSource` say separately when the
 per-code validity dates were read and from which maintainer page. The
 `codes` and `dates` maps are frozen - use the [lookupCarc](#lookupcarc) helper for
-the ergonomic `{ code, description }` shape consumed by the 835
-helper.
+the `{ code, description }` shape consumed by the 835 helper.
 
-`meta.maintainingOrganization` and `meta.redistribution` carry the answer a
-consumer needs before displaying, caching or re-publishing a description:
-this list is X12's and its descriptions require a purchased licence, so the
-bundled snapshot stays exactly the cited part it has always been and the
-record names the licensor to approach.
+`meta.maintainingOrganization` and `meta.redistribution` record that this
+list is X12's and that its record is `"licence-required"`, so `codes` maps
+every bundled code to `undefined`: the codes ship, the descriptions do not,
+and the record names the licensor to approach.
 
 #### Example
 
@@ -23587,7 +23656,8 @@ record names the licensor to approach.
 import { CARC } from "@cosyte/x12";
 CARC.meta.snapshotDate;              // "2026-06-27"
 CARC.meta.datesCapturedAt;           // "2026-08-28"
-CARC.codes["45"];                    // "Charge exceeds fee schedule..."
+Object.hasOwn(CARC.codes, "45");     // true (the code is bundled)
+CARC.codes["45"];                    // undefined (no description ships)
 CARC.dates["45"]?.start;             // "1995-01-01"
 Object.keys(CARC.codes).length;      // count of bundled codes
 CARC.meta.maintainingOrganization;   // "ASC X12"
@@ -24004,18 +24074,16 @@ The 4 spec-fixed Claim Adjustment Group Codes. Frozen literal union via
 `as const` so consumers compare `code === CLAIM_ADJUSTMENT_GROUP_CODES.PR`
 and TypeScript narrows exhaustively.
 
-- `CO` - **Contractual Obligation.** The provider's contracted write-off
-  (e.g. payer fee schedule below billed charges). **The PROVIDER eats
-  this.** Posting `CO` to patient responsibility is the wrong-party bug.
-- `PR` - **Patient Responsibility.** Patient deductible / coinsurance /
-  copay / non-covered. **The PATIENT owes this.** This is the
-  patient-statement total.
-- `OA` - **Other Adjustment.** Used when neither CO nor PR fits -
-  typically prior-payer payments, COB adjustments, withholding for
-  refund. Use is fact-pattern-specific.
-- `PI` - **Payer Initiated Reductions.** Payer-side reduction the
-  provider may not dispute under the contract - e.g. bundling edits,
-  prepayment review reductions.
+- `CO` - the provider's contracted write-off (e.g. payer fee schedule
+  below billed charges). **The PROVIDER eats this.** Posting `CO` to
+  patient responsibility is the wrong-party bug.
+- `PR` - patient deductible / coinsurance / copay / non-covered. **The
+  PATIENT owes this.** This is the patient-statement total.
+- `OA` - used when neither CO nor PR fits - typically prior-payer
+  payments, COB adjustments, withholding for refund. Use is
+  fact-pattern-specific.
+- `PI` - a payer-side reduction the provider may not dispute under the
+  contract - e.g. bundling edits, prepayment review reductions.
 
 #### Type Declaration
 
@@ -24153,16 +24221,16 @@ try {
 
 > `const` **CLAIM\_STATUS\_CATEGORY\_CODES**: [`CodeListSnapshot`](#codelistsnapshot)
 
-Bundled Claim Status Category Code (CSCC) snapshot. Used by the 277 and
-277CA helpers to surface a human-readable category alongside each
-verbatim CSCC parsed from an STC composite.
+Bundled Claim Status Category Code (CSCC) snapshot. The 277 and 277CA
+helpers read it to tell a known CSCC from an unknown one; it ships no
+description text.
 
 #### Example
 
 ```ts
 import { CLAIM_STATUS_CATEGORY_CODES } from "@cosyte/x12";
-CLAIM_STATUS_CATEGORY_CODES.codes["A2"]; // "Acknowledgement/Acceptance into adjudication system"
-CLAIM_STATUS_CATEGORY_CODES.codes["F2"]; // "Finalized/Denial"
+Object.hasOwn(CLAIM_STATUS_CATEGORY_CODES.codes, "A2"); // true (bundled)
+CLAIM_STATUS_CATEGORY_CODES.codes["A2"];                // undefined (no description ships)
 CLAIM_STATUS_CATEGORY_CODES.meta.redistribution?.status; // "licence-required"
 ```
 
@@ -24172,16 +24240,15 @@ CLAIM_STATUS_CATEGORY_CODES.meta.redistribution?.status; // "licence-required"
 
 > `const` **CLAIM\_STATUS\_CODES**: [`CodeListSnapshot`](#codelistsnapshot)
 
-Bundled Claim Status Code (CSC) snapshot. Used by the 277 and 277CA
-helpers to surface a human-readable status alongside each verbatim CSC
-parsed from an STC composite.
+Bundled Claim Status Code (CSC) snapshot. The 277 and 277CA helpers read
+it to tell a known CSC from an unknown one; it ships no description text.
 
 #### Example
 
 ```ts
 import { CLAIM_STATUS_CODES } from "@cosyte/x12";
-CLAIM_STATUS_CODES.codes["20"]; // "Accepted for processing."
-CLAIM_STATUS_CODES.codes["21"]; // "Missing or invalid information."
+Object.hasOwn(CLAIM_STATUS_CODES.codes, "20"); // true (bundled)
+CLAIM_STATUS_CODES.codes["20"];                // undefined (no description ships)
 CLAIM_STATUS_CODES.meta.redistribution?.status; // "licence-required"
 ```
 
@@ -24191,16 +24258,15 @@ CLAIM_STATUS_CODES.meta.redistribution?.status; // "licence-required"
 
 > `const` **CLP\_STATUS**: [`CodeListSnapshot`](#codelistsnapshot)
 
-Bundled CLP-02 (Claim Status) snapshot. Used by the 835 helper to
-surface a human-readable description alongside the verbatim
-disposition code.
+Bundled CLP-02 (Claim Status) snapshot. The 835 helper reads it beside the
+verbatim disposition code; it ships no description text.
 
 #### Example
 
 ```ts
 import { CLP_STATUS } from "@cosyte/x12";
-CLP_STATUS.codes["1"];  // "Processed as Primary"
-CLP_STATUS.codes["4"];  // "Denied"
+Object.hasOwn(CLP_STATUS.codes, "1"); // true (bundled)
+CLP_STATUS.codes["1"];                // undefined (no description ships)
 CLP_STATUS.meta.redistribution?.status; // "not-established"
 ```
 
@@ -24935,11 +25001,12 @@ try {
 
 The HI qualifier → ([X12HiCodeSystem](#x12hicodesystem) + [X12HiCategory](#x12hicategory))
 registry. Frozen with `as const` so the keyset is type-narrowed for
-downstream consumers. Each entry cites its TR3 use site in the
-description so a reviewer can confirm against the source.
+downstream consumers. Each entry's `description` is our own note of what
+the library does with the qualifier: which code system it reads HI-NN-2 as,
+and in what role.
 
-Snapshot covers the qualifiers cited across 837P/I/D TR3s plus the most
-common NUBC code-set qualifiers. Additions are non-breaking; renames or
+Snapshot covers the diagnosis, procedure, DRG and NUBC qualifiers the 837
+readers handle. Additions are non-breaking; renames or
 removals are breaking and require a public-surface bump.
 
 #### Type Declaration
@@ -24954,7 +25021,7 @@ removals are breaking and require a public-surface bump.
 
 ###### ABF.description
 
-> `readonly` **description**: `"Other (secondary) diagnosis, ICD-10-CM."` = `"Other (secondary) diagnosis, ICD-10-CM."`
+> `readonly` **description**: `"Read as a diagnosis other than the principal one, coded in ICD-10-CM."` = `"Read as a diagnosis other than the principal one, coded in ICD-10-CM."`
 
 ###### ABF.system
 
@@ -24970,7 +25037,7 @@ removals are breaking and require a public-surface bump.
 
 ###### ABJ.description
 
-> `readonly` **description**: `"Admitting diagnosis, ICD-10-CM (837I inpatient)."` = `"Admitting diagnosis, ICD-10-CM (837I inpatient)."`
+> `readonly` **description**: `"Read as the admitting diagnosis, coded in ICD-10-CM."` = `"Read as the admitting diagnosis, coded in ICD-10-CM."`
 
 ###### ABJ.system
 
@@ -24986,7 +25053,7 @@ removals are breaking and require a public-surface bump.
 
 ###### ABK.description
 
-> `readonly` **description**: `"Principal diagnosis, ICD-10-CM (837I; 837P uses ABK in HI-01 for the principal)."` = `"Principal diagnosis, ICD-10-CM (837I; 837P uses ABK in HI-01 for the principal)."`
+> `readonly` **description**: `"Read as the principal diagnosis, coded in ICD-10-CM."` = `"Read as the principal diagnosis, coded in ICD-10-CM."`
 
 ###### ABK.system
 
@@ -25002,7 +25069,7 @@ removals are breaking and require a public-surface bump.
 
 ###### ABN.description
 
-> `readonly` **description**: `"Patient's reason for visit, ICD-10-CM (837I outpatient)."` = `"Patient's reason for visit, ICD-10-CM (837I outpatient)."`
+> `readonly` **description**: `"Read as the patient's reason for visit, coded in ICD-10-CM."` = `"Read as the patient's reason for visit, coded in ICD-10-CM."`
 
 ###### ABN.system
 
@@ -25018,7 +25085,7 @@ removals are breaking and require a public-surface bump.
 
 ###### APR.description
 
-> `readonly` **description**: `"External cause of injury, ICD-10-CM (V-Y codes)."` = `"External cause of injury, ICD-10-CM (V-Y codes)."`
+> `readonly` **description**: `"Read as an external cause of injury, coded in ICD-10-CM."` = `"Read as an external cause of injury, coded in ICD-10-CM."`
 
 ###### APR.system
 
@@ -25034,7 +25101,7 @@ removals are breaking and require a public-surface bump.
 
 ###### BBA.description
 
-> `readonly` **description**: `"Other procedure, ICD-9-PCS (legacy; replaced by BBR)."` = `"Other procedure, ICD-9-PCS (legacy; replaced by BBR)."`
+> `readonly` **description**: `"Read as a procedure other than the principal one, coded in ICD-9-PCS."` = `"Read as a procedure other than the principal one, coded in ICD-9-PCS."`
 
 ###### BBA.system
 
@@ -25050,7 +25117,7 @@ removals are breaking and require a public-surface bump.
 
 ###### BBQ.description
 
-> `readonly` **description**: `"Principal procedure, ICD-10-PCS (837I)."` = `"Principal procedure, ICD-10-PCS (837I)."`
+> `readonly` **description**: `"Read as the principal procedure (category treatment), coded in ICD-10-PCS."` = `"Read as the principal procedure (category treatment), coded in ICD-10-PCS."`
 
 ###### BBQ.system
 
@@ -25066,7 +25133,7 @@ removals are breaking and require a public-surface bump.
 
 ###### BBR.description
 
-> `readonly` **description**: `"Other (secondary) procedure, ICD-10-PCS (837I)."` = `"Other (secondary) procedure, ICD-10-PCS (837I)."`
+> `readonly` **description**: `"Read as a procedure other than the principal one, coded in ICD-10-PCS."` = `"Read as a procedure other than the principal one, coded in ICD-10-PCS."`
 
 ###### BBR.system
 
@@ -25082,7 +25149,7 @@ removals are breaking and require a public-surface bump.
 
 ###### BE.description
 
-> `readonly` **description**: `"Value code (NUBC FL 39-41) - paired amount in HI-NN-5 as decimal."` = `"Value code (NUBC FL 39-41) - paired amount in HI-NN-5 as decimal."`
+> `readonly` **description**: `"Read as an NUBC value code."` = `"Read as an NUBC value code."`
 
 ###### BE.system
 
@@ -25098,7 +25165,7 @@ removals are breaking and require a public-surface bump.
 
 ###### BF.description
 
-> `readonly` **description**: `"Other diagnosis, ICD-9-CM (legacy; replaced by ABF)."` = `"Other diagnosis, ICD-9-CM (legacy; replaced by ABF)."`
+> `readonly` **description**: `"Read as a diagnosis other than the principal one, coded in ICD-9-CM."` = `"Read as a diagnosis other than the principal one, coded in ICD-9-CM."`
 
 ###### BF.system
 
@@ -25114,7 +25181,7 @@ removals are breaking and require a public-surface bump.
 
 ###### BG.description
 
-> `readonly` **description**: `"Condition code (NUBC FL 18-28)."` = `"Condition code (NUBC FL 18-28)."`
+> `readonly` **description**: `"Read as an NUBC condition code."` = `"Read as an NUBC condition code."`
 
 ###### BG.system
 
@@ -25130,7 +25197,7 @@ removals are breaking and require a public-surface bump.
 
 ###### BH.description
 
-> `readonly` **description**: `"Occurrence code (NUBC FL 31-34) - date paired in HI-NN-4."` = `"Occurrence code (NUBC FL 31-34) - date paired in HI-NN-4."`
+> `readonly` **description**: `"Read as an NUBC occurrence code."` = `"Read as an NUBC occurrence code."`
 
 ###### BH.system
 
@@ -25146,7 +25213,7 @@ removals are breaking and require a public-surface bump.
 
 ###### BI.description
 
-> `readonly` **description**: `"Occurrence span code (NUBC FL 35-36) - date range in HI-NN-5/6."` = `"Occurrence span code (NUBC FL 35-36) - date range in HI-NN-5/6."`
+> `readonly` **description**: `"Read as an NUBC occurrence span code."` = `"Read as an NUBC occurrence span code."`
 
 ###### BI.system
 
@@ -25162,7 +25229,7 @@ removals are breaking and require a public-surface bump.
 
 ###### BJ.description
 
-> `readonly` **description**: `"Admitting diagnosis, ICD-9-CM (legacy; replaced by ABJ)."` = `"Admitting diagnosis, ICD-9-CM (legacy; replaced by ABJ)."`
+> `readonly` **description**: `"Read as the admitting diagnosis, coded in ICD-9-CM."` = `"Read as the admitting diagnosis, coded in ICD-9-CM."`
 
 ###### BJ.system
 
@@ -25178,7 +25245,7 @@ removals are breaking and require a public-surface bump.
 
 ###### BK.description
 
-> `readonly` **description**: `"Principal diagnosis, ICD-9-CM (legacy; replaced by ABK 2015-10-01 onward)."` = `"Principal diagnosis, ICD-9-CM (legacy; replaced by ABK 2015-10-01 onward)."`
+> `readonly` **description**: `"Read as the principal diagnosis, coded in ICD-9-CM."` = `"Read as the principal diagnosis, coded in ICD-9-CM."`
 
 ###### BK.system
 
@@ -25194,7 +25261,7 @@ removals are breaking and require a public-surface bump.
 
 ###### BN.description
 
-> `readonly` **description**: `"Reason for visit, ICD-9-CM (legacy; replaced by ABN)."` = `"Reason for visit, ICD-9-CM (legacy; replaced by ABN)."`
+> `readonly` **description**: `"Read as the patient's reason for visit, coded in ICD-9-CM."` = `"Read as the patient's reason for visit, coded in ICD-9-CM."`
 
 ###### BN.system
 
@@ -25210,7 +25277,7 @@ removals are breaking and require a public-surface bump.
 
 ###### BQ.description
 
-> `readonly` **description**: `"Principal procedure, ICD-9-PCS (legacy; replaced by BBQ)."` = `"Principal procedure, ICD-9-PCS (legacy; replaced by BBQ)."`
+> `readonly` **description**: `"Read as the principal procedure (category treatment), coded in ICD-9-PCS."` = `"Read as the principal procedure (category treatment), coded in ICD-9-PCS."`
 
 ###### BQ.system
 
@@ -25226,7 +25293,7 @@ removals are breaking and require a public-surface bump.
 
 ###### BR.description
 
-> `readonly` **description**: `"External cause of injury, ICD-9-CM (legacy; replaced by APR)."` = `"External cause of injury, ICD-9-CM (legacy; replaced by APR)."`
+> `readonly` **description**: `"Read as an external cause of injury, coded in ICD-9-CM."` = `"Read as an external cause of injury, coded in ICD-9-CM."`
 
 ###### BR.system
 
@@ -25242,7 +25309,7 @@ removals are breaking and require a public-surface bump.
 
 ###### DR.description
 
-> `readonly` **description**: `"Diagnosis Related Group (DRG) - payment-grouping code."` = `"Diagnosis Related Group (DRG) - payment-grouping code."`
+> `readonly` **description**: `"Read as a Diagnosis Related Group (DRG) code."` = `"Read as a Diagnosis Related Group (DRG) code."`
 
 ###### DR.system
 
@@ -25258,7 +25325,7 @@ removals are breaking and require a public-surface bump.
 
 ###### PR.description
 
-> `readonly` **description**: `"Patient reason for visit (837I outpatient secondary code; ICD-10-CM coded)."` = `"Patient reason for visit (837I outpatient secondary code; ICD-10-CM coded)."`
+> `readonly` **description**: `"Read as the patient's reason for visit, under the NUBC-PATIENT-REASON system."` = `"Read as the patient's reason for visit, under the NUBC-PATIENT-REASON system."`
 
 ###### PR.system
 
@@ -25303,19 +25370,10 @@ Cited per IK3 segment to identify the structural issue against the
 inbound segment. The library NEVER auto-classifies - the application
 supplies the code; the library mechanically builds the IK3 around it.
 
-- `1` - Unrecognized segment ID.
-- `2` - Unexpected segment.
-- `3` - Required segment missing.
-- `4` - Loop occurs over maximum times.
-- `5` - Segment exceeds maximum use.
-- `6` - Segment not in defined transaction set.
-- `7` - Segment not in proper sequence.
-- `8` - Segment has data element errors.
-- `I4` - Implementation "Not Used" segment present.
-- `I6` - Implementation dependent segment missing.
-- `I7` - Implementation loop occurs under minimum times.
-- `I8` - Implementation segment below minimum use.
-- `I9` - Implementation dependent "Not Used" segment present.
+Code values: `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `I4`, `I6`, `I7`, `I8`,
+`I9`. Each one does the same thing here: `parse999` narrows IK3-04 to it,
+and reads any other value as `undefined` (the raw segment keeps the
+bytes); `build999` writes the code it is given.
 
 #### Type Declaration
 
@@ -25388,24 +25446,10 @@ IK4-03 implementation data element syntax error codes (ASC X12 code list
 723). Cited per IK4 segment to identify the issue against the inbound
 element/component/repetition.
 
-- `1` - Required data element missing.
-- `2` - Conditional required data element missing.
-- `3` - Too many data elements.
-- `4` - Data element too short.
-- `5` - Data element too long.
-- `6` - Invalid character in data element.
-- `7` - Invalid code value.
-- `8` - Invalid date.
-- `9` - Invalid time.
-- `10` - Exclusion condition violated.
-- `12` - Too many repetitions.
-- `13` - Too many components.
-- `I6` - Code value not used in implementation.
-- `I9` - Implementation dependent data element missing.
-- `I10` - Implementation "Not Used" data element present.
-- `I11` - Implementation too few repetitions.
-- `I12` - Implementation pattern match failure.
-- `I13` - Implementation dependent "Not Used" data element present.
+Code values: `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, `12`, `13`,
+`I6`, `I9`, `I10`, `I11`, `I12`, `I13`. Each one does the same thing here:
+`parse999` narrows IK4-03 to it, and reads any other value as `undefined`
+(the raw segment keeps the bytes); `build999` writes the code it is given.
 
 #### Type Declaration
 
@@ -25680,18 +25724,25 @@ lookupAaaRejectReason("42"); // undefined (snapshot ships empty)
 
 ### lookupCarc
 
-> `const` **lookupCarc**: (`code`) => [`CodeListEntry`](#codelistentry) \| `undefined`
+> `const` **lookupCarc**: (`code`, `options?`) => [`CodeListEntry`](#codelistentry) \| `undefined`
 
-Look up a CARC code's bundled description. Returns `undefined` when
-the code is not in the initial subset - the verbatim code is still
-preserved on the parsed model and the 835 walker emits
-`X12_UNKNOWN_CARC` so consumers know the description gap exists.
+Look up a CARC code. A bundled code returns `{ code, description, dates }`
+with `description: undefined`, because this list ships no description text
+(its record is `"licence-required"`); pass your own table as
+`options.descriptions` to fill it. Returns `undefined` when the code is not
+in the bundled subset and your table does not describe it - the verbatim
+code is still preserved on the parsed model and the 835 walker emits
+`X12_UNKNOWN_CARC`.
 
 #### Parameters
 
 ##### code
 
 `string`
+
+##### options?
+
+[`CodeListLookupOptions`](#codelistlookupoptions)
 
 #### Returns
 
@@ -25701,25 +25752,33 @@ preserved on the parsed model and the 835 walker emits
 
 ```ts
 import { lookupCarc } from "@cosyte/x12";
-lookupCarc("45")?.description; // "Charge exceeds fee schedule..."
-lookupCarc("9999");            // undefined (outside the bundled subset)
+lookupCarc("45")?.description;   // undefined (bundled code, no description ships)
+lookupCarc("45")?.dates?.start;  // "1995-01-01"
+lookupCarc("45", { descriptions: { "45": "Made-up text" } })?.description; // "Made-up text"
+lookupCarc("9999");              // undefined (outside the bundled subset)
 ```
 
 ***
 
 ### lookupClaimStatus
 
-> `const` **lookupClaimStatus**: (`code`) => [`CodeListEntry`](#codelistentry) \| `undefined`
+> `const` **lookupClaimStatus**: (`code`, `options?`) => [`CodeListEntry`](#codelistentry) \| `undefined`
 
-Look up a Claim Status Code (CSC) description from the bundled snapshot.
-Returns `undefined` for codes outside the subset; the verbatim code is
-always preserved on the parsed status model.
+Look up a Claim Status Code (CSC). A bundled code returns
+`{ code, description: undefined }`, since this list ships no description
+text; pass your own table as `options.descriptions` to fill it. Returns
+`undefined` for a code outside the subset that your table does not
+describe; the verbatim code is always preserved on the parsed status model.
 
 #### Parameters
 
 ##### code
 
 `string`
+
+##### options?
+
+[`CodeListLookupOptions`](#codelistlookupoptions)
 
 #### Returns
 
@@ -25729,7 +25788,8 @@ always preserved on the parsed status model.
 
 ```ts
 import { lookupClaimStatus } from "@cosyte/x12";
-lookupClaimStatus("20")?.description; // "Accepted for processing."
+lookupClaimStatus("20");              // { code: "20", description: undefined }
+lookupClaimStatus("20", { descriptions: { "20": "Made-up text" } })?.description; // "Made-up text"
 lookupClaimStatus("99999");           // undefined (outside subset)
 ```
 
@@ -25737,17 +25797,23 @@ lookupClaimStatus("99999");           // undefined (outside subset)
 
 ### lookupClaimStatusCategory
 
-> `const` **lookupClaimStatusCategory**: (`code`) => [`CodeListEntry`](#codelistentry) \| `undefined`
+> `const` **lookupClaimStatusCategory**: (`code`, `options?`) => [`CodeListEntry`](#codelistentry) \| `undefined`
 
-Look up a Claim Status Category Code (CSCC) description from the bundled
-snapshot. Returns `undefined` for codes outside the subset; the verbatim
-code is always preserved on the parsed status model.
+Look up a Claim Status Category Code (CSCC). A bundled code returns
+`{ code, description: undefined }`, since this list ships no description
+text; pass your own table as `options.descriptions` to fill it. Returns
+`undefined` for a code outside the subset that your table does not
+describe; the verbatim code is always preserved on the parsed status model.
 
 #### Parameters
 
 ##### code
 
 `string`
+
+##### options?
+
+[`CodeListLookupOptions`](#codelistlookupoptions)
 
 #### Returns
 
@@ -25757,25 +25823,32 @@ code is always preserved on the parsed status model.
 
 ```ts
 import { lookupClaimStatusCategory } from "@cosyte/x12";
-lookupClaimStatusCategory("A2")?.description; // "Acknowledgement/Acceptance..."
-lookupClaimStatusCategory("ZZ");              // undefined (outside subset)
+lookupClaimStatusCategory("A2");   // { code: "A2", description: undefined }
+lookupClaimStatusCategory("A2", { descriptions: { A2: "Made-up text" } })?.description; // "Made-up text"
+lookupClaimStatusCategory("ZZ");   // undefined (outside subset)
 ```
 
 ***
 
 ### lookupClpStatus
 
-> `const` **lookupClpStatus**: (`code`) => [`CodeListEntry`](#codelistentry) \| `undefined`
+> `const` **lookupClpStatus**: (`code`, `options?`) => [`CodeListEntry`](#codelistentry) \| `undefined`
 
-Look up a CLP-02 claim status code's bundled description. Returns
-`undefined` for codes outside the initial subset; the verbatim code is
-still preserved on the parsed claim model.
+Look up a CLP-02 claim status code. A bundled code returns
+`{ code, description: undefined }`, since this list ships no description
+text; pass your own table as `options.descriptions` to fill it. Returns
+`undefined` for a code outside the subset that your table does not
+describe; the verbatim code is still preserved on the parsed claim model.
 
 #### Parameters
 
 ##### code
 
 `string`
+
+##### options?
+
+[`CodeListLookupOptions`](#codelistlookupoptions)
 
 #### Returns
 
@@ -25785,27 +25858,35 @@ still preserved on the parsed claim model.
 
 ```ts
 import { lookupClpStatus } from "@cosyte/x12";
-lookupClpStatus("1")?.description; // "Processed as Primary"
-lookupClpStatus("99");             // undefined (outside subset)
+lookupClpStatus("1");    // { code: "1", description: undefined }
+lookupClpStatus("1", { descriptions: { "1": "Made-up text" } })?.description; // "Made-up text"
+lookupClpStatus("99");   // undefined (outside subset)
 ```
 
 ***
 
 ### lookupMaintenanceType
 
-> `const` **lookupMaintenanceType**: (`code`) => [`CodeListEntry`](#codelistentry) \| `undefined`
+> `const` **lookupMaintenanceType**: (`code`, `options?`) => [`CodeListEntry`](#codelistentry) \| `undefined`
 
-Look up an INS-03 maintenance type code's bundled description. Returns
-`undefined` for codes outside the subset; the verbatim code is still
-preserved on the parsed enrollment, and the 834 helper raises an
-`X12_834_UNKNOWN_MAINTENANCE_TYPE` warning so a consumer never silently
-mis-applies an unknown action.
+Look up an INS-03 maintenance type code. A bundled code returns
+`{ code, description: undefined }`, since this list ships no description
+text; pass your own table as `options.descriptions` to fill it. Returns
+`undefined` for a code outside the subset that your table does not
+describe; the verbatim code is still preserved on the parsed enrollment,
+and the 834 helper raises an `X12_834_UNKNOWN_MAINTENANCE_TYPE` warning so
+a consumer never silently mis-applies an unknown action. The 834 reader
+and builder judge membership off the bundled codes alone.
 
 #### Parameters
 
 ##### code
 
 `string`
+
+##### options?
+
+[`CodeListLookupOptions`](#codelistlookupoptions)
 
 #### Returns
 
@@ -25815,26 +25896,33 @@ mis-applies an unknown action.
 
 ```ts
 import { lookupMaintenanceType } from "@cosyte/x12";
-lookupMaintenanceType("024")?.description; // "Cancellation or Termination"
-lookupMaintenanceType("999");              // undefined (outside subset)
+lookupMaintenanceType("024");   // { code: "024", description: undefined }
+lookupMaintenanceType("024", { descriptions: { "024": "Made-up text" } })?.description; // "Made-up text"
+lookupMaintenanceType("999");   // undefined (outside subset)
 ```
 
 ***
 
 ### lookupRarc
 
-> `const` **lookupRarc**: (`code`) => [`CodeListEntry`](#codelistentry) \| `undefined`
+> `const` **lookupRarc**: (`code`, `options?`) => [`CodeListEntry`](#codelistentry) \| `undefined`
 
-Look up a RARC code's bundled description. Same fail-safe semantics as
-"./carc.js".lookupCarc: unknown codes return `undefined`, the
-verbatim code is preserved on the parsed model, and the 835 walker
-emits `X12_UNKNOWN_RARC`.
+Look up a RARC code's bundled description. This is the one bundled list
+that ships description text, because its redistribution record is
+`"permitted"`. Same fail-safe semantics as "./carc.js".lookupCarc:
+unknown codes return `undefined`, the verbatim code is preserved on the
+parsed model, and the 835 walker emits `X12_UNKNOWN_RARC`. Your own
+`options.descriptions` replaces the bundled text for a code it describes.
 
 #### Parameters
 
 ##### code
 
 `string`
+
+##### options?
+
+[`CodeListLookupOptions`](#codelistlookupoptions)
 
 #### Returns
 
@@ -25851,17 +25939,23 @@ lookupRarc("N4")?.description; // "Missing/incomplete/invalid prior insurance ca
 
 ### lookupServiceType
 
-> `const` **lookupServiceType**: (`code`) => [`CodeListEntry`](#codelistentry) \| `undefined`
+> `const` **lookupServiceType**: (`code`, `options?`) => [`CodeListEntry`](#codelistentry) \| `undefined`
 
-Look up a Service Type Code (EB-03) description from the bundled
-snapshot. Returns `undefined` for codes outside the initial subset; the
-verbatim code is still preserved on the parsed benefit model.
+Look up a Service Type Code (EB-03). A bundled code returns
+`{ code, description: undefined }`, since this list ships no description
+text; pass your own table as `options.descriptions` to fill it. Returns
+`undefined` for a code outside the subset that your table does not
+describe; the verbatim code is still preserved on the parsed benefit model.
 
 #### Parameters
 
 ##### code
 
 `string`
+
+##### options?
+
+[`CodeListLookupOptions`](#codelistlookupoptions)
 
 #### Returns
 
@@ -25871,8 +25965,9 @@ verbatim code is still preserved on the parsed benefit model.
 
 ```ts
 import { lookupServiceType } from "@cosyte/x12";
-lookupServiceType("30")?.description; // "Health Benefit Plan Coverage"
-lookupServiceType("ZZ");              // undefined (outside subset)
+lookupServiceType("30");   // { code: "30", description: undefined }
+lookupServiceType("30", { descriptions: { "30": "Made-up text" } })?.description; // "Made-up text"
+lookupServiceType("ZZ");   // undefined (outside subset)
 ```
 
 ***
@@ -25881,17 +25976,17 @@ lookupServiceType("ZZ");              // undefined (outside subset)
 
 > `const` **MAINTENANCE\_TYPE\_CODES**: [`CodeListSnapshot`](#codelistsnapshot)
 
-Bundled INS-03 (Maintenance Type) snapshot. Used by the 834 helper to
-surface a human-readable description alongside the verbatim maintenance
-code, and to drive the `X12_834_UNKNOWN_MAINTENANCE_TYPE` warning when a
-code falls outside this set.
+Bundled INS-03 (Maintenance Type) snapshot. The 834 helper reads it to
+drive the `X12_834_UNKNOWN_MAINTENANCE_TYPE` warning when a code falls
+outside this set, and `build834` to refuse such a code; it ships no
+description text.
 
 #### Example
 
 ```ts
 import { MAINTENANCE_TYPE_CODES } from "@cosyte/x12";
-MAINTENANCE_TYPE_CODES.codes["021"]; // "Addition"
-MAINTENANCE_TYPE_CODES.codes["024"]; // "Cancellation or Termination"
+Object.hasOwn(MAINTENANCE_TYPE_CODES.codes, "024"); // true (bundled)
+MAINTENANCE_TYPE_CODES.codes["024"];                // undefined (no description ships)
 MAINTENANCE_TYPE_CODES.meta.redistribution?.status; // "not-established"
 ```
 
@@ -26017,7 +26112,7 @@ PREMIUM_820_LOOP_1000B.id; // "1000B"
 820 Loop 2000A - Organization Summary Remittance. Triggered by `ENT`.
 Nests Loop 2100A (party name) and Loop 2300A (remittance detail).
 
-Cited as Loop 2000A in TR3 X218.
+Loop 2000A.
 
 #### Example
 
@@ -26036,7 +26131,7 @@ PREMIUM_820_LOOP_2000A.children.length;  // 2 (2100A, 2300A)
 820 Loop 2100A - Party Name (member / entity inside an organization
 summary). Triggered by `NM1`.
 
-Cited as Loop 2100A in TR3 X218.
+Loop 2100A.
 
 #### Example
 
@@ -26054,7 +26149,7 @@ PREMIUM_820_LOOP_2100A.trigger; // "NM1"
 820 Loop 2300A - Organization Summary Remittance Detail. Triggered by
 `RMR` (the premium-line open-item reference). Nests Loop 2310A.
 
-Cited as Loop 2300A in TR3 X218.
+Loop 2300A.
 
 #### Example
 
@@ -26073,7 +26168,7 @@ PREMIUM_820_LOOP_2300A.children[0]?.trigger; // "ADX"
 820 Loop 2310A - Adjustment. Triggered by `ADX`. Innermost detail loop:
 a signed monetary adjustment tied to the enclosing `RMR` open item.
 
-Cited as Loop 2310A in TR3 X218.
+Loop 2310A.
 
 #### Example
 
@@ -26170,7 +26265,7 @@ consumers can narrow exhaustively on `err.code`; additions-only
 thereafter (renaming any code is a breaking change).
 
 - `X12_835_BUILD_BALANCE_MISMATCH` - a spec violated one of the three
-  §1.10.2 balance invariants (service-line `SVC-02 == SVC-03 + Σ(line
+  835 balance equations (service-line `SVC-02 == SVC-03 + Σ(line
   CAS)`, claim `CLP-03 == CLP-04 + Σ(claim+line CAS)`, or top-of-remit
   `BPR-02 == Σ(CLP-04) − Σ(PLB)`). The message names the invariant,
   the spec'd vs computed totals, and the delta - numeric values only,
@@ -26248,7 +26343,7 @@ REMIT_835_LOOP_1000B.id; // "1000B"
 
 835 Loop 2000 - Header Number. Triggered by `LX`. Nests Loop 2100.
 
-Cited as Loop 2000 in TR3 X221A1; situational because some payers
+Loop 2000; situational because some payers
 (notably Medicare FFS) omit the LX header entirely and ship CLP loops
 directly under the transaction set header. The walker handles
 both shapes - claims appear inside Loop 2000 if `LX` is present, at
@@ -26271,7 +26366,7 @@ REMIT_835_LOOP_2000.children[0]?.trigger; // "CLP" (Loop 2100)
 835 Loop 2100 - Claim Payment Information. Triggered by `CLP`. Nests
 Loop 2110.
 
-Cited as Loop 2100 in TR3 X221A1.
+Loop 2100.
 
 #### Example
 
@@ -26289,7 +26384,7 @@ REMIT_835_LOOP_2100.children.length;  // 1 (Loop 2110)
 
 835 Loop 2110 - Service Payment Information. Triggered by `SVC`.
 
-Cited as Loop 2110 in TR3 X221A1.
+Loop 2110.
 
 #### Example
 
@@ -26513,16 +26608,15 @@ RFAI_277_LOOP_2220.trigger; // "SVC"
 
 > `const` **SERVICE\_TYPE\_CODES**: [`CodeListSnapshot`](#codelistsnapshot)
 
-Bundled Service Type Code (EB-03) snapshot. Used by the 271 helper to
-surface a human-readable description alongside each verbatim service
-type code under an eligibility/benefit statement.
+Bundled Service Type Code (EB-03) snapshot. The 270 and 271 helpers read
+it beside each verbatim service type code; it ships no description text.
 
 #### Example
 
 ```ts
 import { SERVICE_TYPE_CODES } from "@cosyte/x12";
-SERVICE_TYPE_CODES.codes["30"]; // "Health Benefit Plan Coverage"
-SERVICE_TYPE_CODES.codes["88"]; // "Pharmacy"
+Object.hasOwn(SERVICE_TYPE_CODES.codes, "30"); // true (bundled)
+SERVICE_TYPE_CODES.codes["30"];                // undefined (no description ships)
 SERVICE_TYPE_CODES.meta.redistribution?.status; // "licence-required"
 ```
 
@@ -26808,36 +26902,10 @@ and is deleted rather than reworded**; `raw.elements[5]` is the byte surface.
 acceptance. The build-time safety guard refuses a fabricated `A` paired
 with any non-`000` note (see "./errors.js".AckBuildError).
 
-Standard-issued values:
-- `000` - No error.
-- `001` - Interchange Control Number in the Header and Trailer do not match.
-- `002` - Standard as noted in the Control Standards Identifier is not supported.
-- `003` - Version of the controls is not supported.
-- `004` - Segment Terminator is invalid.
-- `005` - Invalid Interchange ID Qualifier for Sender.
-- `006` - Invalid Interchange Sender ID.
-- `007` - Invalid Interchange ID Qualifier for Receiver.
-- `008` - Invalid Interchange Receiver ID.
-- `009` - Unknown Interchange Receiver ID.
-- `010` - Invalid Authorization Information Qualifier value.
-- `011` - Invalid Authorization Information value.
-- `012` - Invalid Security Information Qualifier value.
-- `013` - Invalid Security Information value.
-- `014` - Invalid Interchange Date value.
-- `015` - Invalid Interchange Time value.
-- `016` - Invalid Interchange Standards Identifier value.
-- `017` - Invalid Interchange Version ID value.
-- `018` - Invalid Interchange Control Number value.
-- `019` - Invalid Acknowledgment Requested value.
-- `020` - Invalid Test Indicator value.
-- `021` - Invalid Number of Included Groups value.
-- `022` - Invalid Control Structure.
-- `023` - Improper (premature) end-of-file (transmission).
-- `024` - Invalid Interchange Content (e.g., invalid GS segment).
-- `025` - Duplicate Interchange Control Number.
-- `026` - Invalid Data Element Separator.
-- `027` - Invalid Component Element Separator.
-- `028` - Invalid Delivery Date in Deferred Delivery Request.
+Standard-issued values, `000` to `028`:
+- `000` - the one note `buildTA1` accepts beside TA1-04 `A`.
+- `001` to `028` - `parseTA1` narrows TA1-05 to the value; `buildTA1`
+  refuses any of them beside TA1-04 `A`.
 
 #### Type Declaration
 
@@ -27405,14 +27473,14 @@ the LIBRARY does not decide accept-vs-reject - the application does.
 fabricated `A` against a non-empty error list is a bug and refused at
 build time (see "./errors.js".AckBuildError).
 
-- `A` - Accepted.
-- `E` - Accepted, but errors were noted.
-- `P` - Partially accepted: at least one transaction set was rejected
-  while the functional group as a whole was accepted.
-- `R` - Rejected.
-- `M` - Rejected: message authentication code (MAC) failed.
-- `W` - Rejected: assurance failed validity tests.
-- `X` - Rejected: content after decryption could not be analyzed.
+- `A` - [isAcceptDisposition](#isacceptdisposition) answers `true`; `build999` refuses it
+  beside a non-empty error list.
+- `E` - [isAcceptDisposition](#isacceptdisposition) answers `true`.
+- `P` - [isAcceptDisposition](#isacceptdisposition) answers `true`.
+- `R` - [isAcceptDisposition](#isacceptdisposition) answers `false`.
+- `M` - [isAcceptDisposition](#isacceptdisposition) answers `false`.
+- `W` - [isAcceptDisposition](#isacceptdisposition) answers `false`.
+- `X` - [isAcceptDisposition](#isacceptdisposition) answers `false`.
 
 #### Type Declaration
 
@@ -28247,7 +28315,7 @@ w.code; // "X12_275_ATTACHMENT_ABSENT"
 > **balanceNotEvaluable**(`position`, `invariant`): [`X12ParseWarning`](#x12parsewarning)
 
 Build an `X12_835_BALANCE_NOT_EVALUABLE` warning. Emitted where a term of
-a TR3 X221A1 §1.10.2 invariant is `undefined` on the model, so the
+one of the three 835 balance equations is `undefined` on the model, so the
 equation has nothing to compare on one side. `invariant` names which
 equation could not be run.
 
@@ -28957,7 +29025,7 @@ const ix = build834({
 Refused via "./build-errors.js".Remit835BuildError:
 - No trace supplied, or a claim with no patient-control number, etc. →
   `X12_835_BUILD_INVALID_SPEC`.
-- Any §1.10.2 balance invariant violated (service-line `SVC-02 ==
+- Any 835 balance equation violated (service-line `SVC-02 ==
   SVC-03 + Σ(line CAS)`, claim `CLP-03 == CLP-04 + Σ(claim+line CAS)`,
   or top-of-remit `BPR-02 == Σ(CLP-04) − Σ(PLB)`) →
   `X12_835_BUILD_BALANCE_MISMATCH`.
@@ -32113,7 +32181,7 @@ readElementDecimal(seg, 2, delim); // { value: undefined, status: "unparseable" 
 > **remitBalanceMismatch**(`position`, `invariant`): [`X12ParseWarning`](#x12parsewarning)
 
 Build an `X12_835_REMIT_BALANCE_MISMATCH` warning. Emitted by the 835
-helper when a TR3 X221A1 §1.10.2 balance invariant fails. `invariant`
+helper when one of the three 835 balance equations fails. `invariant`
 names which equation broke; the spec'd, computed and delta amounts stay
 on the model as "../decimal.js".X12Decimal values and are never
 rendered into the message.
@@ -32193,7 +32261,7 @@ Resolve an HI qualifier string into a HiQualifierEntry, or
 `undefined` if the qualifier is outside the bundled snapshot. Unknown
 qualifiers still parse - the parser preserves the verbatim qualifier on
 the diagnosis/procedure and emits `X12_UNKNOWN_HI_QUALIFIER`. The lookup
-is case-sensitive (TR3 qualifiers are uppercase).
+is case-sensitive (the bundled qualifiers are uppercase).
 
 #### Parameters
 

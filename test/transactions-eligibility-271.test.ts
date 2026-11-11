@@ -81,8 +81,8 @@ describe("get271Eligibility - Tier-1 canonical (X279A1)", () => {
     expect(active?.eligibilityCode).toBe("1");
     expect(active?.coverageLevelCode).toBe("IND");
     expect(active?.serviceTypeCodes.map((s) => s.code)).toEqual(["30", "35"]);
-    expect(active?.serviceTypeCodes[0]?.description).toBe("Health Benefit Plan Coverage");
-    expect(active?.serviceTypeCodes[1]?.description).toBe("Dental Care");
+    expect(active?.serviceTypeCodes[0]?.description).toBeUndefined();
+    expect(active?.serviceTypeCodes[1]?.description).toBeUndefined();
     expect(active?.planCoverageDescription).toBe("GOLD PPO");
   });
 

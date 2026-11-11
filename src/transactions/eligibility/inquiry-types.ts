@@ -309,7 +309,7 @@ export interface X12InquiryDate {
  * import type { X12InquiryRequest } from "@cosyte/x12";
  * declare const q: X12InquiryRequest;
  * q.serviceTypeCodes[0]?.code;        // "30"
- * q.serviceTypeCodes[0]?.description; // "Health Benefit Plan Coverage"
+ * q.serviceTypeCodes[0]?.description; // undefined (no description text ships)
  * q.coverageLevelCode;                // "IND"
  * ```
  */
@@ -332,16 +332,17 @@ export interface X12InquiryRequest {
 
 /**
  * A requested Service Type Code (EQ-01, X12 external code source 1365). The
- * verbatim `code` is ALWAYS preserved; `description` resolves from the
- * bundled snapshot the 271 reader already consumes, and is `undefined`
- * outside it. The code is never replaced by its description.
+ * verbatim `code` is ALWAYS preserved; `description` is `undefined`, because
+ * the Service Type list ships no description text (its redistribution record
+ * is `"licence-required"`). Call `lookupServiceType(st.code, { descriptions })`
+ * with a table you hold to show your own text.
  *
  * @example
  * ```ts
  * import type { X12InquiryServiceType } from "@cosyte/x12";
  * declare const st: X12InquiryServiceType;
  * st.code;        // "30"
- * st.description; // "Health Benefit Plan Coverage"
+ * st.description; // undefined (no description text ships for this list)
  * ```
  */
 export interface X12InquiryServiceType {
