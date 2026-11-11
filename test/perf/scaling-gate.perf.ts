@@ -129,7 +129,8 @@ const parseOptions: ScalingGateOptions<string, X12Interchange> = {
   parse: (raw) => parseX12(raw),
   weigh: (ix) => ix.groups.length,
   count: { n: 1_000, generate: (i) => remit835Text(i, 4) },
-  size: { inputs: 10, size: 150, generate: (i, claims) => remit835Text(i, claims) },
+  // Ten 150-claim remittances parsed in about 6 ms on a hosted runner, under the 8 ms floor.
+  size: { inputs: 20, size: 150, generate: (i, claims) => remit835Text(i, claims) },
 };
 
 const readOptions: ScalingGateOptions<string, X12Remittance> = {
@@ -182,7 +183,8 @@ const longParseOptions: ScalingGateOptions<string, X12Interchange> = {
   name: "@cosyte/x12 parseX12, long documents",
   parse: (raw) => parseX12(raw),
   weigh: (ix) => ix.groups.length,
-  count: { n: 200, generate: (i) => remit835Text(i, 4) },
+  // 200 small documents parsed in under 6 ms on a hosted runner, under the 8 ms floor.
+  count: { n: 400, generate: (i) => remit835Text(i, 4) },
   size: { inputs: 4, size: 800, generate: (i, claims) => remit835Text(i, claims) },
 };
 
@@ -274,6 +276,16 @@ function gate<TInput, TResult>(op: Operation<TInput, TResult>): void {
   });
 }
 
+/**
+ * What a gate may set beside its sizes: the documents on the count axis (1,000 unless set), the
+ * documents on the size axis (10 unless set), and the quadratic reassembly its self-check uses.
+ */
+interface GateTuning {
+  readonly countN?: number;
+  readonly inputs?: number;
+  readonly reassemble?: (raw: string) => string;
+}
+
 /** A reader gate over a document family whose text grows with `size`. */
 function readerGate(
   name: string,
@@ -281,14 +293,14 @@ function readerGate(
   countSize: number,
   size: number,
   read: (raw: string) => number,
-  reassemble: (raw: string) => string = reassembleQuadratic,
+  { countN = 1_000, inputs = 10, reassemble = reassembleQuadratic }: GateTuning = {},
 ): void {
   gate<string, number>({
     name,
     run: read,
     weigh: (n) => n,
-    count: { n: 1_000, generate: (i) => text(i, countSize) },
-    size: { inputs: 10, size, generate: (i, s) => text(i, s) },
+    count: { n: countN, generate: (i) => text(i, countSize) },
+    size: { inputs, size, generate: (i, s) => text(i, s) },
     regressed: (raw) => read(reassemble(raw)),
   });
 }
@@ -300,15 +312,15 @@ function builderGate<TSpec>(
   build: (spec: TSpec) => X12Interchange,
   countSize: number,
   size: number,
-  reassemble: (raw: string) => string = reassembleQuadratic,
+  { countN = 1_000, inputs = 10, reassemble = reassembleQuadratic }: GateTuning = {},
 ): void {
   const run = (s: TSpec): string => serializeX12(build(s));
   gate<TSpec, string>({
     name,
     run,
     weigh: (text) => text.length,
-    count: { n: 1_000, generate: (i) => spec(i, countSize) },
-    size: { inputs: 10, size, generate: (i, s) => spec(i, s) },
+    count: { n: countN, generate: (i) => spec(i, countSize) },
+    size: { inputs, size, generate: (i, s) => spec(i, s) },
     regressed: (s) => reassemble(run(s)),
   });
 }
@@ -364,7 +376,8 @@ builderGate(
 
 // The 271: the size knob is the number of benefit lines. At 150 a quadratic read did not clear the
 // ceiling and a clean build took under the 4 ms a phase needs; at 400 the build's base phase was
-// about 7 ms on a hosted runner and the read's self-check margin 1.17x, so the axis starts at 800.
+// about 7 ms on a hosted runner and the read's self-check margin 1.17x, so the read's axis starts
+// at 800; the build at 800 took about 8 ms, so its axis starts at 1,600.
 readerGate(
   "@cosyte/x12 parseX12, then get271Eligibility",
   eligibility271Text,
@@ -380,27 +393,36 @@ builderGate(
   eligibility271Spec.bind(null, dec),
   build271,
   30,
-  800,
+  1_600,
 );
 
-// The 999: the size knob is the number of transaction sets acknowledged. At 300 the build's base
-// phase was under 6 ms on a hosted runner, so the size axis starts at 600.
-readerGate("@cosyte/x12 parse999", ack999Text, 1, 600, (raw) => {
-  const ack = parse999(raw);
-  return counted(ack, ack?.transactionResponses.length ?? 0);
-});
+// The 999: the size knob is the number of transaction sets acknowledged. At 600 the base phases
+// were under 10 ms on a hosted runner, so the size axis starts at 1,200; 1,000 one-set 999s read
+// in under 8 ms, so the read's count axis takes 2,000.
+readerGate(
+  "@cosyte/x12 parse999",
+  ack999Text,
+  1,
+  1_200,
+  (raw) => {
+    const ack = parse999(raw);
+    return counted(ack, ack?.transactionResponses.length ?? 0);
+  },
+  { countN: 2_000 },
+);
 builderGate(
   "@cosyte/x12 build999, then serializeX12",
   ack999Spec.bind(null, dec),
   build999,
   1,
-  600,
+  1_200,
 );
 
 // The 275: the size knob is the octets of the one payload, a single long segment, so the
 // regression reached is a scan of the whole text before each piece of it. At the bench's 64 KiB a
 // clean read took about the 4 ms a phase needs, and at 128 KiB under 8 ms on a hosted runner, so
-// the size axis starts at 256 KiB.
+// the size axis starts at 256 KiB. Ten reads at 256 KiB took about 8 ms, so the read's size axis
+// takes 20 documents: a larger payload would make its quadratic self-check far slower.
 readerGate(
   "@cosyte/x12 parseX12, then get275Attachments",
   attachment275Text,
@@ -410,7 +432,7 @@ readerGate(
     const submission = get275Attachments(ix.delimiters, firstTransaction(ix));
     return counted(submission, submission?.attachments[0]?.data.octetCount ?? 0);
   }),
-  reassembleQuadraticChars,
+  { inputs: 20, reassemble: reassembleQuadraticChars },
 );
 builderGate(
   "@cosyte/x12 build275, then serializeX12",
@@ -418,14 +440,14 @@ builderGate(
   build275,
   1_024,
   256 * 1_024,
-  reassembleQuadraticChars,
+  { reassemble: reassembleQuadraticChars },
 );
 
 // The 270 is one fixed question, so its size axis is a batch of them, read or built one by one.
 // This holds the cost of a batch to its length; the cost of one inquiry is the count axis. The
 // self-check's regression adds the quadratic work beside the real read or build rather than
 // inside it: it reassembles the joined batch the slow way, then reads or builds every inquiry as
-// the clean run does. A batch of 75 keeps the base phase well over 10 ms.
+// the clean run does. A batch of 75 took about 10 ms on a hosted runner, so a batch is 120.
 gate<readonly string[], number>({
   name: "@cosyte/x12 parseX12, then get270Inquiry, over a batch",
   run: (batch) => {
@@ -441,7 +463,7 @@ gate<readonly string[], number>({
   count: { n: 1_000, generate: (i) => [inquiry270Text(i)] },
   size: {
     inputs: 10,
-    size: 75,
+    size: 120,
     generate: (i, s) => Array.from({ length: s }, (_v, k) => inquiry270Text(i * s + k)),
   },
   regressed: (batch) => {
@@ -461,7 +483,7 @@ gate<readonly Build270Spec[], string>({
   count: { n: 1_000, generate: (i) => [inquiry270Spec(dec, i)] },
   size: {
     inputs: 10,
-    size: 75,
+    size: 120,
     generate: (i, s) => Array.from({ length: s }, (_v, k) => inquiry270Spec(dec, i * s + k)),
   },
   regressed: (batch) =>
