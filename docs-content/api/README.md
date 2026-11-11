@@ -16168,10 +16168,12 @@ Which document this reading is. `"claim-status"` or
 `"claim-acknowledgment"` where the transaction set declares a guide the
 reader implements (ST-03 as framed reading `005010X214` is the
 acknowledgment); `"unrecognized-guide"` where it declares no guide at
-all, in which case the reading also carries `X12_GUIDE_NOT_DECLARED`. A
-transaction set declaring a guide outside that set gets no reading (the
-reader returns `undefined`). ST-03 stays readable, decoded, on
-`implementationConventionReference`.
+all, in which case the reading also carries `X12_GUIDE_NOT_DECLARED`, or
+declares one only padded or in another case (`005010X212` with a space
+either side, say), in which case it carries `X12_GUIDE_NOT_IMPLEMENTED`.
+A transaction set declaring a guide outside that set even once trimmed
+and upper-cased gets no reading (the reader returns `undefined`). ST-03
+stays readable, decoded, on `implementationConventionReference`.
 
 ##### warnings
 
@@ -29834,7 +29836,12 @@ the request for additional information row. Where it is outside them (the
 reader returns `undefined`, because the walk reads 005010 element positions.
 Where nothing is declared the reading is still walked and returned, carries
 `X12_GUIDE_NOT_DECLARED`, and its `transactionType` is
-`"unrecognized-guide"`. Otherwise `transactionType` is derived from ST-03 as
+`"unrecognized-guide"`. Where the declaration names an implemented guide
+only once trimmed and upper-cased (`005010X212` with a space either side,
+or `005010x212`), the reading is walked and returned, carries
+`X12_GUIDE_NOT_IMPLEMENTED`, and its `transactionType` is
+`"unrecognized-guide"` too, as it was before readers refused anything.
+Otherwise `transactionType` is derived from ST-03 as
 framed: `"claim-acknowledgment"` where it reads `005010X214`, and
 `"claim-status"` for every other implemented declaration.
 
@@ -30337,8 +30344,9 @@ Build an `X12_GUIDE_NOT_DECLARED` warning. Raised by a typed reader when a
 transaction set declares no implementation guide at all: ST-03 is absent or
 empty and GS-08 of the enclosing functional group is absent or empty too, or
 no functional group header reached the transaction set (one assembled by
-hand, say). A whitespace-only declaration is NOT empty and is a declared
-guide the reader does not implement instead, because nothing is trimmed.
+hand, say). A declaration of whitespace alone counts as empty: an ST-03 of
+whitespace falls through to GS-08, and a GS-08 of whitespace declares
+nothing.
 
 The reading is still decoded and returned against the guide the reader
 implements. Readers anchor it at the ST (`segmentIndex: 0`).
@@ -30370,10 +30378,12 @@ w.code; // "X12_GUIDE_NOT_DECLARED"
 Build an `X12_GUIDE_NOT_IMPLEMENTED` warning. Raised by the 275 and 999
 readers when the implementation guide a transaction set declares is not one
 that reader implements. The declaration is ST-03, decoded of any release
-escape, or GS-08 of the enclosing functional group where ST-03 is absent or
-empty; the comparison is exact, and the guides a reader implements are the
-ones its rows in `X12_TR3_CONFORMANCE` name. Every other typed reader
-returns no reading for such a transaction set instead.
+escape, or GS-08 of the enclosing functional group where ST-03 is absent,
+empty or whitespace alone; the comparison is exact, and the guides a reader
+implements are the ones its rows in `X12_TR3_CONFORMANCE` name. Every other
+typed reader raises it only where the declaration, trimmed and upper-cased,
+names a guide it implements (a padded or lower-cased 005010 guide, which it
+still reads), and returns no reading where even that names none.
 
 Where it is raised, the reading is still decoded and returned: this code
 refuses, drops and re-decodes nothing. It takes a position and no value, so

@@ -271,7 +271,7 @@ function decodeStatusInquiry(
   // declared is warned at the ST and read. Both entry points reach it through
   // this decode.
   const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_276);
-  if (refusesReading(guideWarning)) return undefined;
+  if (refusesReading(delimiters, tx, IMPLEMENTED_GUIDES_276)) return undefined;
   const warnings: X12ParseWarning[] = [];
   if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);

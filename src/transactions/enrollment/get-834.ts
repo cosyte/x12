@@ -77,7 +77,7 @@ function guideWarnings(
   tx: X12TransactionSet,
 ): readonly X12ParseWarning[] | undefined {
   const warning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_834);
-  if (refusesReading(warning)) return undefined;
+  if (refusesReading(delimiters, tx, IMPLEMENTED_GUIDES_834)) return undefined;
   return warning === undefined ? [] : [warning];
 }
 

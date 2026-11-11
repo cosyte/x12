@@ -304,7 +304,7 @@ export function get837Claims(
   // declaration this check accepts can still leave the variant to the `SVx`
   // fall-back, and neither decision reads the other.
   const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_837);
-  if (refusesReading(guideWarning)) return undefined;
+  if (refusesReading(delimiters, tx, IMPLEMENTED_GUIDES_837)) return undefined;
   const warnings: X12ParseWarning[] = [];
   if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);

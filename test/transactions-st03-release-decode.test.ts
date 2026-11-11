@@ -39,6 +39,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  WARNING_CODES,
   get277CADisposition,
   get277Status,
   get278Request,
@@ -230,9 +231,16 @@ describe("what the decode leaves alone", () => {
     expect(get837Claims(delimiters, tx)).toBeUndefined();
   });
 
-  it("introduces no normalisation: a whitespace-padded ST-03 is not trimmed to a guide", () => {
+  it("introduces no normalisation of the published value: a whitespace-padded ST-03 is read and published untrimmed", () => {
+    // The refusal compares the declaration trimmed and upper-cased, so a
+    // padded 005010 guide is read; the warning compares exactly, so it still
+    // carries X12_GUIDE_NOT_IMPLEMENTED, and the published value is untrimmed.
     const { delimiters, tx } = firstTransaction(interchange("837", " 005010X222A1 ", BODY_837P));
-    expect(get837Claims(delimiters, tx)).toBeUndefined();
+    const submission = get837Claims(delimiters, tx);
+    expect(submission?.implementationConventionReference).toBe(" 005010X222A1 ");
+    expect(submission?.warnings.map((w) => w.code)).toContain(
+      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+    );
   });
 
   it("keeps each reader's own empty / absent mapping unchanged", () => {

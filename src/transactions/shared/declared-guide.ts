@@ -6,12 +6,12 @@
  * **What is declared.** ST-03, decoded exactly as the readers publish
  * `implementationConventionReference` (through {@link decodeSt03}, so a
  * release escape is resolved). Where ST-03 is absent (the ST has no third
- * element) or decodes to `""`, GS-08 of the functional group that framed the
- * transaction set, decoded the same way. Where GS-08 is absent or empty too,
- * or no group header reached the transaction set at all, nothing is declared.
- * Nothing is trimmed, case-folded or prefix-matched, so a whitespace-only
- * declaration is non-empty and is compared as it stands. Where ST-03 is
- * non-empty it alone decides and GS-08 is never read, so a disagreement
+ * element) or decodes to `""` or to whitespace alone, GS-08 of the functional
+ * group that framed the transaction set, decoded the same way. Where GS-08 is
+ * absent, empty or whitespace alone too, or no group header reached the
+ * transaction set at all, nothing is declared. A declaration that is returned
+ * is returned as it stands, untrimmed. Where ST-03 has anything but
+ * whitespace it alone decides and GS-08 is never read, so a disagreement
  * between the two is not reconciled here.
  *
  * **What is implemented.** Derived from `X12_TR3_CONFORMANCE` and never kept
@@ -25,14 +25,17 @@
  * truthy (see `../../parser/lookup.ts`); `Set.prototype.has` consults no
  * prototype chain, so `constructor` or `__proto__` is simply not a member.
  *
- * **What it decides.** Where something is declared and it is not a guide the
+ * **What it decides.** Two things, compared two ways. The warning compares
+ * the declaration exactly, so a padded or lower-cased guide is warned
+ * `X12_GUIDE_NOT_IMPLEMENTED` (see {@link declaredGuideWarning}). The refusal
+ * compares it trimmed and upper-cased: where it is still not a guide the
  * reader implements, the reader returns no reading at all (see
- * {@link refusesReading}): walking a 4010 transaction set, say, against the
- * 005010 element positions gives values that look ordinary and are wrong.
- * Where nothing is declared the reader still reads and warns, because it
- * cannot tell one version from another. Every other keyed decision a reader
- * takes on the raw ST-03 text (the 837 variant, the 277 claim acknowledgment
- * discriminator and admission) is left to that reader, unmoved.
+ * {@link refusesReading}), because walking a 4010 transaction set, say,
+ * against the 005010 element positions gives values that look ordinary and
+ * are wrong. Where nothing is declared the reader still reads and warns,
+ * because it cannot tell one version from another. Every other keyed decision
+ * a reader takes on the raw ST-03 text (the 837 variant, the 277 claim
+ * acknowledgment discriminator and admission) is left to that reader, unmoved.
  *
  * @internal
  */
@@ -40,7 +43,6 @@
 import { X12_TR3_CONFORMANCE } from "../../conformance/tr3.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
 import {
-  WARNING_CODES,
   guideNotDeclared,
   guideNotImplemented,
   type X12ParseWarning,
@@ -116,25 +118,26 @@ function collectGuides(
 
 /**
  * The guide a transaction set declares, per the module comment: decoded ST-03
- * where it is non-empty, else decoded GS-08 where that is non-empty, else
- * `undefined`.
+ * where it holds anything but whitespace, else decoded GS-08 where that does,
+ * else `undefined`. What it returns is untrimmed.
  *
  * @example
  * ```ts
  * // ST*835*0001*005010X221A1 declares "005010X221A1", whatever GS-08 says.
  * // ST*835*0001 under GS-08 005010X221A1 declares "005010X221A1".
  * // ST*835*0001* under an empty GS-08 declares nothing (undefined).
+ * // ST*835*0001*   (whitespace) falls through to GS-08, as an empty ST-03 does.
  * ```
  *
  * @internal
  */
 export function declaredGuide(delimiters: Delimiters, tx: X12TransactionSet): string | undefined {
   const st03 = decodeSt03(tx.st.elements[3], delimiters, ST_POSITION);
-  if (st03 !== undefined && st03 !== "") return st03;
+  if (st03 !== undefined && st03.trim() !== "") return st03;
   // GS-08 is decoded by the same function ST-03 is: both are envelope element
   // text framed by the same release-aware split, raw and pre-unescape.
   const gs08 = decodeSt03(tx.gs?.elements[8], delimiters, ST_POSITION);
-  if (gs08 !== undefined && gs08 !== "") return gs08;
+  if (gs08 !== undefined && gs08.trim() !== "") return gs08;
   return undefined;
 }
 
@@ -164,23 +167,46 @@ export function declaredGuideWarning(
 }
 
 /**
- * Whether a reader handed `warning` (what {@link declaredGuideWarning}
- * answered) returns no reading: true exactly where the transaction set
- * declares a guide the reader does not implement. A reader that refuses
- * returns what it returns for a transaction set of another ST-01 (`undefined`,
- * an empty list, or no yielded member), so no value read against element
- * positions the declared guide may define differently reaches a caller.
- * Nothing declared is not refused: the reading goes ahead with
- * `X12_GUIDE_NOT_DECLARED`.
+ * The form a declaration is compared in when deciding whether to refuse:
+ * trimmed of surrounding whitespace and upper-cased. Only
+ * {@link refusesReading} uses it; the warning keeps its exact comparison.
+ * @internal
+ */
+function normalisedGuide(declared: string): string {
+  return declared.trim().toUpperCase();
+}
+
+/**
+ * Whether a reader returns no reading for `tx`: true exactly where the
+ * transaction set declares a guide (see {@link declaredGuide}) that, trimmed
+ * of surrounding whitespace and upper-cased, is still not one in
+ * `implemented`. A reader that refuses returns what it returns for a
+ * transaction set of another ST-01 (`undefined`, an empty list, or no yielded
+ * member), so no value read against element positions the declared guide may
+ * define differently reaches a caller.
+ *
+ * The refusal is looser than the warning on purpose. A declaration that names
+ * an implemented guide with padding or in another case (`005010X222A1` with a space either side,
+ * `005010x221a1`) is still read, and still carries the
+ * `X12_GUIDE_NOT_IMPLEMENTED` that {@link declaredGuideWarning}'s exact
+ * comparison raises, as it did before readers refused anything. Nothing
+ * declared, including a whitespace-only declaration, is not refused: the
+ * reading goes ahead with `X12_GUIDE_NOT_DECLARED`.
  *
  * @example
  * ```ts
- * // const w = declaredGuideWarning(delimiters, tx, implementedGuides("835"));
- * // if (refusesReading(w)) return undefined; // ST-03 or GS-08 reads 004010X091A1
+ * // if (refusesReading(delimiters, tx, implementedGuides("835"))) return undefined;
+ * // true where ST-03 or GS-08 reads 004010X091A1, false for 005010x221a1.
  * ```
  *
  * @internal
  */
-export function refusesReading(warning: X12ParseWarning | undefined): boolean {
-  return warning?.code === WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED;
+export function refusesReading(
+  delimiters: Delimiters,
+  tx: X12TransactionSet,
+  implemented: ImplementedGuides,
+): boolean {
+  const declared = declaredGuide(delimiters, tx);
+  if (declared === undefined || implemented.has(declared)) return false;
+  return !implemented.has(normalisedGuide(declared));
 }

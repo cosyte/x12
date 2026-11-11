@@ -54,7 +54,8 @@ function comp(...components: readonly string[]): string {
 
 /**
  * A one-group, one-transaction interchange. `isaVersion` is ISA-12, `gs08` is
- * GS-08, and the ST carries no ST-03, as a 4010 ST does not.
+ * GS-08, and the ST carries no ST-03, as a 4010 ST does not, unless `st03` is
+ * given.
  */
 function interchange(
   isaVersion: string,
@@ -62,10 +63,11 @@ function interchange(
   functionalId: string,
   gs08: string,
   body: readonly (readonly string[])[],
+  st03?: string,
 ): string {
   const segments = [
     ["GS", functionalId, "SENDER", "RECEIVER", "20260101", "1200", "1", "X", gs08],
-    ["ST", st01, "0001"],
+    st03 === undefined ? ["ST", st01, "0001"] : ["ST", st01, "0001", st03],
     ...body,
     ["SE", String(body.length + 2), "0001"],
     ["GE", "1", "1"],
@@ -430,5 +432,152 @@ describe("what a 4010 document with no declared guide still gets", () => {
     expect(remit?.warnings.map((w) => w.code)).not.toContain(
       WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
     );
+  });
+});
+
+describe("a 005010 declaration that differs only in padding or case is still read", () => {
+  // The refusal compares the declaration trimmed and upper-cased; the warning
+  // keeps its exact comparison. So each of these is read, as it was before
+  // readers refused anything, and a guide outside the reader even then is
+  // still refused.
+  for (const c of CASES) {
+    it(`${c.reader}: ST-03 ${c.guide5010} with a space either side is read`, async () => {
+      const raw = interchange(
+        "00501",
+        c.st01,
+        c.functionalId,
+        c.guide5010,
+        c.body,
+        ` ${c.guide5010} `,
+      );
+      expect(await c.count(only(raw), raw)).toBeGreaterThan(0);
+    });
+
+    it(`${c.reader}: ST-03 ${c.guide5010} in lower case is read`, async () => {
+      const lower = c.guide5010.toLowerCase();
+      const raw = interchange("00501", c.st01, c.functionalId, c.guide5010, c.body, lower);
+      expect(await c.count(only(raw), raw)).toBeGreaterThan(0);
+    });
+
+    it(`${c.reader}: an ST-03 of whitespace alone under an empty GS-08 is read`, async () => {
+      const raw = interchange("00501", c.st01, c.functionalId, "", c.body, "   ");
+      expect(await c.count(only(raw), raw)).toBeGreaterThan(0);
+    });
+
+    it(`${c.reader}: ${c.guide4010} padded and in lower case is still refused`, async () => {
+      const declared = ` ${c.guide4010.toLowerCase()} `;
+      const raw = interchange("00401", c.st01, c.functionalId, c.guide4010, c.body, declared);
+      expect(await c.count(only(raw), raw)).toBe(0);
+    });
+  }
+
+  const guideCodes = (warnings: readonly { readonly code: string }[] | undefined): string[] =>
+    (warnings ?? [])
+      .map((w) => w.code)
+      .filter(
+        (code) =>
+          code === WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED ||
+          code === WARNING_CODES.X12_GUIDE_NOT_DECLARED,
+      );
+
+  const READERS = [
+    {
+      name: "get835",
+      st01: "835",
+      functionalId: "HP",
+      guide: tr3Of("835", null),
+      guide4010: "004010X091A1",
+      body: BODY_835,
+      warnings: (tx: X12TransactionSet) => get835(D, tx)?.warnings,
+    },
+    {
+      name: "get837Claims",
+      st01: "837",
+      functionalId: "HC",
+      guide: tr3Of("837", "P"),
+      guide4010: "004010X098A1",
+      body: BODY_837P,
+      warnings: (tx: X12TransactionSet) => get837Claims(D, tx)?.warnings,
+    },
+  ] as const;
+
+  for (const r of READERS) {
+    it(`${r.name}: a padded ST-03 is read and keeps the exact-compare X12_GUIDE_NOT_IMPLEMENTED`, () => {
+      const raw = interchange("00501", r.st01, r.functionalId, r.guide, r.body, ` ${r.guide} `);
+      expect(guideCodes(r.warnings(only(raw)))).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED]);
+    });
+
+    it(`${r.name}: a lower-cased ST-03 is read and keeps the exact-compare X12_GUIDE_NOT_IMPLEMENTED`, () => {
+      const lower = r.guide.toLowerCase();
+      const raw = interchange("00501", r.st01, r.functionalId, r.guide, r.body, lower);
+      expect(guideCodes(r.warnings(only(raw)))).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED]);
+    });
+
+    it(`${r.name}: an ST-03 of whitespace alone under an empty GS-08 declares nothing`, () => {
+      const raw = interchange("00501", r.st01, r.functionalId, "", r.body, "   ");
+      expect(guideCodes(r.warnings(only(raw)))).toEqual([WARNING_CODES.X12_GUIDE_NOT_DECLARED]);
+    });
+
+    it(`${r.name}: a GS-08 of whitespace alone and no ST-03 declares nothing`, () => {
+      const raw = interchange("00501", r.st01, r.functionalId, "  ", r.body);
+      expect(guideCodes(r.warnings(only(raw)))).toEqual([WARNING_CODES.X12_GUIDE_NOT_DECLARED]);
+    });
+
+    it(`${r.name}: an ST-03 of whitespace alone falls through to an implemented GS-08`, () => {
+      const raw = interchange("00501", r.st01, r.functionalId, r.guide, r.body, "   ");
+      expect(guideCodes(r.warnings(only(raw)))).toEqual([]);
+    });
+
+    it(`${r.name}: an ST-03 of whitespace alone falls through to a 4010 GS-08, which is refused`, () => {
+      const raw = interchange("00401", r.st01, r.functionalId, r.guide4010, r.body, "   ");
+      expect(r.warnings(only(raw))).toBeUndefined();
+    });
+  }
+
+  it("get277Status: a padded 005010 ST-03 is read and labelled unrecognized-guide, as before", () => {
+    const guide = tr3Of("277", null);
+    const raw = interchange("00501", "277", "HN", guide, BODY_277, ` ${guide} `);
+    expect(get277Status(D, only(raw))?.transactionType).toBe("unrecognized-guide");
+  });
+});
+
+describe("an interchange holding a 4010 and a 005010 transaction set", () => {
+  /**
+   * One group whose two transaction sets differ in ST-03 and in BHT-03 alone:
+   * the first declares `first` and its BHT-03 reads `FIRST-REF`, the second
+   * `second` and `SECOND-REF`, so a reading names the set it came from.
+   */
+  function mixed(
+    st01: string,
+    functionalId: string,
+    first: string,
+    second: string,
+    body: readonly (readonly string[])[],
+  ): string {
+    const set = (control: string, st03: string, reference: string): (readonly string[])[] => [
+      ["ST", st01, control, st03],
+      ...body.map((s) => (s[0] === "BHT" ? s.map((e, i) => (i === 3 ? reference : e)) : s)),
+      ["SE", String(body.length + 2), control],
+    ];
+    const segments = [
+      ["GS", functionalId, "SENDER", "RECEIVER", "20260101", "1200", "1", "X", ""],
+      ...set("0001", first, "FIRST-REF"),
+      ...set("0002", second, "SECOND-REF"),
+      ["GE", "2", "1"],
+      ["IEA", "1", "000000001"],
+    ];
+    return buildIsa() + segments.map((e) => seg(...e)).join("");
+  }
+
+  it("parse270Inquiries leaves out the 4010 set and reads the 005010 one after it", () => {
+    const raw = mixed("270", "HS", "004010X092A1", tr3Of("270", null), BODY_270);
+    expect(parseX12(raw).groups[0]?.transactions).toHaveLength(2);
+    expect(parse270Inquiries(raw).map((q) => q.header?.referenceId)).toEqual(["SECOND-REF"]);
+  });
+
+  it("parse276StatusInquiries leaves out the 4010 set and reads the 005010 one after it", () => {
+    const raw = mixed("276", "HR", "004010X093A1", tr3Of("276", null), BODY_276);
+    expect(parseX12(raw).groups[0]?.transactions).toHaveLength(2);
+    expect(parse276StatusInquiries(raw).map((q) => q.header?.referenceId)).toEqual(["SECOND-REF"]);
   });
 });

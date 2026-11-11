@@ -122,7 +122,12 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Obje
  * reader returns `undefined`, because the walk reads 005010 element positions.
  * Where nothing is declared the reading is still walked and returned, carries
  * `X12_GUIDE_NOT_DECLARED`, and its `transactionType` is
- * `"unrecognized-guide"`. Otherwise `transactionType` is derived from ST-03 as
+ * `"unrecognized-guide"`. Where the declaration names an implemented guide
+ * only once trimmed and upper-cased (`005010X212` with a space either side,
+ * or `005010x212`), the reading is walked and returned, carries
+ * `X12_GUIDE_NOT_IMPLEMENTED`, and its `transactionType` is
+ * `"unrecognized-guide"` too, as it was before readers refused anything.
+ * Otherwise `transactionType` is derived from ST-03 as
  * framed: `"claim-acknowledgment"` where it reads `005010X214`, and
  * `"claim-status"` for every other implemented declaration.
  *
@@ -191,7 +196,7 @@ function walk277(
   // this surface implements: a guide outside them gets no reading, and nothing
   // declared is warned at the ST and walked.
   const guideWarning = declaredGuideWarning(delimiters, tx, implemented);
-  if (refusesReading(guideWarning)) return undefined;
+  if (refusesReading(delimiters, tx, implemented)) return undefined;
   const warnings: X12ParseWarning[] = [];
   if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
@@ -222,11 +227,13 @@ function walk277(
   //
   // The guide check above is the one exception to the raw key, and it only
   // ever REPLACES the discriminator, never moves it between the two claim
-  // labels: where nothing is declared the reading is `"unrecognized-guide"`,
-  // because calling it a claim status or a claim acknowledgment would label a
-  // document that never said which guide it follows as one this reader
-  // implements. A declared guide outside `implemented` never gets this far. Every implemented declaration keeps the
-  // raw-keyed derivation below exactly as it was.
+  // labels: where nothing is declared, or the declaration names an implemented
+  // guide only once trimmed and upper-cased, the reading is
+  // `"unrecognized-guide"`, because calling it a claim status or a claim
+  // acknowledgment would label a document that never said exactly which guide
+  // it follows as one this reader implements. A declared guide outside
+  // `implemented` even then never gets this far. Every exactly implemented
+  // declaration keeps the raw-keyed derivation below exactly as it was.
   const implementationConventionReferenceRaw = tx.st.elements[3];
   const implementationConventionReference = decodeSt03(
     implementationConventionReferenceRaw,

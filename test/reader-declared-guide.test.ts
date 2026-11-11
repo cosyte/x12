@@ -906,8 +906,8 @@ describe("AC-9: a non-empty ST-03 decides alone, and GS-08 is not consulted", ()
 // AC-10
 // ---------------------------------------------------------------------------
 
-describe("AC-10: a prototype member name or a whitespace-only declaration is never implemented", () => {
-  const DECLARED = ["constructor", "toString", "__proto__", "hasOwnProperty", "   "];
+describe("AC-10: a prototype member name is never implemented, and a whitespace-only declaration declares nothing", () => {
+  const DECLARED = ["constructor", "toString", "__proto__", "hasOwnProperty"];
   for (const reader of READERS) {
     it(`AC-10: ${reader.name} - each as ST-03, and each as GS-08 under an empty ST-03`, async () => {
       for (const declared of DECLARED) {
@@ -918,6 +918,13 @@ describe("AC-10: a prototype member name or a whitespace-only declaration is nev
           await expectForeign(reader, declaration);
         }
       }
+    });
+
+    it(`AC-10: ${reader.name} - an ST-03 of whitespace falls through to GS-08, and a GS-08 of whitespace declares nothing`, async () => {
+      const fallsThrough = await readAs(reader, { st03: "   ", gs08: reader.tr3 });
+      expect(guideChannel(fallsThrough)).toEqual(each(fallsThrough, []));
+      const nothing = await readAs(reader, { st03: "", gs08: "   " });
+      expect(guideChannel(nothing)).toEqual(each(nothing, [[GUIDE_NOT_DECLARED, 0]]));
     });
   }
 });

@@ -338,7 +338,7 @@ function decodeInquiry(
   // declared is warned at the ST and read. Both entry points reach it through
   // this decode.
   const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_270);
-  if (refusesReading(guideWarning)) return undefined;
+  if (refusesReading(delimiters, tx, IMPLEMENTED_GUIDES_270)) return undefined;
   const warnings: X12ParseWarning[] = [...seeded];
   if (!sameDelimiters(delimiters, CONVENTIONAL_DELIMITERS)) {
     warnings.push(nonConventionalDelimiter(ISA_POSITION));

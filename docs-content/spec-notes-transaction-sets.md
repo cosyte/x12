@@ -118,7 +118,11 @@ answers `undefined` (or an empty list, or no yielded member), exactly as it does
 of another ST-01, because its values would be read off 005010 element positions the 4010 guide
 defines differently. The same holds for any declared guide a reader does not implement. The
 declaration is ST-03, else GS-08, and the guides each reader implements are its rows of
-`X12_TR3_CONFORMANCE`.
+`X12_TR3_CONFORMANCE`. Whether to refuse is decided on the declaration trimmed of surrounding
+whitespace and upper-cased, so a 005010 guide declared with padding or in lower case is still read,
+with [`X12_GUIDE_NOT_IMPLEMENTED`](./warning-and-error-codes.md#x12_guide_not_implemented) on the
+reading because that warning compares exactly. A refused transaction set carries no warning of its
+own; for a 4010 document, `X12_PRE_005010` on the interchange is the sign.
 
 A 4010 transaction set that declares nothing (no ST-03 and an empty GS-08) cannot be told from a
 005010 one, so it is still read, with

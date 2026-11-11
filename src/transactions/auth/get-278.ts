@@ -152,7 +152,7 @@ function walk278(
   // this reader implements, in both directions: a guide it does not implement
   // gets no reading, and nothing declared is warned at the ST and read.
   const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_278);
-  if (refusesReading(guideWarning)) return undefined;
+  if (refusesReading(delimiters, tx, IMPLEMENTED_GUIDES_278)) return undefined;
   const warnings: X12ParseWarning[] = [];
   if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);

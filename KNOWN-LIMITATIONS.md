@@ -146,28 +146,39 @@ model.
   returned a reading decoded against their own 005010 element positions with
   `X12_GUIDE_NOT_IMPLEMENTED` on it, and a caller that ignored the warning trusted values the
   declared guide may place elsewhere. What still reads, and what it carries:
-  - **Nothing declared is still read.** Where ST-03 and GS-08 are both absent or empty, or no group
+  - **A padded or lower-cased 005010 declaration is still read.** Whether to refuse is decided on
+    the declaration trimmed of surrounding whitespace and upper-cased, so `005010X222A1` with a space either side, or
+    `005010x221a1` is read as before. The warning still compares exactly, so such a reading carries
+    `X12_GUIDE_NOT_IMPLEMENTED` at the ST (and a 277 reads `transactionType:
+"unrecognized-guide"`), as every reading of it did before readers refused anything.
+  - **Nothing declared is still read.** Where ST-03 and GS-08 are both absent, empty or whitespace
+    alone, or no group
     header reached the transaction set, the reader cannot tell which guide the document follows, so
     it reads against its own guide and puts `X12_GUIDE_NOT_DECLARED` on the reading, anchored at
     the ST. A 4010 transaction set sent with an empty GS-08 is read this way; `X12_PRE_005010` on
     the interchange is then the only sign it is not 005010.
   - **The 275 and 999 readers still warn and return.** `get275Attachments` and `parse999` raise
-    `X12_GUIDE_NOT_IMPLEMENTED` at the ST and return their reading, as every reader did before. No
-    other reader raises that code any more.
-  - **A refusal carries no reason.** `undefined` does not say whether ST-01 or the declared guide
-    turned the transaction set away. Read `tx.st.elements[1]`, `tx.st.elements[3]` and
-    `tx.gs?.elements[8]`, and compare with `X12_TR3_CONFORMANCE`, to tell which. A caller who knows
+    `X12_GUIDE_NOT_IMPLEMENTED` at the ST and return their reading, as every reader did before.
+    Every other reader raises that code only on the padded or lower-cased declaration above.
+  - **A refusal carries no reason, and no warning is raised for it.** `undefined` does not say
+    whether ST-01 or the declared guide turned the transaction set away, and there is no reading to
+    carry a warning. The one signal that exists is on the interchange: `X12_PRE_005010` in
+    `parseX12(...).warnings` where ISA-12 does not read `00501`, which a 4010 interchange raises. A
+    005010 interchange holding a transaction set that declares `005010X216` or `006020X313`, say,
+    raises nothing at all. Read `tx.st.elements[1]`, `tx.st.elements[3]` and `tx.gs?.elements[8]`,
+    and compare with `X12_TR3_CONFORMANCE`, to tell which. A caller who knows
     a document follows an implemented guide despite what it declares can hand the reader a copy of
     the transaction set whose ST-03 names that guide.
 
   What the check keys on, exactly:
   - **The declaration is `ST-03` decoded, then `GS-08` decoded.** `ST-03` is read post-`?`-unescape,
     exactly as `implementationConventionReference` is published. Only where `ST-03` is absent or
-    decodes to `""` is GS-08 of the enclosing functional group read, decoded the same way; a parsed
-    transaction set carries its group's GS header on `tx.gs` for this, and one assembled by hand
-    without it is read as GS-08 absent. Nothing is trimmed, case-folded or prefix-matched, so a
-    whitespace-only or lower-cased declaration is a guide the reader does not implement.
-  - **🛑 `ST-03` and `GS-08` are NOT reconciled.** Where `ST-03` is non-empty it alone decides and
+    decodes to `""` or to whitespace alone is GS-08 of the enclosing functional group read, decoded
+    the same way, and a GS-08 of whitespace alone declares nothing; a parsed transaction set carries
+    its group's GS header on `tx.gs` for this, and one assembled by hand without it is read as GS-08
+    absent. The refusal compares the declaration trimmed and upper-cased; the warning compares it
+    exactly; neither prefix-matches, so `005010X222` does not stand for `005010X222A1`.
+  - **🛑 `ST-03` and `GS-08` are NOT reconciled.** Where `ST-03` holds anything but whitespace it alone decides and
     GS-08 is never read, so a document whose two declarations disagree is judged on `ST-03` and
     nothing reports the disagreement.
   - **The implemented set is `X12_TR3_CONFORMANCE`**, each of the reader's rows contributing its
@@ -176,7 +187,8 @@ model.
     so a conformant claim declaring one is not refused. A 278 declaring `005010X216`, the 278
     notification guide, gets no reading from either 278 reader.
   - **What the check decides is whether there is a reading, plus one label.** A 277 that declares
-    no guide reads `transactionType: "unrecognized-guide"`. Everything else that keys on `ST-03` -
+    no guide, or an implemented one only padded or in another case, reads `transactionType:
+"unrecognized-guide"`. Everything else that keys on `ST-03` -
     the 837 variant, the choice between `claim-status` and `claim-acknowledgment`, and
     `get277CADisposition`'s admission - still keys on the raw text and did not move, so the check
     and those decisions can read the same `ST-03` differently where a release escape is involved
