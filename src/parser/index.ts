@@ -17,8 +17,9 @@ import { getDefaultProfile } from "../profiles/default.js";
 
 import { detectDelimiters } from "./delimiters.js";
 import { FATAL_CODES, X12ParseError } from "./errors.js";
-import { decodeEnvelope } from "./envelope.js";
-import type { X12Interchange, X12ParseOptions } from "./types.js";
+import { decodeEnvelope, type DecodedEnvelope } from "./envelope.js";
+import type { Delimiters, X12Interchange, X12ParseOptions } from "./types.js";
+import type { X12Profile } from "../profiles/types.js";
 
 /**
  * Parse a raw X12 healthcare interchange (string or `Buffer`) into an
@@ -130,7 +131,21 @@ export function parseX12(raw: string | Buffer, options: X12ParseOptions = {}): X
   // default. v1 profiles are descriptive - the profile is attached for
   // attribution (and `partitionWarnings`) but does not alter the parse above.
   const profile = options.profile === null ? undefined : (options.profile ?? getDefaultProfile());
+  return interchangeOf(decoded, delimiters, profile);
+}
 
+/**
+ * The frozen {@link X12Interchange} of a decoded envelope, as {@link parseX12}
+ * returns it. A builder makes its result here too, from the segments it wrote
+ * (see `../builder/assemble.ts`), so the two cannot differ in shape.
+ *
+ * @internal
+ */
+export function interchangeOf(
+  decoded: DecodedEnvelope,
+  delimiters: Delimiters,
+  profile: X12Profile | undefined,
+): X12Interchange {
   // exactOptionalPropertyTypes: conditionally include optional fields.
   const result: X12Interchange = {
     isa: decoded.isa,

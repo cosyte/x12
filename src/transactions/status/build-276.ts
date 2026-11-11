@@ -45,7 +45,7 @@ import { makeCallerEscaper } from "../../builder/caller-string.js";
 import { renderCallerValue } from "../../builder/caller-value.js";
 import { FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET } from "../../code-lists/functional-identifier.js";
 import type { X12Decimal } from "../../decimal.js";
-import { parseX12 } from "../../parser/index.js";
+import { SegmentLog, builtInterchange } from "../../builder/assemble.js";
 import type { X12Interchange } from "../../parser/types.js";
 
 import {
@@ -289,11 +289,15 @@ export function build276(spec: Build276Spec): X12Interchange {
   };
   const esc = makeCallerEscaper(delimiters, "build276", refuseSpec);
 
+  // Every segment written, in order, so the result is made from them (see `builtInterchange`).
+  const log = new SegmentLog();
+
   const seg = (parts: readonly string[]): string => {
     requireCallerSegment(parts, "build276", refuseSpec);
     let end = parts.length;
     while (end > 1 && parts[end - 1] === "") end -= 1;
-    return parts.slice(0, end).join(elementSeparator) + segmentTerminator;
+    const kept = parts.slice(0, end);
+    return log.record(kept, kept.join(elementSeparator), segmentTerminator);
   };
 
   const comp = (components: readonly string[]): string => {
@@ -428,11 +432,10 @@ export function build276(spec: Build276Spec): X12Interchange {
   const ge = seg(["GE", "1", esc(envelope.groupControlNumber)]);
   const iea = seg(["IEA", "1", interchangeControlNumber]);
 
-  const raw = isa + gs + st + body.join("") + se + ge + iea;
-
-  // Final round trip through `parseX12` so the returned interchange is
-  // identical to the parsed form every other helper consumes.
-  return parseX12(raw);
+  // The interchange the bytes read as, made from the segments written: the
+  // reader's own envelope walk runs over them, so it reports what parsing the
+  // bytes reports, and the bytes are parsed instead where that is not certain.
+  return builtInterchange(isa, [gs, st, ...body, se, ge, iea], log);
 }
 
 // ---------------------------------------------------------------------------

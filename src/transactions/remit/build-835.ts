@@ -41,7 +41,7 @@ import type {
   X12RemitProviderAdjustment,
   X12RemitServiceLine,
 } from "./types.js";
-import { parseX12 } from "../../parser/index.js";
+import { SegmentLog, builtInterchange } from "../../builder/assemble.js";
 import type { X12Interchange, X12Position } from "../../parser/types.js";
 import { WARNING_CODES, type X12ParseWarning } from "../../parser/warnings.js";
 import type { X12Decimal } from "../../decimal.js";
@@ -169,6 +169,9 @@ export function build835(spec: Build835Spec): X12Interchange {
   };
   const esc = makeCallerEscaper(delimiters, "build835", refuseSpec);
 
+  // Every segment written, in order, so the result is made from them (see `builtInterchange`).
+  const log = new SegmentLog();
+
   /**
    * Join already-escaped/composed element strings into a segment, dropping
    * trailing empty elements (interior empties are positionally meaningful
@@ -178,7 +181,8 @@ export function build835(spec: Build835Spec): X12Interchange {
     requireCallerSegment(parts, "build835", refuseSpec);
     let end = parts.length;
     while (end > 1 && parts[end - 1] === "") end -= 1;
-    return parts.slice(0, end).join(elementSeparator) + segmentTerminator;
+    const kept = parts.slice(0, end);
+    return log.record(kept, kept.join(elementSeparator), segmentTerminator);
   };
 
   /**
@@ -373,13 +377,10 @@ export function build835(spec: Build835Spec): X12Interchange {
   const ge = seg(["GE", "1", esc(envelope.groupControlNumber)]);
   const iea = seg(["IEA", "1", interchangeControlNumber]);
 
-  const raw = isa + gs + st + body.join("") + se + ge + iea;
-
-  // Final round-trip through `parseX12` so the returned interchange is
-  // bit-identical with the parsed form every other helper consumes - and
-  // so the build path inherits delimiter detection + envelope walking, and
-  // any internal builder bug surfaces as Tier-2 warnings on the result.
-  return parseX12(raw);
+  // The interchange the bytes read as, made from the segments written: the
+  // reader's own envelope walk runs over them, so it reports what parsing the
+  // bytes reports, and the bytes are parsed instead where that is not certain.
+  return builtInterchange(isa, [gs, st, ...body, se, ge, iea], log);
 }
 
 // ---------------------------------------------------------------------------

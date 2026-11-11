@@ -52,7 +52,7 @@ import type {
   Build837SubscriberSpec,
 } from "./build-837-types.js";
 import { VARIANT_BY_ICR } from "./get-837.js";
-import { parseX12 } from "../../parser/index.js";
+import { SegmentLog, builtInterchange } from "../../builder/assemble.js";
 import type { X12Interchange } from "../../parser/types.js";
 import type { X12Decimal } from "../../decimal.js";
 import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
@@ -332,11 +332,15 @@ function buildClaim837(variant: "P" | "I" | "D", spec: Build837Spec): X12Interch
   };
   const esc = makeCallerEscaper(delimiters, "build837", refuseSpec);
 
+  // Every segment written, in order, so the result is made from them (see `builtInterchange`).
+  const log = new SegmentLog();
+
   const seg = (parts: readonly string[]): string => {
     requireCallerSegment(parts, "build837", refuseSpec);
     let end = parts.length;
     while (end > 1 && parts[end - 1] === "") end -= 1;
-    return parts.slice(0, end).join(elementSeparator) + segmentTerminator;
+    const kept = parts.slice(0, end);
+    return log.record(kept, kept.join(elementSeparator), segmentTerminator);
   };
 
   const comp = (components: readonly string[]): string => {
@@ -501,11 +505,10 @@ function buildClaim837(variant: "P" | "I" | "D", spec: Build837Spec): X12Interch
   const ge = seg(["GE", "1", esc(envelope.groupControlNumber)]);
   const iea = seg(["IEA", "1", interchangeControlNumber]);
 
-  const raw = isa + gs + st + body.join("") + se + ge + iea;
-
-  // Final round-trip through `parseX12` so the returned interchange is
-  // bit-identical with the parsed form every other helper consumes.
-  return parseX12(raw);
+  // The interchange the bytes read as, made from the segments written: the
+  // reader's own envelope walk runs over them, so it reports what parsing the
+  // bytes reports, and the bytes are parsed instead where that is not certain.
+  return builtInterchange(isa, [gs, st, ...body, se, ge, iea], log);
 }
 
 // ---------------------------------------------------------------------------

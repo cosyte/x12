@@ -4,11 +4,11 @@
  * per-transaction body segments) it assembles a complete, spec-clean X12 byte
  * stream - owning every envelope mechanic the caller should never hand-roll:
  * the ISA fixed-width layout, the GS/GE/SE/IEA control segments, and the
- * SE-01 / GE-01 / IEA-01 counts. The result is round-tripped back through
- * {@link parseX12} so the returned {@link X12Interchange} is bit-identical to
- * the parsed form every other helper consumes - and so the build path inherits
- * delimiter detection and envelope walking for free (any internal builder bug
- * surfaces as Tier-2 warnings on the returned interchange's `warnings` array).
+ * SE-01 / GE-01 / IEA-01 counts. The result is the interchange the built bytes
+ * read as, exactly what {@link parseX12} answers for them, so it is the parsed
+ * form every other helper consumes, and the reader's own envelope walk runs
+ * over it (any internal builder bug surfaces as Tier-2 warnings on the returned
+ * interchange's `warnings` array).
  *
  * NEVER auto-sends, NEVER opens a socket, NEVER touches the filesystem.
  * Structurally impossible specs (an over-long ISA element, a segment with no id)
@@ -19,7 +19,7 @@
 
 import { X12_BUILD_ERROR_CODES, X12BuildError } from "./errors.js";
 import type { FunctionalGroupSpec, InterchangeSpec, TransactionSetSpec } from "./types.js";
-import { parseX12 } from "../parser/index.js";
+import { SegmentLog, builtInterchange } from "./assemble.js";
 import type { X12Interchange } from "../parser/types.js";
 import { requireCallerSegment } from "./caller-segment.js";
 import { renderCallerValue } from "./caller-value.js";
@@ -162,8 +162,7 @@ export function buildInterchange(spec: InterchangeSpec): X12Interchange {
     segmentTerminator,
   );
 
-  const raw = isa + body + iea;
-  return parseX12(raw);
+  return builtInterchange(isa, [body, iea], new SegmentLog());
 }
 
 /** @internal */

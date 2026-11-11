@@ -22,8 +22,9 @@
  * element is refused on a mandatory ground. A spec that is not shaped like one
  * is refused too. No refusal message carries a value from the document.
  *
- * The result is round-tripped through {@link parseX12}, so what is returned is
- * exactly what `get277RequestForAdditionalInformation` reads back.
+ * The result is the interchange the built bytes read as, exactly what
+ * {@link parseX12} answers for them, so what is returned is exactly what
+ * `get277RequestForAdditionalInformation` reads back.
  */
 
 import { requireCallerArray, requireCallerEntries } from "../../builder/caller-array.js";
@@ -33,7 +34,7 @@ import { requireCallerDecimal } from "../../builder/caller-decimal.js";
 import { requireCallerSegment } from "../../builder/caller-segment.js";
 import { makeCallerEscaper } from "../../builder/caller-string.js";
 import type { X12Decimal } from "../../decimal.js";
-import { parseX12 } from "../../parser/index.js";
+import { SegmentLog, builtInterchange } from "../../builder/assemble.js";
 import type { X12Interchange } from "../../parser/types.js";
 import type {
   Build277RfaiDateSpec,
@@ -126,11 +127,15 @@ export function build277RequestForAdditionalInformation(spec: Build277RfaiSpec):
     refuseSpec,
   );
 
+  // Every segment written, in order, so the result is made from them (see `builtInterchange`).
+  const log = new SegmentLog();
+
   const seg = (parts: readonly string[]): string => {
     requireCallerSegment(parts, "build277", refuseSpec);
     let end = parts.length;
     while (end > 1 && parts[end - 1] === "") end -= 1;
-    return parts.slice(0, end).join(elementSeparator) + segmentTerminator;
+    const kept = parts.slice(0, end);
+    return log.record(kept, kept.join(elementSeparator), segmentTerminator);
   };
 
   const comp = (components: readonly string[]): string => {
@@ -238,7 +243,7 @@ export function build277RequestForAdditionalInformation(spec: Build277RfaiSpec):
   const se = seg(["SE", String(body.length + 2), esc(envelope.transactionSetControlNumber)]);
   const ge = seg(["GE", "1", esc(envelope.groupControlNumber)]);
   const iea = seg(["IEA", "1", interchangeControlNumber]);
-  return parseX12(isa + gs + st + body.join("") + se + ge + iea);
+  return builtInterchange(isa, [gs, st, ...body, se, ge, iea], log);
 }
 
 // ---------------------------------------------------------------------------
