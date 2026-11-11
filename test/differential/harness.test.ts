@@ -478,7 +478,7 @@ async function describeSecond(
 }
 
 describe("differential harness, second oracle", () => {
-  it("S0382 AC-5: a document the second oracle's model refuses is unevaluated, named with its kind", async () => {
+  it("AC-5: a document the second oracle's model refuses is unevaluated, named with its kind", async () => {
     const run = await runDifferential({
       library: LIBRARY,
       corpus: [...CORPUS, INQUIRY],
@@ -515,7 +515,7 @@ describe("differential harness, second oracle", () => {
     expect(run.report.skipped.map((s) => s.document)).not.toContain(INQUIRY.id);
   });
 
-  it("S0382 AC-5: a second-oracle row no document reaches fails the run exactly as a first-oracle row does", async () => {
+  it("AC-5: a second-oracle row no document reaches fails the run exactly as a first-oracle row does", async () => {
     const refuseAll = (): OracleRead => ({
       ok: false,
       refusal: { kind: "ValidationError", detail: "refused" },
@@ -531,7 +531,7 @@ describe("differential harness, second oracle", () => {
     ]);
   });
 
-  it("S0382 AC-7: a disagreement with the second oracle keeps both readings, names it, and fails the run", async () => {
+  it("AC-7: a disagreement with the second oracle keeps both readings, names it, and fails the run", async () => {
     const run = await runDifferential({
       library: LIBRARY,
       corpus: [...CORPUS, INQUIRY],
@@ -575,7 +575,7 @@ describe("differential harness, second oracle", () => {
   // `#!/usr/bin/env node`, which Windows cannot start as a program. The real oracles run on Linux
   // in the differential job, which checks the same pins against the real interpreters.
   it.skipIf(IS_WINDOWS)(
-    "S0382 AC-6: the second oracle reporting a version, interpreter or companion other than its pin is refused",
+    "AC-6: the second oracle reporting a version, interpreter or companion other than its pin is refused",
     async () => {
       const cases: { installed: unknown; says: RegExp }[] = [
         { installed: { ...INSTALLED, version: "0.56.0" }, says: /reports version 0\.56\.0/u },
@@ -612,7 +612,7 @@ describe("differential harness, second oracle", () => {
   // `#!/usr/bin/env node`, which Windows cannot start as a program. The real oracles run on Linux
   // in the differential job, which checks the same pins against the real interpreters.
   it.skipIf(IS_WINDOWS)(
-    "S0382 AC-6: a requirement that leaves the oracle, a companion or the interpreter free is refused",
+    "AC-6: a requirement that leaves the oracle, a companion or the interpreter free is refused",
     async () => {
       const refusals: LinuxForHealthRequirement[] = [
         { ...REQUIREMENT_2, oracle: SECOND },
@@ -647,7 +647,7 @@ describe("differential harness, second oracle", () => {
   // in the differential job, which checks the same pins against the real interpreters.
   // Skipped under Deno too: it starts the harness's command line under tsx, as above.
   it.skipIf(IS_WINDOWS || IS_DENO)(
-    "S0382 AC-6: the real entry refuses the second oracle, names it, exits non-zero and writes no report",
+    "AC-6: the real entry refuses the second oracle, names it, exits non-zero and writes no report",
     () => {
       const before = readFileSync(REPORT_PATH, "utf8");
       const interpreter = interpreterDouble();
