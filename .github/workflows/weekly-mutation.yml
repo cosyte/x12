@@ -19,14 +19,14 @@ on:
     - cron: "47 6 * * 0"
     - cron: "47 6 * * 3"
   workflow_dispatch:
-  # TEMPORARY, for measuring on this branch (run 5, fourteen shards, fresh); removed before review.
+  # TEMPORARY, for measuring on this branch (run 6, thirteen shards, fresh); removed before review.
   push:
     branches: [test/testing-standard]
     paths: [".github/workflows/weekly-mutation.yml"]
 
 concurrency:
   # TEMPORARY suffix, so measuring runs do not wait for each other; removed before review.
-  group: ${{ github.workflow }}-${{ github.ref }}-measure-5
+  group: ${{ github.workflow }}-${{ github.ref }}-measure-6
   cancel-in-progress: false
 
 permissions:
@@ -40,4 +40,4 @@ jobs:
       # Every reader and builder of every transaction set is mutated, the largest source of any of
       # our libraries, so the run takes the most shards the shared job allows; a file is in exactly
       # one shard, by the hash of its path.
-      shard-count: 14
+      shard-count: 13
