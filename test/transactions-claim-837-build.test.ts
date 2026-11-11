@@ -839,6 +839,48 @@ describe("build837 - delimiter-bearing values round-trip losslessly", () => {
   });
 });
 
+describe("build837 - a composite is escaped once (the envelope is written inline)", () => {
+  // `build837` composes a composite element (CLM-05, HI, SV1-01, SV1-07) by
+  // escaping each component and joining them with the component separator,
+  // then writes the envelope around its own segments. `buildInterchange`
+  // escapes every element it is handed, so routing these segments through it
+  // would release the component separator of a composite that is already
+  // composed: SV1-01 `HC:99213` would go out as `HC?:99213`, one element value
+  // with no components. These tests fail on that change.
+  const spec = pSpecWithClaim({
+    ...P_CLAIM,
+    serviceLines: [{ ...P_LINE, procedureCode: "TEST:CODE" }],
+  });
+
+  it("writes each component separator of a composite raw and each caller value released once", () => {
+    const text = serializeX12(build837P(spec));
+    expect(text).toContain("~CLM*PT-ACCT-001*150.00***11:B:1*Y*A*Y*Y~");
+    expect(text).toContain("~HI*ABK:J20.9~");
+    expect(text).toContain("~SV1*HC:TEST?:CODE:25*150.00*UN*1*11**1~");
+    expect(text).not.toContain("?:B");
+    expect(text).not.toContain("HC?:");
+    expect(text).not.toContain("ABK?:");
+    expect(text).not.toContain("???");
+  });
+
+  it("reads each composite back as the components the caller gave", () => {
+    const sub = submissionOf(build837P(spec));
+    expect(sub.warnings).toHaveLength(0);
+    const claim = sub.claims[0];
+    expect(claim?.placeOfServiceCode).toBe("11");
+    expect(claim?.facilityCodeQualifier).toBe("B");
+    expect(claim?.claimFrequencyCode).toBe("1");
+    expect(claim?.diagnoses[0]?.code).toBe("J20.9");
+    const line = claim?.serviceLines[0];
+    expect(line?.variant).toBe("P");
+    if (line?.variant !== "P") throw new Error("expected a professional service line");
+    expect(line.procedureQualifier).toBe("HC");
+    expect(line.procedureCode).toBe("TEST:CODE");
+    expect(line.modifiers).toEqual(["25"]);
+    expect(line.diagnosisPointers).toEqual(["1"]);
+  });
+});
+
 describe("build837 - refusal-message bounds (X12-BUILDER-BOUNDS)", () => {
   // The service-line variant is one of the SEVEN slots with no length gate.
   // Note the asymmetry the source gate encodes: the builder-fixed `variant`

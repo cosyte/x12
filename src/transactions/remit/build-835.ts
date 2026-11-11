@@ -198,6 +198,17 @@ export function build835(spec: Build835Spec): X12Interchange {
   };
 
   // ---- ISA envelope -----------------------------------------------------
+  //
+  // The envelope is written here, inline, and never by handing the segments
+  // to `buildInterchange`. This builder composes composite elements (CLP-08,
+  // SVC-01, SVC-06 and each PLB adjustment identifier) with `comp`, which
+  // escapes each component and joins them with the raw component separator,
+  // so a composite reaches `seg` already escaped. `buildInterchange` escapes
+  // every element it is given, so it would escape each composite a second
+  // time: SVC-01 `HC:99213` would go out as `HC?:99213`, one value with no
+  // components, and a component released once as `A?:B` as `A???:B`. The
+  // "a composite is escaped once" tests in
+  // `test/transactions-remit-835-build.test.ts` fail on that change.
 
   const senderQualifier = envelope.senderQualifier ?? "ZZ";
   const receiverQualifier = envelope.receiverQualifier ?? "ZZ";
