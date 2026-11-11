@@ -226,9 +226,8 @@ describe("get834Enrollments - edge cases", () => {
 });
 
 // Skipped in a mutation run (`vitest.mutation.config.ts` sets X12_MUTATION_RUN): it parses a
-// 10 MB document, so a mutant that slows the parser without changing what it returns makes this
-// test finish on one run and time out on the next, and the weekly score moves with the runner's
-// load. Measured on two full runs, it killed no mutant; `pnpm test` runs it on every pull request.
+// 10 MB document for every parser mutant, and on four full runs it killed none. `pnpm test` runs
+// it on every pull request.
 describe.skipIf(process.env["X12_MUTATION_RUN"] === "1")(
   "get834Enrollments - streaming property (10MB+ synthetic file)",
   () => {

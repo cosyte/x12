@@ -31,9 +31,10 @@ import config from "./vitest.config.js";
  *   mode) stay in, at 100 cases each, and so do the unit tests over the same readers.
  *
  * - The 10 MB streaming test in `transactions-enrollment-834.test.ts`, skipped through
- *   `X12_MUTATION_RUN` below: a mutant that slows the parser without changing what it returns made
- *   it finish on one full run and time out on the next (twelve parser mutants moved between timed
- *   out and survived across two runs), and it killed no mutant on either.
+ *   `X12_MUTATION_RUN` below: it parses a 10 MB document for every parser mutant and killed no
+ *   mutant on any of four full runs. Leaving it out did not by itself stop a dozen parser mutants
+ *   moving between timed out and survived from one full run to the next, so the mutation floor
+ *   stays at the lowest score measured.
  *
  * The instrumented code runs several times slower than the plain build, so a test's budget here is
  * 60 s rather than 10 s. StrykerJS sets each mutant's own timeout from the time the test took in
