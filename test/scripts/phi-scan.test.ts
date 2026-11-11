@@ -39,10 +39,11 @@ import {
 import { join, relative, sep } from "node:path";
 import { tmpdir } from "node:os";
 
+import { tsx } from "../_helpers/runtime.js";
+
 const REPO_ROOT = process.cwd();
 const SCANNER_PATH = join(REPO_ROOT, "scripts", "phi-scan.ts");
 const OVERRIDES_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
-const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
 
 /**
  * The scanner runs under the SAME Node that is running vitest, not under `tsx`.
@@ -220,7 +221,7 @@ describe("phi-scan: the runner substitution is an equivalence, not an assumption
    * load-time, this case is too narrow and must grow.
    */
   function runUnderTsx(args: string[]): RunResult {
-    const r = spawnSync(TSX_BIN, [SCANNER_PATH, ...args], {
+    const r = spawnSync(...tsx([SCANNER_PATH, ...args]), {
       cwd: REPO_ROOT,
       encoding: "utf8",
       shell: false,

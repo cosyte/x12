@@ -43,6 +43,8 @@ import {
   type CoreCodeCombinationTable,
 } from "../src/index.js";
 
+import { IS_DENO } from "./_helpers/runtime.js";
+
 const { IN_TABLE, NOT_IN_TABLE, UNEVALUATED } = CORE_CODE_COMBINATION_OUTCOMES;
 const REASONS = CORE_CODE_COMBINATION_UNEVALUATED_REASONS;
 
@@ -728,7 +730,9 @@ describe("AC-12: exported from the package root, in source and in both built ent
   });
 
   for (const entry of ["index.mjs", "index.cjs"] as const) {
-    it(
+    // The ESM probe is skipped under Deno: it runs `process.execPath --input-type=module -e`, and
+    // Deno's command line has no `--input-type`. The CommonJS probe runs there.
+    it.skipIf(IS_DENO && entry === "index.mjs")(
       `AC-12: the built dist/${entry} exports the check and the error-code constant carrying the refusal's code`,
       () => {
         expect(probe(entry)).toEqual({

@@ -49,9 +49,9 @@ import {
   validateCodeLists,
   type RefreshTarget,
 } from "../../scripts/refresh-code-lists.js";
+import { IS_DENO, tsx } from "../_helpers/runtime.js";
 
 const REPO_ROOT = process.cwd();
-const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
 const REFRESH_PATH = join(REPO_ROOT, "scripts", "refresh-code-lists.ts");
 
 /**
@@ -308,23 +308,28 @@ describe("AC-7: the regeneration path answers each list independently", () => {
     expect(report).toContain("Every one of the 2 bundled lists may be regenerated");
   });
 
-  it("the CLI prints the per-list report and exits 2 while any list is refused", () => {
-    const r = spawnSync(TSX_BIN, [REFRESH_PATH, "--fetch"], {
-      cwd: REPO_ROOT,
-      encoding: "utf8",
-      shell: false,
-    });
-    expect(r.status).toBe(2);
-    const out = `${r.stdout ?? ""}${r.stderr ?? ""}`;
-    expect(out).toContain("RARC");
-    expect(out).toContain("PERMITTED");
-    expect(out).toContain("CARC");
-    expect(out).toContain("licence-required");
-    expect(out).toContain("not-established");
-    // Refused BY NAME, and the permitted list is not among them.
-    expect(out).toMatch(/bundled lists may not be regenerated here: /u);
-    const refusalLine = /may not be regenerated here: ([^.]*)\./u.exec(out)?.[1] ?? "";
-    expect(refusalLine).toContain("CARC");
-    expect(refusalLine).not.toContain("RARC");
-  });
+  // Skipped under Deno: the deno job takes Node off PATH, and this starts the script's command
+  // line under tsx, a Node command line that starts Node again with its loader.
+  it.skipIf(IS_DENO)(
+    "the CLI prints the per-list report and exits 2 while any list is refused",
+    () => {
+      const r = spawnSync(...tsx([REFRESH_PATH, "--fetch"]), {
+        cwd: REPO_ROOT,
+        encoding: "utf8",
+        shell: false,
+      });
+      expect(r.status).toBe(2);
+      const out = `${r.stdout ?? ""}${r.stderr ?? ""}`;
+      expect(out).toContain("RARC");
+      expect(out).toContain("PERMITTED");
+      expect(out).toContain("CARC");
+      expect(out).toContain("licence-required");
+      expect(out).toContain("not-established");
+      // Refused BY NAME, and the permitted list is not among them.
+      expect(out).toMatch(/bundled lists may not be regenerated here: /u);
+      const refusalLine = /may not be regenerated here: ([^.]*)\./u.exec(out)?.[1] ?? "";
+      expect(refusalLine).toContain("CARC");
+      expect(refusalLine).not.toContain("RARC");
+    },
+  );
 });
