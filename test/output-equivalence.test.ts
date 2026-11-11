@@ -26,12 +26,22 @@ import {
   observeInput,
   observeOddValues,
 } from "./_helpers/output-corpus.js";
+import { IS_BUN } from "./_helpers/runtime.js";
 
 const DIGESTS = fileURLToPath(
   new URL("./fixtures/equivalence/output-digests.json", import.meta.url),
 );
 
 const capture = process.env["X12_CAPTURE_DIGESTS"] === "1";
+
+/**
+ * The two observations that hand values of the wrong type (a number, `null`, an object) to the
+ * readers and the decimal parser, and record the error each raises, message included. Where the
+ * engine itself raises that error, its message is the engine's wording: V8's under Node and Deno,
+ * where the digests were captured, and JavaScriptCore's under Bun. So under Bun these two are not
+ * compared; every other digest is, and both are compared under Node and Deno.
+ */
+const ENGINE_WORDED: ReadonlySet<string> = new Set(["decimal", "odd-values"]);
 
 /** Every digest of the corpus, keyed by its label, in corpus order. */
 async function digests(): Promise<Record<string, string>> {
@@ -58,7 +68,9 @@ describe("output equivalence against the digests captured before the allocation 
     }
     const base = JSON.parse(readFileSync(DIGESTS, "utf8")) as Record<string, string>;
     expect(Object.keys(head)).toEqual(Object.keys(base));
-    const moved = Object.keys(base).filter((label) => head[label] !== base[label]);
+    const moved = Object.keys(base).filter(
+      (label) => head[label] !== base[label] && !(IS_BUN && ENGINE_WORDED.has(label)),
+    );
     expect(moved).toEqual([]);
     // The corpus is the size the pull request reports, so a shrunken corpus cannot pass quietly.
     expect(Object.keys(base).length).toBeGreaterThan(900);

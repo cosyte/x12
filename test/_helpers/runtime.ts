@@ -11,6 +11,12 @@ import { dirname, join } from "node:path";
 
 const require = createRequire(import.meta.url);
 
+/**
+ * True under Bun. Bun runs JavaScriptCore, whose own error messages (the text of a `TypeError` a
+ * built-in raises) are worded differently from V8's, which Node and Deno run.
+ */
+export const IS_BUN = "Bun" in globalThis;
+
 /** True on Windows. */
 export const IS_WINDOWS = process.platform === "win32";
 
