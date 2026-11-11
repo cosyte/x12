@@ -10,8 +10,8 @@
  * non-empty, else GS-08 decoded, else none. A second 277 reader that warned
  * and returned would hand a claim status answer to code written for a
  * documentation request, which is the one confusion this reader exists to
- * prevent. `get277Status` keeps labelling a `006020X313` document
- * `"unrecognized-guide"`; the two never both claim a document.
+ * prevent. `get277Status` returns no reading for a `006020X313` document; the
+ * two never both claim a document.
  *
  * **What is read.** The BHT; every HL in document order with its HL elements
  * verbatim; the NM1 of each name loop sent under a level before its first

@@ -343,10 +343,10 @@ describe("decodeSt03: a dangling release character in ST-03", () => {
     expect(dangling[0]?.position.elementIndex).toBe(3);
     const tx = ix.groups[0]?.transactions[0];
     if (tx === undefined) throw new Error("no transaction");
-    const sub = get837Claims(ix.delimiters, tx);
-    expect(sub?.implementationConventionReference).toBe("005010X222A2?");
-    expect(sub?.variant).toBe("unknown");
-    expect(sub?.warnings.map((w) => w.code)).not.toContain(WARNING_CODES.X12_DANGLING_RELEASE_CHAR);
-    expect(sub?.warnings.map((w) => w.code)).toContain(WARNING_CODES.X12_837_UNKNOWN_VARIANT);
+    // ST-03 decodes to `005010X222A2?`, the release character kept, which is no
+    // guide the reader implements, so it returns no reading and reports
+    // nothing. Had the decode dropped the `?` it would read `005010X222A2` and
+    // the reader would have returned a professional claim.
+    expect(get837Claims(ix.delimiters, tx)).toBeUndefined();
   });
 });

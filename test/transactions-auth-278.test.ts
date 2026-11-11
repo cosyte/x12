@@ -8,7 +8,7 @@
  *   request-category / certification-type / service-type, an HI diagnosis
  *   resolved against the bundled HI_QUALIFIERS snapshot, an attached
  *   service-provider NM1, a DTP date, and an echoed TRN trace.
- * - Tier-1 canonical 278 response (X216): the same HL spine plus the
+ * - Tier-1 canonical 278 response (read as X217): the same HL spine plus the
  *   safety-critical HCR decision - action code preserved verbatim, never
  *   inferred - and the TRN echoed from the request for reassociation.
  * - HL parent-pointer integrity: the `20 → 21 → 22 → 23` spine validates
@@ -36,6 +36,20 @@ import {
 import type { Delimiters, X12TransactionSet } from "../src/index.js";
 
 const FIXTURE_DIR = join(__dirname, "fixtures", "auth");
+
+/**
+ * The response fixtures declare `005010X216`, the 278 notification guide,
+ * which the 278 readers do not implement, so read as sent they get no reading
+ * (pinned below). Every reading test here reads them re-declared as
+ * `005010X217`, the guide the request and the response share.
+ */
+function fixture(name: string): string {
+  return readFileSync(join(FIXTURE_DIR, name), "utf8");
+}
+
+function asX217(raw: string): string {
+  return raw.replaceAll("005010X216", "005010X217");
+}
 
 function load278(raw: string): { delimiters: Delimiters; tx: X12TransactionSet } {
   const ix = parseX12(raw.trimEnd());
@@ -84,17 +98,26 @@ describe("get278Request - Tier-1 canonical (X217)", () => {
   });
 });
 
-describe("get278Response - Tier-1 canonical (X216)", () => {
+describe("get278Response - a 278 declaring the notification guide", () => {
+  for (const name of ["278-response.edi", "278-comprehensive.edi"]) {
+    it(`${name}, read as sent under 005010X216, gets no reading from either entry point`, () => {
+      const { delimiters, tx } = load278(fixture(name));
+      expect(tx.st.elements[3]).toBe("005010X216");
+      expect(get278Response(delimiters, tx)).toBeUndefined();
+      expect(get278Request(delimiters, tx)).toBeUndefined();
+    });
+  }
+});
+
+describe("get278Response - Tier-1 canonical (X217)", () => {
   it("decodes the HCR decision verbatim and echoes the request TRN", () => {
-    const raw = readFileSync(join(FIXTURE_DIR, "278-response.edi"), "utf8");
+    const raw = asX217(fixture("278-response.edi"));
     const { delimiters, tx } = load278(raw);
     const resp = get278Response(delimiters, tx);
 
     expect(resp?.direction).toBe("response");
-    expect(resp?.implementationConventionReference).toBe("005010X216");
-    // AC-5: 005010X216 is outside the 278 readers' implemented set, so the
-    // declared-guide code is the one warning; the reading below is unchanged.
-    expect(resp?.warnings.map((w) => w.code)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED]);
+    expect(resp?.implementationConventionReference).toBe("005010X217");
+    expect(resp?.warnings.map((w) => w.code)).toEqual([]);
 
     expect(resp?.reviews).toHaveLength(1);
     const review = resp?.reviews[0];
@@ -108,7 +131,7 @@ describe("get278Response - Tier-1 canonical (X216)", () => {
 
 describe("get278Response - comprehensive (dependent, event + service, edge segments)", () => {
   it("decodes the dependent HL and both the event and service reviews", () => {
-    const raw = readFileSync(join(FIXTURE_DIR, "278-comprehensive.edi"), "utf8");
+    const raw = asX217(fixture("278-comprehensive.edi"));
     const { delimiters, tx } = load278(raw);
     const resp = get278Response(delimiters, tx);
 
@@ -134,7 +157,7 @@ describe("get278Response - comprehensive (dependent, event + service, edge segme
   });
 
   it("captures the event review's decision, trace, unknown diagnosis, REF, and message", () => {
-    const raw = readFileSync(join(FIXTURE_DIR, "278-comprehensive.edi"), "utf8");
+    const raw = asX217(fixture("278-comprehensive.edi"));
     const { delimiters, tx } = load278(raw);
     const resp = get278Response(delimiters, tx);
 
@@ -154,16 +177,12 @@ describe("get278Response - comprehensive (dependent, event + service, edge segme
     expect(event?.messages).toEqual(["Outpatient services certified"]);
     expect(event?.providers.map((p) => p.entityIdentifierCode)).toEqual(["71"]);
 
-    // The unknown HI qualifier, after the declared-guide code this document's
-    // 005010X216 raises (AC-5). The message names no value.
-    expect(resp?.warnings.map((w) => w.code)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
-      WARNING_CODES.X12_UNKNOWN_HI_QUALIFIER,
-    ]);
+    // The unknown HI qualifier is the one warning. The message names no value.
+    expect(resp?.warnings.map((w) => w.code)).toEqual([WARNING_CODES.X12_UNKNOWN_HI_QUALIFIER]);
   });
 
   it("opens a distinct service-level (SS) review with its own UM, HCR, and REF", () => {
-    const raw = readFileSync(join(FIXTURE_DIR, "278-comprehensive.edi"), "utf8");
+    const raw = asX217(fixture("278-comprehensive.edi"));
     const { delimiters, tx } = load278(raw);
     const resp = get278Response(delimiters, tx);
 
@@ -175,7 +194,7 @@ describe("get278Response - comprehensive (dependent, event + service, edge segme
   });
 
   it("reports the request direction when read through get278Request", () => {
-    const raw = readFileSync(join(FIXTURE_DIR, "278-comprehensive.edi"), "utf8");
+    const raw = asX217(fixture("278-comprehensive.edi"));
     const { delimiters, tx } = load278(raw);
     expect(get278Request(delimiters, tx)?.direction).toBe("request");
   });

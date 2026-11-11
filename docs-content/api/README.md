@@ -16167,11 +16167,13 @@ if (tx !== undefined) {
 Which document this reading is. `"claim-status"` or
 `"claim-acknowledgment"` where the transaction set declares a guide the
 reader implements (ST-03 as framed reading `005010X214` is the
-acknowledgment); `"unrecognized-guide"` where it declares a guide outside
-that set, or none, in which case the reading also carries
-`X12_GUIDE_NOT_IMPLEMENTED` or `X12_GUIDE_NOT_DECLARED`. The reading is
-walked and returned either way, and ST-03 stays readable, decoded, on
-`implementationConventionReference`.
+acknowledgment); `"unrecognized-guide"` where it declares no guide at
+all, in which case the reading also carries `X12_GUIDE_NOT_DECLARED`, or
+declares one only padded or in another case (`005010X212` with a space
+either side, say), in which case it carries `X12_GUIDE_NOT_IMPLEMENTED`.
+A transaction set declaring a guide outside that set even once trimmed
+and upper-cased gets no reading (the reader returns `undefined`). ST-03
+stays readable, decoded, on `implementationConventionReference`.
 
 ##### warnings
 
@@ -29567,11 +29569,13 @@ escapeRelease(1 as unknown as string, d); // TypeError (was "")
 > **get270Inquiry**(`delimiters`, `tx`): [`X12Inquiry`](#x12inquiry) \| `undefined`
 
 Extract the typed [X12Inquiry](#x12inquiry) from one 270 transaction set. Pure
-function: no I/O, no global state, never throws. Returns `undefined` only
-when the transaction set's ST-01 is not `"270"` (a mis-routed call) - the
-same refusal shape `get271Eligibility`, `get835`, `get820Payments` and
-every other per-transaction reader in this package uses. Every other
-deviation is recoverable and surfaces on `result.warnings`.
+function: no I/O, no global state, never throws. Returns `undefined` when
+the transaction set's ST-01 is not `"270"` (a mis-routed call), and when it
+declares (ST-03, else GS-08) a guide this reader does not implement, such as
+the 4010 `004010X092A1` - the same refusal shape `get271Eligibility`,
+`get835`, `get820Payments` and every other per-transaction reader in this
+package uses. Every other deviation is recoverable and surfaces on
+`result.warnings`.
 
 #### Parameters
 
@@ -29610,9 +29614,11 @@ for (const group of ix.groups) {
 > **get271Eligibility**(`delimiters`, `tx`): [`X12Eligibility`](#x12eligibility) \| `undefined`
 
 Extract a typed [X12Eligibility](#x12eligibility) from a 271 transaction set. Pure
-function - no I/O, no global state. Returns `undefined` only when the
-input transaction's ST-01 is not `"271"` (mis-routed call); every other
-deviation is recoverable and surfaces on `result.warnings`.
+function - no I/O, no global state. Returns `undefined` when the input
+transaction's ST-01 is not `"271"` (mis-routed call), and when it declares
+(ST-03, else GS-08) a guide this reader does not implement, such as the
+4010 `004010X092A1`: its values would be read off 005010 element positions.
+Every other deviation is recoverable and surfaces on `result.warnings`.
 
 #### Parameters
 
@@ -29694,11 +29700,12 @@ for (const tx of ix.groups[0]?.transactions ?? []) {
 > **get276StatusInquiry**(`delimiters`, `tx`): [`X12StatusInquiry`](#x12statusinquiry) \| `undefined`
 
 Extract the typed [X12StatusInquiry](#x12statusinquiry) from one 276 transaction set. Pure
-function: no I/O, no global state, never throws. Returns `undefined` only
-when the transaction set's ST-01 is not `"276"` (a mis-routed call) - the
-same refusal shape `get277Status`, `get270Inquiry` and every other
-per-transaction reader in this package uses. Every other deviation is
-recoverable and surfaces on `result.warnings`.
+function: no I/O, no global state, never throws. Returns `undefined` when
+the transaction set's ST-01 is not `"276"` (a mis-routed call), and when it
+declares (ST-03, else GS-08) a guide this reader does not implement, such as
+the 4010 `004010X093A1` - the same refusal shape `get277Status`,
+`get270Inquiry` and every other per-transaction reader in this package uses.
+Every other deviation is recoverable and surfaces on `result.warnings`.
 
 #### Parameters
 
@@ -29817,18 +29824,26 @@ for (const tx of ix.groups[0]?.transactions ?? []) {
 
 Extract a typed [X12ClaimStatusResponse](#x12claimstatusresponse) from a 277 / 277CA
 transaction set. Pure function - no I/O, no global state. Returns
-`undefined` only when `ST-01` is not `"277"` (mis-routed call); every
+`undefined` when `ST-01` is not `"277"` (mis-routed call), and when the
+transaction set declares a guide this reader does not implement; every
 other deviation is recoverable and surfaces on `result.warnings`.
 
 The declared guide (ST-03, or GS-08 where ST-03 is absent or empty) is
 checked against the guides this reader implements, which are those of the
 claim status and claim acknowledgment rows of `X12_TR3_CONFORMANCE`, and not
-the request for additional information row. Where it is outside them, or nothing is
-declared, the reading is still walked and returned, carries
-`X12_GUIDE_NOT_IMPLEMENTED` or `X12_GUIDE_NOT_DECLARED`, and its
-`transactionType` is `"unrecognized-guide"`. Otherwise `transactionType` is
-derived from ST-03 as framed: `"claim-acknowledgment"` where it reads
-`005010X214`, and `"claim-status"` for every other implemented declaration.
+the request for additional information row. Where it is outside them (the
+4010 `004010X093A1`, the 4010 277U `004010X070`, or `006020X313`, say) the
+reader returns `undefined`, because the walk reads 005010 element positions.
+Where nothing is declared the reading is still walked and returned, carries
+`X12_GUIDE_NOT_DECLARED`, and its `transactionType` is
+`"unrecognized-guide"`. Where the declaration names an implemented guide
+only once trimmed and upper-cased (`005010X212` with a space either side,
+or `005010x212`), the reading is walked and returned, carries
+`X12_GUIDE_NOT_IMPLEMENTED`, and its `transactionType` is
+`"unrecognized-guide"` too, as it was before readers refused anything.
+Otherwise `transactionType` is derived from ST-03 as
+framed: `"claim-acknowledgment"` where it reads `005010X214`, and
+`"claim-status"` for every other implemented declaration.
 
 #### Parameters
 
@@ -29868,9 +29883,11 @@ for (const group of ix.groups) {
 > **get278Request**(`delimiters`, `tx`): [`X12ServicesReview`](#x12servicesreview) \| `undefined`
 
 Extract a typed [X12ServicesReview](#x12servicesreview) from a 278 **request**
-(`005010X217`). Pure function - no I/O. Returns `undefined` only when the
-transaction's ST-01 is not `"278"` (mis-routed call); every other
-deviation is recoverable and surfaces on `result.warnings`.
+(`005010X217`). Pure function - no I/O. Returns `undefined` when the
+transaction's ST-01 is not `"278"` (mis-routed call), and when it declares
+(ST-03, else GS-08) a guide this reader does not implement, such as the
+4010 `004010X094A1`: its values would be read off 005010 element positions.
+Every other deviation is recoverable and surfaces on `result.warnings`.
 
 #### Parameters
 
@@ -29908,9 +29925,10 @@ if (tx !== undefined) {
 Extract a typed [X12ServicesReview](#x12servicesreview) from a 278 **response**
 (`005010X217`, the same guide as the request). Same lenient walk as
 [get278Request](#get278request); the `HCR` decision under each event / service review
-is the response's safety-critical addition. Returns `undefined` only on a
-mis-routed ST-01. A response declaring `005010X216`, the 278 notification
-guide, is read like any other and carries `X12_GUIDE_NOT_IMPLEMENTED`.
+is the response's safety-critical addition. Returns `undefined` on a
+mis-routed ST-01, and for a transaction set that declares a guide this
+reader does not implement: `005010X216`, the 278 notification guide, or the
+4010 `004010X094A1`, say.
 
 #### Parameters
 
@@ -29946,10 +29964,12 @@ if (tx !== undefined) {
 > **get820Payments**(`delimiters`, `tx`): [`X12PremiumPayments`](#x12premiumpayments) \| `undefined`
 
 Extract a typed [X12PremiumPayments](#x12premiumpayments) from an 820 transaction set.
-Pure function - no I/O, no global state. Returns `undefined` only if the
-input transaction's ST-01 is not `"820"` (mis-routed call); every other
-deviation is recoverable and the verbatim segments remain on
-`tx.segments`.
+Pure function - no I/O, no global state. Returns `undefined` when the
+input transaction's ST-01 is not `"820"` (mis-routed call), and when it
+declares (ST-03, else GS-08) a guide this reader does not implement, such
+as the 4010 `004010X061A1`: its values would be read off 005010 element
+positions. Every other deviation is recoverable and the verbatim segments
+remain on `tx.segments`.
 
 #### Parameters
 
@@ -29987,7 +30007,9 @@ if (tx !== undefined) {
 > **get834Enrollments**(`delimiters`, `tx`): `AsyncIterable`\<[`X12Enrollment`](#x12enrollment)\>
 
 Stream the 834 member-level detail loops - one [X12Enrollment](#x12enrollment) per
-`INS` segment. For a non-834 transaction the iterable yields nothing.
+`INS` segment. For a non-834 transaction, and for one declaring (ST-03,
+else GS-08) a guide this reader does not implement, such as the 4010
+`004010X095A1`, the iterable yields nothing.
 Async-generator typed so the contract leaves room for a future
 file→iterator streaming source; the v1 implementation iterates the
 already-parsed `tx.segments` synchronously under the hood.
@@ -30027,9 +30049,11 @@ if (tx !== undefined) {
 > **get834Header**(`delimiters`, `tx`): [`X12EnrollmentHeader`](#x12enrollmentheader) \| `undefined`
 
 Extract the 834 header - BGN + sponsor (`N1*P5`) + payer (`N1*IN`).
-Pure function. Returns `undefined` only if the input transaction's ST-01
-is not `"834"` (mis-routed call). Stops collecting header parties at the
-first `INS` (member-level detail) - those belong to the member stream.
+Pure function. Returns `undefined` when the input transaction's ST-01 is
+not `"834"` (mis-routed call), and when it declares (ST-03, else GS-08) a
+guide this reader does not implement, such as the 4010 `004010X095A1`.
+Stops collecting header parties at the first `INS` (member-level detail) -
+those belong to the member stream.
 
 #### Parameters
 
@@ -30062,9 +30086,12 @@ header?.sponsor?.name;
 > **get835**(`delimiters`, `tx`): [`X12Remittance`](#x12remittance) \| `undefined`
 
 Extract a typed [X12Remittance](#x12remittance) from an 835 transaction set.
-Pure function - no I/O, no global state. Returns `undefined` only if
-the input transaction's ST-01 is not `"835"` (mis-routed call); every
-other deviation is recoverable and surfaces on `result.warnings`.
+Pure function - no I/O, no global state. Returns `undefined` when the
+input transaction's ST-01 is not `"835"` (mis-routed call), and when it
+declares (ST-03, else GS-08) a guide this reader does not implement, such
+as the 4010 `004010X091A1`: its values would be read off 005010 element
+positions. Every other deviation is recoverable and surfaces on
+`result.warnings`.
 
 #### Parameters
 
@@ -30105,8 +30132,11 @@ for (const group of ix.groups) {
 
 Extract a typed [X12\_837Submission](#x12_837submission) from an 837 transaction set.
 Pure function - no I/O, no global state. Returns `undefined` when the
-input transaction's ST-01 is not `"837"` (mis-routed call); every other
-deviation is recoverable and surfaces on `submission.warnings`.
+input transaction's ST-01 is not `"837"` (mis-routed call), and when it
+declares (ST-03, else GS-08) a guide this reader does not implement, such
+as the 4010 `004010X098A1`: its values would be read off 005010 element
+positions. Every other deviation is recoverable and surfaces on
+`submission.warnings`.
 
 #### Parameters
 
@@ -30314,8 +30344,9 @@ Build an `X12_GUIDE_NOT_DECLARED` warning. Raised by a typed reader when a
 transaction set declares no implementation guide at all: ST-03 is absent or
 empty and GS-08 of the enclosing functional group is absent or empty too, or
 no functional group header reached the transaction set (one assembled by
-hand, say). A whitespace-only declaration is NOT empty and is reported as
-`X12_GUIDE_NOT_IMPLEMENTED` instead, because nothing is trimmed.
+hand, say). A declaration of whitespace alone counts as empty: an ST-03 of
+whitespace falls through to GS-08, and a GS-08 of whitespace declares
+nothing.
 
 The reading is still decoded and returned against the guide the reader
 implements. Readers anchor it at the ST (`segmentIndex: 0`).
@@ -30344,18 +30375,21 @@ w.code; // "X12_GUIDE_NOT_DECLARED"
 
 > **guideNotImplemented**(`position`): [`X12ParseWarning`](#x12parsewarning)
 
-Build an `X12_GUIDE_NOT_IMPLEMENTED` warning. Raised by a typed reader when
-the implementation guide a transaction set declares is not one that reader
-implements. The declaration is ST-03, decoded of any release escape, or
-GS-08 of the enclosing functional group where ST-03 is absent or empty; the
-comparison is exact, and the guides a reader implements are the ones its
-rows in `X12_TR3_CONFORMANCE` name.
+Build an `X12_GUIDE_NOT_IMPLEMENTED` warning. Raised by the 275 and 999
+readers when the implementation guide a transaction set declares is not one
+that reader implements. The declaration is ST-03, decoded of any release
+escape, or GS-08 of the enclosing functional group where ST-03 is absent,
+empty or whitespace alone; the comparison is exact, and the guides a reader
+implements are the ones its rows in `X12_TR3_CONFORMANCE` name. Every other
+typed reader raises it only where the declaration, trimmed and upper-cased,
+names a guide it implements (a padded or lower-cased 005010 guide, which it
+still reads), and returns no reading where even that names none.
 
-The reading is still decoded and returned: this code refuses, drops and
-re-decodes nothing. It takes a position and no value, so the declared
-identifier never reaches the message; readers anchor it at the ST
-(`segmentIndex: 0`) with no `elementIndex`, because the declaration may have
-come from GS-08 rather than from an element of the ST.
+Where it is raised, the reading is still decoded and returned: this code
+refuses, drops and re-decodes nothing. It takes a position and no value, so
+the declared identifier never reaches the message; readers anchor it at the
+ST (`segmentIndex: 0`) with no `elementIndex`, because the declaration may
+have come from GS-08 rather than from an element of the ST.
 
 #### Parameters
 
@@ -30865,7 +30899,9 @@ Decode every 270 in a raw interchange, in transmitted order. Returns one
 [X12Inquiry](#x12inquiry) per 270 transaction set, each with its own model and its
 own warnings, and an EMPTY list when the interchange carries no 270 at all.
 Two 270s are never merged into one model and the first is never returned in
-place of the rest.
+place of the rest. A 270 declaring a guide this reader does not implement
+(the 4010 `004010X092A1`, say) is left out of the list, as
+[get270Inquiry](#get270inquiry) returns `undefined` for it.
 
 This is also the entry point that reports an inter-segment line break
 (`X12_270_INTER_SEGMENT_LINE_BREAK`): the shared parse consumes a run of CR
@@ -30914,7 +30950,9 @@ Decode every 276 in a raw interchange, in transmitted order. Returns one
 [X12StatusInquiry](#x12statusinquiry) per 276 transaction set, each with its own model and
 its own warnings, and an EMPTY list when the interchange carries no 276 at
 all. Two 276s are never merged into one model and the first is never returned
-in place of the rest.
+in place of the rest. A 276 declaring a guide this reader does not implement
+(the 4010 `004010X093A1`, say) is left out of the list, as
+[get276StatusInquiry](#get276statusinquiry) returns `undefined` for it.
 
 **No warning is raised about an interchange that carries no 276.** An
 interchange full of 277s is not a defective 276 and this reader says nothing

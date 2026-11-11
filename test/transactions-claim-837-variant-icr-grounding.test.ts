@@ -68,8 +68,11 @@ const HEADER: readonly string[] = [
 
 const CLM = "CLM*PT-ACCT-900*8500***11:B:1*Y*A*Y*Y~";
 
-/** `icr` goes into ST-03 verbatim; `""` means ST-03 is absent altogether. */
-function parse837(icr: string, body: readonly string[]): X12_837Submission {
+/**
+ * `icr` goes into ST-03 verbatim; `""` means ST-03 is absent altogether, and
+ * the declared guide is then GS-08, the professional guide.
+ */
+function read837(icr: string, body: readonly string[]): X12_837Submission | undefined {
   const st = icr === "" ? "ST*837*0001~" : `ST*837*0001*${icr}~`;
   const segs = [
     ISA,
@@ -84,7 +87,11 @@ function parse837(icr: string, body: readonly string[]): X12_837Submission {
   const ix = parseX12(segs.join("\n"));
   const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "837");
   if (tx === undefined) throw new Error("no 837 transaction set");
-  const sub = get837Claims(ix.delimiters, tx);
+  return get837Claims(ix.delimiters, tx);
+}
+
+function parse837(icr: string, body: readonly string[]): X12_837Submission {
+  const sub = read837(icr, body);
   if (sub === undefined) throw new Error("get837Claims returned undefined");
   return sub;
 }
@@ -237,12 +244,12 @@ describe("X12-VARIANT-ICR-UNGROUNDED: the references production 837s carry", () 
     expect(channel(sub)).toEqual([WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED]);
 
     // CONTROL, and it is what makes the reading above a loss rather than a
-    // preference: the same bytes under an ST-03 this reader still turns
-    // into nothing fall back to the segment and decode, exactly as before.
-    const fellBack = parse837("004010X098A1", SV2_ONLY);
+    // preference: the same bytes with no ST-03 (the guide declared in GS-08)
+    // turn into no variant, fall back to the segment and decode.
+    const fellBack = parse837("", SV2_ONLY);
     expect(fellBack.variant).toBe("I");
     expect(fellBack.claims[0]?.serviceLines[0]?.charge?.toString()).toBe("7300");
-    expect(channel(fellBack)).toEqual([WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED]);
+    expect(channel(fellBack)).toEqual([]);
   });
 
   /**
@@ -335,8 +342,6 @@ describe("X12-VARIANT-ICR-UNGROUNDED: what still does NOT resolve", () => {
     ["005010X221A1", "a real identifier, but the 835 remittance TR3 and not an 837 guide"],
     ["004010X098A1", "the 4010 professional addenda; pre-005010 is outside v1 scope"],
     ["005010X222A9", "an errata designation no source names; inventing one is the failure mode"],
-    ["005010x222a1", "lowercase: ST-03 is read verbatim and nothing normalises case"],
-    [" 005010X222A1", "leading whitespace: nothing trims the element"],
     ["005010X225", "a professional-looking stem that names no 837 guide"],
     ["constructor", "the prototype trap wireLookup exists to close"],
     ["__proto__", "the prototype trap wireLookup exists to close"],
@@ -344,20 +349,41 @@ describe("X12-VARIANT-ICR-UNGROUNDED: what still does NOT resolve", () => {
 
   for (const [icr, why] of NOT_RECOGNISED) {
     it(`ST-03 ${JSON.stringify(icr)} does not resolve (${why})`, () => {
-      // Body carries only an SV2, so a non-resolving ST-03 must fall back
-      // to "I". Reading "P" would mean the string was matched somehow.
-      const sub = parse837(icr, SV2_ONLY);
-      expect(sub.variant).toBe("I");
+      // Every key of the variant table is a guide the reader implements, so
+      // an ST-03 that keys no variant, even trimmed and upper-cased, declares
+      // a guide it does not implement and gets no reading at all. Reading "P"
+      // would mean the string was matched somehow; reading "I" would mean the
+      // body was read under it.
+      expect(read837(icr, SV2_ONLY)).toBeUndefined();
     });
   }
 
-  it("🩺 an ST-03 outside the set with NO SVx still raises X12_837_UNKNOWN_VARIANT", () => {
-    const sub = parse837("005010X221A1", [...HEADER, CLM, "HI*ABK:J20.9~"]);
+  /**
+   * Padding and case. The variant lookup reads ST-03 verbatim, so neither
+   * keys a variant and the body falls back to its `SVx`. The refusal compares
+   * the declaration trimmed and upper-cased, so both are still read, with the
+   * exact-compare `X12_GUIDE_NOT_IMPLEMENTED`, as they were before readers
+   * refused anything.
+   */
+  const READ_BUT_NOT_KEYED: readonly (readonly [string, string])[] = [
+    ["005010x222a1", "lowercase: the variant lookup reads ST-03 verbatim and folds no case"],
+    [" 005010X222A1", "leading whitespace: the variant lookup trims nothing"],
+  ];
+
+  for (const [icr, why] of READ_BUT_NOT_KEYED) {
+    it(`ST-03 ${JSON.stringify(icr)} keys no variant but is read (${why})`, () => {
+      const sub = read837(icr, SV2_ONLY);
+      expect(sub?.variant).toBe("I");
+      expect(sub === undefined ? [] : channel(sub)).toEqual([
+        WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
+      ]);
+    });
+  }
+
+  it("🩺 an absent ST-03 with NO SVx still raises X12_837_UNKNOWN_VARIANT", () => {
+    const sub = parse837("", [...HEADER, CLM, "HI*ABK:J20.9~"]);
     expect(sub.variant).toBe("unknown");
-    expect(channel(sub)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
-      WARNING_CODES.X12_837_UNKNOWN_VARIANT,
-    ]);
+    expect(channel(sub)).toEqual([WARNING_CODES.X12_837_UNKNOWN_VARIANT]);
   });
 
   it("an ABSENT ST-03 still falls back exactly as it did", () => {
@@ -376,10 +402,9 @@ describe("X12-VARIANT-ICR-UNGROUNDED: the SVx fall-back is not narrowed", () => 
     // The residual `X12-837-AMBIGUOUS-VARIANT` disclosed and deliberately
     // did not close. It is unchanged for every document that still reaches
     // the fall-back: a widening of the ICR table is not a narrowing of this.
-    const sub = parse837("004010X098A1", [...HEADER, SV2, CLM, "HI*ABK:J20.9~", "LX*1~", SV1]);
+    const sub = parse837("", [...HEADER, SV2, CLM, "HI*ABK:J20.9~", "LX*1~", SV1]);
     expect(sub.variant).toBe("I");
     expect(channel(sub)).toEqual([
-      WARNING_CODES.X12_GUIDE_NOT_IMPLEMENTED,
       WARNING_CODES.X12_837_AMBIGUOUS_VARIANT,
       WARNING_CODES.X12_837_SERVICE_SEGMENT_WITHOUT_LX,
       WARNING_CODES.X12_837_SERVICE_LINE_NOT_DECODED,

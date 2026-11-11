@@ -50,7 +50,11 @@ import {
   type X12Segment,
 } from "../../parser/segment.js";
 import type { Delimiters, X12Position, X12TransactionSet } from "../../parser/types.js";
-import { declaredGuideWarning, implementedGuides } from "../shared/declared-guide.js";
+import {
+  declaredGuideWarning,
+  implementedGuides,
+  refusesReading,
+} from "../shared/declared-guide.js";
 import { decodeSt03 } from "../shared/st03.js";
 import {
   REQUIRED_LOOPS,
@@ -263,8 +267,11 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = wire
 /**
  * Extract a typed {@link X12_837Submission} from an 837 transaction set.
  * Pure function - no I/O, no global state. Returns `undefined` when the
- * input transaction's ST-01 is not `"837"` (mis-routed call); every other
- * deviation is recoverable and surfaces on `submission.warnings`.
+ * input transaction's ST-01 is not `"837"` (mis-routed call), and when it
+ * declares (ST-03, else GS-08) a guide this reader does not implement, such
+ * as the 4010 `004010X098A1`: its values would be read off 005010 element
+ * positions. Every other deviation is recoverable and surfaces on
+ * `submission.warnings`.
  *
  * @example
  * ```ts
@@ -290,13 +297,15 @@ export function get837Claims(
 ): X12_837Submission | undefined {
   if (tx.st.elements[1] !== "837") return undefined;
 
-  const warnings: X12ParseWarning[] = [];
   // The declared guide (ST-03 decoded, else GS-08 decoded) against the guides
-  // this reader implements. Warned at the ST and never refused, and it is
-  // disjoint from the variant resolution below: that still keys on the RAW
-  // ST-03 text, so a declaration this check accepts can still leave the
-  // variant to the `SVx` fall-back, and neither decision reads the other.
+  // this reader implements. A guide it does not implement gets no reading;
+  // nothing declared is warned at the ST and read. It is disjoint from the
+  // variant resolution below: that still keys on the RAW ST-03 text, so a
+  // declaration this check accepts can still leave the variant to the `SVx`
+  // fall-back, and neither decision reads the other.
   const guideWarning = declaredGuideWarning(delimiters, tx, IMPLEMENTED_GUIDES_837);
+  if (refusesReading(delimiters, tx, IMPLEMENTED_GUIDES_837)) return undefined;
+  const warnings: X12ParseWarning[] = [];
   if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
 

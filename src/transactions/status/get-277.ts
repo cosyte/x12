@@ -6,9 +6,10 @@
  * composite and are disambiguated by `ST-03`. A single internal walker
  * serves both; the two public entry points differ only in which `ST-03`
  * they accept and in which guides they check the declared one against. A 277
- * declaring any other guide (a request for additional information, say) is
- * still walked by `get277Status`, warned, and labelled `"unrecognized-guide"`
- * rather than either of the two.
+ * declaring any other guide (a request for additional information, or the
+ * 4010 `004010X093A1` or 277U `004010X070`, say) gets no reading from either.
+ * One declaring no guide at all is walked by `get277Status`, warned, and
+ * labelled `"unrecognized-guide"` rather than either of the two.
  *
  * Lenient on parse: every recoverable deviation surfaces as a warning,
  * never a throw. Monetary fields decode as
@@ -49,6 +50,7 @@ import {
 import {
   declaredGuideWarning,
   implementedGuides,
+  refusesReading,
   type ImplementedGuides,
 } from "../shared/declared-guide.js";
 import { decodeHl, HL_LEVEL_CODES, validateHl, type X12Hl } from "../shared/hl.js";
@@ -75,7 +77,7 @@ const ICR_277CA = "005010X214";
  * row's `tr3` plus every `cfrAdopted` entry. Named row by row rather than as
  * every `277` row, because the request for additional information is also a
  * `277` row and this reader does not implement it: a 277 declaring that guide
- * stays `"unrecognized-guide"` here and is read by its own reader. @internal
+ * gets no reading here and is read by its own reader. @internal
  */
 const IMPLEMENTED_GUIDES_277: ImplementedGuides = implementedGuides(
   "277",
@@ -108,18 +110,26 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Obje
 /**
  * Extract a typed {@link X12ClaimStatusResponse} from a 277 / 277CA
  * transaction set. Pure function - no I/O, no global state. Returns
- * `undefined` only when `ST-01` is not `"277"` (mis-routed call); every
+ * `undefined` when `ST-01` is not `"277"` (mis-routed call), and when the
+ * transaction set declares a guide this reader does not implement; every
  * other deviation is recoverable and surfaces on `result.warnings`.
  *
  * The declared guide (ST-03, or GS-08 where ST-03 is absent or empty) is
  * checked against the guides this reader implements, which are those of the
  * claim status and claim acknowledgment rows of `X12_TR3_CONFORMANCE`, and not
- * the request for additional information row. Where it is outside them, or nothing is
- * declared, the reading is still walked and returned, carries
- * `X12_GUIDE_NOT_IMPLEMENTED` or `X12_GUIDE_NOT_DECLARED`, and its
- * `transactionType` is `"unrecognized-guide"`. Otherwise `transactionType` is
- * derived from ST-03 as framed: `"claim-acknowledgment"` where it reads
- * `005010X214`, and `"claim-status"` for every other implemented declaration.
+ * the request for additional information row. Where it is outside them (the
+ * 4010 `004010X093A1`, the 4010 277U `004010X070`, or `006020X313`, say) the
+ * reader returns `undefined`, because the walk reads 005010 element positions.
+ * Where nothing is declared the reading is still walked and returned, carries
+ * `X12_GUIDE_NOT_DECLARED`, and its `transactionType` is
+ * `"unrecognized-guide"`. Where the declaration names an implemented guide
+ * only once trimmed and upper-cased (`005010X212` with a space either side,
+ * or `005010x212`), the reading is walked and returned, carries
+ * `X12_GUIDE_NOT_IMPLEMENTED`, and its `transactionType` is
+ * `"unrecognized-guide"` too, as it was before readers refused anything.
+ * Otherwise `transactionType` is derived from ST-03 as
+ * framed: `"claim-acknowledgment"` where it reads `005010X214`, and
+ * `"claim-status"` for every other implemented declaration.
  *
  * @example
  * ```ts
@@ -174,18 +184,20 @@ export function get277CADisposition(
  * Shared 277 / 277CA walk. The HL spine + STC machinery is identical; the
  * caller's `ST-03` gate decides which public surface admits the
  * transaction, and `implemented` is the set of guides that surface checks the
- * declared guide against. @internal
+ * declared guide against. `undefined` where the transaction set declares a
+ * guide outside `implemented`. @internal
  */
 function walk277(
   delimiters: Delimiters,
   tx: X12TransactionSet,
   implemented: ImplementedGuides,
-): X12ClaimStatusResponse {
-  const warnings: X12ParseWarning[] = [];
+): X12ClaimStatusResponse | undefined {
   // The declared guide (ST-03 decoded, else GS-08 decoded) against the guides
-  // this surface implements. Warned at the ST and never refused: the walk
-  // below runs the same whatever it answers.
+  // this surface implements: a guide outside them gets no reading, and nothing
+  // declared is warned at the ST and walked.
   const guideWarning = declaredGuideWarning(delimiters, tx, implemented);
+  if (refusesReading(delimiters, tx, implemented)) return undefined;
+  const warnings: X12ParseWarning[] = [];
   if (guideWarning !== undefined) warnings.push(guideWarning);
   const body = tx.se === undefined ? tx.segments.slice(1) : tx.segments.slice(1, -1);
   // ST-03 is read TWICE on purpose, and the two reads are different values.
@@ -215,11 +227,13 @@ function walk277(
   //
   // The guide check above is the one exception to the raw key, and it only
   // ever REPLACES the discriminator, never moves it between the two claim
-  // labels: where the declared guide is outside `implemented` (or nothing is
-  // declared) the reading is `"unrecognized-guide"`, because calling it a
-  // claim status or a claim acknowledgment would label a document this reader
-  // does not implement as one it does. Every implemented declaration keeps the
-  // raw-keyed derivation below exactly as it was.
+  // labels: where nothing is declared, or the declaration names an implemented
+  // guide only once trimmed and upper-cased, the reading is
+  // `"unrecognized-guide"`, because calling it a claim status or a claim
+  // acknowledgment would label a document that never said exactly which guide
+  // it follows as one this reader implements. A declared guide outside
+  // `implemented` even then never gets this far. Every exactly implemented
+  // declaration keeps the raw-keyed derivation below exactly as it was.
   const implementationConventionReferenceRaw = tx.st.elements[3];
   const implementationConventionReference = decodeSt03(
     implementationConventionReferenceRaw,

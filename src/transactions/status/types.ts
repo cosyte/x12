@@ -51,11 +51,13 @@ export interface X12ClaimStatusResponse {
    * Which document this reading is. `"claim-status"` or
    * `"claim-acknowledgment"` where the transaction set declares a guide the
    * reader implements (ST-03 as framed reading `005010X214` is the
-   * acknowledgment); `"unrecognized-guide"` where it declares a guide outside
-   * that set, or none, in which case the reading also carries
-   * `X12_GUIDE_NOT_IMPLEMENTED` or `X12_GUIDE_NOT_DECLARED`. The reading is
-   * walked and returned either way, and ST-03 stays readable, decoded, on
-   * `implementationConventionReference`.
+   * acknowledgment); `"unrecognized-guide"` where it declares no guide at
+   * all, in which case the reading also carries `X12_GUIDE_NOT_DECLARED`, or
+   * declares one only padded or in another case (`005010X212` with a space
+   * either side, say), in which case it carries `X12_GUIDE_NOT_IMPLEMENTED`.
+   * A transaction set declaring a guide outside that set even once trimmed
+   * and upper-cased gets no reading (the reader returns `undefined`). ST-03
+   * stays readable, decoded, on `implementationConventionReference`.
    */
   readonly transactionType: "claim-status" | "claim-acknowledgment" | "unrecognized-guide";
   readonly implementationConventionReference: string | undefined;
