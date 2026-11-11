@@ -104,5 +104,44 @@ out-of-enum level (`X12_278_BUILD_INVALID_SPEC`) rather than emit a document tha
 - **Transport**: AS2, SFTP, MLLP-style delivery. This is a parser/serializer, not a comms stack.
 - **Pre-005010 field maps.** Pre-005010 input is _tolerated and flagged_ (`X12_PRE_005010`), not
   decoded against those older guides.
+- **The 4010 variants and the 4010 277U.** We do not build readers or builders for the 004010
+  versions of the 835, the 837, the 270/271, the 276/277, the 278, the 834 or the 820, or for the
+  4010 277U unsolicited claim status. This is a decision, not a gap we plan to close. Their 005010
+  replacements are what we read and build: the 277 claim status response (`005010X212`) answers a
+  276, and the 277CA claim acknowledgment (`005010X214`) does the acknowledgment work the 277U was
+  used for. If you still receive 4010 traffic, translate it to 005010 before it reaches this
+  package, or use a parser that reads 4010.
+
+A 4010 document is not refused. The interchange parses and carries `X12_PRE_005010`, and a typed
+reader handed one of its transaction sets still walks it against the 005010 element positions and
+says so with
+[`X12_GUIDE_NOT_IMPLEMENTED`](./warning-and-error-codes.md#x12_guide_not_implemented). Treat that
+reading as unverified: a value on it may sit at a position the 4010 guide defines differently.
+
+```ts runnable
+import { get277CADisposition, get277Status, parseX12 } from "@cosyte/x12";
+
+// A 4010 277U: ISA-12 is 00401, GS-08 declares 004010X070, and the ST has no ST-03.
+const raw =
+  "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       " +
+  "*260601*1200*U*00401*000000001*0*P*:~" +
+  "GS*HN*SENDER*RECEIVER*20260601*1200*1*X*004010X070~" +
+  "ST*277*0001~" +
+  "BHT*0010*08*BATCH1*20260601*1200*DG~" +
+  "SE*3*0001~" +
+  "GE*1*1~" +
+  "IEA*1*000000001~";
+
+const ix = parseX12(raw);
+ix.warnings.map((w) => w.code); // => ["X12_PRE_005010"]
+
+const tx = ix.groups[0]!.transactions[0]!;
+const status = get277Status(ix.delimiters, tx);
+status?.transactionType; // => "unrecognized-guide"
+status?.warnings.some((w) => w.code === "X12_GUIDE_NOT_IMPLEMENTED"); // => true
+
+// Only a 277 whose ST-03 reads 005010X214 is a claim acknowledgment.
+get277CADisposition(ix.delimiters, tx); // => undefined
+```
 
 See [Troubleshooting and known limitations](./troubleshooting.md) for the full non-goals list.
