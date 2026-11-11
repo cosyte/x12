@@ -24,6 +24,7 @@
         "read-an-enrollment-roster",
         "read-and-build-a-premium-payment",
         "read-acknowledgments",
+        "acknowledge-an-interchange",
         "answer-an-attachment-request",
         "emit-and-serialize",
         "profiles",
