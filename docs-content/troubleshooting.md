@@ -133,20 +133,34 @@ builders run on a JSON-driven caller's values.
 
 ### Scope (non-goals for v1)
 
-- **No implementation-guide (TR3) validation.** We check the ASC X12 base standard (the envelope,
-  delimiters, control numbers, segment counts and HL pointers), the few guide facts each typed reader
-  needs to build its model (the declared guide, the loops it requires, the 835 balancing equations),
-  and one CAQH CORE rule, the CORE 360 Code Combinations, through
+- **We do not validate against implementation guides.** We check the ASC X12 base standard (the
+  envelope, delimiters, control numbers, segment counts and HL pointers), the few guide facts each
+  typed reader needs to build its model (the declared guide, the loops it requires, the 835 balancing
+  equations), and one CAQH CORE rule, the CORE 360 Code Combinations, through
   [`checkCoreCodeCombination`](./api/README.md#checkcorecodecombination) with a table you supply. We
-  do not check TR3 usage: required, situational and not-used segments and elements, situational
-  rules, repeat counts, or the code values a guide allows at each element. Every TR3 is sold by X12
-  and we ship no tables derived from one, so a document that breaks its guide can parse with no
+  also check codes against the lists we bundle: a reader keeps a code outside them verbatim and warns
+  with [`X12_UNKNOWN_CARC`](./warning-and-error-codes.md#x12_unknown_carc) (835 and 837
+  adjustments), [`X12_UNKNOWN_RARC`](./warning-and-error-codes.md#x12_unknown_rarc) (835 remarks),
+  [`X12_UNKNOWN_CLAIM_STATUS`](./warning-and-error-codes.md#x12_unknown_claim_status) and
+  [`X12_UNKNOWN_CLAIM_STATUS_CATEGORY`](./warning-and-error-codes.md#x12_unknown_claim_status_category)
+  (277 statuses), [`X12_271_AAA_UNKNOWN_CODE`](./warning-and-error-codes.md#x12_271_aaa_unknown_code)
+  (271 AAA codes), [`X12_UNKNOWN_HI_QUALIFIER`](./warning-and-error-codes.md#x12_unknown_hi_qualifier)
+  (837 and 278 HI qualifiers) or
+  [`X12_834_UNKNOWN_MAINTENANCE_TYPE`](./warning-and-error-codes.md#x12_834_unknown_maintenance_type)
+  (834 INS-03 and HD-01), and [`build834`](./api/README.md#build834) refuses a maintenance type
+  outside its list with `X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE`. Three bundled lists are code
+  subsets cited from a TR3: [`MAINTENANCE_TYPE_CODES`](./api/README.md#maintenance_type_codes)
+  (INS-03), [`CLP_STATUS`](./api/README.md#clp_status) (CLP-02, which the 835 reader describes but
+  does not warn on) and [`HI_QUALIFIERS`](./api/README.md#hi_qualifiers). We ship no TR3 usage
+  tables, and we do not check TR3 usage: required, situational and not-used segments and elements,
+  situational rules, repeat counts, or the code values a guide allows at an element beyond those
+  bundled lists. Every TR3 is sold by X12, so a document that breaks its guide can parse with no
   warning. With the typed readers you can still check the declared guide
   ([`X12_GUIDE_NOT_IMPLEMENTED`](./warning-and-error-codes.md#x12_guide_not_implemented),
   [`X12_GUIDE_NOT_DECLARED`](./warning-and-error-codes.md#x12_guide_not_declared)), refuse a document
   whose required field reads `undefined` (an absent value is never defaulted), compare the verbatim
-  qualifiers and codes with your copy of the guide, date-check adjustment and remark codes with
-  [`checkCarcValidity`](./api/README.md#checkcarcvalidity) and
+  qualifiers and codes no bundled list covers with your copy of the guide, date-check adjustment and
+  remark codes with [`checkCarcValidity`](./api/README.md#checkcarcvalidity) and
   [`checkRarcValidity`](./api/README.md#checkrarcvalidity), and read anything untyped with
   [`getSegmentValue`](./api/README.md#getsegmentvalue).
 - **Healthcare HIPAA 005010 only.** Non-healthcare sets (850/856/810/204, …), the EDIFACT syntax
