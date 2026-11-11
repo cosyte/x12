@@ -45,6 +45,8 @@
  * not be regenerated here).
  */
 
+import { pathToFileURL } from "node:url";
+
 import {
   CARC,
   RARC,
@@ -317,7 +319,9 @@ function main(): void {
 }
 
 // Run only as a CLI, never on import (the test imports `validateCodeLists`).
-// `import.meta.url` ends with this file's path when invoked directly via tsx.
-if (import.meta.url === `file://${process.argv[1]}`) {
+// `import.meta.url` is this file's URL, and `process.argv[1]` its path, when invoked directly via
+// tsx. The path is turned into a URL rather than prefixed with `file://`, which on Windows gives
+// `file://D:\...`, never equal to `file:///D:/...`, so the CLI would silently do nothing there.
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main();
 }
