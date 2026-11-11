@@ -17,6 +17,7 @@ import { frameBinary } from "./binary.js";
 import { ISA_MIN_LENGTH } from "./delimiters.js";
 import { RELEASE_CHAR, RELEASE_CODE, splitWithRelease } from "./release.js";
 import { decodeSegmentAt, type X12Segment } from "./segment.js";
+import { recordTransactionStart } from "./transaction-start.js";
 import type {
   Delimiters,
   GeSegment,
@@ -657,7 +658,7 @@ function walkEnvelope(
         }),
       );
     }
-    group.transactions.push({
+    const framed: X12TransactionSet = {
       st: tx.st,
       se,
       segments: Object.freeze(tx.segments.slice()),
@@ -666,7 +667,11 @@ function walkEnvelope(
       // only this transaction set can fall back to GS-08 where ST-03 is
       // absent or empty. Raw, like every envelope element.
       gs: group.gs,
-    });
+    };
+    // Where its ST sat in the input, kept off the model: a warning names a
+    // segment by input index and a 999 by its position from the ST.
+    recordTransactionStart(framed, tx.startSegIdx);
+    group.transactions.push(framed);
   };
 
   /**

@@ -46,6 +46,14 @@ export { parseTA1 } from "./parse-ta1.js";
 export { build997 } from "./build-997.js";
 export { build999 } from "./build-999.js";
 export { buildTA1, type BuildTA1Options } from "./build-ta1.js";
+export {
+  ACK_WARNING_MAPPINGS,
+  derive999Spec,
+  deriveTA1Spec,
+  type Derive999Options,
+  type X12AckWarningMapping,
+  type X12DerivedAck,
+} from "./derive.js";
 
 export type {
   Build997ElementErrorSpec,

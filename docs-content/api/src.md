@@ -11833,7 +11833,7 @@ Top-level spec for `buildTA1`.
 
 ##### noteCode
 
-> `readonly` **noteCode**: [`Ta1NoteCode`](#ta1notecode)
+> `readonly` **noteCode**: [`Ta1NoteCode`](#ta1notecode-1)
 
 ***
 
@@ -12573,6 +12573,41 @@ const medicare: Delimiters = {
 ##### segment
 
 > `readonly` **segment**: `string`
+
+***
+
+### Derive999Options
+
+Options for [derive999Spec](#derive999spec).
+
+#### Example
+
+```ts
+import type { Derive999Options } from "@cosyte/x12";
+const options: Derive999Options = {
+  groupIndex: 0,
+  envelope: {
+    senderId: "RECEIVER", receiverId: "SENDER",
+    interchangeDate: "260601", interchangeTime: "1205",
+    interchangeControlNumber: "000000101",
+    groupControlNumber: "101", transactionSetControlNumber: "0101",
+  },
+};
+```
+
+#### Properties
+
+##### envelope
+
+> `readonly` **envelope**: [`Build999EnvelopeSpec`](#build999envelopespec)
+
+The envelope of the 999 itself: its own parties, date, time and control numbers.
+
+##### groupIndex?
+
+> `readonly` `optional` **groupIndex?**: `number`
+
+Which functional group of the interchange to acknowledge, from 0. Defaults to 0.
 
 ***
 
@@ -14425,7 +14460,7 @@ The decoded TA1 Interchange Acknowledgment.
 - `interchangeTime` - TA1-03: HHMM (echoes inbound ISA-10).
 - `ackCode` - TA1-04: [Ta1AckCode](#ta1ackcode).
 - `noteCode` - TA1-05: typed when the value is a known I18 code
-  ([Ta1NoteCode](#ta1notecode)); `noteCodeRaw` carries the un-narrowed string
+  ([Ta1NoteCode](#ta1notecode-1)); `noteCodeRaw` carries the un-narrowed string
   alongside so unknown extensions survive. **A clause here said that
   string is preserved VERBATIM and is deleted, not reworded:**
   a later release made it post-unescape, and `raw.elements[5]` is
@@ -14471,7 +14506,7 @@ ta1.noteCode;     // "000" | "001" | ...
 
 ##### noteCode
 
-> `readonly` **noteCode**: [`Ta1NoteCode`](#ta1notecode) \| `undefined`
+> `readonly` **noteCode**: [`Ta1NoteCode`](#ta1notecode-1) \| `undefined`
 
 ##### noteCodeRaw
 
@@ -14480,6 +14515,66 @@ ta1.noteCode;     // "000" | "001" | ...
 ##### raw
 
 > `readonly` **raw**: [`Ta1Segment`](#ta1segment)
+
+***
+
+### X12AckWarningMapping
+
+What one warning code becomes in a derived acknowledgment, at each place a
+warning can sit. A field that is absent means the acknowledgment for that
+place carries no code for the warning, and the warning is returned as
+unreported.
+
+Where a warning sits is read from its `position`: with a `transactionIndex`
+it is on a transaction set, with a `groupIndex` alone on a functional group,
+with neither on the interchange. `X12_UNEXPECTED_SEGMENT` is placed by its
+orphan's `anchor` instead: inside a transaction set it is on that set, and
+anywhere else it is interchange content.
+
+#### Example
+
+```ts
+import { ACK_WARNING_MAPPINGS } from "@cosyte/x12";
+ACK_WARNING_MAPPINGS.X12_MISSING_SE.ik5SyntaxErrorCode; // "2"
+```
+
+#### Properties
+
+##### ak9SyntaxErrorCode?
+
+> `readonly` `optional` **ak9SyntaxErrorCode?**: `string`
+
+AK9-05, when it sits on a functional group outside every transaction set. AK9-01 is then `R`.
+
+##### ik3SyntaxErrorCode?
+
+> `readonly` `optional` **ik3SyntaxErrorCode?**: [`Ik304Code`](#ik304code)
+
+IK3-04, when it sits on one segment of a transaction set. IK5-01 is then `R`, with IK5-02 `5`.
+
+##### ik4SyntaxErrorCode?
+
+> `readonly` `optional` **ik4SyntaxErrorCode?**: [`Ik403Code`](#ik403code)
+
+IK4-03, under that IK3, when the warning also names the element.
+
+##### ik5SyntaxErrorCode?
+
+> `readonly` `optional` **ik5SyntaxErrorCode?**: `string`
+
+IK5-02, when it sits on a transaction set as a whole. IK5-01 is then `R`.
+
+##### reason
+
+> `readonly` **reason**: `string`
+
+Why the code maps as it does, or why it maps to nothing.
+
+##### ta1NoteCode?
+
+> `readonly` `optional` **ta1NoteCode?**: [`Ta1NoteCode`](#ta1notecode-1)
+
+TA1-05, when the warning sits on the interchange. TA1-04 is then `R`.
 
 ***
 
@@ -16811,6 +16906,44 @@ Position of the segment being decoded; `elementIndex` is supplied by the helper.
 > `readonly` **warnings**: [`X12ParseWarning`](#x12parsewarning)[]
 
 The walker's warning accumulator. Appended to, never read.
+
+***
+
+### X12DerivedAck
+
+A derived acknowledgment spec and the parse warnings it accounts for.
+`reported` holds every warning the spec carries a code for, and
+`unreported` every other warning in the same scope: one the table maps to
+nothing there, a second interchange finding a TA1 has no room for, or a
+segment finding whose segment could not be located. Each warning of the
+scope is in exactly one of the two, in parse order.
+
+#### Example
+
+```ts
+import { deriveTA1Spec, parseX12 } from "@cosyte/x12";
+const { spec, reported, unreported } = deriveTA1Spec(parseX12(raw));
+```
+
+#### Type Parameters
+
+##### Spec
+
+`Spec`
+
+#### Properties
+
+##### reported
+
+> `readonly` **reported**: readonly [`X12ParseWarning`](#x12parsewarning)[]
+
+##### spec
+
+> `readonly` **spec**: `Spec`
+
+##### unreported
+
+> `readonly` **unreported**: readonly [`X12ParseWarning`](#x12parsewarning)[]
 
 ***
 
@@ -23249,6 +23382,32 @@ try {
     // application bug - never silently accept with errors
   }
 }
+```
+
+***
+
+### ACK\_WARNING\_MAPPINGS
+
+> `const` **ACK\_WARNING\_MAPPINGS**: `Readonly`\<`Record`\<[`X12WarningCode`](#x12warningcode), [`X12AckWarningMapping`](#x12ackwarningmapping)\>\>
+
+The table every derived acknowledgment reads: each warning code the package
+can raise, and the code a TA1 or a 999 carries for it at each place it can
+sit. A code with no TA1, AK9, IK5 or IK3 entry is never reported, and its
+`reason` says why. The table is exhaustive by type, so a new warning code
+must be placed here before the package compiles.
+
+The codes are the standard ones: TA1-05 from the interchange note codes in
+"./codes.js".TA1\_NOTE\_CODES, AK9-05 from the functional group syntax
+error codes, IK5-02 from the transaction set syntax error codes, IK3-04 and
+IK4-03 from "./codes.js".IK3\_SYNTAX\_ERROR\_CODES and
+"./codes.js".IK4\_SYNTAX\_ERROR\_CODES.
+
+#### Example
+
+```ts
+import { ACK_WARNING_MAPPINGS } from "@cosyte/x12";
+ACK_WARNING_MAPPINGS.X12_CONTROL_NUMBER_MISMATCH.ta1NoteCode; // "001"
+ACK_WARNING_MAPPINGS.X12_PRE_005010.ta1NoteCode; // undefined
 ```
 
 ***
@@ -29925,6 +30084,135 @@ const availity = defineProfile({
 availity.name;               // "availity"
 availity.lineage;            // ["availity"]
 availity.describe().adds;    // [{ id: "payer-loop-ref-2u", ... }]
+```
+
+***
+
+### derive999Spec()
+
+> **derive999Spec**(`interchange`, `options`): [`X12DerivedAck`](#x12derivedack)\<[`Build999Spec`](#build999spec)\>
+
+Derive the spec of a 999 Implementation Acknowledgment for one functional
+group of a parsed interchange, for "./build-999.js".build999.
+
+AK1 echoes the group's GS-01, GS-06 and GS-08, and each AK2 its transaction
+set's ST-01, ST-02 and ST-03, read without their release characters. The
+findings are the warnings that sit on this group or on one of its
+transaction sets, each looked up in [ACK\_WARNING\_MAPPINGS](#ack_warning_mappings):
+
+- On a transaction set as a whole (no SE, ST-02 and SE-02 disagree): an
+  IK5-02 code, and IK5-01 `R`.
+- On one segment of it (a dangling release character, a BDS or BIN whose
+  length does not frame, a TA1 between its ST and SE): an IK3 at the
+  segment's position counted from the ST, with an IK4 where the warning
+  names the element and the table gives an IK4-03; IK5-01 `R` with IK5-02
+  `5`. IK3-03 (the loop) is never written: loops are implementation guide
+  structure, which is not checked here.
+- On the group (no GE, GS-06 and GE-02 disagree, GE-01 miscounts): an
+  AK9-05 code, and AK9-01 `R`.
+
+A transaction set with no finding is accepted (`A`). AK9-01 is `R` on a
+group finding, else `A` when every set is accepted, `R` when none is, and
+`P` between. AK9-03 counts the transaction sets received, AK9-04 those
+accepted, and AK9-02 is GE-01 when it is a whole number no smaller than
+AK9-03, else AK9-03.
+
+No element value is ever copied into IK4-04, and no CTX is written.
+
+A segment finding is located through the position the parse recorded for
+its transaction set. A set built by hand or copied out of the parse has
+none, and neither has a segment whose id is not a segment id: the set is
+still rejected with IK5-02 `5`, but without an IK3, and the warning is
+returned as unreported.
+
+The spec echoes the inbound values as they are. A GS-06 or ST-02 that is
+empty makes `build999` refuse the spec, rather than acknowledge a group or
+a set the sender cannot identify.
+
+#### Parameters
+
+##### interchange
+
+[`X12Interchange`](#x12interchange)
+
+What `parseX12` returned for the inbound interchange.
+
+##### options
+
+[`Derive999Options`](#derive999options)
+
+The 999's own envelope and which group to acknowledge.
+
+#### Returns
+
+[`X12DerivedAck`](#x12derivedack)\<[`Build999Spec`](#build999spec)\>
+
+The 999 spec, with the group's warnings it reports and the ones it does not.
+
+#### Throws
+
+`X12_ACK_INVALID_SPEC` when `groupIndex` names no group.
+
+#### Example
+
+```ts
+import { build999, derive999Spec, parseX12 } from "@cosyte/x12";
+const { spec } = derive999Spec(parseX12(raw), {
+  envelope: {
+    senderId: "RECEIVER", receiverId: "SENDER",
+    interchangeDate: "260601", interchangeTime: "1205",
+    interchangeControlNumber: "000000101",
+    groupControlNumber: "101", transactionSetControlNumber: "0101",
+  },
+});
+const ack = build999(spec);
+```
+
+***
+
+### deriveTA1Spec()
+
+> **deriveTA1Spec**(`interchange`): [`X12DerivedAck`](#x12derivedack)\<[`BuildTA1Spec`](#buildta1spec)\>
+
+Derive the spec of a TA1 Interchange Acknowledgment from what `parseX12`
+found on the interchange envelope, for "./build-ta1.js".buildTA1.
+
+TA1-01, TA1-02 and TA1-03 echo the inbound ISA-13, ISA-09 and ISA-10, read
+by the ISA's fixed byte offsets. With no interchange finding the TA1
+accepts (`A`, note `000`). Otherwise it rejects (`R`) with the note
+[ACK\_WARNING\_MAPPINGS](#ack_warning_mappings) gives the first finding in parse order; a TA1
+carries one note, so every later finding is returned as unreported.
+
+The findings are the warnings that sit on the interchange: a control number
+or group count that disagrees between ISA and IEA, a missing IEA, an ISA
+that does not split into its elements, and a segment outside every
+transaction set. A finding inside a functional group belongs to the 999 for
+that group (see [derive999Spec](#derive999spec)). `X12_PRE_005010` and
+`X12_TRAILING_GARBAGE` are never reported; the table says why.
+
+Every mapped finding rejects. A receiver that accepts an interchange with
+errors noted sets `ackCode` to `E` on the returned spec.
+
+#### Parameters
+
+##### interchange
+
+[`X12Interchange`](#x12interchange)
+
+What `parseX12` returned for the inbound interchange.
+
+#### Returns
+
+[`X12DerivedAck`](#x12derivedack)\<[`BuildTA1Spec`](#buildta1spec)\>
+
+The TA1 spec, with the interchange warnings it reports and the ones it does not.
+
+#### Example
+
+```ts
+import { buildTA1, deriveTA1Spec, parseX12 } from "@cosyte/x12";
+const { spec } = deriveTA1Spec(parseX12(raw));
+const ta1 = buildTA1(spec);
 ```
 
 ***
