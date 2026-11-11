@@ -1717,9 +1717,13 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
     that tests for a reject rather than for an accept reads those as accepted; test
     `disposition === "A"` (or `"E"`, `"P"`) instead.
   - **A segment out of place is left unread, never repaired.** An `AK3` or `AK5` with no `AK2` open,
-    an `AK4` with no `AK3` open, and a second `AK1` or `AK9` warn `X12_997_SEGMENT_OUT_OF_PLACE` and
-    stay only on the transaction set; for a repeated `AK1` or `AK9` the first one stands. A `CTX`,
-    `IK3`, `IK4` or `IK5` inside a 997 is not part of it and is skipped without a warning.
+    an `AK4` with no `AK3` open, an `AK1` after an `AK2`, an `AK2` after the `AK9`, and a second
+    `AK1` or `AK9` warn `X12_997_SEGMENT_OUT_OF_PLACE` and stay only on the transaction set; for a
+    repeated `AK1` or `AK9` the first one stands. A segment the 997 does not define (a `CTX`, a
+    999's `IK3`, `IK4` or `IK5`, anything else) warns `X12_997_SEGMENT_NOT_DEFINED` and is not read.
+  - **`build997` writes no `CTX`.** A 999 error list type-checks as a 997 one, `contexts` and all,
+    so `build997` refuses any segment or element error that carries `contexts` rather than writing a
+    segment the 997 does not have or dropping the caller's data.
   - **`X12Ack997Ak4.copyOfBadDataElement` can carry PHI**, exactly as the 999's `IK4-04` can.
 
 - **Balance and integrity checks warn; they never rebalance or renumber.** The 835 TR3 §1.10.2 balance

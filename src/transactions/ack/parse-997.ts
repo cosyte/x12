@@ -32,6 +32,7 @@ import {
   ack997Ak5DispositionUnknown,
   ack997Ak9Absent,
   ack997Ak9DispositionUnknown,
+  ack997SegmentNotDefined,
   ack997SegmentOutOfPlace,
   type X12ParseWarning,
 } from "../../parser/warnings.js";
@@ -133,6 +134,8 @@ function decodeAck997(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
   const responses: X12Ack997TransactionResponse[] = [];
   let response: OpenResponse | undefined;
   let note: OpenSegmentNote | undefined;
+  /** Whether an AK2 has opened, after which an AK1 is out of place. */
+  let sawAk2 = false;
 
   /** Close the AK3 in flight onto the AK2 in flight. */
   const closeNote = (): void => {
@@ -165,7 +168,9 @@ function decodeAck997(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
     const segmentIndex = b + 1;
     switch (seg.id) {
       case "AK1": {
-        if (ak1 !== undefined) {
+        // A second AK1, or one after the first AK2 or the AK9: the header
+        // comes first, once.
+        if (ak1 !== undefined || sawAk2 || ak9 !== undefined) {
           warnings.push(ack997SegmentOutOfPlace({ segmentIndex, transactionIndex: 0 }));
           break;
         }
@@ -174,6 +179,11 @@ function decodeAck997(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
       }
       case "AK2": {
         closeResponse(undefined);
+        if (ak9 !== undefined) {
+          warnings.push(ack997SegmentOutOfPlace({ segmentIndex, transactionIndex: 0 }));
+          break;
+        }
+        sawAk2 = true;
         response = { ak2: Object.freeze(readAk2(seg, delimiters)), segmentIndex, segmentNotes: [] };
         break;
       }
@@ -232,8 +242,9 @@ function decodeAck997(interchange: X12Interchange, tx: X12TransactionSet): X12Ac
         break;
       }
       default: {
-        // Anything else inside a 997 body is not part of it; it stays on
-        // `tx.segments` verbatim.
+        // Anything else inside a 997 body is not part of it: warned, and left
+        // verbatim on `tx.segments`.
+        warnings.push(ack997SegmentNotDefined({ segmentIndex, transactionIndex: 0 }));
         break;
       }
     }

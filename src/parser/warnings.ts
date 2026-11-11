@@ -131,6 +131,7 @@ export const WARNING_CODES = {
   X12_997_AK5_DISPOSITION_UNKNOWN: "X12_997_AK5_DISPOSITION_UNKNOWN",
   X12_997_AK9_DISPOSITION_UNKNOWN: "X12_997_AK9_DISPOSITION_UNKNOWN",
   X12_997_SEGMENT_OUT_OF_PLACE: "X12_997_SEGMENT_OUT_OF_PLACE",
+  X12_997_SEGMENT_NOT_DEFINED: "X12_997_SEGMENT_NOT_DEFINED",
 } as const;
 
 /**
@@ -572,7 +573,9 @@ const WARNING_MESSAGES = {
   X12_997_AK9_DISPOSITION_UNKNOWN:
     "997 functional group disposition outside its code list: AK9-01 at `position.segmentIndex` is absent, empty or not one of the seven codes of code list 715 (`A`, `E`, `P`, `R`, `M`, `W`, `X`, compared exactly). `ak9.disposition` is undefined and `ak9.dispositionRaw` carries the code as sent; the counts and syntax error codes after it are read as sent. Do not read it as an accept. Nothing is echoed here.",
   X12_997_SEGMENT_OUT_OF_PLACE:
-    "997 segment the reader did not read where it stands: the segment at `position.segmentIndex` is an AK3 or AK5 with no AK2 open, an AK4 with no AK3 open, or a second AK1 or AK9, which the 997 does not allow. It is not on the reading, and for a repeated AK1 or AK9 the first one stands. The verbatim segment is preserved on the transaction set. Nothing is echoed here.",
+    "997 segment the reader did not read where it stands: the segment at `position.segmentIndex` is an AK3 or AK5 with no AK2 open, an AK4 with no AK3 open, an AK1 after an AK2, an AK2 after the AK9, or a second AK1 or AK9, which the 997 does not allow. It is not on the reading, and for a repeated AK1 or AK9 the first one stands. The verbatim segment is preserved on the transaction set. Nothing is echoed here.",
+  X12_997_SEGMENT_NOT_DEFINED:
+    "997 segment the 997 does not define: the segment at `position.segmentIndex` is not one of AK1, AK2, AK3, AK4, AK5 or AK9, such as a CTX or an IK3, IK4 or IK5 of a 999. The 997 has no place for it, so it is not on the reading. The verbatim segment is preserved on the transaction set. Nothing is echoed here.",
 } as const;
 
 /**
@@ -2610,7 +2613,8 @@ export function ack997Ak9DispositionUnknown(position: X12Position): X12ParseWarn
 
 /**
  * Build an `X12_997_SEGMENT_OUT_OF_PLACE` warning. Raised by `parse997` for
- * an AK3 or AK5 with no AK2 open, an AK4 with no AK3 open, or a second AK1 or AK9,
+ * an AK3 or AK5 with no AK2 open, an AK4 with no AK3 open, an AK1 after an
+ * AK2, an AK2 after the AK9, or a second AK1 or AK9,
  * none of which reaches the reading.
  *
  * The reader anchors it at that segment. It takes a position and nothing
@@ -2627,6 +2631,30 @@ export function ack997SegmentOutOfPlace(position: X12Position): X12ParseWarning 
   return {
     code: WARNING_CODES.X12_997_SEGMENT_OUT_OF_PLACE,
     message: WARNING_MESSAGES.X12_997_SEGMENT_OUT_OF_PLACE,
+    position,
+  };
+}
+
+/**
+ * Build an `X12_997_SEGMENT_NOT_DEFINED` warning. Raised by `parse997` for a
+ * segment inside a 997 that the 997 does not define (anything but AK1, AK2,
+ * AK3, AK4, AK5 and AK9, such as a 999's CTX, IK3, IK4 or IK5), which does not
+ * reach the reading.
+ *
+ * The reader anchors it at that segment. It takes a position and nothing
+ * else.
+ *
+ * @example
+ * ```ts
+ * import { ack997SegmentNotDefined } from "@cosyte/x12";
+ * const w = ack997SegmentNotDefined({ segmentIndex: 3, transactionIndex: 0 });
+ * w.code; // "X12_997_SEGMENT_NOT_DEFINED"
+ * ```
+ */
+export function ack997SegmentNotDefined(position: X12Position): X12ParseWarning {
+  return {
+    code: WARNING_CODES.X12_997_SEGMENT_NOT_DEFINED,
+    message: WARNING_MESSAGES.X12_997_SEGMENT_NOT_DEFINED,
     position,
   };
 }

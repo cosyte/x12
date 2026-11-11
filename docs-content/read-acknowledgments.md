@@ -89,7 +89,8 @@ if there is no 997 in the interchange.
 
 The 997 reader fills nothing in, where the 999 reader fills in a reject. An absent `AK1`, `AK5` or
 `AK9` reads as `undefined`, and a disposition outside its code list reads as an `undefined`
-`disposition` beside `dispositionRaw`, the code as sent. Each case warns, so check
+`disposition` beside `dispositionRaw`, the code as sent. A segment out of order, or one the 997
+does not define (a `CTX`, an `IK5`), is not read. Each case warns, so check
 `disposition === "A"` rather than "not rejected".
 
 ```ts runnable
@@ -180,7 +181,8 @@ serializeX12(built) === raw997.replaceAll("\n", ""); // => true
 `build997` refuses what the 999 builder refuses (an accept paired with errors, AK9 counts that
 disagree, an empty control number) and what a 997 adds: an `AK9-01` outside code list 715, an
 `AK5-01` outside code list 717 (which has no `P`: partial acceptance is stated for the group), a
-count or position that is not a whole number, and an empty `AK4-03`. The `AK3-04`, `AK4-03` and
+count or position that is not a whole number, an empty `AK4-03`, and `contexts` on any segment or
+element error: a 999 error list type-checks as a 997 one, but the 997 has no `CTX` segment. The `AK3-04`, `AK4-03` and
 syntax error codes you supply are written as given, escaped; no code table checks them.
 
 ## Read a TA1 interchange acknowledgment

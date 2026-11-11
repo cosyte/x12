@@ -361,7 +361,8 @@ export interface X12Ack997Ak9 {
  * `undefined` beside its verbatim `dispositionRaw` and warns
  * (`X12_997_AK5_DISPOSITION_UNKNOWN`, `X12_997_AK9_DISPOSITION_UNKNOWN`); a
  * segment the 997 does not allow where it stands is left unread and warns
- * `X12_997_SEGMENT_OUT_OF_PLACE`. Envelope-level warnings stay on
+ * `X12_997_SEGMENT_OUT_OF_PLACE`, and one it does not define at all (a CTX,
+ * an IK3) warns `X12_997_SEGMENT_NOT_DEFINED`. Envelope-level warnings stay on
  * `interchange.warnings`. Never throws on a document `parseX12` reads.
  */
 export interface X12Ack997 {

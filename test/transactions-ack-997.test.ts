@@ -25,6 +25,7 @@ import {
   ack997Ak5DispositionUnknown,
   ack997Ak9Absent,
   ack997Ak9DispositionUnknown,
+  ack997SegmentNotDefined,
   ack997SegmentOutOfPlace,
   build997,
   build999,
@@ -33,6 +34,7 @@ import {
   parseX12,
   serializeX12,
   type Build997Spec,
+  type Build999Spec,
   type X12ParseWarning,
 } from "../src/index.js";
 
@@ -540,13 +542,49 @@ describe("parse997: a segment out of place is not read and warns", () => {
     expect(codes(ack.warnings)).toEqual(["X12_997_SEGMENT_OUT_OF_PLACE@3"]);
   });
 
-  it("skips a segment that is not part of a 997, IK5 and CTX included, without a warning", () => {
+  it("warns on every segment the 997 does not define, CTX and the IK segments included", () => {
     const ack = read(
-      ack997(["AK1*HC*1", "AK2*837*0001", "CTX*X", "IK3*NM1*4", "IK5*R", "AK5*A", "AK9*A*1*1*1"]),
+      ack997([
+        "AK1*HC*1",
+        "AK2*837*0001",
+        "CTX*X",
+        "IK3*NM1*4",
+        "IK4*1**7",
+        "IK5*R",
+        "NM1*IL*1",
+        "AK5*A",
+        "AK9*A*1*1*1",
+      ]),
     );
     expect(ack.transactionResponses[0]?.segmentNotes).toEqual([]);
     expect(ack.transactionResponses[0]?.ak5?.disposition).toBe("A");
-    expect(ack.warnings).toEqual([]);
+    expect(ack.warnings).toEqual(
+      [3, 4, 5, 6, 7].map((segmentIndex) =>
+        ack997SegmentNotDefined({ segmentIndex, transactionIndex: 0 }),
+      ),
+    );
+  });
+
+  it("an AK1 after an AK2 is not read", () => {
+    const ack = read(ack997(["AK2*837*0001", "AK1*HC*1", "AK5*A", "AK9*A*1*1*1"]));
+    expect(ack.ak1).toBeUndefined();
+    expect(ack.transactionResponses[0]?.ak5?.disposition).toBe("A");
+    expect(codes(ack.warnings)).toEqual(["X12_997_SEGMENT_OUT_OF_PLACE@2", "X12_997_AK1_ABSENT@0"]);
+  });
+
+  it("an AK1 after an AK2 that an AK5 closed is not read either", () => {
+    const ack = read(ack997(["AK2*837*0001", "AK5*A", "AK1*HC*1", "AK9*A*1*1*1"]));
+    expect(ack.ak1).toBeUndefined();
+    expect(codes(ack.warnings)).toEqual(["X12_997_SEGMENT_OUT_OF_PLACE@3", "X12_997_AK1_ABSENT@0"]);
+  });
+
+  it("an AK2 after the AK9 is not read, nor the AK5 that follows it", () => {
+    const ack = read(ack997(["AK1*HC*1", "AK9*A*0*0*0", "AK2*837*0001", "AK5*A"]));
+    expect(ack.transactionResponses).toEqual([]);
+    expect(codes(ack.warnings)).toEqual([
+      "X12_997_SEGMENT_OUT_OF_PLACE@3",
+      "X12_997_SEGMENT_OUT_OF_PLACE@4",
+    ]);
   });
 
   it("puts only registry text on every warning", () => {
@@ -854,6 +892,93 @@ describe("build997: what it refuses", () => {
     });
   }
 
+  /** The error list of a 999, CTX contexts and all, as a caller might hand it on. */
+  const ERRORS_999: Build999Spec["functionalGroup"]["transactionResponses"][number]["segmentErrors"] =
+    [
+      {
+        segmentIdCode: "N3",
+        segmentPositionInTransactionSet: 2,
+        elementErrors: [{ position: { element: 1 }, syntaxErrorCode: "7" }],
+      },
+      {
+        segmentIdCode: "NM1",
+        segmentPositionInTransactionSet: 3,
+        syntaxErrorCode: "8",
+        contexts: ["C1"],
+        elementErrors: [{ position: { element: 3 }, syntaxErrorCode: "7", contexts: ["C2"] }],
+      },
+    ];
+
+  it("a 999 error list with segment contexts, from a typed caller: the 997 has no CTX", () => {
+    // A 999 error list has the 997's shape plus `contexts`, so it type-checks here.
+    const spec: Build997Spec = {
+      ...ACCEPT,
+      functionalGroup: {
+        ...ACCEPT.functionalGroup,
+        disposition: "R",
+        numberOfAcceptedTransactionSets: 0,
+        transactionResponses: [
+          {
+            transactionSetIdCode: "837",
+            transactionSetControlNumber: "0003",
+            disposition: "R",
+            segmentErrors: ERRORS_999,
+          },
+        ],
+      },
+    };
+    expect(refusal(spec)).toEqual({
+      code: ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC,
+      message:
+        "build997: transactionResponses[0].segmentErrors[1].contexts is set. The 997 has no CTX segment, so this builder writes none; remove contexts.",
+    });
+  });
+
+  it("element contexts alone, from an untyped caller, at their own indices", () => {
+    const spec = withResponse({
+      segmentErrors: [
+        {
+          segmentIdCode: "NM1",
+          segmentPositionInTransactionSet: 3,
+          elementErrors: [
+            { position: { element: 1 }, syntaxErrorCode: "7" },
+            { position: { element: 3 }, syntaxErrorCode: "7", contexts: ["C2"] },
+          ],
+        },
+      ],
+    });
+    expect(refusal(spec)).toEqual({
+      code: ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC,
+      message:
+        "build997: transactionResponses[0].segmentErrors[0].elementErrors[1].contexts is set. The 997 has no CTX segment, so this builder writes none; remove contexts.",
+    });
+  });
+
+  for (const contexts of [[], undefined, null, "C1"]) {
+    it(`contexts present as ${String(JSON.stringify(contexts))} is refused too, at either level`, () => {
+      const segment = withResponse({
+        segmentErrors: [{ segmentIdCode: "NM1", segmentPositionInTransactionSet: 3, contexts }],
+      });
+      expect(refusal(segment).message).toMatch(/segmentErrors\[0\]\.contexts is set/u);
+      const element = withResponse({
+        segmentErrors: [
+          {
+            segmentIdCode: "NM1",
+            segmentPositionInTransactionSet: 3,
+            elementErrors: [{ position: { element: 1 }, syntaxErrorCode: "7", contexts }],
+          },
+        ],
+      });
+      expect(refusal(element).message).toMatch(/elementErrors\[0\]\.contexts is set/u);
+    });
+  }
+
+  it("writes no CTX for a 997 whatever it was given, since it refuses first", () => {
+    for (const spec of [ACCEPT, PARTIAL, REJECT]) {
+      expect(serializeX12(build997(spec))).not.toContain("CTX");
+    }
+  });
+
   it("an empty AK4-03, named by its indices", () => {
     const spec = withResponse({
       segmentErrors: [
@@ -969,7 +1094,7 @@ describe("build997: what it refuses", () => {
 });
 
 describe("the 997 warnings", () => {
-  it("are six codes, each with its own registry message", () => {
+  it("are seven codes, each with its own registry message", () => {
     const at = { segmentIndex: 1, transactionIndex: 0 };
     const factories = [
       ack997Ak1Absent,
@@ -978,6 +1103,7 @@ describe("the 997 warnings", () => {
       ack997Ak5DispositionUnknown,
       ack997Ak9DispositionUnknown,
       ack997SegmentOutOfPlace,
+      ack997SegmentNotDefined,
     ];
     const warnings = factories.map((f) => f(at));
     expect(warnings.map((w) => w.code)).toEqual([
@@ -987,8 +1113,9 @@ describe("the 997 warnings", () => {
       "X12_997_AK5_DISPOSITION_UNKNOWN",
       "X12_997_AK9_DISPOSITION_UNKNOWN",
       "X12_997_SEGMENT_OUT_OF_PLACE",
+      "X12_997_SEGMENT_NOT_DEFINED",
     ]);
-    expect(new Set(warnings.map((w) => w.message)).size).toBe(6);
+    expect(new Set(warnings.map((w) => w.message)).size).toBe(7);
     for (const w of warnings) {
       expect(ALL_WARNING_MESSAGES.has(w.message)).toBe(true);
       expect(w.message.startsWith("997 ")).toBe(true);

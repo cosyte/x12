@@ -37,7 +37,8 @@ function refuseSpec(message: string): never {
  * - an AK9-01 outside code list 715, or an AK5-01 outside code list 717
  *   (which has no `P`) - `X12_ACK_INVALID_DISPOSITION`;
  * - a count, AK3-02 position or AK4-01 position that is not a whole number,
- *   or an empty AK4-03 - `X12_ACK_INVALID_SPEC`;
+ *   an empty AK4-03, or `contexts` on any segment or element error (a 999
+ *   error list passed on: the 997 has no CTX) - `X12_ACK_INVALID_SPEC`;
  * - everything `build999` refuses: an accept with errors
  *   (`X12_ACK_ACCEPT_WITH_ERRORS`), counts that disagree
  *   (`X12_ACK_COUNT_MISMATCH`), an empty or over-long control number.
@@ -99,6 +100,15 @@ export function build997(spec: Build997Spec): X12Interchange {
       "build997: response.segmentErrors",
       refuseSpec,
     )) {
+      // A 999 error list has this shape plus `contexts`, so it type-checks
+      // here; the 997 has no CTX segment, so any `contexts` at all is refused
+      // rather than written or dropped.
+      if (Object.hasOwn(segError, "contexts")) {
+        throw new AckBuildError(
+          ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC,
+          `build997: transactionResponses[${String(r)}].segmentErrors[${String(s)}].contexts is set. The 997 has no CTX segment, so this builder writes none; remove contexts.`,
+        );
+      }
       requireWholeNumber(
         segError.segmentPositionInTransactionSet,
         "segmentErrors[].segmentPositionInTransactionSet",
@@ -109,6 +119,12 @@ export function build997(spec: Build997Spec): X12Interchange {
         "build997: segError.elementErrors",
         refuseSpec,
       )) {
+        if (Object.hasOwn(elemError, "contexts")) {
+          throw new AckBuildError(
+            ACK_BUILD_ERROR_CODES.X12_ACK_INVALID_SPEC,
+            `build997: transactionResponses[${String(r)}].segmentErrors[${String(s)}].elementErrors[${String(e)}].contexts is set. The 997 has no CTX segment, so this builder writes none; remove contexts.`,
+          );
+        }
         requireWholeNumber(elemError.position.element, "elementErrors[].position.element");
         if (elemError.position.component !== undefined) {
           requireWholeNumber(elemError.position.component, "elementErrors[].position.component");

@@ -312,7 +312,11 @@ describe("997: the reader decides nothing it cannot read", () => {
           const known = (GROUP_CODES as readonly string[]).includes(ack.ak9.dispositionRaw);
           expect(ack.ak9.disposition).toBe(known ? ack.ak9.dispositionRaw : undefined);
         }
-        expect(ack.ak1 === undefined).toBe(!body.some((s) => s.startsWith("AK1")));
+        // An AK1 is read only ahead of every AK2 and the AK9: the header comes first.
+        const header = body.findIndex((s) => /^AK[129]/u.test(s));
+        expect(ack.ak1 === undefined).toBe(
+          header === -1 || !(body[header] ?? "").startsWith("AK1"),
+        );
         expect(ack.ak9 === undefined).toBe(!body.some((s) => s.startsWith("AK9")));
       }),
       { numRuns: 300 },

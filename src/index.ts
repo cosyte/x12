@@ -50,6 +50,7 @@ export {
   ack997Ak5DispositionUnknown,
   ack997Ak9Absent,
   ack997Ak9DispositionUnknown,
+  ack997SegmentNotDefined,
   ack997SegmentOutOfPlace,
   ack999Ak1Absent,
   ack999Ak9Absent,

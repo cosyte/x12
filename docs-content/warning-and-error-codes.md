@@ -11,7 +11,7 @@ Every code `@cosyte/x12` can hand you, in three groups:
 
 - **Fatal codes** (4): `parseX12` throws an `X12ParseError` carrying one when the input is not
   recoverable as X12 at all.
-- **Warning codes** (71): a deviation a reader tolerated, recorded on the model's `warnings`
+- **Warning codes** (72): a deviation a reader tolerated, recorded on the model's `warnings`
   array with a position, while the value stays on the model.
 - **Refusal codes** (15 registries): a builder or a checker refused what it was given and threw
   a typed error carrying one.
@@ -355,7 +355,11 @@ The declared span of this BDS or BIN segment's binary data holds a character abo
 
 ### X12_997_SEGMENT_OUT_OF_PLACE
 
-997 segment the reader did not read where it stands: the segment at `position.segmentIndex` is an AK3 or AK5 with no AK2 open, an AK4 with no AK3 open, or a second AK1 or AK9, which the 997 does not allow. It is not on the reading, and for a repeated AK1 or AK9 the first one stands. The verbatim segment is preserved on the transaction set. Nothing is echoed here.
+997 segment the reader did not read where it stands: the segment at `position.segmentIndex` is an AK3 or AK5 with no AK2 open, an AK4 with no AK3 open, an AK1 after an AK2, an AK2 after the AK9, or a second AK1 or AK9, which the 997 does not allow. It is not on the reading, and for a repeated AK1 or AK9 the first one stands. The verbatim segment is preserved on the transaction set. Nothing is echoed here.
+
+### X12_997_SEGMENT_NOT_DEFINED
+
+997 segment the 997 does not define: the segment at `position.segmentIndex` is not one of AK1, AK2, AK3, AK4, AK5 or AK9, such as a CTX or an IK3, IK4 or IK5 of a 999. The 997 has no place for it, so it is not on the reading. The verbatim segment is preserved on the transaction set. Nothing is echoed here.
 
 ## Refusal codes
 

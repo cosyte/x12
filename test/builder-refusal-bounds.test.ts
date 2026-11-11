@@ -291,16 +291,17 @@ describe("refusal messages: the source gate", () => {
     // over-long interchange control number. Neither interpolates anything but a
     // structural `locator`, so no document value reaches a message.
     //
-    // SIXTEEN modules and 135 sites now: `build-997.ts` is the sixteenth module
-    // and brings FOUR sites: its one-line `refuseSpec` thrower, an AK9-01
-    // outside code list 715, an AK5-01 outside code list 717 and an empty
-    // AK4-03. None interpolates anything but a loop index. Everything else the
+    // SIXTEEN modules and 137 sites now: `build-997.ts` is the sixteenth module
+    // and brings SIX sites: its one-line `refuseSpec` thrower, an AK9-01
+    // outside code list 715, an AK5-01 outside code list 717, an empty
+    // AK4-03, and `contexts` on a segment or an element error (the 997 has no
+    // CTX). None interpolates anything but a loop index. Everything else the
     // 997 refuses is refused by the acknowledgment code in `build-999.ts`,
     // whose sites are unchanged in number and now name the builder through
     // the library-owned `variant`.
     const raising = new Set(sites.map((s) => s.file));
     expect(raising.size).toBe(16);
-    expect(sites.length).toBe(135);
+    expect(sites.length).toBe(137);
     expect(modules.some((m) => m.endsWith(join("profiles", "validate.ts")))).toBe(true);
   });
 
