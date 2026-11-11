@@ -82,8 +82,11 @@ async function peakHeld(total: number, keep: X12StreamTransaction[] | undefined)
   return peak;
 }
 
-describe.skipIf(IS_BUN || IS_DENO)(
-  // Bun and Deno: no `--expose-gc` through `node:v8`, so a collection cannot be forced.
+describe.skipIf(IS_BUN || IS_DENO || process.env["X12_MUTATION_RUN"] === "1")(
+  // Bun and Deno: no `--expose-gc` through `node:v8`, so a collection cannot be forced. A mutation
+  // run (`vitest.mutation.config.ts` sets X12_MUTATION_RUN): it streams 240 MiB for every parser
+  // mutant and judges the heap, not what the code returns; `test/parser-stream.test.ts` holds the
+  // stream to `parseX12` there. `pnpm test` runs it on every pull request.
   "readTransactionSets holds bounded heap",
   () => {
     it("streams ten times its heap budget, reading every set, inside the budget", async () => {
