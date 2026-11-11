@@ -233,6 +233,25 @@ describe("deriveTA1Spec", () => {
     expect(ack.spec.functionalGroup.disposition).toBe("A");
   });
 
+  it("rejects with 024 for a segment with an empty first element outside every transaction set", () => {
+    // Kept as an orphan and warned on, like any other unexpected segment, so
+    // the TA1 reports it and the 999 for the group leaves it to the TA1.
+    for (const input of [
+      CLEAN.replace(GE, `${GE}*TESTDATA*MORE~`),
+      CLEAN.replace(ST2, `*TESTDATA*MORE~${ST2}`),
+    ]) {
+      const ix = parseX12(input);
+      expect(codes(ix.warnings)).toEqual([WARNING_CODES.X12_UNEXPECTED_SEGMENT]);
+      const derived = deriveTA1Spec(ix);
+      expect(derived.spec).toMatchObject({ ackCode: "R", noteCode: "024" });
+      expect(derived.reported).toEqual(ix.warnings);
+      expect(derived.unreported).toEqual([]);
+      const ack = derive999(ix);
+      expect(ack).toMatchObject({ reported: [], unreported: [] });
+      expect(ack.spec.functionalGroup.disposition).toBe("A");
+    }
+  });
+
   it("does not report a dangling release character inside an unexpected segment again", () => {
     const ix = parseX12(CLEAN.replace(IEA, "NTE*ADD*TESTNOTE?"));
     expect(codes(ix.warnings)).toEqual([

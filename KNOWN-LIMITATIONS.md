@@ -1765,15 +1765,17 @@ N-char spec limit` refusal, one per emitting module, where the branch fires **be
 - **A TA1 or 999 derived from a parse reports only what the parse checks.** `deriveTA1Spec` and
   `derive999Spec` read `parseX12`'s warnings through `ACK_WARNING_MAPPINGS`, so they report the
   envelope and the base-standard syntax we check, never implementation guide usage. So:
-  - **A derived 999 that accepts says only that.** A transaction set that breaks its guide is
-    accepted unless a warning we raise sits on it. Add your own guide findings to the spec before
-    `build999`.
+  - **A derived accept says only that the envelope and the base syntax read clean.** It does not
+    mean the file meets the implementation guide or any payer's companion guide: a transaction set
+    that breaks either is accepted unless a warning we raise sits on it. Add your own guide findings
+    to the spec before `build999`.
   - **SE-01 is not checked against the segment count.** `parseX12` raises no warning for it
     (`serializeX12` does), so a derived 999 never writes IK5-02 `4`.
   - **A TA1 carries one note**: the first interchange finding in parse order. The others are returned
     as `unreported`.
-  - **Every mapped finding rejects** (TA1 `R`, IK5 `R`, AK9 `R`); nothing derives `E`. Set it on the
-    spec yourself if you accept with errors noted.
+  - **Every mapped finding rejects** (TA1 `R`, IK5 `R`, AK9 `R`); nothing derives `E`. An `E` tells
+    the sender the data was taken and not to resend it, which is unsafe when a finding may mean data
+    was lost or misread. Set it on the spec yourself if you know nothing was lost.
   - **IK3-03 (the loop) is never written**, no CTX is written, and no value is copied into IK4-04.
   - **A segment finding is located through the position `parseX12` recorded for its transaction set.**
     A transaction set built by hand or copied out of the parse has none: it is still rejected with

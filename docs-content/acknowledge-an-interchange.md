@@ -21,6 +21,9 @@ frame. We never check implementation guide usage (a required segment missing, a 
 guide's list, a loop repeated too often), so a derived 999 never reports it. If you validate a guide,
 add your findings to the spec we return before you build it.
 
+So a derived accept means the envelope and the base syntax read clean, and nothing more. It does not
+mean the file meets the implementation guide or any payer's companion guide.
+
 Each warning code has one row in `ACK_WARNING_MAPPINGS`: the code a TA1 or a 999 carries for it, or
 the reason it carries none.
 
@@ -41,6 +44,11 @@ the reason it carries none.
 | `X12_BINARY_DATA_TRUNCATED`       | a BDS or BIN of a transaction set | IK3-04 `8` and IK4-03 `4`, IK5 `R` with `5` |
 | `X12_BINARY_LENGTH_INVALID`       | a BDS or BIN of a transaction set | IK3-04 `8`, no IK4, IK5 `R` with `5`        |
 | `X12_BINARY_LENGTH_MISMATCH`      | a BDS or BIN of a transaction set | IK3-04 `8`, no IK4, IK5 `R` with `5`        |
+
+A segment outside every transaction set includes one whose first element is empty
+(`*TESTDATA*MORE~`): `parseX12` keeps it as an orphan and warns `X12_UNEXPECTED_SEGMENT` as it does
+for any other, so the TA1 rejects it with note `024` and the 999 for its group leaves it to the
+TA1.
 
 Nothing else is reported, and each row of the table says why:
 
@@ -111,9 +119,8 @@ read?.ak1.groupControlNumber; // => "7"
 
 ## Reject what does not hold together
 
-Here the second transaction set closes with an SE-02 that is not its ST-02, and its BHT ends the
-segment with a release character that releases nothing. The 999 rejects that set, accepts the
-first, and partially accepts the group.
+Here the second transaction set closes with an SE-02 that is not its ST-02. The 999 rejects that
+set with IK5-02 `3`, accepts the first, and partially accepts the group.
 
 ```ts runnable
 import {
@@ -189,7 +196,10 @@ The spec is plain data, so you can change it before you build it:
 
 - A TA1 carries one note. With several interchange findings, the first in parse order is reported
   and the others are in `unreported`.
-- Every mapped finding rejects. To accept an interchange with errors noted, set `ackCode` to `E`.
+- Every mapped finding rejects, and nothing derives `E` (accepted with errors noted). An `E` tells
+  the sender we took the data and not to resend it, which is unsafe when a finding may mean data was
+  lost or misread. If you know a finding lost nothing, set `ackCode` on the TA1 spec, or the
+  disposition on the 999 spec, to `E` yourself.
 - `derive999Spec` acknowledges one group, `groupIndex` (0 when omitted). Call it once per group in
   `interchange.groups`, each with its own envelope and control numbers.
 - We never copy a value into IK4-04, write no CTX, and leave IK3-03 (the loop) out: loops belong to
