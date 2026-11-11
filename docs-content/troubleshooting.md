@@ -136,6 +136,11 @@ builders run on a JSON-driven caller's values.
 - **Healthcare HIPAA 005010 only.** Non-healthcare sets (850/856/810/204, …), the EDIFACT syntax
   family, and pre-005010 versions are out of v1 scope. Pre-005010 input is tolerated and flagged
   (`X12_PRE_005010`), not decoded to older field maps.
+- **No 4010 variants and no 277U.** We do not build the 004010 835, 837, 270/271, 276/277, 278, 834
+  or 820, or the 4010 277U unsolicited claim status. Their replacements are the 005010 sets we read
+  and build: the 277 (`005010X212`) and the 277CA (`005010X214`) in place of the 4010 277 and the
+  277U. [The transaction sets](./spec-notes-transaction-sets.md#what-is-out-of-scope-v1) shows what
+  a typed reader does with a 4010 document.
 - **No transport.** AS2, SFTP, and MLLP-style delivery are out of scope. This is a parser/serializer,
   not a communications stack.
 - **Below 1.0.** The package is published on npm as `@cosyte/x12` from a public repo, on the 0.1 line. Its
