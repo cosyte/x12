@@ -19,28 +19,46 @@ permissions:
 
 jobs:
   # Universal gates from the shared pipeline (typecheck, lint, format, test, coverage, build, attw,
-  # dual ESM/CJS smoke, actionlint) on the standard Node matrix (22, 24 and 26). x12 ships a PHI
-  # scanner, so the shared pipeline's optional PHI-scan step is switched on.
+  # dual ESM/CJS smoke, actionlint) on Node 22, 24 and 26, on Linux, Windows and macOS. x12 ships a
+  # PHI scanner, so the shared pipeline's optional PHI-scan step is switched on.
   #
   # The shared pipeline is named at an immutable published reference, never at the callee's default
   # branch: a floating reference delivers every later change made there on that repository's clock
   # rather than this one's, reviewed by nobody here, so x12's CI conclusion could move with no x12
-  # commit. Every workflow here that calls cosyte/.github names the same reference, pinned by its
-  # commit with the reference in the comment, and they move together: name a newer release from
-  # https://github.com/cosyte/.github/releases in all of them at once.
+  # commit. Every workflow here that calls cosyte/.github names a reference pinned by its commit,
+  # with the reference in the comment. This caller, nightly-properties.yml and weekly-mutation.yml
+  # name the newest release, whose weekly run is sharded; the other callers move to it with the next
+  # change to them. A newer release is listed at https://github.com/cosyte/.github/releases.
   #
-  # The performance standard's two jobs run beside `verify`, never after it, so a pull request waits
-  # for the slowest job rather than their sum:
+  # The testing standard's jobs run beside `verify`, never after it, so a pull request waits for the
+  # slowest job rather than their sum:
+  # - `bun` and `deno`: the whole suite again under Bun and under Deno, each in its own job on
+  #   Linux. A test that cannot run there is skipped by name with its reason.
+  # - `coverage-ratchet`: coverage held to quality-floor.json, and on a pull request every changed
+  #   line that coverage counts must have run and no floor may be lowered or removed.
+  # - `mutation` (pull requests only): the changed source files mutated with stryker.config.mjs, on
+  #   the suite of vitest.mutation.config.ts, and every mutant in the changed lines killed. That
+  #   suite leaves out test/perf/, so this job never repeats the scaling gate's work. The full run
+  #   is weekly-mutation.yml's.
+  #
+  # The performance standard's two jobs run beside `verify` too:
   # - `scaling-gate`: `pnpm test:perf`, the scaling gate on `parseX12` and on the typed reader and
-  #   builder of every shape the bench measures, and its self-check, never under coverage. A skipped job satisfies a required check, so require
-  #   `ci / scaling-gate` only while its input below stays on.
+  #   builder of every shape the bench measures, and its self-check, never under coverage.
   # - `bench-compare` (pull requests only): bench/x12.bench.mjs timed on the base build and the head
   #   build, interleaved on one runner, at the sizes that run in milliseconds. Advisory: it never
   #   fails, so never require it. The large sizes are measured by bench.yml's reading instead.
+  #
+  # A skipped job satisfies a required check, so require `bun`, `deno`, `coverage-ratchet`,
+  # `mutation` or `scaling-gate` only while its input below stays on.
   ci:
-    uses: cosyte/.github/.github/workflows/ci.yml@0be6757a773885cbd5165dbfa0f93772d907b3e8 # workflows-2026-11-10-0be6757a7738
+    uses: cosyte/.github/.github/workflows/ci.yml@398cd4ded647dddd9f2e220ceb042840f59e1426 # the release of 398cd4ded647
     with:
+      os: '["ubuntu-latest", "windows-latest", "macos-latest"]'
       run-phi-scan: true
+      run-bun: true
+      run-deno: true
+      run-coverage-ratchet: true
+      run-mutation: true
       run-scaling-gate: true
       run-bench-compare: true
       bench-suites: bench/x12.bench.mjs

@@ -1,0 +1,32 @@
+name: Nightly properties
+
+# The property tests at depth: every property in test/property/ that runs through `assertProperty`
+# (test/property/_runner.ts) runs 100 cases on a pull request and 10,000 here
+# (COSYTE_PROPERTY_RUNS). A failure prints the seed and path that replay it, and the shared job
+# keeps each one in its summary and in the `property-run` artifact: set COSYTE_PROPERTY_SEED and
+# COSYTE_PROPERTY_PATH to them and run `pnpm test:property` to get the same case, already shrunk.
+# The fuzz targets (test/property/*-fuzz.property.test.ts) keep nightly-fuzz.yml, which runs them
+# for a time budget from a seed that changes each night. The shared job is cosyte/.github's
+# nightly-properties.yml.
+
+on:
+  schedule:
+    # 04:41 UTC. An odd minute: GitHub delays scheduled runs at the start of every hour.
+    - cron: "41 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  nightly:
+    uses: cosyte/.github/.github/workflows/nightly-properties.yml@398cd4ded647dddd9f2e220ceb042840f59e1426 # the release of 398cd4ded647
+    with:
+      # The property suites only, without the fuzz targets: nothing else reads the depth, so the
+      # rest of the suite would add time and no cases.
+      test-cmd: "pnpm test:property"
+      property-runs: "10000"

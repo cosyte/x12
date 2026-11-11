@@ -48,6 +48,12 @@
  * under, and `build-999.ts` already stamps the same `FA` on the 999, so the
  * test file asserts the two agree by building a 999 and reading its GS-01.
  *
+ * `PI` (275) and `FA` (999) complete the table, so it has a row for every
+ * transaction set this package builds. `build-275.ts` declares its own `PI`
+ * in the same literal shape as the eight above, and the test file checks it
+ * the same way; the 999 row is checked against a built 999's GS-01, as the
+ * 997 row is.
+ *
  * @internal - the builders' shared source for GS-01. Not part of the package's
  * public surface: a consumer reads GS-01 off a parsed `GS` segment, and this
  * table exists so the EMIT side has one carrier for the value instead of one
@@ -86,6 +92,7 @@ export const ELEMENT_479_REFERENCE =
 export const FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET = Object.freeze({
   "270": "HS",
   "271": "HB",
+  "275": "PI",
   "276": "HR",
   "277": "HN",
   "278": "HI",
@@ -94,4 +101,5 @@ export const FUNCTIONAL_IDENTIFIER_BY_TRANSACTION_SET = Object.freeze({
   "835": "HP",
   "837": "HC",
   "997": "FA",
+  "999": "FA",
 } as const);

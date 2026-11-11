@@ -12,3 +12,7 @@ bench-results/
 .readme-dist/
 .cosyte-doc-snippets/
 .cosyte-readme-snippets/
+
+# Mutation testing (StrykerJS): the reports and the sandbox it runs in
+reports/
+.stryker-tmp/

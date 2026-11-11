@@ -31,8 +31,8 @@ need it.
 
 `interchange()` generates a parsed `X12Interchange`: an ISA over generated delimiters, sometimes a
 TA1, then one or more functional groups of one or more transaction sets. Each transaction set is a
-type the library declares a guide for (270, 271, 276, 277, 278, 820, 834, 835 or 837), and its
-body segments carry repetitions, components and values that need the release character. Every
+type the library declares a guide for (270, 271, 275, 276, 277, 278, 820, 834, 835, 837 or 999),
+and its body segments carry repetitions, components and values that need the release character. Every
 count and control number agrees, so the parser warns about nothing. State the rule your code must
 keep, and let fast-check look for an interchange that breaks it.
 
