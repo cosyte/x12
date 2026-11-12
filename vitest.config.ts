@@ -68,6 +68,10 @@ const config = cosyteVitest({
      * A third, `test/scripts/attw-gate.test.ts` (60 s per case), went with this
      * repository's own attw gate on 2026-11-08: the gate is `@cosyte/script-utils`'
      * now, and its tests run in cosyte/config. The measurements below predate that.
+     * One file carries a ceiling of its own for every case in it, and says why beside
+     * it: `test/scripts/phi-scan.test.ts`, 30 s, because each of its cases spawns the
+     * scanner and most spawn git, and a Windows runner's process starts carried one
+     * of them to 10.8 s (CI run 43023570001). The figures are in that file.
      *
      * THE 834 STREAM IS THE PROOF THAT THIS NUMBER IS THE WRONG PLACE TO PUT ROOM,
      * AND IT IS NOT A HYPOTHETICAL. Under `pnpm test:coverage` on this box (12-CPU
