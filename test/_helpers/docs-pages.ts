@@ -155,10 +155,11 @@ export function sampleCompileErrors(
   const options: ts.CompilerOptions = {
     ...SAMPLE_OPTIONS,
     typeRoots: [join(root, "node_modules", "@types")],
-    // The package's optional `/arbitraries` subpath sits beside its entry point, as in `src/`.
+    // The package's `/arbitraries` and `/parse` subpaths sit beside its entry point, as in `src/`.
     paths: {
       [pkg]: [entry],
       [`${pkg}/arbitraries`]: [join(dirname(entry), "arbitraries", "index.ts")],
+      [`${pkg}/parse`]: [join(dirname(entry), "parse.ts")],
     },
   };
   const files = new Map<string, SampleSource>();

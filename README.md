@@ -181,9 +181,10 @@ runs that end to end.
 
 ## API
 
-Two entry points ship: `@cosyte/x12`, which carries everything below, and
-`@cosyte/x12/arbitraries`, the fast-check generators for property-testing your own code, which
-needs `fast-check` installed beside it.
+Three entry points ship: `@cosyte/x12`, which carries everything below; `@cosyte/x12/parse`, the
+parser alone (`parseX12`, `readTransactionSets`, segment decoding, the codes and their types), a
+smaller import for a process that only parses; and `@cosyte/x12/arbitraries`, the fast-check
+generators for property-testing your own code, which needs `fast-check` installed beside it.
 
 - **Read.** `parseX12` decodes an interchange into a model, and a per-transaction reader turns a
   transaction set into a typed one (`get835`, `get837Claims`, `get270Inquiry`, `get271Eligibility`,

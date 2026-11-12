@@ -1414,14 +1414,14 @@ describe("AC12: the manifest and its types come from the entry point", () => {
       ".",
       "./arbitraries",
       "./package.json",
+      "./parse",
     ]);
-    // The one other subpath is the fast-check generators, which read the manifest to pick a
-    // guide but never export it.
-    const arbitraries = readFileSync(
-      join(import.meta.dirname, "..", "src", "arbitraries", "index.ts"),
-      "utf8",
-    );
-    expect(arbitraries).not.toContain("X12_TR3_CONFORMANCE");
+    // The two other subpaths are the fast-check generators, which read the manifest to pick a
+    // guide but never export it, and the parser alone, which never loads it.
+    for (const file of [["arbitraries", "index.ts"], ["parse.ts"]]) {
+      const text = readFileSync(join(import.meta.dirname, "..", "src", ...file), "utf8");
+      expect(text, file.join("/")).not.toContain("X12_TR3_CONFORMANCE");
+    }
   });
 });
 

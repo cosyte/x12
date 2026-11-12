@@ -10,7 +10,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { readFileSync, rmSync } from "node:fs";
+import { readFileSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 import { resolveToolBin } from "@cosyte/process";
@@ -50,7 +50,20 @@ function nonAsciiLines(bytes: Buffer): string[] {
 }
 
 describe("the built entry points a consumer imports are ASCII", () => {
-  it.each(["index.mjs", "index.cjs"])("%s holds no byte above 0x7f", (entry) => {
-    expect(nonAsciiLines(readFileSync(join(OUT_DIR, entry)))).toEqual([]);
+  it.each(["index.mjs", "index.cjs", "parse.mjs", "parse.cjs"])(
+    "%s holds no byte above 0x7f",
+    (entry) => {
+      expect(nonAsciiLines(readFileSync(join(OUT_DIR, entry)))).toEqual([]);
+    },
+  );
+
+  // The entry points share the parser through chunks the build splits out, and a chunk is
+  // compiled on every cold import as the entry points are.
+  it("every built chunk holds no byte above 0x7f", () => {
+    const chunks = readdirSync(OUT_DIR).filter((name) => /^chunk-.*\.(?:mjs|cjs)$/u.test(name));
+    expect(chunks.length).toBeGreaterThan(0);
+    for (const chunk of chunks) {
+      expect(nonAsciiLines(readFileSync(join(OUT_DIR, chunk))), chunk).toEqual([]);
+    }
   });
 });

@@ -66,6 +66,9 @@ const PUBLIC_ENTRY_SOURCE = join(root, "src", "index.ts");
 /** Map the generators' subpath to its built ESM artifact. */
 const ARBITRARIES = join(root, "dist", "arbitraries.mjs");
 
+/** Map the parse-only subpath to its built ESM artifact. */
+const PARSE = join(root, "dist", "parse.mjs");
+
 /**
  * A sample's import of the package resolves to the built file by its `file:` URL. Node's ESM
  * loader on Windows takes no bare drive-letter path (`D:\...`), and a URL loads everywhere.
@@ -75,7 +78,9 @@ const resolveEntry = (specifier: string): string | undefined =>
     ? pathToFileURL(ENTRY).href
     : specifier === "@cosyte/x12/arbitraries"
       ? pathToFileURL(ARBITRARIES).href
-      : undefined;
+      : specifier === "@cosyte/x12/parse"
+        ? pathToFileURL(PARSE).href
+        : undefined;
 
 beforeAll(() => {
   // On Windows `pnpm` is a `.cmd` file, which only a shell starts.

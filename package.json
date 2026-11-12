@@ -57,6 +57,16 @@
         "default": "./dist/index.cjs"
       }
     },
+    "./parse": {
+      "import": {
+        "types": "./dist/parse.d.ts",
+        "default": "./dist/parse.mjs"
+      },
+      "require": {
+        "types": "./dist/parse.d.cts",
+        "default": "./dist/parse.cjs"
+      }
+    },
     "./arbitraries": {
       "import": {
         "types": "./dist/arbitraries.d.ts",
@@ -71,6 +81,9 @@
   },
   "typesVersions": {
     "*": {
+      "parse": [
+        "./dist/parse.d.ts"
+      ],
       "arbitraries": [
         "./dist/arbitraries.d.ts"
       ]
@@ -128,6 +141,7 @@
     "check:catalog": "cosyte-catalog",
     "check:documents": "pnpm check:readme && pnpm check:claude-card && pnpm check:catalog",
     "check:process": "cosyte-process check",
+    "check:cold-import": "node scripts/check-cold-import.mjs",
     "check:docs-reference": "cosyte-docs-reference --check",
     "docs:reference": "cosyte-docs-reference",
     "check:version-bump": "tsx scripts/check-version-bump.ts",

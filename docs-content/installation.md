@@ -69,11 +69,22 @@ typeof get835; // => "function"
 const { parseX12, get835 } = require("@cosyte/x12");
 ```
 
-Both entry points, `@cosyte/x12` and the fast-check generators at `@cosyte/x12/arbitraries` (see
-[Property-test your code](./property-test-your-code.md)), publish per-condition types (`.d.ts` for
-`import`, `.d.cts` for `require`), checked by Are the Types Wrong (`attw`) on every pull request,
-and each resolves under both `node16` and legacy `node10` module resolution. Editor IntelliSense
-matches the build you actually load.
+Every entry point, `@cosyte/x12`, the parser alone at `@cosyte/x12/parse` (see
+[Import only the parser](./performance.md#import-only-the-parser)), and the fast-check generators at
+`@cosyte/x12/arbitraries` (see [Property-test your code](./property-test-your-code.md)), publishes
+per-condition types (`.d.ts` for `import`, `.d.cts` for `require`), checked by Are the Types Wrong
+(`attw`) on every pull request, and each resolves under both `node16` and legacy `node10` module
+resolution. Editor IntelliSense matches the build you actually load.
+
+A process that only parses, and never calls a typed reader, a builder or a code-list lookup, can
+import `@cosyte/x12/parse` instead, which loads a fraction of the code:
+
+```ts runnable
+import { parseX12, readTransactionSets } from "@cosyte/x12/parse";
+
+typeof parseX12; // => "function"
+typeof readTransactionSets; // => "function"
+```
 
 ## PHI discipline
 

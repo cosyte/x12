@@ -85,8 +85,71 @@ transaction set at a time, holding about one set rather than the file.
 
 Importing the package costs a process time before it parses anything, which matters most to a
 short-lived process: a command-line tool, a serverless function, a test worker. The benchmark
-reading times it with its gzipped size. Most of the import is compiling the one bundle; the built-in
-profiles are built on first read rather than at import.
+reading times it with its gzipped size. Most of the import is compiling the code: `@cosyte/x12`
+carries every typed reader, builder, code list and loop specification. The built-in profiles are
+built on first read rather than at import.
+
+### Import only the parser
+
+`@cosyte/x12/parse` is the parser alone: `parseX12`, `readTransactionSets`, segment and element
+decoding (`decodeSegment`, `getSegmentValue`, `elementValue`, `readElementDecimal` and the rest),
+`escapeRelease` and `unescapeRelease`, `detectDelimiters`, `X12Decimal`, `X12ParseError`,
+`FATAL_CODES`, `WARNING_CODES`, `ALL_WARNING_MESSAGES`, and their types. It loads no code list,
+loop specification, typed reader, builder, serializer or built-in profile.
+
+Use it when a process only parses: it frames interchanges, routes transaction sets by their `ST`,
+counts or splits them, or reads the segments it needs itself. Use `@cosyte/x12` when it calls a
+typed reader (`get835`, `get837Claims` and the rest), a builder, `serializeX12`, a code-list lookup
+or `profiles`. Both in one process cost no more than `@cosyte/x12` alone.
+
+```ts runnable
+import { parseX12, WARNING_CODES } from "@cosyte/x12/parse";
+
+const raw =
+  "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       " +
+  "*260601*1200*^*00501*000000001*0*P*:~" +
+  "GS*HP*SENDER*RECEIVER*20260601*1200*1*X*005010X221A1~" +
+  "ST*835*0001~SE*2*0001~GE*1*1~IEA*1*000000001~";
+
+const ix = parseX12(raw);
+
+ix.groups[0]?.transactions[0]?.st.elements[1]; // => "835"
+ix.warnings.some((w) => w.code === WARNING_CODES.X12_PRE_005010); // => false
+```
+
+Every name `@cosyte/x12/parse` exports is the same one `@cosyte/x12` exports when both are loaded
+in one module format: the build shares one copy of the parser between them, once for `import` and
+once for `require`. An `X12ParseError` thrown through either is one class to `instanceof`, and
+`setDefaultProfile` from `@cosyte/x12` sets the profile `parseX12` from `@cosyte/x12/parse`
+attaches. Across formats they are two copies: `import` of one entry point beside `require` of the
+other gives two `X12ParseError` classes and two default profiles, as `import` and `require` of
+`@cosyte/x12` alone always have. Keep a process to one format, or check `err.name` instead of
+`instanceof`.
+
+`@cosyte/x12` exports everything it did, in the same shape, so no caller has to change an import;
+moving one to the subpath is a choice for the import time alone. Under `require`, each export of
+either entry point is an ordinary writable property, so `jest.spyOn` and `vi.spyOn` stub one as
+they did before.
+
+### The cold import gate
+
+`pnpm check:cold-import` (`scripts/check-cold-import.mjs`) imports each entry point in twenty
+fresh Node.js processes, interleaved with an empty module, and fails when the median of either is
+over its budget: 20.5 ms for `@cosyte/x12` and 4.5 ms for `@cosyte/x12/parse`. CI runs it on a
+hosted runner after the build, and each reading names the runner's CPU.
+
+The budgets come from sixty readings on hosted `ubuntu-latest` runners, Node.js 22, each the median
+of twenty processes (CI runs 43201238188 on commit `93a749d` and 43203343324 on commit `46cdfbf`,
+the `cold-import-measure` jobs). The slowest runner class, the AMD EPYC 7763, gave eighteen
+readings: `@cosyte/x12` 15.30 to 16.29 ms and `@cosyte/x12/parse` 3.15 to 3.30 ms. Each budget is the
+slowest of those readings with a quarter on top, rounded up to the half millisecond. The 20.5 ms
+budget for `@cosyte/x12` is looser than the 15 ms of an earlier cold import check we removed: the
+single bundle before this change read up to 16.28 ms on its own on hosted runners (15.80 ms on the
+AMD EPYC 7763), so 15 ms never held there. A quarter over the slowest class also means a fast
+runner (the AMD EPYC 9V45 read 8.82 to 10.12 ms) would pass an import nearly twice as slow. Across every
+class the readings were 8.82 to 16.84 ms and 1.93 to 3.51 ms. The split build that shares one parser
+between the entry points costs `@cosyte/x12` 0.16 to 0.57 ms over the single bundle before it, read
+side by side on the same runner in each of the sixty jobs.
 
 ## What these are not
 

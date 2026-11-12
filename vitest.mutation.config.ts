@@ -15,8 +15,9 @@ import config from "./vitest.config.js";
  *   oracle doubles, each started as a child process), not the library.
  * - The tests that start another process or read a build: the docs samples
  *   (`docs-content.test.ts`, which builds and loads `dist/`), the README example
- *   (`readme-usage.test.ts`, run in a child process) and the bundle check (`bundle-ascii.test.ts`,
- *   which runs tsup). Code a child process or a build runs is not the instrumented source, so no
+ *   (`readme-usage.test.ts`, run in a child process), the bundle check (`bundle-ascii.test.ts`,
+ *   which runs tsup) and the parse entry point's check (`parse-entry.test.ts`, which runs tsup and
+ *   reads the source text). Code a child process or a build runs is not the instrumented source, so no
  *   mutant is ever killed there.
  * - The tests that read this repository's source text and hold it to a shape: that every builder
  *   bounds its loops over a caller's list, types each value it writes, declares its GS-01 as a
@@ -59,6 +60,7 @@ export default {
       "test/docs-content.test.ts",
       "test/readme-usage.test.ts",
       "test/bundle-ascii.test.ts",
+      "test/parse-entry.test.ts",
       "test/property/*-fuzz.property.test.ts",
       "test/builder-array-bounds.test.ts",
       "test/builder-control-number-empty.test.ts",
