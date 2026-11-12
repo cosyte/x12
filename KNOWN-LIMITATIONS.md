@@ -11,7 +11,9 @@ before you rely on a round trip, and four of them are **silent**: **line breaks 
 emit supplies one) and **a TA1 that followed a functional group** (emitted right after the ISA, so
 reordered, though nothing is lost). The fifth, **bytes after the IEA**, raises
 `X12_TRAILING_GARBAGE` and comes back re-joined from segment slices rather than verbatim. All five
-are in the `serialize(parse(s)) === s` entry below. A **segment outside a transaction**, including
+are in the `serialize(parse(s)) === s` entry below, and `serializeX12(ix, { byteExact: true })`
+returns all five as they were read for an interchange you did not edit. A **segment outside a
+transaction**, including
 one whose first element is empty (`*A*B~`), is not on that list: it is warned, kept on the model at
 `ix.orphanSegments`, **and re-emitted at the structural anchor the walker recorded**, so it
 survives a round trip.
@@ -1130,6 +1132,16 @@ model holds it.** Five constructs are known not to survive:
 is not sufficient grounds to expect byte equality. **Four of the five (1, 2, 3, 5) produce no warning
 at all**, so a clean `ix.warnings` is not evidence that a round trip will be byte-exact; only case 4
 warns.
+
+**The opt-in `byteExact` emit returns the input as it was read.** `serializeX12(ix, { byteExact:
+true })` emits the model as without the option, then compares that emit with the default emit of an
+unedited parse of the text `parseX12` read. When they are equal it returns that text, byte for byte,
+so all five constructs above come back. When they differ, which an edit to a segment or a count
+`recomputeCounts` rewrote causes, and for an interchange `parseX12` did not return (a copy such as
+`{ ...ix }`, or a builder's), it returns the model's emit, as without the option. An edit that
+changes nothing the emit writes (a typed `segments` array, the `warnings`) is not seen, as it is not
+seen without the option. What is measured: every committed fixture, read as bytes, comes back byte
+for byte, and a property over messy and hostile generated input holds the same for text and bytes.
 
 **A segment outside a transaction is not on this list**, and neither is one whose first element is
 empty (`*A*B~`), which is handled as any other segment outside a transaction with an empty

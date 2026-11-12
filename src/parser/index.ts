@@ -18,6 +18,7 @@ import { getDefaultProfile } from "../profiles/default.js";
 import { detectDelimiters } from "./delimiters.js";
 import { FATAL_CODES, X12ParseError } from "./errors.js";
 import { decodeEnvelope, type DecodedEnvelope } from "./envelope.js";
+import { rememberSource } from "./source.js";
 import type { Delimiters, X12Interchange, X12ParseOptions } from "./types.js";
 import type { X12Profile } from "../profiles/types.js";
 
@@ -131,7 +132,10 @@ export function parseX12(raw: string | Buffer, options: X12ParseOptions = {}): X
   // default. v1 profiles are descriptive - the profile is attached for
   // attribution (and `partitionWarnings`) but does not alter the parse above.
   const profile = options.profile === null ? undefined : (options.profile ?? getDefaultProfile());
-  return interchangeOf(decoded, delimiters, profile);
+  const interchange = interchangeOf(decoded, delimiters, profile);
+  // Kept beside the interchange, for `serializeX12(ix, { byteExact: true })`.
+  rememberSource(interchange, text);
+  return interchange;
 }
 
 /**

@@ -129,7 +129,8 @@ unemittable, not that any other set is safe.
 `serializeX12` is **byte-faithful for the segments on the model**. Each comes back verbatim,
 including element padding, composite structure, and `?`-release escapes, in the order the model holds
 it. Anything the parser never recorded does not come back, so **`serialize(parse(s)) === s` is not
-guaranteed**, and a file with no line breaks is not thereby safe.
+guaranteed**, and a file with no line breaks is not thereby safe. The opt-in `byteExact` emit below
+is the one that returns an unedited input as it was read.
 
 Two of those are the ones to know, because both are **silent**: nothing warns, so a clean
 `ix.warnings` is not evidence that a round trip will be byte-exact.
@@ -161,6 +162,40 @@ ix.warnings.length; // => 0
 
 // What does hold is the fixed point, which is what the round trip is for.
 emitted === serializeX12(parseX12(emitted)); // => true
+```
+
+### Opting in to a byte-exact emit
+
+When you need the file back exactly as it arrived, pass `{ byteExact: true }`. For an interchange
+`parseX12` returned that you have not edited, the emit is the text `parseX12` read, byte for byte,
+line breaks, doubled terminators, bytes after the IEA and TA1 position included. The interchange is
+emitted from the model first, as without the option, and that emit is compared with the emit of an
+unedited parse of the same text: only when the two are equal does the source text come back. So an
+edit to a segment, a count `recomputeCounts` rewrote, a copy of the interchange (`{ ...ix }`) or an
+interchange a builder made emits from the model, exactly as without the option. A `Buffer` input
+comes back one character per octet, so `Buffer.from(out, "latin1")` is the input bytes. The first
+byte-exact emit of an interchange parses its source once more to compare; later ones reuse that.
+To make this possible, `parseX12` keeps a reference to the text it read, beside the interchange
+rather than on it, for as long as the interchange is reachable.
+
+```ts runnable
+import { parseX12, serializeX12 } from "@cosyte/x12";
+
+const doubled =
+  "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       " +
+  "*260601*1200*^*00501*000000001*0*P*:~\n" +
+  "GS*HC*SENDER*RECEIVER*20260601*1200*1*X*005010X222A2~\n" +
+  "ST*837*0001~\nSE*2*0001~\nGE*1*1~~\n" +
+  "IEA*1*000000001~\n";
+
+const ix = parseX12(doubled);
+
+// Unedited, the opt-in emit is the input:
+serializeX12(ix, { byteExact: true }) === doubled; // => true
+
+// Edited, it is the model's emit, the same as without the option:
+const edited = { ...ix, groups: [] };
+serializeX12(edited, { byteExact: true }) === serializeX12(edited); // => true
 ```
 
 The full list is five constructs, enumerated with the rest of the emit contract in

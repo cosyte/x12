@@ -291,7 +291,8 @@ A namespace import works too: `import * as x12 from "@cosyte/x12"`, then `x12.to
   common case: any run of CR or LF between segments is absorbed at parse, so a pretty-printed file
   emits compact. Most of the constructs that break a round trip are silent, so "my file has no line
   breaks" is not sufficient either. [KNOWN-LIMITATIONS.md](./KNOWN-LIMITATIONS.md) is the canonical
-  list.
+  list. Opt in with `serializeX12(ix, { byteExact: true })` to get an unedited input back as it was
+  read, byte for byte; an edited interchange emits from the model as before.
 
 ## Documentation
 

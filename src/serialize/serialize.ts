@@ -59,7 +59,8 @@
  *   after a declared span that the terminator did not follow are on `raw` too,
  *   so they come back. SE-01 counts such a segment once, like any other.
  *
- *   So `serialize(parse(s)) === s` is still NOT guaranteed in general, and the
+ *   So `serialize(parse(s)) === s` is still NOT guaranteed in general (the
+ *   opt-in `byteExact` mode below is what guarantees it), and the
  *   absence of line breaks is still not sufficient to make it hold: cases 2 to
  *   5 all break it on inputs that contain none. Four of the five (1, 2, 3, 5)
  *   produce no warning at all, so the warning stream is not a reliable signal
@@ -95,6 +96,13 @@
  *   segments. Control numbers are identity, not derived, so they are NEVER
  *   rewritten - only flagged.
  *
+ * - **Byte-exact (`{ byteExact: true }`), opted in.** Either mode above, and
+ *   then, for an interchange `parseX12` returned whose emit is exactly what an
+ *   unedited parse of its source emits, the source text itself instead, so
+ *   all five constructs above come back as they were read. An interchange
+ *   that was edited, copied or built emits as without the option. See
+ *   {@link SerializeOptions.byteExact}.
+ *
  * Every warning it emits is built by the same value-free factories the parser
  * uses: `message` is a frozen-registry lookup and `position` locates the
  * control segment, so a declared count or control number can never reach a
@@ -102,6 +110,8 @@
  */
 
 import { endsAtTerminator } from "../parser/envelope.js";
+import { parseX12 } from "../parser/index.js";
+import { sourceOf } from "../parser/source.js";
 import type {
   OnWarningCallback,
   X12Interchange,
@@ -154,6 +164,24 @@ export interface SerializeOptions {
   readonly recomputeCounts?: boolean;
   /** Invoked once per reconciliation warning (spec-clean mode only). */
   readonly onWarning?: OnWarningCallback;
+  /**
+   * Return the text `parseX12` read, byte for byte, when the interchange is the one it returned
+   * and emits exactly what an unedited parse of that text emits. Default `false`.
+   *
+   * The interchange is emitted first as without this option, in the mode the other options name,
+   * so `specClean` still reports through {@link onWarning}. That emit is then compared with the
+   * default emit of a fresh parse of the source text: when they are the same, nothing on the model
+   * differs from the source but what the model cannot hold (line breaks between segments, a doubled
+   * terminator, a missing final terminator, the bytes after the `IEA` and where a `TA1` sat), and
+   * the source text is returned with all of it. Otherwise the emit is returned, as without this
+   * option: an edit to a segment on the model, a count `recomputeCounts` rewrote, a copy of the
+   * interchange (`{ ...ix }`) and an interchange a builder made all emit from the model.
+   *
+   * A `Buffer` input comes back as the text `parseX12` read it as, one character per octet, so
+   * `Buffer.from(out, "latin1")` is the input bytes. The first byte-exact emit of an interchange
+   * parses its source again once to compare; later ones reuse that.
+   */
+  readonly byteExact?: boolean;
 }
 
 /**
@@ -169,9 +197,24 @@ export interface SerializeOptions {
  * // parser did not record (line breaks, a doubled terminator, ...) does not,
  * // so this is not guaranteed to equal `raw`. See the module header.
  * const bytes = serializeX12(ix);
+ * // Opted in, an interchange that was not edited comes back as `raw`, byte for byte.
+ * const same = serializeX12(ix, { byteExact: true });
  * ```
  */
 export function serializeX12(interchange: X12Interchange, opts: SerializeOptions = {}): string {
+  const out = emitModel(interchange, opts);
+  if (opts.byteExact !== true) return out;
+  // The source text is returned only when the model emits what an unedited parse of it emits.
+  const source = sourceOf(interchange, (text) => serializeX12(parseX12(text)));
+  return source !== undefined && source.emit === out ? source.text : out;
+}
+
+/**
+ * The emit of the model alone, which {@link serializeX12} returns without `byteExact`.
+ *
+ * @internal
+ */
+function emitModel(interchange: X12Interchange, opts: SerializeOptions): string {
   const specClean = opts.specClean === true;
   const recompute = specClean && opts.recomputeCounts === true;
   const onWarning = opts.onWarning;
