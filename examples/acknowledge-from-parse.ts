@@ -54,7 +54,10 @@ function ta1Reply(ta1Raw: string): string {
 const clean = parseX12(batch);
 const cleanTa1 = deriveTA1Spec(clean);
 const cleanAck = derive999Spec(clean, { envelope });
-console.log("TA1:", buildTA1(cleanTa1.spec).raw);
+// A TA1 echoes the inbound control number, so the example prints the codes it derived, never the
+// segment.
+const cleanTa1Segment = buildTA1(cleanTa1.spec);
+console.log("TA1:", cleanTa1.spec.ackCode, "note", cleanTa1.spec.noteCode);
 console.log("999 group disposition:", cleanAck.spec.functionalGroup.disposition);
 
 // Tampered: SE-02 no longer matches ST-02, so the 999 rejects that transaction set.
@@ -65,7 +68,7 @@ const received = parseX12(tampered);
 const ack = derive999Spec(received, { envelope });
 const response = ack.spec.functionalGroup.transactionResponses[0];
 console.log(
-  `999 for transaction set ${response?.transactionSetControlNumber ?? ""}:`,
+  `999 for transaction set ${response?.transactionSetIdCode ?? ""}:`,
   response?.disposition,
   response?.syntaxErrorCodes,
 );
@@ -75,6 +78,9 @@ const readTa1 = parseTA1(parseX12(ta1Reply(buildTA1(deriveTA1Spec(received).spec
 console.log("The submitter reads: TA1", readTa1?.ackCode, "and 999", read999?.ak9.disposition);
 
 // The checks that make this file a test: `pnpm examples` fails if any of them does not hold.
+assert.equal(cleanTa1Segment.elements[4], "A");
+// The transaction set control number (ST-02) the 999 echoes, synthetic.
+assert.equal(response?.transactionSetControlNumber, "0001");
 assert.equal(cleanTa1.spec.ackCode, "A");
 assert.equal(cleanTa1.spec.noteCode, "000");
 assert.deepEqual(cleanTa1.reported, []);

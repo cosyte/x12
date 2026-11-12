@@ -158,7 +158,7 @@ import { renderCallerValue } from "../../builder/caller-value.js";
  *   ackCode: "A",
  *   noteCode: "000",
  * });
- * ok.raw; // 'TA1*000000001*250101*1200*A*000'
+ * ok.raw; // 'TA1*000000001*250101*1200*A*000', synthetic
  *
  * // Reject (control number mismatch).
  * const reject = buildTA1({

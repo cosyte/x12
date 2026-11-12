@@ -63,10 +63,12 @@ if (remit === undefined) throw new Error("not an 835");
 remit.payment.totalActualPayment?.toString(); // => "450.00"
 remit.payment.creditDebitFlag; // => "C"
 remit.payment.method; // => "ACH"
+// A trace number, read and never printed. Synthetic value:
 remit.traces[0]?.referenceId; // => "0012345"
 
 // Per claim: your account number echoed back, and the charge/paid/responsibility split.
 const claim = remit.claims[0];
+// Read, never printed: the account number identifies the patient. Synthetic value:
 claim?.patientControlNumber; // => "PT-ACCT-001"
 claim?.totalChargeAmount?.toString(); // => "500.00"
 claim?.totalPaymentAmount?.toString(); // => "450.00"

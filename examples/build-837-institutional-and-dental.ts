@@ -123,7 +123,7 @@ const institutional = build837I(
 const inst = readBack(institutional);
 const room = inst.claims[0]?.serviceLines[0];
 console.log(
-  `837${inst.variant} (${String(institutional.groups[0]?.transactions[0]?.st.elements[3])}):`,
+  `837${inst.variant} (${String(inst.implementationConventionReference)}):`,
   `line variant ${String(room?.variant)}, charge ${String(room?.charge)}`,
 );
 // Check the variant first, so the field checks below can never be skipped by the narrowing.
@@ -148,7 +148,7 @@ const dental = build837D(
 const dent = readBack(dental);
 const tooth = dent.claims[0]?.serviceLines[0];
 console.log(
-  `837${dent.variant} (${String(dental.groups[0]?.transactions[0]?.st.elements[3])}):`,
+  `837${dent.variant} (${String(dent.implementationConventionReference)}):`,
   `line variant ${String(tooth?.variant)}, charge ${String(tooth?.charge)}`,
 );
 assert.equal(tooth?.variant, "D");

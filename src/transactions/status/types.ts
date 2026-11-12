@@ -77,8 +77,8 @@ export interface X12ClaimStatusResponse {
  * ```ts
  * import type { X12ClaimStatus } from "@cosyte/x12";
  * declare const c: X12ClaimStatus;
- * c.serviceProvider?.name;   // "ANYTOWN CLINIC"
- * c.subscriber?.lastName;    // "DOE"
+ * c.serviceProvider?.name;   // "ANYTOWN CLINIC", synthetic
+ * c.subscriber?.lastName;    // "DOE", synthetic
  * c.statuses[0]?.totalChargeAmount?.toString(); // "150.00"
  * ```
  */
@@ -104,8 +104,8 @@ export interface X12ClaimStatus {
  * import type { X12StatusEntity } from "@cosyte/x12";
  * declare const e: X12StatusEntity;
  * e.entityIdentifierCode; // "PR" / "41" / "1P"
- * e.name;                 // "MEDPAY INSURANCE"
- * e.idCode;               // "00123"
+ * e.name;                 // "MEDPAY INSURANCE", synthetic
+ * e.idCode;               // "00123", synthetic
  * ```
  */
 export interface X12StatusEntity {
@@ -125,8 +125,8 @@ export interface X12StatusEntity {
  * ```ts
  * import type { X12StatusMember } from "@cosyte/x12";
  * declare const m: X12StatusMember;
- * m.lastName; // "DOE"
- * m.idCode;   // "MBR0001"
+ * m.lastName; // "DOE", synthetic
+ * m.idCode;   // "MBR0001", synthetic
  * ```
  */
 export interface X12StatusMember {
@@ -150,7 +150,7 @@ export interface X12StatusMember {
  * import type { X12StatusTrace } from "@cosyte/x12";
  * declare const t: X12StatusTrace;
  * t.traceTypeCode; // "2"
- * t.referenceId;   // "CLAIM20260627001"
+ * t.referenceId;   // "CLAIM20260627001", synthetic
  * ```
  */
 export interface X12StatusTrace {
@@ -222,7 +222,7 @@ export interface X12StatusCode {
  * import type { X12StatusReference } from "@cosyte/x12";
  * declare const r: X12StatusReference;
  * r.qualifier; // "1K"
- * r.value;     // "PCN0001"
+ * r.value;     // "PCN0001", synthetic
  * ```
  */
 export interface X12StatusReference {
@@ -241,7 +241,7 @@ export interface X12StatusReference {
  * declare const d: X12StatusDate;
  * d.qualifier;       // "472"
  * d.formatQualifier; // "RD8"
- * d.value;           // "20260601-20260601"
+ * d.value;           // "20260601-20260601", synthetic
  * ```
  */
 export interface X12StatusDate {

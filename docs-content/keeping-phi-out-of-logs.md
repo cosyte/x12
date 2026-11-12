@@ -13,6 +13,30 @@ each thing the package hands you, whether it can carry a value from a document o
 built, and what to log instead. The short version: log `code` and `position`, and treat everything on
 the model as PHI.
 
+## What is safe to log
+
+Log what says what kind of thing happened and where: a warning's `code`, `position` and `message`;
+an error's `name`, `code` and `position`; a transaction set's id (`835`), a qualifier or a code from
+a code list; a count, a length or a boolean. Every example on these pages prints only those, and
+shows any other field by reading it or asserting on it, with its synthetic value in a comment.
+
+Never log a field of the model: a name, a member or account number, a date of birth, an address, a
+phone number, a trace or control number, or a whole interchange, segment or serialized string. Nor
+these fields of this package's errors, which hold raw input:
+
+- `X12ParseError.snippet`: up to 64 characters of the start of the input you parsed, on the four
+  structural fatals. Its section below says why it is there.
+- `X12CodeListError.rejectedValue`, and the `message` that carries it: the document date you passed
+  to `checkCarcValidity` or `checkRarcValidity`, bounded and not redacted.
+- The `message` of a `build*` refusal (`X12BuildError`, `Remit835BuildError`, `AckBuildError` and
+  the rest): it can name a control number or code you passed in, bounded and not redacted, and a
+  control number can carry an account identifier. Log its `code`.
+- `X12ProfileError.profileName`, and the `message` that names it: the profile name you passed, as
+  given.
+
+A warning carries no such field: its `message` comes from a frozen registry. An orphan segment beside
+it does: log its `context` and `segmentIndex`, never its `raw` or `segment`.
+
 ## Warnings carry no value from the document
 
 A warning `message` is a **lookup into a frozen registry**, never anything built from your document.

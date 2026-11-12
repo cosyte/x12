@@ -62,7 +62,9 @@ request.levels.map((level) => level.levelCode); // => ["20", "21", "19", "22"]
 const asked = request.levels[3]?.requests[0];
 
 // The trace your 275 answers, and the claim it is about.
+// A trace number, read and never printed. Synthetic value:
 asked?.traces[0]?.referenceId; // => "TRACE-0001"
+// Read, never printed: the claim numbers identify the patient's claim. Synthetic values:
 asked?.references.map((r) => [r.qualifier, r.value]); // => [["1K", "PCN0001"], ["EJ", "PT-ACCT-001"]]
 
 // What is being asked for: STC-01 here names a LOINC code (qualifier LOI).
@@ -131,6 +133,7 @@ const attachment = reading?.attachments[0];
 attachment?.filterCode; // => "B64"
 attachment?.declaredLength; // => "20"
 attachment?.lengthVerified; // => true
+// A trace number, read and never printed. Synthetic value:
 attachment?.line?.traces[0]?.referenceId; // => "TRACE-0001"
 
 // The data refuses to print: a log line carries its size, never its octets.

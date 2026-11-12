@@ -5,7 +5,9 @@
  * covers: a remittance per member, each with the policy it was paid against. `build820` writes the
  * amounts as given and the 820 guide sets no balance equation, so `get820Payments` does not check
  * one: the example sums the open items with `X12Decimal`, which is exact, and compares them with
- * BPR-02 itself. Every value is synthetic, and nothing is sent anywhere.
+ * BPR-02 itself. Every value is synthetic, and nothing is sent anywhere. The example prints amounts,
+ * codes and counts; a member's id, a policy number and the serialized 820 are read and asserted
+ * on, never printed.
  *
  * Run from the repository root after `pnpm build`:
  *
@@ -102,8 +104,12 @@ const spec: Build820Spec = {
 };
 
 const wire = serializeX12(build820(spec));
-console.log("Serialized 820, one segment per line:");
-console.log(wire.split("~").filter(Boolean).join("~\n") + "~");
+// The serialized 820 carries each member's name and id, so the example prints its segment ids only.
+const segmentIds = wire
+  .split("~")
+  .filter(Boolean)
+  .map((segment) => segment.split("*")[0]);
+console.log("Serialized 820 segments:", segmentIds.join(" "));
 
 const ix = parseX12(wire);
 const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "820");
@@ -114,16 +120,16 @@ if (premium === undefined) throw new Error("not an 820");
 const deposit = premium.payment.totalPremiumAmount;
 console.log(
   `Deposit ${String(deposit)} by ${String(premium.payment.method)},`,
-  `trace ${String(premium.traces[0]?.referenceId)}, from ${String(premium.remitter?.name)}`,
+  `${String(premium.remittances.length)} member remittance(s)`,
 );
 
 // Post each amount to its policy, and sum them exactly. An amount that did not decode makes the
 // total unknown rather than smaller, so such a payment goes to a person instead of being posted.
 let paid: X12Decimal | undefined = X12Decimal.ZERO;
-for (const remittance of premium.remittances) {
+for (const [index, remittance] of premium.remittances.entries()) {
   for (const item of remittance.openItems) {
     console.log(
-      `  ${String(remittance.individual?.idCode)} policy ${String(item.referenceId)}:`,
+      `  Member ${String(index + 1)}:`,
       `paid ${String(item.amountPaid)} of ${String(item.amountDue)} due`,
     );
     paid = item.amountPaid === undefined ? undefined : paid?.add(item.amountPaid);
@@ -135,7 +141,11 @@ console.log(`Open items sum to ${String(paid)}: ${balances ? "matches" : "does n
 // The checks that make this file a test: `pnpm examples` fails if any of them does not hold.
 assert.equal(ix.groups[0]?.transactions[0]?.st.elements[3], "005010X218");
 assert.equal(deposit?.toString(), "375.00");
+assert.equal(segmentIds[0], "ISA");
+// The trace, the parties and each member's id and policy, all synthetic.
+assert.equal(premium.traces[0]?.referenceId, "PREM-202606");
 assert.equal(premium.receiver?.name, "MEDPAY INSURANCE");
+assert.equal(premium.remitter?.name, "EMPLOYER CO");
 assert.deepEqual(
   premium.remittances.map((r) => [r.individual?.idCode, r.openItems[0]?.referenceId]),
   [

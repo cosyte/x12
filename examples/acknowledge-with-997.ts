@@ -31,8 +31,10 @@ const transactions = group.transactions.map((t) => ({
   transactionSetControlNumber: t.st.elements[2] ?? "",
   disposition: "A" as const,
 }));
+// A control number is free-form sender text that can carry an account identifier, so the example
+// prints the codes and the count, and never a control number.
 console.log(
-  `Received group ${groupControlNumber} (${functionalIdCode}, ${versionRelease}),`,
+  `Received a group (${functionalIdCode}, ${versionRelease}),`,
   `${String(transactions.length)} transaction set(s)`,
 );
 
@@ -58,15 +60,19 @@ const ack = build997({
   },
 });
 const wire = serializeX12(ack);
-console.log("997, one segment per line:");
-console.log(wire.split("~").filter(Boolean).join("~\n") + "~");
+// The 997 echoes the batch's control numbers, so the example prints its segment ids only.
+const segmentIds = wire
+  .split("~")
+  .filter(Boolean)
+  .map((segment) => segment.split("*")[0]);
+console.log("997 segments:", segmentIds.join(" "));
 
 // What the submitter reads.
 const parsed = parse997(wire);
 if (parsed === undefined) throw new Error("no 997 in the acknowledgment");
 const accepted = parsed.ak9?.disposition === "A";
 console.log(
-  `Group ${String(parsed.ak1?.groupControlNumber)} disposition ${String(parsed.ak9?.disposition)}: accepted ${String(accepted)},`,
+  `Group disposition ${String(parsed.ak9?.disposition)}: accepted ${String(accepted)},`,
   `${String(parsed.ak9?.numberOfAcceptedTransactionSets)} of ${String(parsed.ak9?.numberOfReceivedTransactionSets)} transaction set(s)`,
 );
 
@@ -79,6 +85,7 @@ console.log(
 );
 
 // The checks that make this file a test: `pnpm examples` fails if any of them does not hold.
+assert.deepEqual(segmentIds, ["ISA", "GS", "ST", "AK1", "AK2", "AK5", "AK9", "SE", "GE", "IEA"]);
 assert.equal(received.warnings.length, 0);
 assert.ok(accepted);
 assert.equal(parsed.ak1?.groupControlNumber, groupControlNumber);

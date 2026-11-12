@@ -152,7 +152,7 @@ function boundSegmentId(first: string): string {
  * const d = { element: "*", repetition: "^", component: ":", segment: "~" };
  * const seg = decodeSegment("NM1*IL*1*DOE*JANE", d, () => {}, { segmentIndex: 5 });
  * seg.id;          // "NM1"
- * seg.elements[3]; // "DOE"
+ * seg.elements[3]; // "DOE", synthetic
  * const bin = decodeSegment("BIN*5*A*B:C", d, () => {}, { segmentIndex: 6 });
  * bin.elements[2]; // "A*B:C" (five octets, one element)
  * ```

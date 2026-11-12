@@ -6,7 +6,9 @@
  * computes the HL hierarchy (payer, provider, subscriber) from a typed spec and refuses a
  * structurally impossible one. The 271 must echo the 270's TRN-02 byte for byte so the provider can
  * match your answer to their question; reading the serialized bytes back proves it did. It never
- * sends anything and never touches the filesystem. Every value here is synthetic.
+ * sends anything and never touches the filesystem. Every value here is synthetic, and the example
+ * still prints only codes, amounts, counts and booleans: the member's name and id, the trace and the
+ * serialized 271 are read and asserted on, never printed.
  *
  * Run from the repository root after `pnpm build`:
  *
@@ -89,8 +91,10 @@ const asked = inquiry.informationSources[0]?.receivers[0]?.subscribers[0];
 const traceFromThe270 = asked?.traces[0]?.referenceId;
 if (traceFromThe270 === undefined) throw new Error("the 270 carried no trace");
 console.log(
-  `270 asks about ${String(asked?.name?.idCode)} for service type`,
-  `${String(asked?.inquiries[0]?.serviceTypeCodes[0]?.code)}, trace ${traceFromThe270}`,
+  "270 asks about service type",
+  asked?.inquiries[0]?.serviceTypeCodes[0]?.code,
+  "with a trace:",
+  traceFromThe270.length > 0,
 );
 
 const deductible = X12Decimal.fromString("1000.00");
@@ -153,8 +157,12 @@ const spec: Build271Spec = {
 };
 
 const wire = serializeX12(build271(spec));
-console.log("Serialized 271, one segment per line:");
-console.log(wire.split("~").filter(Boolean).join("~\n") + "~");
+// The serialized 271 carries the member's name and id, so the example prints its segment ids only.
+const segmentIds = wire
+  .split("~")
+  .filter(Boolean)
+  .map((segment) => segment.split("*")[0]);
+console.log("Serialized 271 segments:", segmentIds.join(" "));
 
 const ix = parseX12(wire);
 const tx = ix.groups[0]?.transactions.find((t) => t.st.elements[1] === "271");
@@ -164,7 +172,7 @@ if (response === undefined) throw new Error("not a 271");
 
 const subscriber = response.subscribers[0];
 const benefit = subscriber?.benefits[0];
-console.log("Trace echoed:", subscriber?.traces[0]?.referenceId);
+console.log("Trace echoed:", subscriber?.traces[0]?.referenceId === traceFromThe270);
 console.log(
   "Benefit:",
   benefit?.eligibilityCode,
@@ -174,11 +182,14 @@ console.log(
 console.log("Payer rejections (AAA):", response.aaaConditions.length);
 
 // The checks that make this file a test: `pnpm examples` fails if any of them does not hold.
+// The trace and the member's name and id, all synthetic.
 assert.equal(traceFromThe270, "ELIG-0001");
+assert.equal(asked?.name?.idCode, "MBR0001");
 assert.equal(inquiry.warnings.length, 0);
 assert.equal(subscriber?.traces[0]?.referenceId, traceFromThe270);
 assert.equal(subscriber?.name?.lastName, "DOE");
 assert.equal(benefit?.eligibilityCode, "1");
 assert.equal(benefit?.monetaryAmount?.toString(), "1000.00");
 assert.equal(response.aaaConditions.length, 0);
+assert.deepEqual(segmentIds.slice(0, 3), ["ISA", "GS", "ST"]);
 assert.equal(ix.warnings.length, 0);

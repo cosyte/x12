@@ -55,6 +55,7 @@ premium?.payment.method; // => "ACH"
 premium?.payment.paymentDate; // => "20260601"
 
 // The trace a bank statement carries for the same deposit.
+// A trace number, read and never printed. Synthetic value:
 premium?.traces[0]?.referenceId; // => "PREM-202606"
 
 // The parties, keyed on the N1 qualifier: PE receives, PR or RM remits.
@@ -65,6 +66,7 @@ premium?.remitter?.name; // => "EMPLOYER CO"
 // member of that same loop; any other NM1 opens a loop of its own.
 premium?.remittances.length; // => 2
 const first = premium?.remittances[0];
+// Read, never printed: ids, names and policy numbers. Synthetic values:
 first?.entity?.idCode; // => "GRP-0001"
 first?.individual?.lastName; // => "DOE"
 first?.openItems[0]?.referenceId; // => "POL-0001"
@@ -73,6 +75,7 @@ first?.dates[0]?.value; // => "20260601"
 
 const second = premium?.remittances[1];
 second?.entity; // => undefined
+// Read, never printed: the member id identifies a person. Synthetic value:
 second?.individual?.idCode; // => "MBR0002"
 second?.openItems[0]?.amountPaid?.toString(); // => "125.00"
 second?.openItems[0]?.amountDue?.toString(); // => "150.00"

@@ -61,8 +61,10 @@ inquiry?.warnings.map((w) => w.code); // => ["X12_270_INTER_SEGMENT_LINE_BREAK"]
 const asked = inquiry?.informationSources[0]?.receivers[0]?.subscribers[0];
 
 // The trace you must echo on the 271 you send back.
+// A trace number, read and never printed. Synthetic value:
 asked?.traces[0]?.referenceId; // => "ELIG20260601001"
 
+// Read, never printed: the member's name, id and date of birth identify a person. Synthetic values:
 asked?.name?.lastNameOrOrganizationName; // => "DOE"
 asked?.name?.idCode; // => "MBR0001"
 asked?.name?.dateOfBirth; // => "19850515"
@@ -133,12 +135,15 @@ statusRequest?.warnings.map((w) => w.code); // => []
 statusRequest?.hierarchies.map((h) => h.levelCode); // => ["20", "21", "19", "22"]
 
 const subscriber = statusRequest?.informationSources[0]?.receivers[0]?.providers[0]?.subscribers[0];
+// Read, never printed: the member id identifies a person. Synthetic value:
 subscriber?.name?.idCode; // => "MBR0001"
 
 const askedAbout = subscriber?.claims[0];
 
 // The trace the 277 must echo back, verbatim.
+// A trace number, read and never printed. Synthetic value:
 askedAbout?.trace?.referenceId; // => "STATUS20260601001"
+// Read, never printed: the claim number identifies the patient's claim. Synthetic value:
 askedAbout?.references.map((r) => [r.qualifier, r.value]); // => [["1K", "PCN0001"]]
 
 // Money is X12Decimal here too, on the request side as much as the response.

@@ -197,8 +197,8 @@ export interface X12AaaCondition {
  * ```ts
  * import type { X12EligibilitySubscriber } from "@cosyte/x12";
  * declare const s: X12EligibilitySubscriber;
- * s.informationSource?.name;   // "MEDPAY INSURANCE"
- * s.name?.lastName;            // "DOE"
+ * s.informationSource?.name;   // "MEDPAY INSURANCE", synthetic
+ * s.name?.lastName;            // "DOE", synthetic
  * s.dependents.length;         // 0
  * ```
  */
@@ -223,7 +223,7 @@ export interface X12EligibilitySubscriber {
  * ```ts
  * import type { X12EligibilityDependent } from "@cosyte/x12";
  * declare const d: X12EligibilityDependent;
- * d.name?.firstName;            // "JUNIOR"
+ * d.name?.firstName;            // "JUNIOR", synthetic
  * d.benefits[0]?.coverageLevelCode; // "IND"
  * ```
  */
@@ -246,8 +246,8 @@ export interface X12EligibilityDependent {
  * import type { X12EligibilityEntity } from "@cosyte/x12";
  * declare const e: X12EligibilityEntity;
  * e.entityIdentifierCode; // "PR" (payer) / "1P" (provider)
- * e.name;                 // "MEDPAY INSURANCE"
- * e.idCode;               // "00123"
+ * e.name;                 // "MEDPAY INSURANCE", synthetic
+ * e.idCode;               // "00123", synthetic
  * ```
  */
 export interface X12EligibilityEntity {
@@ -267,9 +267,9 @@ export interface X12EligibilityEntity {
  * ```ts
  * import type { X12EligibilityMember } from "@cosyte/x12";
  * declare const m: X12EligibilityMember;
- * m.lastName;     // "DOE"
- * m.dateOfBirth;  // "19800101" (DMG-02, CCYYMMDD)
- * m.genderCode;   // "F"
+ * m.lastName;     // "DOE", synthetic
+ * m.dateOfBirth;  // "19800101", synthetic (DMG-02, CCYYMMDD)
+ * m.genderCode;   // "F", synthetic
  * ```
  */
 export interface X12EligibilityMember {
@@ -296,7 +296,7 @@ export interface X12EligibilityMember {
  * import type { X12EligibilityTrace } from "@cosyte/x12";
  * declare const t: X12EligibilityTrace;
  * t.traceTypeCode; // "2" (referenced - added by the payer in the 271)
- * t.referenceId;   // "ELIG20260627001" (echoed verbatim from the 270)
+ * t.referenceId;   // "ELIG20260627001", synthetic (echoed verbatim from the 270)
  * ```
  */
 export interface X12EligibilityTrace {
@@ -400,7 +400,7 @@ export interface X12EligibilityServiceType {
  * import type { X12EligibilityReference } from "@cosyte/x12";
  * declare const r: X12EligibilityReference;
  * r.qualifier; // "6P" (group number)
- * r.value;     // "GRP0001"
+ * r.value;     // "GRP0001", synthetic
  * ```
  */
 export interface X12EligibilityReference {
@@ -420,7 +420,7 @@ export interface X12EligibilityReference {
  * declare const d: X12EligibilityDate;
  * d.qualifier;       // "307"
  * d.formatQualifier; // "D8"
- * d.value;           // "20260101"
+ * d.value;           // "20260101", synthetic
  * ```
  */
 export interface X12EligibilityDate {
@@ -437,9 +437,9 @@ export interface X12EligibilityDate {
  * import type { X12EligibilityAddress } from "@cosyte/x12";
  * declare const a: X12EligibilityAddress;
  * a.lines[0];   // "123 MAIN ST"
- * a.city;       // "ANYTOWN"
+ * a.city;       // "ANYTOWN", synthetic
  * a.state;      // "CA"
- * a.postalCode; // "90001"
+ * a.postalCode; // "90001", synthetic
  * ```
  */
 export interface X12EligibilityAddress {

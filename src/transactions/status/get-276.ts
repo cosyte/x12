@@ -162,7 +162,7 @@ const EXPECTED_PARENT_LEVEL: Readonly<Record<string, string | undefined>> = Obje
  *     const sub =
  *       inquiry?.informationSources[0]?.receivers[0]?.providers[0]?.subscribers[0];
  *     sub?.claims[0]?.trace?.referenceId;      // the trace a 277 echoes back
- *     sub?.claims[0]?.references[0]?.value;    // "PCN0001"
+ *     sub?.claims[0]?.references[0]?.value;    // "PCN0001", synthetic
  *   }
  * }
  * ```

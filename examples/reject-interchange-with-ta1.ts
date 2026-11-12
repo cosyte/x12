@@ -36,10 +36,9 @@ const received = parseX12(tampered);
 const mismatch = received.warnings.some(
   (w) => w.code === WARNING_CODES.X12_CONTROL_NUMBER_MISMATCH,
 );
-console.log(
-  `Received interchange ${received.isa.elements[13] ?? ""}: control numbers agree?`,
-  !mismatch,
-);
+// ISA-13 is a control number, free-form sender text, so the example prints whether the two agree
+// and never the number itself.
+console.log("Received an interchange: control numbers agree?", !mismatch);
 
 const ta1 = buildTA1({
   interchangeControlNumber: received.isa.elements[13] ?? "",
@@ -49,7 +48,9 @@ const ta1 = buildTA1({
   // 001: the interchange control numbers in the header and the trailer do not match.
   noteCode: mismatch ? TA1_NOTE_CODES["001"] : TA1_NOTE_CODES["000"],
 });
-console.log("TA1:", ta1.raw);
+// The TA1 segment echoes the inbound control number, so the example prints its codes only.
+const [segmentId, , , , ackCode, noteCode] = ta1.elements;
+console.log(`${String(segmentId)} built: ${String(ackCode)} (note ${String(noteCode)})`);
 
 // The TA1 travels in an interchange of its own, from the receiver back to the sender, with no
 // functional group in it.
@@ -63,13 +64,15 @@ const answer = parseX12(reply);
 const read = parseTA1(answer);
 if (read === undefined) throw new Error("no TA1 in the reply");
 console.log(
-  `The sender reads: interchange ${read.interchangeControlNumber} ${read.ackCode}`,
-  `(note ${read.noteCodeRaw}), accepted ${String(isAcceptDisposition(read.ackCode))}`,
+  `The sender reads: ${read.ackCode} (note ${read.noteCodeRaw}),`,
+  `accepted ${String(isAcceptDisposition(read.ackCode))}`,
 );
 
 // The checks that make this file a test: `pnpm examples` fails if any of them does not hold.
 assert.ok(mismatch);
+assert.deepEqual([segmentId, ackCode, noteCode], ["TA1", "R", "001"]);
 assert.equal(answer.groups.length, 0);
+// The echoed control number, date and time, all synthetic.
 assert.equal(read.interchangeControlNumber, "000000001");
 assert.equal(read.interchangeDate, "260601");
 assert.equal(read.interchangeTime, "1200");

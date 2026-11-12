@@ -39,12 +39,9 @@ const remit = get835(ix.delimiters, tx);
 if (remit === undefined) throw new Error("not an 835");
 
 const shown: [string, string | undefined, string | undefined][] = [];
-for (const claim of remit.claims) {
+for (const [index, claim] of remit.claims.entries()) {
   const status = lookupClpStatus(claim.claimStatusCode, { descriptions: myClpText });
-  console.log(
-    `Claim ${claim.patientControlNumber}: CLP-02 ${claim.claimStatusCode}`,
-    status?.description,
-  );
+  console.log(`Claim ${String(index + 1)}: CLP-02 ${claim.claimStatusCode}`, status?.description);
   for (const line of claim.serviceLines) {
     for (const a of line.adjustments) {
       // The model carries the code; the description is yours to supply.

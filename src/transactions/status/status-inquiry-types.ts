@@ -95,7 +95,7 @@ export interface X12StatusInquiryHeader {
  * ```ts
  * import type { X12StatusInquirySource } from "@cosyte/x12";
  * declare const s: X12StatusInquirySource;
- * s.name?.lastNameOrOrganizationName; // "MEDPAY INSURANCE"
+ * s.name?.lastNameOrOrganizationName; // "MEDPAY INSURANCE", synthetic
  * s.receivers.length;                 // 1
  * ```
  */
@@ -173,7 +173,7 @@ export interface X12StatusInquirySubscriber {
  * ```ts
  * import type { X12StatusInquiryDependent } from "@cosyte/x12";
  * declare const d: X12StatusInquiryDependent;
- * d.name?.firstName; // "BABY"
+ * d.name?.firstName; // "BABY", synthetic
  * d.claims.length;   // the dependent's own claims
  * ```
  */
@@ -200,8 +200,8 @@ export interface X12StatusInquiryDependent {
  * import type { X12StatusInquiryName } from "@cosyte/x12";
  * declare const n: X12StatusInquiryName;
  * n.entityIdentifierCode;       // "IL" subscriber / "PR" payer / "1P" provider
- * n.lastNameOrOrganizationName; // "DOE" or "MEDPAY INSURANCE"
- * n.dateOfBirth;                // "19850515" (DMG-02, CCYYMMDD)
+ * n.lastNameOrOrganizationName; // "DOE" or "MEDPAY INSURANCE", synthetic
+ * n.dateOfBirth;                // "19850515", synthetic (DMG-02, CCYYMMDD)
  * ```
  */
 export interface X12StatusInquiryName {
@@ -236,7 +236,7 @@ export interface X12StatusInquiryName {
  * ```ts
  * import type { X12StatusInquiryClaim } from "@cosyte/x12";
  * declare const c: X12StatusInquiryClaim;
- * c.trace?.referenceId;       // "STATUS20260601001"
+ * c.trace?.referenceId;       // "STATUS20260601001", synthetic
  * c.references[0]?.qualifier; // "1K" (payer claim control number)
  * c.serviceLines.length;      // 1
  * ```
@@ -264,7 +264,7 @@ export interface X12StatusInquiryClaim {
  * import type { X12StatusInquiryTrace } from "@cosyte/x12";
  * declare const t: X12StatusInquiryTrace;
  * t.traceTypeCode; // "1" (current transaction trace numbers)
- * t.referenceId;   // "STATUS20260601001"
+ * t.referenceId;   // "STATUS20260601001", synthetic
  * ```
  */
 export interface X12StatusInquiryTrace {
@@ -288,7 +288,7 @@ export interface X12StatusInquiryTrace {
  * import type { X12StatusInquiryReference } from "@cosyte/x12";
  * declare const r: X12StatusInquiryReference;
  * r.qualifier; // "1K"
- * r.value;     // "PCN0001"
+ * r.value;     // "PCN0001", synthetic
  * ```
  */
 export interface X12StatusInquiryReference {
@@ -333,7 +333,7 @@ export interface X12StatusInquiryAmount {
  * declare const d: X12StatusInquiryDate;
  * d.qualifier;       // "472" (service date)
  * d.formatQualifier; // "D8" or "RD8"
- * d.value;           // "20260520"
+ * d.value;           // "20260520", synthetic
  * ```
  */
 export interface X12StatusInquiryDate {

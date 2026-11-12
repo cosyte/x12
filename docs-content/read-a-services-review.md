@@ -54,17 +54,20 @@ const review278 = tx278 ? get278Response(ix278.delimiters, tx278) : undefined;
 review278?.direction; // => "response"
 review278?.warnings.length; // => 0
 review278?.utilizationManagementOrganization?.name; // => "UTILIZATION REVIEW CO"
+// Read, never printed: the member id identifies a person. Synthetic value:
 review278?.subscriber?.idCode; // => "MBR0001"
 
 const review = review278?.reviews[0];
 
 // The trace that reassociates this answer to the request you sent.
+// A trace number, read and never printed. Synthetic value:
 review?.traces[0]?.referenceId; // => "AUTHREQ-202606-0001"
 review?.requestCategoryCode; // => "HS"
 review?.certificationTypeCode; // => "I"
 
 // HCR-01: the certification action, verbatim, never inferred from anything else.
 review?.decision?.actionCode; // => "A1"
+// Read, never printed: the authorization number. Synthetic value:
 review?.decision?.reviewIdentificationNumber; // => "AUTH123456"
 
 // The diagnosis carries its code system, resolved from the HI qualifier.
@@ -184,8 +187,10 @@ const answered = build278Response(response);
 const answeredTx = answered.groups[0]?.transactions[0];
 const decision = answeredTx ? get278Response(answered.delimiters, answeredTx) : undefined;
 decision?.direction; // => "response"
+// A trace number, read and never printed. Synthetic value:
 decision?.reviews[0]?.traces[0]?.referenceId; // => "AUTHREQ-202606-0001"
 decision?.reviews[0]?.decision?.actionCode; // => "A1"
+// Read, never printed: the authorization number. Synthetic value:
 decision?.reviews[0]?.decision?.reviewIdentificationNumber; // => "AUTH123456"
 serializeX12(answered).includes("HCR*A1*AUTH123456~"); // => true
 

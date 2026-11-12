@@ -56,6 +56,7 @@ if (tx834 === undefined) throw new Error("no 834 in interchange");
 
 const header = get834Header(ix834.delimiters, tx834);
 header?.transactionSetPurposeCode; // => "00"
+// The roster's reference number, read and never printed. Synthetic value:
 header?.referenceId; // => "ENR-202606"
 header?.sponsor?.name; // => "EMPLOYER CO"
 header?.payer?.name; // => "MEDPAY INSURANCE"
@@ -73,6 +74,7 @@ const added = members[0];
 added?.subscriberIndicator; // => "Y"
 added?.maintenanceTypeCode; // => "021"
 added?.maintenanceTypeDescription; // => undefined
+// Read, never printed: the member's name and id identify a person. Synthetic values:
 added?.member?.lastName; // => "DOE"
 added?.member?.idCode; // => "MBR0001"
 

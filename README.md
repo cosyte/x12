@@ -149,14 +149,18 @@ if (tx === undefined) throw new Error("no 835 in this interchange");
 const remit = get835(ix.delimiters, tx);
 if (remit === undefined) throw new Error("not an 835");
 
-// The payment, the claim's split, and who owes the difference and why.
+// The payment, the claim's split, and who owes the difference and why. It prints amounts, codes
+// and counts, never a value that identifies the patient.
 const claim = remit.claims[0];
 const adjustment = claim?.serviceLines[0]?.adjustments[0];
 console.log("paid", remit.payment.totalActualPayment?.toString(), "by", remit.payment.method);
-console.log("claim", claim?.patientControlNumber, "charged", claim?.totalChargeAmount?.toString());
+console.log("claims", remit.claims.length, "charged", claim?.totalChargeAmount?.toString());
 console.log("patient owes", claim?.patientResponsibilityAmount?.toString());
 console.log("reason", adjustment?.groupCode, adjustment?.reasonCode);
 console.log("warnings", ix.warnings.length);
+
+// The patient account number the claim echoes back, read and never printed. Synthetic value:
+claim?.patientControlNumber; // => "PT-ACCT-001"
 
 // The values printed above, which the test suite asserts on every run:
 remit.payment.totalActualPayment?.toString(); // => "450.00"
@@ -172,7 +176,7 @@ It prints:
 
 ```text
 paid 450.00 by ACH
-claim PT-ACCT-001 charged 500.00
+claims 1 charged 500.00
 patient owes 50.00
 reason PR 1
 warnings 0

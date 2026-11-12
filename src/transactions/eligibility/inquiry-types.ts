@@ -94,7 +94,7 @@ export interface X12InquiryHeader {
  * ```ts
  * import type { X12InquirySource } from "@cosyte/x12";
  * declare const s: X12InquirySource;
- * s.name?.lastNameOrOrganizationName; // "MEDPAY INSURANCE"
+ * s.name?.lastNameOrOrganizationName; // "MEDPAY INSURANCE", synthetic
  * s.receivers.length;                 // 1
  * ```
  */
@@ -157,7 +157,7 @@ export interface X12InquirySubscriber {
  * ```ts
  * import type { X12InquiryDependent } from "@cosyte/x12";
  * declare const d: X12InquiryDependent;
- * d.name?.firstName;    // "BABY"
+ * d.name?.firstName;    // "BABY", synthetic
  * d.inquiries.length;   // the dependent's own requested service types
  * ```
  */
@@ -183,8 +183,8 @@ export interface X12InquiryDependent {
  * import type { X12InquiryName } from "@cosyte/x12";
  * declare const n: X12InquiryName;
  * n.entityIdentifierCode;          // "IL" subscriber / "PR" payer / "1P" provider
- * n.lastNameOrOrganizationName;    // "DOE" or "MEDPAY INSURANCE"
- * n.dateOfBirth;                   // "19850515" (DMG-02, CCYYMMDD)
+ * n.lastNameOrOrganizationName;    // "DOE" or "MEDPAY INSURANCE", synthetic
+ * n.dateOfBirth;                   // "19850515", synthetic (DMG-02, CCYYMMDD)
  * ```
  */
 export interface X12InquiryName {
@@ -220,7 +220,7 @@ export interface X12InquiryName {
  * import type { X12InquiryAddress } from "@cosyte/x12";
  * declare const a: X12InquiryAddress;
  * a.lines[0];   // "100 MAIN ST"
- * a.postalCode; // "43215"
+ * a.postalCode; // "43215", synthetic
  * ```
  */
 export interface X12InquiryAddress {
@@ -241,7 +241,7 @@ export interface X12InquiryAddress {
  * import type { X12InquiryTrace } from "@cosyte/x12";
  * declare const t: X12InquiryTrace;
  * t.traceTypeCode; // "1" (current transaction trace numbers)
- * t.referenceId;   // "ELIG20260601001"
+ * t.referenceId;   // "ELIG20260601001", synthetic
  * ```
  */
 export interface X12InquiryTrace {
@@ -263,7 +263,7 @@ export interface X12InquiryTrace {
  * import type { X12InquiryReference } from "@cosyte/x12";
  * declare const r: X12InquiryReference;
  * r.qualifier; // "6P" (group number)
- * r.value;     // "GROUP0001"
+ * r.value;     // "GROUP0001", synthetic
  * ```
  */
 export interface X12InquiryReference {
@@ -287,7 +287,7 @@ export interface X12InquiryReference {
  * declare const d: X12InquiryDate;
  * d.qualifier;       // "291" (plan) / "307" (eligibility)
  * d.formatQualifier; // "D8" or "RD8"
- * d.value;           // "20260601"
+ * d.value;           // "20260601", synthetic
  * ```
  */
 export interface X12InquiryDate {

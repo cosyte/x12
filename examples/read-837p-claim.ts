@@ -5,7 +5,8 @@
  * `examples/data/837p-claim.edi` is synthetic: one claim with one service line, from a fabricated
  * clinic for a fabricated patient. `get837Claims` resolves the variant from the guide the
  * transaction set declares (`005010X222A2` is professional), walks the HL hierarchy for you, and
- * keeps amounts exact.
+ * keeps amounts exact. It prints the variant, codes, amounts and counts; the claim's account number
+ * and the billing provider's name and NPI are read and asserted on, never printed.
  *
  * Run from the repository root after `pnpm build`:
  *
@@ -26,10 +27,10 @@ if (submission === undefined) throw new Error("not an 837");
 console.log(
   `Variant ${submission.variant} (${String(submission.implementationConventionReference)})`,
 );
-for (const claim of submission.claims) {
+for (const [index, claim] of submission.claims.entries()) {
   console.log(
-    `Claim ${claim.claimId} for ${String(claim.totalCharge)},`,
-    `billed by ${String(claim.billingProvider?.name)} (NPI ${String(claim.billingProvider?.idCode)})`,
+    `Claim ${String(index + 1)} for ${String(claim.totalCharge)},`,
+    `billing provider present: ${String(claim.billingProvider !== undefined)}`,
   );
   for (const d of claim.diagnoses) {
     console.log(`  Diagnosis ${d.code} (${String(d.codeSystem)}, ${String(d.category)})`);
@@ -48,7 +49,10 @@ console.log("Warnings:", ix.warnings.length + submission.warnings.length);
 const [claim] = submission.claims;
 const [line] = claim?.serviceLines ?? [];
 assert.equal(submission.variant, "P");
+// The claim's account number (CLM-01) and its billing provider, all synthetic.
 assert.equal(claim?.claimId, "PT-ACCT-001");
+assert.equal(claim?.billingProvider?.name, "BILLING CLINIC INC");
+assert.equal(claim?.billingProvider?.idCode, "1234567890");
 assert.equal(claim?.totalCharge?.toString(), "150");
 assert.deepEqual(
   claim?.diagnoses.map((d) => [d.code, d.codeSystem]),

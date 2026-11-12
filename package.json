@@ -179,7 +179,7 @@
     "@cosyte/eslint-config": "^0.1.4",
     "@cosyte/prettier-config": "^0.1.2",
     "@cosyte/process": "^0.1.8",
-    "@cosyte/script-utils": "^0.1.11",
+    "@cosyte/script-utils": "^0.1.13",
     "@cosyte/test-utils": "^0.1.4",
     "@cosyte/tsconfig": "^0.1.2",
     "@cosyte/tsup-config": "^0.1.3",

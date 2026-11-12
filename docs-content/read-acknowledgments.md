@@ -223,6 +223,7 @@ ta1 !== undefined && isAcceptDisposition(ta1.ackCode); // => true
 
 // The five decoded fields are post-`?`-unescape; `ta1.raw` is the segment as
 // transmitted, so do not apply `unescapeRelease` to the decoded ones yourself.
+// Read, never printed: the segment echoes a control number. Synthetic values:
 ta1?.raw.raw; // => "TA1*000000019*220101*1200*A*000"
 ```
 
