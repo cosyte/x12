@@ -36,11 +36,12 @@ import { fileURLToPath } from "node:url";
 
 /**
  * The most a cold import of each entry point may take, in milliseconds: the median of the runs.
- * Each is set from ten readings on the slowest runner class CI has met, as
- * `docs-content/performance.md` records: the slowest of the ten medians, with a quarter on top for
- * the spread between machines of that class, rounded up to the half millisecond.
+ * Each is set from the slowest runner class CI's `ubuntu-latest` met over sixty hosted runners
+ * (the AMD EPYC 7763, eighteen readings, each the median of twenty processes): the slowest of its
+ * readings, 16.29 ms and 3.30 ms, with a quarter on top for the spread between machines, rounded
+ * up to the half millisecond. `docs-content/performance.md` names the runs.
  */
-export const BUDGETS_MS = { "dist/index.mjs": 20, "dist/parse.mjs": 6 };
+export const BUDGETS_MS = { "dist/index.mjs": 20.5, "dist/parse.mjs": 4.5 };
 
 /** Fresh processes per module, as many as `@cosyte/bench` takes for its reading. */
 export const RUNS = 20;

@@ -123,6 +123,22 @@ copy of the parser between them. An `X12ParseError` thrown through either is one
 `@cosyte/x12/parse` attaches. `@cosyte/x12` exports everything it did, so no caller has to change
 an import; moving one to the subpath is a choice for the import time alone.
 
+### The cold import gate
+
+`pnpm check:cold-import` (`scripts/check-cold-import.mjs`) imports each entry point in twenty
+fresh Node.js processes, interleaved with an empty module, and fails when the median of either is
+over its budget: 20.5 ms for `@cosyte/x12` and 4.5 ms for `@cosyte/x12/parse`. CI runs it on a
+hosted runner after the build, and each reading names the runner's CPU.
+
+The budgets come from sixty readings on hosted `ubuntu-latest` runners, Node.js 22, each the median
+of twenty processes (CI runs 43201238188 on commit `93a749d` and 43203343324 on commit `46cdfbf`,
+the `cold-import-measure` jobs). The slowest runner class, the AMD EPYC 7763, gave eighteen
+readings: `@cosyte/x12` 15.30 to 16.29 ms and `@cosyte/x12/parse` 3.15 to 3.30 ms. Each budget is the
+slowest of those readings with a quarter on top, rounded up to the half millisecond. Across every
+class the readings were 8.82 to 16.84 ms and 1.93 to 3.51 ms. The split build that shares one parser
+between the entry points costs `@cosyte/x12` 0.16 to 0.57 ms over the single bundle before it, read
+side by side on the same runner in each of the sixty jobs.
+
 ## What these are not
 
 - **Not a guarantee for every input.** The benchmarks cover the shapes above, up to about 3 MiB of

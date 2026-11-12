@@ -99,6 +99,12 @@ pnpm bench:profile --out bench-results/profile
 and 837P, parsed, read and streamed, with their peak heap, on two builds side by side (the bench
 workflow's `large` job).
 
+`pnpm check:cold-import` (after `pnpm build`) imports `dist/index.mjs` and `dist/parse.mjs` in
+twenty fresh processes each and holds each median to its budget in `scripts/check-cold-import.mjs`;
+CI's `cold-import` job runs it on a hosted runner, and on a developer machine its reading is context,
+not a verdict. Both entry points load one shared chunk of the parser (`splitting` in
+`tsup.config.ts`), so they export one binding of each name.
+
 A reading reports throughput, latency p50/p95/p99, allocations, peak heap, a long run for leaks,
 and the cold import with its gzip size. On a pull request CI compares the base build with the head
 at the small sizes, and `.github/workflows/bench.yml` takes a reading and a profile on a hosted
