@@ -174,7 +174,10 @@ unedited parse of the same text: only when the two are equal does the source tex
 edit to a segment, a count `recomputeCounts` rewrote, a copy of the interchange (`{ ...ix }`) or an
 interchange a builder made emits from the model, exactly as without the option. A `Buffer` input
 comes back one character per octet, so `Buffer.from(out, "latin1")` is the input bytes. The first
-byte-exact emit of an interchange parses its source once more to compare; later ones reuse that.
+byte-exact emit of an interchange parses its source once more to compare, and keeps that emit, a
+second copy of the input of about its size, beside the interchange, so later calls reuse it and it
+lives as long as the interchange. An edit that changes nothing the emit writes (a typed `segments`
+array, the `warnings`) is not seen, as it is not seen without the option.
 To make this possible, `parseX12` keeps a reference to the text it read, beside the interchange
 rather than on it, for as long as the interchange is reachable.
 

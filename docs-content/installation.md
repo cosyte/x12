@@ -11,8 +11,9 @@ description: "Install @cosyte/x12, meet the Node.js prerequisite, and confirm th
 per-condition type declarations, so it works from either module system without configuration, and it
 has **zero runtime dependencies**: Node stdlib only.
 
-> **Status:** the 0.1 line, published on npm and public. The `npm install` below is live. Below 1.0 a
-> breaking change is called out in the changelog with its migration. Run
+> **Status:** the 0.1 line, published on npm and public. The `npm install` below is live. Below 1.0
+> every release is a patch, and a breaking or narrowing change ships as a patch whose changelog
+> entry states the change and what a caller must do. Run
 > `npm view @cosyte/x12 version` for the current version: it is the source of truth.
 
 ## Prerequisites

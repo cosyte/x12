@@ -15,8 +15,9 @@ pnpm changeset
 
 The package is on the `0.1.x` line, and **every changeset is a `patch`**: the operator's rule of
 2026-11-07 is patch versions only, and a minor or a major waits for the operator's okay in their
-own words. A patch that adds something a consumer can call says so in its summary, and a break,
-which needs that okay first, spells out its migration, because the version number no longer says
-which kind of change it is.
+own words. Below 1.0 every release is a patch, and a breaking or narrowing change ships as a patch
+whose changeset states the change and what a caller must do. A patch that adds something a consumer
+can call says so in its summary too, because the version number does not say which kind of change
+it is.
 
 The standards every Cosyte repository follows are in `plans/standards.md` in the umbrella repository.

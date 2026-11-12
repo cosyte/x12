@@ -22,8 +22,9 @@ needs the amounts to be exactly right rather than approximately right.
 [non-goals](./troubleshooting.md#known-limitations-and-non-goals) are listed with the known limitations.
 
 > **Status:** the 0.1 line, published on npm and public. The exported readers, builders, types and
-> warning codes are the surface we keep stable, and below 1.0 a breaking change is called out in the
-> changelog with its migration. `npm view @cosyte/x12 version` is the source of truth for the
+> warning codes are the surface we keep stable, and below 1.0 every release is a patch, and a
+> breaking or narrowing change ships as a patch whose changelog entry states the change and what a
+> caller must do. `npm view @cosyte/x12 version` is the source of truth for the
 > current version.
 
 ## The transaction sets it covers
