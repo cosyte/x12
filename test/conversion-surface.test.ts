@@ -56,6 +56,15 @@ const MODULE_SOURCE = readFileSync(
   "utf8",
 );
 
+/**
+ * True in a mutation run (`vitest.mutation.config.ts` sets `X12_MUTATION_RUN`).
+ * There the conversion module's source on disk is StrykerJS's instrumented
+ * copy, every literal and branch wrapped in a mutant switch, so the three scans
+ * of that source skip themselves and no mutant changes the shape they hold.
+ * Every other test here judges a mutant by what the three functions return.
+ */
+const MUTATION_RUN = process.env["X12_MUTATION_RUN"] === "1";
+
 /** The package entry point's source, for the single-surface scan. */
 const ENTRY_SOURCE = readFileSync(join(ROOT, "src", "index.ts"), "utf8");
 
@@ -264,7 +273,7 @@ describe("the properties behind the skipped rows", () => {
     }
   });
 
-  it("the source declares no format qualifier beyond the decoded set", () => {
+  it.skipIf(MUTATION_RUN)("the source declares no format qualifier beyond the decoded set", () => {
     // The scan that makes the enumeration a MEASUREMENT rather than a claim: the
     // conversion module names exactly the two qualifiers, as string literals.
     const literals = [...codeOnly(MODULE_SOURCE).matchAll(/"([A-Z]+\d*)"/gu)].map(
@@ -460,24 +469,27 @@ describe("toDate is honest about the timezone", () => {
     expect(Object.keys(toObject(day) ?? {})).toEqual(["year", "month", "day"]);
   });
 
-  it("cannot read the host machine's zone: the module names no route to one", () => {
-    const code = codeOnly(MODULE_SOURCE);
-    for (const forbidden of [
-      "getTimezoneOffset",
-      "Intl",
-      "Date.parse",
-      "toLocale",
-      "setFullYear",
-      "setHours",
-      "Date.UTC",
-      "process.env",
-      "toISOString",
-    ]) {
-      expect(code, `the module reaches ${forbidden}`).not.toContain(forbidden);
-    }
-    expect(code).toContain("setUTCFullYear");
-    expect(code).toContain("setUTCHours");
-  });
+  it.skipIf(MUTATION_RUN)(
+    "cannot read the host machine's zone: the module names no route to one",
+    () => {
+      const code = codeOnly(MODULE_SOURCE);
+      for (const forbidden of [
+        "getTimezoneOffset",
+        "Intl",
+        "Date.parse",
+        "toLocale",
+        "setFullYear",
+        "setHours",
+        "Date.UTC",
+        "process.env",
+        "toISOString",
+      ]) {
+        expect(code, `the module reaches ${forbidden}`).not.toContain(forbidden);
+      }
+      expect(code).toContain("setUTCFullYear");
+      expect(code).toContain("setUTCHours");
+    },
+  );
 
   it("takes assumeOffsetMinutes and no other key", () => {
     const options: ToDateOptions = { assumeOffsetMinutes: 0 };
@@ -604,7 +616,7 @@ describe("the package constraints this surface was added under", () => {
     }
   });
 
-  it("imports nothing but this package's own existing date authority", () => {
+  it.skipIf(MUTATION_RUN)("imports nothing but this package's own existing date authority", () => {
     // The scan reads CODE, not the `@example` blocks, which import the package
     // by its published name the way a consumer would.
     const code = codeOnly(MODULE_SOURCE);

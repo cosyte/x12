@@ -115,6 +115,10 @@ export function validateHl(
     }
     return;
   }
+  // Without this branch an absent HL-02 would reach `index.get`, find no HL and
+  // raise the same one warning, so emptying the branch or skipping it changes no
+  // answer; it stays so the absent pointer is refused by name, not by a lookup.
+  // Stryker disable next-line ConditionalExpression,BlockStatement: equivalent, the lookup below raises the same warning
   if (hl.parentHlId === undefined) {
     warnings.push(hlParentMismatch(position));
     return;

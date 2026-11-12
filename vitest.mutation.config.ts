@@ -30,6 +30,12 @@ import config from "./vitest.config.js";
  *   mutant. The properties beside them (round trip, idempotent normalize, never throws in lenient
  *   mode) stay in, at 100 cases each, and so do the unit tests over the same readers.
  *
+ * - The three scans of the date conversion module's source in `conversion-surface.test.ts`,
+ *   skipped through `X12_MUTATION_RUN` below: they read source text, as the tests above that
+ *   read this repository's source do, and fail on the instrumented copy. The rest of
+ *   that file runs, and it is the suite that judges the mutants of `toObject`, `toISO` and
+ *   `toDate`.
+ *
  * - The 10 MB streaming test in `transactions-enrollment-834.test.ts`, skipped through
  *   `X12_MUTATION_RUN` below: it parses a 10 MB document for every parser mutant and killed no
  *   mutant on any of four full runs. Leaving it out did not by itself stop a dozen parser mutants
@@ -61,7 +67,6 @@ export default {
       "test/builder-segment-type.test.ts",
       "test/builder-string-type.test.ts",
       "test/code-lists-functional-identifier.test.ts",
-      "test/conversion-surface.test.ts",
       "test/eligibility-271-aaa-provenance.test.ts",
       "test/parser-decimal-silent-defaults.test.ts",
     ],
