@@ -320,7 +320,7 @@ export function toDate(
   // `new Date(0)` is UTC midnight and `setUTCFullYear` moves only the day, so
   // this line changes no instant today; it keeps midnight pinned if the line
   // above is ever rebuilt from a value that carries a time.
-  // Stryker disable next-line MethodExpression: equivalent, the time is already 00:00:00.000 UTC
+  // Stryker disable next-line MethodExpression,CallExpression: equivalent, the time is already 00:00:00.000 UTC
   midnight.setUTCHours(0, 0, 0, 0);
   const instant = new Date(midnight.getTime() - assumed * MS_PER_MINUTE);
   return Number.isNaN(instant.getTime()) ? undefined : instant;
