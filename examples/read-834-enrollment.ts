@@ -6,7 +6,8 @@
  * `get834Header` reads the sponsor and payer; `get834Enrollments` is an async iterable that yields
  * one decoded member per INS loop. The verbatim INS-03 code is always on the model, and an action
  * is taken on the code (the INS-03 list ships no description text). Every value is synthetic, and
- * nothing is sent anywhere.
+ * nothing is sent anywhere. The example prints codes and counts; a member's id identifies a person,
+ * so it is read and asserted on, never printed.
  *
  * Run from the repository root after `pnpm build`:
  *
@@ -98,27 +99,31 @@ if (tx === undefined) throw new Error("no 834 in this interchange");
 
 const header = get834Header(ix.delimiters, tx);
 console.log(
-  `Roster ${String(header?.referenceId)} from ${String(header?.sponsor?.name)}`,
-  `for ${String(header?.payer?.name)}`,
+  `Roster with a sponsor: ${String(header?.sponsor !== undefined)},`,
+  `a payer: ${String(header?.payer !== undefined)}`,
 );
 
 // One member at a time. Act on the verbatim code, and route a member
 // whose code did not resolve (it carries a warning of its own) to a person.
 const actions: [string | undefined, string][] = [];
+let position = 0;
 for await (const enrollment of get834Enrollments(ix.delimiters, tx)) {
+  position += 1;
   const code = enrollment.maintenanceTypeCode;
   let action = "review";
   if (enrollment.warnings.length === 0 && code === "021") action = "add";
   if (enrollment.warnings.length === 0 && code === "024") action = "terminate";
   actions.push([enrollment.member?.idCode, action]);
   console.log(
-    `  ${String(enrollment.member?.idCode)}: INS-03 ${String(code)} -> ${action},`,
+    `  Member ${String(position)}: INS-03 ${String(code)} -> ${action},`,
     `coverage ${String(enrollment.healthCoverages[0]?.insuranceLineCode)}`,
   );
 }
 
 // The checks that make this file a test: `pnpm examples` fails if any of them does not hold.
 assert.equal(ix.groups[0]?.transactions[0]?.st.elements[3], "005010X220A1");
+// The roster's reference and the parties' names; the member ids below are synthetic too.
+assert.equal(header?.referenceId, "ENR-202606");
 assert.equal(header?.sponsor?.name, "EMPLOYER CO");
 assert.deepEqual(actions, [
   ["MBR0001", "add"],

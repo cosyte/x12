@@ -29,8 +29,10 @@ const transactions = group.transactions.map((t) => ({
   transactionSetControlNumber: t.st.elements[2] ?? "",
   disposition: "A" as const,
 }));
+// A control number is free-form sender text that can carry an account identifier, so the example
+// prints the codes and the count, and never a control number.
 console.log(
-  `Received group ${groupControlNumber} (${functionalIdCode}, ${versionRelease}),`,
+  `Received a group (${functionalIdCode}, ${versionRelease}),`,
   `${String(transactions.length)} transaction set(s)`,
 );
 
@@ -56,8 +58,12 @@ const ack = build999({
   },
 });
 const wire = serializeX12(ack);
-console.log("999, one segment per line:");
-console.log(wire.split("~").filter(Boolean).join("~\n") + "~");
+// The 999 echoes the batch's control numbers, so the example prints its segment ids only.
+const segmentIds = wire
+  .split("~")
+  .filter(Boolean)
+  .map((segment) => segment.split("*")[0]);
+console.log("999 segments:", segmentIds.join(" "));
 
 // What the submitter reads.
 const parsed = parse999(wire);
@@ -77,4 +83,5 @@ assert.deepEqual(
   ]),
   [["837", "0001"]],
 );
+assert.deepEqual(segmentIds, ["ISA", "GS", "ST", "AK1", "AK2", "IK5", "AK9", "SE", "GE", "IEA"]);
 assert.equal(received.warnings.length, 0);

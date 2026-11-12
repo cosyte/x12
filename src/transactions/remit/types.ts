@@ -121,8 +121,8 @@ export interface X12RemitTrace {
  * ```ts
  * import type { X12RemitParty } from "@cosyte/x12";
  * declare const payer: X12RemitParty;
- * payer.name;     // "PAYER NAME"
- * payer.idCode;   // "12345" (NAIC / NPI / payer ID, verbatim)
+ * payer.name;     // "PAYER NAME", synthetic
+ * payer.idCode;   // "12345", synthetic (NAIC / NPI / payer ID, verbatim)
  * ```
  */
 export interface X12RemitParty {
@@ -146,9 +146,9 @@ export interface X12RemitParty {
  * import type { X12RemitAddress } from "@cosyte/x12";
  * declare const a: X12RemitAddress;
  * a.lines[0];     // "123 PAYER WAY"
- * a.city;         // "ANYTOWN"
+ * a.city;         // "ANYTOWN", synthetic
  * a.state;        // "OH"
- * a.postalCode;   // "44113"
+ * a.postalCode;   // "44113", synthetic
  * ```
  */
 export interface X12RemitAddress {
@@ -171,7 +171,7 @@ export interface X12RemitAddress {
  * import type { X12RemitReference } from "@cosyte/x12";
  * declare const r: X12RemitReference;
  * r.qualifier; // "TJ"
- * r.value;     // "123456789"
+ * r.value;     // "123456789", synthetic
  * ```
  */
 export interface X12RemitReference {
@@ -190,9 +190,9 @@ export interface X12RemitReference {
  * import type { X12RemitContact } from "@cosyte/x12";
  * declare const c: X12RemitContact;
  * c.contactFunctionCode;       // "BL"
- * c.name;                       // "JANE COORDINATOR"
+ * c.name;                       // "JANE COORDINATOR", synthetic
  * c.communications[0]?.qualifier; // "TE"
- * c.communications[0]?.value;     // "5551234567"
+ * c.communications[0]?.value;     // "5551234567", synthetic
  * ```
  */
 export interface X12RemitContact {
@@ -218,7 +218,7 @@ export interface X12RemitContact {
  * ```ts
  * import type { X12RemitClaim } from "@cosyte/x12";
  * declare const c: X12RemitClaim;
- * c.patientControlNumber;          // "PT-ACCT-001"
+ * c.patientControlNumber;          // "PT-ACCT-001", synthetic
  * c.totalChargeAmount?.toString();  // "500.00", or undefined if none decoded
  * c.totalPaymentAmount?.toString(); // "450.00", or undefined if none decoded
  * c.claimStatusCode;               // "1"
@@ -328,7 +328,7 @@ export interface X12RemitAdjustment {
  * p.entityIdentifierCode; // "QC" patient / "IL" insured / "74" corrected patient
  * p.lastName;             // verbatim
  * p.idQualifier;          // "MI"
- * p.idCode;               // "MEMBER123"
+ * p.idCode;               // "MEMBER123", synthetic
  * ```
  */
 export interface X12RemitPerson {
@@ -352,9 +352,9 @@ export interface X12RemitPerson {
  * import type { X12RemitProvider } from "@cosyte/x12";
  * declare const r: X12RemitProvider;
  * r.entityIdentifierCode; // "82" service provider
- * r.name;                 // "RENDERING PROVIDER INC"
+ * r.name;                 // "RENDERING PROVIDER INC", synthetic
  * r.idQualifier;          // "XX" (NPI)
- * r.idCode;               // "1234567890"
+ * r.idCode;               // "1234567890", synthetic
  * ```
  */
 export interface X12RemitProvider {

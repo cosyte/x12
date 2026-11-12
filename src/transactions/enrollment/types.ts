@@ -35,8 +35,8 @@ import type { X12ParseWarning } from "../../parser/warnings.js";
  * import type { X12EnrollmentHeader } from "@cosyte/x12";
  * declare const h: X12EnrollmentHeader;
  * h.transactionSetPurposeCode; // "00" original
- * h.sponsor?.name;             // "EMPLOYER CO"
- * h.payer?.name;               // "MEDPAY INSURANCE"
+ * h.sponsor?.name;             // "EMPLOYER CO", synthetic
+ * h.payer?.name;               // "MEDPAY INSURANCE", synthetic
  * ```
  */
 export interface X12EnrollmentHeader {
@@ -61,8 +61,8 @@ export interface X12EnrollmentHeader {
  * import type { X12EnrollmentParty } from "@cosyte/x12";
  * declare const p: X12EnrollmentParty;
  * p.entityIdentifierCode; // "P5" plan sponsor
- * p.name;                 // "EMPLOYER CO"
- * p.idCode;               // "FEIN123" (verbatim)
+ * p.name;                 // "EMPLOYER CO", synthetic
+ * p.idCode;               // "FEIN123", synthetic (verbatim)
  * ```
  */
 export interface X12EnrollmentParty {
@@ -117,8 +117,8 @@ export interface X12Enrollment {
  * declare const m: X12EnrollmentMember;
  * m.lastName;     // verbatim
  * m.idCode;       // verbatim member id
- * m.dateOfBirth;  // "19850515" (CCYYMMDD, verbatim)
- * m.genderCode;   // "F"
+ * m.dateOfBirth;  // "19850515", synthetic (CCYYMMDD, verbatim)
+ * m.genderCode;   // "F", synthetic
  * ```
  */
 export interface X12EnrollmentMember {
@@ -144,7 +144,7 @@ export interface X12EnrollmentMember {
  * import type { X12EnrollmentAddress } from "@cosyte/x12";
  * declare const a: X12EnrollmentAddress;
  * a.lines[0];   // "100 MAIN ST"
- * a.city;       // "COLUMBUS"
+ * a.city;       // "COLUMBUS", synthetic
  * ```
  */
 export interface X12EnrollmentAddress {
@@ -191,7 +191,7 @@ export interface X12HealthCoverage {
  * import type { X12CoordinationOfBenefits } from "@cosyte/x12";
  * declare const c: X12CoordinationOfBenefits;
  * c.payerResponsibility; // "P"
- * c.referenceId;         // "OTHERGRP-1"
+ * c.referenceId;         // "OTHERGRP-1", synthetic
  * ```
  */
 export interface X12CoordinationOfBenefits {
@@ -210,7 +210,7 @@ export interface X12CoordinationOfBenefits {
  * import type { X12EnrollmentReference } from "@cosyte/x12";
  * declare const r: X12EnrollmentReference;
  * r.qualifier; // "0F" subscriber number
- * r.value;     // "MBR0001"
+ * r.value;     // "MBR0001", synthetic
  * ```
  */
 export interface X12EnrollmentReference {
@@ -229,7 +229,7 @@ export interface X12EnrollmentReference {
  * import type { X12EnrollmentDate } from "@cosyte/x12";
  * declare const d: X12EnrollmentDate;
  * d.qualifier; // "356" eligibility begin
- * d.value;     // "20260101"
+ * d.value;     // "20260101", synthetic
  * ```
  */
 export interface X12EnrollmentDate {

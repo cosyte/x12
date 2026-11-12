@@ -112,8 +112,8 @@ export interface X12PremiumTrace {
  * ```ts
  * import type { X12PremiumParty } from "@cosyte/x12";
  * declare const payer: X12PremiumParty;
- * payer.name;     // "EMPLOYER CO"
- * payer.idCode;   // "FEIN123" (verbatim)
+ * payer.name;     // "EMPLOYER CO", synthetic
+ * payer.idCode;   // "FEIN123", synthetic (verbatim)
  * ```
  */
 export interface X12PremiumParty {
@@ -135,7 +135,7 @@ export interface X12PremiumParty {
  * import type { X12PremiumAddress } from "@cosyte/x12";
  * declare const a: X12PremiumAddress;
  * a.lines[0];   // "500 CORPORATE BLVD"
- * a.city;       // "COLUMBUS"
+ * a.city;       // "COLUMBUS", synthetic
  * ```
  */
 export interface X12PremiumAddress {
@@ -156,7 +156,7 @@ export interface X12PremiumAddress {
  * import type { X12PremiumReference } from "@cosyte/x12";
  * declare const r: X12PremiumReference;
  * r.qualifier; // "38" (master policy number)
- * r.value;     // "POL-0001"
+ * r.value;     // "POL-0001", synthetic
  * ```
  */
 export interface X12PremiumReference {
@@ -175,7 +175,7 @@ export interface X12PremiumReference {
  * import type { X12PremiumDate } from "@cosyte/x12";
  * declare const d: X12PremiumDate;
  * d.qualifier; // "582" (report period)
- * d.value;     // "20260601"
+ * d.value;     // "20260601", synthetic
  * ```
  */
 export interface X12PremiumDate {
@@ -219,7 +219,7 @@ export interface X12PremiumRemittance {
  * declare const e: X12PremiumEntity;
  * e.assignedNumber;          // "1"
  * e.entityIdentifierCode;    // "2J" (correspondent)
- * e.idCode;                  // "GRP-0001"
+ * e.idCode;                  // "GRP-0001", synthetic
  * ```
  */
 export interface X12PremiumEntity {
@@ -266,7 +266,7 @@ export interface X12PremiumPerson {
  * import type { X12PremiumOpenItem } from "@cosyte/x12";
  * declare const o: X12PremiumOpenItem;
  * o.qualifier;             // "AZ"
- * o.referenceId;           // "POL-0001"
+ * o.referenceId;           // "POL-0001", synthetic
  * o.amountPaid?.toString(); // "250.00", or undefined if none decoded
  * ```
  */

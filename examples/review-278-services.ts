@@ -80,7 +80,10 @@ const sentTx = sent.groups[0]?.transactions[0];
 const asked = sentTx ? get278Request(sent.delimiters, sentTx) : undefined;
 if (asked === undefined) throw new Error("not a 278 request");
 const askedTrace = asked.reviews[0]?.traces[0]?.referenceId;
-console.log(`278 request ${String(asked.direction)}: trace ${String(askedTrace)}, no decision yet`);
+console.log(
+  `278 ${String(asked.direction)} with a trace: ${String(askedTrace !== undefined)},`,
+  `decided: ${String(asked.reviews[0]?.decision !== undefined)}`,
+);
 
 // The response reuses the parties and the trace, and adds the decision: certified in total (A1).
 const response: Build278Spec = {
@@ -99,9 +102,11 @@ const answeredTx = answered.groups[0]?.transactions[0];
 const decided = answeredTx ? get278Response(answered.delimiters, answeredTx) : undefined;
 if (decided === undefined) throw new Error("not a 278 response");
 const decision = decided.reviews[0]?.decision;
+// The authorization number identifies the patient's review, so it is read, never printed.
+const authorization = decision?.reviewIdentificationNumber; // "AUTH123456", synthetic
 console.log(
-  `278 response for trace ${String(decided.reviews[0]?.traces[0]?.referenceId)}:`,
-  `action ${String(decision?.actionCode)}, authorization ${String(decision?.reviewIdentificationNumber)}`,
+  `278 ${String(decided.direction)} echoes the trace: ${String(decided.reviews[0]?.traces[0]?.referenceId === askedTrace)},`,
+  `action ${String(decision?.actionCode)}, authorization given: ${String(authorization !== undefined)}`,
 );
 
 // A decision on a request is refused rather than written.
@@ -116,10 +121,11 @@ console.log("A request carrying a decision is refused:", refused);
 // The checks that make this file a test: `pnpm examples` fails if any of them does not hold.
 assert.equal(asked.direction, "request");
 assert.equal(asked.reviews[0]?.decision, undefined);
+// The trace is synthetic.
 assert.equal(askedTrace, "AUTHREQ-0001");
 assert.equal(decided.direction, "response");
 assert.equal(decided.reviews[0]?.traces[0]?.referenceId, askedTrace);
 assert.equal(decision?.actionCode, "A1");
-assert.equal(decision.reviewIdentificationNumber, "AUTH123456");
+assert.equal(authorization, "AUTH123456");
 assert.equal(refused, "X12_278_BUILD_INVALID_SPEC");
 assert.equal(asked.warnings.length + decided.warnings.length, 0);

@@ -4,7 +4,9 @@
  * `examples/data/835-remittance.edi` is synthetic: one payment covering two claims, with fabricated
  * payer, provider, patients and amounts. The example prints the payment, each claim's
  * charged/paid/patient-owes split and the adjustment reasons behind it, then checks the arithmetic
- * with `X12Decimal`, which is exact: no amount is ever read through a float.
+ * with `X12Decimal`, which is exact: no amount is ever read through a float. It prints amounts,
+ * codes and counts only: a claim's account number and the payment's trace identify a patient or a
+ * payment, so it reads them and asserts on them, and never prints them.
  *
  * Run from the repository root after `pnpm build`:
  *
@@ -25,13 +27,13 @@ if (remit === undefined) throw new Error("not an 835");
 const payment = remit.payment.totalActualPayment;
 console.log(
   `Payment ${String(payment)} by ${String(remit.payment.method)},`,
-  `trace ${String(remit.traces[0]?.referenceId)}`,
+  `${String(remit.claims.length)} claim(s)`,
 );
 
 let paidAcrossClaims = X12Decimal.ZERO;
-for (const claim of remit.claims) {
+for (const [index, claim] of remit.claims.entries()) {
   console.log(
-    `Claim ${claim.patientControlNumber}: charged ${String(claim.totalChargeAmount)},`,
+    `Claim ${String(index + 1)}: charged ${String(claim.totalChargeAmount)},`,
     `paid ${String(claim.totalPaymentAmount)},`,
     `patient owes ${String(claim.patientResponsibilityAmount)}`,
   );
@@ -47,7 +49,7 @@ for (const claim of remit.claims) {
   // Charged minus paid is exactly what the adjustments explain.
   const { totalChargeAmount: charged, totalPaymentAmount: paid } = claim;
   assert.ok(charged !== undefined && paid !== undefined);
-  assert.ok(charged.subtract(paid).equals(adjusted), `claim ${claim.patientControlNumber}`);
+  assert.ok(charged.subtract(paid).equals(adjusted), `claim ${String(index + 1)}`);
   paidAcrossClaims = paidAcrossClaims.add(paid);
 }
 console.log(`Paid across claims: ${paidAcrossClaims.toString()}`);
@@ -55,7 +57,10 @@ console.log("Warnings:", ix.warnings.length + remit.warnings.length);
 
 // The checks that make this file a test: `pnpm examples` fails if any of them does not hold.
 assert.equal(payment?.toString(), "240.00");
+// The payment's trace (TRN-02), the check or EFT number, synthetic.
+assert.equal(remit.traces[0]?.referenceId, "0098765");
 assert.ok(payment.equals(paidAcrossClaims));
+// Each claim's account number (CLP-01) and what the patient owes; the account numbers are synthetic.
 assert.deepEqual(
   remit.claims.map((c) => [c.patientControlNumber, c.patientResponsibilityAmount?.toString()]),
   [

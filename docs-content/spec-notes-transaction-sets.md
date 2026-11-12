@@ -70,6 +70,7 @@ group?.gs.elements[1]; // => "HP"
 const tx = group?.transactions.find((t) => t.st.elements[1] === "835");
 const remit = tx ? get835(ix.delimiters, tx) : undefined;
 
+// A trace number, read and never printed. Synthetic value:
 remit?.traces[0]?.referenceId; // => "0012345"
 ```
 

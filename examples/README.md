@@ -4,7 +4,10 @@ Small runnable programs, at least one for every transaction set family the packa
 builds. Each one imports `@cosyte/x12` by its published name, so it runs against the built package
 exactly as a consumer installs it, prints what it read or built, and checks its own output: a
 mismatch exits non-zero. Every interchange in them is synthetic, with fabricated payers, providers,
-patients and amounts.
+patients and amounts. Even so, an example prints only codes, amounts, counts, lengths and booleans:
+a name, a member, claim or account number, a trace or control number, and a whole interchange or
+segment are read and asserted on, never printed, since code copied from an example runs on real
+interchanges.
 
 Build once, then run them all:
 

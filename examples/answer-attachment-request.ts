@@ -8,7 +8,8 @@
  * to their true count; `get275Attachments` checks that count on the way back in. The attachment
  * refuses to print its octets, so a log line carries its size only. An attachment is octets, so the
  * 275 is written as latin1 and read back from a Buffer. Every value is synthetic, the attachment
- * included, and nothing is sent anywhere.
+ * included, and nothing is sent anywhere. The example prints codes, lengths and booleans; the claim
+ * number and the trace identify a patient's claim, so it reads and asserts on them, never prints.
  *
  * Run from the repository root after `pnpm build`:
  *
@@ -127,7 +128,7 @@ if (trace === undefined || claim === undefined) throw new Error("no trace or cla
 if (category === undefined || code === undefined || codeList === undefined) {
   throw new Error("the request names no document");
 }
-console.log(`277 asks about claim ${claim} (trace ${trace}) for ${codeList} ${code}`);
+console.log(`277 asks for a ${codeList} ${code} document about one claim (${category})`);
 
 // 3. The provider answers with a 275. The data is already base64, and the filter code says so.
 const document = Buffer.from("SYNTHETIC NOTE", "latin1").toString("base64");
@@ -172,11 +173,12 @@ const reading = tx275 ? get275Attachments(ix275.delimiters, tx275) : undefined;
 if (reading === undefined) throw new Error("not a 275");
 const attachment = reading.attachments[0];
 console.log(
-  `275 answers trace ${String(attachment?.line?.traces[0]?.referenceId)}:`,
+  `275 echoes the trace: ${String(attachment?.line?.traces[0]?.referenceId === trace)},`,
   `${String(attachment?.filterCode)}, declared ${String(attachment?.declaredLength)} octets,`,
   `verified ${String(attachment?.lengthVerified)}`,
 );
-console.log("Logged, the attachment reads:", String(attachment?.data));
+// The attachment refuses to print its octets: its string form states their count and nothing else.
+const shown = String(attachment?.data); // "[X12AttachmentData: 20 octets withheld]"
 
 // The checks that make this file a test: `pnpm examples` fails if any of them does not hold.
 assert.equal(rfai.transactionType, "request-for-additional-information");
@@ -184,6 +186,7 @@ assert.deepEqual(
   rfai.levels.map((level) => level.levelCode),
   ["20", "21", "22"],
 );
+// The trace and the claim number are synthetic.
 assert.equal(trace, "TRACE-0001");
 assert.equal(claim, "PCN0001");
 assert.equal(code, "18842-5");
@@ -192,5 +195,6 @@ assert.equal(attachment?.line?.traces[0]?.referenceId, trace);
 assert.equal(attachment.declaredLength, String(document.length));
 assert.equal(attachment.lengthVerified, true);
 assert.equal(attachment.data.readOctets(), document);
-assert.ok(!String(attachment.data).includes(document));
+assert.ok(!shown.includes(document));
+assert.equal(shown, `[X12AttachmentData: ${String(document.length)} octets withheld]`);
 assert.equal(rfai.warnings.length + reading.warnings.length + ix275.warnings.length, 0);

@@ -156,9 +156,9 @@ export interface X12ClaimEntity {
  * import type { X12ClaimAddress } from "@cosyte/x12";
  * declare const a: X12ClaimAddress;
  * a.lines[0];   // "123 PROVIDER WAY"
- * a.city;       // "CLEVELAND"
+ * a.city;       // "CLEVELAND", synthetic
  * a.state;      // "OH"
- * a.postalCode; // "44113"
+ * a.postalCode; // "44113", synthetic
  * ```
  */
 export interface X12ClaimAddress {
@@ -181,7 +181,7 @@ export interface X12ClaimAddress {
  * declare const c: X12ClaimContact;
  * c.contactFunctionCode;                // "IC"
  * c.communications[0]?.qualifier;       // "TE"
- * c.communications[0]?.value;            // "5551234567"
+ * c.communications[0]?.value;            // "5551234567", synthetic
  * ```
  */
 export interface X12ClaimContact {
@@ -201,7 +201,7 @@ export interface X12ClaimContact {
  * import type { X12ClaimReference } from "@cosyte/x12";
  * declare const r: X12ClaimReference;
  * r.qualifier; // "EI"
- * r.value;     // "123456789"
+ * r.value;     // "123456789", synthetic
  * ```
  */
 export interface X12ClaimReference {
@@ -227,7 +227,7 @@ export interface X12ClaimReference {
  * declare const d: X12ClaimDate;
  * d.qualifier;       // "472"
  * d.formatQualifier; // "D8"
- * d.value;           // "20260601"
+ * d.value;           // "20260601", synthetic
  * ```
  */
 export interface X12ClaimDate {

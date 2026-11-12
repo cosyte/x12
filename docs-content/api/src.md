@@ -14817,7 +14817,7 @@ beside it. A partial date is never completed.
 import type { X12AdditionalInformationRequestDate } from "@cosyte/x12";
 declare const d: X12AdditionalInformationRequestDate;
 d.formatQualifier; // "RD8"
-d.value;           // "20260501-20260502"
+d.value;           // "20260501-20260502", synthetic
 ```
 
 #### Properties
@@ -15859,7 +15859,7 @@ import type { X12AuthDate } from "@cosyte/x12";
 declare const d: X12AuthDate;
 d.qualifier;       // "472"
 d.formatQualifier; // "D8"
-d.value;           // "20260601"
+d.value;           // "20260601", synthetic
 ```
 
 #### Properties
@@ -15925,7 +15925,7 @@ no demographics.
 import type { X12AuthEntity } from "@cosyte/x12";
 declare const e: X12AuthEntity;
 e.entityIdentifierCode; // "X3" (UMO) / "1P" (provider)
-e.name;                 // "UTILIZATION REVIEW CO"
+e.name;                 // "UTILIZATION REVIEW CO", synthetic
 ```
 
 #### Properties
@@ -15964,7 +15964,7 @@ variants.
 ```ts
 import type { X12AuthHeader } from "@cosyte/x12";
 declare const h: X12AuthHeader;
-h.referenceId; // "AUTH-202606"
+h.referenceId; // "AUTH-202606", synthetic
 h.date;        // "20260601" (BHT-04, CCYYMMDD)
 ```
 
@@ -16007,8 +16007,8 @@ the optional DMG demographics. `idCode` (NM1-09) is the member identifier
 ```ts
 import type { X12AuthMember } from "@cosyte/x12";
 declare const m: X12AuthMember;
-m.lastName;    // "DOE"
-m.dateOfBirth; // "19850515" (DMG-02, CCYYMMDD)
+m.lastName;    // "DOE", synthetic
+m.dateOfBirth; // "19850515", synthetic (DMG-02, CCYYMMDD)
 ```
 
 #### Properties
@@ -16066,7 +16066,7 @@ REF-01; `value` is REF-02.
 import type { X12AuthReference } from "@cosyte/x12";
 declare const r: X12AuthReference;
 r.qualifier; // "BB" (authorization number)
-r.value;     // "PRIORAUTH-1"
+r.value;     // "PRIORAUTH-1", synthetic
 ```
 
 #### Properties
@@ -16097,7 +16097,7 @@ outcome with the request it sent - the walker NEVER mutates it.
 import type { X12AuthTrace } from "@cosyte/x12";
 declare const t: X12AuthTrace;
 t.traceTypeCode; // "1" (current transaction)
-t.referenceId;   // "AUTHREQ-202606-0001"
+t.referenceId;   // "AUTHREQ-202606-0001", synthetic
 ```
 
 #### Properties
@@ -16273,9 +16273,9 @@ verbatim, no normalization.
 import type { X12ClaimAddress } from "@cosyte/x12";
 declare const a: X12ClaimAddress;
 a.lines[0];   // "123 PROVIDER WAY"
-a.city;       // "CLEVELAND"
+a.city;       // "CLEVELAND", synthetic
 a.state;      // "OH"
-a.postalCode; // "44113"
+a.postalCode; // "44113", synthetic
 ```
 
 #### Properties
@@ -16344,7 +16344,7 @@ import type { X12ClaimContact } from "@cosyte/x12";
 declare const c: X12ClaimContact;
 c.contactFunctionCode;                // "IC"
 c.communications[0]?.qualifier;       // "TE"
-c.communications[0]?.value;            // "5551234567"
+c.communications[0]?.value;            // "5551234567", synthetic
 ```
 
 #### Properties
@@ -16382,7 +16382,7 @@ import type { X12ClaimDate } from "@cosyte/x12";
 declare const d: X12ClaimDate;
 d.qualifier;       // "472"
 d.formatQualifier; // "D8"
-d.value;           // "20260601"
+d.value;           // "20260601", synthetic
 ```
 
 #### Properties
@@ -16615,7 +16615,7 @@ an other-payer reference, `G1` Prior Authorization, etc.).
 import type { X12ClaimReference } from "@cosyte/x12";
 declare const r: X12ClaimReference;
 r.qualifier; // "EI"
-r.value;     // "123456789"
+r.value;     // "123456789", synthetic
 ```
 
 #### Properties
@@ -16647,8 +16647,8 @@ any service-line statuses (Loop 2220).
 ```ts
 import type { X12ClaimStatus } from "@cosyte/x12";
 declare const c: X12ClaimStatus;
-c.serviceProvider?.name;   // "ANYTOWN CLINIC"
-c.subscriber?.lastName;    // "DOE"
+c.serviceProvider?.name;   // "ANYTOWN CLINIC", synthetic
+c.subscriber?.lastName;    // "DOE", synthetic
 c.statuses[0]?.totalChargeAmount?.toString(); // "150.00"
 ```
 
@@ -16871,7 +16871,7 @@ COB-03.
 import type { X12CoordinationOfBenefits } from "@cosyte/x12";
 declare const c: X12CoordinationOfBenefits;
 c.payerResponsibility; // "P"
-c.referenceId;         // "OTHERGRP-1"
+c.referenceId;         // "OTHERGRP-1", synthetic
 ```
 
 #### Properties
@@ -17094,9 +17094,9 @@ A postal address (N3 + N4) attached to a subscriber / dependent name.
 import type { X12EligibilityAddress } from "@cosyte/x12";
 declare const a: X12EligibilityAddress;
 a.lines[0];   // "123 MAIN ST"
-a.city;       // "ANYTOWN"
+a.city;       // "ANYTOWN", synthetic
 a.state;      // "CA"
-a.postalCode; // "90001"
+a.postalCode; // "90001", synthetic
 ```
 
 #### Properties
@@ -17231,7 +17231,7 @@ import type { X12EligibilityDate } from "@cosyte/x12";
 declare const d: X12EligibilityDate;
 d.qualifier;       // "307"
 d.formatQualifier; // "D8"
-d.value;           // "20260101"
+d.value;           // "20260101", synthetic
 ```
 
 #### Properties
@@ -17261,7 +17261,7 @@ a subscriber minus the nested dependents.
 ```ts
 import type { X12EligibilityDependent } from "@cosyte/x12";
 declare const d: X12EligibilityDependent;
-d.name?.firstName;            // "JUNIOR"
+d.name?.firstName;            // "JUNIOR", synthetic
 d.benefits[0]?.coverageLevelCode; // "IND"
 ```
 
@@ -17305,8 +17305,8 @@ demographics, just the organization / provider name + identifier.
 import type { X12EligibilityEntity } from "@cosyte/x12";
 declare const e: X12EligibilityEntity;
 e.entityIdentifierCode; // "PR" (payer) / "1P" (provider)
-e.name;                 // "MEDPAY INSURANCE"
-e.idCode;               // "00123"
+e.name;                 // "MEDPAY INSURANCE", synthetic
+e.idCode;               // "00123", synthetic
 ```
 
 #### Properties
@@ -17344,9 +17344,9 @@ demographics + N3/N4 address. `idCode` is the member identifier (NM1-09)
 ```ts
 import type { X12EligibilityMember } from "@cosyte/x12";
 declare const m: X12EligibilityMember;
-m.lastName;     // "DOE"
-m.dateOfBirth;  // "19800101" (DMG-02, CCYYMMDD)
-m.genderCode;   // "F"
+m.lastName;     // "DOE", synthetic
+m.dateOfBirth;  // "19800101", synthetic (DMG-02, CCYYMMDD)
+m.genderCode;   // "F", synthetic
 ```
 
 #### Properties
@@ -17452,7 +17452,7 @@ benefit line. `qualifier` is REF-01; `value` is REF-02.
 import type { X12EligibilityReference } from "@cosyte/x12";
 declare const r: X12EligibilityReference;
 r.qualifier; // "6P" (group number)
-r.value;     // "GRP0001"
+r.value;     // "GRP0001", synthetic
 ```
 
 #### Properties
@@ -17513,8 +17513,8 @@ Non-subscriber patients hang off [dependents](#dependents-4).
 ```ts
 import type { X12EligibilitySubscriber } from "@cosyte/x12";
 declare const s: X12EligibilitySubscriber;
-s.informationSource?.name;   // "MEDPAY INSURANCE"
-s.name?.lastName;            // "DOE"
+s.informationSource?.name;   // "MEDPAY INSURANCE", synthetic
+s.name?.lastName;            // "DOE", synthetic
 s.dependents.length;         // 0
 ```
 
@@ -17570,7 +17570,7 @@ against the trace it sent. The walker NEVER mutates it.
 import type { X12EligibilityTrace } from "@cosyte/x12";
 declare const t: X12EligibilityTrace;
 t.traceTypeCode; // "2" (referenced - added by the payer in the 271)
-t.referenceId;   // "ELIG20260627001" (echoed verbatim from the 270)
+t.referenceId;   // "ELIG20260627001", synthetic (echoed verbatim from the 270)
 ```
 
 #### Properties
@@ -17682,7 +17682,7 @@ N4. All verbatim - no normalization.
 import type { X12EnrollmentAddress } from "@cosyte/x12";
 declare const a: X12EnrollmentAddress;
 a.lines[0];   // "100 MAIN ST"
-a.city;       // "COLUMBUS"
+a.city;       // "COLUMBUS", synthetic
 ```
 
 #### Properties
@@ -17748,7 +17748,7 @@ CCYYMMDD or range (DTP-03). No normalization.
 import type { X12EnrollmentDate } from "@cosyte/x12";
 declare const d: X12EnrollmentDate;
 d.qualifier; // "356" eligibility begin
-d.value;     // "20260101"
+d.value;     // "20260101", synthetic
 ```
 
 #### Properties
@@ -17777,8 +17777,8 @@ so a consumer can read the file-level context without draining the
 import type { X12EnrollmentHeader } from "@cosyte/x12";
 declare const h: X12EnrollmentHeader;
 h.transactionSetPurposeCode; // "00" original
-h.sponsor?.name;             // "EMPLOYER CO"
-h.payer?.name;               // "MEDPAY INSURANCE"
+h.sponsor?.name;             // "EMPLOYER CO", synthetic
+h.payer?.name;               // "MEDPAY INSURANCE", synthetic
 ```
 
 #### Properties
@@ -17837,8 +17837,8 @@ import type { X12EnrollmentMember } from "@cosyte/x12";
 declare const m: X12EnrollmentMember;
 m.lastName;     // verbatim
 m.idCode;       // verbatim member id
-m.dateOfBirth;  // "19850515" (CCYYMMDD, verbatim)
-m.genderCode;   // "F"
+m.dateOfBirth;  // "19850515", synthetic (CCYYMMDD, verbatim)
+m.genderCode;   // "F", synthetic
 ```
 
 #### Properties
@@ -17896,8 +17896,8 @@ Decoded Loop 1000 party (sponsor `N1*P5`, payer `N1*IN`, TPA/broker
 import type { X12EnrollmentParty } from "@cosyte/x12";
 declare const p: X12EnrollmentParty;
 p.entityIdentifierCode; // "P5" plan sponsor
-p.name;                 // "EMPLOYER CO"
-p.idCode;               // "FEIN123" (verbatim)
+p.name;                 // "EMPLOYER CO", synthetic
+p.idCode;               // "FEIN123", synthetic (verbatim)
 ```
 
 #### Properties
@@ -17932,7 +17932,7 @@ qualifier; `value` is the verbatim id.
 import type { X12EnrollmentReference } from "@cosyte/x12";
 declare const r: X12EnrollmentReference;
 r.qualifier; // "0F" subscriber number
-r.value;     // "MBR0001"
+r.value;     // "MBR0001", synthetic
 ```
 
 #### Properties
@@ -18166,7 +18166,7 @@ A postal address (N3 + N4) attached to a name loop.
 import type { X12InquiryAddress } from "@cosyte/x12";
 declare const a: X12InquiryAddress;
 a.lines[0];   // "100 MAIN ST"
-a.postalCode; // "43215"
+a.postalCode; // "43215", synthetic
 ```
 
 #### Properties
@@ -18207,7 +18207,7 @@ import type { X12InquiryDate } from "@cosyte/x12";
 declare const d: X12InquiryDate;
 d.qualifier;       // "291" (plan) / "307" (eligibility)
 d.formatQualifier; // "D8" or "RD8"
-d.value;           // "20260601"
+d.value;           // "20260601", synthetic
 ```
 
 #### Properties
@@ -18244,7 +18244,7 @@ under.
 ```ts
 import type { X12InquiryDependent } from "@cosyte/x12";
 declare const d: X12InquiryDependent;
-d.name?.firstName;    // "BABY"
+d.name?.firstName;    // "BABY", synthetic
 d.inquiries.length;   // the dependent's own requested service types
 ```
 
@@ -18340,8 +18340,8 @@ statement of that (`1` person, `2` non-person) and is preserved verbatim.
 import type { X12InquiryName } from "@cosyte/x12";
 declare const n: X12InquiryName;
 n.entityIdentifierCode;          // "IL" subscriber / "PR" payer / "1P" provider
-n.lastNameOrOrganizationName;    // "DOE" or "MEDPAY INSURANCE"
-n.dateOfBirth;                   // "19850515" (DMG-02, CCYYMMDD)
+n.lastNameOrOrganizationName;    // "DOE" or "MEDPAY INSURANCE", synthetic
+n.dateOfBirth;                   // "19850515", synthetic (DMG-02, CCYYMMDD)
 ```
 
 #### Properties
@@ -18503,7 +18503,7 @@ A REF supplemental identifier on a level or on an inquiry.
 import type { X12InquiryReference } from "@cosyte/x12";
 declare const r: X12InquiryReference;
 r.qualifier; // "6P" (group number)
-r.value;     // "GROUP0001"
+r.value;     // "GROUP0001", synthetic
 ```
 
 #### Properties
@@ -18629,7 +18629,7 @@ to. The root of a transmitted hierarchy: HL-03 is `20` and HL-02 is absent.
 ```ts
 import type { X12InquirySource } from "@cosyte/x12";
 declare const s: X12InquirySource;
-s.name?.lastNameOrOrganizationName; // "MEDPAY INSURANCE"
+s.name?.lastNameOrOrganizationName; // "MEDPAY INSURANCE", synthetic
 s.receivers.length;                 // 1
 ```
 
@@ -18712,7 +18712,7 @@ provider match the answer to this question.
 import type { X12InquiryTrace } from "@cosyte/x12";
 declare const t: X12InquiryTrace;
 t.traceTypeCode; // "1" (current transaction trace numbers)
-t.referenceId;   // "ELIG20260601001"
+t.referenceId;   // "ELIG20260601001", synthetic
 ```
 
 #### Properties
@@ -19216,7 +19216,7 @@ N4. All verbatim - no normalization.
 import type { X12PremiumAddress } from "@cosyte/x12";
 declare const a: X12PremiumAddress;
 a.lines[0];   // "500 CORPORATE BLVD"
-a.city;       // "COLUMBUS"
+a.city;       // "COLUMBUS", synthetic
 ```
 
 #### Properties
@@ -19292,7 +19292,7 @@ is the date/time qualifier (DTM-01); `value` is the verbatim CCYYMMDD
 import type { X12PremiumDate } from "@cosyte/x12";
 declare const d: X12PremiumDate;
 d.qualifier; // "582" (report period)
-d.value;     // "20260601"
+d.value;     // "20260601", synthetic
 ```
 
 #### Properties
@@ -19320,7 +19320,7 @@ import type { X12PremiumEntity } from "@cosyte/x12";
 declare const e: X12PremiumEntity;
 e.assignedNumber;          // "1"
 e.entityIdentifierCode;    // "2J" (correspondent)
-e.idCode;                  // "GRP-0001"
+e.idCode;                  // "GRP-0001", synthetic
 ```
 
 #### Properties
@@ -19358,7 +19358,7 @@ policy number); `referenceId` is RMR-02; `amountPaid` is RMR-04;
 import type { X12PremiumOpenItem } from "@cosyte/x12";
 declare const o: X12PremiumOpenItem;
 o.qualifier;             // "AZ"
-o.referenceId;           // "POL-0001"
+o.referenceId;           // "POL-0001", synthetic
 o.amountPaid?.toString(); // "250.00", or undefined if none decoded
 ```
 
@@ -19406,8 +19406,8 @@ remittance detail.
 ```ts
 import type { X12PremiumParty } from "@cosyte/x12";
 declare const payer: X12PremiumParty;
-payer.name;     // "EMPLOYER CO"
-payer.idCode;   // "FEIN123" (verbatim)
+payer.name;     // "EMPLOYER CO", synthetic
+payer.idCode;   // "FEIN123", synthetic (verbatim)
 ```
 
 #### Properties
@@ -19604,7 +19604,7 @@ id, version). `qualifier` is the X12 reference-identification qualifier;
 import type { X12PremiumReference } from "@cosyte/x12";
 declare const r: X12PremiumReference;
 r.qualifier; // "38" (master policy number)
-r.value;     // "POL-0001"
+r.value;     // "POL-0001", synthetic
 ```
 
 #### Properties
@@ -19993,9 +19993,9 @@ postal-code canonicalization).
 import type { X12RemitAddress } from "@cosyte/x12";
 declare const a: X12RemitAddress;
 a.lines[0];     // "123 PAYER WAY"
-a.city;         // "ANYTOWN"
+a.city;         // "ANYTOWN", synthetic
 a.state;        // "OH"
-a.postalCode;   // "44113"
+a.postalCode;   // "44113", synthetic
 ```
 
 #### Properties
@@ -20127,7 +20127,7 @@ echoes them in warnings, and never normalizes.
 ```ts
 import type { X12RemitClaim } from "@cosyte/x12";
 declare const c: X12RemitClaim;
-c.patientControlNumber;          // "PT-ACCT-001"
+c.patientControlNumber;          // "PT-ACCT-001", synthetic
 c.totalChargeAmount?.toString();  // "500.00", or undefined if none decoded
 c.totalPaymentAmount?.toString(); // "450.00", or undefined if none decoded
 c.claimStatusCode;               // "1"
@@ -20260,9 +20260,9 @@ carry up to 3 communication channels (TE/EX/EM/FX).
 import type { X12RemitContact } from "@cosyte/x12";
 declare const c: X12RemitContact;
 c.contactFunctionCode;       // "BL"
-c.name;                       // "JANE COORDINATOR"
+c.name;                       // "JANE COORDINATOR", synthetic
 c.communications[0]?.qualifier; // "TE"
-c.communications[0]?.value;     // "5551234567"
+c.communications[0]?.value;     // "5551234567", synthetic
 ```
 
 #### Properties
@@ -20295,8 +20295,8 @@ per-claim level.
 ```ts
 import type { X12RemitParty } from "@cosyte/x12";
 declare const payer: X12RemitParty;
-payer.name;     // "PAYER NAME"
-payer.idCode;   // "12345" (NAIC / NPI / payer ID, verbatim)
+payer.name;     // "PAYER NAME", synthetic
+payer.idCode;   // "12345", synthetic (NAIC / NPI / payer ID, verbatim)
 ```
 
 #### Properties
@@ -20406,7 +20406,7 @@ declare const p: X12RemitPerson;
 p.entityIdentifierCode; // "QC" patient / "IL" insured / "74" corrected patient
 p.lastName;             // verbatim
 p.idQualifier;          // "MI"
-p.idCode;               // "MEMBER123"
+p.idCode;               // "MEMBER123", synthetic
 ```
 
 #### Properties
@@ -20454,9 +20454,9 @@ are organizational.
 import type { X12RemitProvider } from "@cosyte/x12";
 declare const r: X12RemitProvider;
 r.entityIdentifierCode; // "82" service provider
-r.name;                 // "RENDERING PROVIDER INC"
+r.name;                 // "RENDERING PROVIDER INC", synthetic
 r.idQualifier;          // "XX" (NPI)
-r.idCode;               // "1234567890"
+r.idCode;               // "1234567890", synthetic
 ```
 
 #### Properties
@@ -20557,7 +20557,7 @@ payer / payee loops and on per-claim contexts.
 import type { X12RemitReference } from "@cosyte/x12";
 declare const r: X12RemitReference;
 r.qualifier; // "TJ"
-r.value;     // "123456789"
+r.value;     // "123456789", synthetic
 ```
 
 #### Properties
@@ -21169,7 +21169,7 @@ import type { X12StatusDate } from "@cosyte/x12";
 declare const d: X12StatusDate;
 d.qualifier;       // "472"
 d.formatQualifier; // "RD8"
-d.value;           // "20260601-20260601"
+d.value;           // "20260601-20260601", synthetic
 ```
 
 #### Properties
@@ -21199,8 +21199,8 @@ information receiver (2100B), or service provider (2100C).
 import type { X12StatusEntity } from "@cosyte/x12";
 declare const e: X12StatusEntity;
 e.entityIdentifierCode; // "PR" / "41" / "1P"
-e.name;                 // "MEDPAY INSURANCE"
-e.idCode;               // "00123"
+e.name;                 // "MEDPAY INSURANCE", synthetic
+e.idCode;               // "00123", synthetic
 ```
 
 #### Properties
@@ -21360,7 +21360,7 @@ and service lines transmitted under that trace.
 ```ts
 import type { X12StatusInquiryClaim } from "@cosyte/x12";
 declare const c: X12StatusInquiryClaim;
-c.trace?.referenceId;       // "STATUS20260601001"
+c.trace?.referenceId;       // "STATUS20260601001", synthetic
 c.references[0]?.qualifier; // "1K" (payer claim control number)
 c.serviceLines.length;      // 1
 ```
@@ -21413,7 +21413,7 @@ import type { X12StatusInquiryDate } from "@cosyte/x12";
 declare const d: X12StatusInquiryDate;
 d.qualifier;       // "472" (service date)
 d.formatQualifier; // "D8" or "RD8"
-d.value;           // "20260520"
+d.value;           // "20260520", synthetic
 ```
 
 #### Properties
@@ -21450,7 +21450,7 @@ hangs under.
 ```ts
 import type { X12StatusInquiryDependent } from "@cosyte/x12";
 declare const d: X12StatusInquiryDependent;
-d.name?.firstName; // "BABY"
+d.name?.firstName; // "BABY", synthetic
 d.claims.length;   // the dependent's own claims
 ```
 
@@ -21538,8 +21538,8 @@ agree; an N3 or N4 a sender transmits stays verbatim on `tx.segments`.
 import type { X12StatusInquiryName } from "@cosyte/x12";
 declare const n: X12StatusInquiryName;
 n.entityIdentifierCode;       // "IL" subscriber / "PR" payer / "1P" provider
-n.lastNameOrOrganizationName; // "DOE" or "MEDPAY INSURANCE"
-n.dateOfBirth;                // "19850515" (DMG-02, CCYYMMDD)
+n.lastNameOrOrganizationName; // "DOE" or "MEDPAY INSURANCE", synthetic
+n.dateOfBirth;                // "19850515", synthetic (DMG-02, CCYYMMDD)
 ```
 
 #### Properties
@@ -21725,7 +21725,7 @@ number).
 import type { X12StatusInquiryReference } from "@cosyte/x12";
 declare const r: X12StatusInquiryReference;
 r.qualifier; // "1K"
-r.value;     // "PCN0001"
+r.value;     // "PCN0001", synthetic
 ```
 
 #### Properties
@@ -21823,7 +21823,7 @@ to. The root of a transmitted hierarchy: HL-03 is `20` and HL-02 is absent.
 ```ts
 import type { X12StatusInquirySource } from "@cosyte/x12";
 declare const s: X12StatusInquirySource;
-s.name?.lastNameOrOrganizationName; // "MEDPAY INSURANCE"
+s.name?.lastNameOrOrganizationName; // "MEDPAY INSURANCE", synthetic
 s.receivers.length;                 // 1
 ```
 
@@ -21890,7 +21890,7 @@ submitter match the answer to this question.
 import type { X12StatusInquiryTrace } from "@cosyte/x12";
 declare const t: X12StatusInquiryTrace;
 t.traceTypeCode; // "1" (current transaction trace numbers)
-t.referenceId;   // "STATUS20260601001"
+t.referenceId;   // "STATUS20260601001", synthetic
 ```
 
 #### Properties
@@ -21932,8 +21932,8 @@ fixtures.
 ```ts
 import type { X12StatusMember } from "@cosyte/x12";
 declare const m: X12StatusMember;
-m.lastName; // "DOE"
-m.idCode;   // "MBR0001"
+m.lastName; // "DOE", synthetic
+m.idCode;   // "MBR0001", synthetic
 ```
 
 #### Properties
@@ -21983,7 +21983,7 @@ REF*1K payer claim control number, REF*BLT bill type).
 import type { X12StatusReference } from "@cosyte/x12";
 declare const r: X12StatusReference;
 r.qualifier; // "1K"
-r.value;     // "PCN0001"
+r.value;     // "PCN0001", synthetic
 ```
 
 #### Properties
@@ -22014,7 +22014,7 @@ provider can re-associate the answer. The walker never mutates it.
 import type { X12StatusTrace } from "@cosyte/x12";
 declare const t: X12StatusTrace;
 t.traceTypeCode; // "2"
-t.referenceId;   // "CLAIM20260627001"
+t.referenceId;   // "CLAIM20260627001", synthetic
 ```
 
 #### Properties
@@ -29644,7 +29644,7 @@ const ok = buildTA1({
   ackCode: "A",
   noteCode: "000",
 });
-ok.raw; // 'TA1*000000001*250101*1200*A*000'
+ok.raw; // 'TA1*000000001*250101*1200*A*000', synthetic
 
 // Reject (control number mismatch).
 const reject = buildTA1({
@@ -30158,7 +30158,7 @@ import { decodeSegment } from "@cosyte/x12";
 const d = { element: "*", repetition: "^", component: ":", segment: "~" };
 const seg = decodeSegment("NM1*IL*1*DOE*JANE", d, () => {}, { segmentIndex: 5 });
 seg.id;          // "NM1"
-seg.elements[3]; // "DOE"
+seg.elements[3]; // "DOE", synthetic
 const bin = decodeSegment("BIN*5*A*B:C", d, () => {}, { segmentIndex: 6 });
 bin.elements[2]; // "A*B:C" (five octets, one element)
 ```
@@ -30937,7 +30937,7 @@ for (const group of ix.groups) {
     const sub =
       inquiry?.informationSources[0]?.receivers[0]?.providers[0]?.subscribers[0];
     sub?.claims[0]?.trace?.referenceId;      // the trace a 277 echoes back
-    sub?.claims[0]?.references[0]?.value;    // "PCN0001"
+    sub?.claims[0]?.references[0]?.value;    // "PCN0001", synthetic
   }
 }
 ```

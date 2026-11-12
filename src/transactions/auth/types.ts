@@ -65,7 +65,7 @@ export interface X12ServicesReview {
  * ```ts
  * import type { X12AuthHeader } from "@cosyte/x12";
  * declare const h: X12AuthHeader;
- * h.referenceId; // "AUTH-202606"
+ * h.referenceId; // "AUTH-202606", synthetic
  * h.date;        // "20260601" (BHT-04, CCYYMMDD)
  * ```
  */
@@ -88,7 +88,7 @@ export interface X12AuthHeader {
  * import type { X12AuthEntity } from "@cosyte/x12";
  * declare const e: X12AuthEntity;
  * e.entityIdentifierCode; // "X3" (UMO) / "1P" (provider)
- * e.name;                 // "UTILIZATION REVIEW CO"
+ * e.name;                 // "UTILIZATION REVIEW CO", synthetic
  * ```
  */
 export interface X12AuthEntity {
@@ -108,8 +108,8 @@ export interface X12AuthEntity {
  * ```ts
  * import type { X12AuthMember } from "@cosyte/x12";
  * declare const m: X12AuthMember;
- * m.lastName;    // "DOE"
- * m.dateOfBirth; // "19850515" (DMG-02, CCYYMMDD)
+ * m.lastName;    // "DOE", synthetic
+ * m.dateOfBirth; // "19850515", synthetic (DMG-02, CCYYMMDD)
  * ```
  */
 export interface X12AuthMember {
@@ -188,7 +188,7 @@ export interface X12ReviewDecision {
  * import type { X12AuthTrace } from "@cosyte/x12";
  * declare const t: X12AuthTrace;
  * t.traceTypeCode; // "1" (current transaction)
- * t.referenceId;   // "AUTHREQ-202606-0001"
+ * t.referenceId;   // "AUTHREQ-202606-0001", synthetic
  * ```
  */
 export interface X12AuthTrace {
@@ -230,7 +230,7 @@ export interface X12AuthDiagnosis {
  * import type { X12AuthReference } from "@cosyte/x12";
  * declare const r: X12AuthReference;
  * r.qualifier; // "BB" (authorization number)
- * r.value;     // "PRIORAUTH-1"
+ * r.value;     // "PRIORAUTH-1", synthetic
  * ```
  */
 export interface X12AuthReference {
@@ -250,7 +250,7 @@ export interface X12AuthReference {
  * declare const d: X12AuthDate;
  * d.qualifier;       // "472"
  * d.formatQualifier; // "D8"
- * d.value;           // "20260601"
+ * d.value;           // "20260601", synthetic
  * ```
  */
 export interface X12AuthDate {

@@ -1,0 +1,16 @@
+{
+  "examplePrint": {
+    "required": true,
+    "accessors": [
+      "claimId",
+      "idCode",
+      "referenceId",
+      "lastNameOrOrganizationName",
+      "lastOrOrganizationName",
+      "reviewIdentificationNumber",
+      "genderCode",
+      "communications"
+    ],
+    "wholeValues": ["wire", "raw", "ix", "interchange", "tx", "elements", "rawSegments"]
+  }
+}

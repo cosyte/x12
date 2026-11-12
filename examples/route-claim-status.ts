@@ -5,7 +5,9 @@
  * answers with `build277`, echoing the 276's TRN-02 so the provider can match the answer to the
  * question. A clearinghouse acknowledges a claim batch with a 277CA from `build277CA`, and the
  * provider reads it with `get277CADisposition` and sends every claim whose status category is not
- * A1 or A2 back for rework. Every value is synthetic, and nothing is sent anywhere.
+ * A1 or A2 back for rework. Every value is synthetic, and nothing is sent anywhere. The example
+ * prints status codes, counts and booleans; a claim number and a trace identify a patient's claim,
+ * so it reads and asserts on them and never prints them.
  *
  * Run from the repository root after `pnpm build`:
  *
@@ -120,7 +122,10 @@ const question =
   inquiry.informationSources[0]?.receivers[0]?.providers[0]?.subscribers[0]?.claims[0];
 const traceToEcho = question?.trace?.referenceId;
 if (traceToEcho === undefined) throw new Error("the 276 carried no trace");
-console.log(`276 asks about claim ${String(question?.references[0]?.value)}, trace ${traceToEcho}`);
+console.log(
+  `276 asks about ${String(question?.references.length)} claim reference(s), with a trace:`,
+  traceToEcho.length > 0,
+);
 
 // 3. The payer answers with a 277 that echoes the trace, with category A2 and status 20.
 /** The payer, the receiver named, and the one provider, over the subscribers given. */
@@ -199,8 +204,8 @@ if (status === undefined) throw new Error("not a 277");
 const answer = status.claims[0];
 const triple = answer?.statuses[0]?.statuses[0];
 console.log(
-  `277 answers trace ${String(answer?.traces[0]?.referenceId)}:`,
-  `${String(triple?.categoryCode)}/${String(triple?.statusCode)}`,
+  `277 echoes the trace: ${String(answer?.traces[0]?.referenceId === traceToEcho)},`,
+  `status ${String(triple?.categoryCode)}/${String(triple?.statusCode)}`,
 );
 
 // 4. A 277CA for a batch of two claims: one accepted (A1), one rejected (A7, invalid information).
@@ -239,12 +244,16 @@ for (const claim of ack.claims) {
   // A1 and A2 mean accepted into adjudication; anything else goes back for rework.
   if (stc !== undefined && stc.categoryCode !== "A1" && stc.categoryCode !== "A2") {
     rework.push(claim.traces[0]?.referenceId ?? "(no trace)");
-    console.log(`277CA rejects ${rework.at(-1) ?? ""}: ${stc.categoryCode}/${stc.statusCode}`);
+    console.log(
+      `277CA rejects claim ${String(rework.length)}: ${stc.categoryCode}/${stc.statusCode}`,
+    );
   }
 }
 
 // The checks that make this file a test: `pnpm examples` fails if any of them does not hold.
+// The traces and the claim number are synthetic.
 assert.equal(traceToEcho, "STATUS-TRACE-0001");
+assert.equal(question?.references[0]?.value, "PCN0001");
 assert.equal(question?.amounts[0]?.amount.toString(), "150.00");
 assert.equal(status.transactionType, "claim-status");
 assert.equal(answer?.traces[0]?.referenceId, traceToEcho);

@@ -94,6 +94,7 @@ const received = parseX12(inbound);
 // The TA1 echoes ISA-13, ISA-09 and ISA-10 and accepts.
 const ta1 = deriveTA1Spec(received);
 ta1.spec.ackCode; // => "A"
+// Read, never printed: the segment echoes the inbound control number. Synthetic values:
 buildTA1(ta1.spec).raw; // => "TA1*000000001*260601*1200*A*000"
 
 // The 999 for group 0 accepts its transaction set. The envelope is the 999's own.

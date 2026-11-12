@@ -99,6 +99,7 @@ const elig = tx ? get271Eligibility(ix.delimiters, tx) : undefined;
 
 // The reassociation key comes back byte for byte.
 elig?.subscribers[0]?.traces[0]?.referenceId === traceFromThe270; // => true
+// Read, never printed: the member's name identifies a person. Synthetic value:
 elig?.subscribers[0]?.name?.lastName; // => "DOE"
 elig?.subscribers[0]?.benefits[0]?.eligibilityCode; // => "1"
 elig?.subscribers[0]?.benefits[0]?.monetaryAmount?.toString(); // => "1000.00"

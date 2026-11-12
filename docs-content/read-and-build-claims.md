@@ -70,6 +70,7 @@ sub.hierarchies.map((hl) => [hl.hlId, hl.parentHlId, hl.levelCode]); // => [["1"
 sub.hierarchies[1]?.levelCode === HL_LEVEL_CODES.SUBSCRIBER; // => true
 
 const claim = sub.claims[0];
+// Read, never printed: the provider's name and NPI. Synthetic values:
 claim?.billingProvider?.name; // => "BILLING CLINIC INC"
 claim?.billingProvider?.idCode; // => "1234567890"
 claim?.subscriber?.info.claimFilingIndicator; // => "MB"

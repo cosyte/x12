@@ -74,6 +74,7 @@ for (const claim of ack.claims) {
 }
 
 // The trace you submitted comes back, so reassociate on it.
+// The trace numbers, read and never printed. Synthetic value:
 rejected; // => ["CLAIM-TRACE-REJECT-001"]
 
 const reject = ack.claims[2]?.statuses[0]?.statuses[0];
@@ -129,7 +130,9 @@ response?.transactionType; // => "claim-status"
 
 // Reassociate on the trace you submitted, never on a name or a date.
 const statusClaim = response?.claims[0];
+// A trace number, read and never printed. Synthetic value:
 statusClaim?.traces[0]?.referenceId; // => "ECHO-276-TRACE-001"
+// Read, never printed: the claim number identifies the patient's claim. Synthetic value:
 statusClaim?.references[0]?.value; // => "PCN0001"
 
 // The claim-level STC: the triple, plus what the status is ABOUT.

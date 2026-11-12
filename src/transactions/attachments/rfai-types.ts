@@ -294,7 +294,7 @@ export interface X12AdditionalInformationRequestReference {
  * import type { X12AdditionalInformationRequestDate } from "@cosyte/x12";
  * declare const d: X12AdditionalInformationRequestDate;
  * d.formatQualifier; // "RD8"
- * d.value;           // "20260501-20260502"
+ * d.value;           // "20260501-20260502", synthetic
  * ```
  */
 export interface X12AdditionalInformationRequestDate {
