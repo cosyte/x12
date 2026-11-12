@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.15
+
+### Patch Changes
+
+- 0c169a7: The `CHANGELOG.md` in the package no longer names three `CLP_STATUS` labels: the `0.1.0` entry that introduced the bundled `CLP_STATUS` list now gives the codes `1`, `4` and `22` without a label, matching the list itself, which has carried no descriptions since 0.1.14. One quoted sample segment in an older entry also drops its made-up id value, with the sentence still saying what was measured. Nothing you call changes. A new test reads every file the package publishes, its source and its docs for the descriptions the bundled lists no longer carry, so they cannot return.
+- b4e6541: `toDate` returns what it returned before, through one check fewer: it refuses an offset that is not a number with one type check and leaves a non-finite or out-of-range offset to the Invalid Date check it already ran last, so it still answers `undefined` for each. Nothing you call changes. New tests pin that `toObject`, `toISO` and `toDate` answer `undefined`, and never throw, for an offset given as a numeric string and for a `D8` value that is not a string: a number, a symbol, an object with no prototype and an object whose `toString` throws. The date conversion tests now run in the mutation suite.
+- c01e565: `KNOWN-LIMITATIONS.md` now opens by naming all five constructs a round trip does not reproduce (line breaks between segments, a doubled segment terminator, a missing final segment terminator, a TA1 that followed a functional group, and bytes after the IEA), matching its own `serialize(parse(s)) === s` entry and the troubleshooting page, where it named only the first two. No code changes.
+- f8cc2fb: `KNOWN-LIMITATIONS.md` now opens with a short list, one line per limit, grouped as before, and each line links to that limit's detail further down. Every limit it listed is still there. The detail states what holds today: the release-by-release history it carried is dropped, because this changelog already records each change. The troubleshooting page links to that list instead of restating part of it. No code changes.
+- dd45634: The README now names both entry points the package ships, `@cosyte/x12` and `@cosyte/x12/arbitraries`, where it said there were no subpath imports. Nothing you call changes.
+
 ## 0.1.14
 
 ### Patch Changes
