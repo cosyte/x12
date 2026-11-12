@@ -3,7 +3,8 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 /**
- * The scaling gate's own Vitest run, `pnpm test:perf`: the tests that read a clock, run apart from
+ * The scaling gate's own Vitest run, `pnpm test:perf` and `pnpm test:perf:sets`, each naming one of
+ * its two files, which CI runs as two jobs: the tests that read a clock, run apart from
  * `pnpm test` and never under coverage. Coverage instrumentation compiles a counter into every
  * measured function, at a cost that does not cancel cleanly in a ratio, so
  * `@cosyte/test-utils/perf` asks for a run of its own.

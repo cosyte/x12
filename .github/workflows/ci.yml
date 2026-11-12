@@ -43,7 +43,8 @@ jobs:
   #
   # The performance standard's two jobs run beside `verify` too:
   # - `scaling-gate`: `pnpm test:perf`, the scaling gate on `parseX12` and on the typed reader and
-  #   builder of every shape the bench measures, and its self-check, never under coverage.
+  #   builder of the 835, 837P, 837I, 270, 271, 999, 997 and 275 shapes the bench measures, and its
+  #   self-check, never under coverage. The other shapes are `scaling-gate-sets` below.
   # - `bench-compare` (pull requests only): bench/x12.bench.mjs timed on the base build and the head
   #   build, interleaved on one runner, at the sizes that run in milliseconds. Advisory: it never
   #   fails, so never require it. The large sizes are measured by bench.yml's reading instead.
@@ -62,6 +63,29 @@ jobs:
       run-scaling-gate: true
       run-bench-compare: true
       bench-suites: bench/x12.bench.mjs
+
+  # The second half of the scaling gate: `pnpm test:perf:sets`, the gate and its self-check on the
+  # typed reader and builder of the 276, 277, 277CA, 277 request for additional information, 278,
+  # 820, 834, 837D and TA1 shapes the bench measures. The shared `scaling-gate` job above runs
+  # `pnpm test:perf`, the 835, 837, 270, 271, 999, 997 and 275 half, in about nine minutes; both
+  # halves in one job would pass its 15 minute bound, so this half runs here, beside it, on the
+  # same runner class and Node line, and never under coverage.
+  scaling-gate-sets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:perf:sets
 
   # Prove the publish pipeline on every push/PR WITHOUT burning a version or needing registry auth
   # (X12-10, mirroring config's REL-PIPE). Two auth-free proofs:
