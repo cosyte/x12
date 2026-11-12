@@ -123,12 +123,12 @@ export async function* readTransactionSets(
 
   // The input not yet framed: `rest`, which starts where framing stopped, then the pieces that
   // arrived after it, joined only once they may let framing go further. `wait` is what the segment
-  // at the start of `rest` waits for (nothing, before the first frame), `length` how long the input
-  // from there is, and `skip` how much of `rest` the walk has read already: the ISA, once opened.
+  // at the start of `rest` waits for (the whole ISA, before the walk opens), `length` how long the
+  // input from there is, and `skip` how much of it the walk has read already: the ISA, once opened.
   let rest = "";
   let pieces: string[] = [];
   let length = 0;
-  let wait: FrameWait = { kind: "length", length: 0 };
+  let wait: FrameWait = { kind: "length", length: ISA_MIN_LENGTH };
   let skip = 0;
   let header: { delimiters: Delimiters; isa: IsaSegment; walk: EnvelopeWalk } | undefined;
   // After the IEA: how many segments followed it, and whether one was not empty. That is all the
@@ -183,21 +183,15 @@ export async function* readTransactionSets(
     const piece = typeof chunk === "string" ? chunk : latin1(chunk);
     pieces.push(piece);
     length += piece.length;
-    if (header !== undefined) {
-      // Only the new piece is searched, so a segment that spans many pieces is searched once.
-      const more = awaitMore(wait, piece, length, header.delimiters.segment);
-      if (more !== undefined) {
-        wait = more;
-        continue;
-      }
+    // Only the new piece is searched, so a segment that spans many pieces is searched once.
+    const more = awaitMore(wait, piece, length);
+    if (more !== undefined) {
+      wait = more;
+      continue;
     }
     const text = joined();
     // The walk opens as soon as the ISA is all here, so a warning on it is reported then.
-    const h = header ?? (text.length < ISA_MIN_LENGTH ? undefined : open(text));
-    if (h === undefined) {
-      rest = text;
-      continue;
-    }
+    const h = header ?? open(text);
     const framed = frameSettled(text, skip, h.delimiters);
     skip = 0;
     rest = text.slice(framed.next);

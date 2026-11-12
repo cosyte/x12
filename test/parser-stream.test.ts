@@ -289,7 +289,9 @@ describe("readTransactionSets", () => {
       }),
     ];
     for (const raw of raws) {
-      const pieces = chunks(raw, 1_000, false);
+      // The GE and IEA arrive alone, after the chunk that ends with the SE.
+      const trailer = raw.indexOf("GE*");
+      const pieces = [...chunks(raw.slice(0, trailer), 1_000, false), raw.slice(trailer)];
       let given = 0;
       function* source(): Generator<string | Uint8Array> {
         for (const piece of pieces) {
@@ -311,7 +313,7 @@ describe("readTransactionSets", () => {
       // A search from the segment's start on each chunk reads it about 260 times over.
       expect(searched).toBeLessThan(8 * raw.length);
       // The set is yielded as soon as the terminator of its SE arrives.
-      expect(seen).toEqual([Math.floor(raw.indexOf("~GE*") / 1_000) + 1]);
+      expect(seen).toEqual([pieces.length - 1]);
       expect(observed({ items, warnings, error: undefined })).toEqual(expected(raw));
     }
   });

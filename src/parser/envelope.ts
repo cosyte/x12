@@ -344,7 +344,7 @@ export function frameSettled(
     // terminator found in `text` is the first unescaped one wherever the input ends, and once
     // there is one, the length element of a BDS or BIN has ended before it.
     let termIdx = findUnescapedTerminator(text, cursor, term, release);
-    if (termIdx === -1) return { segments, next: cursor, wait: terminatorWait(text, cursor) };
+    if (termIdx === -1) return { segments, next: cursor, wait: terminatorWait(text, cursor, term) };
     const binary = frameBinary(text, cursor, delimiters);
     if (binary?.kind === "counted") {
       // Its own cursor: the span can end before where the search above stopped.
@@ -357,7 +357,7 @@ export function frameSettled(
         const wait: FrameWait =
           spanEnd >= text.length
             ? { kind: "length", length: spanEnd + 1 - cursor }
-            : terminatorWait(text, spanEnd);
+            : terminatorWait(text, spanEnd, term);
         return { segments, next: cursor, wait };
       }
     }
@@ -369,16 +369,17 @@ export function frameSettled(
 /**
  * What the segment {@link frameSettled} stopped at waits for before it can be framed:
  *
- * - `terminator`: a segment terminator no release character escapes, in input still to come.
- *   `released` says whether the first character to come is escaped by a release character at the
- *   end of the input so far.
- * - `length`: the declared span of a BDS or BIN, which needs the input from the segment's start to
- *   be at least `length` characters long before its end can be found.
+ * - `terminator`: `term`, the segment terminator, where no release character escapes it, in input
+ *   still to come. `released` says whether the first character to come is escaped by a release
+ *   character at the end of the input so far.
+ * - `length`: input from the segment's start at least `length` characters long. The declared span
+ *   of a BDS or BIN waits for this before its end can be found, and so does the ISA before the
+ *   delimiters are known.
  *
  * @internal
  */
 export type FrameWait =
-  | { readonly kind: "terminator"; readonly released: boolean }
+  | { readonly kind: "terminator"; readonly term: string; readonly released: boolean }
   | { readonly kind: "length"; readonly length: number };
 
 /**
@@ -390,13 +391,13 @@ export type FrameWait =
  *
  * @internal
  */
-function terminatorWait(text: string, from: number): FrameWait {
+function terminatorWait(text: string, from: number, term: string): FrameWait {
   // Where the release character is the terminator, a search that found none read no release
   // character either, so the run is empty and nothing is escaped, as `findUnescapedTerminator`
   // has it there.
-  let i = text.length;
-  while (i > from && text.charCodeAt(i - 1) === RELEASE_CODE) i -= 1;
-  return { kind: "terminator", released: (text.length - i) % 2 === 1 };
+  let run = 0;
+  for (let i = text.length - 1; i >= from && text.charCodeAt(i) === RELEASE_CODE; i -= 1) run += 1;
+  return { kind: "terminator", term, released: run % 2 === 1 };
 }
 
 /**
@@ -408,18 +409,14 @@ function terminatorWait(text: string, from: number): FrameWait {
  *
  * @internal
  */
-export function awaitMore(
-  wait: FrameWait,
-  piece: string,
-  length: number,
-  term: string,
-): FrameWait | undefined {
+export function awaitMore(wait: FrameWait, piece: string, length: number): FrameWait | undefined {
   if (wait.kind === "length") return length >= wait.length ? undefined : wait;
   // An empty piece escapes nothing, and leaves a pending release character pending.
   if (piece.length === 0) return wait;
   const from = wait.released ? 1 : 0;
-  if (findUnescapedTerminator(piece, from, term, { at: -2 }) !== -1) return undefined;
-  return terminatorWait(piece, from);
+  // Stryker disable next-line ObjectLiteral: equivalent, the cursor only spares searches already made
+  if (findUnescapedTerminator(piece, from, wait.term, { at: -2 }) !== -1) return undefined;
+  return terminatorWait(piece, from, wait.term);
 }
 
 /**
