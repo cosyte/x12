@@ -16,6 +16,13 @@
  * every count axis at 1,000 documents of 4 claims, services or members unless it says otherwise.
  * Every document is synthetic, built by `bench/corpus.mjs`.
  *
+ * Each base phase must last `MIN_BASE_PHASE_MS` (8 ms), and the hosted runners differ by up to
+ * about 2x in speed, so a phase sized to clear it on an average runner fails on a fast one now and
+ * then. Each axis is sized so that its base phase lasted about twice the floor on the fastest
+ * runner we measured. Where an axis needed more time, it takes more documents (`countN`,
+ * `inputs`) rather than larger ones: more documents of the same size leave the self-check's
+ * margin where it was, and cost the quadratic self-check time in proportion, not in square.
+ *
  * The 834's members are read through an async iterator, and the gate times a call that returns
  * its result, so the 834 has a builder gate here and no reader gate. Its read is held by the large
  * 834 test in `test/transactions-enrollment-834.test.ts`.
@@ -52,7 +59,6 @@ import {
   build820,
   build834,
   build837D,
-  buildTA1,
   get276StatusInquiry,
   get277CADisposition,
   get277RequestForAdditionalInformation,
@@ -61,8 +67,6 @@ import {
   get278Response,
   get820Payments,
   get837Claims,
-  parseTA1,
-  parseX12,
   type BuildTA1Spec,
 } from "../../src/index.js";
 import {
@@ -75,6 +79,7 @@ import {
   reassembleQuadratic,
   viaParse,
 } from "../_helpers/scaling-gate.js";
+import { buildTA1Batch, readTA1Batch, readTA1BatchReassembled } from "../_helpers/ta1-batch.js";
 
 // The 276: seven segments a claim, so 220 claims is about 1,540 segments.
 readerGate(
@@ -86,6 +91,7 @@ readerGate(
     const inquiry = get276StatusInquiry(ix.delimiters, firstTransaction(ix));
     return counted(inquiry, inquiry?.hierarchies.length ?? 0);
   }),
+  { inputs: 15 },
 );
 builderGate(
   "@cosyte/x12 build276, then serializeX12",
@@ -93,6 +99,7 @@ builderGate(
   build276,
   4,
   220,
+  { inputs: 20 },
 );
 
 // The 277 and the 277CA: six segments a claim, so 250 claims is about 1,500 segments.
@@ -105,6 +112,7 @@ readerGate(
     const status = get277Status(ix.delimiters, firstTransaction(ix));
     return counted(status, status?.claims.length ?? 0);
   }),
+  { inputs: 15 },
 );
 builderGate(
   "@cosyte/x12 build277, then serializeX12",
@@ -112,6 +120,7 @@ builderGate(
   build277,
   4,
   250,
+  { inputs: 20 },
 );
 readerGate(
   "@cosyte/x12 parseX12, then get277CADisposition",
@@ -122,6 +131,7 @@ readerGate(
     const disposition = get277CADisposition(ix.delimiters, firstTransaction(ix));
     return counted(disposition, disposition?.claims.length ?? 0);
   }),
+  { inputs: 15 },
 );
 builderGate(
   "@cosyte/x12 build277CA, then serializeX12",
@@ -129,6 +139,7 @@ builderGate(
   build277CA,
   4,
   250,
+  { inputs: 20 },
 );
 
 // The 277 request for additional information: six segments a claim, as the 277.
@@ -141,6 +152,7 @@ readerGate(
     const request = get277RequestForAdditionalInformation(ix.delimiters, firstTransaction(ix));
     return counted(request, request?.levels.length ?? 0);
   }),
+  { inputs: 15 },
 );
 builderGate(
   "@cosyte/x12 build277RequestForAdditionalInformation, then serializeX12",
@@ -148,6 +160,7 @@ builderGate(
   build277RequestForAdditionalInformation,
   4,
   250,
+  { inputs: 20 },
 );
 
 // The 278: four segments a service in a request and five in a response, so 400 and 320 services.
@@ -160,6 +173,7 @@ readerGate(
     const review = get278Request(ix.delimiters, firstTransaction(ix));
     return counted(review, review?.reviews.length ?? 0);
   }),
+  { inputs: 15 },
 );
 builderGate(
   "@cosyte/x12 build278Request, then serializeX12",
@@ -167,6 +181,7 @@ builderGate(
   build278Request,
   4,
   400,
+  { inputs: 20 },
 );
 readerGate(
   "@cosyte/x12 parseX12, then get278Response",
@@ -177,6 +192,7 @@ readerGate(
     const review = get278Response(ix.delimiters, firstTransaction(ix));
     return counted(review, review?.reviews.length ?? 0);
   }),
+  { inputs: 20 },
 );
 builderGate(
   "@cosyte/x12 build278Response, then serializeX12",
@@ -184,6 +200,7 @@ builderGate(
   build278Response,
   4,
   320,
+  { inputs: 25 },
 );
 
 // The 820: two segments a member, so 750 members.
@@ -196,6 +213,7 @@ readerGate(
     const payments = get820Payments(ix.delimiters, firstTransaction(ix));
     return counted(payments, payments?.remittances.length ?? 0);
   }),
+  { countN: 1_500, inputs: 15 },
 );
 builderGate(
   "@cosyte/x12 build820, then serializeX12",
@@ -203,6 +221,7 @@ builderGate(
   build820,
   4,
   750,
+  { countN: 1_500, inputs: 20 },
 );
 
 // The 834: nine segments a member, so 170 members. A builder gate only (see above).
@@ -212,6 +231,7 @@ builderGate(
   build834,
   4,
   170,
+  { inputs: 25 },
 );
 
 // The 837D: nine segments a claim, so 170 claims.
@@ -231,53 +251,37 @@ builderGate(
   build837D,
   4,
   170,
+  { inputs: 15 },
 );
 
 // The TA1 is one fixed segment in an interchange of its own, so, as for the 270, its size axis is
-// a batch of them, read or built one by one, and the self-check's regression adds the quadratic
-// work beside the real work: it reassembles the joined batch the slow way, then reads or builds
-// every TA1 as the clean run does. A TA1 interchange is three segments, so a batch of 600 to read
-// is 1,800 segments; the builder writes the TA1 segment alone, so its batch is 1,600. One TA1
-// costs a fraction of a 270 (about 3 microseconds to read and 1.3 to build on a developer
-// machine), so the count axes take 4,000 and 16,000 documents.
-
-/** Parse, then read, every TA1 of a batch. */
-function readTA1Batch(batch: readonly string[]): number {
-  let n = 0;
-  for (const raw of batch) {
-    if (parseTA1(parseX12(raw)) === undefined) throw new Error("the reader refused a corpus TA1");
-    n += 1;
-  }
-  return n;
-}
-
-/** Build every TA1 of a batch, each with its segment terminator. */
-function buildTA1Batch(batch: readonly BuildTA1Spec[]): string {
-  return batch.map((spec) => `${buildTA1(spec).raw}~`).join("");
-}
+// a batch of them, read or built one by one. The self-check's regression reassembles the joined
+// batch the slow way and then reads or builds from what that returned: the reader's cuts the
+// reassembled text back into its interchanges and reads each of them, so the read consumes the
+// reassembly. A TA1 interchange is three segments, so a batch of 600 to read is 1,800 segments;
+// the builder writes the TA1 segment alone, so its batch is 1,600. One TA1 costs a fraction of a
+// 270 (about 3 microseconds to read and 1.3 to build on a developer machine), so the count axes
+// take 10,000 and 24,000 documents.
 
 gate<readonly string[], number>({
   name: "@cosyte/x12 parseX12, then parseTA1, over a batch",
   run: readTA1Batch,
   weigh: (n) => n,
-  count: { n: 4_000, generate: (i) => [ta1Text(i)] },
+  count: { n: 10_000, generate: (i) => [ta1Text(i)] },
   size: {
-    inputs: 10,
+    inputs: 20,
     size: 600,
     generate: (i, s) => Array.from({ length: s }, (_v, k) => ta1Text(i * s + k)),
   },
-  regressed: (batch) => {
-    reassembleQuadratic(batch.join(""));
-    return readTA1Batch(batch);
-  },
+  regressed: (batch) => readTA1BatchReassembled(batch),
 });
 gate<readonly BuildTA1Spec[], string>({
   name: "@cosyte/x12 buildTA1, over a batch",
   run: buildTA1Batch,
   weigh: (text) => text.length,
-  count: { n: 16_000, generate: (i) => [ta1Spec(dec, i)] },
+  count: { n: 24_000, generate: (i) => [ta1Spec(dec, i)] },
   size: {
-    inputs: 10,
+    inputs: 15,
     size: 1_600,
     generate: (i, s) => Array.from({ length: s }, (_v, k) => ta1Spec(dec, i * s + k)),
   },
