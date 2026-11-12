@@ -19,7 +19,7 @@ needs the amounts to be exactly right rather than approximately right.
 
 **What it is not:** a translator for non-healthcare transaction sets, an EDIFACT parser, a transport
 (no AS2, SFTP or MLLP), or a validator that proves conformance to an implementation guide. The
-[non-goals](./troubleshooting.md#scope-non-goals-for-v1) are listed with the known limitations.
+[non-goals](./troubleshooting.md#known-limitations-and-non-goals) are listed with the known limitations.
 
 > **Status:** the 0.1 line, published on npm and public. The exported readers, builders, types and
 > warning codes are the surface we keep stable, and below 1.0 a breaking change is called out in the
