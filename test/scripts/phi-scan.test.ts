@@ -23,7 +23,7 @@
  * exec, no shell-form.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { spawnSync } from "node:child_process";
 import {
   writeFileSync,
@@ -99,6 +99,33 @@ const OVERRIDES_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
  * suite says so instead of quietly grading a different artifact than the gate runs.
  */
 const NODE_BIN = process.execPath;
+
+/**
+ * THIS FILE CARRIES ITS OWN CEILING, 30 s PER CASE, BECAUSE EVERY CASE IN IT
+ * SPAWNS THE SCANNER, AND MOST SPAWN GIT TOO. The global 10 s in
+ * `vitest.config.ts` is unchanged; `vi.setConfig` applies to this file only, and
+ * vitest resets it when the file ends.
+ *
+ * Why the global is not enough here: on a Windows runner a process start costs
+ * several times what it costs on Linux, and the cost moves with the runner. The
+ * scheduled run 43023570001 (commit 634d389, job `verify (22, windows-latest)`)
+ * went red when the `diff.renames` case below took 10,756 ms against the 10 s
+ * ceiling. Its readings on the fourteen green Windows `verify` jobs of runs
+ * 43023570001, 43109525256, 43112041480, 43117754214 and 43122020937 (commits
+ * 634d389, 3fcbc51, f575c61, 83106f8 and d6668a7) ranged from 3,309 ms to
+ * 6,132 ms, and the slowest other case in those jobs was 3,650 ms. So the same
+ * case on the same kind of runner varied by more than 3x, and a slow runner can
+ * carry any of the git-heavy cases here past 10 s.
+ *
+ * 30 s is about 2.8x the worst reading seen (the red one) and about 5x the worst
+ * green one. It is a ceiling for slow process starts, not room for slow work:
+ * the `diff.renames` case was also trimmed to build one repository instead of
+ * four, as `vitest.config.ts` asks (trim before you bound). As that file says, a
+ * spawnSync that never returns gets no verdict from any timeout; `spawnSync`
+ * here has no `timeout` option of its own and this ceiling does not change that.
+ */
+const CASE_TIMEOUT_MS = 30_000;
+vi.setConfig({ testTimeout: CASE_TIMEOUT_MS });
 
 // A valid 106-byte ISA so looksLikeX12() is true and ISA-byte delimiter
 // detection works (element `*`, segment `~`).
@@ -195,6 +222,14 @@ beforeAll(() => {
 
 afterAll(() => {
   rmSync(dir, { recursive: true, force: true });
+});
+
+describe("phi-scan: this file's cases carry the file's own ceiling", () => {
+  it("runs under the 30 s ceiling, not the 10 s global", ({ task }) => {
+    // The ceiling is set by `vi.setConfig` before any case is collected. If that
+    // call goes, or runs too late to reach collection, this reads the global.
+    expect(task.timeout).toBe(CASE_TIMEOUT_MS);
+  });
 });
 
 describe("phi-scan: the runner substitution is an equivalence, not an assumption", () => {
@@ -853,15 +888,23 @@ describe("phi-scan: --staged enumerates a staged RENAME and COPY", () => {
     // `--no-renames` is what makes the two-field stride structural. Each setting
     // must yield the same single-path `A` for the moved link and the same
     // refusal, or the gate's behaviour is a property of the developer's config.
+    //
+    // ONE repository and ONE staged move serve every setting. Both settings are
+    // read only when a diff is computed, so they cannot change what `git mv`
+    // stages; building a fresh repository per setting changed nothing but the
+    // spawn count, and on a Windows runner that count is what carried this case
+    // past its ceiling. Holding the index fixed makes the config the only thing
+    // that varies between the four readings.
+    const root = makeRepo();
+    git(root, ["config", "diff.renameLimit", "1"]);
+    writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
+    symlinkSync(TARGET_NAME, join(root, "leak.edi"));
+    git(root, ["add", "."]);
+    commit(root, "base");
+    git(root, ["mv", "leak.edi", "test/fixtures/leak.edi"]);
+
     for (const setting of ["true", "copies", "false", "1"]) {
-      const root = makeRepo();
       git(root, ["config", "diff.renames", setting]);
-      git(root, ["config", "diff.renameLimit", "1"]);
-      writeFileSync(join(root, TARGET_NAME), SYNTHETIC_PHI);
-      symlinkSync(TARGET_NAME, join(root, "leak.edi"));
-      git(root, ["add", "."]);
-      commit(root, "base");
-      git(root, ["mv", "leak.edi", "test/fixtures/leak.edi"]);
 
       const raw = gitOut(root, [
         "diff",
