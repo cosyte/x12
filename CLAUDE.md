@@ -54,7 +54,7 @@ document bytes out of errors, warnings and logs.
 - `pnpm attw` is the shared gate: bare `attw` exits 0 on a tarball with no types (#55).
 - No internal ids or roadmap stage names on a surface in `scripts/internal-refs.json` or in `src/`
   doc comments or strings; translate, never delete. X12 stays a prefix there (#120).
-- Changesets are patches (the operator's rule since 2026-11-07), no internal id, first sentence for
-  a consumer: the release refused 0.0.14 and 0.0.16 over one (#93, #114). Never hand-edit CHANGELOG.
+- Changesets are patches, a break too, stating the change and what a caller must do; no internal
+  id, first sentence for a consumer: 0.0.14 and 0.0.16 were refused (#93, #114). No CHANGELOG edits.
 - `release.yml` grants every scope the shared release pipeline declares (#27, #129, #133).
 - In `docs-content/`, link outside files by GitHub URL and keep the sidebar spine (#125, #159).

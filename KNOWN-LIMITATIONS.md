@@ -1142,6 +1142,8 @@ so all five constructs above come back. When they differ, which an edit to a seg
 changes nothing the emit writes (a typed `segments` array, the `warnings`) is not seen, as it is not
 seen without the option. What is measured: every committed fixture, read as bytes, comes back byte
 for byte, and a property over messy and hostile generated input holds the same for text and bytes.
+The first byte-exact call also keeps the default emit of that unedited parse, a second copy of the
+input of about its size, beside the interchange for as long as it is reachable; later calls reuse it.
 
 **A segment outside a transaction is not on this list**, and neither is one whose first element is
 empty (`*A*B~`), which is handled as any other segment outside a transaction with an empty
@@ -1800,7 +1802,8 @@ not a communications stack.
 
 **Below 1.0.** The package is published on npm as `@cosyte/x12` from a public repo, at `0.1`. Its
 exported readers, builders, types and warning codes are the surface we keep stable, and below 1.0
-a breaking change bumps the minor version and is called out in the changelog with its migration.
+every release is a patch, and a breaking or narrowing change ships as a patch whose changeset and
+changelog entry state the change and what a caller must do.
 `npm view @cosyte/x12 version` is the only source of truth for the current version.
 
 ### A 276 level whose declared parent does not resolve is left off the tree

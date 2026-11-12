@@ -179,7 +179,9 @@ export interface SerializeOptions {
    *
    * A `Buffer` input comes back as the text `parseX12` read it as, one character per octet, so
    * `Buffer.from(out, "latin1")` is the input bytes. The first byte-exact emit of an interchange
-   * parses its source again once to compare; later ones reuse that.
+   * parses its source again once to compare and keeps that emit, a second copy of the input of about
+   * its size, for as long as the interchange is reachable; later ones reuse it. An edit that changes
+   * nothing the emit writes (a typed `segments` array, the `warnings`) is not seen.
    */
   readonly byteExact?: boolean;
 }

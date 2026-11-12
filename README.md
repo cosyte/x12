@@ -35,8 +35,8 @@ a stable code instead of failing or guessing.
 
 On the 0.1 line the public API is settled and safe to depend on: the exported readers, builders,
 types and warning codes are the surface we keep stable, and the warning registry only ever gains
-codes. Below 1.0 a breaking change bumps the minor version and is called out in the changelog with
-its migration. On an older 0.0 release, pin an exact version rather than a range.
+codes. Below 1.0 every release is a patch, and a breaking or narrowing change ships as a patch whose
+changeset and changelog entry state the change and what a caller must do. On an older 0.0 release, pin an exact version rather than a range.
 
 Typed read and typed emit both ship for every transaction set this package covers: 270, 271, 276,
 277 and 277CA, 278 request and response, 820, 834, 835, 837P, 837I and 837D, 999, 997 and TA1,
@@ -292,7 +292,9 @@ A namespace import works too: `import * as x12 from "@cosyte/x12"`, then `x12.to
   emits compact. Most of the constructs that break a round trip are silent, so "my file has no line
   breaks" is not sufficient either. [KNOWN-LIMITATIONS.md](./KNOWN-LIMITATIONS.md) is the canonical
   list. Opt in with `serializeX12(ix, { byteExact: true })` to get an unedited input back as it was
-  read, byte for byte; an edited interchange emits from the model as before.
+  read, byte for byte; an edited interchange emits from the model as before, and an edit the emit
+  never writes (a typed `segments` array, the `warnings`) is not seen. The first such call keeps a
+  second copy of the input beside the interchange.
 
 ## Documentation
 
