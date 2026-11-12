@@ -5,10 +5,17 @@ import type {
   Build270Spec,
   Build271Spec,
   Build275Spec,
+  Build276Spec,
+  Build277RfaiSpec,
+  Build277Spec,
+  Build278Spec,
+  Build820Spec,
+  Build834Spec,
   Build835Spec,
   Build837Spec,
   Build997Spec,
   Build999Spec,
+  BuildTA1Spec,
   X12Decimal,
 } from "../src/index.js";
 
@@ -31,3 +38,27 @@ export function ack999Text(i: number, sets?: number): string;
 export function ack999Spec(dec: DecimalReader, i: number, sets?: number): Build999Spec;
 export function attachment275Text(i: number, bytes: number): string;
 export function attachment275Spec(dec: DecimalReader, i: number, bytes: number): Build275Spec;
+export function inquiry276Text(i: number, claims: number): string;
+export function inquiry276Spec(dec: DecimalReader, i: number, claims: number): Build276Spec;
+export function status277Text(i: number, claims: number): string;
+export function status277Spec(dec: DecimalReader, i: number, claims: number): Build277Spec;
+export function ack277CAText(i: number, claims: number): string;
+export function ack277CASpec(dec: DecimalReader, i: number, claims: number): Build277Spec;
+export function request277Text(i: number, claims: number): string;
+export function request277Spec(dec: DecimalReader, i: number, claims: number): Build277RfaiSpec;
+export function review278RequestText(i: number, services: number): string;
+export function review278RequestSpec(dec: DecimalReader, i: number, services: number): Build278Spec;
+export function review278ResponseText(i: number, services: number): string;
+export function review278ResponseSpec(
+  dec: DecimalReader,
+  i: number,
+  services: number,
+): Build278Spec;
+export function premium820Text(i: number, members: number): string;
+export function premium820Spec(dec: DecimalReader, i: number, members: number): Build820Spec;
+export function enrollment834Text(i: number, members: number): string;
+export function enrollment834Spec(dec: DecimalReader, i: number, members: number): Build834Spec;
+export function claim837DText(i: number, claims: number): string;
+export function claim837DSpec(dec: DecimalReader, i: number, claims: number): Build837Spec;
+export function ta1Text(i: number): string;
+export function ta1Spec(dec: DecimalReader, i: number): BuildTA1Spec;

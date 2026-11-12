@@ -17,22 +17,29 @@ The numbers for the current release are in [Current numbers](#current-numbers) b
 ## What runs today
 
 A benchmark suite measures the built package on synthetic documents in the shapes real traffic has:
-an 835 remittance, 837P and 837I claim batches, a 270 and the 271 that answers it, a 999, a 997, and
-a 275 attachment with one large payload. Each is parsed with `parseX12`, read with its typed reader (which
-checks the loops, the balances and the code lists), and built with its builder, from the small
-document a feed carries all day up to several megabytes. A reading reports throughput, latency
+an 835 remittance, 837P, 837I and 837D claim batches, a 270 and the 271 that answers it, a 276 and
+the 277 that answers it, a 277CA claim acknowledgment, a 277 request for additional information, a
+278 request and its response, an 820 premium payment, an 834 enrollment file, a 999, a 997, a TA1,
+and a 275 attachment with one large payload. Each is parsed with `parseX12`, read with its typed
+reader (which checks the loops, the balances and the code lists), and built with its builder, from
+the small document a feed carries all day up to several megabytes. The TA1 is one fixed segment, so
+its sizes are batches of 1, 100 and 1,000. The 834's members are read through an async iterator,
+which the benchmark tool cannot time, so the 834 is parsed and built there and its read is held by
+the large 834 test below. A reading reports throughput, latency
 p50/p95/p99, allocations per operation, peak heap, whether the heap stays flat over a long run, and
 the cold import with its gzipped size. On a pull request, CI times the base build against the head
 build at the small sizes, interleaved on one runner; that comparison is advisory and fails nothing.
 
 Beside it, a scaling gate fails a pull request when `parseX12`, any of the typed readers above or
 any of their builders starts to cost more than its input grows: four times the documents, or
-documents four times as large (four times the claims, the benefit lines, the acknowledged sets or
-the payload octets), must cost close to four times as long. The 270 is one fixed question, so its
-size axis is a batch of four times the inquiries. A self-check proves each gate's fixtures are
-large enough to catch a quadratic path. The 276, 277, 278, 820, 834, 837D and TA1 readers and
-builders have no benchmark shape and no scaling gate yet; the large 834 below is the one guard on
-any of them.
+documents four times as large (four times the claims, the benefit lines, the services, the
+members, the acknowledged sets or the payload octets), must cost close to four times as long. The
+270 and the TA1 are each one fixed document, so their size axis is a batch of four times as many.
+A self-check proves each gate's fixtures are large enough to catch a quadratic path. The gate runs
+in two CI jobs, one for the 835, 837P, 837I, 270, 271, 999, 997 and 275 and one for the rest, so
+that each finishes inside the time a pull request's job is given. The 834's member reader is the
+one reader with no scaling gate, for the reason above; its builder has one, and the large 834
+below guards its read.
 
 The other guards fail on a class of slowdown rather than describe speed:
 
@@ -68,7 +75,8 @@ pnpm install --frozen-lockfile
 pnpm fuzz                                        # the property and fuzz layer, with the case budgets
 X12_FUZZ_SEED=12345 X12_FUZZ_SECONDS=60 pnpm fuzz  # a longer search with a seed of your choosing
 pnpm test test/transactions-enrollment-834.test.ts
-pnpm test:perf                                   # the scaling gate and its self-check
+pnpm test:perf                                   # the scaling gate and its self-check, first half
+pnpm test:perf:sets                              # and its second half
 pnpm build && pnpm bench:reading                 # a reading of every benchmark, on this machine
 pnpm build && pnpm bench:profile                 # a CPU and heap profile of the hottest paths
 ```

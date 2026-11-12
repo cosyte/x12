@@ -783,3 +783,673 @@ export function attachment275Text(i, bytes) {
     `BDS*B64*${String(bytes)}*${base64Payload(i, bytes)}`,
   ]);
 }
+
+// ---- 276 and 277, the claim status pair ------------------------------------------------------
+
+/** The payer, the clinic as information receiver, and the clinic as provider, in both halves. */
+const STATUS_PAYER = {
+  entityIdentifierCode: "PR",
+  entityTypeQualifier: "2",
+  name: "SAMPLE PAYER",
+  idQualifier: "PI",
+  idCode: "PAYER01",
+};
+const STATUS_RECEIVER = {
+  entityIdentifierCode: "41",
+  entityTypeQualifier: "2",
+  name: "SAMPLE CLINIC",
+  idQualifier: "46",
+  idCode: "CLINIC01",
+};
+const STATUS_PROVIDER = {
+  entityIdentifierCode: "1P",
+  entityTypeQualifier: "2",
+  name: "SAMPLE CLINIC",
+  idQualifier: "XX",
+  idCode: "1234567893",
+};
+
+/** A 276 name: the shared parties above in the 276's own field names. */
+function name276({ name, ...rest }) {
+  return { ...rest, lastNameOrOrganizationName: name };
+}
+
+/**
+ * The spec of a synthetic 276 for index `i` asking after `claims` claims, each under its own
+ * subscriber: the batch a practice sends to learn where its open claims stand.
+ */
+export function inquiry276Spec(dec, i, claims) {
+  const subscribers = [];
+  for (let k = 0; k < claims; k++) {
+    const n = id6(k);
+    subscribers.push({
+      name: {
+        entityIdentifierCode: "IL",
+        entityTypeQualifier: "1",
+        lastNameOrOrganizationName: "PATIENT",
+        firstName: "TEST",
+        idQualifier: "MI",
+        idCode: `MBR${n}`,
+        dateOfBirth: "19850515",
+        genderCode: "F",
+      },
+      claims: [
+        {
+          trace: { traceTypeCode: "1", referenceId: `TRC${n}`, originatingCompanyId: "9SAMPLEORG" },
+          references: [{ qualifier: "1K", value: `PCN${n}` }],
+          amounts: [{ qualifier: "T3", amount: dec(money(claimCharge(k))) }],
+          dates: [{ qualifier: "472", formatQualifier: "D8", value: DATE8 }],
+        },
+      ],
+    });
+  }
+  return {
+    envelope: envelopeSpec("CLINIC01", "PAYER01", i),
+    header: { referenceId: `STS${id6(i)}` },
+    informationSources: [
+      {
+        name: name276(STATUS_PAYER),
+        receivers: [
+          {
+            name: name276(STATUS_RECEIVER),
+            providers: [{ name: name276(STATUS_PROVIDER), subscribers }],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * The spec of a synthetic 277 for index `i` answering {@link inquiry276Spec}: one status for each
+ * of `claims` claims, each under its own subscriber.
+ */
+export function status277Spec(dec, i, claims) {
+  const subscribers = [];
+  for (let k = 0; k < claims; k++) {
+    const n = id6(k);
+    subscribers.push({
+      member: {
+        entityIdentifierCode: "IL",
+        entityTypeQualifier: "1",
+        lastName: "PATIENT",
+        firstName: "TEST",
+        idQualifier: "MI",
+        idCode: `MBR${n}`,
+      },
+      claims: [
+        {
+          trace: { traceTypeCode: "2", referenceId: `TRC${n}` },
+          statuses: [
+            {
+              statuses: [{ categoryCode: "A2", statusCode: "20", entityCode: "PR" }],
+              statusEffectiveDate: DATE8,
+              actionCode: "WQ",
+              totalChargeAmount: dec(money(claimCharge(k))),
+            },
+          ],
+          references: [{ qualifier: "1K", value: `PCN${n}` }],
+          dates: [{ qualifier: "472", formatQualifier: "D8", value: DATE8 }],
+        },
+      ],
+    });
+  }
+  return {
+    envelope: envelopeSpec("PAYER01", "CLINIC01", i),
+    informationSources: [
+      {
+        entity: STATUS_PAYER,
+        receivers: [
+          { entity: STATUS_RECEIVER, providers: [{ entity: STATUS_PROVIDER, subscribers }] },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * The spec of a synthetic 277CA for index `i` acknowledging `claims` claims of a batch. The 277CA
+ * takes the 277's spec; `build277CA` writes it on its own guide.
+ */
+export function ack277CASpec(dec, i, claims) {
+  return status277Spec(dec, i, claims);
+}
+
+// ---- 277 request for additional information --------------------------------------------------
+
+/**
+ * The spec of a synthetic 277 request for additional information for index `i`, asking for an
+ * attachment on each of `claims` claims, each under its own patient.
+ */
+export function request277Spec(dec, i, claims) {
+  const patients = [];
+  for (let k = 0; k < claims; k++) {
+    const n = id6(k);
+    patients.push({
+      levelCode: "22",
+      childCode: "0",
+      entities: [
+        {
+          entityIdentifierCode: "QC",
+          entityTypeQualifier: "1",
+          lastOrOrganizationName: "PATIENT",
+          firstName: "TEST",
+          idQualifier: "MI",
+          idCode: `MBR${n}`,
+        },
+      ],
+      requests: [
+        {
+          trace: { traceTypeCode: "1", referenceId: `TRC${n}`, originatingCompanyId: "9SAMPLEORG" },
+          statuses: [
+            {
+              codes: [{ categoryCode: "R0", statusCode: "18842-5", codeListQualifier: "LOI" }],
+              statusEffectiveDate: DATE8,
+              totalChargeAmount: dec(money(claimCharge(k))),
+            },
+          ],
+          references: [{ qualifier: "1K", value: `PCN${n}` }],
+          dates: [{ qualifier: "472", formatQualifier: "D8", value: DATE8 }],
+        },
+      ],
+    });
+  }
+  return {
+    envelope: envelopeSpec("PAYER01", "CLINIC01", i),
+    header: {
+      hierarchicalStructureCode: "0010",
+      transactionSetPurposeCode: "08",
+      referenceId: `RFAI${id6(i)}`,
+      date: DATE8,
+      time: TIME,
+      transactionTypeCode: "DG",
+    },
+    levels: [
+      {
+        levelCode: "20",
+        childCode: "1",
+        entities: [
+          {
+            entityIdentifierCode: "PR",
+            entityTypeQualifier: "2",
+            lastOrOrganizationName: "SAMPLE PAYER",
+            idQualifier: "PI",
+            idCode: "PAYER01",
+          },
+        ],
+        children: patients,
+      },
+    ],
+  };
+}
+
+// ---- 278, the services review pair -----------------------------------------------------------
+
+/** The spec of a synthetic 278 for index `i`, one patient event with `services` services. */
+function review278SpecOf(dec, i, services, response) {
+  const reviews = [];
+  for (let k = 0; k < services; k++) {
+    const n = id6(k);
+    reviews.push({
+      levelCode: "SS",
+      requestCategoryCode: "HS",
+      certificationTypeCode: "I",
+      serviceTypeCode: "1",
+      ...(response
+        ? { decision: { actionCode: "A1", reviewIdentificationNumber: `AUTH${n}` } }
+        : {}),
+      traces: [{ traceTypeCode: "1", referenceId: `SRV${n}`, originatingCompanyId: "9SAMPLEORG" }],
+      dates: [{ qualifier: "472", formatQualifier: "D8", value: DATE8 }],
+    });
+  }
+  const n = id6(i);
+  return {
+    envelope: envelopeSpec(response ? "UMO01" : "CLINIC01", response ? "CLINIC01" : "UMO01", i),
+    header: {
+      structurePurposeCode: "0078",
+      purposeCode: response ? "11" : "13",
+      referenceId: `REV${n}`,
+      date: DATE8,
+      time: TIME,
+    },
+    utilizationManagementOrganization: {
+      entityIdentifierCode: "X3",
+      entityTypeQualifier: "2",
+      name: "SAMPLE REVIEW ORG",
+      idQualifier: "PI",
+      idCode: "UMO01",
+    },
+    requester: STATUS_PROVIDER,
+    subscriber: {
+      member: {
+        entityIdentifierCode: "IL",
+        entityTypeQualifier: "1",
+        lastName: "PATIENT",
+        firstName: "TEST",
+        idQualifier: "MI",
+        idCode: `MBR${n}`,
+        dateOfBirth: "19850515",
+        genderCode: "F",
+      },
+      reviews: [
+        {
+          levelCode: "EV",
+          requestCategoryCode: "HS",
+          certificationTypeCode: "I",
+          serviceTypeCode: "1",
+          ...(response
+            ? { decision: { actionCode: "A1", reviewIdentificationNumber: `AUTH${n}` } }
+            : {}),
+          traces: [
+            { traceTypeCode: "1", referenceId: `EVT${n}`, originatingCompanyId: "9SAMPLEORG" },
+          ],
+          diagnoses: [{ qualifier: "ABK", code: "J20.9" }],
+          dates: [{ qualifier: "472", formatQualifier: "RD8", value: `${DATE8}-20260605` }],
+          reviews,
+        },
+      ],
+    },
+  };
+}
+
+/** The spec of a synthetic 278 request for index `i`: one patient event, `services` services. */
+export function review278RequestSpec(dec, i, services) {
+  return review278SpecOf(dec, i, services, false);
+}
+
+/** The spec of a synthetic 278 response for index `i`, certifying every service it was asked. */
+export function review278ResponseSpec(dec, i, services) {
+  return review278SpecOf(dec, i, services, true);
+}
+
+// ---- 820, a premium payment ------------------------------------------------------------------
+
+/** The premium paid for member `k`. */
+function premium(k) {
+  return 200 + (k % 23) * 25;
+}
+
+/**
+ * The spec of a synthetic 820 for index `i`: an employer's monthly premium payment, one
+ * remittance per member of `members`. In balance: the payment is the sum of what each pays.
+ */
+export function premium820Spec(dec, i, members) {
+  let total = 0;
+  const remittances = [];
+  for (let k = 0; k < members; k++) {
+    const n = id6(k);
+    const paid = premium(k);
+    total += paid;
+    remittances.push({
+      individual: {
+        entityIdentifierCode: "IL",
+        lastName: "PATIENT",
+        firstName: "TEST",
+        idQualifier: "MI",
+        idCode: `MBR${n}`,
+      },
+      openItems: [
+        {
+          qualifier: "AZ",
+          referenceId: `POL${n}`,
+          amountPaid: dec(money(paid)),
+          amountDue: dec(money(paid)),
+        },
+      ],
+    });
+  }
+  return {
+    envelope: envelopeSpec("EMPLOYER01", "PAYER01", i),
+    payment: {
+      transactionHandlingCode: "I",
+      totalPremiumAmount: dec(money(total)),
+      creditDebitFlag: "C",
+      method: "ACH",
+      paymentFormatCode: "CTX",
+      paymentDate: DATE8,
+    },
+    traces: [
+      { traceTypeCode: "1", referenceId: `PREM${id6(i)}`, originatingCompanyId: "1999999999" },
+    ],
+    receiver: {
+      entityIdentifierCode: "PE",
+      name: "SAMPLE PAYER",
+      idQualifier: "FI",
+      idCode: "999000111",
+    },
+    remitter: {
+      entityIdentifierCode: "PR",
+      name: "SAMPLE EMPLOYER",
+      idQualifier: "FI",
+      idCode: "999000333",
+    },
+    remittances,
+  };
+}
+
+// ---- 834, a benefit enrollment file ----------------------------------------------------------
+
+/**
+ * The spec of a synthetic 834 for index `i`: an employer's enrollment file adding `members`
+ * subscribers, each with one health coverage.
+ */
+export function enrollment834Spec(dec, i, members) {
+  const list = [];
+  for (let k = 0; k < members; k++) {
+    const n = id6(k);
+    list.push({
+      subscriberIndicator: "Y",
+      relationshipCode: "18",
+      maintenanceTypeCode: "021",
+      maintenanceReasonCode: "28",
+      benefitStatusCode: "A",
+      employmentStatusCode: "FT",
+      member: {
+        lastName: "PATIENT",
+        firstName: "TEST",
+        idQualifier: "MI",
+        idCode: `MBR${n}`,
+        dateOfBirth: "19850515",
+        genderCode: "F",
+        address: { lines: ["1 SAMPLE ST"], city: "ANYTOWN", state: "OH", postalCode: "44101" },
+      },
+      references: [{ qualifier: "0F", value: `MBR${n}` }],
+      dates: [{ qualifier: "356", value: DATE8 }],
+      healthCoverages: [
+        {
+          maintenanceTypeCode: "021",
+          insuranceLineCode: "HLT",
+          coverageLevelCode: "EMP",
+          dates: [{ qualifier: "348", value: DATE8 }],
+        },
+      ],
+    });
+  }
+  return {
+    envelope: envelopeSpec("EMPLOYER01", "PAYER01", i),
+    header: {
+      transactionSetPurposeCode: "00",
+      referenceId: `ENR${id6(i)}`,
+      date: DATE8,
+      time: TIME,
+      actionCode: "2",
+      sponsor: {
+        entityIdentifierCode: "P5",
+        name: "SAMPLE EMPLOYER",
+        idQualifier: "FI",
+        idCode: "999000333",
+      },
+      payer: {
+        entityIdentifierCode: "IN",
+        name: "SAMPLE PAYER",
+        idQualifier: "FI",
+        idCode: "999000111",
+      },
+      references: [{ qualifier: "38", value: "POLICY001" }],
+    },
+    members: list,
+  };
+}
+
+// ---- 837D, a dental claim batch --------------------------------------------------------------
+
+/**
+ * The spec of a synthetic 837D for index `i` with `claims` claims in one transaction set, each
+ * under its own subscriber, each with one dental line on one tooth.
+ */
+export function claim837DSpec(dec, i, claims) {
+  const subscribers = [];
+  for (let k = 0; k < claims; k++) {
+    const charge = dec(money(claimCharge(k)));
+    subscribers.push(
+      claimSubscriberSpec(k, [
+        {
+          claimId: `PCN${id6(k)}`,
+          totalCharge: charge,
+          placeOfServiceCode: "11",
+          facilityCodeQualifier: "B",
+          claimFrequencyCode: "1",
+          providerSignatureOnFile: "Y",
+          providerAcceptAssignment: "A",
+          benefitsAssignment: "Y",
+          releaseOfInformationCode: "Y",
+          serviceLines: [
+            {
+              variant: "D",
+              procedureQualifier: "AD",
+              procedureCode: "D2391",
+              charge,
+              units: dec("1"),
+              placeOfServiceCode: "11",
+              toothInformation: [{ qualifier: "JP", toothCode: "14", surfaces: ["O"] }],
+              dates: [{ qualifier: "472", formatQualifier: "D8", value: DATE8 }],
+            },
+          ],
+        },
+      ]),
+    );
+  }
+  return {
+    envelope: envelopeSpec("DENTAL01", "PAYER01", i),
+    submitter: SUBMITTER,
+    receiver: RECEIVER,
+    billingProviders: [
+      billingProviderSpec("SAMPLE DENTAL", "300 DENTAL LN", "999000444", subscribers),
+    ],
+  };
+}
+
+// ---- TA1, the interchange acknowledgment -----------------------------------------------------
+
+/** The spec of a synthetic TA1 for index `i`, accepting the interchange it acknowledges. */
+export function ta1Spec(_dec, i) {
+  return {
+    interchangeControlNumber: icn(i),
+    interchangeDate: DATE6,
+    interchangeTime: TIME,
+    ackCode: "A",
+    noteCode: "000",
+  };
+}
+
+// ---- The texts of the specs above ------------------------------------------------------------
+
+/** The NM1 of one of the shared parties above. */
+function partyNm1({ entityIdentifierCode, entityTypeQualifier, name, idQualifier, idCode }) {
+  return `NM1*${entityIdentifierCode}*${entityTypeQualifier}*${name}*****${idQualifier}*${idCode}`;
+}
+
+/** The payer, receiver and provider levels both claim status sets open with. */
+function statusHeading() {
+  return [
+    "HL*1**20*1",
+    partyNm1(STATUS_PAYER),
+    "HL*2*1*21*1",
+    partyNm1(STATUS_RECEIVER),
+    "HL*3*2*19*1",
+    partyNm1(STATUS_PROVIDER),
+  ];
+}
+
+/** The text of {@link inquiry276Spec}. */
+export function inquiry276Text(i, claims) {
+  const body = [
+    "ST*276*0001*005010X212",
+    `BHT*0010*13*STS${id6(i)}*${DATE8}*${TIME}`,
+    ...statusHeading(),
+  ];
+  for (let k = 0; k < claims; k++) {
+    const n = id6(k);
+    body.push(
+      `HL*${String(k + 4)}*3*22*0`,
+      `NM1*IL*1*PATIENT*TEST****MI*MBR${n}`,
+      "DMG*D8*19850515*F",
+      `TRN*1*TRC${n}*9SAMPLEORG`,
+      `REF*1K*PCN${n}`,
+      `AMT*T3*${money(claimCharge(k))}`,
+      `DTP*472*D8*${DATE8}`,
+    );
+  }
+  return envelope("CLINIC01", "PAYER01", i, "HR", "005010X212", body);
+}
+
+/** The text `build277` or `build277CA` writes, by the guide it names. */
+function status277TextOf(i, claims, guide) {
+  const body = [`ST*277*0001*${guide}`, ...statusHeading()];
+  for (let k = 0; k < claims; k++) {
+    const n = id6(k);
+    body.push(
+      `HL*${String(k + 4)}*3*22*0`,
+      `NM1*IL*1*PATIENT*TEST****MI*MBR${n}`,
+      `TRN*2*TRC${n}`,
+      `STC*A2:20:PR*${DATE8}*WQ*${money(claimCharge(k))}`,
+      `REF*1K*PCN${n}`,
+      `DTP*472*D8*${DATE8}`,
+    );
+  }
+  return envelope("PAYER01", "CLINIC01", i, "HN", guide, body);
+}
+
+/** The text of {@link status277Spec}. */
+export function status277Text(i, claims) {
+  return status277TextOf(i, claims, "005010X212");
+}
+
+/** The text of {@link ack277CASpec}. */
+export function ack277CAText(i, claims) {
+  return status277TextOf(i, claims, "005010X214");
+}
+
+/** The text of {@link request277Spec}. */
+export function request277Text(i, claims) {
+  const body = [
+    "ST*277*0001*006020X313",
+    `BHT*0010*08*RFAI${id6(i)}*${DATE8}*${TIME}*DG`,
+    "HL*1**20*1",
+    "NM1*PR*2*SAMPLE PAYER*****PI*PAYER01",
+  ];
+  for (let k = 0; k < claims; k++) {
+    const n = id6(k);
+    body.push(
+      `HL*${String(k + 2)}*1*22*0`,
+      `NM1*QC*1*PATIENT*TEST****MI*MBR${n}`,
+      `TRN*1*TRC${n}*9SAMPLEORG`,
+      `STC*R0:18842-5::LOI*${DATE8}**${money(claimCharge(k))}`,
+      `REF*1K*PCN${n}`,
+      `DTP*472*D8*${DATE8}`,
+    );
+  }
+  return envelope("PAYER01", "CLINIC01", i, "HN", "006020X313", body);
+}
+
+/** The text of a 278 request or response: one patient event, `services` services under it. */
+function review278TextOf(i, services, response) {
+  const n = id6(i);
+  const body = [
+    "ST*278*0001*005010X217",
+    `BHT*0078*${response ? "11" : "13"}*REV${n}*${DATE8}*${TIME}`,
+    "HL*1**20*1",
+    "NM1*X3*2*SAMPLE REVIEW ORG*****PI*UMO01",
+    "HL*2*1*21*1",
+    partyNm1(STATUS_PROVIDER),
+    "HL*3*2*22*1",
+    `NM1*IL*1*PATIENT*TEST****MI*MBR${n}`,
+    "DMG*D8*19850515*F",
+    `HL*4*3*EV*${services > 0 ? "1" : "0"}`,
+    `TRN*1*EVT${n}*9SAMPLEORG`,
+    "UM*HS*I*1",
+    ...(response ? [`HCR*A1*AUTH${n}`] : []),
+    `DTP*472*RD8*${DATE8}-20260605`,
+    "HI*ABK:J20.9",
+  ];
+  for (let k = 0; k < services; k++) {
+    const s = id6(k);
+    body.push(
+      `HL*${String(k + 5)}*4*SS*0`,
+      `TRN*1*SRV${s}*9SAMPLEORG`,
+      "UM*HS*I*1",
+      ...(response ? [`HCR*A1*AUTH${s}`] : []),
+      `DTP*472*D8*${DATE8}`,
+    );
+  }
+  const [sender, receiver] = response ? ["UMO01", "CLINIC01"] : ["CLINIC01", "UMO01"];
+  return envelope(sender, receiver, i, "HI", "005010X217", body);
+}
+
+/** The text of {@link review278RequestSpec}. */
+export function review278RequestText(i, services) {
+  return review278TextOf(i, services, false);
+}
+
+/** The text of {@link review278ResponseSpec}. */
+export function review278ResponseText(i, services) {
+  return review278TextOf(i, services, true);
+}
+
+/** The text of {@link premium820Spec}. */
+export function premium820Text(i, members) {
+  let total = 0;
+  const remittances = [];
+  for (let k = 0; k < members; k++) {
+    const n = id6(k);
+    const paid = money(premium(k));
+    total += premium(k);
+    remittances.push(`NM1*IL*1*PATIENT*TEST****MI*MBR${n}`, `RMR*AZ*POL${n}**${paid}*${paid}`);
+  }
+  return envelope("EMPLOYER01", "PAYER01", i, "RA", "005010X218", [
+    "ST*820*0001*005010X218",
+    `BPR*I*${money(total)}*C*ACH*CTX***********${DATE8}`,
+    `TRN*1*PREM${id6(i)}*1999999999`,
+    "N1*PE*SAMPLE PAYER*FI*999000111",
+    "N1*PR*SAMPLE EMPLOYER*FI*999000333",
+    ...remittances,
+  ]);
+}
+
+/** The text of {@link enrollment834Spec}. */
+export function enrollment834Text(i, members) {
+  const body = [
+    "ST*834*0001*005010X220A1",
+    `BGN*00*ENR${id6(i)}*${DATE8}*${TIME}****2`,
+    "N1*P5*SAMPLE EMPLOYER*FI*999000333",
+    "N1*IN*SAMPLE PAYER*FI*999000111",
+    "REF*38*POLICY001",
+  ];
+  for (let k = 0; k < members; k++) {
+    const n = id6(k);
+    body.push(
+      "INS*Y*18*021*28*A***FT",
+      `NM1*IL*1*PATIENT*TEST****MI*MBR${n}`,
+      "DMG*D8*19850515*F",
+      "N3*1 SAMPLE ST",
+      "N4*ANYTOWN*OH*44101",
+      `REF*0F*MBR${n}`,
+      `DTP*356*D8*${DATE8}`,
+      "HD*021**HLT**EMP",
+      `DTP*348*D8*${DATE8}`,
+    );
+  }
+  return envelope("EMPLOYER01", "PAYER01", i, "BE", "005010X220A1", body);
+}
+
+/** The text of {@link claim837DSpec}. */
+export function claim837DText(i, claims) {
+  const body = claimHeading("005010X224A2", "SAMPLE DENTAL", "300 DENTAL LN", "999000444");
+  for (let k = 0; k < claims; k++) {
+    const charge = money(claimCharge(k));
+    body.push(
+      ...claimSubscriber(k),
+      `CLM*PCN${id6(k)}*${charge}***11:B:1*Y*A*Y*Y`,
+      "LX*1",
+      `SV3*AD:D2391*${charge}*11***1`,
+      `DTP*472*D8*${DATE8}`,
+      "TOO*JP*14*O",
+    );
+  }
+  return envelope("DENTAL01", "PAYER01", i, "HC", "005010X224A2", body);
+}
+
+/** The text of a TA1-only interchange carrying {@link ta1Spec}: an ISA, the TA1, and the IEA. */
+export function ta1Text(i) {
+  return `${isa("PAYER01", "CLINIC01", i)}TA1*${icn(i)}*${DATE6}*${TIME}*A*000~IEA*0*${icn(i)}~`;
+}

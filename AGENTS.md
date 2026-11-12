@@ -34,6 +34,7 @@ pnpm test
 pnpm test:coverage
 pnpm quality:check --base origin/main
 pnpm test:perf
+pnpm test:perf:sets
 pnpm build
 pnpm attw
 pnpm typecheck:examples
@@ -49,9 +50,13 @@ pnpm check:version-bump
 pnpm differential:check
 ```
 
-`pnpm test:perf` is the scaling gate (`test/perf/scaling-gate.perf.ts`): it fails when `parseX12`,
-or the typed reader or builder of any shape the benchmarks measure (835, 837P, 837I, 270, 271, 999,
-997 and 275), grows faster than its input. It runs apart from `pnpm test` and never under coverage.
+`pnpm test:perf` and `pnpm test:perf:sets` are the scaling gate (`test/perf/scaling-gate.perf.ts`
+and `test/perf/scaling-gate-sets.perf.ts`, two CI jobs so each stays inside 15 minutes): it fails
+when `parseX12`, or the typed reader or builder of any shape the benchmarks measure, grows faster
+than its input. The first file holds the 835, 837P, 837I, 270, 271, 999, 997 and 275; the second
+the 276, 277, 277CA, 277 request for additional information, 278 request and response, 820, 834
+(its builder: its member reader is async, which neither tool can time), 837D and TA1. It runs
+apart from `pnpm test` and never under coverage.
 
 ## The testing standard
 
@@ -76,8 +81,10 @@ name, with its reason, through the checks in `test/_helpers/runtime.ts`.
 ## Benchmarks
 
 `bench/x12.bench.mjs` measures the built package on synthetic documents in the shapes real traffic
-has (an 835 remittance, 837P and 837I batches, a 270 and its 271, a 999, a 997, and a 275 attachment),
-each parsed, read and built, from the small document a feed carries all day to several megabytes.
+has (an 835 remittance, 837P, 837I and 837D batches, a 270 and its 271, a 276 and its 277, a 277CA,
+a 277 request for additional information, a 278 request and response, an 820, an 834, a 999, a
+997, a TA1, and a 275 attachment), each parsed, read and built (the 834 parsed and built), from the
+small document a feed carries all day to several megabytes.
 `bench/corpus.mjs` builds every document in code; `test/perf/bench-corpus.test.ts` holds that each
 reads with no warning.
 
