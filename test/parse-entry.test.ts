@@ -212,4 +212,60 @@ describe("the parse entry point in the build", () => {
       ) as string[];
     expect(differing("parse.cjs")).toEqual([]);
   });
+
+  /**
+   * What `require` of a built CommonJS entry point gives: the shape of each export's property, the
+   * names in order, and whether a caller can stub `name` the way `jest.spyOn` and `vi.spyOn` do
+   * (`Object.defineProperty` with a new value) and by plain assignment in strict mode.
+   */
+  function requireShape(
+    file: string,
+    name: string,
+  ): {
+    shapes: string[];
+    names: string[];
+    redefined: boolean;
+    assigned: boolean;
+  } {
+    const script = `"use strict";
+const m = require(${JSON.stringify(join(OUT_DIR, file))});
+const names = Object.keys(m);
+const shapes = [...new Set(Reflect.ownKeys(m).map((k) => {
+  const d = Object.getOwnPropertyDescriptor(m, k);
+  return ("value" in d ? "data" : "accessor") + " writable=" + d.writable + " enumerable=" + d.enumerable + " configurable=" + d.configurable;
+}))];
+const name = ${JSON.stringify(name)};
+const original = m[name];
+const stub = () => "stub";
+let redefined = false;
+try {
+  Object.defineProperty(m, name, { value: stub, configurable: true, writable: true });
+  redefined = m[name] === stub;
+  Object.defineProperty(m, name, { value: original, configurable: true, writable: true });
+} catch {}
+let assigned = false;
+try {
+  m[name] = stub;
+  assigned = m[name] === stub;
+  m[name] = original;
+} catch {}
+process.stdout.write(JSON.stringify({ shapes, names, redefined, assigned }));`;
+    return JSON.parse(
+      execFileSync(process.execPath, ["-e", script], { encoding: "utf8" }),
+    ) as ReturnType<typeof requireShape>;
+  }
+
+  it.each([
+    ["index.cjs", "parseX12"],
+    ["index.cjs", "X12ParseError"],
+    ["index.cjs", "get835"],
+    ["parse.cjs", "parseX12"],
+  ])("%s keeps every export an ordinary property a caller can stub (%s)", (file, name) => {
+    const { shapes, names, redefined, assigned } = requireShape(file, name);
+    expect(shapes).toEqual(["data writable=true enumerable=true configurable=true"]);
+    expect(names).toEqual([...names].sort());
+    expect(names).toContain(name);
+    expect(redefined).toBe(true);
+    expect(assigned).toBe(true);
+  });
 });
