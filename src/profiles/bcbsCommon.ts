@@ -13,7 +13,7 @@
  */
 
 import { defineBuiltInProfile } from "./define.js";
-import type { X12ProfileSpec } from "./types.js";
+import type { X12Profile, X12ProfileSpec } from "./types.js";
 
 /** The spec bcbsCommon is defined from, for the test that holds it equal to `defineProfile` of it. @internal */
 export const BCBS_COMMON_SPEC: X12ProfileSpec = {
@@ -39,6 +39,9 @@ export const BCBS_COMMON_SPEC: X12ProfileSpec = {
   ],
 };
 
+/** The profile {@link bcbsCommon} answers, once it has been built. */
+let bcbsCommonBuilt: X12Profile | undefined;
+
 /**
  * Built-in BCBS common-denominator profile. See file header for grounding;
  * use via `parseX12(raw, { profile: profiles.bcbsCommon })`.
@@ -50,4 +53,9 @@ export const BCBS_COMMON_SPEC: X12ProfileSpec = {
  * ix.profile?.describe().relaxes.map((q) => q.id);
  * ```
  */
-export const bcbsCommon = defineBuiltInProfile(BCBS_COMMON_SPEC);
+export function bcbsCommon(): X12Profile {
+  // Built on the first read of `profiles.bcbsCommon`, not at import, and kept only once the build
+  // has returned, so every read after it answers the same frozen profile.
+  bcbsCommonBuilt ??= defineBuiltInProfile(BCBS_COMMON_SPEC);
+  return bcbsCommonBuilt;
+}

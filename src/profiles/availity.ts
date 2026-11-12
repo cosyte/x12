@@ -12,7 +12,7 @@
  */
 
 import { defineBuiltInProfile } from "./define.js";
-import type { X12ProfileSpec } from "./types.js";
+import type { X12Profile, X12ProfileSpec } from "./types.js";
 
 /** The spec availity is defined from, for the test that holds it equal to `defineProfile` of it. @internal */
 export const AVAILITY_SPEC: X12ProfileSpec = {
@@ -51,6 +51,9 @@ export const AVAILITY_SPEC: X12ProfileSpec = {
   ],
 };
 
+/** The profile {@link availity} answers, once it has been built. */
+let availityBuilt: X12Profile | undefined;
+
 /**
  * Built-in Availity 835 ERA profile. See file header for grounding; use via
  * `parseX12(raw, { profile: profiles.availity })`.
@@ -62,4 +65,9 @@ export const AVAILITY_SPEC: X12ProfileSpec = {
  * ix.profile?.describe().adds.map((q) => q.id);
  * ```
  */
-export const availity = defineBuiltInProfile(AVAILITY_SPEC);
+export function availity(): X12Profile {
+  // Built on the first read of `profiles.availity`, not at import, and kept only once the build
+  // has returned, so every read after it answers the same frozen profile.
+  availityBuilt ??= defineBuiltInProfile(AVAILITY_SPEC);
+  return availityBuilt;
+}

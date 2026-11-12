@@ -30,6 +30,7 @@
         "profiles",
         "handle-warnings",
         "read-dates",
+        "read-large-files",
         "property-test-your-code"
       ]
     },

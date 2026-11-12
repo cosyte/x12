@@ -95,6 +95,10 @@ pnpm bench:compare --base <base checkout>/dist/index.mjs --head dist/index.mjs
 pnpm bench:profile --out bench-results/profile
 ```
 
+`pnpm bench:large --base <base checkout>/dist/index.mjs --head dist/index.mjs` times the large 835
+and 837P, parsed, read and streamed, with their peak heap, on two builds side by side (the bench
+workflow's `large` job).
+
 A reading reports throughput, latency p50/p95/p99, allocations, peak heap, a long run for leaks,
 and the cold import with its gzip size. On a pull request CI compares the base build with the head
 at the small sizes, and `.github/workflows/bench.yml` takes a reading and a profile on a hosted

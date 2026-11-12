@@ -92,6 +92,17 @@ export interface X12ParseOptions {
    * subsystem docs).
    */
   readonly profile?: X12Profile | null;
+  /**
+   * Whether a transaction set's segments are split into elements the first
+   * time `segments` is read, rather than during the parse. Default `true`.
+   * Every warning is found during the parse either way, in the same order
+   * and at the same positions, and what `segments` answers is the same: a
+   * lazy parse splits only the segments a split can warn on (a BDS or BIN,
+   * or one that ends in a release character) and leaves the rest for the
+   * first read of that transaction set's `segments`, which splits them all.
+   * Pass `false` to split every segment during the parse.
+   */
+  readonly lazy?: boolean;
 }
 
 /**
