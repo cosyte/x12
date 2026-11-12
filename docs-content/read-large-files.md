@@ -38,8 +38,9 @@ for await (const { delimiters, transaction } of readTransactionSets(chunks)) {
 payments; // => ["10"]
 ```
 
-A chunk may end anywhere, inside a segment or inside the ISA. Bytes are read one character per
-byte, as `parseX12` reads a `Buffer`. Each yielded item carries the interchange's `delimiters` and
+A chunk may end anywhere, inside a segment or inside the ISA. A segment that spans many chunks,
+such as a large binary attachment, is searched once as its chunks arrive, so the time it takes
+grows with its length. Bytes are read one character per byte, as `parseX12` reads a `Buffer`. Each yielded item carries the interchange's `delimiters` and
 `isa`, the indexes of its group and of itself in that group, and the transaction set itself, which
 is the one `parseX12` of the whole file holds at the same place.
 
@@ -48,6 +49,12 @@ found: a warning on a transaction set before the set is yielded, and one about i
 interchange (a count or control number that does not match, a missing `GE` or `IEA`) when the
 stream reaches it. `{ strict: true }` throws the first warning, and the four fatal errors are the
 ones `parseX12` throws for the same input.
+
+A transaction set the stream yields keeps a reference to about one chunk of input for as long as
+you hold it: its segments are slices of the text of the chunk they arrived in, and in V8 (Node.js)
+a slice keeps the text it was cut from. A set with a segment that spanned many chunks keeps that
+segment's chunks. Let each set go once you have read it, or keep only the values you read from it,
+and the stream holds about one transaction set; keep every set and you keep about a chunk for each.
 
 The stream yields transaction sets only. A `TA1` at the envelope level, a segment outside every
 transaction set and bytes after the `IEA` are reported through their warnings and not kept; read

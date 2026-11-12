@@ -80,6 +80,11 @@ transaction set at a time, holding about one set rather than the file.
   fails when the heap held after a forced collection grows past the budget. A control run that
   keeps every set shows the measurement sees retained heap.
 - **A scaling gate on the lazy parse**, beside the gates on the parse that splits every segment.
+- **A scaling gate on the stream over one long segment.** `readTransactionSets` reads a 275 whose
+  one attachment segment arrives in 4 KiB chunks, at 2 MiB and at 8 MiB, and fails when the larger
+  read takes more than 8 times the smaller. Its self-check feeds the same chunks through a source
+  that searches everything before each chunk again, and must clear that ceiling. A test beside it
+  counts the characters every search reads and holds them under 8 times the input.
 
 ## The cold import
 

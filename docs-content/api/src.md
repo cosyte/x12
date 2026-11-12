@@ -32558,6 +32558,12 @@ keeps on the interchange (an envelope `TA1`, a segment outside every transaction
 after the `IEA`) are reported through their warnings and not yielded; read them with `parseX12`.
 The four fatal errors `parseX12` throws are thrown here for the same input.
 
+A transaction set it yields keeps a reference to about one chunk of input for as long as it is
+held: its segments are slices of the text of the chunk they arrived in, and in V8 a slice keeps
+the text it was cut from (all the chunks of a segment that spanned many). A segment that spans
+many chunks, such as a large binary attachment, is searched once as its chunks arrive, so the
+time it takes grows with its length.
+
 #### Parameters
 
 ##### source

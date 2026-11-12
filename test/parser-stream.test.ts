@@ -7,9 +7,9 @@
 
 import { Buffer } from "node:buffer";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { remit835Text } from "../bench/corpus.mjs";
+import { attachment275Text, remit835Text } from "../bench/corpus.mjs";
 import {
   parseX12,
   readTransactionSets,
@@ -30,6 +30,33 @@ function chunks(input: string | Buffer, size: number, bytes: boolean): (string |
     out.push(bytes ? new Uint8Array(Buffer.from(piece, "latin1")) : piece);
   }
   return out;
+}
+
+/**
+ * How many characters `String.prototype.indexOf` read while `run` ran: from where each search
+ * started to where it found its match, or to the end of the text. Every search the framing makes is
+ * one, so this is the work it did.
+ */
+async function charactersSearched(run: () => Promise<void>): Promise<number> {
+  // eslint-disable-next-line @typescript-eslint/unbound-method -- called with its own receiver below
+  const indexOf = String.prototype.indexOf;
+  let read = 0;
+  const spy = vi.spyOn(String.prototype, "indexOf").mockImplementation(function (
+    this: string,
+    search: string,
+    position?: number,
+  ): number {
+    const at = indexOf.call(this, search, position);
+    const from = Math.min(Math.max(Math.trunc(position ?? 0), 0), this.length);
+    read += (at === -1 ? this.length : at) - from;
+    return at;
+  });
+  try {
+    await run();
+  } finally {
+    spy.mockRestore();
+  }
+  return read;
 }
 
 /** An async source of `pieces`, one per turn. */
@@ -237,6 +264,56 @@ describe("readTransactionSets", () => {
     }
     expect(items).toHaveLength(1);
     expect(parseX12(raw).warnings.length).toBeGreaterThan(0);
+  });
+
+  it("searches a segment that spans many chunks once, not again from its start on each", async () => {
+    const SIZE = 256 * 1_024;
+    const raws = [
+      // A base64 attachment: one BDS that holds no terminator.
+      attachment275Text(1, SIZE),
+      // A long element with an escaped terminator and an escaped release character throughout,
+      // so a chunk ends at every place in the pattern, between a release character and what it
+      // escapes included.
+      buildInterchange({
+        functionalIdCode: "PI",
+        transactionSetId: "275",
+        versionRelease: "005010X210",
+        transactionBody: [`MSG*${"a?~b??c".repeat(SIZE / 7)}`, "REF*ZZ*AFTER"],
+      }),
+      // A binary segment whose data holds terminators and release characters: framed by its count.
+      buildInterchange({
+        functionalIdCode: "PI",
+        transactionSetId: "275",
+        versionRelease: "005010X210",
+        transactionBody: [`BIN*${String(SIZE)}*${"x~y?".repeat(SIZE / 4)}`, "REF*ZZ*AFTER"],
+      }),
+    ];
+    for (const raw of raws) {
+      const pieces = chunks(raw, 1_000, false);
+      let given = 0;
+      function* source(): Generator<string | Uint8Array> {
+        for (const piece of pieces) {
+          given += 1;
+          yield piece;
+        }
+      }
+      const seen: number[] = [];
+      const items: X12StreamTransaction[] = [];
+      const warnings: X12ParseWarning[] = [];
+      const searched = await charactersSearched(async () => {
+        for await (const item of readTransactionSets(source(), {
+          onWarning: (w) => warnings.push(w),
+        })) {
+          seen.push(given);
+          items.push(item);
+        }
+      });
+      // A search from the segment's start on each chunk reads it about 260 times over.
+      expect(searched).toBeLessThan(8 * raw.length);
+      // The set is yielded as soon as the terminator of its SE arrives.
+      expect(seen).toEqual([Math.floor(raw.indexOf("~GE*") / 1_000) + 1]);
+      expect(observed({ items, warnings, error: undefined })).toEqual(expected(raw));
+    }
   });
 
   it("leaves segments for the first read, or splits them all with { lazy: false }", async () => {

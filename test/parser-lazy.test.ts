@@ -103,6 +103,22 @@ describe("parseX12 splits a transaction set's segments on first read", () => {
     expect(tx.segments).toBe(first);
   });
 
+  it("keeps a write to a sealed set, before or after its first read, as the plain property did", () => {
+    for (const lazy of [true, false]) {
+      const tx = Object.seal(firstTransaction(parseX12(PLAIN, { lazy }))) as { segments: unknown };
+      const written = ["written"];
+      tx.segments = written;
+      expect(tx.segments).toBe(written);
+      expect(tx.segments).toBe(written);
+    }
+    const tx = Object.seal(firstTransaction(parseX12(PLAIN)));
+    expect(tx.segments.map((s) => s.id)).toEqual(["ST", "BPR", "TRN", "REF", "SE"]);
+    const written = ["after a read"];
+    (tx as { segments: unknown }).segments = written;
+    expect(tx.segments).toBe(written);
+    expect(Object.isFrozen(tx)).toBe(false);
+  });
+
   it("splits during the parse every segment a split can warn on", () => {
     // A BIN segment whose length is no number, and an input that ends on a dangling release
     // character inside a transaction set: both warn on their split.
