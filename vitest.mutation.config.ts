@@ -6,8 +6,8 @@ import config from "./vitest.config.js";
  * The Vitest run StrykerJS uses for mutation testing (`stryker.config.mjs`): the suite of
  * `vitest.config.ts`, without the tests that cannot judge a mutant, or cannot judge one quickly.
  *
- * - `test/perf/`: the scaling gate's own suite (`pnpm test:perf`, its own CI job of six to eight
- *   minutes) and the bench corpus check read a clock or build large documents; under StrykerJS's
+ * - `test/perf/`: the scaling gate's own suite (`pnpm test:perf` and `pnpm test:perf:sets`, each
+ *   its own CI job) and the bench corpus check read a clock or build large documents; under StrykerJS's
  *   instrumentation every measured call pays for a mutant switch, so they would measure the
  *   instrumentation and repeat that job's work for every mutant they reach.
  * - `test/scripts/` and `test/differential/`: these test this repository's own tooling in

@@ -12,7 +12,7 @@ name: Bench
 # in each job's summary.
 #
 # One job per shape, side by side, so the reading finishes inside a pull request's wait: each job
-# runs its shape's three benchmarks (parse, read, build) at every size. Jobs on different runners
+# runs its shape's three benchmarks (parse, read, build; the 834 has no read) at every size. Jobs on different runners
 # are not compared with each other; each reading names the machine it ran on.
 
 on:
@@ -38,7 +38,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shape: ["835", "837P", "837I", "270", "271", "999", "997", "275"]
+        shape:
+          - "835"
+          - "837P"
+          - "837I"
+          - "270"
+          - "271"
+          - "999"
+          - "997"
+          - "275"
+          - "276"
+          - "277"
+          - "277CA"
+          - "277RFAI"
+          - "278 request"
+          - "278 response"
+          - "820"
+          - "834"
+          - "837D"
+          - "TA1"
+        # The 834's members are read through an async iterator, which a benchmark cannot time, so
+        # its shape has a parse and a build case and no read case.
+        include:
+          - shape: "834"
+            skip-read: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -53,16 +76,17 @@ jobs:
       - name: Read ${{ matrix.shape }}
         env:
           SHAPE: ${{ matrix.shape }}
+          SKIP_READ: ${{ matrix.skip-read || false }}
           COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p bench-results
           status=0
-          pnpm bench:reading --commit "${COMMIT}" \
-            --only "${SHAPE}: parseX12" \
-            --only "${SHAPE}: parseX12, then read" \
-            --only "${SHAPE}: build, then serializeX12" \
+          cases=(--only "${SHAPE}: parseX12")
+          if [ "${SKIP_READ}" != "true" ]; then cases+=(--only "${SHAPE}: parseX12, then read"); fi
+          cases+=(--only "${SHAPE}: build, then serializeX12")
+          pnpm bench:reading --commit "${COMMIT}" "${cases[@]}" \
             --out "bench-results/reading-${SHAPE}.json" \
             --summary "bench-results/reading-${SHAPE}.md" || status=$?
           if [ -f "bench-results/reading-${SHAPE}.md" ]; then
