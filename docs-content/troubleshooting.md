@@ -20,10 +20,10 @@ a functional group** (emitted right after the ISA, so reordered, though nothing 
 **bytes after the IEA**, raises
 [`X12_TRAILING_GARBAGE`](./warning-and-error-codes.md#x12_trailing_garbage) and comes back re-joined
 from segment slices rather than verbatim. All five are in
-[Known limitations and non-goals](#known-limitations-and-non-goals) below. **Segments outside a
-transaction** used to be on that list: they are now warned, kept on the model at
-`ix.orphanSegments`, and re-emitted at the structural anchor recorded with them, so both the bytes
-and the warning survive a round trip.
+[the round-trip entry](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md#serializeparses--s-is-not-guaranteed) of the known-limitations list. A
+**segment outside a transaction** is not on that list: it is warned, kept on the model at
+`ix.orphanSegments`, and re-emitted at the structural anchor recorded with it, so both the bytes and
+the warning survive a round trip.
 
 ## When does it throw vs warn?
 
@@ -85,134 +85,45 @@ builders run on a JSON-driven caller's values.
 
 ## Known limitations and non-goals
 
-### Data / decode boundaries
+Every limit this package states on purpose is one line in [the list in
+KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md#the-list),
+grouped as data and decode boundaries, trading-partner profiles, what the differential corpus
+proves, scope and non-goals, and the bundled code lists, and each line links to its detail. This
+page does not restate them, so the two cannot disagree. One of them decides what a clean parse can
+tell you, so it is here as well:
 
-- **Bundled code-list snapshots are initial subsets, not the full WPC-published lists.**
-  CARC, RARC, Claim-Status-Category (CSCC), Claim-Status (CSC), service-type, CLP-status, and
-  maintenance-type ship as versioned data artifacts. An inbound code outside a snapshot still parses:
-  the verbatim code is preserved and an `X12_UNKNOWN_*` warning is raised. Only the human-readable
-  **description** is absent. A stale or partial snapshot yields a missing description, **never a wrong
-  code**.
-- **`serialize(parse(s)) === s` is not guaranteed.** Every segment on the model comes back verbatim,
-  in the order the model holds it. Five constructs are known not to survive: line breaks between
-  segments, a doubled terminator outside a transaction, a missing final terminator,
-  post-IEA `trailingBytes`, and a TA1 that followed a functional group (emitted right after the ISA,
-  so reordered, though nothing is lost). The last four fire on inputs with no line
-  breaks, so a compact file is not guaranteed to round-trip either, and four of the five are silent, so a clean
-  warnings list is not evidence of byte-exactness. A segment whose first element is empty outside a
-  transaction is not on that list: it is warned, kept and re-emitted like any other segment outside a
-  transaction. Measured across every committed fixture: each emit is a fixed point
-  and re-parses to an identical model with an identical warning stream, the fixtures with no line
-  breaks return byte-identical (all but one of those are `golden/*.edi`, serializer output by
-  construction), and the rest differ by line breaks and nothing else. No corpus size is quoted: it
-  moves with every fixture added, and the suite re-derives the sweep from the tree. See
-  [Line endings between segments](./spec-notes-envelope.md#line-endings-between-segments).
-- **A segment outside a transaction is retained and re-emitted, but never decoded.** The envelope
-  walker binds body segments to an open ST..SE transaction. Anything else raises
-  `X12_UNEXPECTED_SEGMENT` and is kept verbatim on `ix.orphanSegments`, joinable to the warning by
-  `segmentIndex` and carrying the structural `anchor` `serializeX12` puts it back at, so it survives
-  a round trip along with its warning. One boundary remains: no `get*` reader sees an orphan, so read
-  them from `ix.orphanSegments` yourself.
-- **837 claim-/line-level provider addresses (Loop 2310 / 2420 `N3`/`N4`) are not surfaced.** The
-  provider **identities** (`NM1`) round-trip; the street-address lines do not decode onto the model.
-  Read them from the raw segments if you need them.
-- **`get834Enrollments` streams members but still parses the whole file up front.** It yields one
-  decoded member per `INS` loop (so a consumer holds one member at a time), but the underlying
-  interchange is fully parsed into `tx.segments` before iteration begins. It is not a byte-streaming
-  reader for arbitrarily large files.
-- **Balance and integrity checks warn; they never rebalance or renumber.** The 835 balance
-  invariants, 837 HL parent-pointer integrity, and envelope-count reconciliation surface a warning on
-  a mismatch and preserve the inbound values verbatim.
-
-### Differential testing
-
-- **Agreement with an independent reader is measured, and it is not conformance.** Every synthetic
-  document in the repository is also read by an independent open-source X12 reader (pyx12 or
-  LinuxForHealth x12, each pinned to one version) where that reader maps the transaction, and the
-  two readings are compared element position by element position. The 278, the dental claim, the
-  275, the 277 request for additional information and the TA1 are compared against nothing, because
-  neither reader maps them. The corpus holds one published disagreement, about the release character
-  in a transaction set body. Two parsers can agree and both be wrong, so do not assume
-  byte-for-byte agreement with any specific vendor parser. [Testing and
-  quality](./testing-and-quality.md) and
-  [KNOWN-LIMITATIONS.md](https://github.com/cosyte/x12/blob/main/KNOWN-LIMITATIONS.md) have the
-  detail.
-
-### Scope (non-goals for v1)
-
-- **We do not validate against implementation guides.** We check the ASC X12 base standard (the
-  envelope, delimiters, control numbers, segment counts and HL pointers), the few guide facts each
-  typed reader needs to build its model (the declared guide, the loops it requires, the 835 balancing
-  equations), and one CAQH CORE rule, the CORE 360 Code Combinations, through
-  [`checkCoreCodeCombination`](./api/src.md#checkcorecodecombination) with a table you supply. We
-  also check codes against the lists we bundle: a reader keeps a code outside them verbatim and warns
-  with [`X12_UNKNOWN_CARC`](./warning-and-error-codes.md#x12_unknown_carc) (835 and 837
-  adjustments), [`X12_UNKNOWN_RARC`](./warning-and-error-codes.md#x12_unknown_rarc) (835 remarks),
-  [`X12_UNKNOWN_CLAIM_STATUS`](./warning-and-error-codes.md#x12_unknown_claim_status) and
-  [`X12_UNKNOWN_CLAIM_STATUS_CATEGORY`](./warning-and-error-codes.md#x12_unknown_claim_status_category)
-  (277 statuses), [`X12_271_AAA_UNKNOWN_CODE`](./warning-and-error-codes.md#x12_271_aaa_unknown_code)
-  (271 AAA codes), [`X12_UNKNOWN_HI_QUALIFIER`](./warning-and-error-codes.md#x12_unknown_hi_qualifier)
-  (837 and 278 HI qualifiers) or
-  [`X12_834_UNKNOWN_MAINTENANCE_TYPE`](./warning-and-error-codes.md#x12_834_unknown_maintenance_type)
-  (834 INS-03 and HD-01), and [`build834`](./api/src.md#build834) refuses a maintenance type
-  outside its list with `X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE`. Three bundled lists are code
-  subsets of lists a TR3 prints, which we did not read:
-  [`MAINTENANCE_TYPE_CODES`](./api/src.md#maintenance_type_codes) (INS-03),
-  [`CLP_STATUS`](./api/src.md#clp_status) (CLP-02, which the 835 reader carries but does not warn
-  on) and [`HI_QUALIFIERS`](./api/src.md#hi_qualifiers). We ship no TR3 usage
-  tables, and we do not check TR3 usage: required, situational and not-used segments and elements,
-  situational rules, repeat counts, or the code values a guide allows at an element beyond those
-  bundled lists. Every TR3 is sold by X12, so a document that breaks its guide can parse with no
-  warning. With the typed readers you can still check the declared guide (a reader returns no
-  reading for a guide it does not implement, and
-  [`X12_GUIDE_NOT_DECLARED`](./warning-and-error-codes.md#x12_guide_not_declared) marks a reading
-  whose transaction set declares none), refuse a document
-  whose required field reads `undefined` (an absent value is never defaulted), compare the verbatim
-  qualifiers and codes no bundled list covers with your copy of the guide, date-check adjustment and
-  remark codes with [`checkCarcValidity`](./api/src.md#checkcarcvalidity) and
-  [`checkRarcValidity`](./api/src.md#checkrarcvalidity), and read anything untyped with
-  [`getSegmentValue`](./api/src.md#getsegmentvalue).
-- **Healthcare HIPAA 005010 only.** Non-healthcare sets (850/856/810/204, …), the EDIFACT syntax
-  family, and pre-005010 versions are out of v1 scope. Pre-005010 input is tolerated and flagged
-  (`X12_PRE_005010`), not decoded to older field maps.
-- **No 4010 variants and no 277U.** We do not build the 004010 835, 837, 270/271, 276/277, 278, 834
-  or 820, or the 4010 277U unsolicited claim status. Their replacements are the 005010 sets we read
-  and build: the 277 (`005010X212`) and the 277CA (`005010X214`) in place of the 4010 277 and the
-  277U. A typed reader returns no reading for a transaction set that declares a 4010 guide;
-  [the transaction sets](./spec-notes-transaction-sets.md#what-is-out-of-scope-v1) shows it on a
-  277U.
-- **No transport.** AS2, SFTP, and MLLP-style delivery are out of scope. This is a parser/serializer,
-  not a communications stack.
-- **Below 1.0.** The package is published on npm as `@cosyte/x12` from a public repo, on the 0.1 line. Its
-  exported readers, builders, types, and warning codes are the surface we keep stable, and below 1.0
-  a breaking change is called out in the changelog with its migration.
-  `npm view @cosyte/x12 version` is the only source of truth for the current version.
-- **A 276 hierarchical level whose declared parent does not resolve is left off the returned tree.**
-  The 276 reader attaches a level by its own HL-02 and by nothing else, so a dangling pointer, a
-  pointer naming a level of the wrong kind, and a parent chain that returns to itself each leave that
-  level, and everything beneath it, absent from the model. The loss is reported
-  ([`X12_276_LEVEL_DETACHED`](./warning-and-error-codes.md#x12_276_level_detached)) beside the code for the pointer defect, and the declared pointer and the
-  segments both stay verbatim.
-- **A 276 REF, DTP, or AMT short of what its row is built from loses the whole row, and says so.**
-  Each is a record and not a slot: [`X12_276_REFERENCE_ROW_DROPPED`](./warning-and-error-codes.md#x12_276_reference_row_dropped) for a REF without both REF-01 and
-  REF-02, [`X12_276_DATE_ROW_DROPPED`](./warning-and-error-codes.md#x12_276_date_row_dropped) for a DTP without both DTP-01 and DTP-03, and the existing
-  `X12_AMOUNT_ROW_DROPPED` for an AMT whose amount did not decode. Nothing stands in for the row.
-- **The 276 reader surfaces four SVC elements and no postal address.** SVC-01, SVC-02, SVC-04 and
-  SVC-07 reach the typed service line; SVC-03, SVC-05, and SVC-06 do not, because this is the request
-  direction and a submitter states what it billed rather than what was paid. An N3 or N4 under a 276
-  name loop reaches no typed field either. All of them stay verbatim on `tx.segments`.
-- **A 270 hierarchical level whose declared parent does not resolve is left off the returned tree.**
-  The 270 reader attaches a level by its own HL-02 and by nothing else, so a dangling pointer, a
-  pointer naming a level of the wrong kind, and a parent chain that returns to itself each leave that
-  level, and everything beneath it, absent from the model. The loss is reported
-  ([`X12_270_LEVEL_DETACHED`](./warning-and-error-codes.md#x12_270_level_detached)) beside the code for the pointer defect, and the declared pointer and the
-  segments both stay verbatim.
-- **A 270 DTP short of its qualifier (DTP-01) or its value (DTP-03) loses the whole date row, and
-  says so.** A DTP is a record and not a slot, so there is no half a row to keep and the format
-  qualifier that says single date or range goes with the rest. The loss is reported
-  ([`X12_270_DATE_ROW_DROPPED`](./warning-and-error-codes.md#x12_270_date_row_dropped)) at that segment, which is what lets you tell an empty `dates` list
-  apart from a date the sender stated. The report is bounded to a row the reader tried to build: a
-  segment arriving before the first HL opens a level reaches no part of the model and stays silent.
+**We do not validate against implementation guides.** We check the ASC X12 base standard (the
+envelope, delimiters, control numbers, segment counts and HL pointers), the few guide facts each
+typed reader needs to build its model (the declared guide, the loops it requires, the 835 balancing
+equations), and one CAQH CORE rule, the CORE 360 Code Combinations, through
+[`checkCoreCodeCombination`](./api/src.md#checkcorecodecombination) with a table you supply. We
+also check codes against the lists we bundle: a reader keeps a code outside them verbatim and warns
+with [`X12_UNKNOWN_CARC`](./warning-and-error-codes.md#x12_unknown_carc) (835 and 837
+adjustments), [`X12_UNKNOWN_RARC`](./warning-and-error-codes.md#x12_unknown_rarc) (835 remarks),
+[`X12_UNKNOWN_CLAIM_STATUS`](./warning-and-error-codes.md#x12_unknown_claim_status) and
+[`X12_UNKNOWN_CLAIM_STATUS_CATEGORY`](./warning-and-error-codes.md#x12_unknown_claim_status_category)
+(277 statuses), [`X12_271_AAA_UNKNOWN_CODE`](./warning-and-error-codes.md#x12_271_aaa_unknown_code)
+(271 AAA codes), [`X12_UNKNOWN_HI_QUALIFIER`](./warning-and-error-codes.md#x12_unknown_hi_qualifier)
+(837 and 278 HI qualifiers) or
+[`X12_834_UNKNOWN_MAINTENANCE_TYPE`](./warning-and-error-codes.md#x12_834_unknown_maintenance_type)
+(834 INS-03 and HD-01), and [`build834`](./api/src.md#build834) refuses a maintenance type
+outside its list with `X12_834_BUILD_UNKNOWN_MAINTENANCE_TYPE`. Three bundled lists are code
+subsets of lists a TR3 prints, which we did not read:
+[`MAINTENANCE_TYPE_CODES`](./api/src.md#maintenance_type_codes) (INS-03),
+[`CLP_STATUS`](./api/src.md#clp_status) (CLP-02, which the 835 reader carries but does not warn
+on) and [`HI_QUALIFIERS`](./api/src.md#hi_qualifiers). We ship no TR3 usage
+tables, and we do not check TR3 usage: required, situational and not-used segments and elements,
+situational rules, repeat counts, or the code values a guide allows at an element beyond those
+bundled lists. Every TR3 is sold by X12, so a document that breaks its guide can parse with no
+warning. With the typed readers you can still check the declared guide (a reader returns no
+reading for a guide it does not implement, and
+[`X12_GUIDE_NOT_DECLARED`](./warning-and-error-codes.md#x12_guide_not_declared) marks a reading
+whose transaction set declares none), refuse a document
+whose required field reads `undefined` (an absent value is never defaulted), compare the verbatim
+qualifiers and codes no bundled list covers with your copy of the guide, date-check adjustment and
+remark codes with [`checkCarcValidity`](./api/src.md#checkcarcvalidity) and
+[`checkRarcValidity`](./api/src.md#checkrarcvalidity), and read anything untyped with
+[`getSegmentValue`](./api/src.md#getsegmentvalue).
 
 For the per-transaction read and emit surface, see the how-to guides: start with
 [Post an 835 remittance](./post-a-remittance.md) or [Read and build 837 claims](./read-and-build-claims.md),
