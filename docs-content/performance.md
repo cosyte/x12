@@ -35,7 +35,10 @@ any of their builders starts to cost more than its input grows: four times the d
 documents four times as large (four times the claims, the benefit lines, the services, the
 members, the acknowledged sets or the payload octets), must cost close to four times as long. The
 270 and the TA1 are each one fixed document, so their size axis is a batch of four times as many.
-A self-check proves each gate's fixtures are large enough to catch a quadratic path. The gate runs
+A self-check proves each gate's fixtures are large enough to catch a quadratic path. Each timed
+run of the smaller inputs must last at least 8 ms, and the fixtures are sized so that the fastest
+hosted runner clears that with room to spare, so the gate does not fail unchanged code on a fast
+runner. The gate runs
 in two CI jobs, one for the 835, 837P, 837I, 270, 271, 999, 997 and 275 and one for the rest, so
 that each finishes inside the time a pull request's job is given. The 834's member reader is the
 one reader with no scaling gate, for the reason above; its builder has one, and the large 834
