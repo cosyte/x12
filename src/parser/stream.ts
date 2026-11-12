@@ -5,11 +5,13 @@
 
 import { ISA_MIN_LENGTH, detectDelimiters } from "./delimiters.js";
 import {
+  awaitMore,
   decodeIsa,
   frameSettled,
   splitSegments,
   startWalk,
   type EnvelopeWalk,
+  type FrameWait,
 } from "./envelope.js";
 import { FATAL_CODES, X12ParseError } from "./errors.js";
 import type { Delimiters, IsaSegment, X12ParseOptions, X12TransactionSet } from "./types.js";
@@ -77,6 +79,12 @@ function latin1(bytes: Uint8Array): string {
  * after the `IEA`) are reported through their warnings and not yielded; read them with `parseX12`.
  * The four fatal errors `parseX12` throws are thrown here for the same input.
  *
+ * A transaction set it yields keeps a reference to about one chunk of input for as long as it is
+ * held: its segments are slices of the text of the chunk they arrived in, and in V8 a slice keeps
+ * the text it was cut from (all the chunks of a segment that spanned many). A segment that spans
+ * many chunks, such as a large binary attachment, is searched once as its chunks arrive, so the
+ * time it takes grows with its length.
+ *
  * @example
  * ```ts
  * import { createReadStream } from "node:fs";
@@ -113,8 +121,15 @@ export async function* readTransactionSets(
   };
   const lazy = options.lazy !== false;
 
-  let text = "";
-  let start = 0;
+  // The input not yet framed: `rest`, which starts where framing stopped, then the pieces that
+  // arrived after it, joined only once they may let framing go further. `wait` is what the segment
+  // at the start of `rest` waits for (the whole ISA, before the walk opens), `length` how long the
+  // input from there is, and `skip` how much of it the walk has read already: the ISA, once opened.
+  let rest = "";
+  let pieces: string[] = [];
+  let length = 0;
+  let wait: FrameWait = { kind: "length", length: ISA_MIN_LENGTH };
+  let skip = 0;
   let header: { delimiters: Delimiters; isa: IsaSegment; walk: EnvelopeWalk } | undefined;
   // After the IEA: how many segments followed it, and whether one was not empty. That is all the
   // warning on bytes after the IEA needs, so none of them is kept.
@@ -135,7 +150,7 @@ export async function* readTransactionSets(
   };
 
   /** Open the walk on the ISA at the start of `text`, or throw what `parseX12` throws for it. */
-  const open = (): NonNullable<typeof header> => {
+  const open = (text: string): NonNullable<typeof header> => {
     if (text.length === 0) {
       throw new X12ParseError(
         FATAL_CODES.X12_EMPTY_INPUT,
@@ -152,24 +167,42 @@ export async function* readTransactionSets(
       },
       onWarning,
     });
-    start = ISA_MIN_LENGTH;
     header = { delimiters, isa, walk };
+    skip = ISA_MIN_LENGTH;
     return header;
   };
 
+  /** The input not yet framed, joined. */
+  const joined = (): string => {
+    const text = rest + pieces.join("");
+    pieces = [];
+    return text;
+  };
+
   for await (const chunk of source) {
-    text = text.slice(start) + (typeof chunk === "string" ? chunk : latin1(chunk));
-    start = 0;
+    const piece = typeof chunk === "string" ? chunk : latin1(chunk);
+    pieces.push(piece);
+    length += piece.length;
+    // Only the new piece is searched, so a segment that spans many pieces is searched once.
+    const more = awaitMore(wait, piece, length);
+    if (more !== undefined) {
+      wait = more;
+      continue;
+    }
+    const text = joined();
     // The walk opens as soon as the ISA is all here, so a warning on it is reported then.
-    const h = header ?? (text.length < ISA_MIN_LENGTH ? undefined : open());
-    if (h === undefined) continue;
-    const framed = frameSettled(text, start, h.delimiters);
-    start = framed.next;
+    const h = header ?? open(text);
+    const framed = frameSettled(text, skip, h.delimiters);
+    skip = 0;
+    rest = text.slice(framed.next);
+    length = rest.length;
+    wait = framed.wait;
     walkAll(h.walk, framed.segments);
     yield* ready.splice(0);
   }
-  const h = header ?? open();
-  walkAll(h.walk, splitSegments(text, start, h.delimiters).segments);
+  const text = joined();
+  const h = header ?? open(text);
+  walkAll(h.walk, splitSegments(text, skip, h.delimiters).segments);
   // The segments after the IEA join to text exactly when there are two or more, or one that is
   // not empty; one segment that is not empty stands for them, since a stream keeps no trailing
   // bytes.

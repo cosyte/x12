@@ -322,13 +322,17 @@ export function splitSegments(
  * reads nothing after its terminator, so these are the segments a frame of the whole input holds
  * here. The rest of the input, once there is no more, goes to {@link splitSegments} itself.
  *
+ * `wait` says what the segment at `next` waits for, so that a reader handed more input can tell
+ * from the new input alone, with {@link awaitMore}, whether framing may go further, rather than
+ * searching that segment again from its start.
+ *
  * @internal
  */
 export function frameSettled(
   text: string,
   start: number,
   delimiters: Delimiters,
-): { segments: string[]; next: number } {
+): { segments: string[]; next: number; wait: FrameWait } {
   const segments: string[] = [];
   const term = delimiters.segment;
   // Stryker disable next-line ObjectLiteral: equivalent, the cursor only spares searches already made
@@ -340,18 +344,79 @@ export function frameSettled(
     // terminator found in `text` is the first unescaped one wherever the input ends, and once
     // there is one, the length element of a BDS or BIN has ended before it.
     let termIdx = findUnescapedTerminator(text, cursor, term, release);
-    if (termIdx === -1) break;
+    if (termIdx === -1) return { segments, next: cursor, wait: terminatorWait(text, cursor, term) };
     const binary = frameBinary(text, cursor, delimiters);
     if (binary?.kind === "counted") {
       // Its own cursor: the span can end before where the search above stopped.
       // Stryker disable next-line ObjectLiteral,UnaryOperator: equivalent, the cursor only spares searches already made
       termIdx = findBinaryTerminator(text, binary, term, { at: -2 });
-      if (termIdx === -1) break;
+      if (termIdx === -1) {
+        const spanEnd = binary.dataStart + binary.declared;
+        // Either the span has not all arrived, or no terminator follows it yet: the search for
+        // one starts where the span ends.
+        const wait: FrameWait =
+          spanEnd >= text.length
+            ? { kind: "length", length: spanEnd + 1 - cursor }
+            : terminatorWait(text, spanEnd, term);
+        return { segments, next: cursor, wait };
+      }
     }
     segments.push(text.slice(cursor, termIdx));
     cursor = stripLeadingNewlines(text, termIdx + term.length);
   }
-  return { segments, next: cursor };
+}
+
+/**
+ * What the segment {@link frameSettled} stopped at waits for before it can be framed:
+ *
+ * - `terminator`: `term`, the segment terminator, where no release character escapes it, in input
+ *   still to come. `released` says whether the first character to come is escaped by a release
+ *   character at the end of the input so far.
+ * - `length`: input from the segment's start at least `length` characters long. The declared span
+ *   of a BDS or BIN waits for this before its end can be found, and so does the ISA before the
+ *   delimiters are known.
+ *
+ * @internal
+ */
+export type FrameWait =
+  | { readonly kind: "terminator"; readonly term: string; readonly released: boolean }
+  | { readonly kind: "length"; readonly length: number };
+
+/**
+ * The wait of a segment in `text` with no unescaped terminator from `from` on, where `from` is a
+ * place the search starts with no release character pending. A character that is not a release
+ * character leaves none pending, so only the run of release characters at the end of `text` (from
+ * `from` on) counts: each pair is a released release character, and an odd one out escapes the
+ * next character to come.
+ *
+ * @internal
+ */
+function terminatorWait(text: string, from: number, term: string): FrameWait {
+  // Where the release character is the terminator, a search that found none read no release
+  // character either, so the run is empty and nothing is escaped, as `findUnescapedTerminator`
+  // has it there.
+  let run = 0;
+  for (let i = text.length - 1; i >= from && text.charCodeAt(i) === RELEASE_CODE; i -= 1) run += 1;
+  return { kind: "terminator", term, released: run % 2 === 1 };
+}
+
+/**
+ * Given `wait` from {@link frameSettled} and `piece`, the input that has arrived after the text it
+ * framed, answer `undefined` when framing that text and `piece` together may frame the segment it
+ * stopped at, or else what that segment still waits for. `length` is the length of the input from
+ * that segment's start, `piece` included. Only `piece` is read, so a segment that spans many pieces
+ * is searched once in all, not again from its start for each one.
+ *
+ * @internal
+ */
+export function awaitMore(wait: FrameWait, piece: string, length: number): FrameWait | undefined {
+  if (wait.kind === "length") return length >= wait.length ? undefined : wait;
+  // An empty piece escapes nothing, and leaves a pending release character pending.
+  if (piece.length === 0) return wait;
+  const from = wait.released ? 1 : 0;
+  // Stryker disable next-line ObjectLiteral: equivalent, the cursor only spares searches already made
+  if (findUnescapedTerminator(piece, from, wait.term, { at: -2 }) !== -1) return undefined;
+  return terminatorWait(piece, from, wait.term);
 }
 
 /**
@@ -523,6 +588,9 @@ export function canWarn(segment: string, delimiters: Delimiters): boolean {
  * {@link canWarn}), and on that first read or on a write turns itself into the plain, writable
  * property it always was. So `Object.keys`, spread, `JSON.stringify` and destructuring see what
  * they saw before, and the array read is the frozen array of frozen segments a whole parse makes.
+ * On an object sealed or frozen before then, it stays an accessor and acts as the plain property
+ * would: sealed, a write succeeds and every later read answers the value written; frozen, a write
+ * throws a `TypeError`.
  *
  * @internal
  */
@@ -568,10 +636,15 @@ export function transactionOf(
       return built;
     },
     set segments(value: readonly X12Segment[]) {
-      // A write to an object frozen or sealed first fails as it did on the plain property.
-      if (!settle(value)) {
+      if (settle(value)) return;
+      // A write to an object frozen first fails as it did on the plain property, which the freeze
+      // made read only.
+      if (Object.isFrozen(tx)) {
         throw new TypeError("Cannot assign to read only property 'segments' of object");
       }
+      // A sealed object kept the plain property writable: the accessor stays, and every read
+      // answers what was written.
+      built = value;
     },
     rawSegments: raws,
     gs,

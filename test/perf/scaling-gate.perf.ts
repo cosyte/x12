@@ -19,11 +19,13 @@
  */
 
 import {
+  PERF_CONTRACT,
   assertScalingGateFires,
+  perfSink,
   scalingGate,
   type ScalingGateOptions,
 } from "@cosyte/test-utils/perf";
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   ack997Spec,
@@ -60,6 +62,7 @@ import {
   parse997,
   parse999,
   parseX12,
+  readTransactionSets,
   serializeX12,
   type X12Interchange,
   type Build270Spec,
@@ -73,6 +76,7 @@ import {
   expectMeasured,
   firstTransaction,
   gate,
+  MIN_BASE_PHASE_MS,
   readerGate,
   reassembleQuadratic,
   reassembleQuadraticChars,
@@ -369,4 +373,96 @@ gate<readonly Build270Spec[], string>({
   },
   regressed: (batch) =>
     reassembleQuadratic(batch.map((spec) => serializeX12(build270(spec))).join("")),
+});
+
+// The stream over one long segment: a 275 whose one BDS runs over hundreds of chunks, as a large
+// attachment read from a file does. The shared gate times only a synchronous call, so this one
+// times `readTransactionSets` itself with the contract's constants: the fastest of `REPS` reads of
+// the base payload against the fastest of `REPS` reads of one `SCALE_STEP` times as large, held to
+// `RATIO_CEILING`, both after a warming read of each. The chunks are 4 KiB, so a stream that
+// searches the segment again from its start on every chunk does work that grows with the square
+// of the payload. The self-check feeds the same chunks through a source that joins and searches
+// everything before each one, which is that regression, and it must clear the ceiling at these
+// sizes.
+describe("the scaling gate: readTransactionSets over one long segment", () => {
+  const CHUNK = 4 * 1_024;
+  const BASE = 2 * 1_024 * 1_024;
+
+  /** The chunks of a 275 whose payload is `bytes` octets. */
+  const pieces = (bytes: number): string[] => {
+    const raw = attachment275Text(1, bytes);
+    const out: string[] = [];
+    for (let i = 0; i < raw.length; i += CHUNK) out.push(raw.slice(i, i + CHUNK));
+    return out;
+  };
+
+  /** Stream `chunks`, `before` seeing each one first, and answer the payload's octets. */
+  const read = async (
+    chunks: readonly string[],
+    before: (chunk: string) => void,
+  ): Promise<number> => {
+    function* source(): Generator<string> {
+      for (const chunk of chunks) {
+        before(chunk);
+        yield chunk;
+      }
+    }
+    let octets = 0;
+    for await (const { delimiters, transaction } of readTransactionSets(source())) {
+      const submission = get275Attachments(delimiters, transaction);
+      octets += counted(submission, submission?.attachments[0]?.data.octetCount ?? 0);
+    }
+    return octets;
+  };
+
+  /** The fastest of `REPS` timed reads of each size, base and scaled taken in turn. */
+  const phases = async (
+    makeBefore: () => (chunk: string) => void,
+  ): Promise<{ base: number; scaled: number }> => {
+    const sizes = [BASE, BASE * PERF_CONTRACT.SCALE_STEP] as const;
+    const chunks = sizes.map(pieces);
+    const best = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY];
+    for (let rep = 0; rep <= PERF_CONTRACT.REPS; rep++) {
+      for (let k = 0; k < 2; k++) {
+        const t0 = performance.now();
+        const octets = await read(chunks[k] ?? [], makeBefore());
+        const ms = performance.now() - t0;
+        expect(octets).toBe(sizes[k]);
+        perfSink.value += octets;
+        // The first round warms the read and is not counted.
+        if (rep > 0) best[k] = Math.min(best[k] ?? ms, ms);
+      }
+    }
+    return { base: best[0] ?? 0, scaled: best[1] ?? 0 };
+  };
+
+  /** The ratio of the scaled phase to the base, written to the job log. */
+  const ratio = (name: string, { base, scaled }: { base: number; scaled: number }): number => {
+    const r = scaled / base;
+    process.stdout.write(
+      `[scaling gate] ${name}: ratio ${r.toFixed(2)}, base ${base.toFixed(2)} ms, ` +
+        `scaled ${scaled.toFixed(2)} ms\n`,
+    );
+    return r;
+  };
+
+  it("has not acquired a complexity regression on the length of one segment", async () => {
+    const measured = await phases(() => () => undefined);
+    const r = ratio("@cosyte/x12 readTransactionSets, one long segment", measured);
+    expect(measured.base).toBeGreaterThanOrEqual(MIN_BASE_PHASE_MS);
+    expect(r).toBeLessThanOrEqual(PERF_CONTRACT.RATIO_CEILING);
+  }, 300_000);
+
+  it("has fixtures large enough for that gate to fail", async () => {
+    const measured = await phases(() => {
+      // Each chunk joined to everything before it and searched whole.
+      let seen = "";
+      return (chunk) => {
+        seen += chunk;
+        perfSink.value += seen.indexOf("\u0001");
+      };
+    });
+    const r = ratio("@cosyte/x12 readTransactionSets, one long segment, self-check", measured);
+    expect(r).toBeGreaterThan(PERF_CONTRACT.RATIO_CEILING);
+  }, 300_000);
 });
