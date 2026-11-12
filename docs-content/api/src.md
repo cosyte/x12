@@ -27341,7 +27341,7 @@ const w = unexpectedSegment({ segmentIndex: 12 }, UNEXPECTED_SEGMENT_CONTEXTS.GE
 
 ### VERSION
 
-> `const` **VERSION**: `string` = `"0.1.16"`
+> `const` **VERSION**: `string` = `"0.1.17"`
 
 Library version string, synced with `package.json#version` by the
 release's version step. Exported now so consumers (and the

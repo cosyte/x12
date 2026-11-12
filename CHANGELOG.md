@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.1.17
+
+### Patch Changes
+
+- ac51f93: `serializeX12` takes a new opt-in option, `byteExact`: `serializeX12(ix, { byteExact: true })` returns the text `parseX12` read, byte for byte, for an interchange you did not edit, so line breaks between segments, a doubled terminator, a missing final terminator, the bytes after the IEA and a TA1's position all come back as they arrived. An interchange that was edited, copied or built emits from the model exactly as without the option, and so does every call that leaves the option off, so nothing a caller does today changes. A `Buffer` input comes back one character per octet: write it with `Buffer.from(out, "latin1")`. The first byte-exact emit of an interchange parses its source once more to compare against and keeps that emit, a second copy of the input of about its size, for as long as the interchange is reachable; later ones reuse it. An edit that changes nothing the emit writes (a typed `segments` array, the `warnings`) is not seen, as it is not seen without the option. To make this possible, `parseX12` keeps a reference to the text it read, beside the interchange rather than on it, for as long as the interchange is reachable; the interchange's shape is unchanged.
+- 5aae572: No example prints a value that identifies a person any more. The README usage example printed the claim's patient account number; it now prints the claim count and asserts on the account number instead, so its printed output changed from `claim PT-ACCT-001 charged 500.00` to `claims 1 charged 500.00`. The doc comments that show a person's name, a member or claim number, a date of birth, an address, a phone number or a trace in a comment now mark each value as synthetic. The docs gain a section, What is safe to log, naming the fields of this package's errors that hold raw input: `X12ParseError.snippet`, `X12CodeListError.rejectedValue`, a builder refusal's `message`, and `X12ProfileError.profileName`. Nothing in the package's behavior changes, and a caller changes nothing.
+- ab62df8: Import the parser alone from the new `@cosyte/x12/parse` entry point, a smaller import for a process that only parses: it loads none of the code lists, loop specifications, typed readers, builders or serializer.
+
+  - `@cosyte/x12/parse` exports `parseX12`, `readTransactionSets`, segment and element decoding (`decodeSegment`, `getSegmentValue`, `elementValue`, `readElementDecimal` and the rest), `escapeRelease`, `unescapeRelease`, `detectDelimiters`, `X12Decimal`, `X12ParseError`, `FATAL_CODES`, `WARNING_CODES`, `ALL_WARNING_MESSAGES`, and their types, for `import` and `require`, each with its own types.
+  - Every name it exports is the same binding `@cosyte/x12` exports within one module format: the build now shares one copy of the parser between the two in a chunk file beside them, one for `import` and one for `require`, so an `X12ParseError` is one class to `instanceof` and `setDefaultProfile` from `@cosyte/x12` reaches `parseX12` from `@cosyte/x12/parse`. Loading one entry point with `import` and the other with `require` gives two copies, as `import` and `require` of `@cosyte/x12` always have.
+  - `@cosyte/x12` exports everything it did, in the same shape: under `require` every export is still an ordinary writable property, so `jest.spyOn` and `vi.spyOn` stub one as before. Nothing a caller must change.
+
+- 2a818a2: The README, KNOWN-LIMITATIONS and the docs now say what the version number means below 1.0: every release is a patch, and a breaking or narrowing change ships as a patch whose changelog entry states the change and what a caller must do, so read each entry before you upgrade. Nothing in the package's behavior changes.
+- 9936794: `readTransactionSets` now reads a segment that spans many chunks, such as a large binary attachment, in time that grows with the segment's length, and a transaction set sealed before its first read keeps a value written to its `segments`.
+
+  - The stream searched a segment that had not ended yet again from its start on each new chunk, so a multi-megabyte attachment read in small chunks took time that grew with the square of its size. It now remembers how far it has searched and reads only each new chunk, joining the chunks of the segment once its end has arrived. What it yields and the warnings it reports are unchanged.
+  - In 0.1.16, writing `segments` on a transaction set sealed with `Object.seal` before its first read threw a `TypeError`, though a sealed set had always taken the write. The write succeeds again, and every later read answers the value written. A frozen set still refuses the write.
+  - The documentation now says that a transaction set the stream yields keeps a reference to about one chunk of input for as long as it is held: its segments are slices of the text they arrived in.
+
+  Nothing a caller must change.
+
 ## 0.1.16
 
 ### Patch Changes
