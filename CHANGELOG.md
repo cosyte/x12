@@ -4041,8 +4041,8 @@ description }` for known codes, `undefined` otherwise; unknown
     observed codes (WPC, snapshotDate 2026-06-27). - `RARC` (Remittance Advice Remark Codes): ~15 most commonly
     observed codes covering both `M`- and `N`-prefix conventions
     (WPC, snapshotDate 2026-06-27). - `CLP_STATUS` (CLP-02 Claim Status Code, X12 Code Source 65):
-    10 dispositions (1 Processed as Primary, 4 Denied, 22 Reversal,
-    …). X12-internal list, stable. - `CLAIM_ADJUSTMENT_GROUP_CODES`: the spec-fixed 4 values
+    10 claim disposition codes (among them `1`, `4` and `22`), each
+    answered by `lookupClpStatus`. X12-internal list, stable. - `CLAIM_ADJUSTMENT_GROUP_CODES`: the spec-fixed 4 values
     (`CO` / `PR` / `OA` / `PI`) as a frozen literal-union map,
     not a snapshot (this list never grows). `isClaimAdjustmentGroupCode`
     narrows inbound strings.
