@@ -26,7 +26,7 @@ import {
   type Build271Spec,
 } from "@cosyte/x12";
 
-// The provider asks whether a member has health benefit plan coverage (service type 30).
+// The provider asks whether a member has coverage under service type 30.
 const inquiryBytes = serializeX12(
   build270({
     envelope: {
@@ -135,7 +135,7 @@ const spec: Build271Spec = {
                 idQualifier: "MI",
                 idCode: "MBR0001",
               },
-              // Active coverage (EB-01 "1"), individual, health benefit plan coverage (30).
+              // Active coverage (EB-01 "1"), individual, service type 30.
               benefits: [
                 {
                   eligibilityCode: "1",

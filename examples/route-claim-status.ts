@@ -122,7 +122,7 @@ const traceToEcho = question?.trace?.referenceId;
 if (traceToEcho === undefined) throw new Error("the 276 carried no trace");
 console.log(`276 asks about claim ${String(question?.references[0]?.value)}, trace ${traceToEcho}`);
 
-// 3. The payer answers with a 277 that echoes the trace: accepted for processing (A2 / 20).
+// 3. The payer answers with a 277 that echoes the trace, with category A2 and status 20.
 /** The payer, the receiver named, and the one provider, over the subscribers given. */
 function statusSources(
   receiverName: string,

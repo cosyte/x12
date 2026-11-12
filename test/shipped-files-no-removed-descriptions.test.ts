@@ -12,7 +12,8 @@ import { describe, expect, it } from "vitest";
  * longer carry description text, because the package's own redistribution record classes them
  * as `licence-required` or `not-established`. `test/code-lists-descriptions.test.ts` holds the
  * tables to that. This file holds the prose around them: the files `package.json` publishes
- * (`CHANGELOG.md` among them), the source `dist/` is built from, and `docs-content/`. A released
+ * (`CHANGELOG.md` among them), the source `dist/` is built from, `docs-content/` and the runnable
+ * samples in `examples/`, which the docs point readers to. A released
  * entry of `CHANGELOG.md` once named three `CLP_STATUS` labels after their codes, and this
  * is the check that keeps such a mention from returning.
  *
@@ -115,11 +116,11 @@ function scannedFiles(): readonly string[] {
     if (statSync(path).isDirectory()) files.push(...walk(path));
     else files.push(path);
   }
-  files.push(...walk(join(root, "src")), ...walk(join(root, "docs-content")));
+  for (const dir of ["src", "docs-content", "examples"]) files.push(...walk(join(root, dir)));
   return files.map((path) => relative(root, path)).sort();
 }
 
-describe("shipped files name no removed code-list description", () => {
+describe("shipped files and examples name no removed code-list description", () => {
   const files = scannedFiles();
 
   it("the fixture and the file list are the ones described, so the scan is not vacuous", () => {
@@ -134,6 +135,7 @@ describe("shipped files name no removed code-list description", () => {
     }
     expect(files).toContain("src/code-lists/clp-status.ts");
     expect(files.some((name) => name.startsWith("docs-content/"))).toBe(true);
+    expect(files).toContain("examples/read-834-enrollment.ts");
     expect(files.some((name) => name.startsWith("dist/"))).toBe(false);
   });
 

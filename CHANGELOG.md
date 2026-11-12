@@ -2469,8 +2469,8 @@ required control number and this builder never invents one, so nothing is emitte
   **The same one line reached every escaped slot in all nine builders**, including the 837's own
   CLM-01, the other end of that reassociation link. Measured at base by driving the shipped table
   against a `143a6ea` worktree, one element each: `BPR*A1*450.00` became `BPR**450.00`,
-  `AK2*837*A1*005010X222A2` became `AK2*837**005010X222A2`, `NM1*IL*1*DOE*JANE****34*A1` became
-  `NM1*IL*1*DOE*JANE****34`, `ENT**2J*34*A1` became `ENT**2J*34`, `NM1*1P*2*A1` became `NM1*1P*2`,
+  `AK2*837*A1*005010X222A2` became `AK2*837**005010X222A2`, `NM1*IL*1*DOE*JANE****34` lost its
+  trailing id element the same way, `ENT**2J*34*A1` became `ENT**2J*34`, `NM1*1P*2*A1` became `NM1*1P*2`,
   `UM*HS*I*A1` became `UM*HS*I`, and `CLM*A1*150.00***11:B:1*Y*A*Y*Y` became
   `CLM**150.00***11:B:1*Y*A*Y*Y`. Where the dropped element was trailing, the trailing-empty trim
   removed it outright, so it is not even positionally recoverable.

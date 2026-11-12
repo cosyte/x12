@@ -59,7 +59,7 @@ const spec: Build834Spec = {
     {
       subscriberIndicator: "Y",
       relationshipCode: "18",
-      maintenanceTypeCode: "021", // addition
+      maintenanceTypeCode: "021", // the member joins the plan
       benefitStatusCode: "A",
       member: { lastName: "DOE", firstName: "JANE", idQualifier: "MI", idCode: "MBR0001" },
       references: [{ qualifier: "0F", value: "MBR0001" }],
@@ -77,7 +77,7 @@ const spec: Build834Spec = {
     {
       subscriberIndicator: "Y",
       relationshipCode: "18",
-      maintenanceTypeCode: "024", // cancellation or termination
+      maintenanceTypeCode: "024", // the member leaves the plan
       benefitStatusCode: "A",
       member: { lastName: "ROE", firstName: "JOHN", idQualifier: "MI", idCode: "MBR0002" },
       references: [{ qualifier: "0F", value: "MBR0002" }],
