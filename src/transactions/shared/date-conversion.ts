@@ -200,8 +200,18 @@ function decodeDay(value: X12DateValue | null | undefined): DecodedDay | undefin
   // `RD8` is recognised and refused for a REASON, not merely by falling off the
   // end of the handled set: an interval has no single instant, and the comment
   // has to survive someone later "fixing" this by returning the low endpoint.
+  // The line after it refuses `RD8` too, so the check failing changes no
+  // answer: the line is the reason written as code. A StrykerJS directive names
+  // a mutator, not one of its replacements, so the exception below switches off
+  // both replacements of this test. Only `false` is equivalent; `true` is not,
+  // and every valid `D8` case in `test/conversion-surface.test.ts` kills it.
+  // Stryker disable next-line ConditionalExpression: equivalent for false, the line after it refuses RD8 as well; true is killed by every valid D8 case
   if (formatQualifier === DATE_RANGE_FORMAT) return undefined;
   if (formatQualifier !== SINGLE_DAY_FORMAT) return undefined;
+  // The type check comes first and is not left to the shape test: a pattern test
+  // converts its argument to a string, and a symbol, an object with no prototype
+  // or an object whose `toString` throws would throw there, from outside the
+  // `try` below, where every refusal has to be `undefined`.
   if (typeof text !== "string" || !D8_SHAPE.test(text)) return undefined;
   try {
     parseDocumentDate(text);
@@ -297,15 +307,21 @@ export function toDate(
   const day = decodeDay(value);
   if (day === undefined) return undefined;
   const assumed = options?.assumeOffsetMinutes;
-  // A non-finite offset is not a zone. Answering `undefined` keeps the promise
-  // that this returns an instant or nothing, never an Invalid Date.
-  if (typeof assumed !== "number" || !Number.isFinite(assumed)) return undefined;
+  // An offset that is not a number is not a zone, and a numeric string is not
+  // coerced into one. A non-finite or out-of-range number gives an Invalid Date,
+  // which the last line answers `undefined` for, so this returns an instant or
+  // nothing, never an Invalid Date.
+  if (typeof assumed !== "number") return undefined;
   // Built with `setUTCFullYear` rather than `Date.UTC` or `new Date(y, m, d)`:
   // both of those remap a year below 100 into the 1900s, so year 50 would come
   // back as 1950. `setUTCHours` rather than `setHours` for the same reason the
   // module doc gives - the host zone must not reach the result.
   const midnight = new Date(0);
   midnight.setUTCFullYear(Number(day.yearText), Number(day.monthText) - 1, Number(day.dayText));
+  // `new Date(0)` is UTC midnight and `setUTCFullYear` moves only the day, so
+  // this line changes no instant today; it keeps midnight pinned if the line
+  // above is ever rebuilt from a value that carries a time.
+  // Stryker disable next-line MethodExpression,CallExpression: equivalent, the time is already 00:00:00.000 UTC
   midnight.setUTCHours(0, 0, 0, 0);
   const instant = new Date(midnight.getTime() - assumed * MS_PER_MINUTE);
   return Number.isNaN(instant.getTime()) ? undefined : instant;
