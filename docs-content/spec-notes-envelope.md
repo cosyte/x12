@@ -204,6 +204,12 @@ Cases 2 to 5 all break the round trip on inputs containing no line breaks at all
 five (1, 2, 3, 5) produce no warning**, so a clean `ix.warnings` does not tell you a round trip
 will be byte-exact; only case 4 warns.
 
+**`serializeX12(ix, { byteExact: true })` returns all five as they were read**, for an interchange
+`parseX12` returned whose emit is exactly the emit of an unedited parse of its source: the source
+text itself comes back, byte for byte. An interchange that was edited, copied or built emits from
+the model as without the option. See
+[Opting in to a byte-exact emit](./emit-and-serialize.md#opting-in-to-a-byte-exact-emit).
+
 What is **measured**, across every fixture committed to this repository: each emit is a fixed point
 and re-parses to an identical model with an identical warning stream; the fixtures carrying no line
 breaks return byte-identical; and the pretty-printed ones differ from their source by **line breaks

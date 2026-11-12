@@ -13102,6 +13102,26 @@ const out = serializeX12(ix, {
 
 #### Properties
 
+##### byteExact?
+
+> `readonly` `optional` **byteExact?**: `boolean`
+
+Return the text `parseX12` read, byte for byte, when the interchange is the one it returned
+and emits exactly what an unedited parse of that text emits. Default `false`.
+
+The interchange is emitted first as without this option, in the mode the other options name,
+so `specClean` still reports through [onWarning](#onwarning). That emit is then compared with the
+default emit of a fresh parse of the source text: when they are the same, nothing on the model
+differs from the source but what the model cannot hold (line breaks between segments, a doubled
+terminator, a missing final terminator, the bytes after the `IEA` and where a `TA1` sat), and
+the source text is returned with all of it. Otherwise the emit is returned, as without this
+option: an edit to a segment on the model, a count `recomputeCounts` rewrote, a copy of the
+interchange (`{ ...ix }`) and an interchange a builder made all emit from the model.
+
+A `Buffer` input comes back as the text `parseX12` read it as, one character per octet, so
+`Buffer.from(out, "latin1")` is the input bytes. The first byte-exact emit of an interchange
+parses its source again once to compare; later ones reuse that.
+
 ##### onWarning?
 
 > `readonly` `optional` **onWarning?**: [`OnWarningCallback`](#onwarningcallback)
@@ -32855,6 +32875,8 @@ const ix = parseX12(raw);
 // parser did not record (line breaks, a doubled terminator, ...) does not,
 // so this is not guaranteed to equal `raw`. See the module header.
 const bytes = serializeX12(ix);
+// Opted in, an interchange that was not edited comes back as `raw`, byte for byte.
+const same = serializeX12(ix, { byteExact: true });
 ```
 
 ***
