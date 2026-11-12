@@ -5,10 +5,14 @@ delivers. Misreading a payer's remittance, a claim's diagnosis, or a member's co
 financial or clinical harm, so this is the deliberate "do not over-trust" list. Everything here is a
 documented, intentional boundary, not a bug. The lenient parser never silently drops or garbles a
 **decoded value**: where a limitation applies, the raw value is preserved (often with a warning), it
-is simply not further decoded. Two things it does discard are worth reading before you rely on a
-round trip, and both are **silent** and carry no value: **line breaks between segments** and **a
-doubled segment terminator** outside a transaction. Both are in the entries below. A **segment
-outside a transaction** used to belong on that list and no longer does: it is warned, kept on the
+is simply not further decoded. Five constructs the emit does not reproduce are worth reading
+before you rely on a round trip, and four of them are **silent**: **line breaks between segments**,
+**a doubled segment terminator** outside a transaction, **a missing final segment terminator** (the
+emit supplies one) and **a TA1 that followed a functional group** (emitted right after the ISA, so
+reordered, though nothing is lost). The fifth, **bytes after the IEA**, raises
+`X12_TRAILING_GARBAGE` and comes back re-joined from segment slices rather than verbatim. All five
+are in the `serialize(parse(s)) === s` entry below. A **segment outside a transaction** used to
+belong on that list and no longer does: it is warned, kept on the
 model at `ix.orphanSegments`, **and re-emitted at the structural anchor the walker recorded**, so it
 survives a round trip. **A segment whose first element is empty** (`*A*B~`) outside a transaction
 used to be the sharpest case of all, skipped with no warning and no copy anywhere on the model; it

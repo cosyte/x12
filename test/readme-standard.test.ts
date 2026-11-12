@@ -333,6 +333,61 @@ function installProblem(
   return undefined;
 }
 
+/** The count words the entry-point sentence may open with, by the number each one names. */
+const COUNT_WORDS: Readonly<Record<string, number>> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+};
+
+/**
+ * The entry-point problem, if any: the README's "N entry points ship" sentence must name every
+ * import specifier `package.json` `exports` publishes, no other, and the right count. A subpath
+ * added to or dropped from `exports` without the page moving with it is the drift this catches, in
+ * both directions, naming both lists.
+ *
+ * `./package.json` is a metadata export, not an entry point a caller imports code from, so it is
+ * left out of the published side.
+ *
+ * @param markdown - The whole README.
+ * @param packageName - `package.json` `name`.
+ * @param exportsMap - `package.json` `exports`.
+ * @returns A message, or `undefined`.
+ */
+function entryPointProblem(
+  markdown: string,
+  packageName: string,
+  exportsMap: Record<string, unknown>,
+): string | undefined {
+  const flat = flatten(markdown);
+  const match = /\b(\w+) entry points? ships?:([^.]*)\./i.exec(flat);
+  if (match === null) {
+    return 'README.md has no "<count> entry points ship:" sentence naming the published entry points';
+  }
+  const countWord = (match[1] ?? "").toLowerCase();
+  const sentence = match[2] ?? "";
+  const escaped = packageName.replaceAll(/[.*+?^${}()|[\]\\/]/g, String.raw`\$&`);
+  const named = [
+    ...new Set(
+      [...sentence.matchAll(new RegExp(String.raw`${escaped}(?:/[\w.-]+)*`, "g"))].map((m) => m[0]),
+    ),
+  ].sort();
+  const published = Object.keys(exportsMap)
+    .filter((key) => key !== "./package.json")
+    .map((key) => (key === "." ? packageName : `${packageName}${key.slice(1)}`))
+    .sort();
+  if (named.join(", ") !== published.join(", ")) {
+    return driftProblem("entry points", named.join(", "), published.join(", "));
+  }
+  if (COUNT_WORDS[countWord] !== published.length) {
+    return driftProblem("entry point count", countWord, String(published.length));
+  }
+  return undefined;
+}
+
 /**
  * The four accuracy claims this page had already earned before it was standardized, as each reads
  * with markup stripped. A standardization sweep deletes prose, and these are the four a sweep is
@@ -522,6 +577,10 @@ describe("README.md follows the house standard", () => {
     expect(unshippedRootDocs(relativeLinkTargets(readme), pkg.files)).toEqual([]);
   });
 
+  it("names exactly the entry points package.json exports, and their count", () => {
+    expect(entryPointProblem(readme, pkg.name, pkg.exports)).toBeUndefined();
+  });
+
   it("holds no interchange text that is not a synthetic fixture committed under test/fixtures", () => {
     // "No real PHI anywhere in the file", made checkable: the only X12 on this page is a byte-for-byte
     // copy of a fixture the PHI gate already sweeps, and no loose segment text sits beside it.
@@ -630,6 +689,34 @@ describe("CONTROL: each README rule reports what it exists to catch", () => {
     expect(installProblem(good, "@cosyte/x12", ">=24.0.0", dual)).toMatch(/Node engine floor/);
     expect(installProblem(good, "@cosyte/x12", ">=22.0.0", { ".": { import: {} } })).toMatch(
       /module format drift/,
+    );
+  });
+
+  it("an entry-point sentence that disagrees with exports is reported, in both directions", () => {
+    const both = {
+      ".": { import: {}, require: {} },
+      "./extra": { import: {}, require: {} },
+      "./package.json": "./package.json",
+    };
+    const good =
+      "Two entry points ship: `@scope/pkg`, which carries the API, and `@scope/pkg/extra`, the rest.";
+    expect(entryPointProblem(good, "@scope/pkg", both)).toBeUndefined();
+    // The page names a subpath the manifest no longer exports.
+    expect(entryPointProblem(good, "@scope/pkg", { ".": {} })).toBe(
+      'entry points drift: README.md says "@scope/pkg, @scope/pkg/extra", package.json says "@scope/pkg"',
+    );
+    // The manifest exports a subpath the page never names.
+    expect(
+      entryPointProblem("One entry point ships: `@scope/pkg`, the whole API.", "@scope/pkg", both),
+    ).toBe(
+      'entry points drift: README.md says "@scope/pkg", package.json says "@scope/pkg, @scope/pkg/extra"',
+    );
+    // The right names under the wrong count.
+    expect(entryPointProblem(good.replace("Two", "Three"), "@scope/pkg", both)).toBe(
+      'entry point count drift: README.md says "three", package.json says "2"',
+    );
+    expect(entryPointProblem("No such sentence.", "@scope/pkg", both)).toMatch(
+      /no "<count> entry points ship:" sentence/,
     );
   });
 
