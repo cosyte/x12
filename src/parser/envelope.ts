@@ -97,7 +97,7 @@ const ISA_DECODED_PART_COUNT = 17;
  *
  * @internal
  */
-function decodeIsa(raw: string, delimiters: Delimiters): IsaSegment {
+export function decodeIsa(raw: string, delimiters: Delimiters): IsaSegment {
   const isaRaw = raw.slice(0, ISA_MIN_LENGTH);
   // The terminator is at byte 105; the 105-byte head is the elements area.
   const isaHead = isaRaw.slice(0, ISA_MIN_LENGTH - 1);
@@ -274,7 +274,7 @@ export function endsAtTerminator(segment: string, delimiters: Delimiters): boole
  *
  * @internal
  */
-function splitSegments(
+export function splitSegments(
   text: string,
   start: number,
   delimiters: Delimiters,
@@ -312,6 +312,46 @@ function splitSegments(
     cursor = stripLeadingNewlines(text, cursor);
   }
   return { segments, endIndex: lastEnd };
+}
+
+/**
+ * The segments {@link splitSegments} frames from `text` at `start` that no later input can change,
+ * for a reader that receives an interchange in pieces: `segments` as it would frame them, and
+ * `next`, where framing stopped. A segment counts once its terminator is in `text`; a BDS or BIN
+ * framed by its count, once its declared span and the terminator after it are. Framing a segment
+ * reads nothing after its terminator, so these are the segments a frame of the whole input holds
+ * here. The rest of the input, once there is no more, goes to {@link splitSegments} itself.
+ *
+ * @internal
+ */
+export function frameSettled(
+  text: string,
+  start: number,
+  delimiters: Delimiters,
+): { segments: string[]; next: number } {
+  const segments: string[] = [];
+  const term = delimiters.segment;
+  // Stryker disable next-line ObjectLiteral: equivalent, the cursor only spares searches already made
+  const release: ReleaseCursor = { at: -2 };
+  let cursor = stripLeadingNewlines(text, start);
+  // No test on `cursor`: at the end of `text` the search below finds no terminator.
+  for (;;) {
+    // The terminator the whole input would end this segment at, when it is already here: a
+    // terminator found in `text` is the first unescaped one wherever the input ends, and once
+    // there is one, the length element of a BDS or BIN has ended before it.
+    let termIdx = findUnescapedTerminator(text, cursor, term, release);
+    if (termIdx === -1) break;
+    const binary = frameBinary(text, cursor, delimiters);
+    if (binary?.kind === "counted") {
+      // Its own cursor: the span can end before where the search above stopped.
+      // Stryker disable next-line ObjectLiteral,UnaryOperator: equivalent, the cursor only spares searches already made
+      termIdx = findBinaryTerminator(text, binary, term, { at: -2 });
+      if (termIdx === -1) break;
+    }
+    segments.push(text.slice(cursor, termIdx));
+    cursor = stripLeadingNewlines(text, termIdx + term.length);
+  }
+  return { segments, next: cursor };
 }
 
 /**
@@ -455,6 +495,93 @@ function el(elements: readonly string[], index: number): string {
   return elements[index] ?? "";
 }
 
+/** Takes anything and does nothing. @internal */
+const noop = (): void => {
+  /* intentionally empty */
+};
+
+/**
+ * Whether {@link decodeSegmentAt} can warn on `segment`. Only two of its checks warn: the framing
+ * of a BDS or BIN segment (`frameBinary`, which answers nothing for a segment that does not open
+ * with `B`), and a release character left dangling at the end, which is never one when the element
+ * separator is the release character. For every other segment its split is silent, so a walk may
+ * leave it for the first read without losing a warning or moving one.
+ *
+ * @internal
+ */
+export function canWarn(segment: string, delimiters: Delimiters): boolean {
+  return (
+    segment.charCodeAt(0) === 0x42 ||
+    (delimiters.element !== RELEASE_CHAR && segment.endsWith(RELEASE_CHAR))
+  );
+}
+
+/**
+ * The transaction set the walk closes. When `pending`, some of `segments` are `undefined`, left for
+ * the first read: `segments` is then an own enumerable accessor, in the place the property always
+ * had, that splits each one left (with the same silent split the walk would have made, see
+ * {@link canWarn}), and on that first read or on a write turns itself into the plain, writable
+ * property it always was. So `Object.keys`, spread, `JSON.stringify` and destructuring see what
+ * they saw before, and the array read is the frozen array of frozen segments a whole parse makes.
+ *
+ * @internal
+ */
+export function transactionOf(
+  st: { readonly raw: string; readonly elements: readonly string[] },
+  se: { readonly raw: string; readonly elements: readonly string[] } | undefined,
+  segments: readonly (X12Segment | undefined)[],
+  rawSegments: readonly string[],
+  gs: GsSegment,
+  delimiters: Delimiters,
+  pending: boolean,
+): X12TransactionSet {
+  // The walk's own arrays, frozen in place: it writes no more to them once the set is closed.
+  const raws = Object.freeze(rawSegments);
+  if (!pending) {
+    const all = segments as readonly X12Segment[];
+    return { st, se, segments: Object.freeze(all), rawSegments: raws, gs };
+  }
+  let built: readonly X12Segment[] | undefined;
+  /** Make `value` the plain property it always was; `false` where the object no longer allows it. */
+  const settle = (value: readonly X12Segment[]): boolean =>
+    Reflect.defineProperty(tx, "segments", {
+      value,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  const tx: X12TransactionSet = {
+    st,
+    se,
+    get segments(): readonly X12Segment[] {
+      if (built === undefined) {
+        built = Object.freeze(
+          segments.map(
+            (segment, i) =>
+              segment ?? decodeSegmentAt(el(raws, i), delimiters, noop, SILENT_POSITION),
+          ),
+        );
+        // On an object frozen or sealed before this read, the accessor stays and answers the
+        // same array on every read.
+        settle(built);
+      }
+      return built;
+    },
+    set segments(value: readonly X12Segment[]) {
+      // A write to an object frozen or sealed first fails as it did on the plain property.
+      if (!settle(value)) {
+        throw new TypeError("Cannot assign to read only property 'segments' of object");
+      }
+    },
+    rawSegments: raws,
+    gs,
+  };
+  return tx;
+}
+
+/** The position a split that cannot warn is given: never read. @internal */
+const SILENT_POSITION: X12Position = Object.freeze({ segmentIndex: 0, interchangeIndex: 0 });
+
 /**
  * Decode an interchange body - everything past the ISA - into the typed
  * `groups`/`iea`/`trailingBytes` shape and the warnings collected along
@@ -464,8 +591,12 @@ function el(elements: readonly string[], index: number): string {
  *
  * @internal
  */
-export function decodeEnvelope(raw: string, delimiters: Delimiters): DecodedEnvelope {
-  return walkEnvelope(raw, delimiters, undefined, undefined);
+export function decodeEnvelope(
+  raw: string,
+  delimiters: Delimiters,
+  lazy: boolean,
+): DecodedEnvelope {
+  return walkEnvelope(raw, delimiters, undefined, undefined, lazy);
 }
 
 /** What {@link decodeEnvelope} and {@link decodeBuiltEnvelope} answer. @internal */
@@ -499,7 +630,7 @@ export function decodeBuiltEnvelope(
   segments: readonly string[],
   elements: readonly (readonly string[] | undefined)[],
 ): DecodedEnvelope {
-  return walkEnvelope(isa, delimiters, segments, elements);
+  return walkEnvelope(isa, delimiters, segments, elements, false);
 }
 
 /**
@@ -512,8 +643,83 @@ function walkEnvelope(
   delimiters: Delimiters,
   framed: readonly string[] | undefined,
   split: readonly (readonly string[] | undefined)[] | undefined,
+  lazy: boolean,
 ): DecodedEnvelope {
-  const warnings: X12ParseWarning[] = [];
+  const walk = startWalk(raw, delimiters, lazy, undefined);
+  const segments = framed ?? splitSegments(raw, ISA_MIN_LENGTH, delimiters).segments;
+  for (let i = 0; i < segments.length; i++) {
+    if (walk.step(el(segments, i), split?.[i])) return walk.close(segments.slice(i + 1));
+  }
+  return walk.close(undefined);
+}
+
+/**
+ * Where a walk that reads an interchange as it arrives sends what it finds, rather than keeping
+ * it: each transaction set as its `SE` (or whatever ends it) closes it, with the indexes of its
+ * group and of itself in that group, and each warning as it is raised. @internal
+ */
+export interface WalkStream {
+  readonly onTransaction: (tx: X12TransactionSet, groupIndex: number, index: number) => void;
+  readonly onWarning: (w: X12ParseWarning) => void;
+}
+
+/**
+ * A list the walk only appends to and counts: an array when the walk keeps what it finds, and a
+ * {@link countingList} when it hands each item on. @internal
+ */
+interface WalkList<T> {
+  push(item: T): unknown;
+  readonly length: number;
+  slice(): T[];
+}
+
+/**
+ * A {@link WalkList} that hands each item to `onItem` with the count before it, then counts it and
+ * keeps nothing. @internal
+ */
+function countingList<T>(onItem: (item: T, index: number) => void): WalkList<T> {
+  let count = 0;
+  return {
+    push(item: T): number {
+      onItem(item, count);
+      count += 1;
+      return count;
+    },
+    get length(): number {
+      return count;
+    },
+    // Stryker disable next-line ArrowFunction,ArrayDeclaration: equivalent, a walk that hands its items on discards what its close returns
+    slice: (): T[] => [],
+  };
+}
+
+/** One walk over an interchange: each segment after the ISA in order, then its close. @internal */
+export interface EnvelopeWalk {
+  /** Walk one segment, `presplit` its elements when already split; `true` once it was the `IEA`. */
+  step(segmentText: string, presplit?: readonly string[]): boolean;
+  /**
+   * Close the walk: `rest` holds the segments after the `IEA`, or is `undefined` when the input
+   * ended without one.
+   */
+  close(rest: readonly string[] | undefined): DecodedEnvelope;
+}
+
+/**
+ * Start a walk over the interchange whose ISA opens `raw`. With `stream` the walk hands each
+ * transaction set and warning on as it finds them and keeps neither, nor any closed group; with
+ * `lazy` a transaction set's segments are split the first time they are read (see
+ * {@link transactionOf}).
+ *
+ * @internal
+ */
+export function startWalk(
+  raw: string,
+  delimiters: Delimiters,
+  lazy: boolean,
+  stream: WalkStream | undefined,
+): EnvelopeWalk {
+  const warnings: WalkList<X12ParseWarning> =
+    stream === undefined ? [] : countingList(stream.onWarning);
   /**
    * Single chokepoint that collects every warning emitted from any sub-
    * pass (envelope walker + per-segment decode). Defined once here so the
@@ -542,13 +748,11 @@ function walkEnvelope(
     warnings.push(pre005010({ segmentIndex: 0, interchangeIndex: 0, elementIndex: 12 }));
   }
 
-  const segments = framed ?? splitSegments(raw, ISA_MIN_LENGTH, delimiters).segments;
-
   // Walk the segment stream. State machine: optional currentGroup,
   // optional currentTransaction. Segment index (`segIdx`) is global to
   // the post-ISA stream + 1 (segIdx=0 is ISA itself); used for warning
   // positional context.
-  const groups: X12FunctionalGroup[] = [];
+  const groups: WalkList<X12FunctionalGroup> = stream === undefined ? [] : countingList(noop);
   const ta1Segments: Ta1Segment[] = [];
   const orphanSegments: X12OrphanSegment[] = [];
   let iea: IeaSegment | undefined;
@@ -556,15 +760,24 @@ function walkEnvelope(
 
   type OpenTx = {
     st: { raw: string; elements: readonly string[] };
-    segments: X12Segment[];
+    segments: (X12Segment | undefined)[];
     rawSegments: string[];
     startSegIdx: number;
+    pending: boolean;
   };
   type OpenGroup = {
     gs: GsSegment;
-    transactions: X12TransactionSet[];
+    transactions: WalkList<X12TransactionSet>;
     startSegIdx: number;
   };
+
+  /** The list a new group's transaction sets go to. */
+  const groupTransactions = (): WalkList<X12TransactionSet> =>
+    stream === undefined
+      ? []
+      : countingList((tx, index) => {
+          stream.onTransaction(tx, groups.length, index);
+        });
 
   let currentGroup: OpenGroup | undefined;
   let currentTx: OpenTx | undefined;
@@ -658,16 +871,18 @@ function walkEnvelope(
         }),
       );
     }
-    const framed: X12TransactionSet = {
-      st: tx.st,
+    // The enclosing group's header goes on it by reference, so a typed reader
+    // handed only this transaction set can fall back to GS-08 where ST-03 is
+    // absent or empty. Raw, like every envelope element.
+    const framed = transactionOf(
+      tx.st,
       se,
-      segments: Object.freeze(tx.segments.slice()),
-      rawSegments: Object.freeze(tx.rawSegments.slice()),
-      // The enclosing group's header, by reference, so a typed reader handed
-      // only this transaction set can fall back to GS-08 where ST-03 is
-      // absent or empty. Raw, like every envelope element.
-      gs: group.gs,
-    };
+      tx.segments,
+      tx.rawSegments,
+      group.gs,
+      delimiters,
+      tx.pending,
+    );
     // Where its ST sat in the input, kept off the model: a warning names a
     // segment by input index and a 999 by its position from the ST.
     recordTransactionStart(framed, tx.startSegIdx);
@@ -746,10 +961,9 @@ function walkEnvelope(
   let presplit: readonly string[] | undefined;
 
   // ISA itself occupies segIdx 0; the body starts at segIdx 1.
-  for (let i = 0; i < segments.length; i++) {
-    const segmentText = el(segments, i);
-    segIdx = i + 1;
-    presplit = split?.[i];
+  const step = (segmentText: string, elementsIn?: readonly string[]): boolean => {
+    segIdx += 1;
+    presplit = elementsIn;
     const name = segmentName(segmentText, delimiters);
     // Only the envelope's own segments are split here; a body segment is split
     // once, by its decode, and the ST and SE reuse the elements theirs makes.
@@ -811,7 +1025,7 @@ function walkEnvelope(
         }
         currentGroup = {
           gs: { raw: segmentText, elements },
-          transactions: [],
+          transactions: groupTransactions(),
           startSegIdx: segIdx,
         };
         break;
@@ -869,6 +1083,7 @@ function walkEnvelope(
           segments: [stDecoded],
           rawSegments: [segmentText],
           startSegIdx: segIdx,
+          pending: false,
         };
         break;
       }
@@ -945,46 +1160,23 @@ function walkEnvelope(
             ),
           );
         }
-        // Trailing-bytes detection - anything past IEA is multi-ISA or
-        // garbage (multi-ISA support is out of v1 scope per roadmap §2).
-        // Best-effort preservation: join the leftover segment slices
-        // with the segment terminator and append a final terminator.
-        // Not byte-exact for trailing content; consumers needing the
-        // raw second-interchange bytes should re-tokenize.
-        const tail = segments.slice(i + 1).join(delimiters.segment);
-        if (tail.length > 0) {
-          // The last trailing segment takes a terminator only where one would end it: after a
-          // dangling release character it would be read as data, and every later parse of the
-          // emit would add another.
-          const joined = endsAtTerminator(el(segments, segments.length - 1), delimiters)
-            ? tail + delimiters.segment
-            : tail;
-          trailingBytes = joined;
-          warnings.push(trailingGarbage({ segmentIndex: segIdx + 1, interchangeIndex: 0 }));
-        }
         // Stop walking once IEA is consumed (multi-ISA support is out
         // of v1 scope per roadmap §2 non-goals).
-        return {
-          isa,
-          groups: Object.freeze(groups.slice()),
-          iea,
-          ta1Segments: Object.freeze(ta1Segments.slice()),
-          orphanSegments: Object.freeze(orphanSegments.slice()),
-          trailingBytes,
-          warnings: Object.freeze(warnings.slice()),
-        };
+        return true;
       }
       default: {
         // Body segment of an open transaction → decode and append.
         if (currentTx !== undefined && currentGroup !== undefined) {
-          const decoded = decodeSegmentAt(
-            segmentText,
-            delimiters,
-            collectWarning,
-            inTransaction,
-            presplit,
-          );
-          currentTx.segments.push(decoded);
+          // Split now only a segment whose split can warn (see `canWarn`); a lazy walk leaves
+          // every other one for its first read.
+          if (lazy && !canWarn(segmentText, delimiters)) {
+            currentTx.segments.push(undefined);
+            currentTx.pending = true;
+          } else {
+            currentTx.segments.push(
+              decodeSegmentAt(segmentText, delimiters, collectWarning, inTransaction, presplit),
+            );
+          }
           currentTx.rawSegments.push(segmentText);
         } else if (segmentText.length > 0) {
           // Outside any transaction, a body segment is structurally
@@ -1003,25 +1195,49 @@ function walkEnvelope(
         break;
       }
     }
-  }
-
-  // EOF without IEA → close anything open and warn. The function returns
-  // immediately after, so resetting `currentTx`/`currentGroup` is moot.
-  if (currentGroup !== undefined) {
-    if (currentTx !== undefined) {
-      finalizeTx(currentTx, currentGroup, undefined);
-    }
-    finalizeGroup(currentGroup, undefined);
-  }
-  warnings.push(missingIea({ segmentIndex: segments.length + 1, interchangeIndex: 0 }));
-
-  return {
-    isa,
-    groups: Object.freeze(groups.slice()),
-    iea,
-    ta1Segments: Object.freeze(ta1Segments.slice()),
-    orphanSegments: Object.freeze(orphanSegments.slice()),
-    trailingBytes,
-    warnings: Object.freeze(warnings.slice()),
+    return false;
   };
+
+  const close = (rest: readonly string[] | undefined): DecodedEnvelope => {
+    if (rest === undefined) {
+      // EOF without IEA → close anything open and warn. Nothing is walked
+      // after, so resetting `currentTx`/`currentGroup` is moot.
+      if (currentGroup !== undefined) {
+        if (currentTx !== undefined) {
+          finalizeTx(currentTx, currentGroup, undefined);
+        }
+        finalizeGroup(currentGroup, undefined);
+      }
+      warnings.push(missingIea({ segmentIndex: segIdx + 1, interchangeIndex: 0 }));
+    } else {
+      // Trailing-bytes detection - anything past IEA is multi-ISA or
+      // garbage (multi-ISA support is out of v1 scope per roadmap §2).
+      // Best-effort preservation: join the leftover segment slices
+      // with the segment terminator and append a final terminator.
+      // Not byte-exact for trailing content; consumers needing the
+      // raw second-interchange bytes should re-tokenize.
+      const tail = rest.join(delimiters.segment);
+      if (tail.length > 0) {
+        // The last trailing segment takes a terminator only where one would end it: after a
+        // dangling release character it would be read as data, and every later parse of the
+        // emit would add another.
+        const joined = endsAtTerminator(el(rest, rest.length - 1), delimiters)
+          ? tail + delimiters.segment
+          : tail;
+        trailingBytes = joined;
+        warnings.push(trailingGarbage({ segmentIndex: segIdx + 1, interchangeIndex: 0 }));
+      }
+    }
+    return {
+      isa,
+      groups: Object.freeze(groups.slice()),
+      iea,
+      ta1Segments: Object.freeze(ta1Segments.slice()),
+      orphanSegments: Object.freeze(orphanSegments.slice()),
+      trailingBytes,
+      warnings: Object.freeze(warnings.slice()),
+    };
+  };
+
+  return { step, close };
 }

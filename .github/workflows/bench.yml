@@ -110,6 +110,49 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+  # The large documents on the base build and the head build, side by side on one runner: a
+  # 10,000-claim 835 and 837P parsed, parsed and read, and read through `readTransactionSets`, each
+  # case in a fresh process, the two builds interleaved, three rounds (bench/large.mjs). Every round
+  # is shown in the summary. On a run that is not a pull request the base is the head's parent.
+  large:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Build the base
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || 'HEAD~1' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add "${RUNNER_TEMP}/base" "${BASE}"
+          cd "${RUNNER_TEMP}/base"
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: The machine
+        run: grep -m1 "model name" /proc/cpuinfo
+      - name: Read the large documents, base and head
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "### Large documents: base $(git -C "${RUNNER_TEMP}/base" rev-parse HEAD), head ${HEAD_SHA}"
+            echo
+          } >> "${GITHUB_STEP_SUMMARY}"
+          pnpm bench:large --base "${RUNNER_TEMP}/base/dist/index.mjs" --head dist/index.mjs --rounds 3
+
   profile:
     runs-on: ubuntu-latest
     timeout-minutes: 15
