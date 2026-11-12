@@ -26,9 +26,16 @@ pnpm examples
 | [`read-834-enrollment.ts`](read-834-enrollment.ts)                               | Build an 834 roster, then read the header and each member, acting on the maintenance type code.                                                                       | `pnpm tsx examples/read-834-enrollment.ts`                |
 | [`build-820-premium-payment.ts`](build-820-premium-payment.ts)                   | Build an 820 premium payment, read it back, and reconcile the open items against the deposit with exact decimals.                                                     | `pnpm tsx examples/build-820-premium-payment.ts`          |
 | [`acknowledge-with-999.ts`](acknowledge-with-999.ts)                             | Acknowledge a received claim batch with a 999 built from its envelope, then read the acknowledgment the way the submitter will.                                       | `pnpm tsx examples/acknowledge-with-999.ts`               |
+| [`acknowledge-with-997.ts`](acknowledge-with-997.ts)                             | Acknowledge the same batch with a 997 for a partner that still expects one, read it back, and see a disposition outside its code list carried as sent with a warning. | `pnpm tsx examples/acknowledge-with-997.ts`               |
 | [`reject-interchange-with-ta1.ts`](reject-interchange-with-ta1.ts)               | Reject an interchange whose trailer does not match its header with a TA1, then read the TA1 back.                                                                     | `pnpm tsx examples/reject-interchange-with-ta1.ts`        |
 | [`acknowledge-from-parse.ts`](acknowledge-from-parse.ts)                         | Derive the TA1 and the 999 for a received claim batch from what the parser found, build them, and read them back.                                                     | `pnpm tsx examples/acknowledge-from-parse.ts`             |
 | [`answer-attachment-request.ts`](answer-attachment-request.ts)                   | Read a 277 request for additional information and answer it with a 275 attachment whose length is checked on the way back in.                                         | `pnpm tsx examples/answer-attachment-request.ts`          |
+
+The three acknowledgment examples (`acknowledge-with-999.ts`, `acknowledge-with-997.ts` and
+`reject-interchange-with-ta1.ts`) are the runnable half of the how-to
+[Read 999, 997 and TA1 acknowledgments](../docs-content/read-acknowledgments.md), which covers
+what each reader fills in, what each builder refuses, and the warnings a malformed acknowledgment
+raises.
 
 The two files under `data/` are inputs, copied from the repository's synthetic test fixtures:
 `835-remittance.edi` (one payment, two claims) and `837p-claim.edi` (one professional claim). An
