@@ -85,8 +85,43 @@ transaction set at a time, holding about one set rather than the file.
 
 Importing the package costs a process time before it parses anything, which matters most to a
 short-lived process: a command-line tool, a serverless function, a test worker. The benchmark
-reading times it with its gzipped size. Most of the import is compiling the one bundle; the built-in
-profiles are built on first read rather than at import.
+reading times it with its gzipped size. Most of the import is compiling the code: `@cosyte/x12`
+carries every typed reader, builder, code list and loop specification. The built-in profiles are
+built on first read rather than at import.
+
+### Import only the parser
+
+`@cosyte/x12/parse` is the parser alone: `parseX12`, `readTransactionSets`, segment and element
+decoding (`decodeSegment`, `getSegmentValue`, `elementValue`, `readElementDecimal` and the rest),
+`escapeRelease` and `unescapeRelease`, `detectDelimiters`, `X12Decimal`, `X12ParseError`,
+`FATAL_CODES`, `WARNING_CODES`, `ALL_WARNING_MESSAGES`, and their types. It loads no code list,
+loop specification, typed reader, builder, serializer or built-in profile.
+
+Use it when a process only parses: it frames interchanges, routes transaction sets by their `ST`,
+counts or splits them, or reads the segments it needs itself. Use `@cosyte/x12` when it calls a
+typed reader (`get835`, `get837Claims` and the rest), a builder, `serializeX12`, a code-list lookup
+or `profiles`. Both in one process cost no more than `@cosyte/x12` alone.
+
+```ts runnable
+import { parseX12, WARNING_CODES } from "@cosyte/x12/parse";
+
+const raw =
+  "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       " +
+  "*260601*1200*^*00501*000000001*0*P*:~" +
+  "GS*HP*SENDER*RECEIVER*20260601*1200*1*X*005010X221A1~" +
+  "ST*835*0001~SE*2*0001~GE*1*1~IEA*1*000000001~";
+
+const ix = parseX12(raw);
+
+ix.groups[0]?.transactions[0]?.st.elements[1]; // => "835"
+ix.warnings.some((w) => w.code === WARNING_CODES.X12_PRE_005010); // => false
+```
+
+Every name `@cosyte/x12/parse` exports is the same one `@cosyte/x12` exports: the build shares one
+copy of the parser between them. An `X12ParseError` thrown through either is one class to
+`instanceof`, and `setDefaultProfile` from `@cosyte/x12` sets the profile `parseX12` from
+`@cosyte/x12/parse` attaches. `@cosyte/x12` exports everything it did, so no caller has to change
+an import; moving one to the subpath is a choice for the import time alone.
 
 ## What these are not
 

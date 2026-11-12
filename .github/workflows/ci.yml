@@ -208,6 +208,45 @@ jobs:
       - run: pnpm examples
       - run: pnpm phi-scan:examples
 
+  # TEMPORARY, removed before merge: thirty readings of the cold import of both entry points and of
+  # the base build's main entry point, each on its own hosted runner, to set the budgets of
+  # `pnpm check:cold-import` from the slowest runner class. Reads only; never fails on a number.
+  cold-import-measure:
+    name: cold-import-measure (${{ matrix.round }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        round: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Build the base
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || 'HEAD~1' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add "${RUNNER_TEMP}/base" "${BASE}"
+          cd "${RUNNER_TEMP}/base"
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Read the cold import
+        shell: bash
+        run: pnpm check:cold-import --measure --base "${RUNNER_TEMP}/base/dist/index.mjs"
+
   # The repository's documents, each held by the shared checker in @cosyte/script-utils: the README
   # against the house skeleton and npm's size limit, the CLAUDE.md card against its spec, and the
   # package.json description against the catalog of our libraries. It also runs
