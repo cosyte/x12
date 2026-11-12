@@ -1,6 +1,6 @@
 ---
 id: intro
-title: Getting started
+title: Overview
 sidebar_label: Overview
 description: "Parse real-world healthcare X12 and read fields out of it without first reading the standard or a TR3."
 ---

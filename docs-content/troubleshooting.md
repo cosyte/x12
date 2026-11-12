@@ -12,12 +12,18 @@ delivers. Mis-reading a payer's remittance, a claim's diagnosis, or a member's c
 financial or clinical harm, so this page is the deliberate "do not over-trust" list: the error model,
 the common symptoms, and the intentional boundaries. Everything here is a documented boundary, not a
 bug. The lenient parser never silently drops or garbles a **decoded value**; where a limitation
-applies, the raw value is preserved (often with a warning), it is simply not further decoded. Two
-things the **emit** does not reproduce are worth knowing before you rely on a round trip, and both are
-silent: **line breaks between segments** and **a doubled segment terminator** outside a transaction.
-Both are in the symptoms table below. **Segments outside a transaction** used to be a third: they are
-now warned, kept on the model at `ix.orphanSegments`, and re-emitted at the structural anchor recorded
-with them, so both the bytes and the warning survive a round trip.
+applies, the raw value is preserved (often with a warning), it is simply not further decoded. Five
+constructs the **emit** does not reproduce are worth knowing before you rely on a round trip, and four
+of them are silent: **line breaks between segments**, **a doubled segment terminator** outside a
+transaction, **a missing final segment terminator** (the emit supplies one) and **a TA1 that followed
+a functional group** (emitted right after the ISA, so reordered, though nothing is lost). The fifth,
+**bytes after the IEA**, raises
+[`X12_TRAILING_GARBAGE`](./warning-and-error-codes.md#x12_trailing_garbage) and comes back re-joined
+from segment slices rather than verbatim. All five are in
+[Known limitations and non-goals](#known-limitations-and-non-goals) below. **Segments outside a
+transaction** used to be on that list: they are now warned, kept on the model at
+`ix.orphanSegments`, and re-emitted at the structural anchor recorded with them, so both the bytes
+and the warning survive a round trip.
 
 ## When does it throw vs warn?
 
