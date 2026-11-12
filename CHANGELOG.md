@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.16
+
+### Patch Changes
+
+- 98c2682: Documentation only: KNOWN-LIMITATIONS.md now lists `005010X216`, the 278 notification guide, as not implemented, and says what a 278 declaring it gets (no reading from `get278Request` or `get278Response`, and no warning). It also records that the `06020X314` spelling in 45 CFR 162.2002(c) was re-checked against eCFR on 2026-11-12. No code changes and nothing for a caller to change.
+- fc83930: Read a file far larger than memory one transaction set at a time with the new `readTransactionSets`, and parse a large interchange in a fraction of the time: `parseX12` now splits a transaction set's segments into elements the first time `segments` is read.
+
+  - `readTransactionSets(source, options)` is new. It takes any iterable or async iterable of text or byte chunks (a Node `Readable`, for one) and yields each transaction set, with the interchange's `delimiters` and `isa` and the indexes of its group and of itself, as soon as it closes. Each set is the one `parseX12` of the whole input holds at the same place, warnings reach `onWarning` in the same order and at the same positions as `parseX12` reports them, and nothing yielded is kept. New types: `X12StreamSource`, `X12StreamOptions`, `X12StreamTransaction`.
+  - `parseX12` takes a new option, `lazy` (default `true`). Every warning is still found during the parse, in the same order and at the same positions, and what `segments` answers is the same; until its first read, a transaction set's `segments` is an own enumerable accessor in the same place, which becomes the plain writable property it always was on that read or on a write. `Object.keys`, spread, `JSON.stringify` and destructuring see what they saw before; `Object.getOwnPropertyDescriptor` shows a getter before the first read. Pass `{ lazy: false }` to split every segment during the parse. Nothing a caller must change.
+  - `profiles.availity` and `profiles.bcbsCommon` are built the first time they are read rather than at import, and every read answers the same profile. They are own enumerable accessors on the frozen `profiles` object, so `Object.keys`, spread, `JSON.stringify` and destructuring are unchanged; `Object.getOwnPropertyDescriptor` and `util.inspect` show a getter.
+
 ## 0.1.15
 
 ### Patch Changes
