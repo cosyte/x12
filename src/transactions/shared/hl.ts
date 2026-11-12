@@ -118,7 +118,11 @@ export function validateHl(
   // Without this branch an absent HL-02 would reach `index.get`, find no HL and
   // raise the same one warning, so emptying the branch or skipping it changes no
   // answer; it stays so the absent pointer is refused by name, not by a lookup.
-  // Stryker disable next-line ConditionalExpression,BlockStatement: equivalent, the lookup below raises the same warning
+  // A StrykerJS directive names a mutator, not one of its replacements, so the
+  // exception below switches off both replacements of this test. Only `false` is
+  // equivalent; `true` is not, and the test that an HL under the parent its map
+  // names raises nothing (`test/transactions-shared.test.ts`) kills it.
+  // Stryker disable next-line ConditionalExpression,BlockStatement: equivalent for false and the empty block, the lookup below raises the same warning; true is killed by a test
   if (hl.parentHlId === undefined) {
     warnings.push(hlParentMismatch(position));
     return;

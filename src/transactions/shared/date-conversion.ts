@@ -196,22 +196,23 @@ interface DecodedDay {
  */
 function decodeDay(value: X12DateValue | null | undefined): DecodedDay | undefined {
   if (value === undefined || value === null) return undefined;
-  const { formatQualifier } = value;
-  // An absent value reads as `""`, which fails the shape below. A value that is
-  // not a string at all (a caller outside TypeScript) needs no check of its own:
-  // `parseDocumentDate` throws on anything but a string, and that throw is read
-  // as a refusal like any other.
-  // Stryker disable next-line StringLiteral: equivalent, any other fallback string fails the D8 shape too
-  const text = value.value ?? "";
+  const { formatQualifier, value: text } = value;
   // `RD8` is recognised and refused for a REASON, not merely by falling off the
   // end of the handled set: an interval has no single instant, and the comment
   // has to survive someone later "fixing" this by returning the low endpoint.
   // The line after it refuses `RD8` too, so the check failing changes no
-  // answer: the line is the reason written as code.
-  // Stryker disable next-line ConditionalExpression: equivalent, the line after it refuses RD8 as well
+  // answer: the line is the reason written as code. A StrykerJS directive names
+  // a mutator, not one of its replacements, so the exception below switches off
+  // both replacements of this test. Only `false` is equivalent; `true` is not,
+  // and every valid `D8` case in `test/conversion-surface.test.ts` kills it.
+  // Stryker disable next-line ConditionalExpression: equivalent for false, the line after it refuses RD8 as well; true is killed by every valid D8 case
   if (formatQualifier === DATE_RANGE_FORMAT) return undefined;
   if (formatQualifier !== SINGLE_DAY_FORMAT) return undefined;
-  if (!D8_SHAPE.test(text)) return undefined;
+  // The type check comes first and is not left to the shape test: a pattern test
+  // converts its argument to a string, and a symbol, an object with no prototype
+  // or an object whose `toString` throws would throw there, from outside the
+  // `try` below, where every refusal has to be `undefined`.
+  if (typeof text !== "string" || !D8_SHAPE.test(text)) return undefined;
   try {
     parseDocumentDate(text);
   } catch {

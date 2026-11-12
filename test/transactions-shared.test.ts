@@ -70,6 +70,34 @@ describe("the date conversion surface, handed what TypeScript would refuse", () 
     expect(toDate(carrier, { assumeOffsetMinutes: 0 })).toBeUndefined();
   });
 
+  // A pattern test converts its argument to a string, and each of these throws
+  // when converted, so the value has to be refused as a non-string before any
+  // shape check reads it.
+  it.each([
+    { label: "a symbol", make: (): unknown => Symbol("synthetic") },
+    { label: "an object with no prototype", make: (): unknown => Object.create(null) },
+    {
+      label: "an object whose toString throws",
+      make: (): unknown => ({
+        toString(): string {
+          throw new Error("synthetic conversion failure");
+        },
+      }),
+    },
+  ])(
+    "answers undefined from all three, never throwing, for a D8 value that is $label",
+    ({ make }) => {
+      const carrier = { formatQualifier: "D8", value: make() as string };
+      const options = { assumeOffsetMinutes: 0 };
+      expect(() => toObject(carrier), "toObject").not.toThrow();
+      expect(toObject(carrier), "toObject").toBeUndefined();
+      expect(() => toISO(carrier), "toISO").not.toThrow();
+      expect(toISO(carrier), "toISO").toBeUndefined();
+      expect(() => toDate(carrier, options), "toDate").not.toThrow();
+      expect(toDate(carrier, options), "toDate").toBeUndefined();
+    },
+  );
+
   it("answers undefined from all three for a D8 carrier with no value", () => {
     const carrier: X12DateValue = { formatQualifier: "D8" };
     expect(toObject(carrier)).toBeUndefined();
