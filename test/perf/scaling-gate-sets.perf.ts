@@ -18,8 +18,8 @@
  *
  * Each base phase must last `MIN_BASE_PHASE_MS` (8 ms), and the hosted runners differ by up to
  * about 2x in speed, so a phase sized to clear it on an average runner fails on a fast one now and
- * then. Each axis is sized so that its base phase lasted 16 ms or more on the fastest runner we
- * measured, twice the floor. Where an axis needed more time, it takes more documents (`countN`,
+ * then. Each axis is sized so that its base phase lasted about twice the floor on the fastest
+ * runner we measured. Where an axis needed more time, it takes more documents (`countN`,
  * `inputs`) rather than larger ones: more documents of the same size leave the self-check's
  * margin where it was, and cost the quadratic self-check time in proportion, not in square.
  *
