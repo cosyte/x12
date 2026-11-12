@@ -36,7 +36,8 @@ a stable code instead of failing or guessing.
 On the 0.1 line the public API is settled and safe to depend on: the exported readers, builders,
 types and warning codes are the surface we keep stable, and the warning registry only ever gains
 codes. Below 1.0 every release is a patch, and a breaking or narrowing change ships as a patch whose
-changeset and changelog entry state the change and what a caller must do. On an older 0.0 release, pin an exact version rather than a range.
+changeset and changelog entry state the change and what a caller must do. A caret range therefore
+does not protect you from a break; see Install for pinning an exact version.
 
 Typed read and typed emit both ship for every transaction set this package covers: 270, 271, 276,
 277 and 277CA, 278 request and response, 820, 834, 835, 837P, 837I and 837D, 999, 997 and TA1,
@@ -88,6 +89,15 @@ pnpm add @cosyte/x12
 ```
 
 `npm install @cosyte/x12` and `yarn add @cosyte/x12` work the same way.
+
+Below 1.0 a break can ship in a patch, so a caret range such as `^0.1.0` does not protect you from
+one. Pin an exact version and read each changelog entry before you move it:
+
+```bash
+pnpm add @cosyte/x12@<version> --save-exact
+```
+
+`npm install @cosyte/x12@<version> --save-exact` does the same.
 
 Node.js 22 or later, tested on 22, 24, and 26: the engine floor is `>=22.0.0`, and there are zero
 runtime dependencies. The package ships dual ESM and CJS builds with type declarations for both
