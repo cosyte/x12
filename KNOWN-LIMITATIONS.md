@@ -87,6 +87,7 @@ caller had to do about it.
 
 - [We do not validate against implementation guides](#we-do-not-validate-against-implementation-guides)
 - [No 4010 variants and no 277U](#no-4010-variants-and-no-277u)
+- [No 278 notification (`005010X216`)](#no-278-notification-005010x216)
 - [Healthcare 005010, and the 006020 claims attachments pair](#healthcare-005010-and-the-006020-claims-attachments-pair)
 - [No transport](#no-transport)
 - [Below 1.0](#below-10)
@@ -1711,6 +1712,18 @@ read against the 005010 positions with `X12_GUIDE_NOT_DECLARED`, as described ab
 still receive 4010 traffic, translate it to 005010 before it reaches this package, or use a
 parser that reads 4010.
 
+### No 278 notification (`005010X216`)
+
+**No 278 notification (`005010X216`).** We read and build one 278 guide, `005010X217`, the Health
+Care Services Review request and response. We do not read or build `005010X216`, the 278 notification
+guide, and we do not plan to unless it is asked for. A 278 that declares it (in ST-03, or in GS-08
+where ST-03 is empty) gets no reading: `get278Request` and `get278Response` both answer
+`undefined`, the same as for the 4010 `004010X094A1`. Because no reading is returned, there is no
+reading to carry a warning, so the `undefined` is the only signal. Route on the declared guide
+yourself (`tx.st.elements[3]`) if you need to tell a notification from another refused guide. Its
+segments stay verbatim on `tx.segments`. We have no figure for how much `005010X216` traffic there
+is. If you need it read, tell us at [github.com/cosyte/x12/issues](https://github.com/cosyte/x12/issues).
+
 ### Healthcare 005010, and the 006020 claims attachments pair
 
 **Healthcare HIPAA 005010, and two 006020 guides: the claims attachments pair.** Beside the
@@ -1753,7 +1766,8 @@ maps. What the attachments pair leaves open, stated here beside it:
 - **`06020X314` is not an adopted identifier.** 45 CFR 162.2002(c) prints the 275's guide one digit
   short, as `06020X314`, where 162.920(a)(19) prints `006020X314`. The conformance row adopts the
   162.920 spelling and records the other on its note as a typographical variant, so a 275 declaring
-  `06020X314` is warned `X12_GUIDE_NOT_IMPLEMENTED`.
+  `06020X314` is warned `X12_GUIDE_NOT_IMPLEMENTED`. We re-read the current text of 45 CFR 162.2002(c) on eCFR on 2026-11-12 (title 45
+  as issued 2026-11-09), and it still prints `06020X314`, so the typo stands as stated.
 - **Only the attachment data refuses to print.** A 275 attachment's BDS-03 is held in
   `X12AttachmentData`, whose string, JSON and `util.inspect` forms carry its octet count and no
   octet. Every other field of both readings, the names, member and claim identifiers and trace
