@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -117,7 +117,8 @@ function scannedFiles(): readonly string[] {
     else files.push(path);
   }
   for (const dir of ["src", "docs-content", "examples"]) files.push(...walk(join(root, dir)));
-  return files.map((path) => relative(root, path)).sort();
+  // Forward slashes on every platform, so the names read the same on Windows.
+  return files.map((path) => relative(root, path).split(sep).join("/")).sort();
 }
 
 describe("shipped files and examples name no removed code-list description", () => {
